@@ -3,7 +3,7 @@
 AC_PREREQ(2.50)
 DUNE_AC_INIT # gets module version from dune.module file
 AM_INIT_AUTOMAKE
-AC_CONFIG_SRCDIR([grid/dune_cornerpoint.cc])
+AC_CONFIG_SRCDIR([grid/cpgrid.hpp])
 AM_CONFIG_HEADER([config.h])
 
 # we need no more than the standard DE-stuff
