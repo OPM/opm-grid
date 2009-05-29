@@ -3,7 +3,7 @@
 SUBDIRS = test
 
 cpgriddir = $(includedir)/dune/grid/cpgrid
-cpgrid_HEADERS = entity.hpp
+cpgrid_HEADERS = Entity.hpp
 
 include $(top_srcdir)/am/global-rules
 
