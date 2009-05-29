@@ -1,0 +1,1 @@
+program.o: program.cpp
