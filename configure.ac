@@ -20,6 +20,8 @@ AC_CONFIG_FILES([
   Makefile
   grid/Makefile
   grid/test/Makefile
+  grid/common/Makefile
+  grid/common/test/Makefile
   grid/cpgrid/Makefile
   grid/cpgrid/test/Makefile
   m4/Makefile

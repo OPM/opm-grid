@@ -34,7 +34,10 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "../CpGrid.hpp"
+#include <vector>
 
 int main()
 {
+    std::vector<int> r(1);
+    int a = r[1];
 }
