@@ -6,7 +6,7 @@ entity_test_SOURCES = entity_test.cpp
 entity_test_CXXFLAGS = $(MPI_CPPFLAGS)
 entity_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS)
 
-TEST = $(check_PROGRAMS)
+TESTS = $(check_PROGRAMS)
 
 include $(top_srcdir)/am/global-rules
 
