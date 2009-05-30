@@ -3,7 +3,7 @@
 SUBDIRS = test
 
 commondir = $(includedir)/dune/grid/common
-common_HEADERS = SparseTable.hpp IterRange.hpp ErrorMacros.hpp
+common_HEADERS = SparseTable.hpp ErrorMacros.hpp
 
 include $(top_srcdir)/am/global-rules
 

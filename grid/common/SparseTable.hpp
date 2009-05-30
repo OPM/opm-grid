@@ -38,7 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <vector>
 #include <numeric>
 #include <algorithm>
-#include "IterRange.hpp"
+#include <boost/range/iterator_range.hpp>
 #include "ErrorMacros.hpp"
 
 namespace Dune
@@ -101,12 +101,14 @@ namespace Dune
 	    return empty() ? 0 : row_start_.size() - 1;
 	}
 
+	/// Defining the row type, returned by operator[].
+	typedef boost::iterator_range<const int*> row_type;
 
 	/// Returns a row of the table.
-	IterRange<T> operator[](int row) const
+	row_type operator[](int row) const
 	{
 	    const T* start_ptr = &data_[0];
-	    return IterRange<T>(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
+	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
 	}
 
     private:
