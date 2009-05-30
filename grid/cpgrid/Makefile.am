@@ -3,7 +3,7 @@
 SUBDIRS = test
 
 cpgriddir = $(includedir)/dune/grid/cpgrid
-cpgrid_HEADERS = Entity.hpp
+cpgrid_HEADERS = Entity.hpp Geometry.hpp GridView.hpp Iterators.hpp Indexsets.hpp
 
 include $(top_srcdir)/am/global-rules
 
