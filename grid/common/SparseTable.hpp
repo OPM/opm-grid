@@ -88,10 +88,10 @@ namespace Dune
 	}
 	    
 
-	/// True if the table contains no data.
+	/// True if the table contains no rows.
 	bool empty() const
 	{
-	    return data_.empty();
+	    return row_start_.empty();
 	}
 
 
