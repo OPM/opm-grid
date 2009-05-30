@@ -1,8 +1,8 @@
 //===========================================================================
 //
-// File: Entity.hpp
+// File: Geometry.hpp
 //
-// Created: Fri May 29 20:26:48 2009
+// Created: Fri May 29 23:29:24 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
@@ -33,23 +33,16 @@ You should have received a copy of the GNU General Public License
 along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_ENTITY_HEADER
-#define OPENRS_ENTITY_HEADER
-
+#ifndef OPENRS_GEOMETRY_HEADER
+#define OPENRS_GEOMETRY_HEADER
 
 namespace Dune
 {
     namespace cpgrid
     {
 
-
-	template <int cd>
-	class Entity
-	{
-	};
-
-	template <int cd>
-	class EntityPointer
+	template <int dim>
+	class Geometry
 	{
 	};
 
@@ -57,5 +50,4 @@ namespace Dune
     } // namespace cpgrid
 } // namespace Dune
 
-
-#endif // OPENRS_ENTITY_HEADER
+#endif // OPENRS_GEOMETRY_HEADER
