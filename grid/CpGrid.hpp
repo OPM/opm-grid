@@ -90,16 +90,16 @@ namespace Dune
 	    /// \brief The type of the local geometry associated with the entity.
 	    typedef cpgrid::Geometry<3-cd> LocalGeometry;
 	    /// \brief The type of the entity.
-	    typedef cpgrid::Entity<cd> Entity;
+	    typedef cpgrid::Entity<cd, CpGrid> Entity;
 
 	    /// \brief The type of the iterator over all level entities of this codim.
-	    typedef cpgrid::Iterator<cd, All_Partition> LevelIterator;
+	    typedef cpgrid::Iterator<cd, All_Partition, CpGrid> LevelIterator;
 
 	    /// \brief The type of the iterator over all leaf entities of this codim.
-	    typedef cpgrid::Iterator<cd, All_Partition> LeafIterator;
+	    typedef cpgrid::Iterator<cd, All_Partition, CpGrid> LeafIterator;
 
 	    /// \brief The type of the entity pointer for entities of this codim.
-	    typedef cpgrid::EntityPointer<cd> EntityPointer;
+	    typedef cpgrid::EntityPointer<cd, CpGrid> EntityPointer;
 
 	    /// \brief Traits associated with a specific grid partition type.
 	    /// \tparam pitype The type of the grid partition.
@@ -107,9 +107,9 @@ namespace Dune
 	    struct Partition
 	    {
 		/// \brief The type of the iterator over the level entities of this codim on this partition.
-		typedef cpgrid::Iterator<cd, pitype> LevelIterator;
+		typedef cpgrid::Iterator<cd, pitype, CpGrid> LevelIterator;
 		/// \brief The type of the iterator over the leaf entities of this codim on this partition.
-		typedef cpgrid::Iterator<cd, pitype> LeafIterator;
+		typedef cpgrid::Iterator<cd, pitype, CpGrid> LeafIterator;
 	    };
 	};
 
@@ -119,27 +119,39 @@ namespace Dune
 	struct Partition
 	{
 	    /// \brief The type of the level grid view associated with this partition type.
-	    typedef cpgrid::GridView<pitype> LevelGridView;
-    
+// 	    typedef cpgrid::GridView<pitype> LevelGridView;
+	    typedef DefaultLevelGridView<CpGrid, pitype> LevelGridView;
+
 	    /// \brief The type of the leaf grid view associated with this partition type.
-	    typedef cpgrid::GridView<pitype> LeafGridView;
+// 	    typedef cpgrid::GridView<pitype> LeafGridView;
+	    typedef DefaultLeafGridView<CpGrid, pitype> LeafGridView;
 	};
 
 	/// \brief The type of the level index set.
-	typedef cpgrid::IndexSet LevelIndexSet;
+	typedef cpgrid::IndexSet<CpGrid> LevelIndexSet;
 	/// \brief The type of the leaf index set.
-	typedef cpgrid::IndexSet LeafIndexSet;
+	typedef cpgrid::IndexSet<CpGrid> LeafIndexSet;
 	/// \brief The type of the global id set.
-	typedef cpgrid::IdSet GlobalIdSet;
+	typedef cpgrid::IdSet<CpGrid> GlobalIdSet;
 	/// \brief The type of the local id set.
-	typedef cpgrid::IdSet LocalIdSet;
+	typedef cpgrid::IdSet<CpGrid> LocalIdSet;
 
 	/// \brief The type of the collective communication.
-	typedef void CollectiveCommunication;
+	typedef Dune::CollectiveCommunication<CpGrid> CollectiveCommunication;
     };
 
 
-#if 0
+
+    ////////////////////////////////////////////////////////////////////////
+    //
+    //   CpGridFamily
+    //
+    ////////////////////////////////////////////////////////////////////////
+
+    struct CpGridFamily
+    {
+	typedef CpGridTraits Traits;
+    };
 
     ////////////////////////////////////////////////////////////////////////
     //
@@ -149,8 +161,13 @@ namespace Dune
 
     /// \brief [<em> provides \ref Dune::Grid </em>]
     class CpGrid
+	: public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
     public:
+	/*
+	// --- Enums ---
+	enum { dimension = 3 };
+	enum { dimensionworld = 3 };
 
 	// --- Types ---
 
@@ -158,12 +175,20 @@ namespace Dune
         typedef double ctype;
 
 	/// Traits for CpGrid
-	struct Traits
-	{
-	    
-	};
+	/typedef CpGridTraits Traits;
+
+	typedef cpgrid::GridView<All_Partition> LeafGridView;
+	typedef cpgrid::GridView<All_Partition> LevelGridView;
+	*/
 
 	// --- Methods ---
+
+	/// Default constructor
+	CpGrid()
+	    : index_set_(this), id_set_(this)
+	{
+	}
+
 
         /// Initialize the grid.
 	void init()
@@ -188,112 +213,143 @@ namespace Dune
 
         /// Iterator to first entity of given codim on level
         template<int codim>
-        typename Traits::template Codim<codim>::LevelIterator lbegin (int level) const{
-            return CpGridLevelIterator<codim,All_Partition, const CpGrid<HostGrid> >(this, level);
+        typename Traits::template Codim<codim>::LevelIterator lbegin (int level) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return cpgrid::Iterator<codim, All_Partition, CpGrid >(this, level);
         }
     
         
         /// one past the end on this level
         template<int codim>
-        typename Traits::template Codim<codim>::LevelIterator lend (int level) const{
-            return CpGridLevelIterator<codim,All_Partition, const CpGrid<HostGrid> >(this, level, true);
+        typename Traits::template Codim<codim>::LevelIterator lend (int level) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this, level, true);
         }
         
         
         /// Iterator to first entity of given codim on level
         template<int codim, PartitionIteratorType PiType>
-        typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lbegin (int level) const{
-            return CpGridLevelIterator<codim,PiType, const CpGrid<HostGrid> >(this, level);
+        typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lbegin (int level) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return cpgrid::Iterator<codim,PiType, CpGrid >(this, level);
         }
         
 
         /// one past the end on this level
         template<int codim, PartitionIteratorType PiType>
-        typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lend (int level) const{
-            return CpGridLevelIterator<codim,PiType, const CpGrid<HostGrid> >(this, level, true);
+        typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lend (int level) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return cpgrid::Iterator<codim,PiType, CpGrid >(this, level, true);
         }
-        
-    
+
+
         /// Iterator to first leaf entity of given codim
         template<int codim>
-        typename Traits::template Codim<codim>::LeafIterator leafbegin() const {
-            return CpGridLeafIterator<codim,All_Partition, const CpGrid<HostGrid> >(this);
+        typename Traits::template Codim<codim>::LeafIterator leafbegin() const
+	{
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this);
         }
         
     
         /// one past the end of the sequence of leaf entities
         template<int codim>
-        typename Traits::template Codim<codim>::LeafIterator leafend() const {
-            return CpGridLeafIterator<codim,All_Partition, const CpGrid<HostGrid> >(this, true);
+        typename Traits::template Codim<codim>::LeafIterator leafend() const
+	{
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this, true);
         }
         
     
         /// Iterator to first leaf entity of given codim
         template<int codim, PartitionIteratorType PiType>
-        typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const {
-            return CpGridLeafIterator<codim,PiType, const CpGrid<HostGrid> >(this);
+        typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
+	{
+            return cpgrid::Iterator<codim,PiType, CpGrid >(this);
         }
         
         
         /// one past the end of the sequence of leaf entities
         template<int codim, PartitionIteratorType PiType>
-        typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const {
-            return CpGridLeafIterator<codim,PiType, const CpGrid<HostGrid> >(this, true);
+        typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
+	{
+            return cpgrid::Iterator<codim,PiType, CpGrid >(this, true);
         }
         
 
         /// \brief Number of grid entities per level and codim
-        int size (int level, int codim) const {
-            return hostgrid_->size(level,codim);        
+        int size (int level, int codim) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return -1;        
         }
         
         
         /// number of leaf entities per codim in this process
-        int size (int codim) const{
-            return leafIndexSet().size(codim);
+        int size (int codim) const
+	{
+            return -1;
         }
         
         
         /// number of entities per level, codim and geometry type in this process
-        int size (int level, GeometryType type) const {
-            return levelIndexSets_[level]->size(type);
+        int size (int level, GeometryType type) const
+	{
+            if (level<0 || level>maxLevel())
+                DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
+            return -1;
         }
         
             
         /// number of leaf entities per codim and geometry type in this process
         int size (GeometryType type) const
         {
-            return leafIndexSet().size(type);
+            return -1;
         }
         
         
         /// \brief Access to the GlobalIdSet 
-        const typename Traits::GlobalIdSet& globalIdSet() const{
-            return globalIdSet_;
+        const Traits::GlobalIdSet& globalIdSet() const
+	{
+            return id_set_;
         }
         
         
         /// \brief Access to the LocalIdSet 
-        const typename Traits::LocalIdSet& localIdSet() const{
-            return localIdSet_;
+        const Traits::LocalIdSet& localIdSet() const
+	{
+            return id_set_;
         }
         
         
         /// \brief Access to the LevelIndexSets 
-        const typename Traits::LevelIndexSet& levelIndexSet(int level) const
+        const Traits::LevelIndexSet& levelIndexSet(int level) const
         {
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return *levelIndexSets_[level];
+            return index_set_;
         }
         
         
         /// \brief Access to the LeafIndexSet 
-        const typename Traits::LeafIndexSet& leafIndexSet() const
+        const Traits::LeafIndexSet& leafIndexSet() const
         {
-            return leafIndexSet_;
+            return index_set_;
         }
 
+
+	/// \brief The leaf view
+	LeafGridView leafView() const
+	{
+	    return LeafGridView(*this);
+	}
 
 	/*  No refinement implemented
 
@@ -418,22 +474,15 @@ namespace Dune
          
         /// \todo Please doc me !
         CollectiveCommunication<CpGrid> ccobj_;
-        
-        /// Our set of level indices
-        std::vector<CpGridLevelIndexSet<const CpGrid<HostGrid> >*> levelIndexSets_;
-        
-        /// \todo Please doc me !
-        CpGridLeafIndexSet<const CpGrid<HostGrid> > leafIndexSet_;
-    
-        /// \todo Please doc me !
-        CpGridGlobalIdSet<const CpGrid<HostGrid> > globalIdSet_;
-    
-        /// \todo Please doc me !
-        CpGridLocalIdSet<const CpGrid<HostGrid> > localIdSet_;
-    
+
+	cpgrid::IndexSet<CpGrid> index_set_;
+
+	cpgrid::IdSet<CpGrid> id_set_;
+
+	cpgrid::GridView<All_Partition> view_;
+
     }; // end Class CpGrid
 
-#endif
 
 
     namespace Capabilities
@@ -466,11 +515,11 @@ namespace Dune
 	};
 
 	/// \todo Please doc me !
-	template <>
-	struct isLeafwiseConforming<CpGrid>
-	{
-	    static const bool v = true;
-	};
+// 	template <>
+// 	struct isLeafwiseConforming<CpGrid>
+// 	{
+// 	    static const bool v = true;
+// 	};
 
 	/// \todo Please doc me !
 	template <>

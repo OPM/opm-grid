@@ -43,14 +43,37 @@ namespace Dune
     {
 
 
-	template <int cd>
+	template <int cd, class GridType>
 	class Entity
 	{
+	public:
+	    Entity(const GridType& grid, int index)
+		: grid_(grid), index_(index)
+	    {
+	    }
+	    bool operator!=(const Entity& other)
+	    {
+		return index_ != other.index_  ||  &grid_ != &other.grid_;
+	    }
+
+	protected:
+	    const GridType& grid_;
+	    int index_;
+
 	};
 
-	template <int cd>
-	class EntityPointer
+	template <int cd, class GridType>
+	class EntityPointer : public Entity<cd, GridType>
 	{
+	public:
+	    EntityPointer(const GridType& grid, int index)
+		: Entity<cd, GridType>(grid, index)
+	    {
+	    }
+	    Entity<cd, GridType>* operator->()
+	    {
+		return *this;
+	    }
 	};
 
 

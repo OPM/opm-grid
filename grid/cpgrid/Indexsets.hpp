@@ -41,13 +41,47 @@ namespace Dune
     namespace cpgrid
     {
 
+	template <class GridType>
 	class IndexSet
 	{
+	public:
+	    // typedef GridType::GeometryType GeometryType;
+	    IndexSet(const GridType* grid)
+		: grid_(grid)
+	    {
+	    }
+
+	    const std::vector<GeometryType>& geomTypes(int /*codim*/) const
+	    {
+		return gt_;
+	    }
+
+	    int size (GeometryType type) const
+	    {
+		return 0;
+	    }
+
+	    int size (int codim) const
+	    {
+		return grid_->size(codim);
+	    }
+
+	private:
+	    const GridType* grid_;
+	    std::vector<GeometryType> gt_;
 	};
 
-	class IdSet
+
+	template <class GridType>
+	class IdSet : public IndexSet<GridType>
 	{
+	public:
+	    IdSet(const GridType* grid)
+		: IndexSet<GridType>(grid)
+	    {
+	    }
 	};
+
 
     } // namespace cpgrid
 } // namespace Dune

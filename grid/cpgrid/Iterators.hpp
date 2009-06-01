@@ -44,9 +44,19 @@ namespace Dune
     namespace cpgrid
     {
 
-	template<int cd, PartitionIteratorType pitype>
-	class Iterator
+	template<int cd, PartitionIteratorType pitype, class GridType>
+	class Iterator : public EntityPointer<cd, GridType>
 	{
+	public:
+	    Iterator(const GridType* grid, int index)
+		: EntityPointer<cd, GridType>(grid, index)
+	    {
+	    }
+	    Iterator& operator++()
+	    {
+		++Entity<cd, GridType>::index_;
+		return *this;
+	    }
 	};
 
 	class Intersection
