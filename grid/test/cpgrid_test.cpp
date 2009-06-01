@@ -38,6 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 int main()
 {
-    std::vector<int> r(1);
-    int a = r[1];
+    // This test should bomb in debug, should use debug builds for testing.
+    // std::vector<int> r(1);
+    // int a = r[1];
 }
