@@ -26,12 +26,12 @@ typedef Dune::CpGrid GridType;
 template<int dim>
 struct P0Layout
 {
-  bool contains (Dune::GeometryType gt)
-  {
-	if (gt.dim()==dim) return true;
-	return false;
-  }
+    bool contains (Dune::GeometryType gt)
+    {
+	return gt.dim() == dim;
+    }
 }; 
+
 template<class G>
 void timeloop (const G& grid, double tend)
 {

@@ -471,7 +471,9 @@ namespace Dune
         
     private:
 
-         
+	template <int cd, class GridType>
+	friend class cpgrid::Entity;
+
         /// \todo Please doc me !
         CollectiveCommunication<CpGrid> ccobj_;
 
@@ -480,6 +482,19 @@ namespace Dune
 	cpgrid::IdSet<CpGrid> id_set_;
 
 	cpgrid::GridView<All_Partition> view_;
+
+
+	// Representing the topology
+	SparseTable<int> cell_to_face_;
+	SparseTable<int> face_to_cell_;
+
+	// Representing geometry
+	DefaultGeometryPolicy geometry_;
+	template <int codim>
+	const std::vector< cpgrid::Geometry<3 - codim, 3>& geomVector()
+	{
+	    return geometry_.geomVector();
+	}
 
     }; // end Class CpGrid
 

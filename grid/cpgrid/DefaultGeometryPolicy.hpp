@@ -1,8 +1,8 @@
 //===========================================================================
 //
-// File: Entity.hpp
+// File: DefaultGeometryPolicy.hpp
 //
-// Created: Fri May 29 20:26:48 2009
+// Created: Tue Jun  2 16:23:01 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
@@ -33,57 +33,55 @@ You should have received a copy of the GNU General Public License
 along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_ENTITY_HEADER
-#define OPENRS_ENTITY_HEADER
+#ifndef OPENRS_DEFAULTGEOMETRYPOLICY_HEADER
+#define OPENRS_DEFAULTGEOMETRYPOLICY_HEADER
 
+#include <boost/mpl/if.hpp>
+#include "Geometry.hpp"
 
 namespace Dune
 {
     namespace cpgrid
     {
 
+	struct GetCellGeom;
+	struct GetFaceGeom;
 
-	template <int cd, class GridType>
-	class Entity
+	class DefaultGeometryPolicy
 	{
-	public:
-	    Entity(const GridType& grid, int index)
-		: grid_(grid), index_(index)
+	    template <int codim>
+	    const std::vector< cpgrid::Geometry<3 - codim, 3>& geomVector()
 	    {
+		typedef boost::mpl::if_<codim == 0, GetCellGeom, GetFaceGeom>::type selector;
+		return selector(*this);
 	    }
-	    bool operator!=(const Entity& other) const
-	    {
-		return index_ != other.index_  ||  &grid_ != &other.grid_;
-	    }
-	    typedef typename GridType::template Codim<cd>::Geometry Geometry;
-	    const Geometry& geometry() const
-	    {
-		return grid_.geomVector<cd>()[index_];
-	    }
-
-	protected:
-	    const GridType& grid_;
-	    int index_;
-
+	private:
+	    std::vector< cpgrid::Geometry<3, 3> > cell_geom_;
+	    std::vector< cpgrid::Geometry<2, 3> > face_geom_;
 	};
 
-	template <int cd, class GridType>
-	class EntityPointer : public Entity<cd, GridType>
+
+	struct GetCellGeom
 	{
-	public:
-	    EntityPointer(const GridType& grid, int index)
-		: Entity<cd, GridType>(grid, index)
+	    const std::vector< cpgrid::Geometry<3, 3> >& operator() (const DefaultGeometryPolicy& geom)
 	    {
-	    }
-	    Entity<cd, GridType>* operator->()
-	    {
-		return *this;
+		return geom.cell_geom_;
 	    }
 	};
+
+
+	struct GetFaceGeom
+	{
+	    const std::vector< cpgrid::Geometry<2, 3> >& operator() (const DefaultGeometryPolicy& geom)
+	    {
+		return geom.face_geom_;
+	    }
+	};
+
 
 
     } // namespace cpgrid
 } // namespace Dune
 
 
-#endif // OPENRS_ENTITY_HEADER
+#endif // OPENRS_DEFAULTGEOMETRYPOLICY_HEADER

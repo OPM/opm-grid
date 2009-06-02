@@ -41,9 +41,27 @@ namespace Dune
     namespace cpgrid
     {
 
-	template <int dim>
+	template <int dim, int dimworld>
 	class Geometry
 	{
+	    typedef double ct;
+	    typedef FieldVector<ct, dimworld> PointType;
+
+	    Geometry();
+
+	    const PointType& position()
+	    {
+		return pos_;
+	    }
+
+	    ct volume()
+	    {
+		return vol_;
+	    }
+
+	private:
+	    PointType pos_;
+	    double vol_;
 	};
 
 
