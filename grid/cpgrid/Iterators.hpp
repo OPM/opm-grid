@@ -37,7 +37,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #define OPENRS_ITERATORS_HEADER
 
 #include <dune/grid/common/gridenums.hh>
-
+#include "Entity.hpp"
+#include "../common/ErrorMacros.hpp"
 
 namespace Dune
 {
@@ -54,18 +55,150 @@ namespace Dune
 	    }
 	    Iterator& operator++()
 	    {
-		++Entity<cd, GridType>::index_;
+		ASSERT((Entity<cd, GridType>::entityrep_) >= 0);
+		++Entity<cd, GridType>::entityrep_;
 		return *this;
 	    }
 	};
 
+	template <class GridType>
 	class Intersection
 	{
+	public:
+	    Intersection(const GridType& grid, int index, int subindex)
+		: grid_(grid),
+		  index_(index),
+		  subindex_(subindex),
+		  last_cached_subindex_(-1),
+		  face_index_(-1),
+		  nbcell_index_(-1)
+	    {
+	    }
+#if 0
+	    bool operator!=(const Intersection& other) const
+	    {
+		return subindex_ != other.subindex_  ||  index_ != other.index_  ||  &grid_ != &other.grid_;
+	    }
+
+	    bool boundary() const
+	    {
+		return nbcell() != -1;
+	    }
+
+	    bool neighbor() const
+	    {
+		return !boundary();
+	    }
+
+	    EntityPointer<0, GridType> inside() const
+	    {
+		return EntityPointer<0, GridType>(grid_, index_);
+	    }
+
+	    EntityPointer<0, GridType> outside() const
+	    {
+		return EntityPointer<0, GridType>(grid_, nbcell());
+	    }
+
+	    /*
+const LocalGeometry & 	geometryInInside () const
+ 	geometrical information about this intersection in local coordinates of the inside() entity. 
+const LocalGeometry & 	intersectionSelfLocal () const
+ 	please read the details 
+const LocalGeometry & 	geometryInOutside () const
+ 	geometrical information about this intersection in local coordinates of the outside() entity. 
+const LocalGeometry & 	intersectionNeighborLocal () const
+ 	please read the details 
+const Geometry & 	geometry () const
+ 	geometrical information about the intersection in global coordinates. 
+const Geometry & 	intersectionGlobal () const
+ 	please read the details 
+GeometryType 	type () const
+ 	obtain the type of reference element for this intersection 
+int 	indexInInside () const
+ 	Local index of codim 1 entity in the inside() entity where intersection is contained in. 
+int 	numberInSelf () const
+ 	please read the details 
+int 	indexInOutside () const
+ 	Local index of codim 1 entity in outside() entity where intersection is contained in. 
+int 	numberInNeighbor () const
+ 	please read the details 
+	    FieldVector<double, 3> outerNormal (const FieldVector<double, 2>& local) const
+	    {
+		return grid_.faceUnitNormals(face())
+	    }
+ 	Return an outer normal (length not necessarily 1). 
+FieldVector<double, 3> 	integrationOuterNormal (const FieldVector< ctype, dim-1 > &local) const
+ 	return outer normal scaled with the integration element 
+FieldVector<double, 3> 	unitOuterNormal (const FieldVector< ctype, dim-1 > &local) const
+ 	Return unit outer normal (length == 1). 
+	    */
+#endif
+	private:
+	    const GridType& grid_;
+	    const int index_;
+	    int subindex_;
+	    mutable int last_cached_subindex_;
+	    mutable int face_index_;
+	    mutable int nbcell_index_;
+
+#if 0
+	    int face()
+	    {
+		cache();
+		return face_index_;
+	    }
+
+	    int nbcell()
+	    {
+		cache();
+		return nbcell_index_;
+	    }
+
+	    void cache() const
+	    {
+		if (last_cached_subindex_ != subindex_) {
+		    face_index_ = grid_.cell_to_face[index_][subindex_];
+		    if (face_index_ < 0) face_index_ = ~face_index_;
+		    SparseTable<int>::row_type row = grid_.face_to_cell[face_index_];
+		    if (row.size() == 1) {
+			nbcell_index_ = -1;
+		    } else {
+			
+		    }
+		    last_cached_subindex_ = subindex_;
+		}
+	    }
+#endif
 	};
 
-	class IntersectionIterator
+	template <class GridType>
+	class IntersectionIterator : public Intersection<GridType>
 	{
+	public:
+	    IntersectionIterator(const GridType& grid, int index, int subindex)
+		: Intersection<GridType>(grid, index, subindex)
+	    {
+	    }
+
+	    IntersectionIterator& operator++()
+	    {
+		++Intersection<GridType>::subindex_;
+		return *this;
+	    }
+
+	    const Intersection<GridType>* operator->() const
+	    {
+		return this;
+	    }
+
+	    const Intersection<GridType>& operator*() const
+	    {
+		return *this;
+	    }
+
 	};
+
 
 	class HierarchicIterator
 	{

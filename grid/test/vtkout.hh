@@ -4,6 +4,7 @@
 template<class G, class V>
 void vtkout (const G& grid, const V& c, const char* name, int k, double time=0.0, int rank=0)
 {
+    /*
   Dune::VTKWriter<typename G::LeafGridView> vtkwriter(grid.leafView());
   char fname[128];
   char sername[128];
@@ -18,4 +19,5 @@ void vtkout (const G& grid, const V& c, const char* name, int k, double time=0.0
     serstream << k << " " << fname << ".vtu " << time << std::endl;
     serstream.close();
   }
+    */
 }

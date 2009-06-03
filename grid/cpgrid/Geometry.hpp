@@ -55,6 +55,13 @@ namespace Dune
 		return pos_;
 	    }
 
+	    /// The corner method requires the points, which we may not necessarily want to provide.
+	    /// We will need it for visualization purposes though. For now returning a default point.
+	    PointType corner(int i) const
+	    {
+		return PointType();
+	    }
+
 	    ct volume() const
 	    {
 		return vol_;

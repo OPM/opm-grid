@@ -38,44 +38,49 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/mpl/if.hpp>
 #include "Geometry.hpp"
+#include "Entity.hpp"
 
 namespace Dune
 {
     namespace cpgrid
     {
 
-	struct GetCellGeom;
-	struct GetFaceGeom;
+	template <class GridType> struct GetCellGeom;
+	template <class GridType> struct GetFaceGeom;
 
+	template <class GridType>
 	class DefaultGeometryPolicy
 	{
 	public:
 	    template <int codim>
-	    const std::vector< cpgrid::Geometry<3 - codim, 3> >& geomVector() const
+	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, Entity<codim, GridType> >& geomVector() const
 	    {
-		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom, GetFaceGeom>::type selector;
+		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom<GridType>, GetFaceGeom<GridType> >::type selector;
 		return selector::value(*this);
 	    }
 	private:
-	    friend class GetCellGeom;
-	    friend class GetFaceGeom;
-	    std::vector< cpgrid::Geometry<3, 3> > cell_geom_;
-	    std::vector< cpgrid::Geometry<2, 3> > face_geom_;
+	    template <class GT> friend class GetCellGeom;
+	    template <class GT> friend class GetFaceGeom;
+	    EntityVariable<cpgrid::Geometry<3, 3>, Entity<0, GridType> > cell_geom_;
+	    EntityVariable<cpgrid::Geometry<2, 3>, Entity<1, GridType> > face_geom_;
 	};
 
-
+	template <class GridType>
 	struct GetCellGeom
 	{
-	    static const std::vector< cpgrid::Geometry<3, 3> >& value(const DefaultGeometryPolicy& geom)
+	    static const EntityVariable<cpgrid::Geometry<3, 3>, Entity<0, GridType> >&
+	    value(const DefaultGeometryPolicy<GridType>& geom)
 	    {
 		return geom.cell_geom_;
 	    }
 	};
 
 
+	template <class GridType>
 	struct GetFaceGeom
 	{
-	    static const std::vector< cpgrid::Geometry<2, 3> >& value(const DefaultGeometryPolicy& geom)
+	    static const EntityVariable<cpgrid::Geometry<2, 3>, Entity<1, GridType> >&
+	    value(const DefaultGeometryPolicy<GridType>& geom)
 	    {
 		return geom.face_geom_;
 	    }

@@ -72,13 +72,13 @@ namespace Dune
 	typedef CpGrid Grid;
 
 	/// \brief The type of the intersection at the leafs of the grid.
-	typedef cpgrid::Intersection LeafIntersection;
+	typedef cpgrid::Intersection<CpGrid> LeafIntersection;
 	/// \brief The type of the intersection at the levels of the grid.
-	typedef cpgrid::Intersection LevelIntersection;
+	typedef cpgrid::Intersection<CpGrid> LevelIntersection;
 	/// \brief The type of the intersection iterator at the leafs of the grid.
-	typedef cpgrid::IntersectionIterator LeafIntersectionIterator;
+	typedef cpgrid::IntersectionIterator<CpGrid> LeafIntersectionIterator;
 	/// \brief The type of the intersection iterator at the levels of the grid.
-	typedef cpgrid::IntersectionIterator LevelIntersectionIterator;
+	typedef cpgrid::IntersectionIterator<CpGrid> LevelIntersectionIterator;
 
 	/// \brief The type of the  hierarchic iterator.
 	typedef cpgrid::HierarchicIterator HierarchicIterator;
@@ -124,11 +124,11 @@ namespace Dune
 	{
 	    /// \brief The type of the level grid view associated with this partition type.
 // 	    typedef cpgrid::GridView<pitype> LevelGridView;
-	    typedef DefaultLevelGridView<CpGrid, pitype> LevelGridView;
+	    typedef Dune::GridView<DefaultLevelGridViewTraits<const CpGrid, pitype> > LevelGridView;
 
 	    /// \brief The type of the leaf grid view associated with this partition type.
 // 	    typedef cpgrid::GridView<pitype> LeafGridView;
-	    typedef DefaultLeafGridView<CpGrid, pitype> LeafGridView;
+	    typedef Dune::GridView<DefaultLeafGridViewTraits<const CpGrid, pitype> > LeafGridView;
 	};
 
 	/// \brief The type of the level index set.
@@ -484,6 +484,9 @@ namespace Dune
 	template <int cd, class GridType>
 	friend class cpgrid::Entity;
 
+	template <class GridType>
+	friend class cpgrid::Intersection;
+
         /// \todo Please doc me !
         CollectiveCommunication<CpGrid> ccobj_;
 
@@ -499,9 +502,10 @@ namespace Dune
 	SparseTable<int> face_to_cell_;
 
 	// Representing geometry
-	cpgrid::DefaultGeometryPolicy geometry_;
+	cpgrid::DefaultGeometryPolicy<CpGrid> geometry_;
 	template <int codim>
-	const std::vector< cpgrid::Geometry<3 - codim, 3> >& geomVector() const
+	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>,
+				      typename Traits::Codim<codim>::Entity>& geomVector() const
 	{
 	    return geometry_.geomVector<codim>();
 	}
