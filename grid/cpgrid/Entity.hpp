@@ -46,23 +46,52 @@ namespace Dune
 
 
 	// Forward declarations.
-	template <typename T, class EntityType> class EntityVariable;
-	template <typename T, class EntityType> class SignedEntityVariable;
+	template <typename T, int codim> class EntityVariable;
+	template <typename T, int codim> class SignedEntityVariable;
 
+
+	template <int codim>
+	class EntityRep
+	{
+	public:
+	    explicit EntityRep(int erep)
+		: entityrep_(erep)
+	    {
+	    }
+	    /// The (positive) index of an entity. Not a Dune interface method.
+	    int index() const
+	    {
+		return entityrep_ < 0 ? ~entityrep_ : entityrep_;
+	    }
+
+	    /// Returns true if the entity has positive orientation. Not a Dune interface method.
+	    bool orientation() const
+	    {
+		return entityrep_ >= 0;
+	    }
+	protected:
+	    int entityrep_;
+
+	    template <typename T, int cd>
+	    friend class EntityVariable;
+	    template <typename T, int cd>
+	    friend class SignedEntityVariable;
+	};
 
 
 	template <int codim, class GridType>
-	class Entity
+	class Entity : public EntityRep<codim>
 	{
 	public:
 	    Entity(const GridType& grid, int entityrep)
-		: grid_(grid), entityrep_(entityrep)
+		: EntityRep<codim>(entityrep), grid_(grid)
 	    {
 	    }
 
 	    bool operator!=(const Entity& other) const
 	    {
-		return entityrep_ != other.entityrep_  ||  &grid_ != &other.grid_;
+		return EntityRep<codim>::entityrep_ != other.EntityRep<codim>::entityrep_ 
+		    ||  &grid_ != &other.grid_;
 	    }
 
 	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
@@ -86,26 +115,8 @@ namespace Dune
 		return grid_.cell_to_face_[*this].size();
 	    }
 
-	    /// The (positive) index of an entity.
-	    int index() const
-	    {
-		return entityrep_ < 0 ? ~entityrep_ : entityrep_;
-	    }
-
 	protected:
-	    /// Returns true if the entity has positive orientation.
-	    bool pos_orient() const
-	    {
-		return entityrep_ >= 0;
-	    }
-
 	    const GridType& grid_;
-	    int entityrep_;
-
-	    template <typename T, class ET>
-	    friend class EntityVariable;
-	    template <typename T, class ET>
-	    friend class SignedEntityVariable;
 	};
 
 
@@ -125,21 +136,21 @@ namespace Dune
 	    }
 	};
 
-	template <typename T, class EntityType>
+	template <typename T, int codim>
 	class EntityVariable : public EntityVariableBase<T>
 	{
 	public:
-	    const T& operator[](const EntityType& e) const
+	    const T& operator[](const EntityRep<codim>& e) const
 	    {
 		return get(e.index());
 	    }
 	};
 
-	template <typename T, class EntityType>
+	template <typename T, int codim>
 	class SignedEntityVariable : public EntityVariableBase<T>
 	{
 	public:
-	    const T operator[](const EntityType& e) const
+	    const T operator[](const EntityRep<codim>& e) const
 	    {
 		return e.entityrep_ < 0 ?
 		    -get(~e.entityrep_)
@@ -147,36 +158,52 @@ namespace Dune
 	    }
 	};
 
-	template <class GridType, int codim_to>
+	template <int codim_to>
 	class OrientedEntityRange : private SparseTable<int>::row_type
 	{
 	public:
 	    typedef SparseTable<int>::row_type R;
-	    typedef typename GridType::Traits::template Codim<codim_to>::Entity EntityToType;
-	    OrientedEntityRange(const GridType& grid, bool pos_orient, const R& r)
-		: R(r), grid_(grid), pos_orient_(pos_orient)
+	    typedef EntityRep<codim_to> ToType;
+	    OrientedEntityRange(const R& r, bool orientation)
+		: R(r), orientation_(orientation)
 	    {
 	    }
 	    using R::size;
 	    using R::empty;
-	    EntityToType operator[](int subindex) const
+	    ToType operator[](int subindex) const
 	    {
 		int erep = R::operator[](subindex);
-		return EntityToType(grid_, pos_orient_ ? erep : ~erep);
+		return ToType(orientation_ ? erep : ~erep);
 	    }
 	private:
-	    const GridType& grid_;
-	    bool pos_orient_;
+	    bool orientation_;
 	};
 
-	template <class GridType, int codim_from, int codim_to>
+
+	template <int codim_from, int codim_to>
 	class OrientedEntityTable : private SparseTable<int>
 	{
 	public:
-	    typedef typename GridType::Traits::template Codim<codim_from>::Entity EntityFromType;
-	    typedef typename GridType::Traits::template Codim<codim_to>::Entity EntityToType;
+	    typedef EntityRep<codim_from> FromType;
+	    typedef OrientedEntityRange<codim_to> row_type;
+
+	    OrientedEntityTable()
+	    {
+	    }
+
+	    template <typename DataIter, typename IntegerIter>
+	    OrientedEntityTable(DataIter data_beg, DataIter data_end,
+				IntegerIter rowsize_beg, IntegerIter rowsize_end)
+		: SparseTable<int>(data_beg, data_end, rowsize_beg, rowsize_end)
+	    {
+	    }
+
 	    using SparseTable<int>::empty;
 	    using SparseTable<int>::size;
+	    row_type operator[](const FromType& e) const
+	    {
+		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
+	    }
 	};
 
 

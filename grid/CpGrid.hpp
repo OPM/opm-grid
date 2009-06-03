@@ -477,8 +477,7 @@ namespace Dune
         {
             return ccobj_;
         }
-        
-        
+
     private:
 
 	template <int cd, class GridType>
@@ -498,17 +497,18 @@ namespace Dune
 
 
 	// Representing the topology
-	SparseTable<int> cell_to_face_;
-	SparseTable<int> face_to_cell_;
+	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
+	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 
 	// Representing geometry
-	cpgrid::DefaultGeometryPolicy<CpGrid> geometry_;
+	cpgrid::DefaultGeometryPolicy geometry_;
 	template <int codim>
-	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>,
-				      typename Traits::Codim<codim>::Entity>& geomVector() const
+	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	{
 	    return geometry_.geomVector<codim>();
 	}
+	typedef FieldVector<ctype, 3> PointType;
+	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
 
     }; // end Class CpGrid
 

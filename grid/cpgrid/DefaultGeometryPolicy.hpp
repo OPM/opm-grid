@@ -45,42 +45,39 @@ namespace Dune
     namespace cpgrid
     {
 
-	template <class GridType> struct GetCellGeom;
-	template <class GridType> struct GetFaceGeom;
+	struct GetCellGeom;
+	struct GetFaceGeom;
 
-	template <class GridType>
 	class DefaultGeometryPolicy
 	{
 	public:
 	    template <int codim>
-	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, Entity<codim, GridType> >& geomVector() const
+	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	    {
-		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom<GridType>, GetFaceGeom<GridType> >::type selector;
+		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom, GetFaceGeom>::type selector;
 		return selector::value(*this);
 	    }
 	private:
-	    template <class GT> friend class GetCellGeom;
-	    template <class GT> friend class GetFaceGeom;
-	    EntityVariable<cpgrid::Geometry<3, 3>, Entity<0, GridType> > cell_geom_;
-	    EntityVariable<cpgrid::Geometry<2, 3>, Entity<1, GridType> > face_geom_;
+	    friend class GetCellGeom;
+	    friend class GetFaceGeom;
+	    EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
+	    EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
 	};
 
-	template <class GridType>
 	struct GetCellGeom
 	{
-	    static const EntityVariable<cpgrid::Geometry<3, 3>, Entity<0, GridType> >&
-	    value(const DefaultGeometryPolicy<GridType>& geom)
+	    static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
+	    value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.cell_geom_;
 	    }
 	};
 
 
-	template <class GridType>
 	struct GetFaceGeom
 	{
-	    static const EntityVariable<cpgrid::Geometry<2, 3>, Entity<1, GridType> >&
-	    value(const DefaultGeometryPolicy<GridType>& geom)
+	    static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
+	    value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.face_geom_;
 	    }
