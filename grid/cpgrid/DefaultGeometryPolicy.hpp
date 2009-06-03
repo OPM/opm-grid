@@ -49,13 +49,16 @@ namespace Dune
 
 	class DefaultGeometryPolicy
 	{
+	public:
 	    template <int codim>
-	    const std::vector< cpgrid::Geometry<3 - codim, 3>& geomVector()
+	    const std::vector< cpgrid::Geometry<3 - codim, 3> >& geomVector() const
 	    {
-		typedef boost::mpl::if_<codim == 0, GetCellGeom, GetFaceGeom>::type selector;
-		return selector(*this);
+		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom, GetFaceGeom>::type selector;
+		return selector::value(*this);
 	    }
 	private:
+	    friend class GetCellGeom;
+	    friend class GetFaceGeom;
 	    std::vector< cpgrid::Geometry<3, 3> > cell_geom_;
 	    std::vector< cpgrid::Geometry<2, 3> > face_geom_;
 	};
@@ -63,7 +66,7 @@ namespace Dune
 
 	struct GetCellGeom
 	{
-	    const std::vector< cpgrid::Geometry<3, 3> >& operator() (const DefaultGeometryPolicy& geom)
+	    static const std::vector< cpgrid::Geometry<3, 3> >& value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.cell_geom_;
 	    }
@@ -72,7 +75,7 @@ namespace Dune
 
 	struct GetFaceGeom
 	{
-	    const std::vector< cpgrid::Geometry<2, 3> >& operator() (const DefaultGeometryPolicy& geom)
+	    static const std::vector< cpgrid::Geometry<2, 3> >& value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.face_geom_;
 	    }

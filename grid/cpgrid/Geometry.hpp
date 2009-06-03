@@ -44,17 +44,18 @@ namespace Dune
 	template <int dim, int dimworld>
 	class Geometry
 	{
+	public:
 	    typedef double ct;
 	    typedef FieldVector<ct, dimworld> PointType;
 
 	    Geometry();
 
-	    const PointType& position()
+	    const PointType& position() const
 	    {
 		return pos_;
 	    }
 
-	    ct volume()
+	    ct volume() const
 	    {
 		return vol_;
 	    }

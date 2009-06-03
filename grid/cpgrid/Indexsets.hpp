@@ -36,6 +36,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_INDEXSETS_HEADER
 #define OPENRS_INDEXSETS_HEADER
 
+#include <dune/common/geometrytype.hh>
+#include "../common/ErrorMacros.hpp"
 namespace Dune
 {
     namespace cpgrid
@@ -46,9 +48,10 @@ namespace Dune
 	{
 	public:
 	    // typedef GridType::GeometryType GeometryType;
-	    IndexSet(const GridType* grid)
+	    IndexSet(const GridType& grid)
 		: grid_(grid)
 	    {
+		gt_.push_back(GeometryType(3));
 	    }
 
 	    const std::vector<GeometryType>& geomTypes(int /*codim*/) const
@@ -56,18 +59,32 @@ namespace Dune
 		return gt_;
 	    }
 
-	    int size (GeometryType type) const
+	    int size(GeometryType type) const
 	    {
-		return 0;
+		if (!type.isHexahedron()) {
+		    THROW("IndexSet::size(GeometryType) not implemented for its dim != 3 types.");
+		}
+		return grid_.size(0);
 	    }
 
-	    int size (int codim) const
+	    int size(int codim) const
 	    {
-		return grid_->size(codim);
+		return grid_.size(codim);
+	    }
+
+	    template<int cd>
+	    int index(const typename GridType::template Codim<cd>::Entity& e) const 
+	    {
+		return e.index(); 
+	    }
+	    template<class EntityType>
+	    int index(const EntityType& e) const 
+	    {
+		return e.index();
 	    }
 
 	private:
-	    const GridType* grid_;
+	    const GridType& grid_;
 	    std::vector<GeometryType> gt_;
 	};
 
@@ -76,7 +93,7 @@ namespace Dune
 	class IdSet : public IndexSet<GridType>
 	{
 	public:
-	    IdSet(const GridType* grid)
+	    IdSet(const GridType& grid)
 		: IndexSet<GridType>(grid)
 	    {
 	    }

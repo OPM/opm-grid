@@ -51,14 +51,28 @@ namespace Dune
 		: grid_(grid), index_(index)
 	    {
 	    }
+
 	    bool operator!=(const Entity& other) const
 	    {
 		return index_ != other.index_  ||  &grid_ != &other.grid_;
 	    }
+
 	    typedef typename GridType::template Codim<cd>::Geometry Geometry;
 	    const Geometry& geometry() const
 	    {
-		return grid_.geomVector<cd>()[index_];
+		return grid_.template geomVector<cd>()[index_];
+	    }
+
+	    /// Using a hexahedron as GeometryType for our entities.
+	    GeometryType type() const
+	    {
+		return GeometryType(3);
+	    }
+
+	    /// The index of an entity. Not a Dune interface function.
+	    int index() const
+	    {
+		return index_;
 	    }
 
 	protected:
@@ -75,7 +89,21 @@ namespace Dune
 		: Entity<cd, GridType>(grid, index)
 	    {
 	    }
+
 	    Entity<cd, GridType>* operator->()
+	    {
+		return this;
+	    }
+	    const Entity<cd, GridType>* operator->() const
+	    {
+		return this;
+	    }
+
+	    Entity<cd, GridType>& operator*()
+	    {
+		return *this;
+	    }
+	    const Entity<cd, GridType>& operator*() const
 	    {
 		return *this;
 	    }

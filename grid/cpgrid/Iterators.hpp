@@ -48,7 +48,7 @@ namespace Dune
 	class Iterator : public EntityPointer<cd, GridType>
 	{
 	public:
-	    Iterator(const GridType* grid, int index)
+	    Iterator(const GridType& grid, int index)
 		: EntityPointer<cd, GridType>(grid, index)
 	    {
 	    }

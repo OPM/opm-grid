@@ -1,11 +1,12 @@
 #include<dune/grid/common/referenceelements.hh>
+#include "transportproblem2.hh"
 
 //! initialize the vector of unknowns with initial value
 template<class G, class M, class V>
 void initialize(const G& grid, const M& mapper, V& c)
 {
     // first we extract the dimensions of the grid
-    const int dim = G::dimension;
+    // const int dim = G::dimension;
     const int dimworld = G::dimensionworld;
 
     // type used for coordinates in the grid

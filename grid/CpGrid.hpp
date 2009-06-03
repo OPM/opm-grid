@@ -50,6 +50,10 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/GridView.hpp"
+#include "cpgrid/DefaultGeometryPolicy.hpp"
+
+#include "common/SparseTable.hpp"
+
 
 namespace Dune
 {
@@ -86,9 +90,9 @@ namespace Dune
 	{
 	    /// \brief The type of the geometry associated with the entity.
 	    /// IMPORTANT: Codim<codim>::Geometry == Geometry<dim-codim,dimw>
-	    typedef cpgrid::Geometry<3-cd> Geometry;
+	    typedef cpgrid::Geometry<3-cd, 3> Geometry;
 	    /// \brief The type of the local geometry associated with the entity.
-	    typedef cpgrid::Geometry<3-cd> LocalGeometry;
+	    typedef cpgrid::Geometry<3-cd, 3> LocalGeometry;
 	    /// \brief The type of the entity.
 	    typedef cpgrid::Entity<cd, CpGrid> Entity;
 
@@ -185,7 +189,7 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid()
-	    : index_set_(this), id_set_(this)
+	    : index_set_(*this), id_set_(*this)
 	{
 	}
 
@@ -217,7 +221,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim, All_Partition, CpGrid >(this, level);
+            return cpgrid::Iterator<codim, All_Partition, CpGrid >(*this, 0);
         }
     
         
@@ -227,7 +231,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this, level, true);
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
         }
         
         
@@ -237,7 +241,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(this, level);
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
         }
         
 
@@ -247,7 +251,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(this, level, true);
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim));
         }
 
 
@@ -255,7 +259,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this);
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, 0);
         }
         
     
@@ -263,7 +267,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(this, true);
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
         }
         
     
@@ -271,7 +275,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim,PiType, CpGrid >(this);
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
         }
         
         
@@ -279,7 +283,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim,PiType, CpGrid >(this, true);
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim));
         }
         
 
@@ -288,14 +292,19 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return -1;        
+            return size(codim);        
         }
         
         
         /// number of leaf entities per codim in this process
         int size (int codim) const
 	{
-            return -1;
+	    switch (codim) {
+	    case 0: return cell_to_face_.size();
+	    case 1: return face_to_cell_.size();
+            default: THROW("This grid has no entities of codim " << codim);
+	    }
+	    return -1;
         }
         
         
@@ -304,13 +313,14 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return -1;
+            return size(type);
         }
         
             
         /// number of leaf entities per codim and geometry type in this process
         int size (GeometryType type) const
         {
+	    THROW("size(level, type) not yet implemented");
             return -1;
         }
         
@@ -489,11 +499,11 @@ namespace Dune
 	SparseTable<int> face_to_cell_;
 
 	// Representing geometry
-	DefaultGeometryPolicy geometry_;
+	cpgrid::DefaultGeometryPolicy geometry_;
 	template <int codim>
-	const std::vector< cpgrid::Geometry<3 - codim, 3>& geomVector()
+	const std::vector< cpgrid::Geometry<3 - codim, 3> >& geomVector() const
 	{
-	    return geometry_.geomVector();
+	    return geometry_.geomVector<codim>();
 	}
 
     }; // end Class CpGrid
