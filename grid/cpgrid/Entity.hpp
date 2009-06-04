@@ -115,14 +115,14 @@ namespace Dune
 		return grid_.cell_to_face_[*this].size();
 	    }
 
-	    typename GridType::IntersectionIterator ileafbegin() const
+	    typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
 	    {
-		return typename GridType::IntersectionIterator(grid_, EntityRep<codim>::index(), false);
+		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, false);
 	    }
 
-	    typename GridType::IntersectionIterator ileafend() const
+	    typename GridType::Traits::LeafIntersectionIterator ileafend() const
 	    {
-		return typename GridType::IntersectionIterator(grid_, EntityRep<codim>::index(), true);
+		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, true);
 	    }
 
 	protected:

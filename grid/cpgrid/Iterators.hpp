@@ -65,13 +65,13 @@ namespace Dune
 	class Intersection
 	{
 	public:
-	    Intersection(const GridType& grid, int index, int subindex)
+	    Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
 		: grid_(grid),
-		  index_(index),
+		  index_(cell.index()),
 		  subindex_(subindex),
-		  faces_of_cell_(grid.cell_to_face_[index])
+		  faces_of_cell_(grid.cell_to_face_[cell])
 	    {
-		ASSERT(index >= 0);
+		ASSERT(index_ >= 0);
 	    }
 
 	    bool operator!=(const Intersection& other) const
@@ -161,11 +161,11 @@ FieldVector<double, 3> 	unitOuterNormal (const FieldVector< ctype, dim-1 > &loca
 	class IntersectionIterator : public Intersection<GridType>
 	{
 	public:
-	    IntersectionIterator(const GridType& grid, int index, bool at_end)
-		: Intersection<GridType>(grid, index, 0)
+	    IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
+		: Intersection<GridType>(grid, cell, 0)
 	    {
 		if (at_end) {
-		    Intersection<GridType>::subindex += Intersection<GridType>::faces_of_cell_.size();
+		    Intersection<GridType>::subindex_ += Intersection<GridType>::faces_of_cell_.size();
 		}
 	    }
 
