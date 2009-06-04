@@ -58,12 +58,13 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
 
         // variable to compute sum of positive factors
         double sumfactor = 0.0;
-#if 0
         // run through all intersections with neighbors and boundary
         IntersectionIterator isend = gridView.iend(*it); /*@\label{evh:flux0}@*/
         for (IntersectionIterator is = gridView.ibegin(*it); is!=isend; ++is) {
+#if 0
             // get geometry type of face
-            Dune::GeometryType gtf = is->intersectionSelfLocal().type();
+            // Dune::GeometryType gtf = is->intersectionSelfLocal().type();
+            Dune::GeometryType gtf = is->type();
 
             // center in face's reference element
             const Dune::FieldVector<ct,dim-1>&
@@ -128,8 +129,8 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
                 else // outflow
                     update[indexi] -= c[indexi]*factor;
             }
-        } // end all intersections             /*@\label{evh:flux1}@*/
 #endif
+        } // end all intersections             /*@\label{evh:flux1}@*/
         // compute dt restriction
         dt = std::min(dt,1.0/sumfactor);             /*@\label{evh:dt}@*/
 

@@ -69,12 +69,11 @@ namespace Dune
 		: grid_(grid),
 		  index_(index),
 		  subindex_(subindex),
-		  last_cached_subindex_(-1),
-		  face_index_(-1),
-		  nbcell_index_(-1)
+		  faces_of_cell_(grid.cell_to_face_[index])
 	    {
+		ASSERT(index >= 0);
 	    }
-#if 0
+
 	    bool operator!=(const Intersection& other) const
 	    {
 		return subindex_ != other.subindex_  ||  index_ != other.index_  ||  &grid_ != &other.grid_;
@@ -82,7 +81,9 @@ namespace Dune
 
 	    bool boundary() const
 	    {
-		return nbcell() != -1;
+		EntityRep<1> face = faces_of_cell_[subindex_];
+		OrientedEntityTable<1,0>::row_type cells_of_face = grid_.face_to_cell_[face];
+		return cells_of_face.size() == 1;
 	    }
 
 	    bool neighbor() const
@@ -133,52 +134,39 @@ FieldVector<double, 3> 	integrationOuterNormal (const FieldVector< ctype, dim-1 
 FieldVector<double, 3> 	unitOuterNormal (const FieldVector< ctype, dim-1 > &local) const
  	Return unit outer normal (length == 1). 
 	    */
-#endif
-	private:
+	protected:
 	    const GridType& grid_;
 	    const int index_;
 	    int subindex_;
-	    mutable int last_cached_subindex_;
-	    mutable int face_index_;
-	    mutable int nbcell_index_;
-
-#if 0
-	    int face()
-	    {
-		cache();
-		return face_index_;
-	    }
+	    OrientedEntityTable<0,1>::row_type faces_of_cell_;
 
 	    int nbcell()
 	    {
-		cache();
-		return nbcell_index_;
-	    }
-
-	    void cache() const
-	    {
-		if (last_cached_subindex_ != subindex_) {
-		    face_index_ = grid_.cell_to_face[index_][subindex_];
-		    if (face_index_ < 0) face_index_ = ~face_index_;
-		    SparseTable<int>::row_type row = grid_.face_to_cell[face_index_];
-		    if (row.size() == 1) {
-			nbcell_index_ = -1;
+		EntityRep<1> face = faces_of_cell_[subindex_];
+		OrientedEntityTable<1,0>::row_type cells_of_face = grid_.face_to_cell_[face];
+		if (cells_of_face.size() == 1) {
+		    THROW("Face " << face.index() << " is on the boundary, you cannot get the neighbouring cell.");
+		} else {
+		    ASSERT(cells_of_face.size() == 2);
+		    if (cells_of_face[0].index() == index_) {
+			return cells_of_face[1].index();
 		    } else {
-			
+			return cells_of_face[0].index();
 		    }
-		    last_cached_subindex_ = subindex_;
 		}
 	    }
-#endif
 	};
 
 	template <class GridType>
 	class IntersectionIterator : public Intersection<GridType>
 	{
 	public:
-	    IntersectionIterator(const GridType& grid, int index, int subindex)
-		: Intersection<GridType>(grid, index, subindex)
+	    IntersectionIterator(const GridType& grid, int index, bool at_end)
+		: Intersection<GridType>(grid, index, 0)
 	    {
+		if (at_end) {
+		    Intersection<GridType>::subindex += Intersection<GridType>::faces_of_cell_.size();
+		}
 	    }
 
 	    IntersectionIterator& operator++()
