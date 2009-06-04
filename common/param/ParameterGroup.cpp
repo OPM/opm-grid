@@ -43,7 +43,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <stdio.h>
 #include <string.h>
 
-#include "TermColors.hpp" // from utils
+//#include "TermColors.hpp" // from utils
 
 #include <dune/common/param/Parameter.hpp>
 #include <dune/common/param/ParameterStrings.hpp>
@@ -70,7 +70,7 @@ namespace Dune {
 
 	ParameterGroup::~ParameterGroup() {
 	    if (output_is_enabled_) {
-		TermColors::Normal();
+		//TermColors::Normal();
 	    }
 	}
 
@@ -305,7 +305,7 @@ namespace Dune {
 		pg.insertParameter(name_path.second, value);
 	    }
 	}
-    
+
 #if 0
 	void ParameterGroup::display() const {
 	    std::cout << "Begin: " << this->path() << "\n";

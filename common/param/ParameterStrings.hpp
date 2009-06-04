@@ -65,6 +65,6 @@ namespace Dune {
 	const std::string ID_delimiter_path       = "/";
 	const std::string ID_delimiter_assignment = "=";
     } // namespace parameter
-} // namespace samcode
+} // namespace Dune
 
 #endif // OPENRS_PARAMETERSTRINGS_HEADER

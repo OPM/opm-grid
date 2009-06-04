@@ -43,6 +43,6 @@ namespace Dune {
     namespace parameter {
 	std::pair<std::string, std::string> split(const std::string& name);
     } // namespace parameter
-} // namespace samcode
+} // namespace Dune
 
 #endif // OPENRS_PARAMETERTOOLS_HEADER

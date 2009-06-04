@@ -43,7 +43,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <tr1/memory>
 
 #include <dune/common/param/ParameterMapItem.hpp>
-#include <dune/common/ParameterRequirement.hpp>
+#include <dune/common/param/ParameterRequirement.hpp>
 
 namespace Dune {
     namespace parameter {

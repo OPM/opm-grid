@@ -3,7 +3,7 @@
 # we need the module file to be able to build via dunecontrol
 EXTRA_DIST=dune.module
 
-SUBDIRS = m4 grid
+SUBDIRS = m4 common grid
 
 # don't follow the full GNU-standard
 # we need automake 1.5

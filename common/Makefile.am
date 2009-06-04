@@ -4,6 +4,7 @@ SUBDIRS = . param
 
 #griddir = $(includedir)/dune/grid
 #grid_HEADERS = CpGrid.hpp
+commondir = $(includedir)/dune/common
 
 include $(top_srcdir)/am/global-rules
 

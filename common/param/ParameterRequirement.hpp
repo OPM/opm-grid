@@ -188,6 +188,6 @@ namespace Dune {
 	    const std::vector<std::string> elements_;
 	};
     } // namespace parameter
-} // namespace samcode
+} // namespace Dune
 
 #endif // OPENRS_PARAMETERREQUIREMENT_HEADER

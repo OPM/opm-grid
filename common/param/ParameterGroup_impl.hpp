@@ -39,7 +39,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <iostream>
 #include <string>
 
-#include "TermColors.hpp" // from utils
+//#include "TermColors.hpp" // from utils
 
 #include <dune/common/param/ParameterStrings.hpp>
 #include <dune/common/param/ParameterTools.hpp>
@@ -113,9 +113,9 @@ namespace Dune {
 		if (parent_ != 0) {
 		    // If we have a parent, ask it instead.
 		    if (output_is_enabled_) {
-			TermColors::Red();
+			//TermColors::Red();
 			std::cout << name;
-			TermColors::Normal();
+			//TermColors::Normal();
 			std::cout << " not found at "
                                   << (path() + ID_delimiter_path)
                                   << ", asking parent." << std::endl;
@@ -135,9 +135,9 @@ namespace Dune {
 		T val = this->translate<T>(*it, r);
 		it->second->setUsed();
 		if (output_is_enabled_) {
-		    TermColors::Green();
+		    //TermColors::Green();
 		    std::cout << name;
-		    TermColors::Normal();
+		    //TermColors::Normal();
 		    std::cout << " found at " << (path() + ID_delimiter_path)
 			      << ", value is " << to_string(val) << std::endl;
 		}
@@ -168,9 +168,9 @@ namespace Dune {
 		if (parent_ != 0) {
 		    // If we have a parent, ask it instead.
 		    if (output_is_enabled_) {
-			TermColors::Red();
+			//TermColors::Red();
 			std::cout << name;
-			TermColors::Normal();
+			//TermColors::Normal();
 			std::cout <<  " not found at " << (path() + ID_delimiter_path)
 				  << ", asking parent." << std::endl;
 		    }
@@ -192,9 +192,9 @@ namespace Dune {
 		    }
 		}
 		if (output_is_enabled_) {
-		    TermColors::Blue();
+		    //TermColors::Blue();
 		    std::cout << name;
-		    TermColors::Normal();
+		    //TermColors::Normal();
 		    std::cout << " not found. Using default value '"
                               << to_string(default_value) << "'." << std::endl;
 		}
@@ -204,9 +204,9 @@ namespace Dune {
 		T val = this->translate<T>(*it, r);
 		it->second->setUsed();
 		if (output_is_enabled_) {
-		    TermColors::Green();
+		    //TermColors::Green();
 		    std::cout << name;
-		    TermColors::Normal();
+		    //TermColors::Normal();
 		    std::cout << " found at " << (path() + ID_delimiter_path)
 			      << ", value is '" << to_string(val) << "'." << std::endl;
 		}

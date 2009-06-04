@@ -49,6 +49,6 @@ namespace Dune {
 	/// \param filename is the name of an XML file.
 	void fill_xml(ParameterGroup& pg, const std::string filename);
     } // namespace parameter
-} // namespace samcode
+} // namespace Dune
 
 #endif // OPENRS_PARAMETERXML_HEADER
