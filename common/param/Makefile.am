@@ -1,6 +1,6 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
-SUBDIRS = . test
+#SUBDIRS = . test
 
 paramdir = $(includedir)/dune/common/param
 
