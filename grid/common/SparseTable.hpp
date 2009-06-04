@@ -101,6 +101,18 @@ namespace Dune
 	    return empty() ? 0 : row_start_.size() - 1;
 	}
 
+	/// Returns the number of data elements. NO TESTS YET.
+	int dataSize() const
+	{
+	    return data_.size();
+	}
+
+	/// Returns the size of a table row. NO TESTS YET.
+	int rowSize(int row) const
+	{
+	    return row_start_[row + 1] - row_start_[row];
+	}
+
 	/// Defining the row type, returned by operator[].
 	typedef boost::iterator_range<const int*> row_type;
 
