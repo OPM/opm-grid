@@ -38,6 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/static_assert.hpp>
 #include "../common/SparseTable.hpp"
+#include <map>
 
 namespace Dune
 {
@@ -69,6 +70,18 @@ namespace Dune
 	    {
 		return entityrep_ >= 0;
 	    }
+
+	    /// Ordering relation used for maps etc. Sorting on index and then orientation,
+	    /// with positive orientations first.
+	    bool operator<(const EntityRep& other) const
+	    {
+		int i1 = index();
+		int i2 = other.index();
+		if (i1 < i2) return true;
+		if (orientation() && !other.orientation()) return true;
+		return false;
+	    }
+
 	protected:
 	    int entityrep_;
 
@@ -76,6 +89,8 @@ namespace Dune
 	    friend class EntityVariable;
 	    template <typename T, int cd>
 	    friend class SignedEntityVariable;
+	    template <int cf, int ct>
+	    friend class OrientedEntityTable;
 	};
 
 
@@ -215,9 +230,40 @@ namespace Dune
 		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
 	    }
 
-	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv)
+	    void printRelationMatrix()
 	    {
 	    }
+
+	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv)
+	    {
+		typedef std::multimap<int, int> RelationMap;
+		RelationMap rm;
+		for (int i = 0; i < size(); ++i) {
+		    EntityRep<codim_from> from_ent(i);
+		    row_type r = operator[](from_ent);
+		    for (int j = 0; j < r.size(); ++j) {
+			EntityRep<codim_to> to_ent = r[j];
+			// Making sure all the keys we insert are positive.
+			int from = to_ent.orientation() ? i : ~i;
+			rm.insert(std::make_pair(to_ent.index(), from));
+		    }
+		}
+		ASSERT(int(rm.size()) == SparseTable<int>::dataSize())
+		std::vector<int> new_data;
+		new_data.reserve(rm.size());
+		int last = (--rm.end())->first; // The last key.
+		std::vector<int> new_sizes(last, 0);
+		for (typename RelationMap::iterator it = rm.begin(); it != rm.end(); ++it) {
+		    new_data.push_back(it->second);
+		    ++new_sizes[it->first];
+		}
+		ASSERT(new_data.size() == rm.size());
+		inv = OrientedEntityTable<codim_to, codim_from>(new_data.begin(),
+								new_data.end(),
+								new_sizes.begin(),
+								new_sizes.end());
+	    }
+
 	};
 
 
