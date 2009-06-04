@@ -214,6 +214,10 @@ namespace Dune
 	    {
 		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
 	    }
+
+	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv)
+	    {
+	    }
 	};
 
 

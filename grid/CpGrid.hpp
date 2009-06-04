@@ -45,6 +45,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/grid/common/grid.hh>
 #include <dune/common/timer.hh>
 
+#include <dune/common/param/ParameterGroup.hpp>
+
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
 #include "cpgrid/Iterators.hpp"
@@ -195,9 +197,11 @@ namespace Dune
 
 
         /// Initialize the grid.
-	void init()
-	{
-	}
+	void init(const parameter::ParameterGroup& param);
+
+	/// Read the sintef legacy grid format ('topogeom').
+	void readSintefLegacyFormat(const parameter::ParameterGroup& param);
+
 
         /// return grid name
         std::string name() const
