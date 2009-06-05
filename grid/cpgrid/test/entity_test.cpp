@@ -34,11 +34,12 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #define BOOST_TEST_DYN_LINK
-				    //#define NVERBOSE // to suppress our messages when throwing
-#undef NDEBUG
+#define NVERBOSE // to suppress our messages when throwing
+
 
 #define BOOST_TEST_MODULE AllEntityTests
 #include <boost/test/unit_test.hpp>
+#include <sstream>
 
 #include "../Entity.hpp"
 #include "../../CpGrid.hpp"
@@ -192,4 +193,20 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     face2cell.makeInverseRelation(cell2face_byinv);
     BOOST_CHECK(cell2face == cell2face_byinv);
 
+    // Printing test
+    std::string expect1(" -1  1  0 -1  1  0  0\n"
+			"  0 -1  1  0  0 -1  1\n");
+    std::ostringstream s1;
+    cell2face.printRelationMatrix(s1);
+    BOOST_CHECK(expect1 == s1.str());
+    std::string expect2(" -1  0\n"
+			"  1 -1\n"
+			"  0  1\n"
+			" -1  0\n"
+			"  1  0\n"
+			"  0 -1\n"
+			"  0  1\n");
+    std::ostringstream s2;
+    face2cell.printRelationMatrix(s2);
+    BOOST_CHECK(expect2 == s2.str());
 }

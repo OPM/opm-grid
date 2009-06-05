@@ -40,6 +40,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/common/geometrytype.hh>
 #include "../common/SparseTable.hpp"
 #include <map>
+#include <boost/algorithm/minmax_element.hpp>
+
 
 namespace Dune
 {
@@ -223,6 +225,7 @@ namespace Dune
 	{
 	public:
 	    typedef EntityRep<codim_from> FromType;
+	    typedef EntityRep<codim_to> ToType;
 	    typedef OrientedEntityRange<codim_to> row_type;
 
 	    OrientedEntityTable()
@@ -248,8 +251,37 @@ namespace Dune
 		return SparseTable<int>::operator==(other);
 	    }
 
-	    void printRelationMatrix()
+	    void printRelationMatrix(std::ostream& os) const
 	    {
+		int columns = numberOfColumns();
+		for (int i = 0; i < size(); ++i) {
+		    FromType from_ent(i);
+		    row_type r  = operator[](from_ent);
+		    int cur_col = 0;
+		    int next_ent = 0;
+		    ToType to_ent = r[next_ent];
+		    int next_print = to_ent.index();
+		    while (cur_col < columns) {
+			if (cur_col == next_print) {
+			    if (to_ent.orientation()) {
+				os << "  1";
+			    } else {
+				os << " -1";
+			    }
+			    ++next_ent;
+			    if (next_ent >= r.size()) {
+				next_print = columns;
+			    } else {
+				to_ent = r[next_ent];
+				next_print = to_ent.index();
+			    }
+			} else {
+			    os << "  0";
+			}
+			++cur_col;
+		    }
+		    os << '\n';
+		}
 	    }
 
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
@@ -282,6 +314,19 @@ namespace Dune
 								new_sizes.end());
 	    }
 
+	private:
+	    int numberOfColumns() const
+	    {
+		int maxind = 0;
+		for (int i = 0; i < size(); ++i) {
+		    FromType from_ent(i);
+		    row_type r  = operator[](from_ent);
+		    for (int j = 0; j < r.size(); ++j) {
+			maxind = std::max(maxind, r[j].index());
+		    }
+		}
+		return maxind + 1;
+	    }
 	};
 
 
