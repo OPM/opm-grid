@@ -36,7 +36,6 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <dune/common/param/Parameter.hpp>
 
-#if 0
 namespace Dune {
     namespace parameter {
 	std::string
@@ -70,4 +69,3 @@ namespace Dune {
 	}
     } // namespace parameter
 } // namespace Dune
-#endif
