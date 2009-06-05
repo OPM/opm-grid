@@ -37,6 +37,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #define OPENRS_ENTITY_HEADER
 
 #include <boost/static_assert.hpp>
+#include <dune/common/geometrytype.hh>
 #include "../common/SparseTable.hpp"
 #include <map>
 
@@ -82,6 +83,18 @@ namespace Dune
 		return false;
 	    }
 
+	    /// Equality.
+	    bool operator==(const EntityRep& other) const
+	    {
+		return entityrep_ == other.entityrep_;
+	    }
+
+	    /// Inequality.
+	    bool operator!=(const EntityRep& other) const
+	    {
+		return entityrep_ != other.entityrep_;
+	    }
+
 	protected:
 	    int entityrep_;
 
@@ -105,8 +118,7 @@ namespace Dune
 
 	    bool operator!=(const Entity& other) const
 	    {
-		return EntityRep<codim>::entityrep_ != other.EntityRep<codim>::entityrep_ 
-		    ||  &grid_ != &other.grid_;
+		return EntityRep<codim>::operator!=(other)  ||  &grid_ != &other.grid_;
 	    }
 
 	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
@@ -152,6 +164,7 @@ namespace Dune
 	{
 	public:
 	    typedef std::vector<T> V;
+	    using V::empty;
 	    using V::size;
 	    using V::assign;
 	protected:
@@ -230,11 +243,16 @@ namespace Dune
 		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
 	    }
 
+	    bool operator==(const OrientedEntityTable& other) const
+	    {
+		return SparseTable<int>::operator==(other);
+	    }
+
 	    void printRelationMatrix()
 	    {
 	    }
 
-	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv)
+	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
 		typedef std::multimap<int, int> RelationMap;
 		RelationMap rm;
@@ -248,11 +266,11 @@ namespace Dune
 			rm.insert(std::make_pair(to_ent.index(), from));
 		    }
 		}
-		ASSERT(int(rm.size()) == SparseTable<int>::dataSize())
+		ASSERT(int(rm.size()) == SparseTable<int>::dataSize());
 		std::vector<int> new_data;
 		new_data.reserve(rm.size());
 		int last = (--rm.end())->first; // The last key.
-		std::vector<int> new_sizes(last, 0);
+		std::vector<int> new_sizes(last + 1, 0);
 		for (typename RelationMap::iterator it = rm.begin(); it != rm.end(); ++it) {
 		    new_data.push_back(it->second);
 		    ++new_sizes[it->first];

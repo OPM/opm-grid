@@ -101,15 +101,16 @@ namespace Dune
 	    return empty() ? 0 : row_start_.size() - 1;
 	}
 
-	/// Returns the number of data elements. NO TESTS YET.
+	/// Returns the number of data elements.
 	int dataSize() const
 	{
 	    return data_.size();
 	}
 
-	/// Returns the size of a table row. NO TESTS YET.
+	/// Returns the size of a table row.
 	int rowSize(int row) const
 	{
+	    ASSERT(row >= 0 && row < size());
 	    return row_start_[row + 1] - row_start_[row];
 	}
 
@@ -121,6 +122,12 @@ namespace Dune
 	{
 	    const T* start_ptr = &data_[0];
 	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
+	}
+
+	/// Equality.
+	bool operator==(const SparseTable& other) const
+	{
+	    return data_ == other.data_ && row_start_ == other.row_start_;
 	}
 
     private:

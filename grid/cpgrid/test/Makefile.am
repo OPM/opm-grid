@@ -4,7 +4,7 @@ check_PROGRAMS = entity_test
 
 entity_test_SOURCES = entity_test.cpp
 entity_test_CXXFLAGS = $(MPI_CPPFLAGS)
-entity_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS)
+entity_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) -lboost_unit_test_framework
 
 TESTS = $(check_PROGRAMS)
 

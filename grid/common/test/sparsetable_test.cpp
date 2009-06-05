@@ -43,10 +43,12 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 using namespace Dune;
 
-BOOST_AUTO_TEST_CASE(constructing)
+BOOST_AUTO_TEST_CASE(construction_and_queries)
 {
     const SparseTable<int> st1;
     BOOST_CHECK(st1.empty());
+    BOOST_CHECK_EQUAL(st1.size(), 0);
+    BOOST_CHECK_EQUAL(st1.dataSize(), 0);
 
     // This should be getting us a table like this:
     // ----------------
@@ -63,11 +65,16 @@ BOOST_AUTO_TEST_CASE(constructing)
     const SparseTable<int> st2(elem, elem + num_elem, rowsizes, rowsizes + num_rows);
     BOOST_CHECK(!st2.empty());
     BOOST_CHECK_EQUAL(st2.size(), num_rows);
+    BOOST_CHECK_EQUAL(st2.dataSize(), num_elem);
     BOOST_CHECK_EQUAL(st2[0][0], 0);
+    BOOST_CHECK_EQUAL(st2.rowSize(0), 1);
     BOOST_CHECK(st2[1].empty());
+    BOOST_CHECK_EQUAL(st2.rowSize(1), 0);
     BOOST_CHECK_EQUAL(st2[3][1], 4);
     BOOST_CHECK_EQUAL(st2[4][2], 9);
     BOOST_CHECK(st2[4].size() == rowsizes[4]);
+    const SparseTable<int> st2_again(elem, elem + num_elem, rowsizes, rowsizes + num_rows);
+    BOOST_CHECK(st2 == st2_again);
 
     // One element too few.
     BOOST_CHECK_THROW(const SparseTable<int> st3(elem, elem + num_elem - 1, rowsizes, rowsizes + num_rows), std::exception);
@@ -78,8 +85,13 @@ BOOST_AUTO_TEST_CASE(constructing)
     // Need at least one row.
     BOOST_CHECK_THROW(const SparseTable<int> st5(elem, elem + num_elem, rowsizes, rowsizes), std::exception);
 
-    // No negative row sizes. This is checked by SparseTable only in debug mode.
+    // Tests that only run in debug mode.
 #ifndef NDEBUG
+    // Do not ask for wrong row numbers.
+    BOOST_CHECK_THROW(st1.rowSize(0), std::exception);
+    BOOST_CHECK_THROW(st2.rowSize(-1), std::exception);
+    BOOST_CHECK_THROW(st2.rowSize(st2.size()), std::exception);
+    // No negative row sizes.
     const int err_rs[num_rows] = { 1, 0, -1, 7, 3 };
     BOOST_CHECK_THROW(const SparseTable<int> st5(elem, elem + num_elem, err_rs, err_rs + num_rows), std::exception);
 #endif
