@@ -147,6 +147,116 @@ namespace Dune
 	    c2f.makeInverseRelation(f2c);
 	} // void readTopo()
 
+
+	template <int dim>
+	struct MakeGeometry
+	{
+	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3> pos, double vol)
+	    {
+		return cpgrid::Geometry<dim, 3>(pos, vol);
+	    }
+	};
+
+	void readGeom(std::istream& geom,
+		      cpgrid::DefaultGeometryPolicy& gpol,
+		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
+	{
+	    std::string geom_header;
+	    geom >> std::ws;
+	    std::getline(geom, geom_header);
+// 		std::ostringstream wanted_header;
+// 		int codim1 = Dim - 1;
+// 		int codim0 = Dim;
+// 		wanted_header << "geometry " << 0 << ':' << Dim << ":point "
+// 			      << codim1 << ':' << Dim << ":normal "
+// 			      << codim1 << ':' << Dim << ":centroid "
+// 			      << codim1 << ':' << 1 << ":area "
+// 			      << codim0 << ':' << Dim << ":centroid "
+// 			      << codim0 << ':' << 1 << ":volume";
+	    std::string wanted_header
+		= "geometry 0:3:point 2:3:normal 2:3:centroid 2:1:area 3:3:centroid 3:1:volume";
+	    if (geom_header.compare(wanted_header)) {
+		THROW("Header of geometry file does not match what we expect, file possibly in wrong format.");
+	    }
+
+	    typedef FieldVector<double, 3> point_t;
+	    std::vector<point_t> points;
+	    std::vector<point_t> face_normals;
+	    std::vector<point_t> face_centroids;
+	    std::vector<double>  face_areas;
+	    std::vector<point_t> cell_centroids;
+	    std::vector<double>  cell_volumes;
+
+	    // Read ASCII format.
+	    int num_points;
+	    geom >> num_points;
+	    points.resize(num_points);
+	    for (int i = 0; i < num_points; ++i) {
+		geom >> points[i];
+	    }
+	    // Read face normals
+	    int num_faces;
+	    geom >> num_faces;
+	    face_normals.resize(num_faces);
+	    for (int i = 0; i < num_faces; ++i) {
+		geom >> face_normals[i];
+	    }
+	    // Read face centroids
+	    int num_faces_again;
+	    geom >> num_faces_again;
+	    if (num_faces != num_faces_again) {
+		THROW("Inconsistent number of faces in file.");
+	    }
+	    face_centroids.resize(num_faces);
+	    for (int i = 0; i < num_faces; ++i) {
+		geom >> face_centroids[i];
+	    }
+	    // Read face areas
+	    geom >> num_faces_again;
+	    if (num_faces != num_faces_again) {
+		THROW("Inconsistent number of faces in file.");
+	    }
+	    face_areas.resize(num_faces);
+	    for (int i = 0; i < num_faces; ++i) {
+		geom >> face_areas[i];
+	    }
+	    // Read cell centroids
+	    int num_cells;
+	    geom >> num_cells;
+	    cell_centroids.resize(num_cells);
+	    for (int i = 0; i < num_cells; ++i) {
+		geom >> cell_centroids[i];
+	    }
+	    // Read cell volumes
+	    int num_cells_again;
+	    geom >> num_cells_again;
+	    if (num_cells != num_cells_again) {
+		THROW("Inconsistent number of cells in file.");
+	    }
+	    cell_volumes.resize(num_cells);
+	    for (int i = 0; i < num_cells; ++i) {
+		geom >> cell_volumes[i];
+	    }
+
+	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
+	    std::vector<cpgrid::Geometry<3, 3> > cg;
+	    MakeGeometry<3> mcellg;
+	    std::transform(cell_centroids.begin(), cell_centroids.end(),
+			   cell_volumes.begin(),
+			   std::back_inserter(cg), mcellg);
+	    cellgeom.assign(cg.begin(), cg.end());
+	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
+	    std::vector<cpgrid::Geometry<2, 3> > fg;
+	    MakeGeometry<2> mfaceg;
+	    std::transform(face_centroids.begin(), face_centroids.end(),
+			   face_areas.begin(),
+			   std::back_inserter(fg), mfaceg);
+	    facegeom.assign(fg.begin(), fg.end());
+	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom);
+	    gpol = gp;
+	    normals.assign(face_normals.begin(), face_normals.end());
+	}
+
     } //anon namespace
 
 
@@ -165,6 +275,13 @@ namespace Dune
 	    readTopo(file, cell_to_face_, face_to_cell_);
 	}
 	std::string geomfilename = prefix + "-geom.dat";
+	{
+	    std::ifstream file(geomfilename.c_str());
+	    if (!file) {
+		THROW("Could not open file " << geomfilename);
+	    }
+	    readGeom(file, geometry_, face_normals_);
+	}
     }
 
 

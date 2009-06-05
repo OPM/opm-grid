@@ -504,8 +504,10 @@ namespace Dune
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 
+	typedef cpgrid::DefaultGeometryPolicy Geom;
+
 	// Representing geometry
-	cpgrid::DefaultGeometryPolicy geometry_;
+	Geom geometry_;
 	template <int codim>
 	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	{

@@ -51,6 +51,16 @@ namespace Dune
 	class DefaultGeometryPolicy
 	{
 	public:
+	    DefaultGeometryPolicy()
+	    {
+	    }
+
+	    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+				  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom)
+		: cell_geom_(cell_geom), face_geom_(face_geom)
+	    {
+	    }
+
 	    template <int codim>
 	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	    {

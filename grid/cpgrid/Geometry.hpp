@@ -48,7 +48,10 @@ namespace Dune
 	    typedef double ct;
 	    typedef FieldVector<ct, dimworld> PointType;
 
-	    Geometry();
+	    Geometry(const PointType& pos, ct vol)
+		: pos_(pos), vol_(vol)
+	    {
+	    }
 
 	    const PointType& position() const
 	    {
