@@ -39,6 +39,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/grid/common/gridenums.hh>
 #include "Entity.hpp"
 #include "../common/ErrorMacros.hpp"
+#include "Geometry.hpp"
 
 namespace Dune
 {
@@ -110,12 +111,24 @@ const LocalGeometry & 	geometryInOutside () const
  	geometrical information about this intersection in local coordinates of the outside() entity. 
 const LocalGeometry & 	intersectionNeighborLocal () const
  	please read the details 
-const Geometry & 	geometry () const
- 	geometrical information about the intersection in global coordinates. 
-const Geometry & 	intersectionGlobal () const
- 	please read the details 
-GeometryType 	type () const
- 	obtain the type of reference element for this intersection 
+	    */
+
+	    const Geometry<2,3>& geometry() const
+	    {
+		return cpgrid::Entity<1, GridType>(grid_, faces_of_cell_[subindex_]).geometry();
+	    }
+
+	    /// Is this really just the same as geometry()?
+	    const Geometry<2,3>& intersectionGlobal () const
+	    {
+		return geometry();
+	    }
+
+	    GeometryType type () const
+	    {
+		return geometry().type();
+	    }
+						      /*
 int 	indexInInside () const
  	Local index of codim 1 entity in the inside() entity where intersection is contained in. 
 int 	numberInSelf () const
@@ -124,23 +137,30 @@ int 	indexInOutside () const
  	Local index of codim 1 entity in outside() entity where intersection is contained in. 
 int 	numberInNeighbor () const
  	please read the details 
-	    FieldVector<double, 3> outerNormal (const FieldVector<double, 2>& local) const
+						      */
+	    FieldVector<double, 3> outerNormal (const FieldVector<double, 2>&) const
 	    {
-		return grid_.faceUnitNormals(face())
+		return grid_.face_normals_[faces_of_cell_[subindex_]];
 	    }
- 	Return an outer normal (length not necessarily 1). 
-FieldVector<double, 3> 	integrationOuterNormal (const FieldVector< ctype, dim-1 > &local) const
- 	return outer normal scaled with the integration element 
-FieldVector<double, 3> 	unitOuterNormal (const FieldVector< ctype, dim-1 > &local) const
- 	Return unit outer normal (length == 1). 
-	    */
+
+	    FieldVector<double, 3> integrationOuterNormal (const FieldVector<double, 2>&) const
+	    {
+		FieldVector<double, 3> n = grid_.face_normals_[faces_of_cell_[subindex_]];
+		return n*=double(geometry().volume());
+	    }
+
+	    FieldVector<double, 3> unitOuterNormal (const FieldVector<double, 2>&) const
+	    {
+		return grid_.face_normals_[faces_of_cell_[subindex_]];
+	    }
+
 	protected:
 	    const GridType& grid_;
 	    const int index_;
 	    int subindex_;
 	    OrientedEntityTable<0,1>::row_type faces_of_cell_;
 
-	    int nbcell()
+	    int nbcell() const
 	    {
 		EntityRep<1> face = faces_of_cell_[subindex_];
 		OrientedEntityTable<1,0>::row_type cells_of_face = grid_.face_to_cell_[face];

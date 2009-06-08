@@ -46,23 +46,36 @@ namespace Dune
 	{
 	public:
 	    typedef double ct;
-	    typedef FieldVector<ct, dimworld> PointType;
+	    typedef FieldVector<ct, dimworld> WorldPointType;
+	    typedef FieldVector<ct, dim> LocalPointType;
 
-	    Geometry(const PointType& pos, ct vol)
+	    Geometry(const WorldPointType& pos, ct vol)
 		: pos_(pos), vol_(vol)
 	    {
 	    }
 
-	    const PointType& position() const
+	    const WorldPointType& global(const LocalPointType&) const
 	    {
 		return pos_;
 	    }
 
+	    double integrationElement(const LocalPointType&) const
+	    {
+		return vol_;
+	    }
+
+	    GeometryType type() const
+	    {
+		GeometryType t;
+		t.makeSingular(dim);
+		return t;
+	    }
+
 	    /// The corner method requires the points, which we may not necessarily want to provide.
 	    /// We will need it for visualization purposes though. For now returning a default point.
-	    PointType corner(int i) const
+	    WorldPointType corner(int i) const
 	    {
-		return PointType();
+		return pos_;
 	    }
 
 	    ct volume() const
@@ -71,7 +84,7 @@ namespace Dune
 	    }
 
 	private:
-	    PointType pos_;
+	    WorldPointType pos_;
 	    double vol_;
 	};
 

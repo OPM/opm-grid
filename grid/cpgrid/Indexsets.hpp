@@ -77,10 +77,27 @@ namespace Dune
 	    {
 		return e.index(); 
 	    }
+
 	    template<class EntityType>
 	    int index(const EntityType& e) const 
 	    {
 		return e.index();
+	    }
+
+// 	    template<class EntityType>
+// 	    int subIndex(const EntityType& e, int i) const 
+// 	    {
+// 		return grid_.cell_to_face_[e][i].index();
+// 	    }
+
+	    template <int cc>
+	    int subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i) const 
+	    {
+		if (cc == 1) {
+		    return grid_.cell_to_face_[e][i].index();
+		} else {
+		    THROW("No entities defined for codimension 2 and up. Cannot evaluate subIndex().");
+		}
 	    }
 
 	private:

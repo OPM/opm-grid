@@ -86,7 +86,7 @@ BOOST_AUTO_TEST_CASE(entity)
     BOOST_CHECK(e2 != e3);
     BOOST_CHECK(e2 != e4);
     BOOST_CHECK(e3 != e4);
-    BOOST_CHECK(e1.type().isHexahedron()); // This may have to go.
+    BOOST_CHECK(e1.type().isSingular()); // Our new type
 
     // Cannot check other members without a real grid.
     // Put in more checks when it is possible to construct

@@ -117,6 +117,10 @@ namespace Dune
 		: EntityRep<codim>(entityrep), grid_(grid)
 	    {
 	    }
+	    Entity(const GridType& grid, EntityRep<codim> entityrep)
+		: EntityRep<codim>(entityrep), grid_(grid)
+	    {
+	    }
 
 	    bool operator!=(const Entity& other) const
 	    {
@@ -129,10 +133,22 @@ namespace Dune
 		return grid_.template geomVector<codim>()[*this];
 	    }
 
-	    /// Using a hexahedron as GeometryType for our entities.
+	    int level() const
+	    {
+		return 0;
+	    }
+
+	    PartitionType partitionType() const
+	    {
+		return InteriorEntity;
+	    }
+
+	    /// Using a singular as GeometryType for our entities.
 	    GeometryType type() const
 	    {
-		return GeometryType(3);
+		GeometryType t;
+		t.makeSingular(3 - codim);
+		return t;
 	    }
 
 	    /// The count of subentities of codimension cc
@@ -140,8 +156,11 @@ namespace Dune
 	    int count() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		BOOST_STATIC_ASSERT(cc == 1);
-		return grid_.cell_to_face_[*this].size();
+		if (cc == 1) {
+		    return grid_.cell_to_face_[*this].size();
+		} else {
+		    return 0;
+		}
 	    }
 
 	    typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
@@ -181,6 +200,10 @@ namespace Dune
 	{
 	public:
 	    const T& operator[](const EntityRep<codim>& e) const
+	    {
+		return get(e.index());
+	    }
+	    T& operator[](const EntityRep<codim>& e)
 	    {
 		return get(e.index());
 	    }

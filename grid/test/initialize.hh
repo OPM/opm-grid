@@ -6,7 +6,7 @@ template<class G, class M, class V>
 void initialize(const G& grid, const M& mapper, V& c)
 {
     // first we extract the dimensions of the grid
-    // const int dim = G::dimension;
+    const int dim = G::dimension;
     const int dimworld = G::dimensionworld;
 
     // type used for coordinates in the grid
@@ -24,7 +24,6 @@ void initialize(const G& grid, const M& mapper, V& c)
     // iterate through leaf grid an evaluate c0 at cell center
     LeafIterator endit = gridView.template end<0>();
     for (LeafIterator it = gridView.template begin<0>(); it!=endit; ++it) {
-        /*
         // get geometry type
         Dune::GeometryType gt = it->type();
 
@@ -35,10 +34,9 @@ void initialize(const G& grid, const M& mapper, V& c)
         // get global coordinate of cell center
         Dune::FieldVector<ct,dimworld> global = 
         it->geometry().global(local);
-        */
-	Dune::FieldVector<ct, dimworld> centroid = it->geometry().position();
+	// Dune::FieldVector<ct, dimworld> global = it->geometry().position();
 
         // initialize cell concentration
-        c[mapper.map(*it)] = c0(centroid);
+        c[mapper.map(*it)] = c0(global);
     }
 }

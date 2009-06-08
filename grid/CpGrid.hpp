@@ -490,6 +490,9 @@ namespace Dune
 	template <class GridType>
 	friend class cpgrid::Intersection;
 
+	template <class GridType>
+	friend class cpgrid::IndexSet;
+
         /// \todo Please doc me !
         CollectiveCommunication<CpGrid> ccobj_;
 

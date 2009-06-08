@@ -35,7 +35,6 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
     // compute update vector and optimum dt in one grid traversal
     LeafIterator endit = gridView.template end<0>();     /*@\label{evh:loop0}@*/
     for (LeafIterator it = gridView.template begin<0>(); it!=endit; ++it) {
-	/*
         // cell geometry type
         Dune::GeometryType gt = it->type();
 
@@ -50,8 +49,7 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
         // cell volume, assume linear map here
         double volume = it->geometry().integrationElement(local)
                         *Dune::ReferenceElements<ct,dim>::general(gt).volume();
-			*/
-	double volume = it->geometry().volume();
+	// double volume = it->geometry().volume();
 
         // cell index
         int indexi = mapper.map(*it);
@@ -61,7 +59,7 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
         // run through all intersections with neighbors and boundary
         IntersectionIterator isend = gridView.iend(*it); /*@\label{evh:flux0}@*/
         for (IntersectionIterator is = gridView.ibegin(*it); is!=isend; ++is) {
-#if 0
+
             // get geometry type of face
             // Dune::GeometryType gtf = is->intersectionSelfLocal().type();
             Dune::GeometryType gtf = is->type();
@@ -129,7 +127,6 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
                 else // outflow
                     update[indexi] -= c[indexi]*factor;
             }
-#endif
         } // end all intersections             /*@\label{evh:flux1}@*/
         // compute dt restriction
         dt = std::min(dt,1.0/sumfactor);             /*@\label{evh:dt}@*/
