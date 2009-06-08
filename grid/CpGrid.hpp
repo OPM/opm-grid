@@ -322,7 +322,7 @@ namespace Dune
         
             
         /// number of leaf entities per codim and geometry type in this process
-        int size (GeometryType type) const
+        int size (GeometryType) const
         {
 	    THROW("size(level, type) not yet implemented");
             return -1;
@@ -477,7 +477,7 @@ namespace Dune
 	end of parallel section */
         
         /// dummy collective communication 
-        const CollectiveCommunication<CpGrid>& comm () const
+        const CollectiveCommunication& comm () const
         {
             return ccobj_;
         }
@@ -494,7 +494,7 @@ namespace Dune
 	friend class cpgrid::IndexSet;
 
         /// \todo Please doc me !
-        CollectiveCommunication<CpGrid> ccobj_;
+        CollectiveCommunication ccobj_;
 
 	cpgrid::IndexSet<CpGrid> index_set_;
 

@@ -142,7 +142,7 @@ namespace Dune
 		    c2fdata.push_back(erep);
 		}
 	    }
-	    ASSERT(int(cf2data.size()) == num_hfaces);
+	    ASSERT(int(c2fdata.size()) == num_hfaces);
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
 	} // void readTopo()

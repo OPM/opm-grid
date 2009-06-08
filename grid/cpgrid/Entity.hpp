@@ -38,6 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <boost/static_assert.hpp>
 #include <dune/common/geometrytype.hh>
+#include <dune/grid/common/gridenums.hh>
 #include "../common/SparseTable.hpp"
 #include <map>
 #include <boost/algorithm/minmax_element.hpp>
@@ -200,10 +201,6 @@ namespace Dune
 	{
 	public:
 	    const T& operator[](const EntityRep<codim>& e) const
-	    {
-		return get(e.index());
-	    }
-	    T& operator[](const EntityRep<codim>& e)
 	    {
 		return get(e.index());
 	    }
