@@ -4,7 +4,7 @@ SUBDIRS = test
 
 cpgriddir = $(includedir)/dune/grid/cpgrid
 
-cpgrid_HEADERS = Entity.hpp Geometry.hpp GridView.hpp Iterators.hpp Indexsets.hpp DefaultGeometryPolicy.hpp
+cpgrid_HEADERS = Entity.hpp EntityRep.hpp Geometry.hpp GridView.hpp Intersection.hpp Iterators.hpp Indexsets.hpp DefaultGeometryPolicy.hpp
 
 lib_LTLIBRARIES = libcpgrid.la
 

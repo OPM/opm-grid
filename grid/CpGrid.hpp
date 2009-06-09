@@ -49,9 +49,10 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
+#include "cpgrid/Intersection.hpp"
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
-#include "cpgrid/GridView.hpp"
+				    //#include "cpgrid/GridView.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 
 #include "common/SparseTable.hpp"
@@ -500,7 +501,7 @@ namespace Dune
 
 	cpgrid::IdSet<CpGrid> id_set_;
 
-	cpgrid::GridView<All_Partition> view_;
+	//cpgrid::GridView<All_Partition> view_;
 
 
 	// Representing the topology
