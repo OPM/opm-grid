@@ -1,18 +1,18 @@
-#include"config.h"               // know what grids are present
-#include<iostream>               // for input/output to shell
-#include<fstream>                // for input/output to files
-#include<vector>                 // STL vector class
-#include<dune/grid/common/mcmgmapper.hh> // mapper class
+#include "config.h"               // know what grids are present
+#include <iostream>               // for input/output to shell
+#include <fstream>                // for input/output to files
+#include <vector>                 // STL vector class
+#include <dune/grid/common/mcmgmapper.hh> // mapper class
 #include <dune/common/mpihelper.hh> // include mpi helper class
 
 // checks for defined gridtype and inlcudes appropriate dgfparser implementation
 //#include <dune/grid/io/file/dgfparser/dgfgridtype.hh>
 
-#include"vtkout.hh"
+#include "vtkout.hh"
 // #include"unitcube.hh"
 // #include"transportproblem2.hh"
-#include"initialize.hh"
-#include"evolve.hh"
+#include "initialize.hh"
+#include "evolve.hh"
 
 #include "../CpGrid.hpp"
 
@@ -93,6 +93,7 @@ void timeloop(const G& grid, double tend)
 int main(int argc , char ** argv)
 {
     // initialize MPI, finalize is done automatically on exit
+    Dune::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
 
     // start try/catch block to get error messages from dune
@@ -100,6 +101,7 @@ int main(int argc , char ** argv)
         using namespace Dune;
 
         GridType grid;
+	grid.init(param);
 
         // do time loop until end time 0.5
         timeloop(grid, 0.5);

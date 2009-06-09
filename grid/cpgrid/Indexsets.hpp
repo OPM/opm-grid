@@ -51,7 +51,9 @@ namespace Dune
 	    IndexSet(const GridType& grid)
 		: grid_(grid)
 	    {
-		gt_.push_back(GeometryType(3));
+		GeometryType t;
+		t.makeSingular(3);
+		gt_.push_back(t);
 	    }
 
 	    const std::vector<GeometryType>& geomTypes(int /*codim*/) const
@@ -61,7 +63,7 @@ namespace Dune
 
 	    int size(GeometryType type) const
 	    {
-		if (!type.isHexahedron()) {
+		if (!type.isSingular()) {
 		    THROW("IndexSet::size(GeometryType) not implemented for its dim != 3 types.");
 		}
 		return grid_.size(0);

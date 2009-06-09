@@ -10,7 +10,7 @@ cpgrid_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS)
 
 finitevolume_SOURCES = finitevolume.cc
 finitevolume_CXXFLAGS = $(MPI_CPPFLAGS)
-finitevolume_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS)
+finitevolume_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) ../cpgrid/libcpgrid.la ../../common/param/libparam.la -lboost_system
 
 grid_read_test_SOURCES = grid_read_test.cpp
 grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS)
