@@ -71,7 +71,7 @@ namespace Dune
 
     struct CpGridTraits
     {
-	/// \brief The type that implementing the grid.
+	/// \brief The type that implements the grid.
 	typedef CpGrid Grid;
 
 	/// \brief The type of the intersection at the leafs of the grid.
