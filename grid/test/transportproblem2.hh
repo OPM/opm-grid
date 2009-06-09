@@ -31,7 +31,7 @@ double b (const Dune::FieldVector<ct,dimworld>& x, double t)
 
 // the vector field u is returned in r
 template<int dimworld, class ct>
-Dune::FieldVector<double,dimworld> u (const Dune::FieldVector<ct,dimworld>& x, double t)
+Dune::FieldVector<double,dimworld> u (const Dune::FieldVector<ct,dimworld>& /*x*/, double /*t*/)
 {
   Dune::FieldVector<double,dimworld> r(1.0);
   return r;
