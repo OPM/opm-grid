@@ -5,16 +5,21 @@ check_PROGRAMS = cpgrid_test
 noinst_PROGRAMS = grid_read_test finitevolume_test
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
-cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS)
+cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 cpgrid_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS)
 
-finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh transportproblem2.hh unitcube.hh vtkout.hh
-finitevolume_test_CXXFLAGS = $(MPI_CPPFLAGS)
-finitevolume_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) ../cpgrid/libcpgrid.la ../../common/param/libparam.la -lboost_system
+finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh \
+                            transportproblem2.hh unitcube.hh vtkout.hh
+finitevolume_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+finitevolume_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+                          $(DUNE_LIBS) ../cpgrid/libcpgrid.la \
+                          ../../common/param/libparam.la $(BOOST_SYSTEM_LIB)
 
 grid_read_test_SOURCES = grid_read_test.cpp
-grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS)
-grid_read_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) ../cpgrid/libcpgrid.la ../../common/param/libparam.la -lboost_system
+grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+grid_read_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+                       $(DUNE_LIBS) ../cpgrid/libcpgrid.la \
+                       ../../common/param/libparam.la $(BOOST_SYSTEM_LIB)
 
 TESTS = $(check_PROGRAMS)
 

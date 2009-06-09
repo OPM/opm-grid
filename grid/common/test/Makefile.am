@@ -3,8 +3,9 @@
 check_PROGRAMS = sparsetable_test
 
 sparsetable_test_SOURCES = sparsetable_test.cpp
-sparsetable_test_CXXFLAGS = $(MPI_CPPFLAGS)
-sparsetable_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) -lboost_unit_test_framework
+sparsetable_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+sparsetable_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+                         $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 TESTS = $(check_PROGRAMS)
 

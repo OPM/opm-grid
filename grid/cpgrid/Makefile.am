@@ -9,7 +9,7 @@ cpgrid_HEADERS = Entity.hpp EntityRep.hpp Geometry.hpp GridView.hpp Intersection
 lib_LTLIBRARIES = libcpgrid.la
 
 libcpgrid_la_SOURCES = CpGrid.cpp
-libcpgrid_la_CXXFLAGS = $(MPI_CPPFLAGS)
+libcpgrid_la_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 include $(top_srcdir)/am/global-rules
 

@@ -10,8 +10,8 @@ libparam_la_SOURCES = Parameter.hpp ParameterGroup.hpp ParameterGroup_impl.hpp \
                       ParameterMapItem.hpp ParameterRequirement.hpp \
                       ParameterStrings.hpp ParameterTools.hpp ParameterXML.hpp \
                       Parameter.cpp ParameterGroup.cpp ParameterTools.cpp ParameterXML.cpp
-libparam_la_CPPFLAGS = $(libxml2_CFLAGS)
-libparam_la_LIBADD   = $(libxml2_LIBS)
+libparam_la_CPPFLAGS = $(libxml2_CFLAGS) $(BOOST_CPPFLAGS)
+libparam_la_LIBADD   = $(libxml2_LIBS) $(BOOST_LDFLAGS) $(BOOST_FILESYSTEM_LIB)
 
 include $(top_srcdir)/am/global-rules
 

@@ -40,7 +40,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <exception>
 #include <iostream>
 #include <string>
-#include <boost/filesystem/path.hpp>
+#include <boost/filesystem.hpp>
 
 #include <libxml/parser.h> // libxml2
 #include <libxml/tree.h>   // libxml2
