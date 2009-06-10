@@ -53,25 +53,41 @@ namespace Dune
 	class Entity : public EntityRep<codim>
 	{
 	public:
+
+	    enum { codimension = codim };
+	    enum { dimension = 3 };
+	    enum { mydimension = dimension - codimension };
+	    enum { dimensionworld = 3 };
+
+	    template <int cd>
+	    struct Codim
+	    {
+		typedef typename GridType::template Codim<cd>::EntityPointer EntityPointer;
+	    };
+
+	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
+
+	    typedef double ctype;
+
 	    /// Constructor taking a grid and an integer entity representation.
 	    /// This constructor should probably be removed, since it exposes
 	    /// details of the implementation of \see EntityRep, see comment in
 	    /// EntityRep<>::EntityRep(int).
 	    Entity(const GridType& grid, int entityrep)
-		: EntityRep<codim>(entityrep), grid_(grid)
+		: EntityRep<codim>(entityrep), pgrid_(&grid)
 	    {
 	    }
 
 	    /// Constructor taking a grid and an entity representation.
 	    Entity(const GridType& grid, EntityRep<codim> entityrep)
-		: EntityRep<codim>(entityrep), grid_(grid)
+		: EntityRep<codim>(entityrep), pgrid_(&grid)
 	    {
 	    }
 
 	    /// Equality.
 	    bool operator==(const Entity& other) const
 	    {
-		return EntityRep<codim>::operator==(other)  &&  &grid_ == &other.grid_;
+		return EntityRep<codim>::operator==(other)  &&  pgrid_ == other.pgrid_;
 	    }
 
 	    /// Inequality.
@@ -81,16 +97,21 @@ namespace Dune
 	    }
 
 	    /// Returns the geometry of the entity (does not depend on its orientation).
-	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
 	    const Geometry& geometry() const
 	    {
-		return grid_.template geomVector<codim>()[*this];
+		return (*pgrid_).template geomVector<codim>()[*this];
 	    }
 
 	    /// We do not support refinement, so level() is always 0.
 	    int level() const
 	    {
 		return 0;
+	    }
+
+	    /// The entity is always on the leaf grid, since we have no refinement.
+	    bool isLeaf() const
+	    {
+		return true;
 	    }
 
 	    /// For now, the grid is serial and the only partitionType() is InteriorEntity.
@@ -113,28 +134,61 @@ namespace Dune
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
 		if (cc == 1) {
-		    return grid_.cell_to_face_[*this].size();
+		    return pgrid_->cell_to_face_[*this].size();
 		} else {
 		    return 0;
 		}
+	    }
+
+	    /// Obtain subentity.
+	    template <int cd>
+	    typename Codim<cd>::EntityPointer subEntity(int i) const
+	    {
+	    }
+
+	    /// Start iterator for the cell-cell intersections of this entity.
+	    typename GridType::Traits::LevelIntersectionIterator ilevelbegin() const
+	    {
+		BOOST_STATIC_ASSERT(codim == 0);
+		return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, false);
+	    }
+
+	    /// End iterator for the cell-cell intersections of this entity.
+	    typename GridType::Traits::LevelIntersectionIterator ilevelend() const
+	    {
+		BOOST_STATIC_ASSERT(codim == 0);
+		return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, true);
 	    }
 
 	    /// Start iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, false);
+		return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, false);
 	    }
 
 	    /// End iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafend() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, true);
+		return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, true);
 	    }
 
+	    /// Dummy first son iterator.
+	    typename GridType::Traits::HierarchicIterator hbegin(int) const
+	    {
+		return typename GridType::Traits::HierarchicIterator();
+	    }
+
+	    /// Dummy beyond last son iterator.
+	    typename GridType::Traits::HierarchicIterator hend(int) const
+	    {
+		return typename GridType::Traits::HierarchicIterator();
+	    }
+
+
 	protected:
-	    const GridType& grid_;
+	    const GridType* pgrid_;
 	};
 
 
@@ -153,6 +207,12 @@ namespace Dune
 	    /// Constructor taking a grid and entity representation.
 	    EntityPointer(const GridType& grid, int entityrep)
 		: Entity<codim, GridType>(grid, entityrep)
+	    {
+	    }
+
+	    /// Construction from entity.
+	    explicit EntityPointer(const Entity<codim, GridType>& e)
+		: Entity<codim, GridType>(e)
 	    {
 	    }
 
@@ -178,6 +238,12 @@ namespace Dune
 	    const Entity<codim, GridType>& operator*() const
 	    {
 		return *this;
+	    }
+
+	    /// Minimizes memory usage.
+	    /// Nothing to do in our case.
+	    void compactify()
+	    {
 	    }
 	};
 

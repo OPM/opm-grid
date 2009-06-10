@@ -77,9 +77,21 @@ namespace Dune
 
 
 
-	/// Not needed yet.
-	class HierarchicIterator
+	/// Only needs to provide interface for doing nothing.
+	template <class GridType>
+	class HierarchicIterator : public EntityPointer<0, GridType>
 	{
+	public:
+	    HierarchicIterator(const GridType& grid)
+		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex)
+	    {
+	    }
+
+	    HierarchicIterator& operator++()
+	    {
+		THROW("Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
+		return *this;
+	    }
 	};
 
 

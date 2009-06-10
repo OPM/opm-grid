@@ -109,13 +109,28 @@ namespace Dune
 
 
 	template <class GridType>
-	class IdSet : public IndexSet<GridType>
+	class IdSet : private IndexSet<GridType>
 	{
+	private:
+	    typedef IndexSet<GridType> super_t;
 	public:
 	    IdSet(const GridType& grid)
-		: IndexSet<GridType>(grid)
+		: super_t(grid)
 	    {
 	    }
+
+	    template<int cd>
+	    int id(const typename GridType::template Codim<cd>::Entity& e) const 
+	    {
+		return super_t::index<cd>(e);
+	    }
+
+	    template<class EntityType>
+	    int id(const EntityType& e) const 
+	    {
+		return super_t::index(e);
+	    }
+
 	};
 
 

@@ -41,6 +41,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <boost/static_assert.hpp>
 #include "../common/SparseTable.hpp"
 #include <map>
+#include <climits>
 #include <boost/algorithm/minmax_element.hpp>
 
 
@@ -107,6 +108,8 @@ namespace Dune
 	    {
 		return !operator==(other);
 	    }
+
+	    enum { InvalidIndex = INT_MAX };
 
 	protected:
 	    // Interior representation is documented in class main comment.

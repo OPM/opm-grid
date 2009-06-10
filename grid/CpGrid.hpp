@@ -84,7 +84,7 @@ namespace Dune
 	typedef cpgrid::IntersectionIterator<CpGrid> LevelIntersectionIterator;
 
 	/// \brief The type of the  hierarchic iterator.
-	typedef cpgrid::HierarchicIterator HierarchicIterator;
+	typedef cpgrid::HierarchicIterator<CpGrid> HierarchicIterator;
 
 	/// \brief Traits associated with a specific codim. 
 	/// \tparam cd The codimension.
@@ -171,24 +171,16 @@ namespace Dune
 	: public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
     public:
-	/*
-	// --- Enums ---
-	enum { dimension = 3 };
-	enum { dimensionworld = 3 };
 
-	// --- Types ---
+	// --- Typedefs ---
 
-        /// The type used to store coordinates
-        typedef double ctype;
 
-	/// Traits for CpGrid
-	/typedef CpGridTraits Traits;
+	/// Family typedef, why is this not defined by Grid<>?
+	typedef CpGridFamily GridFamily;
 
-	typedef cpgrid::GridView<All_Partition> LeafGridView;
-	typedef cpgrid::GridView<All_Partition> LevelGridView;
-	*/
 
 	// --- Methods ---
+
 
 	/// Default constructor
 	CpGrid()
@@ -200,11 +192,12 @@ namespace Dune
         /// Initialize the grid.
 	void init(const parameter::ParameterGroup& param);
 
+
 	/// Read the sintef legacy grid format ('topogeom').
 	void readSintefLegacyFormat(const parameter::ParameterGroup& param);
 
 
-        /// return grid name
+        /// Return grid name.
         std::string name() const
         {
             return "CpGrid";
@@ -217,7 +210,6 @@ namespace Dune
 	{
             return 0;
         }
-        
 
 
         /// Iterator to first entity of given codim on level
@@ -228,8 +220,8 @@ namespace Dune
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
             return cpgrid::Iterator<codim, All_Partition, CpGrid >(*this, 0);
         }
-    
-        
+
+
         /// one past the end on this level
         template<int codim>
         typename Traits::template Codim<codim>::LevelIterator lend (int level) const
@@ -238,8 +230,8 @@ namespace Dune
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
             return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
         }
-        
-        
+
+
         /// Iterator to first entity of given codim on level
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lbegin (int level) const
@@ -366,7 +358,7 @@ namespace Dune
 	    return LeafGridView(*this);
 	}
 
-	/*  No refinement implemented
+	/*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
         /// global refinement
         void globalRefine (int refCount)
@@ -418,7 +410,7 @@ namespace Dune
 	end of refinement section */
 
 
-	/* No parallelism implemented
+	/* No parallelism implemented.  GridDefaultImplementation's methods will be used.
 
         /// \brief Size of the overlap on the leaf level 
         unsigned int overlapSize(int codim) const {

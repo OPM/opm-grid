@@ -55,7 +55,7 @@ namespace Dune
 	{
 	public:
 	    Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
-		: grid_(grid),
+		: pgrid_(&grid),
 		  index_(cell.index()),
 		  subindex_(subindex),
 		  faces_of_cell_(grid.cell_to_face_[cell])
@@ -63,15 +63,20 @@ namespace Dune
 		ASSERT(index_ >= 0);
 	    }
 
+	    bool operator==(const Intersection& other) const
+	    {
+		return subindex_ == other.subindex_  &&  index_ == other.index_  &&  pgrid_ == other.pgrid_;
+	    }
+
 	    bool operator!=(const Intersection& other) const
 	    {
-		return subindex_ != other.subindex_  ||  index_ != other.index_  ||  &grid_ != &other.grid_;
+		return !operator==(other);
 	    }
 
 	    bool boundary() const
 	    {
 		EntityRep<1> face = faces_of_cell_[subindex_];
-		OrientedEntityTable<1,0>::row_type cells_of_face = grid_.face_to_cell_[face];
+		OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		return cells_of_face.size() == 1;
 	    }
 
@@ -82,12 +87,12 @@ namespace Dune
 
 	    EntityPointer<0, GridType> inside() const
 	    {
-		return EntityPointer<0, GridType>(grid_, index_);
+		return EntityPointer<0, GridType>(*pgrid_, index_);
 	    }
 
 	    EntityPointer<0, GridType> outside() const
 	    {
-		return EntityPointer<0, GridType>(grid_, nbcell());
+		return EntityPointer<0, GridType>(*pgrid_, nbcell());
 	    }
 
 	    /*
@@ -103,7 +108,7 @@ const LocalGeometry & 	intersectionNeighborLocal () const
 
 	    const Geometry<2,3>& geometry() const
 	    {
-		return cpgrid::Entity<1, GridType>(grid_, faces_of_cell_[subindex_]).geometry();
+		return cpgrid::Entity<1, GridType>(*pgrid_, faces_of_cell_[subindex_]).geometry();
 	    }
 
 	    /// Is this really just the same as geometry()?
@@ -128,30 +133,30 @@ int 	numberInNeighbor () const
 						      */
 	    FieldVector<double, 3> outerNormal (const FieldVector<double, 2>&) const
 	    {
-		return grid_.face_normals_[faces_of_cell_[subindex_]];
+		return pgrid_->face_normals_[faces_of_cell_[subindex_]];
 	    }
 
 	    FieldVector<double, 3> integrationOuterNormal (const FieldVector<double, 2>&) const
 	    {
-		FieldVector<double, 3> n = grid_.face_normals_[faces_of_cell_[subindex_]];
+		FieldVector<double, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
 		return n*=double(geometry().volume());
 	    }
 
 	    FieldVector<double, 3> unitOuterNormal (const FieldVector<double, 2>&) const
 	    {
-		return grid_.face_normals_[faces_of_cell_[subindex_]];
+		return pgrid_->face_normals_[faces_of_cell_[subindex_]];
 	    }
 
 	protected:
-	    const GridType& grid_;
-	    const int index_;
+	    const GridType* pgrid_;
+	    int index_;
 	    int subindex_;
 	    OrientedEntityTable<0,1>::row_type faces_of_cell_;
 
 	    int nbcell() const
 	    {
 		EntityRep<1> face = faces_of_cell_[subindex_];
-		OrientedEntityTable<1,0>::row_type cells_of_face = grid_.face_to_cell_[face];
+		OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		if (cells_of_face.size() == 1) {
 		    THROW("Face " << face.index() << " is on the boundary, you cannot get the neighbouring cell.");
 		} else {
@@ -173,26 +178,28 @@ int 	numberInNeighbor () const
 	class IntersectionIterator : public Intersection<GridType>
 	{
 	public:
+	    typedef cpgrid::Intersection<GridType> Intersection;
+
 	    IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
-		: Intersection<GridType>(grid, cell, 0)
+		: Intersection(grid, cell, 0)
 	    {
 		if (at_end) {
-		    Intersection<GridType>::subindex_ += Intersection<GridType>::faces_of_cell_.size();
+		    Intersection::subindex_ += Intersection::faces_of_cell_.size();
 		}
 	    }
 
 	    IntersectionIterator& operator++()
 	    {
-		++Intersection<GridType>::subindex_;
+		++Intersection::subindex_;
 		return *this;
 	    }
 
-	    const Intersection<GridType>* operator->() const
+	    const Intersection* operator->() const
 	    {
 		return this;
 	    }
 
-	    const Intersection<GridType>& operator*() const
+	    const Intersection& operator*() const
 	    {
 		return *this;
 	    }

@@ -34,11 +34,66 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "../CpGrid.hpp"
-#include <vector>
 
-int main()
+//#include <config.h>
+#include <iostream>
+
+#include <dune/grid/test/gridcheck.cc>
+#include <dune/grid/test/checkcommunicate.cc>
+#include <dune/grid/test/checkgeometryinfather.cc>
+#include <dune/grid/test/checkintersectionit.cc>
+
+
+
+void check_cpgrid()
 {
-    // This test should bomb in debug, should use debug builds for testing.
-    // std::vector<int> r(1);
-    // int a = r[1];
-}
+    const int dim = 3;
+    typedef Dune::FieldVector<int,dim> iTupel;
+    typedef Dune::FieldVector<double,dim> fTupel;
+    typedef Dune::FieldVector<bool,dim> bTupel;
+
+    std::cout << "\nCpGrid\n" << std::endl;
+
+//     fTupel Len;
+//     Len = 1.0;
+//     iTupel s;
+//     s = 3;
+//     bTupel p;
+//     p = false;
+//     p[0] = p0;
+//     int overlap = 1;
+
+    // Dune::YaspGrid<dim> grid(Len,s,p,overlap);
+    // grid.globalRefine(2);
+
+    Dune::CpGrid grid;
+
+#if 0
+    gridcheck(grid);
+
+    // check communication interface
+    checkCommunication(grid,-1,Dune::dvverb);
+    for (int l=0; l<=grid.maxLevel(); ++l)
+        checkCommunication(grid,l,Dune::dvverb);
+
+    // check the method geometryInFather()
+    //checkGeometryInFather(grid);
+    // check the intersection iterator and the geometries it returns
+    checkIntersectionIterator(grid);
+#endif
+};
+
+
+int main(int /*argc*/ , char** /*argv*/)
+{
+    try {
+        check_cpgrid();
+    } catch (Dune::Exception &e) {
+        std::cerr << e << std::endl;
+        return 1;
+    } catch (...) {
+        std::cerr << "Generic exception!" << std::endl;
+        return 2;
+    }
+    return 0;
+};

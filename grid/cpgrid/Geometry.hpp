@@ -45,11 +45,18 @@ namespace Dune
 	class Geometry
 	{
 	public:
-	    typedef double ct;
-	    typedef FieldVector<ct, dimworld> WorldPointType;
-	    typedef FieldVector<ct, dim> LocalPointType;
 
-	    Geometry(const WorldPointType& pos, ct vol)
+	    enum { dimension = 3 };
+	    enum { mydimension = dim };
+	    enum { coorddimension = 3 };
+	    enum { dimensionworld = 3 };
+
+	    typedef double ctype;
+
+	    typedef FieldVector<ctype, dimworld> WorldPointType;
+	    typedef FieldVector<ctype, dim> LocalPointType;
+
+	    Geometry(const WorldPointType& pos, ctype vol)
 		: pos_(pos), vol_(vol)
 	    {
 	    }
@@ -57,6 +64,12 @@ namespace Dune
 	    const WorldPointType& global(const LocalPointType&) const
 	    {
 		return pos_;
+	    }
+
+	    LocalPointType local(const LocalPointType&) const
+	    {
+		LocalPointType dummy(0.0);
+		return dummy;
 	    }
 
 	    double integrationElement(const LocalPointType&) const
@@ -71,16 +84,41 @@ namespace Dune
 		return t;
 	    }
 
+	    /// The number of corners of this convex polytope.
+	    /// Returning 1 as long as we are using the singular geometry/refelem approach.
+	    int corners() const
+	    {
+		return 1;
+	    }
+
 	    /// The corner method requires the points, which we may not necessarily want to provide.
-	    /// We will need it for visualization purposes though. For now returning a default point.
+	    /// We will need it for visualization purposes though. For now returning a single "corner".
 	    WorldPointType corner(int i) const
 	    {
 		return pos_;
 	    }
 
-	    ct volume() const
+	    ctype volume() const
 	    {
 		return vol_;
+	    }
+
+
+	    const FieldMatrix<ctype, mydimension, coorddimension>&
+	    jacobianTransposed(const LocalPointType& local) const
+	    {
+		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
+		return dummy;
+	    }
+
+
+	    const FieldMatrix<ctype, coorddimension, mydimension>&
+	    jacobianInverseTransposed(const LocalPointType& local) const
+	    {
+		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
+		return dummy;
 	    }
 
 	private:
