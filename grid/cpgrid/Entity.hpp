@@ -53,31 +53,47 @@ namespace Dune
 	class Entity : public EntityRep<codim>
 	{
 	public:
+	    /// Constructor taking a grid and an integer entity representation.
+	    /// This constructor should probably be removed, since it exposes
+	    /// details of the implementation of \see EntityRep, see comment in
+	    /// EntityRep<>::EntityRep(int).
 	    Entity(const GridType& grid, int entityrep)
 		: EntityRep<codim>(entityrep), grid_(grid)
 	    {
 	    }
+
+	    /// Constructor taking a grid and an entity representation.
 	    Entity(const GridType& grid, EntityRep<codim> entityrep)
 		: EntityRep<codim>(entityrep), grid_(grid)
 	    {
 	    }
 
-	    bool operator!=(const Entity& other) const
+	    /// Equality.
+	    bool operator==(const Entity& other) const
 	    {
-		return EntityRep<codim>::operator!=(other)  ||  &grid_ != &other.grid_;
+		return EntityRep<codim>::operator==(other)  &&  &grid_ == &other.grid_;
 	    }
 
+	    /// Inequality.
+	    bool operator!=(const Entity& other) const
+	    {
+		return !operator==(other);
+	    }
+
+	    /// Returns the geometry of the entity (does not depend on its orientation).
 	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
 	    const Geometry& geometry() const
 	    {
 		return grid_.template geomVector<codim>()[*this];
 	    }
 
+	    /// We do not support refinement, so level() is always 0.
 	    int level() const
 	    {
 		return 0;
 	    }
 
+	    /// For now, the grid is serial and the only partitionType() is InteriorEntity.
 	    PartitionType partitionType() const
 	    {
 		return InteriorEntity;
@@ -103,13 +119,17 @@ namespace Dune
 		}
 	    }
 
+	    /// Start iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
 	    {
+		BOOST_STATIC_ASSERT(codim == 0);
 		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, false);
 	    }
 
+	    /// End iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafend() const
 	    {
+		BOOST_STATIC_ASSERT(codim == 0);
 		return typename GridType::Traits::LeafIntersectionIterator(grid_, *this, true);
 	    }
 
@@ -120,29 +140,41 @@ namespace Dune
 
 
 
-
+	/// \brief Class representing a pointer to an entity.
+	/// Implementation note:
+	/// Since our entities are quite lightweight, we have chosen
+	/// to implement EntityPointer by inheritance from
+	/// Entity. Thus all dereferencing operators return the object
+	/// itself as an Entity.
 	template <int codim, class GridType>
 	class EntityPointer : public Entity<codim, GridType>
 	{
 	public:
-	    EntityPointer(const GridType& grid, int index)
-		: Entity<codim, GridType>(grid, index)
+	    /// Constructor taking a grid and entity representation.
+	    EntityPointer(const GridType& grid, int entityrep)
+		: Entity<codim, GridType>(grid, entityrep)
 	    {
 	    }
 
+	    /// Member by pointer operator.
 	    Entity<codim, GridType>* operator->()
 	    {
 		return this;
+
+	    /// Const member by pointer operator.
 	    }
 	    const Entity<codim, GridType>* operator->() const
 	    {
 		return this;
 	    }
 
+	    /// Dereferencing operator.
 	    Entity<codim, GridType>& operator*()
 	    {
 		return *this;
 	    }
+
+	    /// Const dereferencing operator.
 	    const Entity<codim, GridType>& operator*() const
 	    {
 		return *this;

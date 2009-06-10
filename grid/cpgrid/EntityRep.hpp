@@ -124,6 +124,8 @@ namespace Dune
 
 
 
+	/// \brief Base class for EntityVariable and EntityVariableBase.
+	/// Forwards a restricted subset of the std::vector interface.
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
 	{
@@ -142,11 +144,15 @@ namespace Dune
 
 
 
-
+	/// \brief A class design to hold a variable with a value for
+	/// each entity of the given codimension, where the variable
+	/// is \b not changing in sign with orientation. Examples include
+	/// pressures and positions.
 	template <typename T, int codim>
 	class EntityVariable : public EntityVariableBase<T>
 	{
 	public:
+	    /// Random access to the variable through an EntityRep.
 	    const T& operator[](const EntityRep<codim>& e) const
 	    {
 		return get(e.index());
@@ -157,10 +163,17 @@ namespace Dune
 
 
 
+	/// \brief A class design to hold a variable with a value for
+	/// each entity of the given codimension, where the variable
+	/// \b is changing in sign with orientation. An example is
+	/// velocity fields.
 	template <typename T, int codim>
 	class SignedEntityVariable : public EntityVariableBase<T>
 	{
 	public:
+	    /// \brief Random access to the variable through an EntityRep.
+	    /// Note that this operator always returns a copy, not a
+	    /// reference, since we may need to flip the sign.
 	    const T operator[](const EntityRep<codim>& e) const
 	    {
 		return e.entityrep_ < 0 ?
@@ -172,7 +185,7 @@ namespace Dune
 
 
 
-
+	/// A class used as a row type for \see OrientedEntityTable.
 	template <int codim_to>
 	class OrientedEntityRange : private SparseTable<int>::row_type
 	{
@@ -197,7 +210,13 @@ namespace Dune
 
 
 
-
+	/// \brief Represents the topological relationships between
+	/// sets of entities, for example cells and faces.
+	/// The purpose of this class is to hide the intricacies of
+	/// handling orientations from the client code, otherwise a
+	/// straight SparseTable would do.
+	/// Implementation note: Perhaps we should make this inherit
+	/// from SparseTable<EntityRep<codim_to> > instead?
 	template <int codim_from, int codim_to>
 	class OrientedEntityTable : private SparseTable<int>
 	{
@@ -206,10 +225,16 @@ namespace Dune
 	    typedef EntityRep<codim_to> ToType;
 	    typedef OrientedEntityRange<codim_to> row_type;
 
+	    /// Default constructor.
 	    OrientedEntityTable()
 	    {
 	    }
 
+	    /// Constructor taking a iterators to a sequence of table
+	    /// data and a sequence of row size data. These table data
+	    /// are int the same format as the underlying
+	    /// \see SparseTable<int> constructor with the same
+	    /// signature.
 	    template <typename DataIter, typename IntegerIter>
 	    OrientedEntityTable(DataIter data_beg, DataIter data_end,
 				IntegerIter rowsize_beg, IntegerIter rowsize_end)
@@ -219,16 +244,28 @@ namespace Dune
 
 	    using SparseTable<int>::empty;
 	    using SparseTable<int>::size;
+
+	    /// Given an entity e of codimension codim_from, returns a
+	    /// row (an indirect container) containing its neighbour
+	    /// entities of codimension codim_to.
 	    row_type operator[](const FromType& e) const
 	    {
 		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
 	    }
 
+	    /// Elementwise equality.
 	    bool operator==(const OrientedEntityTable& other) const
 	    {
 		return SparseTable<int>::operator==(other);
 	    }
 
+	    /// Prints the relation matrix corresponding to the table.
+	    /// Let the entities of codimensions f and t be given by
+	    /// the sets E^f = { e^f_i } and E^t = { e^t_j }.
+	    /// A relation matrix R is defined by
+	    ///     R_{ij} = 0  if e^f_i and e^t_j are not neighbours,
+	    ///            = 1  if they are neighbours with same orientation,
+	    ///            = -1 if they are neighboures with opposite orientation.
 	    void printRelationMatrix(std::ostream& os) const
 	    {
 		int columns = numberOfColumns();
@@ -262,6 +299,10 @@ namespace Dune
 		}
 	    }
 
+	    /// Makes the inverse relation, mapping codim_to entities
+	    /// to their codim_from neighbours.
+	    /// Implementation note: The algorithm should be changed
+	    /// to a two-pass O(n) algorithm.
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
 		typedef std::multimap<int, int> RelationMap;

@@ -73,27 +73,6 @@ BOOST_AUTO_TEST_CASE(entity_rep)
     BOOST_CHECK(!(e1 != e1));
 }
 
-BOOST_AUTO_TEST_CASE(entity)
-{
-    CpGrid g;
-    cpgrid::Entity<0, CpGrid> e1(g, 0);
-    cpgrid::Entity<0, CpGrid> e2(g, ~0);
-    cpgrid::Entity<0, CpGrid> e3(g, 1);
-    cpgrid::Entity<0, CpGrid> e4(g, ~1);
-    BOOST_CHECK(e1 != e2);
-    BOOST_CHECK(e1 != e3);
-    BOOST_CHECK(e1 != e4);
-    BOOST_CHECK(e2 != e3);
-    BOOST_CHECK(e2 != e4);
-    BOOST_CHECK(e3 != e4);
-    BOOST_CHECK(e1.type().isSingular()); // Our new type
-
-    // Cannot check other members without a real grid.
-    // Put in more checks when it is possible to construct
-    // test grids easily.
-}
-
-
 BOOST_AUTO_TEST_CASE(entity_variable)
 {
     // EntityVariableBase tests
@@ -210,3 +189,46 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     face2cell.printRelationMatrix(s2);
     BOOST_CHECK(expect2 == s2.str());
 }
+
+
+
+BOOST_AUTO_TEST_CASE(entity)
+{
+    CpGrid g;
+    cpgrid::Entity<0, CpGrid> e1(g, 0);
+    cpgrid::Entity<0, CpGrid> e2(g, ~0);
+    cpgrid::Entity<0, CpGrid> e3(g, 1);
+    cpgrid::Entity<0, CpGrid> e4(g, ~1);
+    BOOST_CHECK(e1 != e2);
+    BOOST_CHECK(e1 != e3);
+    BOOST_CHECK(e1 != e4);
+    BOOST_CHECK(e2 != e3);
+    BOOST_CHECK(e2 != e4);
+    BOOST_CHECK(e3 != e4);
+    BOOST_CHECK_EQUAL(e1.level(), 0);
+    BOOST_CHECK(e1.type().isSingular()); // Our new type
+    BOOST_CHECK_EQUAL(e1.partitionType(), InteriorEntity);
+
+    // Cannot check other members without a real grid.
+    // Put in more checks when it is possible to construct
+    // test grids easily.
+    //   geometry()
+    //   count()
+    //   ileafbegin()
+    //   ileafend()
+}
+
+
+BOOST_AUTO_TEST_CASE(entity_ptr)
+{
+    CpGrid g;
+    cpgrid::EntityPointer<0, CpGrid> p1(g, ~5);
+    const cpgrid::EntityPointer<0, CpGrid> p2(g, 42);
+    cpgrid::Entity<0, CpGrid>& e1 = *p1;
+    const cpgrid::Entity<0, CpGrid>& e2 = *p2;
+    cpgrid::Entity<0, CpGrid> ee1(g, ~5);
+    cpgrid::Entity<0, CpGrid> ee2(g, 42);
+    BOOST_CHECK(e1 == ee1);
+    BOOST_CHECK(e2 == ee2);
+}
+
