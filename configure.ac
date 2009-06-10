@@ -5,9 +5,9 @@ AC_PREREQ(2.60)
 DUNE_AC_INIT # gets module version from dune.module file
 AM_INIT_AUTOMAKE([foreign])
 
-LT_INIT
-LT_LANG([C++])
-LT_OUTPUT
+#LT_INIT
+#LT_LANG([C++])
+#LT_OUTPUT
 
 AC_PROG_SED
 PKG_PROG_PKG_CONFIG([0.21])
