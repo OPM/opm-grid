@@ -47,7 +47,10 @@ namespace Dune
 
 
 
-
+	/// Iterator intended to be used as LeafIterator and LevelIterator
+	/// (no difference due to no adaptivity) for CpGrid.
+	/// This could have been a random access iterator, perhaps we will
+	/// use a facade to do this later.
 	template<int cd, PartitionIteratorType pitype, class GridType>
 	class Iterator : public EntityPointer<cd, GridType>
 	{
@@ -56,6 +59,13 @@ namespace Dune
 		: EntityPointer<cd, GridType>(grid, index)
 	    {
 	    }
+
+	    /// Increment operator.
+	    /// Implementation note: This class is a friend of
+	    /// \see EntityRep (which is a private base class of
+	    /// Entity) in order to actually access the private
+	    /// variable entityrep_. We may want to change EntityRep,
+	    /// then this must change, too.
 	    Iterator& operator++()
 	    {
 		ASSERT((Entity<cd, GridType>::entityrep_) >= 0);
@@ -67,7 +77,7 @@ namespace Dune
 
 
 
-
+	/// Not needed yet.
 	class HierarchicIterator
 	{
 	};
