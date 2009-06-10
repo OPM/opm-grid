@@ -28,13 +28,13 @@ void initialize(const G& grid, const M& mapper, V& c)
         Dune::GeometryType gt = it->type();
 
         // get cell center in reference element
-        const Dune::FieldVector<ct,dim>& 
+        const Dune::FieldVector<ct,dim>&
         local = Dune::ReferenceElements<ct,dim>::general(gt).position(0,0);
 
         // get global coordinate of cell center
-        Dune::FieldVector<ct,dimworld> global = 
-        it->geometry().global(local);
-	// Dune::FieldVector<ct, dimworld> global = it->geometry().position();
+        Dune::FieldVector<ct,dimworld> global =
+            it->geometry().global(local);
+        // Dune::FieldVector<ct, dimworld> global = it->geometry().position();
 
         // initialize cell concentration
         c[mapper.map(*it)] = c0(global);

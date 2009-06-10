@@ -101,7 +101,7 @@ int main(int argc , char ** argv)
         using namespace Dune;
 
         GridType grid;
-	grid.init(param);
+        grid.init(param);
 
         // do time loop until end time 0.5
         timeloop(grid, 0.5);
