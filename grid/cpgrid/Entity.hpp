@@ -60,6 +60,8 @@ namespace Dune
 	    enum { mydimension = dimension - codimension };
 	    enum { dimensionworld = 3 };
 
+	    typedef typename GridType::template Codim<codim>::EntityPointer EntityPointer;
+
 	    template <int cd>
 	    struct Codim
 	    {
@@ -200,6 +202,21 @@ namespace Dune
 		return typename GridType::Traits::HierarchicIterator(*pgrid_);
 	    }
 
+	    /// Returns true if any of my intersections are on the boundary.
+	    /// Implementation note:
+	    /// This is a slow, computed, function. Could be speeded
+	    /// up by putting boundary info in the CpGrid class.
+	    bool hasBoundaryIntersections() const
+	    {
+		// Copied implementation from EntityDefaultImplementation,
+		// except for not checking LevelIntersectionIterators.
+		typedef typename GridType::Traits::LeafIntersectionIterator IntersectionIterator; 
+		IntersectionIterator end = ileafend();
+		for (IntersectionIterator it = ileafbegin(); it != end; ++it) {
+		    if (it->boundary()) return true;
+		}
+		return false;
+	    }
 
 	protected:
 	    const GridType* pgrid_;

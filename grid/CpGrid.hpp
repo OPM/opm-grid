@@ -299,13 +299,14 @@ namespace Dune
 	    switch (codim) {
 	    case 0: return cell_to_face_.size();
 	    case 1: return face_to_cell_.size();
-            default: THROW("This grid has no entities of codim " << codim);
+	    case 2: return 0;
+	    case 3: return geomVector<3>().size();
+	    default: return 0;
 	    }
-	    return -1;
         }
         
         
-        /// number of entities per level, codim and geometry type in this process
+        /// number of entities per level and geometry type in this process
         int size (int level, GeometryType type) const
 	{
             if (level<0 || level>maxLevel())
@@ -314,7 +315,7 @@ namespace Dune
         }
         
             
-        /// number of leaf entities per codim and geometry type in this process
+        /// number of leaf entities per geometry type in this process
         int size (GeometryType type) const
         {
 	    if (type.isSingular()) {

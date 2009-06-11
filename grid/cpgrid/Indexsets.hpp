@@ -64,10 +64,7 @@ namespace Dune
 
 	    int size(GeometryType type) const
 	    {
-		if (!type.isSingular()) {
-		    THROW("IndexSet::size(GeometryType) not implemented for its dim != 3 types.");
-		}
-		return grid_.size(0);
+		return grid_.size(type);
 	    }
 
 	    int size(int codim) const
@@ -94,13 +91,13 @@ namespace Dune
 // 	    }
 
 	    template <int cc>
-	    IndexType subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i) const 
+	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
 		BOOST_STATIC_ASSERT(cc == 1);
 		return grid_.cell_to_face_[e][i].index();
 	    }
 
-	    IndexType subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i, unsigned int cc) const 
+	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i, unsigned int cc) const 
 	    {
 		ASSERT(cc == 1);
 		return grid_.cell_to_face_[e][i].index();
@@ -119,30 +116,51 @@ namespace Dune
 
 
 	template <class GridType>
-	class IdSet : private IndexSet<GridType>
+	class IdSet
 	{
-	private:
-	    typedef IndexSet<GridType> super_t;
 	public:
 	    typedef int IdType;
 
 	    IdSet(const GridType& grid)
-		: super_t(grid)
+		: grid_(grid)
 	    {
+		cumul_sizes[0] = 0;
+		cumul_sizes[1] = cumul_sizes[0] + grid.size(0);
+		cumul_sizes[2] = cumul_sizes[1] + grid.size(1);
+		cumul_sizes[3] = cumul_sizes[2] + grid.size(2);
 	    }
 
-	    template<int cd>
-	    int id(const typename GridType::template Codim<cd>::Entity& e) const 
+	    template<int cc>
+	    IdType id(const typename GridType::template Codim<cc>::Entity& e) const 
 	    {
-		return super_t::index<cd>(e);
+		return id(e);
 	    }
 
 	    template<class EntityType>
-	    int id(const EntityType& e) const 
+	    IdType id(const EntityType& e) const 
 	    {
-		return super_t::index(e);
+		return cumul_sizes[EntityType::codimension] + e.index();
 	    }
 
+	    template<int cc>
+	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i) const 
+	    {
+		return id(e.subEntity<cc>(i));
+	    }
+
+	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i, int cc) const
+	    {
+		switch (cc) {
+		case 0: return id(e.template subEntity<0>(i));
+		case 1: return id(e.template subEntity<1>(i));
+		case 3: return id(e.template subEntity<3>(i));
+		default: THROW("Cannot get subId of codimension " << cc);
+		}
+		return -1;
+	    }
+	private:
+	    const GridType& grid_;
+	    int cumul_sizes[4];
 	};
 
 

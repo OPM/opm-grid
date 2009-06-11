@@ -71,7 +71,7 @@ namespace Dune
 		return pos_;
 	    }
 
-	    LocalPointType local(const LocalPointType&) const
+	    LocalPointType local(const WorldPointType&) const
 	    {
 		LocalPointType dummy(0.0);
 		return dummy;

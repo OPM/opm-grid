@@ -54,8 +54,13 @@ namespace Dune
         class Intersection
         {
         public:
+	    enum { dimension = 3 };
+	    enum { dimensionworld = 3 };
+	    typedef cpgrid::Entity<0, GridType> Entity;
+	    typedef cpgrid::EntityPointer<0, GridType> EntityPointer;
 	    typedef cpgrid::Geometry<2,3> Geometry;
 	    typedef cpgrid::Geometry<2,3> LocalGeometry;
+	    typedef double ctype;
 
             Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
 		: pgrid_(&grid),
@@ -64,7 +69,7 @@ namespace Dune
 		  faces_of_cell_(grid.cell_to_face_[cell]),
 		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
 		  in_inside_geom_(global_geom_.position()
-				  - Entity<0, GridType>(grid, index_).geometry().position(),
+				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().position(),
 				  global_geom_.volume())
             {
                 ASSERT(index_ >= 0);
@@ -103,15 +108,20 @@ namespace Dune
                 return !boundary();
             }
 
-            EntityPointer<0, GridType> inside() const
+            EntityPointer inside() const
             {
-                return EntityPointer<0, GridType>(*pgrid_, index_);
+                return EntityPointer(*pgrid_, index_);
             }
 
-            EntityPointer<0, GridType> outside() const
+            EntityPointer outside() const
             {
-                return EntityPointer<0, GridType>(*pgrid_, nbcell());
+                return EntityPointer(*pgrid_, nbcell());
             }
+
+	    bool conforming() const
+	    {
+		return true;
+	    }
 
             // Geometrical information about this intersection in
             // local coordinates of the inside() entity.
@@ -186,18 +196,18 @@ namespace Dune
                 return indexInOutside();
             }
 
-            FieldVector<double, 3> outerNormal(const FieldVector<double, 2>&) const
+            FieldVector<ctype, 3> outerNormal(const FieldVector<ctype, 2>&) const
             {
                 return pgrid_->face_normals_[faces_of_cell_[subindex_]];
             }
 
-            FieldVector<double, 3> integrationOuterNormal(const FieldVector<double, 2>& unused) const
+            FieldVector<ctype, 3> integrationOuterNormal(const FieldVector<ctype, 2>& unused) const
             {
-                FieldVector<double, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
+                FieldVector<ctype, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
                 return n*=geometry().integrationElement(unused);
             }
 
-            FieldVector<double, 3> unitOuterNormal(const FieldVector<double, 2>&) const
+            FieldVector<ctype, 3> unitOuterNormal(const FieldVector<ctype, 2>&) const
             {
                 return pgrid_->face_normals_[faces_of_cell_[subindex_]];
             }
