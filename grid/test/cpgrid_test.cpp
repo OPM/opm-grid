@@ -44,6 +44,44 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/grid/test/checkintersectionit.cc>
 
 
+template <class Grid>
+void mygridcheck (Grid &g)
+{
+  /*
+   * first do the compile-test: this will not produce any code but
+   * fails if an interface-component is missing
+   */
+  GridInterface<Grid>();
+
+  enum { dim      = Grid :: dimension };
+  enum { dimworld = Grid :: dimensionworld };
+  typedef typename Grid  :: ctype ctype;
+  typedef typename Grid  :: GridFamily GridFamily;
+
+  // type of GridInterface == GridDefaultImplementation 
+  typedef Dune::GridDefaultImplementation<dim,dimworld,ctype,GridFamily> GridIF;
+  const GridIF & gridIF = g;
+  // check functionality when grid is interpreted as reference to interface
+  GridInterface<GridIF>::check(gridIF);
+  /*
+   * now the runtime-tests
+   */
+  const Grid & cg = g;
+  iteratorEquals(g);
+  iteratorEquals(cg);
+  iterate<true>(g);
+  iterate<false>(cg);
+  //zeroEntityConsistency(g);
+  //zeroEntityConsistency(cg);
+  assertNeighbor(g);
+  assertNeighbor(cg);
+  // note that for some grid this might fail
+  // then un comment this test 
+  Dune :: checkIndexSet( g, g.leafView(), Dune :: dvverb );
+  for( int level = 0; level <= g.maxLevel(); ++level )
+    Dune :: checkIndexSet( g, g.levelView( level ), Dune :: dvverb, true );
+}
+
 
 void check_cpgrid()
 {
@@ -69,7 +107,7 @@ void check_cpgrid()
     Dune::CpGrid grid;
 
 #if 0
-    gridcheck(grid);
+    mygridcheck(grid);
 
     // check communication interface
     checkCommunication(grid,-1,Dune::dvverb);

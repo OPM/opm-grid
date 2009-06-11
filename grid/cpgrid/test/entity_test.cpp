@@ -224,11 +224,11 @@ BOOST_AUTO_TEST_CASE(entity_ptr)
     CpGrid g;
     cpgrid::EntityPointer<0, CpGrid> p1(g, ~5);
     const cpgrid::EntityPointer<0, CpGrid> p2(g, 42);
-    cpgrid::Entity<0, CpGrid>& e1 = *p1;
-    const cpgrid::Entity<0, CpGrid>& e2 = *p2;
-    cpgrid::Entity<0, CpGrid> ee1(g, ~5);
-    cpgrid::Entity<0, CpGrid> ee2(g, 42);
-    BOOST_CHECK(e1 == ee1);
-    BOOST_CHECK(e2 == ee2);
+//     cpgrid::Entity<0, CpGrid>& e1 = *p1;
+//     const cpgrid::Entity<0, CpGrid>& e2 = *p2;
+//     cpgrid::Entity<0, CpGrid> ee1(g, ~5);
+//     cpgrid::Entity<0, CpGrid> ee2(g, 42);
+//     BOOST_CHECK(e1 == ee1);
+//     BOOST_CHECK(e2 == ee2);
 }
 

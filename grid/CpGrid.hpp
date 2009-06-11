@@ -315,10 +315,13 @@ namespace Dune
         
             
         /// number of leaf entities per codim and geometry type in this process
-        int size (GeometryType) const
+        int size (GeometryType type) const
         {
-	    THROW("size(level, type) not yet implemented");
-            return -1;
+	    if (type.isSingular()) {
+		return size(3 - type.dim());
+	    } else {
+		return 0;
+	    }
         }
         
         
@@ -493,12 +496,11 @@ namespace Dune
 
 	cpgrid::IdSet<CpGrid> id_set_;
 
-	//cpgrid::GridView<All_Partition> view_;
-
 
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
+	cpgrid::OrientedEntityTable<0, 3> cell_to_point_;
 
 	typedef cpgrid::DefaultGeometryPolicy Geom;
 

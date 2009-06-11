@@ -50,161 +50,241 @@ namespace Dune
     {
 
 
-	template <class GridType>
-	class Intersection
-	{
-	public:
-	    Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
+        template <class GridType>
+        class Intersection
+        {
+        public:
+	    typedef cpgrid::Geometry<2,3> Geometry;
+	    typedef cpgrid::Geometry<2,3> LocalGeometry;
+
+            Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
 		: pgrid_(&grid),
 		  index_(cell.index()),
 		  subindex_(subindex),
-		  faces_of_cell_(grid.cell_to_face_[cell])
+		  faces_of_cell_(grid.cell_to_face_[cell]),
+		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
+		  in_inside_geom_(global_geom_.position()
+				  - Entity<0, GridType>(grid, index_).geometry().position(),
+				  global_geom_.volume())
+            {
+                ASSERT(index_ >= 0);
+            }
+
+            bool operator==(const Intersection& other) const
+            {
+                return subindex_ == other.subindex_  &&  index_ == other.index_  &&  pgrid_ == other.pgrid_;
+            }
+
+            bool operator!=(const Intersection& other) const
+            {
+                return !operator==(other);
+            }
+
+            bool boundary() const
+            {
+                EntityRep<1> face = faces_of_cell_[subindex_];
+                OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
+                return cells_of_face.size() == 1;
+            }
+
+            /// Returns the boundary id of this intersection.
+            /// There is no way to set boundary ids in the grid yet,
+            /// and we have no way to provide a useful default without
+            /// for instance north/south/east/west/up/down
+            /// info. Therefore we just return 1 for every boundary
+            /// (and of course 0 for the non-boundaries).
+            int boundaryId() const
+            {
+                return boundary() ? 0 : 1;
+            }
+
+            bool neighbor() const
+            {
+                return !boundary();
+            }
+
+            EntityPointer<0, GridType> inside() const
+            {
+                return EntityPointer<0, GridType>(*pgrid_, index_);
+            }
+
+            EntityPointer<0, GridType> outside() const
+            {
+                return EntityPointer<0, GridType>(*pgrid_, nbcell());
+            }
+
+            // Geometrical information about this intersection in
+            // local coordinates of the inside() entity.
+            const LocalGeometry& geometryInInside() const
 	    {
-		ASSERT(index_ >= 0);
+		return in_inside_geom_;
 	    }
 
-	    bool operator==(const Intersection& other) const
+            const LocalGeometry& intersectionSelfLocal() const
+            {
+                return geometryInInside();
+            }
+
+            // Geometrical information about this intersection in
+            // local coordinates of the outside() entity.
+            const LocalGeometry& geometryInOutside() const
 	    {
-		return subindex_ == other.subindex_  &&  index_ == other.index_  &&  pgrid_ == other.pgrid_;
+		return in_outside_geom_;
 	    }
 
-	    bool operator!=(const Intersection& other) const
-	    {
-		return !operator==(other);
-	    }
+            const LocalGeometry& intersectionNeighborLocal() const
+            {
+                return geometryInOutside();
+            }
 
-	    bool boundary() const
-	    {
-		EntityRep<1> face = faces_of_cell_[subindex_];
-		OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
-		return cells_of_face.size() == 1;
-	    }
+            const Geometry& geometry() const
+            {
+		return global_geom_;
+            }
 
-	    bool neighbor() const
-	    {
-		return !boundary();
-	    }
+            /// Is this really just the same as geometry()?
+            const Geometry& intersectionGlobal() const
+            {
+                return geometry();
+            }
 
-	    EntityPointer<0, GridType> inside() const
-	    {
-		return EntityPointer<0, GridType>(*pgrid_, index_);
-	    }
+            GeometryType type() const
+            {
+                return geometry().type();
+            }
 
-	    EntityPointer<0, GridType> outside() const
-	    {
-		return EntityPointer<0, GridType>(*pgrid_, nbcell());
-	    }
+            /// Local index of codim 1 entity in the inside() entity
+            /// where intersection is contained in.
+            int indexInInside() const
+            {
+                return subindex_;
+            }
 
-	    /*
-const LocalGeometry & 	geometryInInside () const
- 	geometrical information about this intersection in local coordinates of the inside() entity. 
-const LocalGeometry & 	intersectionSelfLocal () const
- 	please read the details 
-const LocalGeometry & 	geometryInOutside () const
- 	geometrical information about this intersection in local coordinates of the outside() entity. 
-const LocalGeometry & 	intersectionNeighborLocal () const
- 	please read the details 
-	    */
+            int numberInSelf() const
+            {
+                return indexInInside();
+            }
 
-	    const Geometry<2,3>& geometry() const
-	    {
-		return cpgrid::Entity<1, GridType>(*pgrid_, faces_of_cell_[subindex_]).geometry();
-	    }
+            /// Local index of codim 1 entity in outside() entity
+            /// where intersection is contained in.
+            int indexInOutside() const
+            {
+                EntityRep<1> face = faces_of_cell_[subindex_];
+                EntityRep<0> nb(nbcell());
+                OrientedEntityTable<0,1>::row_type faces_of_nb = pgrid_->cell_to_face_[nb];
+                for (int i = 0; i < faces_of_nb.size(); ++i) {
+                    if (faces_of_nb[i].index() == face.index()) {
+                        return i;
+                    }
+                }
+		THROW("Could not find indexInOutside().");
+		return -1;
+            }
 
-	    /// Is this really just the same as geometry()?
-	    const Geometry<2,3>& intersectionGlobal () const
-	    {
-		return geometry();
-	    }
+            int numberInNeighbor() const
+            {
+                return indexInOutside();
+            }
 
-	    GeometryType type () const
-	    {
-		return geometry().type();
-	    }
-						      /*
-int 	indexInInside () const
- 	Local index of codim 1 entity in the inside() entity where intersection is contained in. 
-int 	numberInSelf () const
- 	please read the details 
-int 	indexInOutside () const
- 	Local index of codim 1 entity in outside() entity where intersection is contained in. 
-int 	numberInNeighbor () const
- 	please read the details 
-						      */
-	    FieldVector<double, 3> outerNormal (const FieldVector<double, 2>&) const
-	    {
-		return pgrid_->face_normals_[faces_of_cell_[subindex_]];
-	    }
+            FieldVector<double, 3> outerNormal(const FieldVector<double, 2>&) const
+            {
+                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+            }
 
-	    FieldVector<double, 3> integrationOuterNormal (const FieldVector<double, 2>&) const
-	    {
-		FieldVector<double, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
-		return n*=double(geometry().volume());
-	    }
+            FieldVector<double, 3> integrationOuterNormal(const FieldVector<double, 2>& unused) const
+            {
+                FieldVector<double, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
+                return n*=geometry().integrationElement(unused);
+            }
 
-	    FieldVector<double, 3> unitOuterNormal (const FieldVector<double, 2>&) const
-	    {
-		return pgrid_->face_normals_[faces_of_cell_[subindex_]];
-	    }
+            FieldVector<double, 3> unitOuterNormal(const FieldVector<double, 2>&) const
+            {
+                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+            }
 
-	protected:
-	    const GridType* pgrid_;
-	    int index_;
-	    int subindex_;
-	    OrientedEntityTable<0,1>::row_type faces_of_cell_;
+        protected:
+            const GridType* pgrid_;
+            int index_;
+            int subindex_;
+            OrientedEntityTable<0,1>::row_type faces_of_cell_;
+	    Geometry global_geom_;
+	    LocalGeometry in_inside_geom_;
+	    LocalGeometry in_outside_geom_;
 
-	    int nbcell() const
+	    void increment()
 	    {
-		EntityRep<1> face = faces_of_cell_[subindex_];
-		OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
-		if (cells_of_face.size() == 1) {
-		    THROW("Face " << face.index() << " is on the boundary, you cannot get the neighbouring cell.");
-		} else {
-		    ASSERT(cells_of_face.size() == 2);
-		    if (cells_of_face[0].index() == index_) {
-			return cells_of_face[1].index();
-		    } else {
-			return cells_of_face[0].index();
-		    }
+		++subindex_;
+		if (subindex_ < faces_of_cell_.size()) {
+		    update();
 		}
 	    }
-	};
 
-
-
-
-
-	template <class GridType>
-	class IntersectionIterator : public Intersection<GridType>
-	{
-	public:
-	    typedef cpgrid::Intersection<GridType> Intersection;
-
-	    IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
-		: Intersection(grid, cell, 0)
+	    void update()
 	    {
-		if (at_end) {
-		    Intersection::subindex_ += Intersection::faces_of_cell_.size();
+		in_outside_geom_ = LocalGeometry(global_geom_.position()
+						 - outside().geometry().position(),
+						 global_geom_.volume());
+	    }
+
+	    void setAtEnd()
+	    {
+		subindex_ = faces_of_cell_.size();
+	    }
+
+            int nbcell() const
+            {
+                EntityRep<1> face = faces_of_cell_[subindex_];
+                OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
+                if (cells_of_face.size() == 1) {
+                    THROW("Face " << face.index() << " is on the boundary, you cannot get the neighbouring cell.");
+                } else {
+                    ASSERT(cells_of_face.size() == 2);
+                    if (cells_of_face[0].index() == index_) {
+                        return cells_of_face[1].index();
+                    } else {
+                        return cells_of_face[0].index();
+                    }
+                }
+            }
+        };
+
+
+
+
+
+        template <class GridType>
+        class IntersectionIterator : public Intersection<GridType>
+        {
+        public:
+            typedef cpgrid::Intersection<GridType> Intersection;
+
+            IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
+                    : Intersection(grid, cell, 0)
+            {
+                if (at_end) {
+                    Intersection::setAtEnd();
+                } else {
+		    Intersection::update();
 		}
-	    }
+            }
 
-	    IntersectionIterator& operator++()
-	    {
-		++Intersection::subindex_;
-		return *this;
-	    }
+            IntersectionIterator& operator++()
+            {
+                Intersection::increment();
+                return *this;
+            }
 
-	    const Intersection* operator->() const
-	    {
-		return this;
-	    }
+            const Intersection* operator->() const
+            {
+                return this;
+            }
 
-	    const Intersection& operator*() const
-	    {
-		return *this;
-	    }
+            const Intersection& operator*() const
+            {
+                return *this;
+            }
 
-	};
+        };
 
 
 

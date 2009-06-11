@@ -151,11 +151,20 @@ namespace Dune
 	template <int dim>
 	struct MakeGeometry
 	{
-	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3> pos, double vol)
+	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3> pos, double vol = 1.0)
 	    {
 		return cpgrid::Geometry<dim, 3>(pos, vol);
 	    }
 	};
+
+// 	template <>
+// 	struct MakeGeometry<0>
+// 	{
+// 	    cpgrid::Geometry<0, 3> operator()(const FieldVector<double, 3> pos)
+// 	    {
+// 		return cpgrid::Geometry<dim, 3>(pos, vo);
+// 	    }
+// 	};
 
 	void readGeom(std::istream& geom,
 		      cpgrid::DefaultGeometryPolicy& gpol,
@@ -238,6 +247,7 @@ namespace Dune
 		geom >> cell_volumes[i];
 	    }
 
+	    // Cells
 	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
 	    std::vector<cpgrid::Geometry<3, 3> > cg;
 	    MakeGeometry<3> mcellg;
@@ -245,6 +255,7 @@ namespace Dune
 			   cell_volumes.begin(),
 			   std::back_inserter(cg), mcellg);
 	    cellgeom.assign(cg.begin(), cg.end());
+	    // Faces
 	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
 	    std::vector<cpgrid::Geometry<2, 3> > fg;
 	    MakeGeometry<2> mfaceg;
@@ -252,7 +263,16 @@ namespace Dune
 			   face_areas.begin(),
 			   std::back_inserter(fg), mfaceg);
 	    facegeom.assign(fg.begin(), fg.end());
-	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom);
+	    // Points
+	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> pointgeom;
+	    std::vector<cpgrid::Geometry<2, 3> > fg;
+	    MakeGeometry<0> mpointg;
+	    std::transform(points.begin(), points.end(),
+			   std::back_inserter(fg), mpointg);
+	    pointgeom.assign(fg.begin(), fg.end());
+
+	    // The final, combined object (yes, a lot of copying goes on here).
+	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
 	}

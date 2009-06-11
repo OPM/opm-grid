@@ -47,7 +47,8 @@ namespace Dune
 	class IndexSet
 	{
 	public:
-	    // typedef GridType::GeometryType GeometryType;
+	    typedef int IndexType;
+
 	    IndexSet(const GridType& grid)
 		: grid_(grid)
 	    {
@@ -75,13 +76,13 @@ namespace Dune
 	    }
 
 	    template<int cd>
-	    int index(const typename GridType::template Codim<cd>::Entity& e) const 
+	    IndexType index(const typename GridType::template Codim<cd>::Entity& e) const 
 	    {
 		return e.index(); 
 	    }
 
 	    template<class EntityType>
-	    int index(const EntityType& e) const 
+	    IndexType index(const EntityType& e) const 
 	    {
 		return e.index();
 	    }
@@ -93,13 +94,22 @@ namespace Dune
 // 	    }
 
 	    template <int cc>
-	    int subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i) const 
+	    IndexType subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i) const 
 	    {
-		if (cc == 1) {
-		    return grid_.cell_to_face_[e][i].index();
-		} else {
-		    THROW("No entities defined for codimension 2 and up. Cannot evaluate subIndex().");
-		}
+		BOOST_STATIC_ASSERT(cc == 1);
+		return grid_.cell_to_face_[e][i].index();
+	    }
+
+	    IndexType subIndex(const typename GridType::Traits::template Codim<0>::Entity& e, int i, unsigned int cc) const 
+	    {
+		ASSERT(cc == 1);
+		return grid_.cell_to_face_[e][i].index();
+	    }
+
+	    template <class EntityType>
+	    bool contains(const EntityType& e) const
+	    {
+		return EntityType::codimension != 1;
 	    }
 
 	private:
@@ -114,6 +124,8 @@ namespace Dune
 	private:
 	    typedef IndexSet<GridType> super_t;
 	public:
+	    typedef int IdType;
+
 	    IdSet(const GridType& grid)
 		: super_t(grid)
 	    {

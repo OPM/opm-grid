@@ -61,6 +61,11 @@ namespace Dune
 	    {
 	    }
 
+	    Geometry()
+		: pos_(0.0), vol_(0.0)
+	    {
+	    }
+
 	    const WorldPointType& global(const LocalPointType&) const
 	    {
 		return pos_;
@@ -93,7 +98,7 @@ namespace Dune
 
 	    /// The corner method requires the points, which we may not necessarily want to provide.
 	    /// We will need it for visualization purposes though. For now returning a single "corner".
-	    WorldPointType corner(int i) const
+	    WorldPointType corner(int) const
 	    {
 		return pos_;
 	    }
@@ -103,6 +108,13 @@ namespace Dune
 		return vol_;
 	    }
 
+	    /// Returns the centroid of the geometry.
+	    /// I do not think this is a Dune interface method, but we
+	    /// want it to be!
+	    WorldPointType position() const
+	    {
+		return pos_;
+	    }
 
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalPointType& local) const

@@ -52,6 +52,7 @@ namespace Dune
 	template <int codim, class GridType>
 	class Entity : public EntityRep<codim>
 	{
+	    BOOST_STATIC_ASSERT(codim != 2);
 	public:
 
 	    enum { codimension = codim };
@@ -133,17 +134,30 @@ namespace Dune
 	    int count() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		if (cc == 1) {
+		BOOST_STATIC_ASSERT(cc != 2);
+		if (cc == 0) {
+		    return 1;
+		} else if (cc == 1) {
 		    return pgrid_->cell_to_face_[*this].size();
 		} else {
-		    return 0;
+		    return pgrid_->cell_to_point_[*this].size();
 		}
 	    }
 
 	    /// Obtain subentity.
-	    template <int cd>
-	    typename Codim<cd>::EntityPointer subEntity(int i) const
+	    template <int cc>
+	    typename Codim<cc>::EntityPointer subEntity(int i) const
 	    {
+		BOOST_STATIC_ASSERT(codim == 0);
+		BOOST_STATIC_ASSERT(cc != 2);
+		int index = 0;
+		if (cc == 1) {
+		    index = pgrid_->cell_to_face_[*this][i].index();
+		} else if (cc == 3) {
+		    index = pgrid_->cell_to_point_[*this][i].index();
+		}
+		typename Codim<cc>::EntityPointer se(*pgrid_, index);
+		return se;
 	    }
 
 	    /// Start iterator for the cell-cell intersections of this entity.
@@ -174,21 +188,26 @@ namespace Dune
 		return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, true);
 	    }
 
-	    /// Dummy first son iterator.
+	    /// Dummy first child iterator.
 	    typename GridType::Traits::HierarchicIterator hbegin(int) const
 	    {
-		return typename GridType::Traits::HierarchicIterator();
+		return typename GridType::Traits::HierarchicIterator(*pgrid_);
 	    }
 
-	    /// Dummy beyond last son iterator.
+	    /// Dummy beyond last child iterator.
 	    typename GridType::Traits::HierarchicIterator hend(int) const
 	    {
-		return typename GridType::Traits::HierarchicIterator();
+		return typename GridType::Traits::HierarchicIterator(*pgrid_);
 	    }
 
 
 	protected:
 	    const GridType* pgrid_;
+
+	    bool valid() const
+	    {
+		return EntityRep<codim>::index() < pgrid_->size(codim);
+	    }
 	};
 
 
@@ -201,42 +220,48 @@ namespace Dune
 	/// Entity. Thus all dereferencing operators return the object
 	/// itself as an Entity.
 	template <int codim, class GridType>
-	class EntityPointer : public Entity<codim, GridType>
+	class EntityPointer : public cpgrid::Entity<codim, GridType>
 	{
 	public:
+	    typedef cpgrid::Entity<codim, GridType> Entity;
+
 	    /// Constructor taking a grid and entity representation.
 	    EntityPointer(const GridType& grid, int entityrep)
-		: Entity<codim, GridType>(grid, entityrep)
+		: Entity(grid, entityrep)
 	    {
 	    }
 
 	    /// Construction from entity.
-	    explicit EntityPointer(const Entity<codim, GridType>& e)
-		: Entity<codim, GridType>(e)
+	    explicit EntityPointer(const Entity& e)
+		: Entity(e)
 	    {
 	    }
 
 	    /// Member by pointer operator.
-	    Entity<codim, GridType>* operator->()
+	    Entity* operator->()
 	    {
+		ASSERT(Entity::valid());
 		return this;
 
 	    /// Const member by pointer operator.
 	    }
-	    const Entity<codim, GridType>* operator->() const
+	    const Entity* operator->() const
 	    {
+		ASSERT(Entity::valid());
 		return this;
 	    }
 
 	    /// Dereferencing operator.
-	    Entity<codim, GridType>& operator*()
+	    Entity& operator*()
 	    {
+		ASSERT(Entity::valid());
 		return *this;
 	    }
 
 	    /// Const dereferencing operator.
-	    const Entity<codim, GridType>& operator*() const
+	    const Entity& operator*() const
 	    {
+		ASSERT(Entity::valid());
 		return *this;
 	    }
 
