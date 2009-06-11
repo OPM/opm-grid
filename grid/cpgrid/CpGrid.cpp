@@ -264,12 +264,12 @@ namespace Dune
 			   std::back_inserter(fg), mfaceg);
 	    facegeom.assign(fg.begin(), fg.end());
 	    // Points
-	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> pointgeom;
-	    std::vector<cpgrid::Geometry<2, 3> > fg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pointgeom;
+	    std::vector<cpgrid::Geometry<0, 3> > pg;
 	    MakeGeometry<0> mpointg;
 	    std::transform(points.begin(), points.end(),
-			   std::back_inserter(fg), mpointg);
-	    pointgeom.assign(fg.begin(), fg.end());
+			   std::back_inserter(pg), mpointg);
+	    pointgeom.assign(pg.begin(), pg.end());
 
 	    // The final, combined object (yes, a lot of copying goes on here).
 	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
