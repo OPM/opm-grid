@@ -81,7 +81,7 @@ void check_cpgrid()
     // check the intersection iterator and the geometries it returns
     checkIntersectionIterator(grid);
 #endif
-};
+}
 
 
 int main(int /*argc*/ , char** /*argv*/)
@@ -96,4 +96,4 @@ int main(int /*argc*/ , char** /*argv*/)
         return 2;
     }
     return 0;
-};
+}
