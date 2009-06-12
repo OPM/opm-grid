@@ -49,7 +49,7 @@ namespace Dune
     {
 	EclipseGridParser parser(filename);
 	EclipseGridInspector inspector(parser);
-	Grdecl g;
+	grdecl g;
 	g.dims[0] = inspector.gridSize()[0];
 	g.dims[1] = inspector.gridSize()[1];
 	g.dims[2] = inspector.gridSize()[2];
