@@ -189,12 +189,22 @@ namespace Dune
 	}
 
 
-        /// Initialize the grid.
+        /// Initialize the grid from parameters.
 	void init(const parameter::ParameterGroup& param);
 
 
-	/// Read the sintef legacy grid format ('topogeom').
-	void readSintefLegacyFormat(const parameter::ParameterGroup& param);
+	/// Read the Sintef legacy grid format ('topogeom').
+	/// \param grid_prefix the grid name, such that topology is
+	/// found in <grid_prefix>-topo.dat etc.
+	void readSintefLegacyFormat(const std::string& grid_prefix);
+
+
+	/// Read the Eclipse grid format ('grdecl').
+	/// \param filename the name of the file to read.
+	void readEclipseFormat(const std::string& filename);
+
+
+	// --- Dune interface below ---
 
 
         /// Return grid name.

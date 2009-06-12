@@ -86,7 +86,7 @@ namespace Dune
 		THROW("End of row start indices different from data size.");
 	    }
 	}
-	    
+
 
 	/// True if the table contains no rows.
 	bool empty() const
@@ -120,6 +120,7 @@ namespace Dune
 	/// Returns a row of the table.
 	row_type operator[](int row) const
 	{
+	    ASSERT(row >= 0 && row < size());
 	    const T* start_ptr = &data_[0];
 	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
 	}

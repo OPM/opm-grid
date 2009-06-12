@@ -1,8 +1,8 @@
 //===========================================================================
 //
-// File: CpGrid.cpp
+// File: readEclipseFormat.cpp
 //
-// Created: Thu Jun  4 12:55:28 2009
+// Created: Fri Jun 12 09:16:59 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
@@ -33,32 +33,29 @@ You should have received a copy of the GNU General Public License
 along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
 #include <fstream>
 #include "../CpGrid.hpp"
+#include "EclipseGridParser.hpp"
+#include "EclipseGridInspector.hpp"
+#include "../preprocess/grdecl.h"
 
 namespace Dune
 {
 
 
-
-
-    /// Initialize the grid.
-    void CpGrid::init(const parameter::ParameterGroup& param)
+    /// Read the Sintef legacy grid format ('topogeom').
+    void CpGrid::readEclipseFormat(const std::string& filename)
     {
-	std::string fileformat = param.get<std::string>("fileformat");
-	if (fileformat == "sintef_legacy") {
-	    std::string grid_prefix = param.get<std::string>("grid_prefix");
-	    readSintefLegacyFormat(grid_prefix);
-	} else if (fileformat == "eclipse") {
-	    std::string filename = param.get<std::string>("filename");
-	    readEclipseFormat(filename);
-	} else {
-	    THROW("Unknown file format string: " << fileformat);
-	}
+	EclipseGridParser parser(filename);
+	EclipseGridInspector inspector(parser);
+	Grdecl g;
+	g.dims[0] = inspector.gridSize()[0];
+	g.dims[1] = inspector.gridSize()[1];
+	g.dims[2] = inspector.gridSize()[2];
+	g.coord = &(parser.getFloatingPointValue("COORD")[0]);
+	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
+	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
     }
-
-
-
-
 
 } // namespace Dune
