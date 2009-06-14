@@ -44,7 +44,7 @@ namespace Dune
 {
 
 
-    /// Read the Sintef legacy grid format ('topogeom').
+    /// Read the Eclipse grid format ('.grdecl').
     void CpGrid::readEclipseFormat(const std::string& filename)
     {
 	EclipseGridParser parser(filename);
