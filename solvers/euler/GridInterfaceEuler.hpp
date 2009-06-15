@@ -38,7 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <dune/common/fvector.hh>
-
+#include <boost/iterator/iterator_facade.hpp>
 
 namespace Dune
 {
@@ -48,80 +48,117 @@ namespace Dune
     {
 
 	template <class DuneGrid>
-	class Face
+	class Intersection : public boost::iterator_facade<Intersection<DuneGrid>,
+							   const Intersection<DuneGrid>,
+							   boost::forward_traversal_tag>
 	{
 	public:
+	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
+	    Intersection(DuneIntersectionIter it)
+		: iter_(it)
+	    {
+	    }
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
+	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
-	    Scalar area() const;
-	    Vector centroid() const;
-	    Vector normal() const;
-	protected:
-	    void increment();
-	    bool isAtEnd() const;
-	};
 
-	template <class DuneGrid>
-	class FaceIterator : public Face<DuneGrid>
-	{
-	public:
-	    FaceIterator& operator++()
+	    Scalar area() const
 	    {
-		Face<DuneGrid>::increment();
+		return iter_->geometry().volume();
+	    }
+
+	    Vector centroid() const
+	    {
+		return iter_->geometry().global(localCentroid());
+	    }
+
+	    Vector normal() const
+	    {
+		return iter_->unitOuterNormal(localCentroid());
+	    }
+
+	    /// Used by iterator facade.
+	    const Intersection& dereference() const
+	    {
 		return *this;
 	    }
-
-	    const Face<DuneGrid>* operator->() const
+	    /// Used by iterator facade.
+	    bool equal(const Intersection& other) const
 	    {
-		ASSERT(!Face<DuneGrid>::isAtEnd());
-		return this;
+		return iter_ == other.iter_;
+	    }
+	    /// Used by iterator facade.
+	    void increment()
+	    {
+		++iter_;
+	    }
+	private:
+	    DuneIntersectionIter iter_;
+
+	    LocalVector localCentroid() const
+	    {
+		typedef Dune::ReferenceElements<typename DuneGrid::ctype, DuneGrid::dimension - 1> RefElems;
+		return RefElems::general(iter_->type()).position(0,0);
 	    }
 
-	    const Face<DuneGrid>& operator*() const
-	    {
-		ASSERT(!Face<DuneGrid>::isAtEnd());
-		return *this;
-	    }
 	};
 
 
 	template <class DuneGrid>
-	class Cell
+	class Cell : public boost::iterator_facade<Cell<DuneGrid>,
+						   const Cell<DuneGrid>,
+						   boost::forward_traversal_tag>
 	{
 	public:
-	    typedef GIE::FaceIterator<DuneGrid> FaceIterator;
+	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
+	    Cell(DuneCellIter it)
+		: iter_(it)
+	    {
+	    }
+	    typedef GIE::Intersection<DuneGrid> FaceIterator;
 	    typedef typename FaceIterator::Vector Vector;
 	    typedef typename FaceIterator::Scalar Scalar;
-	    FaceIterator facebegin() const;
-	    FaceIterator faceend() const;
-	    Scalar volume() const;
-	    Vector centroid() const;
-	protected:
-	    void increment();
-	    bool isAtEnd() const;
-	};
 
-	template <class DuneGrid>
-	class CellIterator : public Cell<DuneGrid>
-	{
-	public:
-	    CellIterator& operator++()
+	    FaceIterator facebegin() const
 	    {
-		Cell<DuneGrid>::increment();
+		return iter_->ileafbegin();
+	    }
+
+	    FaceIterator faceend() const
+	    {
+		return iter_->ileafend();
+	    }
+
+	    Scalar volume() const
+	    {
+		return iter_->geometry().volume();
+	    }
+
+	    Vector centroid() const
+	    {
+		typedef Dune::ReferenceElements<typename DuneGrid::ctype, DuneGrid::dimension> RefElems;
+		Vector localpt
+		    = RefElems::general(iter_->type()).position(0,0);
+		return iter_->geometry().global(localpt);
+	    }
+
+	    /// Used by iterator facade.
+	    const Cell& dereference() const
+	    {
 		return *this;
 	    }
-
-	    const Cell<DuneGrid>* operator->() const
+	    /// Used by iterator facade.
+	    bool equal(const Cell& other) const
 	    {
-		ASSERT(!Cell<DuneGrid>::isAtEnd());
-		return this;
+		return iter_ == other.iter_;
 	    }
-
-	    const Cell<DuneGrid>& operator*() const
+	    /// Used by iterator facade.
+	    void increment()
 	    {
-		ASSERT(!Cell<DuneGrid>::isAtEnd());
-		return *this;
+		++iter_;
 	    }
+	private:
+	    DuneCellIter iter_;
 	};
 
     } // namespace GIE
@@ -135,13 +172,14 @@ namespace Dune
 	    : grid_(grid)
 	{
 	}
-	typedef GIE::CellIterator<DuneGrid> CellIterator;
+	typedef GIE::Cell<DuneGrid> CellIterator;
 	CellIterator cellbegin() const
 	{
-	    return CellIterator(grid_, 0);
+	    return CellIterator(grid_.template leafbegin<0>());
 	}
 	CellIterator cellend() const
 	{
+	    return CellIterator(grid_.template leafend<0>());
 	}
     private:
 	const DuneGrid& grid_;
