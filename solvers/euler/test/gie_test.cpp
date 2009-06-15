@@ -45,16 +45,17 @@ template <class Interface>
 void test_interface(const Interface& g)
 {
     std::cout << "Called test_interface()" << std::endl;
-    int count = 0;
     typename Interface::CellIterator c = g.cellbegin();
-    for (; c != g.cellend(); ++c) {
-	std::cout << "\nCell number: " << count++
+    int count = 0;
+    for (; c != g.cellend(); ++c, ++count) {
+	std::cout << "\nCell number: " << count
 		  << "\n    Cell volume   = " << c->volume()
 		  << "\n    Cell centroid = " << c->centroid() << '\n';
+
 	typename Interface::CellIterator::FaceIterator f = c->facebegin();
-	int fcount = 0;
-	for (; f != c->faceend(); ++f) {
-	    std::cout << "        Face number: " << fcount++
+        int fcount = 0;
+	for (; f != c->faceend(); ++f, ++fcount) {
+	    std::cout << "        Face number: " << fcount
 		      << "\n        Face area     = " << f->area()
 		      << "\n        Face centroid = " << f->centroid()
 		      << "\n        Face normal   = " << f->normal() << '\n';
@@ -91,7 +92,7 @@ void check_yasp(bool p0=false) {
     // Test the interface
     Dune::GridInterfaceEuler<Dune::YaspGrid<dim> > gie(grid);
     test_interface(gie);
-};
+}
 
 int main (int argc , char **argv) {
     try {
@@ -119,5 +120,4 @@ int main (int argc , char **argv) {
 #endif
 
     return 0;
-};
-
+}
