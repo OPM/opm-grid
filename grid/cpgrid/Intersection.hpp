@@ -62,7 +62,7 @@ namespace Dune
 	    typedef cpgrid::Geometry<2,3> LocalGeometry;
 	    typedef double ctype;
 
-            Intersection(const GridType& grid, EntityRep<0> cell, int subindex)
+            Intersection(const GridType& grid, EntityRep<0> cell, int subindex, bool update_now = true)
 		: pgrid_(&grid),
 		  index_(cell.index()),
 		  subindex_(subindex),
@@ -70,9 +70,14 @@ namespace Dune
 		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
 		  in_inside_geom_(global_geom_.position()
 				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().position(),
-				  global_geom_.volume())
+				  global_geom_.volume()),
+		  nbcell_(cell.index()), // Init to self, which is invalid.
+		  is_on_boundary_(false)
             {
                 ASSERT(index_ >= 0);
+		if (update_now) {
+		    update();
+		}
             }
 
             bool operator==(const Intersection& other) const
@@ -87,9 +92,7 @@ namespace Dune
 
             bool boundary() const
             {
-                EntityRep<1> face = faces_of_cell_[subindex_];
-                OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
-                return cells_of_face.size() == 1;
+		return is_on_boundary_;
             }
 
             /// Returns the boundary id of this intersection.
@@ -139,6 +142,9 @@ namespace Dune
             // local coordinates of the outside() entity.
             const LocalGeometry& geometryInOutside() const
 	    {
+		if (boundary()) {
+		    THROW("Cannot access geometryInOutside(), intersection is at a boundary.");
+		}
 		return in_outside_geom_;
 	    }
 
@@ -220,6 +226,8 @@ namespace Dune
 	    Geometry global_geom_;
 	    LocalGeometry in_inside_geom_;
 	    LocalGeometry in_outside_geom_;
+	    int nbcell_;
+	    bool is_on_boundary_;
 
 	    void increment()
 	    {
@@ -231,9 +239,22 @@ namespace Dune
 
 	    void update()
 	    {
-		in_outside_geom_ = LocalGeometry(global_geom_.position()
-						 - outside().geometry().position(),
-						 global_geom_.volume());
+                EntityRep<1> face = faces_of_cell_[subindex_];
+                OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
+		is_on_boundary_ = (cells_of_face.size() == 1);
+		if (is_on_boundary_) {
+		    nbcell_ = index_; // self is invalid value
+		} else {
+                    ASSERT(cells_of_face.size() == 2);
+                    if (cells_of_face[0].index() == index_) {
+                        nbcell_ = cells_of_face[1].index();
+                    } else {
+                        nbcell_ = cells_of_face[0].index();
+                    }
+		    in_outside_geom_ = LocalGeometry(global_geom_.position()
+						     - outside().geometry().position(),
+						     global_geom_.volume());
+		}
 	    }
 
 	    void setAtEnd()
@@ -241,21 +262,18 @@ namespace Dune
 		subindex_ = faces_of_cell_.size();
 	    }
 
+	    bool isAtEnd() const
+	    {
+		return subindex_ == faces_of_cell_.size();
+	    }
+
             int nbcell() const
             {
-                EntityRep<1> face = faces_of_cell_[subindex_];
-                OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
-                if (cells_of_face.size() == 1) {
-                    THROW("Face " << face.index() << " is on the boundary, you cannot get the neighbouring cell.");
-                } else {
-                    ASSERT(cells_of_face.size() == 2);
-                    if (cells_of_face[0].index() == index_) {
-                        return cells_of_face[1].index();
-                    } else {
-                        return cells_of_face[0].index();
-                    }
-                }
-            }
+		if (is_on_boundary_) {
+		    THROW("There is no outside cell, intersection is at boundary.");
+		}
+		return nbcell_;
+	    }
         };
 
 
@@ -269,7 +287,7 @@ namespace Dune
             typedef cpgrid::Intersection<GridType> Intersection;
 
             IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
-                    : Intersection(grid, cell, 0)
+		: Intersection(grid, cell, 0, !at_end)
             {
                 if (at_end) {
                     Intersection::setAtEnd();
@@ -286,11 +304,13 @@ namespace Dune
 
             const Intersection* operator->() const
             {
+		ASSERT(!Intersection::isAtEnd());
                 return this;
             }
 
             const Intersection& operator*() const
             {
+		ASSERT(!Intersection::isAtEnd());
                 return *this;
             }
 
