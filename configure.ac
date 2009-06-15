@@ -38,7 +38,9 @@ AC_SUBST(AM_LDFLAGS, $DUNE_LDFLAGS)
 LIBS="$DUNE_LIBS"
 
 AC_CONFIG_FILES([
+  dune-cornerpoint.pc
   Makefile
+  m4/Makefile
   common/Makefile
   common/param/Makefile
   grid/Makefile
@@ -47,8 +49,10 @@ AC_CONFIG_FILES([
   grid/common/test/Makefile
   grid/cpgrid/Makefile
   grid/cpgrid/test/Makefile
-  m4/Makefile
-  dune-cornerpoint.pc
+  solvers/Makefile
+  solvers/euler/Makefile
+  solvers/euler/test/Makefile
+  solvers/mimetic/Makefile
 ])
 AC_OUTPUT
 # finally print the summary information
