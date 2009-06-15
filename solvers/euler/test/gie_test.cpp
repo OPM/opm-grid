@@ -49,6 +49,7 @@ void test_interface(const Interface& g)
     int count = 0;
     for (; c != g.cellend(); ++c, ++count) {
 	std::cout << "\nCell number: " << count
+		  << "\nCell index : " << c->index()
 		  << "\n    Cell volume   = " << c->volume()
 		  << "\n    Cell centroid = " << c->centroid() << '\n';
 
@@ -56,9 +57,12 @@ void test_interface(const Interface& g)
         int fcount = 0;
 	for (; f != c->faceend(); ++f, ++fcount) {
 	    std::cout << "        Face number: " << fcount
-		      << "\n        Face area     = " << f->area()
-		      << "\n        Face centroid = " << f->centroid()
-		      << "\n        Face normal   = " << f->normal() << '\n';
+		      << "\n            Boundary       = " << f->boundary()
+		      << "\n            Boundary Id    = " << f->boundaryId()
+		      << "\n            Neighbour cell = " << f->neighbourIndex()
+		      << "\n            Face area      = " << f->area()
+		      << "\n            Face centroid  = " << f->centroid()
+		      << "\n            Face normal    = " << f->normal() << '\n';
 	}
 	std::cout << "    Total face count for cell: " << fcount << '\n';
     }

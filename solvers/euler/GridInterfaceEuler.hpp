@@ -54,13 +54,17 @@ namespace Dune
 	{
 	public:
 	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
-	    Intersection(DuneIntersectionIter it)
-		: iter_(it)
+	    Intersection(const DuneGrid& grid, DuneIntersectionIter it)
+		: grid_(grid), iter_(it)
 	    {
 	    }
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
+	    //typedef typename DuneGrid::LeafIndexSet::IndexType Index;
+	    typedef int Index;
+
+	    enum { BoundaryMarkerIndex = -1 };
 
 	    Scalar area() const
 	    {
@@ -75,6 +79,25 @@ namespace Dune
 	    Vector normal() const
 	    {
 		return iter_->unitOuterNormal(localCentroid());
+	    }
+
+	    bool boundary() const
+	    {
+		return iter_->boundary();
+	    }
+
+	    int boundaryId() const
+	    {
+		return iter_->boundaryId();
+	    }
+
+	    Index neighbourIndex() const
+	    {
+		if (iter_->boundary()) {
+		    return BoundaryMarkerIndex;
+		} else {
+		    return grid_.leafIndexSet().index(*iter_->outside());
+		}
 	    }
 
 	    /// Used by iterator facade.
@@ -93,6 +116,7 @@ namespace Dune
 		++iter_;
 	    }
 	private:
+	    const DuneGrid& grid_;
 	    DuneIntersectionIter iter_;
 
 	    LocalVector localCentroid() const
@@ -111,22 +135,23 @@ namespace Dune
 	{
 	public:
 	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
-	    Cell(DuneCellIter it)
-		: iter_(it)
+	    Cell(const DuneGrid& grid, DuneCellIter it)
+		: grid_(grid), iter_(it)
 	    {
 	    }
 	    typedef GIE::Intersection<DuneGrid> FaceIterator;
 	    typedef typename FaceIterator::Vector Vector;
 	    typedef typename FaceIterator::Scalar Scalar;
+	    typedef typename FaceIterator::Index Index;
 
 	    FaceIterator facebegin() const
 	    {
-		return iter_->ileafbegin();
+		return FaceIterator(grid_, iter_->ileafbegin());
 	    }
 
 	    FaceIterator faceend() const
 	    {
-		return iter_->ileafend();
+		return FaceIterator(grid_, iter_->ileafend());
 	    }
 
 	    Scalar volume() const
@@ -140,6 +165,11 @@ namespace Dune
 		Vector localpt
 		    = RefElems::general(iter_->type()).position(0,0);
 		return iter_->geometry().global(localpt);
+	    }
+
+	    Index index() const
+	    {
+		return grid_.leafIndexSet().index(*iter_);
 	    }
 
 	    /// Used by iterator facade.
@@ -158,6 +188,7 @@ namespace Dune
 		++iter_;
 	    }
 	private:
+	    const DuneGrid& grid_;
 	    DuneCellIter iter_;
 	};
 
@@ -175,11 +206,11 @@ namespace Dune
 	typedef GIE::Cell<DuneGrid> CellIterator;
 	CellIterator cellbegin() const
 	{
-	    return CellIterator(grid_.template leafbegin<0>());
+	    return CellIterator(grid_, grid_.template leafbegin<0>());
 	}
 	CellIterator cellend() const
 	{
-	    return CellIterator(grid_.template leafend<0>());
+	    return CellIterator(grid_, grid_.template leafend<0>());
 	}
     private:
 	const DuneGrid& grid_;
