@@ -462,7 +462,9 @@ WARN_LOGFILE           =
 
 INPUT                  = @srcdir@/mainpage \
                          @srcdir@/modules \
-                         @top_srcdir@/
+                         @top_srcdir@/common/ \
+                         @top_srcdir@/grid/ \
+                         @top_srcdir@/solvers/
 
 # If the value of the INPUT tag contains directories, you can use the 
 # FILE_PATTERNS tag to specify one or more wildcard pattern (like *.cpp 
