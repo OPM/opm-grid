@@ -66,7 +66,7 @@ namespace Dune
 	class EntityRep
 	{
 	public:
-	    /// Constructor taking an integer representation directly.
+	    /// \brief Constructor taking an integer representation directly.
 	    /// This is one of the few places where the private representation is exposed,
 	    /// the others being in the classes that are friends of this one. These places
 	    /// need to be modified if we change the representation.
@@ -86,7 +86,7 @@ namespace Dune
 		return entityrep_ >= 0;
 	    }
 
-	    /// Ordering relation used for maps etc. Sorting on index and then orientation,
+	    /// \brief Ordering relation used for maps etc. Sorting on index and then orientation,
 	    /// with positive orientations first.
 	    bool operator<(const EntityRep& other) const
 	    {
@@ -195,12 +195,15 @@ namespace Dune
 	public:
 	    typedef SparseTable<int>::row_type R;
 	    typedef EntityRep<codim_to> ToType;
+
+	    /// \brief Constructor taking a row type and an orientation.
 	    OrientedEntityRange(const R& r, bool orientation)
 		: R(r), orientation_(orientation)
 	    {
 	    }
 	    using R::size;
 	    using R::empty;
+	    /// Random access operator
 	    ToType operator[](int subindex) const
 	    {
 		int erep = R::operator[](subindex);
@@ -233,9 +236,9 @@ namespace Dune
 	    {
 	    }
 
-	    /// Constructor taking a iterators to a sequence of table
+	    /// \brief Constructor taking iterators to a sequence of table
 	    /// data and a sequence of row size data. These table data
-	    /// are int the same format as the underlying
+	    /// are in the same format as the underlying
 	    /// \see SparseTable<int> constructor with the same
 	    /// signature.
 	    template <typename DataIter, typename IntegerIter>
@@ -248,7 +251,7 @@ namespace Dune
 	    using SparseTable<int>::empty;
 	    using SparseTable<int>::size;
 
-	    /// Given an entity e of codimension codim_from, returns a
+	    /// \brief Given an entity e of codimension codim_from, returns a
 	    /// row (an indirect container) containing its neighbour
 	    /// entities of codimension codim_to.
 	    row_type operator[](const FromType& e) const
@@ -262,13 +265,13 @@ namespace Dune
 		return SparseTable<int>::operator==(other);
 	    }
 
-	    /// Prints the relation matrix corresponding to the table.
+	    /// \brief Prints the relation matrix corresponding to the table.
 	    /// Let the entities of codimensions f and t be given by
-	    /// the sets E^f = { e^f_i } and E^t = { e^t_j }.
+	    /// the sets \f$E^f = { e^f_i}\f$ and \f$E^t = { e^t_j }\f$.
 	    /// A relation matrix R is defined by
-	    ///     R_{ij} = 0  if e^f_i and e^t_j are not neighbours,
-	    ///            = 1  if they are neighbours with same orientation,
-	    ///            = -1 if they are neighboures with opposite orientation.
+	    ///     \f$R_{ij} = 0\f$  if \f$e^f_i\f$ and \f$e^t_j\f$ are not neighbours,
+	    ///               = 1  if they are neighbours with same orientation,
+	    ///               = -1 if they are neighbours with opposite orientation.
 	    void printRelationMatrix(std::ostream& os) const
 	    {
 		int columns = numberOfColumns();
@@ -302,7 +305,7 @@ namespace Dune
 		}
 	    }
 
-	    /// Makes the inverse relation, mapping codim_to entities
+	    /// \brief Makes the inverse relation, mapping codim_to entities
 	    /// to their codim_from neighbours.
 	    /// Implementation note: The algorithm should be changed
 	    /// to a two-pass O(n) algorithm.
