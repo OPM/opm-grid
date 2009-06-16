@@ -27,7 +27,7 @@ DUNE_CHECK_ALL
 #       Boost.Filesystem *MUST* be called before LIBS="$DUNE_LIBS"
 #       below.  This is due to the macros' explicit use of the $LIBS
 #       variable.
-AX_BOOST_BASE([[1.38]])
+AX_BOOST_BASE([[1.37]])
 AX_BOOST_FILESYSTEM
 AX_BOOST_SYSTEM
 AX_BOOST_UNIT_TEST_FRAMEWORK
@@ -53,6 +53,9 @@ AC_CONFIG_FILES([
   solvers/euler/Makefile
   solvers/euler/test/Makefile
   solvers/mimetic/Makefile
+  doc/Makefile
+  doc/doxygen/Makefile
+  doc/doxygen/Doxyfile
 ])
 AC_OUTPUT
 # finally print the summary information
