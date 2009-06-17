@@ -50,26 +50,35 @@ namespace Dune
     namespace cpgrid
     {
 
+	/** \class EntityRep
+	 *  \brief Represents an entity of a given codim, with positive or negative orientation.
+	 *
+	 * This class is not a part of the Dune interface, but of our implementation.
+	 * Since this class has a few friends, and for aid in debugging, we document its
+	 * interior representation here:
+	 * The interior representation consists of an integer entityrep_
+	 * which, if positive or zero, indicates the index of the entity.
+	 * In that case, the entity's orientation is positive.
+	 * If entityrep_ is negative, the orientation is negative, and the index
+	 * is given by ~entityrep_ (we cannot use -entityrep_, since 0 is a valid index).
+	 * We may consider changing this representation to using something like a
+	 * std::pair<int, bool> instead.
+	 */
 
-	/// \brief Represents an entity of a given codim, with positive or negative orientation.
-	/// This class is not a part of the Dune interface, but of our implementation.
-	/// Since this class has a few friends, and for aid in debugging, we document its
-	/// interior representation here:
-	/// The interior representation consists of an integer entityrep_
-	/// which, if positive or zero, indicates the index of the entity.
-	/// In that case, the entity's orientation is positive.
-	/// If entityrep_ is negative, the orientation is negative, and the index
-	/// is given by ~entityrep_ (we cannot use -entityrep_, since 0 is a valid index).
-	/// We may consider changing this representation to using something like a
-	/// std::pair<int, bool> instead.
 	template <int codim>
 	class EntityRep
 	{
 	public:
-	    /// \brief Constructor taking an integer representation directly.
-	    /// This is one of the few places where the private representation is exposed,
-	    /// the others being in the classes that are friends of this one. These places
-	    /// need to be modified if we change the representation.
+	    /** \brief Constructor taking an integer representation directly.
+	     *
+	     * This is one of the few places where the private representation is exposed,
+	     * the others being in the classes that are friends of this one. These places
+	     * need to be modified if we change the representation.
+	     * Constructor taking an integer representation directly.
+	     * This is one of the few places where the private representation is exposed,
+	     * the others being in the classes that are friends of this one. These places
+	     * need to be modified if we change the representation.
+	     */
 	    explicit EntityRep(int erep)
 		: entityrep_(erep)
 	    {
@@ -125,10 +134,8 @@ namespace Dune
 
 
 
-
-
-	/// \brief Base class for EntityVariable and EntityVariableBase.
-	/// Forwards a restricted subset of the std::vector interface.
+       /// \brief Base class for EntityVariable and SignedEntityVariable.
+       /// Forwards a restricted subset of the std::vector interface.
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
 	{
@@ -188,7 +195,7 @@ namespace Dune
 
 
 
-	/// A class used as a row type for \see OrientedEntityTable.
+	/// A class used as a row type for  OrientedEntityTable.
 	template <int codim_to>
 	class OrientedEntityRange : private SparseTable<int>::row_type
 	{
@@ -239,7 +246,7 @@ namespace Dune
 	    /// \brief Constructor taking iterators to a sequence of table
 	    /// data and a sequence of row size data. These table data
 	    /// are in the same format as the underlying
-	    /// \see SparseTable<int> constructor with the same
+	    /// SparseTable<int> constructor with the same
 	    /// signature.
 	    template <typename DataIter, typename IntegerIter>
 	    OrientedEntityTable(DataIter data_beg, DataIter data_end,
@@ -268,10 +275,10 @@ namespace Dune
 	    /// \brief Prints the relation matrix corresponding to the table.
 	    /// Let the entities of codimensions f and t be given by
 	    /// the sets \f$E^f = { e^f_i}\f$ and \f$E^t = { e^t_j }\f$.
-	    /// A relation matrix R is defined by
-	    ///     \f$R_{ij} = 0\f$  if \f$e^f_i\f$ and \f$e^t_j\f$ are not neighbours,
-	    ///               = 1  if they are neighbours with same orientation,
-	    ///               = -1 if they are neighbours with opposite orientation.
+	    /// A relation matrix R is defined by\n
+	    ///     \f$R_{ij} = 0\f$  if \f$e^f_i\f$ and \f$e^t_j\f$ are not neighbours,\n
+	    ///            \f$= 1\f$  if they are neighbours with same orientation,\n
+	    ///            \f$= -1\f$ if they are neighbours with opposite orientation.
 	    void printRelationMatrix(std::ostream& os) const
 	    {
 		int columns = numberOfColumns();
