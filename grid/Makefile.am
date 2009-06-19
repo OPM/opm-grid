@@ -1,6 +1,6 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
-SUBDIRS = common cpgrid test
+SUBDIRS = common preprocess cpgrid test
 
 griddir = $(includedir)/dune/grid
 grid_HEADERS = CpGrid.hpp
