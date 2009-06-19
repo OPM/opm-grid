@@ -201,7 +201,7 @@ namespace Dune
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
-	void readEclipseFormat(const std::string& filename);
+	void readEclipseFormat(const std::string& filename, double z_tolerance = 0.0);
 
 
 	// --- Dune interface below ---

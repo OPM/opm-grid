@@ -51,7 +51,8 @@ namespace Dune
 	    readSintefLegacyFormat(grid_prefix);
 	} else if (fileformat == "eclipse") {
 	    std::string filename = param.get<std::string>("filename");
-	    readEclipseFormat(filename);
+	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
+	    readEclipseFormat(filename, z_tolerance);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
 	}

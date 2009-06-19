@@ -2,7 +2,7 @@
 
 check_PROGRAMS = cpgrid_test
 
-noinst_PROGRAMS = grid_read_test finitevolume_test
+noinst_PROGRAMS = grid_read_test finitevolume_test #dumux_test
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
 cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
@@ -20,6 +20,12 @@ grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 grid_read_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
                        $(DUNE_LIBS) ../cpgrid/libcpgrid.la \
                        ../../common/param/libparam.la $(BOOST_SYSTEM_LIB)
+
+#dumux_test_SOURCES = dumux_test.cpp
+#dumux_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) -I/Users/atgeirr/openrs/dune-mux-1.0-rc1
+#dumux_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+#                       $(DUNE_LIBS) ../cpgrid/libcpgrid.la \
+#                       ../../common/param/libparam.la $(BOOST_SYSTEM_LIB)
 
 TESTS = $(check_PROGRAMS)
 

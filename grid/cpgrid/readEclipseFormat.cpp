@@ -38,17 +38,20 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include "../CpGrid.hpp"
 #include "EclipseGridParser.hpp"
 #include "EclipseGridInspector.hpp"
-#include "../preprocess/grdecl.h"
+#include "../preprocess/preprocess.h"
 
 namespace Dune
 {
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::readEclipseFormat(const std::string& filename)
+    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance)
     {
+	// Read eclipse file data.
 	EclipseGridParser parser(filename);
 	EclipseGridInspector inspector(parser);
+
+	// Make input struct for processing code.
 	grdecl g;
 	g.dims[0] = inspector.gridSize()[0];
 	g.dims[1] = inspector.gridSize()[1];
@@ -56,6 +59,13 @@ namespace Dune
 	g.coord = &(parser.getFloatingPointValue("COORD")[0]);
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
 	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
+
+	// Process.
+	processed_grid output;
+	process_grdecl(&g, z_tolerance, &output);
+
+	free_processed_grid(&output);
     }
 
 } // namespace Dune
+
