@@ -6,9 +6,10 @@ noinst_PROGRAMS = grid_read_test finitevolume_test #dumux_test
 
 LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \
-         ../../common/param/libparam.la \
+         ../cpgrid/libcpgrid.la \
 	 ../preprocess/libpreprocess.la \
-         ../cpgrid/libcpgrid.la
+         ../../common/param/libparam.la
+
 #CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
