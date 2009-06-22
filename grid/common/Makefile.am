@@ -5,5 +5,10 @@ SUBDIRS = test
 commondir = $(includedir)/dune/grid/common
 common_HEADERS = SparseTable.hpp ErrorMacros.hpp
 
+
+lib_LTLIBRARIES = libtemporaryhack.la
+
+libtemporaryhack_la_SOURCES = GeometryHelpers.cpp
+
 include $(top_srcdir)/am/global-rules
 

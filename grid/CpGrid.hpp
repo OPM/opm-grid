@@ -525,7 +525,6 @@ namespace Dune
 	}
 	typedef FieldVector<ctype, 3> PointType;
 	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
-
     }; // end Class CpGrid
 
 

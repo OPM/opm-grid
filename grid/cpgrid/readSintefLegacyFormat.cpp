@@ -267,6 +267,7 @@ namespace Dune
 		geom >> cell_volumes[i];
 	    }
 
+	    // Code below has been copied to readEclipseFormat: \TODO Refactor!
 	    // Cells
 	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
 	    std::vector<cpgrid::Geometry<3, 3> > cg;
