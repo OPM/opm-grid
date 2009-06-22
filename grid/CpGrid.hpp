@@ -14,28 +14,29 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_CPGRID_HEADER
 #define OPENRS_CPGRID_HEADER
 
+#include "config.h"
 
 #include <string>
 #include <map>
@@ -52,7 +53,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include "cpgrid/Intersection.hpp"
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
-				    //#include "cpgrid/GridView.hpp"
+//#include "cpgrid/GridView.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 
 #include "common/SparseTable.hpp"
@@ -86,7 +87,7 @@ namespace Dune
 	/// \brief The type of the  hierarchic iterator.
 	typedef cpgrid::HierarchicIterator<CpGrid> HierarchicIterator;
 
-	/// \brief Traits associated with a specific codim. 
+	/// \brief Traits associated with a specific codim.
 	/// \tparam cd The codimension.
 	template <int cd>
 	struct Codim
@@ -212,8 +213,8 @@ namespace Dune
         {
             return "CpGrid";
         }
-    
-        
+
+
         /// Return maximum level defined in this grid. Levels are numbered
         /// 0 ... maxlevel with 0 the coarsest level.
         int maxLevel() const
@@ -250,7 +251,7 @@ namespace Dune
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
             return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
         }
-        
+
 
         /// one past the end on this level
         template<int codim, PartitionIteratorType PiType>
@@ -268,41 +269,41 @@ namespace Dune
 	{
             return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, 0);
         }
-        
-    
+
+
         /// one past the end of the sequence of leaf entities
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
             return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
         }
-        
-    
+
+
         /// Iterator to first leaf entity of given codim
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
             return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
         }
-        
-        
+
+
         /// one past the end of the sequence of leaf entities
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
             return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim));
         }
-        
+
 
         /// \brief Number of grid entities per level and codim
         int size (int level, int codim) const
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return size(codim);        
+            return size(codim);
         }
-        
-        
+
+
         /// number of leaf entities per codim in this process
         int size (int codim) const
 	{
@@ -314,8 +315,8 @@ namespace Dune
 	    default: return 0;
 	    }
         }
-        
-        
+
+
         /// number of entities per level and geometry type in this process
         int size (int level, GeometryType type) const
 	{
@@ -323,8 +324,8 @@ namespace Dune
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
             return size(type);
         }
-        
-            
+
+
         /// number of leaf entities per geometry type in this process
         int size (GeometryType type) const
         {
@@ -334,32 +335,32 @@ namespace Dune
 		return 0;
 	    }
         }
-        
-        
-        /// \brief Access to the GlobalIdSet 
+
+
+        /// \brief Access to the GlobalIdSet
         const Traits::GlobalIdSet& globalIdSet() const
 	{
             return id_set_;
         }
-        
-        
-        /// \brief Access to the LocalIdSet 
+
+
+        /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const
 	{
             return id_set_;
         }
-        
-        
-        /// \brief Access to the LevelIndexSets 
+
+
+        /// \brief Access to the LevelIndexSets
         const Traits::LevelIndexSet& levelIndexSet(int level) const
         {
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
             return index_set_;
         }
-        
-        
-        /// \brief Access to the LeafIndexSet 
+
+
+        /// \brief Access to the LeafIndexSet
         const Traits::LeafIndexSet& leafIndexSet() const
         {
             return index_set_;
@@ -379,7 +380,7 @@ namespace Dune
         {
             hostgrid_->globalRefine(refCount);
         }
-        
+
         /// \brief Mark entity for refinement
 	///
 	/// This only works for entities of codim 0.
@@ -389,16 +390,16 @@ namespace Dune
 	/// <li> true, if marking was succesfull </li>
 	/// <li> false, if marking was not possible </li>
 	/// </ul>
-	 
+
         bool mark(int refCount, const typename Traits::template Codim<0>::EntityPointer & e)
         {
             return hostgrid_->mark(refCount, getHostEntity<0>(*e));
         }
-        
+
         /// \brief Return refinement mark for entity
 	///
 	/// \return refinement mark (1,0,-1)
-	 
+
         int getMark(const typename Traits::template Codim<0>::EntityPointer & e) const
         {
             return hostgrid_->getMark(getHostEntity<0>(*e));
@@ -408,15 +409,15 @@ namespace Dune
         bool preAdapt() {
             return hostgrid_->preAdapt();
         }
-        
-        
+
+
         /// Triggers the grid refinement process
         bool adapt()
         {
             return hostgrid_->adapt();
         }
 
-        /// \brief Clean up refinement markers 
+        /// \brief Clean up refinement markers
         void postAdapt() {
             return hostgrid_->postAdapt();
         }
@@ -426,30 +427,30 @@ namespace Dune
 
 	/* No parallelism implemented.  GridDefaultImplementation's methods will be used.
 
-        /// \brief Size of the overlap on the leaf level 
+        /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int codim) const {
             return hostgrid_->overlapSize(codim);
         }
-        
-        
-        /// \brief Size of the ghost cell layer on the leaf level 
+
+
+        /// \brief Size of the ghost cell layer on the leaf level
         unsigned int ghostSize(int codim) const {
             return hostgrid_->ghostSize(codim);
         }
-        
-        
-        /// \brief Size of the overlap on a given level 
+
+
+        /// \brief Size of the overlap on a given level
         unsigned int overlapSize(int level, int codim) const {
             return hostgrid_->overlapSize(level,codim);
         }
-        
-        
-        /// \brief Size of the ghost cell layer on a given level 
+
+
+        /// \brief Size of the ghost cell layer on a given level
         unsigned int ghostSize(int level, int codim) const {
             return hostgrid_->ghostSize(level,codim);
         }
-        
-            
+
+
         /// \brief Distributes this grid over the available nodes in a distributed machine
 	///
 	/// \param minlevel The coarsest grid level that gets distributed
@@ -457,7 +458,7 @@ namespace Dune
         void loadBalance(int strategy, int minlevel, int depth, int maxlevel, int minelement){
             DUNE_THROW(NotImplemented, "CpGrid::loadBalance()");
         }
-        
+
         /// \brief The communication interface
 	///  @param T: array class holding data associated with the entities
 	///  @param P: type used to gather/scatter data in and out of the message buffer
@@ -470,20 +471,20 @@ namespace Dune
 	///  the protocol. Therefore P is called the "protocol class".
         template<class T, template<class> class P, int codim>
         void communicate (T& t, InterfaceType iftype, CommunicationDirection dir, int level);
-        
+
         /// The new communication interface.
-	/// communicate objects for all codims on a given level        
+	/// communicate objects for all codims on a given level
         template<class DataHandle>
         void communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir, int level) const
         {}
-        
+
         template<class DataHandle>
         void communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const
-        {}        
+        {}
 
 	end of parallel section */
-        
-        /// dummy collective communication 
+
+        /// dummy collective communication
         const CollectiveCommunication& comm () const
         {
             return ccobj_;
@@ -543,14 +544,14 @@ namespace Dune
 	{
 	    static const bool v = true;
 	};
-    
+
 	/// \todo Please doc me !
 	template <>
 	struct isParallel<CpGrid>
 	{
 	    static const bool v = false;
 	};
-    
+
 	/// \todo Please doc me !
 	template <>
 	struct isLevelwiseConforming<CpGrid>
