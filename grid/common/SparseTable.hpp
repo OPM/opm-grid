@@ -57,7 +57,6 @@ namespace Dune
 	{
 	}
 
-
 	/// A constructor taking all the data for the table and row sizes.
 	/// \param data_beg The start of the table data.
 	/// \param data_end One-beyond-end of the table data.
@@ -88,12 +87,19 @@ namespace Dune
 	}
 
 
+	/// Appends a row to the table.
+	template <typename DataIter>
+	void appendRow(DataIter row_beg, DataIter row_end)
+	{
+	    data_.insert(data_.end(), row_beg, row_end);
+	    row_start_.push_back(data_.size());
+	}
+
 	/// True if the table contains no rows.
 	bool empty() const
 	{
 	    return row_start_.empty();
 	}
-
 
 	/// Returns the number of rows in the table.
 	int size() const
