@@ -71,6 +71,7 @@ BOOST_AUTO_TEST_CASE(entity_rep)
     BOOST_CHECK(!(e1 == e2));
     BOOST_CHECK(e1 != e2);
     BOOST_CHECK(!(e1 != e1));
+    BOOST_CHECK_EQUAL(sizeof e1, sizeof(int));
 }
 
 BOOST_AUTO_TEST_CASE(entity_variable)
