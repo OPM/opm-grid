@@ -121,7 +121,7 @@ namespace Dune
 	}
 
 	/// Defining the row type, returned by operator[].
-	typedef boost::iterator_range<const int*> row_type;
+	typedef boost::iterator_range<const T*> row_type;
 
 	/// Returns a row of the table.
 	row_type operator[](int row) const
