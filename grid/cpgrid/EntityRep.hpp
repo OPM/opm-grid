@@ -69,19 +69,33 @@ namespace Dune
 	class EntityRep
 	{
 	public:
+	    /// Default constructor.
+	    EntityRep()
+		: entityrep_(0)
+	    {
+	    }
 	    /** \brief Constructor taking an integer representation directly.
 	     *
 	     * This is one of the few places where the private representation is exposed,
-	     * the others being in the classes that are friends of this one. These places
-	     * need to be modified if we change the representation.
-	     * Constructor taking an integer representation directly.
-	     * This is one of the few places where the private representation is exposed,
-	     * the others being in the classes that are friends of this one. These places
-	     * need to be modified if we change the representation.
+	     * the others being in the classes that inherit this one. These places
+	     * need to be modified if we change the representation, then we should remove
+	     * this constructor.
 	     */
 	    explicit EntityRep(int erep)
 		: entityrep_(erep)
 	    {
+	    }
+	    /// Constructor taking an entity index and an orientation.
+	    EntityRep(int index, bool orientation)
+		: entityrep_(orientation ? index : ~index)
+	    {
+		ASSERT(index >= 0);
+	    }
+	    /// Set entity value.
+	    void setValue(int index, bool orientation)
+	    {
+		ASSERT(index >= 0);
+		entityrep_ = orientation ? index : ~index;
 	    }
 	    /// The (positive) index of an entity. Not a Dune interface method.
 	    int index() const
@@ -93,6 +107,11 @@ namespace Dune
 	    bool orientation() const
 	    {
 		return entityrep_ >= 0;
+	    }
+
+	    EntityRep opposite() const
+	    {
+		return EntityRep(~entityrep_);
 	    }
 
 	    /// \brief Ordering relation used for maps etc. Sorting on index and then orientation,
@@ -123,13 +142,6 @@ namespace Dune
 	protected:
 	    // Interior representation is documented in class main comment.
 	    int entityrep_;
-	    // These friends need not be forward declared since they are templates.
-	    template <typename T, int cd>
-	    friend class EntityVariable;
-	    template <typename T, int cd>
-	    friend class SignedEntityVariable;
-	    template <int cf, int ct>
-	    friend class OrientedEntityTable;
 	};
 
 
@@ -186,9 +198,7 @@ namespace Dune
 	    /// reference, since we may need to flip the sign.
 	    const T operator[](const EntityRep<codim>& e) const
 	    {
-		return e.entityrep_ < 0 ?
-		    -get(~e.entityrep_)
-		    : get(e.entityrep_);
+		return e.orientation() ? get(e.index()) : -get(e.index());
 	    }
 	};
 
@@ -197,11 +207,11 @@ namespace Dune
 
 	/// A class used as a row type for  OrientedEntityTable.
 	template <int codim_to>
-	class OrientedEntityRange : private SparseTable<int>::row_type
+	class OrientedEntityRange : private SparseTable< EntityRep<codim_to> >::row_type
 	{
 	public:
-	    typedef SparseTable<int>::row_type R;
 	    typedef EntityRep<codim_to> ToType;
+	    typedef typename SparseTable<ToType>::row_type R;
 
 	    /// \brief Constructor taking a row type and an orientation.
 	    OrientedEntityRange(const R& r, bool orientation)
@@ -213,8 +223,8 @@ namespace Dune
 	    /// Random access operator
 	    ToType operator[](int subindex) const
 	    {
-		int erep = R::operator[](subindex);
-		return ToType(orientation_ ? erep : ~erep);
+		ToType erep = R::operator[](subindex);
+		return orientation_ ? erep : erep.opposite();
 	    }
 	private:
 	    bool orientation_;
@@ -228,15 +238,14 @@ namespace Dune
 	/// The purpose of this class is to hide the intricacies of
 	/// handling orientations from the client code, otherwise a
 	/// straight SparseTable would do.
-	/// Implementation note: Perhaps we should make this inherit
-	/// from SparseTable<EntityRep<codim_to> > instead?
 	template <int codim_from, int codim_to>
-	class OrientedEntityTable : private SparseTable<int>
+	class OrientedEntityTable : private SparseTable< EntityRep<codim_to> >
 	{
 	public:
 	    typedef EntityRep<codim_from> FromType;
 	    typedef EntityRep<codim_to> ToType;
 	    typedef OrientedEntityRange<codim_to> row_type;
+	    typedef SparseTable<ToType> super_t;
 
 	    /// Default constructor.
 	    OrientedEntityTable()
@@ -251,25 +260,26 @@ namespace Dune
 	    template <typename DataIter, typename IntegerIter>
 	    OrientedEntityTable(DataIter data_beg, DataIter data_end,
 				IntegerIter rowsize_beg, IntegerIter rowsize_end)
-		: SparseTable<int>(data_beg, data_end, rowsize_beg, rowsize_end)
+		: super_t(data_beg, data_end, rowsize_beg, rowsize_end)
 	    {
 	    }
 
-	    using SparseTable<int>::empty;
-	    using SparseTable<int>::size;
+	    using super_t::empty;
+	    using super_t::size;
+	    using super_t::appendRow;
 
 	    /// \brief Given an entity e of codimension codim_from, returns a
 	    /// row (an indirect container) containing its neighbour
 	    /// entities of codimension codim_to.
 	    row_type operator[](const FromType& e) const
 	    {
-		return row_type(SparseTable<int>::operator[](e.index()), e.orientation());
+		return row_type(super_t::operator[](e.index()), e.orientation());
 	    }
 
 	    /// Elementwise equality.
 	    bool operator==(const OrientedEntityTable& other) const
 	    {
-		return SparseTable<int>::operator==(other);
+		return super_t::operator==(other);
 	    }
 
 	    /// \brief Prints the relation matrix corresponding to the table.
@@ -330,7 +340,7 @@ namespace Dune
 			rm.insert(std::make_pair(to_ent.index(), from));
 		    }
 		}
-		ASSERT(int(rm.size()) == SparseTable<int>::dataSize());
+		ASSERT(int(rm.size()) == super_t::dataSize());
 		std::vector<int> new_data;
 		new_data.reserve(rm.size());
 		int last = (--rm.end())->first; // The last key.
