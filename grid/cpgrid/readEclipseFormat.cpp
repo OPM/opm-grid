@@ -64,6 +64,32 @@ namespace Dune
 	processed_grid output;
 	process_grdecl(&g, z_tolerance, &output);
 
+	// Move data into the grid's structures.
+	// Build face_to_cell_
+	int nf = output.number_of_faces;
+	cpgrid::EntityRep<0> cells[2];
+	for (int i = 0; i < nf; ++i) {
+	    const int* fnc = output.face_neighbors + 2*i;
+	    int cellcount = 0;
+	    if (fnc[0] != -1) {
+		cells[cellcount].setValue(fnc[0], true);
+		++cellcount;
+	    }
+	    if (fnc[1] != -1) {
+		cells[cellcount].setValue(fnc[1], false);
+		++cellcount;
+	    }
+	    ASSERT(cellcount == 1 || cellcount == 2);
+	    face_to_cell_.appendRow(cells, cells + cellcount);
+	}
+	// Build cell_to_face_
+	face_to_cell_.makeInverseRelation(cell_to_face_);
+	// Build cell_to_point_ [skipped for now]
+	// Build geometry_
+	
+	// Build face_normals_
+
+	// Clean up the output struct.
 	free_processed_grid(&output);
     }
 
