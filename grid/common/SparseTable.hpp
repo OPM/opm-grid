@@ -92,6 +92,10 @@ namespace Dune
 	void appendRow(DataIter row_beg, DataIter row_end)
 	{
 	    data_.insert(data_.end(), row_beg, row_end);
+	    if (row_start_.empty()) {
+		row_start_.reserve(2);
+		row_start_.push_back(0);
+	    }
 	    row_start_.push_back(data_.size());
 	}
 
