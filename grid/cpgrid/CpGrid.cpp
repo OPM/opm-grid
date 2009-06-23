@@ -55,13 +55,61 @@ namespace Dune
 	    std::string filename = param.get<std::string>("filename");
 	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
 	    readEclipseFormat(filename, z_tolerance);
+	} else if (fileformat == "cartesian") {
+	    array<int, 3> dims = {{ param.get<int>("nx"),
+				    param.get<int>("ny"),
+				    param.get<int>("nz") }};
+	    array<double, 3> cellsz = {{ param.get<int>("dx"),
+					 param.get<int>("dy"),
+					 param.get<int>("dz") }};
+	    createCartesian(dims, cellsz);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
 	}
     }
 
 
+    void CpGrid::createCartesian(const array<int, 3>& dims,
+				 const array<double, 3>& cellsize)
+    {
+	// Make the grdecl format arrays.
+	// Pillar coords.
+	std::vector<double> coord;
+	coord.reserve(6*(dims[0] + 1)*(dims[1] + 1));
+	double bot = 0.0;
+	double top = dims[2]*cellsize[2];
+	// i runs fastest for the pillars.
+	for (int j = 0; j < dims[1] + 1; ++j) {
+	    double y = j*cellsize[1];
+	    for (int i = 0; i < dims[0] + 1; ++i) {
+		double x = i*cellsize[0];
+		double pillar[6] = { x, y, bot, x, y, top };
+		coord.insert(coord.end(), pillar, pillar + 6);
+	    }
+	}
+	std::vector<double> zcorn(8*dims[0]*dims[1]*dims[2]);
+	const int num_per_layer = 4*dims[0]*dims[1];
+	double* offset = &zcorn[0];
+	for (int k = 0; k < dims[2]; ++k) {
+	    double zlow = k*cellsize[2];
+	    std::fill(offset, offset + num_per_layer, zlow);
+	    offset += num_per_layer;
+	    double zhigh = (k+1)*cellsize[2];
+	    std::fill(offset, offset + num_per_layer, zhigh);
+	    offset += num_per_layer;
+	}
+	std::vector<int> actnum(dims[0]*dims[1]*dims[2], 1);
 
+	// Process them.
+	grdecl g;
+	g.dims[0] = dims[0];
+	g.dims[1] = dims[1];
+	g.dims[2] = dims[2];
+	g.coord = &coord[0];
+	g.zcorn = &zcorn[0];
+	g.actnum = &actnum[0];
+	processEclipseFormat(g, 0.0);
+    }
 
 
 } // namespace Dune

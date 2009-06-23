@@ -75,9 +75,16 @@ namespace Dune
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
 	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
 
+	// Make the grid
+	processEclipseFormat(g, z_tolerance);
+    }
+
+    /// Read the Eclipse grid format ('.grdecl').
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance)
+    {
 	// Process.
 	processed_grid output;
-	process_grdecl(&g, z_tolerance, &output);
+	process_grdecl(&input_data, z_tolerance, &output);
 
 	// Move data into the grid's structures.
 	buildTopo(output, cell_to_face_, face_to_cell_);

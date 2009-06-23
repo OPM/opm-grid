@@ -45,6 +45,7 @@
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/common/timer.hh>
+#include <dune/common/array.hh>
 
 #include <dune/common/param/ParameterGroup.hpp>
 
@@ -57,6 +58,7 @@
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 
 #include "common/SparseTable.hpp"
+#include "preprocess/preprocess.h"
 
 
 namespace Dune
@@ -204,6 +206,15 @@ namespace Dune
 	/// \param filename the name of the file to read.
 	void readEclipseFormat(const std::string& filename, double z_tolerance = 0.0);
 
+	/// Read the Eclipse grid format ('grdecl').
+	/// \param input_data the data in grdecl format, declared in preprocess.h.
+	void processEclipseFormat(const grdecl& input_data, double z_tolerance = 0.0);
+
+	/// Create a cartesian grid.
+	/// \param dims the number of cells in each cartesian direction.
+	/// \param cellsize the size of each cell in each dimension.
+	void createCartesian(const array<int, 3>& dims,
+			     const array<double, 3>& cellsize);
 
 	// --- Dune interface below ---
 
