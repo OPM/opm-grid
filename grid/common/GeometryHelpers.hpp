@@ -153,7 +153,8 @@ namespace Dune
 		for(int i = 1; i < 4; ++i){
 		    small_centroid += tet[i];
 		}
-		centroid += small_centroid*small_volume/4.0;
+		small_centroid *= small_volume/4.0;
+		centroid += small_centroid;
 		ASSERT(small_volume >0);
 		tot_volume += small_volume;
 	    }
