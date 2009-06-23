@@ -5,16 +5,42 @@
 // Created: Mon Jun  2 09:46:08 2008                                         
 //                                                                           
 // Author: Atgeirr F Rasmussen <atgeirr@sintef.no>
+//
+// $Date$
 //                                                                           
 // Revision: $Id: EclipseGridInspector.h,v 1.2 2008/08/18 14:16:12 atgeirr Exp $
 //                                                                           
 //===========================================================================
+
+/*
+Copyright 2009 SINTEF ICT, Applied Mathematics.
+Copyright 2009 Statoil ASA.
+
+This file is part of The Open Reservoir Simulator Project (OpenRS).
+
+OpenRS is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+OpenRS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef SINTEF_ECLIPSEGRIDINSPECTOR_HEADER
 #define SINTEF_ECLIPSEGRIDINSPECTOR_HEADER
 
 #include "EclipseGridParser.hpp"
 #include <boost/array.hpp>
+
+
+namespace Dune
+{
 
 /**
    @brief A class for inspecting the contents of an eclipse file.
@@ -26,10 +52,6 @@
    @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
    @date 2008/06/02 09:46:08
 */
-
-namespace Dune
-{
-
 class EclipseGridInspector
 {
 public:

@@ -44,26 +44,24 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <climits>
 #include <boost/algorithm/minmax_element.hpp>
 
-
+/// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
 {
     namespace cpgrid
     {
 
-	/** \class EntityRep
-	 *  \brief Represents an entity of a given codim, with positive or negative orientation.
-	 *
-	 * This class is not a part of the Dune interface, but of our implementation.
-	 * Since this class has a few friends, and for aid in debugging, we document its
-	 * interior representation here:
-	 * The interior representation consists of an integer entityrep_
-	 * which, if positive or zero, indicates the index of the entity.
-	 * In that case, the entity's orientation is positive.
-	 * If entityrep_ is negative, the orientation is negative, and the index
-	 * is given by ~entityrep_ (we cannot use -entityrep_, since 0 is a valid index).
-	 * We may consider changing this representation to using something like a
-	 * std::pair<int, bool> instead.
-	 */
+	/// @brief Represents an entity of a given codim, with positive or negative orientation.
+	///
+	/// This class is not a part of the Dune interface, but of our implementation.
+	/// Since this class has a few friends, and for aid in debugging, we document its
+	/// interior representation here:
+	/// The interior representation consists of an integer entityrep_
+	/// which, if positive or zero, indicates the index of the entity.
+	/// In that case, the entity's orientation is positive.
+	/// If entityrep_ is negative, the orientation is negative, and the index
+	/// is given by ~entityrep_ (we cannot use -entityrep_, since 0 is a valid index).
+	/// We may consider changing this representation to using something like a
+	/// std::pair<int, bool> instead.
 
 	template <int codim>
 	class EntityRep
@@ -74,13 +72,13 @@ namespace Dune
 		: entityrep_(0)
 	    {
 	    }
-	    /** \brief Constructor taking an integer representation directly.
-	     *
-	     * This is one of the few places where the private representation is exposed,
-	     * the others being in the classes that inherit this one. These places
-	     * need to be modified if we change the representation, then we should remove
-	     * this constructor.
-	     */
+	    /// @brief Constructor taking an integer representation directly.
+	    ///
+	    /// This is one of the few places where the private representation is exposed,
+	    /// the others being in the classes that inherit this one. These places
+	    /// need to be modified if we change the representation, then we should remove
+	    /// this constructor.
+
 	    explicit EntityRep(int erep)
 		: entityrep_(erep)
 	    {
@@ -97,25 +95,33 @@ namespace Dune
 		ASSERT(index >= 0);
 		entityrep_ = orientation ? index : ~index;
 	    }
-	    /// The (positive) index of an entity. Not a Dune interface method.
+	    /// @brief The (positive) index of an entity. Not a Dune interface method.
+	    /// @return the (positive) index of an entity.
 	    int index() const
 	    {
 		return entityrep_ < 0 ? ~entityrep_ : entityrep_;
 	    }
 
-	    /// Returns true if the entity has positive orientation. Not a Dune interface method.
+	    /// @brief Returns true if the entity has positive orientation.
+	    /// Not a Dune interface method.
+	    ///
+	    /// @return true if the entity has positive orientation.
 	    bool orientation() const
 	    {
 		return entityrep_ >= 0;
 	    }
 
+	    /// @brief Returns an EntityRep with opposite orientation.
+	    /// @return an EntityRep with opposite orientation.
 	    EntityRep opposite() const
 	    {
 		return EntityRep(~entityrep_);
 	    }
 
-	    /// \brief Ordering relation used for maps etc. Sorting on index and then orientation,
-	    /// with positive orientations first.
+	    /// @brief Ordering relation used for maps etc.
+	    ///
+	    /// Sorting on index and then orientation, with positive orientations first.
+	    /// @return true if \b this element is less than the \b other.
 	    bool operator<(const EntityRep& other) const
 	    {
 		int i1 = index();
@@ -125,13 +131,15 @@ namespace Dune
 		return false;
 	    }
 
-	    /// Equality operator.
+	    /// @brief Equality operator.
+	    /// @return true if \b this and the \b other element are equal.
 	    bool operator==(const EntityRep& other) const
 	    {
 		return entityrep_ == other.entityrep_;
 	    }
 
-	    /// Inequality operator.
+	    /// @brief Inequality operator.
+	    /// @return true if \b this and the \b other element are \b not equal.
 	    bool operator!=(const EntityRep& other) const
 	    {
 		return !operator==(other);
@@ -146,7 +154,7 @@ namespace Dune
 
 
 
-       /// \brief Base class for EntityVariable and SignedEntityVariable.
+       /// @brief Base class for EntityVariable and SignedEntityVariable.
        /// Forwards a restricted subset of the std::vector interface.
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
@@ -166,15 +174,20 @@ namespace Dune
 
 
 
-	/// \brief A class design to hold a variable with a value for
+	/// @brief A class design to hold a variable with a value for
 	/// each entity of the given codimension, where the variable
 	/// is \b not changing in sign with orientation. Examples include
 	/// pressures and positions.
+	/// @tparam T A value type for the variable,
+	///           such as double for pressure etc.
+	/// @tparam codim Codimension.
 	template <typename T, int codim>
 	class EntityVariable : public EntityVariableBase<T>
 	{
 	public:
-	    /// Random access to the variable through an EntityRep.
+	    /// @brief Random access to the variable through an EntityRep.
+	    /// @param e Entity representation.
+	    /// @return a const reference to the varable, at e.
 	    const T& operator[](const EntityRep<codim>& e) const
 	    {
 		return get(e.index());
@@ -185,7 +198,7 @@ namespace Dune
 
 
 
-	/// \brief A class design to hold a variable with a value for
+	/// @brief A class design to hold a variable with a value for
 	/// each entity of the given codimension, where the variable
 	/// \b is changing in sign with orientation. An example is
 	/// velocity fields.
@@ -193,7 +206,7 @@ namespace Dune
 	class SignedEntityVariable : public EntityVariableBase<T>
 	{
 	public:
-	    /// \brief Random access to the variable through an EntityRep.
+	    /// @brief Random access to the variable through an EntityRep.
 	    /// Note that this operator always returns a copy, not a
 	    /// reference, since we may need to flip the sign.
 	    const T operator[](const EntityRep<codim>& e) const
@@ -213,14 +226,18 @@ namespace Dune
 	    typedef EntityRep<codim_to> ToType;
 	    typedef typename SparseTable<ToType>::row_type R;
 
-	    /// \brief Constructor taking a row type and an orientation.
+	    /// @brief Constructor taking a row type and an orientation.
+	    /// @param R Row type
+	    /// @param orientation True if positive orientation
 	    OrientedEntityRange(const R& r, bool orientation)
 		: R(r), orientation_(orientation)
 	    {
 	    }
 	    using R::size;
 	    using R::empty;
-	    /// Random access operator
+	    /// @brief Random access operator
+	    /// @param subindex Column index
+	    /// @return Entity representation
 	    ToType operator[](int subindex) const
 	    {
 		ToType erep = R::operator[](subindex);
@@ -233,8 +250,9 @@ namespace Dune
 
 
 
-	/// \brief Represents the topological relationships between
+	/// @brief Represents the topological relationships between
 	/// sets of entities, for example cells and faces.
+	///
 	/// The purpose of this class is to hide the intricacies of
 	/// handling orientations from the client code, otherwise a
 	/// straight SparseTable would do.
@@ -252,11 +270,15 @@ namespace Dune
 	    {
 	    }
 
-	    /// \brief Constructor taking iterators to a sequence of table
-	    /// data and a sequence of row size data. These table data
-	    /// are in the same format as the underlying
-	    /// SparseTable<int> constructor with the same
-	    /// signature.
+	    /// @brief Constructor taking iterators to a sequence of table
+	    /// data and a sequence of row size data.
+	    ///
+	    /// These table data are in the same format as the underlying
+	    /// SparseTable<int> constructor with the same signature.
+	    /// @param data_beg The start of the table data.
+	    /// @param data_end One-beyond-end of the table data.
+	    /// @param rowsize_beg The start of the row length data.
+	    /// @param rowsize_end One beyond the end of the row length data.
 	    template <typename DataIter, typename IntegerIter>
 	    OrientedEntityTable(DataIter data_beg, DataIter data_end,
 				IntegerIter rowsize_beg, IntegerIter rowsize_end)
@@ -268,27 +290,36 @@ namespace Dune
 	    using super_t::size;
 	    using super_t::appendRow;
 
-	    /// \brief Given an entity e of codimension codim_from, returns a
+	    /// @brief Given an entity e of codimension codim_from, returns a
 	    /// row (an indirect container) containing its neighbour
 	    /// entities of codimension codim_to.
+	    /// @param e Entity rep.
+	    /// @return A row of the table.
 	    row_type operator[](const FromType& e) const
 	    {
 		return row_type(super_t::operator[](e.index()), e.orientation());
 	    }
 
-	    /// Elementwise equality.
+	    /// @brief Elementwise equality.
+	    /// @param other The other element
+	    /// @return Returns true if \b this and the \b other element are equal.
 	    bool operator==(const OrientedEntityTable& other) const
 	    {
 		return super_t::operator==(other);
 	    }
 
-	    /// \brief Prints the relation matrix corresponding to the table.
-	    /// Let the entities of codimensions f and t be given by
-	    /// the sets \f$E^f = { e^f_i}\f$ and \f$E^t = { e^t_j }\f$.
-	    /// A relation matrix R is defined by\n
-	    ///     \f$R_{ij} = 0\f$  if \f$e^f_i\f$ and \f$e^t_j\f$ are not neighbours,\n
-	    ///            \f$= 1\f$  if they are neighbours with same orientation,\n
-	    ///            \f$= -1\f$ if they are neighbours with opposite orientation.
+ 	    /** @brief Prints the relation matrix corresponding to the table.
+
+ 	     Let the entities of codimensions f and t be given by
+ 	     the sets \f$E^f = { e^f_i } \f$ and \f$E^t = { e^t_j }\f$.
+ 	     A relation matrix R is defined by
+	     \f{eqnarray*}{
+	       R_{ij} &=& 0  \mbox{ if } e^f_i \mbox{ and } e^t_j \mbox{ are not neighbours }\\
+               R_{ij} &=& 1  \mbox{ if they are neighbours with same orientation }\\
+	       R_{ij} &=& -1 \mbox{ if they are neighbours with opposite orientation.}
+	     \f}
+	     @param os   The output stream.
+	    */
 	    void printRelationMatrix(std::ostream& os) const
 	    {
 		int columns = numberOfColumns();
@@ -322,10 +353,12 @@ namespace Dune
 		}
 	    }
 
-	    /// \brief Makes the inverse relation, mapping codim_to entities
+	    /// @brief Makes the inverse relation, mapping codim_to entities
 	    /// to their codim_from neighbours.
+	    ///
 	    /// Implementation note: The algorithm should be changed
 	    /// to a two-pass O(n) algorithm.
+	    /// @param inv  The OrientedEntityTable 
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
 		typedef std::multimap<int, int> RelationMap;

@@ -5,10 +5,32 @@
 // Created: Wed Dec  5 17:05:13 2007                                         
 //                                                                           
 // Author: Atgeirr F Rasmussen <atgeirr@sintef.no>
+//
+// $Date$
 //                                                                           
 // Revision: $Id: EclipseGridParser.h,v 1.3 2008/08/18 14:16:13 atgeirr Exp $
 //                                                                           
 //===========================================================================
+
+/*
+Copyright 2009 SINTEF ICT, Applied Mathematics.
+Copyright 2009 Statoil ASA.
+
+This file is part of The Open Reservoir Simulator Project (OpenRS).
+
+OpenRS is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+OpenRS is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+*/
 
 #ifndef SINTEF_ECLIPSEGRIDPARSER_HEADER
 #define SINTEF_ECLIPSEGRIDPARSER_HEADER
@@ -17,6 +39,10 @@
 #include <string>
 #include <vector>
 #include <map>
+
+
+namespace Dune
+{
 
 /**
    @brief A class for reading and parsing all fields of an eclipse file.
@@ -33,9 +59,6 @@
    @date 2007/12/06 13:00:03
 
 */
-
-namespace Dune
-{
 
 class EclipseGridParser
 {
