@@ -52,7 +52,6 @@ namespace Dune
 	template <int codim, class GridType>
 	class Entity : public EntityRep<codim>
 	{
-	    BOOST_STATIC_ASSERT(codim != 2);
 	public:
 
 	    enum { codimension = codim };
@@ -84,6 +83,12 @@ namespace Dune
 	    /// Constructor taking a grid and an entity representation.
 	    Entity(const GridType& grid, EntityRep<codim> entityrep)
 		: EntityRep<codim>(entityrep), pgrid_(&grid)
+	    {
+	    }
+
+	    /// Constructor taking a grid, entity index and orientation.
+	    Entity(const GridType& grid, int index, bool orientation)
+		: EntityRep<codim>(index, orientation), pgrid_(&grid)
 	    {
 	    }
 
@@ -136,14 +141,14 @@ namespace Dune
 	    int count() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		BOOST_STATIC_ASSERT(cc != 2);
-		if (cc == 0) {
-		    return 1;
-		} else if (cc == 1) {
-		    return pgrid_->cell_to_face_[*this].size();
-		} else {
-		    return pgrid_->cell_to_point_[*this].size();
-		}
+		return int(cc == 0);
+// 		if (cc == 0) {
+// 		    return 1;
+// 		} else if (cc == 1) {
+// 		    return pgrid_->cell_to_face_[*this].size();
+// 		} else {
+// 		    return pgrid_->cell_to_point_[*this].size();
+// 		}
 	    }
 
 	    /// Obtain subentity.
@@ -151,15 +156,17 @@ namespace Dune
 	    typename Codim<cc>::EntityPointer subEntity(int i) const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		BOOST_STATIC_ASSERT(cc != 2);
-		int index = 0;
-		if (cc == 1) {
-		    index = pgrid_->cell_to_face_[*this][i].index();
-		} else if (cc == 3) {
-		    index = pgrid_->cell_to_point_[*this][i].index();
-		}
-		typename Codim<cc>::EntityPointer se(*pgrid_, index);
+		ASSERT(cc == 0 && i == 0); // In case we have to remove the compile time assert.
+		typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
 		return se;
+// 		int index = 0;
+// 		if (cc == 1) {
+// 		    index = pgrid_->cell_to_face_[*this][i].index();
+// 		} else if (cc == 3) {
+// 		    index = pgrid_->cell_to_point_[*this][i].index();
+// 		}
+// 		typename Codim<cc>::EntityPointer se(*pgrid_, index); <--- buggy anyway?
+// 		return se;
 	    }
 
 	    /// Start iterator for the cell-cell intersections of this entity.
@@ -254,14 +261,26 @@ namespace Dune
 	    {
 	    }
 
+	    /// Constructor taking a grid and an entity representation.
+	    EntityPointer(const GridType& grid, EntityRep<codim> entityrep)
+		: Entity(grid, entityrep)
+	    {
+	    }
+
+	    /// Constructor taking a grid, entity index and orientation.
+	    EntityPointer(const GridType& grid, int index, bool orientation)
+		: Entity(grid, index, orientation)
+	    {
+	    }
+
 	    /// Member by pointer operator.
 	    Entity* operator->()
 	    {
 		ASSERT(Entity::valid());
 		return this;
+	    }
 
 	    /// Const member by pointer operator.
-	    }
 	    const Entity* operator->() const
 	    {
 		ASSERT(Entity::valid());

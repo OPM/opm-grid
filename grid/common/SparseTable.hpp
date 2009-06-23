@@ -124,6 +124,13 @@ namespace Dune
 	    return row_start_[row + 1] - row_start_[row];
 	}
 
+	/// Makes the table empty().
+	void clear()
+	{
+	    data_.clear();
+	    row_start_.clear();
+	}
+
 	/// Defining the row type, returned by operator[].
 	typedef boost::iterator_range<const T*> row_type;
 
@@ -131,7 +138,7 @@ namespace Dune
 	row_type operator[](int row) const
 	{
 	    ASSERT(row >= 0 && row < size());
-	    const T* start_ptr = &data_[0];
+	    const T* start_ptr = data_.empty() ? 0 : &data_[0];
 	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
 	}
 

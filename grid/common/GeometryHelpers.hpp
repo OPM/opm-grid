@@ -125,8 +125,7 @@ namespace Dune
 	    int num_points = points.size();
 	    for (int i = 0; i < num_points; ++i) {
 		Point tet[4] = { cell_centroid, face_centroid, points[i], points[(i+1)%num_points] };
-		double small_volume = simplex_volume(tet);
-		small_volume *= -1.0;
+		double small_volume = std::fabs(simplex_volume(tet));
 		ASSERT(small_volume > 0);
 		tot_volume += small_volume;
 	    }
@@ -146,8 +145,7 @@ namespace Dune
 	    int num_points = points.size();
 	    for (int i = 0; i < num_points; ++i) {
 		Point tet[4] = { cell_centroid, face_centroid, points[i], points[(i+1)%num_points] };
-		double small_volume = simplex_volume(tet);
-		small_volume *= -1.0;
+		double small_volume = std::fabs(simplex_volume(tet));
 		ASSERT(small_volume > 0);
 		Point small_centroid = tet[0];
 		for(int i = 1; i < 4; ++i){
@@ -155,7 +153,6 @@ namespace Dune
 		}
 		small_centroid *= small_volume/4.0;
 		centroid += small_centroid;
-		ASSERT(small_volume >0);
 		tot_volume += small_volume;
 	    }
 	    centroid /= tot_volume;

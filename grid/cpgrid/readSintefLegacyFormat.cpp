@@ -45,7 +45,8 @@ namespace Dune
     {
 	void readTopo(std::istream& topo,
 		      cpgrid::OrientedEntityTable<0, 1>& c2f,
-		      cpgrid::OrientedEntityTable<1, 0>& f2c);
+		      cpgrid::OrientedEntityTable<1, 0>& f2c,
+		      cpgrid::OrientedEntityTable<0, 3>& c2p);
 	void readGeom(std::istream& geom,
 		      cpgrid::DefaultGeometryPolicy& gpol,
 		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
@@ -62,7 +63,7 @@ namespace Dune
 	    if (!file) {
 		THROW("Could not open file " << topofilename);
 	    }
-	    readTopo(file, cell_to_face_, face_to_cell_);
+	    readTopo(file, cell_to_face_, face_to_cell_, cell_to_point_);
 	}
 	std::string geomfilename = grid_prefix + "-geom.dat";
 	{
@@ -82,7 +83,8 @@ namespace Dune
 
 	void readTopo(std::istream& topo,
 		      cpgrid::OrientedEntityTable<0, 1>& c2f,
-		      cpgrid::OrientedEntityTable<1, 0>& f2c)
+		      cpgrid::OrientedEntityTable<1, 0>& f2c,
+		      cpgrid::OrientedEntityTable<0, 3>& c2p)
 	{
 	    // Check header
 	    std::string topo_header;
@@ -165,6 +167,11 @@ namespace Dune
 	    ASSERT(int(c2fdata.size()) == num_hfaces);
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
+	    // Build cell to point
+	    const cpgrid::EntityRep<3>* dummy = 0;
+	    for (int i = 0; i < c2f.size(); ++i) {
+		c2p.appendRow(dummy, dummy);
+	    }
 	} // void readTopo()
 
 

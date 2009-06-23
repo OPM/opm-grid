@@ -87,6 +87,9 @@ BOOST_AUTO_TEST_CASE(construction_and_queries)
     st2_append2.appendRow(elem + 3, elem + 7);
     st2_append2.appendRow(elem + 7, elem + 10);
     BOOST_CHECK(st2 == st2_append2);
+    st2_append2.clear();
+    SparseTable<int> st_empty;
+    BOOST_CHECK(st2_append2 == st_empty);
 
     // One element too few.
     BOOST_CHECK_THROW(const SparseTable<int> st3(elem, elem + num_elem - 1, rowsizes, rowsizes + num_rows), std::exception);

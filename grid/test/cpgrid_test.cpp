@@ -47,25 +47,23 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 void check_cpgrid()
 {
     const int dim = 3;
-    typedef Dune::FieldVector<int,dim> iTupel;
-    typedef Dune::FieldVector<double,dim> fTupel;
-    typedef Dune::FieldVector<bool,dim> bTupel;
-
     std::cout << "\nCpGrid\n" << std::endl;
 
-//     fTupel Len;
-//     Len = 1.0;
-//     iTupel s;
-//     s = 3;
-//     bTupel p;
-//     p = false;
-//     p[0] = p0;
-//     int overlap = 1;
-
+    //typedef Dune::FieldVector<int,dim> iTuple;
+    //typedef Dune::FieldVector<double,dim> fTuple;
+    //typedef Dune::FieldVector<bool,dim> bTuple;
+    //    fTuple cell_sz(1.0);
+    //    iTuple dims(3);
+    //     bTuple p(false);
+    //     p[0] = p0;
+    //     int overlap = 1;
     // Dune::YaspGrid<dim> grid(Len,s,p,overlap);
     // grid.globalRefine(2);
 
     Dune::CpGrid grid;
+    Dune::array<int, dim> dims = {{ 1, 1, 1 }};
+    Dune::array<double, dim> cell_sz = {{ 1.0, 1.0, 1.0 }};
+    // grid.createCartesian(dims, cell_sz);
 
     gridcheck(grid);
 

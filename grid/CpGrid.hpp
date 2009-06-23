@@ -320,9 +320,9 @@ namespace Dune
 	{
 	    switch (codim) {
 	    case 0: return cell_to_face_.size();
-	    case 1: return face_to_cell_.size();
-	    case 2: return 0;
-	    case 3: return geomVector<3>().size();
+	    case 1: // return face_to_cell_.size();
+	    case 2: // return 0;
+	    case 3: // return geomVector<3>().size();
 	    default: return 0;
 	    }
         }

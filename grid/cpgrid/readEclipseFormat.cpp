@@ -50,7 +50,8 @@ namespace Dune
     {
 	void buildTopo(const processed_grid& output,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
-		       cpgrid::OrientedEntityTable<1, 0>& f2c);
+		       cpgrid::OrientedEntityTable<1, 0>& f2c,
+		       cpgrid::OrientedEntityTable<0, 3>& c2p);
 	void buildGeom(const processed_grid& output,
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::DefaultGeometryPolicy& gpol,
@@ -87,7 +88,7 @@ namespace Dune
 	process_grdecl(&input_data, z_tolerance, &output);
 
 	// Move data into the grid's structures.
-	buildTopo(output, cell_to_face_, face_to_cell_);
+	buildTopo(output, cell_to_face_, face_to_cell_, cell_to_point_);
 	buildGeom(output, cell_to_face_, geometry_, face_normals_);
 
 	// Clean up the output struct.
@@ -100,9 +101,11 @@ namespace Dune
 
 	void buildTopo(const processed_grid& output,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
-		       cpgrid::OrientedEntityTable<1, 0>& f2c)
+		       cpgrid::OrientedEntityTable<1, 0>& f2c,
+		       cpgrid::OrientedEntityTable<0, 3>& c2p)
 	{
-	    // Build face_to_cell_
+	    // Build face to cell.
+	    f2c.clear();
 	    int nf = output.number_of_faces;
 	    cpgrid::EntityRep<0> cells[2];
 	    for (int i = 0; i < nf; ++i) {
@@ -119,9 +122,13 @@ namespace Dune
 		ASSERT(cellcount == 1 || cellcount == 2);
 		f2c.appendRow(cells, cells + cellcount);
 	    }
-	    // Build cell_to_face_
+	    // Build cell to face.
 	    f2c.makeInverseRelation(c2f);
-	    // \TODO Build cell_to_point_
+	    // Build cell to point
+	    const cpgrid::EntityRep<3>* dummy = 0;
+	    for (int i = 0; i < c2f.size(); ++i) {
+		c2p.appendRow(dummy, dummy);
+	    }
 	}
 
 

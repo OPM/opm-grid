@@ -93,14 +93,18 @@ namespace Dune
 	    template <int cc>
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
-		BOOST_STATIC_ASSERT(cc == 1);
-		return grid_.cell_to_face_[e][i].index();
+		return index(e.subEntity<cc>(i));
 	    }
 
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i, unsigned int cc) const 
 	    {
-		ASSERT(cc == 1);
-		return grid_.cell_to_face_[e][i].index();
+		switch(cc) {
+		case 0: return index(e.template subEntity<0>(i));
+		case 1: return index(e.template subEntity<1>(i));
+		case 2: return index(e.template subEntity<2>(i));
+		case 3: return index(e.template subEntity<3>(i));
+		default: THROW("Codimension " << cc << " not supported.");
+		}
 	    }
 
 	    template <class EntityType>
@@ -153,6 +157,7 @@ namespace Dune
 		switch (cc) {
 		case 0: return id(e.template subEntity<0>(i));
 		case 1: return id(e.template subEntity<1>(i));
+		case 2: return id(e.template subEntity<2>(i));
 		case 3: return id(e.template subEntity<3>(i));
 		default: THROW("Cannot get subId of codimension " << cc);
 		}

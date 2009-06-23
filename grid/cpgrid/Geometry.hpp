@@ -90,17 +90,17 @@ namespace Dune
 	    }
 
 	    /// The number of corners of this convex polytope.
-	    /// Returning 1 as long as we are using the singular geometry/refelem approach.
+	    /// Returning 0 as long as we are using the singular geometry/refelem approach.
 	    int corners() const
 	    {
-		return 1;
+		return 0;
 	    }
 
 	    /// The corner method requires the points, which we may not necessarily want to provide.
-	    /// We will need it for visualization purposes though. For now returning a single "corner".
+	    /// We will need it for visualization purposes though. For now we throw.
 	    WorldPointType corner(int) const
 	    {
-		return pos_;
+		THROW("Meaningless call to cpgrid::Geometry::corner(int): Geometry has no corners.");
 	    }
 
 	    ctype volume() const

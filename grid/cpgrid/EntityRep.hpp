@@ -288,7 +288,15 @@ namespace Dune
 
 	    using super_t::empty;
 	    using super_t::size;
+	    using super_t::clear;
 	    using super_t::appendRow;
+
+	    /// \brief Given an entity e of codimension codim_from,
+	    /// returns the number of neighbours of codimension codim_to.
+	    int rowSize(const FromType& e) const
+	    {
+		return super_t::rowSize(e.index());
+	    }
 
 	    /// @brief Given an entity e of codimension codim_from, returns a
 	    /// row (an indirect container) containing its neighbour
