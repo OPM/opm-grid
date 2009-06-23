@@ -178,13 +178,17 @@ namespace Dune
 		points.push_back(pt);
 	    }
 	    // Get the face data.
+	    // \TODO Both the face and (especially) the cell section
+	    // is not very efficient. It could be rewritten easily
+	    // (focus on the polygonCellXXX methods first).
+	    // \TODO Use exact geometry instead of these approximations.
 	    int nf = output.number_of_faces;
 	    const int* fn = output.face_nodes;
 	    const int* fp = output.face_ptr;
-	    for (int i = 0; i < nf; ++i) {
+	    for (int face = 0; face < nf; ++face) {
 		// Computations in this loop could be speeded up
 		// by doing more of them simultaneously.
-		IndirectArray<point_t> face_pts(points, fn + fp[i], fn + fp[i+1]);
+		IndirectArray<point_t> face_pts(points, fn + fp[face], fn + fp[face+1]);
 		point_t avg = average(face_pts);
 		point_t centroid = polygonCentroid(face_pts, avg);
 		point_t normal = polygonNormal(face_pts, centroid);
@@ -196,14 +200,29 @@ namespace Dune
 	    // Get the cell data.
 	    int nc = output.number_of_cells;
 	    std::vector<int> face_indices;
-	    for (int i = 0; i < nc; ++i) {
-		cpgrid::EntityRep<0> cell(i, true);
+	    for (int cell = 0; cell < nc; ++cell) {
+		cpgrid::EntityRep<0> cell_ent(cell, true);
+		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cell_ent];
 		face_indices.clear();
-		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cell];
 		for (int local_index = 0; local_index < cf.size(); ++local_index) {
 		    face_indices.push_back(cf[local_index].index());
 		}
-		//IndirectArray
+		IndirectArray<point_t> cell_pts(face_centroids, &face_indices[0], &face_indices[0] + cf.size());
+		point_t cell_avg = average(cell_pts);
+		point_t cell_centroid(0.0);
+		double tot_cell_vol = 0.0;
+		for (int local_index = 0; local_index < cf.size(); ++local_index) {
+		    int face = cf[local_index].index();
+		    IndirectArray<point_t> face_pts(points, fn + fp[face], fn + fp[face+1]);
+		    double small_vol = polygonCellVolume(face_pts, face_centroids[face], cell_avg);
+		    tot_cell_vol += small_vol;
+		    point_t face_contrib = polygonCellCentroid(face_pts, face_centroids[face], cell_avg);
+		    face_contrib *= small_vol;
+		    cell_centroid += face_contrib;
+		}
+		cell_centroid /= tot_cell_vol;
+		cell_centroids.push_back(cell_centroid);
+		cell_volumes.push_back(tot_cell_vol);
 	    }
 
 
