@@ -62,6 +62,7 @@ namespace Dune
 	/// is given by ~entityrep_ (we cannot use -entityrep_, since 0 is a valid index).
 	/// We may consider changing this representation to using something like a
 	/// std::pair<int, bool> instead.
+	/// @tparam codim Codimension
 
 	template <int codim>
 	class EntityRep
@@ -78,18 +79,22 @@ namespace Dune
 	    /// the others being in the classes that inherit this one. These places
 	    /// need to be modified if we change the representation, then we should remove
 	    /// this constructor.
-
+	    /// @param erep Entity representation.
 	    explicit EntityRep(int erep)
 		: entityrep_(erep)
 	    {
 	    }
-	    /// Constructor taking an entity index and an orientation.
+	    /// @brief Constructor taking an entity index and an orientation.
+	    /// @param index Entity index
+	    /// @param orientation True if the entity's orientations is positive.
 	    EntityRep(int index, bool orientation)
 		: entityrep_(orientation ? index : ~index)
 	    {
 		ASSERT(index >= 0);
 	    }
-	    /// Set entity value.
+	    /// @brief Set entity value.
+	    /// @param index Entity index
+	    /// @param orientation True if the entity's orientations is positive.
 	    void setValue(int index, bool orientation)
 	    {
 		ASSERT(index >= 0);
@@ -121,6 +126,7 @@ namespace Dune
 	    /// @brief Ordering relation used for maps etc.
 	    ///
 	    /// Sorting on index and then orientation, with positive orientations first.
+	    /// @param other The other entity representation.
 	    /// @return true if \b this element is less than the \b other.
 	    bool operator<(const EntityRep& other) const
 	    {
@@ -132,6 +138,7 @@ namespace Dune
 	    }
 
 	    /// @brief Equality operator.
+	    /// @param other The other entity representation.
 	    /// @return true if \b this and the \b other element are equal.
 	    bool operator==(const EntityRep& other) const
 	    {
@@ -139,6 +146,7 @@ namespace Dune
 	    }
 
 	    /// @brief Inequality operator.
+	    /// @param other The other entity representation.
 	    /// @return true if \b this and the \b other element are \b not equal.
 	    bool operator!=(const EntityRep& other) const
 	    {
@@ -154,8 +162,10 @@ namespace Dune
 
 
 
-       /// @brief Base class for EntityVariable and SignedEntityVariable.
-       /// Forwards a restricted subset of the std::vector interface.
+	/// @brief Base class for EntityVariable and SignedEntityVariable.
+	/// Forwards a restricted subset of the std::vector interface.
+	/// @tparam T A value type for the variable,
+	/// such as double for pressure etc.
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
 	{
@@ -164,6 +174,11 @@ namespace Dune
 	    using V::empty;
 	    using V::size;
 	    using V::assign;
+	    /// Default constructor.
+	    EntityVariableBase()
+	    {
+	    }
+
 	protected:
 	    const T& get(int i) const
 	    {
@@ -185,6 +200,10 @@ namespace Dune
 	class EntityVariable : public EntityVariableBase<T>
 	{
 	public:
+	    /// Default constructor.
+	    EntityVariable()
+	    {
+	    }
 	    /// @brief Random access to the variable through an EntityRep.
 	    /// @param e Entity representation.
 	    /// @return a const reference to the varable, at e.
@@ -202,10 +221,17 @@ namespace Dune
 	/// each entity of the given codimension, where the variable
 	/// \b is changing in sign with orientation. An example is
 	/// velocity fields.
+	/// @tparam T A value type for the variable,
+	///           such as double for pressure etc.
+	/// @tparam codim Codimension.
 	template <typename T, int codim>
 	class SignedEntityVariable : public EntityVariableBase<T>
 	{
 	public:
+	    /// Default constructor.
+	    SignedEntityVariable()
+	    {
+	    }
 	    /// @brief Random access to the variable through an EntityRep.
 	    /// Note that this operator always returns a copy, not a
 	    /// reference, since we may need to flip the sign.
@@ -218,7 +244,8 @@ namespace Dune
 
 
 
-	/// A class used as a row type for  OrientedEntityTable.
+	/// @brief A class used as a row type for  OrientedEntityTable.
+	/// @tparam codim_to Codimension.
 	template <int codim_to>
 	class OrientedEntityRange : private SparseTable< EntityRep<codim_to> >::row_type
 	{
@@ -228,16 +255,16 @@ namespace Dune
 
 	    /// @brief Constructor taking a row type and an orientation.
 	    /// @param R Row type
-	    /// @param orientation True if positive orientation
+	    /// @param orientation True if positive orientation.
 	    OrientedEntityRange(const R& r, bool orientation)
 		: R(r), orientation_(orientation)
 	    {
 	    }
 	    using R::size;
 	    using R::empty;
-	    /// @brief Random access operator
-	    /// @param subindex Column index
-	    /// @return Entity representation
+	    /// @brief Random access operator.
+	    /// @param subindex Column index.
+	    /// @return Entity representation.
 	    ToType operator[](int subindex) const
 	    {
 		ToType erep = R::operator[](subindex);
@@ -256,13 +283,15 @@ namespace Dune
 	/// The purpose of this class is to hide the intricacies of
 	/// handling orientations from the client code, otherwise a
 	/// straight SparseTable would do.
+	/// @tparam codim_from Codimension of ???
+	/// @tparam codim_to Codimension of ???
 	template <int codim_from, int codim_to>
 	class OrientedEntityTable : private SparseTable< EntityRep<codim_to> >
 	{
 	public:
 	    typedef EntityRep<codim_from> FromType;
 	    typedef EntityRep<codim_to> ToType;
-	    typedef OrientedEntityRange<codim_to> row_type;
+	    typedef OrientedEntityRange<codim_to> row_type; // ??? doxygen henter doc fra SparseTable
 	    typedef SparseTable<ToType> super_t;
 
 	    /// Default constructor.
@@ -275,6 +304,8 @@ namespace Dune
 	    ///
 	    /// These table data are in the same format as the underlying
 	    /// SparseTable<int> constructor with the same signature.
+	    /// @tparam DataIter Iterator to table data.
+	    /// @tparam IntegerIter Iterator to  the row length data.
 	    /// @param data_beg The start of the table data.
 	    /// @param data_end One-beyond-end of the table data.
 	    /// @param rowsize_beg The start of the row length data.
@@ -291,8 +322,10 @@ namespace Dune
 	    using super_t::clear;
 	    using super_t::appendRow;
 
-	    /// \brief Given an entity e of codimension codim_from,
+	    /// @brief Given an entity e of codimension codim_from,
 	    /// returns the number of neighbours of codimension codim_to.
+	    /// @param e Entity representation.
+	    /// @return the number of neighbours of codimension codim_to.
 	    int rowSize(const FromType& e) const
 	    {
 		return super_t::rowSize(e.index());
@@ -301,7 +334,7 @@ namespace Dune
 	    /// @brief Given an entity e of codimension codim_from, returns a
 	    /// row (an indirect container) containing its neighbour
 	    /// entities of codimension codim_to.
-	    /// @param e Entity rep.
+	    /// @param e Entity representation.
 	    /// @return A row of the table.
 	    row_type operator[](const FromType& e) const
 	    {
