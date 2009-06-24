@@ -76,13 +76,13 @@ void test_interface(const Interface& g)
 }
 
 
-template <int dim>
+template <int dim, int refinement=1>
 void check_yasp(bool p0=false) {
     typedef Dune::FieldVector<int,dim> iTupel;
     typedef Dune::FieldVector<double,dim> fTupel;
     typedef Dune::FieldVector<bool,dim> bTupel;
 
-    std::cout << std::endl << "YaspGrid<" << dim << ">";
+    std::cout << std::endl << "YaspGrid<" << dim << "," << refinement << ">";
     if (p0) std::cout << " periodic\n";
     std::cout << std::endl << std::endl;
 
@@ -97,7 +97,7 @@ void check_yasp(bool p0=false) {
 #else
     Dune::YaspGrid<dim> grid(Len,s,p,overlap);
 #endif
-    grid.globalRefine(1);
+    grid.globalRefine(refinement);
 
     // Test the interface
     Dune::GridInterfaceEuler<Dune::YaspGrid<dim> > gie(grid);
@@ -107,10 +107,10 @@ void check_yasp(bool p0=false) {
 
 //-----------------------------------------------------------------------------
 template <int refinement>
-void check_cpgrid(bool p0=false)
+void check_cpgrid()
 //-----------------------------------------------------------------------------
 {
-    std::cout << '\n' << "CpGrid\n" << std::endl;
+    std::cout << '\n' << "CpGrid<" << refinement << ">\n" << std::endl;
 
     Dune::CpGrid grid;
     Dune::array<int   , 3> dims;    dims   .assign(       1 << refinement );
@@ -135,13 +135,31 @@ int main (int argc , char **argv) {
 #endif
 	check_yasp<1>();
 	check_yasp<2>();
-	check_yasp<3>();
 
+	check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
 	check_cpgrid<0>();
-#if 0
+
+#ifdef REFINE
+#undef REFINE
+#endif
+
+#define REFINE 0
+
+#if REFINE > 0
+	check_yasp<3,1>();  // 3D, 2 x 2 x 2 cells
 	check_cpgrid<1>();
+#endif
+
+#if REFINE > 1
+	check_yasp<3,2>();  // 3D, 4 x 4 x 4 cells
 	check_cpgrid<2>();
 #endif
+
+#if REFINE > 2
+	check_yasp<3,3>();  // 3D, 8 x 8 x 8 cells
+	check_cpgrid<3>();
+#endif
+
     } catch (Dune::Exception &e) {
 	std::cerr << e << std::endl;
 	return 1;
