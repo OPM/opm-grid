@@ -14,29 +14,35 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
 #include <config.h>
 #include <iostream>
+
+#include <boost/static_assert.hpp>
+
+#include <dune/common/array.hh>
 #include <dune/grid/yaspgrid.hh>
+#include <dune/grid/CpGrid.hpp>
+
 
 #include "../GridInterfaceEuler.hpp"
 
@@ -98,6 +104,26 @@ void check_yasp(bool p0=false) {
     test_interface(gie);
 }
 
+
+//-----------------------------------------------------------------------------
+template <int refinement>
+void check_cpgrid(bool p0=false)
+//-----------------------------------------------------------------------------
+{
+    std::cout << '\n' << "CpGrid\n" << std::endl;
+
+    Dune::CpGrid grid;
+    Dune::array<int   , 3> dims;    dims   .assign(       1 << refinement );
+    Dune::array<double, 3> cell_sz; cell_sz.assign(1.0 / (1 << refinement));
+
+    grid.createCartesian(dims, cell_sz);
+
+    // Test the interface
+    Dune::GridInterfaceEuler<Dune::CpGrid> gie(grid);
+    test_interface(gie);
+}
+
+
 int main (int argc , char **argv) {
     try {
 #if HAVE_MPI
@@ -106,10 +132,16 @@ int main (int argc , char **argv) {
 	// get own rank
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#endif    
+#endif
 	check_yasp<1>();
 	check_yasp<2>();
 	check_yasp<3>();
+
+	check_cpgrid<0>();
+#if 0
+	check_cpgrid<1>();
+	check_cpgrid<2>();
+#endif
     } catch (Dune::Exception &e) {
 	std::cerr << e << std::endl;
 	return 1;
@@ -117,7 +149,7 @@ int main (int argc , char **argv) {
 	std::cerr << "Generic exception!" << std::endl;
 	return 2;
     }
-  
+
 #if HAVE_MPI
     // Terminate MPI
     MPI_Finalize();

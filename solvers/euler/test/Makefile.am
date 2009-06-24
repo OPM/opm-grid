@@ -11,7 +11,10 @@ euler_upstream_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
 gie_test_SOURCES = gie_test.cpp
 gie_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 gie_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
-                    $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+                    $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
+                    ../../../grid/cpgrid/libcpgrid.la \
+                    ../../../grid/preprocess/libpreprocess.la \
+                    ../../../common/param/libparam.la
 
 TESTS = $(check_PROGRAMS)
 
