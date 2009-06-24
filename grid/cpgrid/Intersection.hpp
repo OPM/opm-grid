@@ -240,6 +240,7 @@ namespace Dune
 	    void update()
 	    {
                 EntityRep<1> face = faces_of_cell_[subindex_];
+		global_geom_ = cpgrid::Entity<1, GridType>(*pgrid_, face).geometry();
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		is_on_boundary_ = (cells_of_face.size() == 1);
 		if (is_on_boundary_) {
