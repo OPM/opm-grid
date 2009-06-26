@@ -173,7 +173,9 @@ namespace Dune
             /// where intersection is contained in.
             int indexInInside() const
             {
-                return subindex_;
+		THROW("Meaningless to call indexInInside() for intersection,\n"
+		      "since there are no subentities in the corresponding (singular) reference element.");
+                // return subindex_;
             }
 
             int numberInSelf() const
@@ -185,16 +187,18 @@ namespace Dune
             /// where intersection is contained in.
             int indexInOutside() const
             {
-                EntityRep<1> face = faces_of_cell_[subindex_];
-                EntityRep<0> nb(nbcell());
-                OrientedEntityTable<0,1>::row_type faces_of_nb = pgrid_->cell_to_face_[nb];
-                for (int i = 0; i < faces_of_nb.size(); ++i) {
-                    if (faces_of_nb[i].index() == face.index()) {
-                        return i;
-                    }
-                }
-		THROW("Could not find indexInOutside().");
-		return -1;
+		THROW("Meaningless to call indexInInside() for intersection,\n"
+		      "since there are no subentities in the corresponding (singular) reference element.");
+//                 EntityRep<1> face = faces_of_cell_[subindex_];
+//                 EntityRep<0> nb(nbcell());
+//                 OrientedEntityTable<0,1>::row_type faces_of_nb = pgrid_->cell_to_face_[nb];
+//                 for (int i = 0; i < faces_of_nb.size(); ++i) {
+//                     if (faces_of_nb[i].index() == face.index()) {
+//                         return i;
+//                     }
+//                 }
+// 		THROW("Could not find indexInOutside().");
+// 		return -1;
             }
 
             int numberInNeighbor() const
