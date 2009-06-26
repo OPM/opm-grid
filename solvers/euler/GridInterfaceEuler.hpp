@@ -38,6 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <dune/common/fvector.hh>
+#include <dune/grid/common/referenceelements.hh>
 #include <boost/iterator/iterator_facade.hpp>
 
 namespace Dune
