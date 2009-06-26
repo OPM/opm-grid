@@ -548,12 +548,6 @@ namespace Dune
 	{
 	    static const bool v = true;
 	};
-	/// \todo Please doc me !
-	template <>
-	struct hasEntity<CpGrid, 1>
-	{
-	    static const bool v = true;
-	};
 
 	/// \todo Please doc me !
 	template <>
