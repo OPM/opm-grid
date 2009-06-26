@@ -63,14 +63,14 @@ void check_cpgrid()
     Dune::CpGrid grid;
     Dune::array<int, dim> dims = {{ 1, 1, 1 }};
     Dune::array<double, dim> cell_sz = {{ 1.0, 1.0, 1.0 }};
-    // grid.createCartesian(dims, cell_sz);
+    grid.createCartesian(dims, cell_sz);
 
     gridcheck(grid);
 
     // check communication interface
-    checkCommunication(grid,-1,Dune::dvverb);
-    for (int l=0; l<=grid.maxLevel(); ++l)
-        checkCommunication(grid,l,Dune::dvverb);
+//     checkCommunication(grid,-1,Dune::dvverb);
+//     for (int l=0; l<=grid.maxLevel(); ++l)
+//         checkCommunication(grid,l,Dune::dvverb);
 
     // check the method geometryInFather()
     //checkGeometryInFather(grid);
@@ -81,14 +81,15 @@ void check_cpgrid()
 
 int main(int /*argc*/ , char** /*argv*/)
 {
-    try {
-        check_cpgrid();
-    } catch (Dune::Exception &e) {
-        std::cerr << e << std::endl;
-        return 1;
-    } catch (...) {
-        std::cerr << "Generic exception!" << std::endl;
-        return 2;
-    }
+    check_cpgrid();
+//     try {
+//         check_cpgrid();
+//     } catch (Dune::Exception &e) {
+//         std::cerr << e << std::endl;
+//         return 1;
+//     } catch (...) {
+//         std::cerr << "Generic exception!" << std::endl;
+//         return 2;
+//     }
     return 0;
 }
