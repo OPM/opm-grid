@@ -35,22 +35,10 @@
 #include "config.h"
 #include "../EulerUpstream.hpp"
 #include "../GridInterfaceEuler.hpp"
+#include "../ReservoirPropertyInterface.hpp"
+#include <dune/grid/CpGrid.hpp>
 #include <dune/grid/yaspgrid.hh>
 #include <dune/common/mpihelper.hh>
-
-template <int dim>
-void initYaspGrid(Dune::YaspGrid<dim>& grid)
-{
-    typedef Dune::FieldVector<int,dim> iTuple;
-    typedef Dune::FieldVector<double,dim> fTuple;
-    typedef Dune::FieldVector<bool,dim> bTuple;
-    fTuple cell_sz(1.0);
-    iTuple dims(3);
-    bTuple periodic(false);
-    int overlap = 1;
-    grid = Dune::YaspGrid<dim>(cell_sz, dims, periodic, overlap);
-    grid.globalRefine(2);
-}
 
 
 int main(int argc, char** argv)
@@ -59,23 +47,34 @@ int main(int argc, char** argv)
     Dune::MPIHelper::instance(argc,argv);
 
     // Make a grid.
-    const int dim = 3;
-    typedef Dune::YaspGrid<dim> GridType;
-    typedef Dune::FieldVector<int,dim> iTuple;
-    typedef Dune::FieldVector<double,dim> fTuple;
-    typedef Dune::FieldVector<bool,dim> bTuple;
-    fTuple cell_sz(1.0);
-    iTuple dims(3);
-    bTuple periodic(false);
-    int overlap = 1;
-    Dune::YaspGrid<dim> grid(cell_sz, dims, periodic, overlap);
-    grid.globalRefine(2);
+//     const int dim = 3;
+//     typedef Dune::YaspGrid<dim> GridType;
+//     typedef Dune::FieldVector<int,dim> iTuple;
+//     typedef Dune::FieldVector<double,dim> fTuple;
+//     typedef Dune::FieldVector<bool,dim> bTuple;
+//     fTuple cell_sz(1.0);
+//     iTuple dims(3);
+//     bTuple periodic(false);
+//     int overlap = 1;
+//     Dune::YaspGrid<dim> grid(cell_sz, dims, periodic, overlap);
+//     grid.globalRefine(2);
+
+    // Make a grid
+    typedef Dune::CpGrid GridType;
+    Dune::CpGrid grid;
+    Dune::EclipseGridParser parser(param.get<std::string>("filename"));
+    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
+    grid.processEclipseFormat(parser, z_tolerance);
+
+    // Make the grid interface
+    Dune::GridInterfaceEuler<GridType> g(grid);
+
+    Dune::ReservoirPropertyInterface<3> res_prop;
+    res_prop.init(parser);
 
     // Make a solver.
     Dune::EulerUpstream transport_solver;
 
-    // Make the grid interface
-    Dune::GridInterfaceEuler<GridType> g(grid);
 
     //transport_solver.transportSolve(sat, time, resdata, boundary, face_fluxes);
 }
