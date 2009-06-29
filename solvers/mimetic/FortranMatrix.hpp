@@ -39,6 +39,8 @@
 #include <algorithm>    // For std::fill_n().
 #include <vector>
 
+#include <dune/common/ErrorMacros.hpp>
+
 #include <dune/mimetic/solvers/fortran.hpp>
 #include <dune/mimetic/solvers/blas_lapack.hpp>
 
