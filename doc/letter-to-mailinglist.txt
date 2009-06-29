@@ -3,8 +3,8 @@ Dear Dune!
 CpGrid
 ------
 
-With this I would like to announce the availability of a new Dune
-grid, CpGrid. This grid is contained in a new module, with the
+With this we would like to announce the availability of a new Dune grid
+manager, CpGrid.  This grid is contained in a new module, with the
 (temporary) name dune-cornerpoint, which is distributed under the GPL
 license (version 3).
 
@@ -12,27 +12,35 @@ The code is available for anyone to check out by svn:
 $ svn co http://public.ict.sintef.no/openrs/svn/trunk/dune-cornerpoint
 
 The current version number is 0.2, indicating that the code is not in
-a finished state, but a work in progress. We welcome any and all
+a finished state, but a work in progress.  We welcome any and all
 feedback from the Dune community on any aspects of the code.
 
 This work is part of a greater whole, the Open Porous Media
-initiative, which aims to make available a free set of tools for
+initiative, which aims to produce a free set of tools for
 investigating porous media flow problems.
 
 
 What it does
 ------------
 
-CpGrid is intended to enable working with corner-point grids. This is
-a common type of grid in the field of subsurface reservoir simulation,
-and is a standard in the petroleum industry. These grids have cells
-that are all hexahedral, but any cell may be degenerated, and in the
-presence of geological faults, the grid will not be conforming. In
-fact, it is not rare to have the occasional grid cell with 30 or more
-neighbours, although the typical cell has far fewer.
-We are able to read grids in the format used by the commercial
-reservoir simulator Eclipse, including erosions (degeneracies) and
-faults.
+CpGrid is intended to enable working with corner-point or, more
+generally, pillar grids.  A standard grid type in the petroleum
+industry, corner-point grids fill space with a relatively low number
+of cells while still providing sufficient flexibility to model faults,
+fractures and erosion.  The grid format was originally designed with
+an eye towards geological modelling rather than numerical simulation
+and this design choice does limit the number of feasible numerical
+methods.
+
+Specifically, these grids have cells that are all hexahedral, but any
+cell may be degenerated, and in the presence of geological faults, the
+grid will not be conforming.  In fact, it is not rare to have the
+occasional grid cell with 30 or more neighbours, although the typical
+cell has far fewer (6-10 is typical in three space dimensions).
+Nevertheless, a cell in this grid type is best viewed as having an
+arbitrary number of arbitrarily shaped faces.  We are able to read
+grids in the format used by the commercial reservoir simulator
+Eclipse, including erosions (degeneracies) and faults.
 
 
 Caveats
@@ -51,44 +59,47 @@ Some design dilemmas
 --------------------
 
 From the very start, we were faced with the issue of which entity
-codimensions to support. We wanted to support codimension 1 entities
+codimensions to support.  We wanted to support codimension 1 entities
 (faces), and make every intersection correspond to a face, since this
-is the way we did things in our existing code. This turned out to be
-difficult, since the number of subentities of any entity (in this
+is the way we did things in our existing code.  This turned out to be
+difficult, since the number of sub-entities of any entity (in this
 case, the number of faces per cell) must match that of the
 corresponding reference element, and there is no cell reference
-element that can have a variable number of faces. So one way to solve
+element that can have a variable number of faces.  So one way to solve
 this is alternative A below.
 
 Alternative A:
 * Use hexahedral reference elements for all cells.
 * No codim 1 entities.
 * Intersection iterators recover connectivity (there is no way to get
-  codim-0 neighbours of codim-1 things in Dune anyway).
+  codim=0 neighbours of codim=1 things in Dune anyway).
 * The eight points (possible repeated, in case of degeneracies)
-  defining a cell can be its codim-3 subentities.
+  defining a cell can be its codim=3 sub-entities.
 Advantages:
 * Possible to access some geometry of the grid (cells as hexahedra).
 Problems:
 * Cells can be (partially) degenerate hexahedra.
-* Which geometrytype/reference element should we choose for
+* Which GeometryType/reference element should we choose for
   intersections? They can be arbitrary polygons with up to six sides.
 
-This means that members such as geometryInInside() become essentially
-impossible to do correctly.
+This means that member functions such as geometryInInside()
+essentially cannot be implemented correctly for Alternative A.
 
 This is not the alternative that we have implemented in the current
-code, instead we have done alternative B. This alternative is more
-directly geared towards the finite volume-type methods we are
-primarily interested in.
+code.  Instead we have chosen an option geared more directly towards
+the finite volume-type methods our group is primarily interested in.
+This choice is:
 
 Alternative B:
-* Make a new geometry type, singular, with corresponding reference
-  element, quadrature rules etc. This reference element only has a
-  position/centroid, and a volume.
-* Make all cells use this new reference element, as well as all
-  intersections.
-* All geometries answer 0 when asked Geometry::corners().
+* Make a new geometry type, tentatively named "singular", with
+  corresponding reference element, (lowest order) quadrature rules
+  etc. This reference element only has a position/centroid, and a
+  volume. The element has no sub-entities.
+* Make all cells, and all intersections, use this new reference
+  element.
+* All geometries answer 0 when asked Geometry::corners(). Moreover,
+  the global() method of each geometry maps any point to the
+  centroid.
 * No entities of any codim other than 0.
 Advantages:
 * Internally consistent, so properly written Dune code should work,
@@ -98,10 +109,11 @@ Disadvantages:
 * Introduces changes to dune-common and dune-grid (new geometry type).
 * Does not give access to any detailed geometry, apart from centroids
   and volumes.
+* Dune requires existence of vertex (i.e., codim=dim) entities.
 
-Obviously, this alternative is mostly useless to those who want to
-write FE methods, but on the other hand, these grids were never well
-suited for FE in the first place.
+While this alternative is of little use in implementing FE methods
+which require local interpolation, this is really an issue with the
+grid itself.
 
 In the repository, the directory changed_from_dune contains our
 changed versions of geometrytypes.hh and other files (from recent, if
@@ -111,39 +123,40 @@ not necessarily at the time of writing the *most* recent versions).
 A note on the generic reference elements
 ----------------------------------------
 
-We have implemented our reference elements in the old-style
-framework. We also looked at the new generic ones, and found parts of
-it quite delightful. The Prism/Pyramid<lower-dimensional-thing>
+We have implemented our reference elements in the old-style (Dune 1.2)
+framework.  We also looked at the new generic ones, and found parts of
+it quite delightful.  The Prism/Pyramid<lower-dimensional-thing>
 approach is nice, and we could easily see how this could be extended,
 such as with a template class Singular side by side with Prism and
-Pyramid. The reason we did not do this, is the numerical id used to
-identify various reference elements. It is based on an array of bits,
-one for each dimension, telling wether you used Prism<> or
-Pyramid<>. This is not easy to extend with a third variant. We have
-not dived far enough into the code to know quite why this id is
-needed, superficially it seems to me that the usual type system should
-be enough.
+Pyramid.  The reason we did not do this, is the numerical id used to
+identify various reference elements.  It is based on an array of bits,
+one for each dimension, telling whether you used Prism<> or Pyramid<>.
+This is not easy to extend with a third variant.  We have not delved
+sufficiently far into the code to know quite why this id is needed,
+superficially it seems to us that the usual type system should be
+enough.
 
 
 Conclusion and call for comments
 --------------------------------
 
 We hope to make our new grid useful for all who work with porous
-media, and also thereby bringing Dune to a new audience. To do this
-successfully, we need your comments and criticism. We hope that some
+media, and also thereby bringing Dune to a new audience.  To do this
+successfully, we need your comments and criticism.  We hope that some
 of you will have the time to test drive our code a bit, too.
 
 We are especially eager for your comments on the proposed additional
 reference element, whether this is acceptable or not. If not, what
 alternatives exist that keeps the grid consistent?
 
-Consistency is required, because the question of subentities or
+Consistency is required, because the question of sub-entities or
 sub<somethings> pops up in multiple places in the Dune interface. For
 example in ReferenceElement, Geometry, Entity, IndexSet, IdSet. I
 expect that current and future code expects all of these to give a
 consistent view of the grid's properties.
 
-Finally, I apologize for writing such a long message!
+Finally, we apologize for writing such a long message!
 
 Atgeirr F Rasmussen
+Bård Skaflestad
 
