@@ -1,4 +1,4 @@
-// $Id: referenceelements.hh 10784 2009-06-08 13:37:16Z atgeirr $
+// $Id: referenceelements.hh 10837 2009-06-23 14:49:42Z atgeirr $
 
 #ifndef DUNE_REFERENCEELEMENTS_HH
 #define DUNE_REFERENCEELEMENTS_HH
@@ -1787,14 +1787,14 @@ namespace Dune
     //! number of entities of codim c
     int size (int c) const
     {
-	return 1;
+	return int(c == 0);
     }
 	
     //! number of subentities of codim cc of entity (i,c)
     int size (int i, int c, int cc) const
     {
 	assert(i == 0);
-	return 1;
+	return int(i == 0 && c == 0 && cc == 0);
     }
 	
     //! number of ii'th subentity with codim cc of (i,c)
