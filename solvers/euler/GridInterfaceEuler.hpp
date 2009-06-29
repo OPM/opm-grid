@@ -213,6 +213,10 @@ namespace Dune
 	{
 	    return CellIterator(grid_, grid_.template leafend<0>());
 	}
+        int numberOfCells() const
+        {
+            return grid_.size(0);
+        }
     private:
 	const DuneGrid& grid_;
     };
