@@ -38,7 +38,7 @@
 
 #include <vector>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <dune/grid/common/ErrorMacros.hpp>
 
 #include <dune/solvers/mimetic/fortran.hpp>
 #include <dune/solvers/mimetic/blas_lapack.hpp>
@@ -60,13 +60,16 @@ namespace Dune {
         {}
 
 
-        void evaluate(const CellIter&            c,
-                      const std::vector<Scalar>& perm,
-                      FortranMatrix<Scalar>&     Binv)
+        template<class Matrix>
+        void evaluate(const CellIter& c,
+                      const Matrix&   Kt,
+                      Matrix&         Binv)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
             typedef typename FI      ::Vector       FV;
+
+            const int nf = Binv.numRows();
 
             ASSERT(Binv.numRows() <= max_nf_);
             ASSERT(Binv.numRows() == Binv.numCols());
@@ -75,14 +78,12 @@ namespace Dune {
             ASSERT(t2_.size()     >= nf * dim);
             ASSERT(fa_.size()     >= nf * nf);
 
-            const int nf = Binv.numRows();
-
             FortranMatrix<Scalar,false> T1(nf, dim, &t1_[0]);
             FortranMatrix<Scalar,false> T2(nf, dim, &t2_[0]);
             FortranMatrix<Scalar,false> fa(nf, nf , &fa_[0]);
 
             // Clear matrices of any residual data.
-            zero(Binv);  zero(T1);   zero(T2);   zero(fa);
+            zero(Binv);  zero(T1);  zero(T2);  zero(fa);
 
             // Setup: Binv <- I, T1 <- N, T2 <- C
             const CV cc = c->centroid();
@@ -115,9 +116,7 @@ namespace Dune {
             // T2 <- N*K -- Assumes K (i.e., perm) is stored in C order
             // (i.e., transposed from the point of view of a FortranMatrix<T>).
             //
-            ASSERT(perm.size() == dim*dim);
-            FortranMatrix<Scalar,false> Kt(dim, dim, &perm[0]);
-            matMulAdd<Scalar,false,true>(Scalar(1.0), T1, Kt, Scalar(0.0), T2);
+            matMulAdd_NT(Scalar(1.0), T1, Kt, Scalar(0.0), T2);
 
             // Binv <- (T2*N' + Binv) / vol(c)
             //      == (N*K*N' + t*(diag(A) * (I - Q*Q') * diag(A))) / vol(c)
@@ -125,10 +124,10 @@ namespace Dune {
             // where t = 6/d * TRACE(K) (== 2*TRACE(K) for 3D).
             //
             Scalar t = 0.0;
-            for (int j = 0; j < dim; ++j) t += K(j,j);
+            for (int j = 0; j < dim; ++j) t += Kt(j,j);
 
-            matMulAdd<Scalar,false,true>(Scalar(1.0)     /        c->volume() , T2, T1,
-                                         Scalar(6.0) * t / (dim * c->volume()), Binv  );
+            matMulAdd_NT(Scalar(1.0)     /        c->volume() , T2, T1,
+                         Scalar(6.0) * t / (dim * c->volume()), Binv  );
         }
 
     private:
