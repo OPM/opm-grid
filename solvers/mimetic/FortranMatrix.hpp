@@ -36,6 +36,7 @@
 #ifndef OPENRS_FORTRANMATRIX_HEADER
 #define OPENRS_FORTRANMATRIX_HEADER
 
+#include <algorithm>    // For std::fill_n().
 #include <vector>
 
 #include <dune/mimetic/solvers/fortran.hpp>
@@ -100,6 +101,14 @@ namespace Dune {
     };
 
 
+
+    template<typename T>
+    void zero(FortranMatrix<T>& A)
+    {
+        std::fill_n(A.data(), A.numRows() * A.numCols(), T(0.0));
+    }
+
+
     // A <- orth(A)
     template<typename T>
     int orthogonalizeColumns(FortranMatrix<T>& A   ,
@@ -133,7 +142,7 @@ namespace Dune {
     void symmetricUpdate(const T&                a1,
                          const FortranMatrix<T>& A ,
                          const T&                a2,
-                               FortranMatrix<T>& C )
+                         FortranMatrix<T>&       C )
     {
         Dune::BLAS_LAPACK::SYRK("Upper"     , "No transpose"      ,
                                 C.numRows() , A.numCols()         ,
@@ -162,15 +171,19 @@ namespace Dune {
 
 
     template<typename T, bool transA, bool transB>
-    void MxM(const T& a1, const FortranMatrix<T>& A,
-                          const FortranMatrix<T>& B,
-             const T& a2,       FortranMatrix<T>& C);
+    void matMulAdd(const T&                a1,
+                   const FortranMatrix<T>& A ,
+                   const FortranMatrix<T>& B ,
+                   const T&                a2,
+                   FortranMatrix<T>&       C);
 
 
     template<typename T>
-    void MxM<T,false,true>(const T& a1, const FortranMatrix<T>& A,
-                                        const FortranMatrix<T>& B,
-                           const T& a2,       FortranMatrix<T>& C)
+    void matMulAdd<T,false,true>(const T&                a1,
+                                 const FortranMatrix<T>& A ,
+                                 const FortranMatrix<T>& B ,
+                                 const T&                a2,
+                                 FortranMatrix<T>&       C)
     {
         ASSERT(A.numRows() == C.numRows());
         ASSERT(B.numRows() == C.numCols());
