@@ -50,11 +50,13 @@
 #ifdef F77_CHARACTER_TYPE
 #undef F77_CHARACTER_TYPE
 #endif
-#define F77_CHARACTER_TYPE const char*, int
+//#define F77_CHARACTER_TYPE const char*, int
+#define F77_CHARACTER_TYPE const char*
 
 #ifdef F77_CHARACTER
 #undef F77_CHARACTER
 #endif
-#define F77_CHARACTER(c) &c, 1
+//#define F77_CHARACTER(c) &c, 1
+#define F77_CHARACTER(c) &c
 
 #endif // OPENRS_FORTRAN_HEADER
