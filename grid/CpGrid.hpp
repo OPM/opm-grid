@@ -56,6 +56,7 @@
 #include "cpgrid/Indexsets.hpp"
 //#include "cpgrid/GridView.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
+#include "cpgrid/EclipseGridParser.hpp"
 
 #include "common/SparseTable.hpp"
 #include "preprocess/preprocess.h"
@@ -205,6 +206,10 @@ namespace Dune
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
 	void readEclipseFormat(const std::string& filename, double z_tolerance = 0.0);
+
+	/// Read the Eclipse grid format ('grdecl').
+	/// \param input_data the data contained in a parser object.
+	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance = 0.0);
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param input_data the data in grdecl format, declared in preprocess.h.

@@ -65,6 +65,12 @@ namespace Dune
     {
 	// Read eclipse file data.
 	EclipseGridParser parser(filename);
+	processEclipseFormat(parser, z_tolerance);
+    }
+
+    /// Read the Eclipse grid format ('.grdecl').
+    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance)
+    {
 	EclipseGridInspector inspector(parser);
 
 	// Make input struct for processing code.
