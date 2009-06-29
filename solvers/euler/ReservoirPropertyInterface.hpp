@@ -102,7 +102,7 @@ namespace Dune
 		    for (int i = 0; i < num_cells; ++i) {
 			permtensor_t K(0.0);
 			for (int dd = 0; dd < dim; ++dd) {
-			    K[i][dd] = perm[i];
+			    K[dd][dd] = perm[i];
 			}
 			permeability_.push_back(K);
 		    }
