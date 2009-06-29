@@ -3,7 +3,7 @@
 
 #Name of the module
 Module: dune-cornerpoint
-Version: 0.1
+Version: 0.2
 Maintainer: atgeirr@sintef.no
 #depending on 
 Depends: dune-common dune-grid
