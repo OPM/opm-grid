@@ -108,6 +108,6 @@ BOOST_AUTO_TEST_CASE(construction_and_queries)
     BOOST_CHECK_THROW(st2.rowSize(st2.size()), std::exception);
     // No negative row sizes.
     const int err_rs[num_rows] = { 1, 0, -1, 7, 3 };
-    BOOST_CHECK_THROW(const SparseTable<int> st5(elem, elem + num_elem, err_rs, err_rs + num_rows), std::exception);
+    BOOST_CHECK_THROW(const SparseTable<int> st6(elem, elem + num_elem, err_rs, err_rs + num_rows), std::exception);
 #endif
 }
