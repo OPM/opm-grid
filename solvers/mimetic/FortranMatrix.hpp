@@ -37,12 +37,13 @@
 #define OPENRS_FORTRANMATRIX_HEADER
 
 #include <algorithm>    // For std::fill_n().
+#include <ostream>
 #include <vector>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <dune/grid/common/ErrorMacros.hpp>
 
-#include <dune/mimetic/solvers/fortran.hpp>
-#include <dune/mimetic/solvers/blas_lapack.hpp>
+#include <dune/solvers/mimetic/fortran.hpp>
+#include <dune/solvers/mimetic/blas_lapack.hpp>
 
 namespace Dune {
     template<typename T,
@@ -51,6 +52,8 @@ namespace Dune {
     template<typename T>
     class FortranMatrix<T,false> {
     public:
+        typedef T value_type;
+
         FortranMatrix(int rows, int cols, T* data)
             : rows_(rows), cols_(cols), data_(data)
         {}
@@ -78,8 +81,10 @@ namespace Dune {
     template<typename T>
     class FortranMatrix<T,true> {
     public:
+        typedef T value_type;
+
         FortranMatrix(int rows, int cols)
-            : rows_(rows), cols_(cols), data(rows * cols, T(0))
+            : rows_(rows), cols_(cols), data_(rows * cols, T(0))
         {}
         int      numRows()          const { return rows_;     }
         int      numCols()          const { return cols_;     }
@@ -104,21 +109,22 @@ namespace Dune {
 
 
 
-    template<typename T>
-    void zero(FortranMatrix<T>& A)
+    template<class Matrix>
+    void zero(Matrix& A)
     {
-        std::fill_n(A.data(), A.numRows() * A.numCols(), T(0.0));
+        std::fill_n(A.data(), A.numRows() * A.numCols(),
+                    typename Matrix::value_type(0.0));
     }
 
 
     // A <- orth(A)
-    template<typename T>
-    int orthogonalizeColumns(FortranMatrix<T>& A);
+    template<class Matrix>
+    int orthogonalizeColumns(Matrix& A)
     {
-        static std::vector<T> tau;
-        static std::vector<T> work;
+        static std::vector<typename Matrix::value_type> tau;
+        static std::vector<typename Matrix::value_type> work;
 
-        if (tau.size()  <      A.numCols()) tau .resize(     A.numCols());
+        if (tau .size() <      A.numCols()) tau .resize(     A.numCols());
         if (work.size() < 64 * A.numRows()) work.resize(64 * A.numRows());  // 64 from ILAENV
 
         int info = 0;
@@ -145,60 +151,88 @@ namespace Dune {
 
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
-    template<typename T>
-    void symmetricUpdate(const T&                a1,
-                         const FortranMatrix<T>& A ,
-                         const T&                a2,
-                         FortranMatrix<T>&       C )
+    template<class Matrix>
+    void symmetricUpdate(const typename Matrix::value_type& a1,
+                         const Matrix&                      A ,
+                         const typename Matrix::value_type& a2,
+                         Matrix&                            C )
     {
         Dune::BLAS_LAPACK::SYRK("Upper"     , "No transpose"      ,
                                 C.numRows() , A.numCols()         ,
                                 a1, A.data(), A.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
+
+        // Account for SYRK (in this case) only updating the upper
+        // leading n-by-n submatrix.
+        //
+        for (int j = 0; j < C.numCols(); ++j) {
+            for (int i = j+1; i < C.numRows(); ++i) {
+                C(i,j) = C(j,i);
+            }
+        }
     }
 
 
     // B <- A*B*A'
     // Assumes T is an arithmetic (floating point) type, and that A==A'.
-    template<typename T>
-    void symmetricUpdate(const FortranMatrix<T>& A, FortranMatrix<T>& B)
+    template<class Matrix>
+    void symmetricUpdate(const Matrix& A, Matrix& B)
     {
         // B <- A*B
         Dune::BLAS_LAPACK::TRMM("Left" , "Upper", "No transpose", "Non-unit",
-                                B.numRows(), B.numCols(), T(1.0),
+                                B.numRows(), B.numCols(),
+                                typename Matrix::value_type(1.0),
                                 A.data(), A.leadingDimension(),
                                 B.data(), B.leadingDimension());
 
         // B <- B*A (== A * B_orig * A)
         Dune::BLAS_LAPACK::TRMM("Right", "Upper", "No transpose", "Non-unit",
-                                B.numRows(), B.numCols(), T(1.0),
+                                B.numRows(), B.numCols(),
+                                typename Matrix::value_type(1.0),
                                 A.data(), A.leadingDimension(),
                                 B.data(), B.leadingDimension());
+
+        // Account for TRMM (in this case) only updating the upper
+        // leading n-by-n submatrix.
+        //
+        for (int j = 0; j < B.numCols(); ++j) {
+            for (int i = j+1; i < B.numRows(); ++i) {
+                B(i,j) = B(j,i);
+            }
+        }
     }
 
 
-    template<typename T, bool transA, bool transB>
-    void matMulAdd(const T&                a1,
-                   const FortranMatrix<T>& A ,
-                   const FortranMatrix<T>& B ,
-                   const T&                a2,
-                   FortranMatrix<T>&       C);
-
-
-    template<typename T>
-    void matMulAdd<T,false,true>(const T&                a1,
-                                 const FortranMatrix<T>& A ,
-                                 const FortranMatrix<T>& B ,
-                                 const T&                a2,
-                                 FortranMatrix<T>&       C)
+    template<class Matrix>
+    void matMulAdd_NT(const typename Matrix::value_type& a1,
+                      const Matrix&                      A ,
+                      const Matrix&                      B ,
+                      const typename Matrix::value_type& a2,
+                      Matrix&                            C)
     {
         ASSERT(A.numRows() == C.numRows());
         ASSERT(B.numRows() == C.numCols());
         ASSERT(A.numCols() == B.numCols());
 
-        GEMM("No Transpose", "Transpose", A.numRows(), B.numCols(), A.numCols(),
-             a1, A.data(), A.leadingDimension(), B.data(), B.leadingDimension(),
-             a2, C.data(), C.leadingDimension());
+        Dune::BLAS_LAPACK::GEMM("No Transpose", "Transpose",
+                                A.numRows(), B.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                B.data(), B.leadingDimension(),
+                                a2, C.data(), C.leadingDimension());
+    }
+
+
+    template<class charT, class traits, class Matrix>
+    std::basic_ostream<charT,traits>&
+    operator<<(std::basic_ostream<charT,traits>& os, const Matrix& A)
+    {
+        for (int i = 0; i < A.numRows(); ++i) {
+            for (int j = 0; j < A.numCols(); ++j)
+                os << A(i,j) << ' ';
+            os << '\n';
+        }
+
+        return os;
     }
 
 
