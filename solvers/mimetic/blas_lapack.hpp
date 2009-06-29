@@ -119,7 +119,7 @@ namespace Dune {
         template<>
         void GEMM<double>(const char*   transA, const char*   transB,
                           const int     m     , const int     n     , const int k  ,
-                          const double& a1    , const T*      A     , const int ldA,
+                          const double& a1    , const double* A     , const int ldA,
                                                 const double* B     , const int ldB,
                           const double& a2    ,       double* C     , const int ldC)
         {
