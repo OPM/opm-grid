@@ -54,8 +54,6 @@ namespace Dune {
 
         MimeticIPEvaluator(const int max_nf)
             : max_nf_(max_nf),
-              work_  (64 * max_nf),  // 64 from ILAENV
-              tau_   (dim),
               fa_    (max_nf * max_nf),
               t1_    (max_nf * dim),
               t2_    (max_nf * dim)
@@ -104,7 +102,7 @@ namespace Dune {
             ASSERT(i == nf);
 
             // T2 <- orth(T2)
-            if (orthogonalizeColumns(T2, tau_, work_) != 0) {
+            if (orthogonalizeColumns(T2) != 0) {
                 ASSERT (false);
             }
 
@@ -135,8 +133,6 @@ namespace Dune {
 
     private:
         int                 max_nf_      ;
-        std::vector<Scalar> work_        ;
-        std::vector<Scalar> tau_         ;
         std::vector<Scalar> fa_, t1_, t2_;
     };
 

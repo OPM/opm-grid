@@ -111,10 +111,14 @@ namespace Dune {
 
     // A <- orth(A)
     template<typename T>
-    int orthogonalizeColumns(FortranMatrix<T>& A   ,
-                             std::vector<T>&   tau ,
-                             std::vector<T>&   work);
+    int orthogonalizeColumns(FortranMatrix<T>& A);
     {
+        static std::vector<T> tau;
+        static std::vector<T> work;
+
+        if (tau.size()  <      A.numCols()) tau .resize(     A.numCols());
+        if (work.size() < 64 * A.numRows()) work.resize(64 * A.numRows());  // 64 from ILAENV
+
         int info = 0;
 
         // Generate factorization.  Matrix Q is implicitly represented.
@@ -135,6 +139,7 @@ namespace Dune {
 
         return info;
     }
+
 
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
