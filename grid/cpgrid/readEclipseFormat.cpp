@@ -56,6 +56,7 @@ namespace Dune
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::DefaultGeometryPolicy& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
+	void logCartIndices(int idx, const processed_grid& output, int& i, int& j, int& k);
     } // anon namespace
 
 
@@ -92,6 +93,42 @@ namespace Dune
 	// Process.
 	processed_grid output;
 	process_grdecl(&input_data, z_tolerance, &output);
+
+	/*
+	//-------------------- Start compare code ----------------------------------
+	const int num_cells = output.number_of_cells;   // Number of active cells
+	const int num_faces = output.number_of_faces;
+	const int num_points = output.number_of_nodes;
+	std::cout << "Cells:" << num_cells << "   Faces:"  << num_faces
+		  << "   Points:" << num_points << std::endl;
+
+ 
+// 	// Faces cell numbers
+// 	std::cout << "\nFace number, internal cell numbers" << std::endl; 
+// 	for (int i=0; i<output.number_of_faces; ++i){
+// 	    int c1 = output.face_neighbors[2*i];
+// 	    int c2 = output.face_neighbors[2*i+1];
+// 	    std::cout << i << "  " << c1 << "  " << c2 << std::endl;
+// 	}
+
+	std::map<int,int> global_local;
+	for (int i=0; i<num_cells; ++i) {
+	    int gi = output.local_cell_index[i];
+	    //	    std::cout << i << " i - gi " << gi << std::endl;
+	    global_local.insert(std::make_pair(gi,i));
+	}
+	std::cout << "\nLogical cartesian cell-number,  i, j, k"
+		  << std::endl;
+	for (std::map<int,int>::iterator pos = global_local.begin();
+	     pos != global_local.end(); ++pos) {
+	    const int gi = pos->first;
+	    int i, j, k;
+	    logCartIndices(gi, output, i, j, k);
+	    std::cout << gi << "  " << i << " " << j << " " << k
+		      << std::endl;
+	}
+	//------------------- End compare code ----------------------------------
+	*/
 
 	// Move data into the grid's structures.
 	buildTopo(output, cell_to_face_, face_to_cell_, cell_to_point_);
@@ -279,6 +316,17 @@ namespace Dune
 	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
+	}
+
+	void logCartIndices(int idx, const processed_grid& output, int& i, int& j, int& k)
+	{
+	    /// Computes logical cartesian indices i, j and k from linear index idx.
+	    const int Nx = output.dimensions[0];
+	    const int Ny = output.dimensions[1];
+	    const int NxNy = Nx*Ny;
+	    k = idx/NxNy;
+	    j = (idx - NxNy*k)/Nx;
+	    i = idx - Nx*j - Nx*Ny*k;
 	}
 
     } // anon namespace
