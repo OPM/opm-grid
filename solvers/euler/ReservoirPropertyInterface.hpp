@@ -39,6 +39,7 @@
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/cpgrid/EclipseGridParser.hpp>
 #include <dune/grid/cpgrid/EclipseGridInspector.hpp>
+#include <dune/solvers/mimetic/FortranMatrix.hpp>
 
 namespace Dune
 {
@@ -49,6 +50,8 @@ namespace Dune
     class ReservoirPropertyInterface
     {
     public:
+	typedef FortranMatrix<double, false> permtensor_t;
+
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),
 	      density2_(834.7),
@@ -84,13 +87,12 @@ namespace Dune
 		    ASSERT(int(perm[1]->size()) == num_cells);
 		    ASSERT(int(perm[2]->size()) == num_cells);
 		    permeability_.clear();
-		    permeability_.reserve(num_cells);
+		    permeability_.resize(dim*dim*num_cells, 0.0);
 		    for (int i = 0; i < num_cells; ++i) {
-			permtensor_t K(0.0);
+			permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
 			for (int dd = 0; dd < dim; ++dd) {
-			    K[i][dd] = (*(perm[dd]))[i];
+			    K(dd, dd) = (*(perm[dd]))[i];
 			}
-			permeability_.push_back(K);
 		    }
 		} else {
 		    // Only a scalar.
@@ -98,34 +100,34 @@ namespace Dune
 		    const std::vector<double>& perm = parser.getFloatingPointValue("PERMX");
 		    ASSERT(int(perm.size()) == num_cells);
 		    permeability_.clear();
-		    permeability_.reserve(num_cells);
+		    permeability_.resize(dim*dim*num_cells, 0.0);
 		    for (int i = 0; i < num_cells; ++i) {
-			permtensor_t K(0.0);
+			permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
 			for (int dd = 0; dd < dim; ++dd) {
-			    K[dd][dd] = perm[i];
+			    K(dd, dd) = perm[i];
 			}
-			permeability_.push_back(K);
 		    }
 		}
 	    } else {
 		// ... is default.
-		permtensor_t ident(0.0);
-		for (int i = 0; i < dim; ++i) {
-		    ident[i][i] = 1.0;
-		}
 		permeability_.clear();
-		permeability_.resize(num_cells, ident);
+		permeability_.resize(dim*dim*num_cells, 0.0);
+		for (int i = 0; i < num_cells; ++i) {
+		    permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
+		    for (int dd = 0; dd < dim; ++dd) {
+			K(dd, dd) = 1.0;
+		    }
+		}
 	    }
 	}
 
-	typedef FieldMatrix<double, dim, dim> permtensor_t;
 	double porosity(int cell_index)
 	{
 	    return porosity_[cell_index];
 	}
 	const permtensor_t& permeability(int cell_index)
 	{
-	    return permeability_[cell_index];
+	    return permtensor_t(dim, dim, &permeability_[dim*dim*cell_index]);
 	}
 	double mobilityFirstPhase(int cell_index, double saturation)
 	{
@@ -156,7 +158,7 @@ namespace Dune
 	}
 
 	std::vector<double> porosity_;
-	std::vector<permtensor_t> permeability_;
+	std::vector<double> permeability_;
 	double density1_;
 	double density2_;
 	double viscosity1_;

@@ -10,7 +10,7 @@ euler_upstream_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
                     $(BOOST_SYSTEM_LIB) \
                     ../../../grid/cpgrid/libcpgrid.la \
                     ../../../grid/preprocess/libpreprocess.la \
-                    ../../../common/param/libparam.la
+                    ../../../common/param/libparam.la -llapack -lblas
 
 gie_test_SOURCES = gie_test.cpp
 gie_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
