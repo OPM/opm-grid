@@ -44,17 +44,17 @@
 
 using namespace Dune;
 
-BOOST_AUTO_TEST_CASE(boundarycondition)
+BOOST_AUTO_TEST_CASE(flowboundarycondition)
 {
-    BoundaryCondition bc1;
+    FlowBoundaryCondition bc1;
     BOOST_CHECK(bc1.isNeumann());
     BOOST_CHECK(bc1.outflux() == 0.0);
     BOOST_CHECK(!bc1.isDirichlet());
-    BoundaryCondition bc2(BoundaryCondition::Neumann, 5.0);
+    FlowBoundaryCondition bc2(FlowBoundaryCondition::Neumann, 5.0);
     BOOST_CHECK(bc2.isNeumann());
     BOOST_CHECK(bc2.outflux() == 5.0);
     BOOST_CHECK(!bc2.isDirichlet());
-    BoundaryCondition bc3(BoundaryCondition::Dirichlet, 10.0);
+    FlowBoundaryCondition bc3(FlowBoundaryCondition::Dirichlet, 10.0);
     BOOST_CHECK(bc3.isDirichlet());
     BOOST_CHECK(bc3.pressure() == 10.0);
     BOOST_CHECK(!bc3.isNeumann());
@@ -66,18 +66,18 @@ BOOST_AUTO_TEST_CASE(boundarycondition)
 #endif
 }
 
-BOOST_AUTO_TEST_CASE(boundaryconditions)
+BOOST_AUTO_TEST_CASE(flowboundaryconditions)
 {
-    BoundaryConditions bc1;
+    FlowBoundaryConditions bc1;
     BOOST_CHECK(bc1.empty());
-    BoundaryConditions bc2(2);
+    FlowBoundaryConditions bc2(2);
     BOOST_CHECK(bc2[0].isNeumann());
     BOOST_CHECK(bc2[0].outflux() == 0.0);
     BOOST_CHECK(!bc2[0].isDirichlet());
     BOOST_CHECK(bc2[1].isNeumann());
     BOOST_CHECK(bc2[1].outflux() == 0.0);
     BOOST_CHECK(!bc2[1].isDirichlet());
-    bc2[1] = BoundaryCondition(BoundaryCondition::Dirichlet, 10.0);
+    bc2[1] = FlowBoundaryCondition(FlowBoundaryCondition::Dirichlet, 10.0);
     BOOST_CHECK(bc2[1].isDirichlet());
     BOOST_CHECK(bc2[1].pressure() == 10.0);
     BOOST_CHECK(!bc2[1].isNeumann());
@@ -86,4 +86,29 @@ BOOST_AUTO_TEST_CASE(boundaryconditions)
     BOOST_CHECK_THROW(bc2[0].pressure(), std::exception);
     BOOST_CHECK_THROW(bc2[1].outflux(), std::exception);
 #endif
+}
+
+
+BOOST_AUTO_TEST_CASE(saturationboundarycondition)
+{
+    SaturationBoundaryCondition bc1;
+    BOOST_CHECK(bc1.isDirichlet());
+    BOOST_CHECK(bc1.saturation() == 1.0);
+    SaturationBoundaryCondition bc2(SaturationBoundaryCondition::Dirichlet, 0.3);
+    BOOST_CHECK(bc2.isDirichlet());
+    BOOST_CHECK(bc2.saturation() == 0.3);
+}
+
+BOOST_AUTO_TEST_CASE(saturationboundaryconditions)
+{
+    SaturationBoundaryConditions bc1;
+    BOOST_CHECK(bc1.empty());
+    SaturationBoundaryConditions bc2(2);
+    BOOST_CHECK(bc2[0].isDirichlet());
+    BOOST_CHECK(bc2[0].saturation() == 1.0);
+    BOOST_CHECK(bc2[1].isDirichlet());
+    BOOST_CHECK(bc2[1].saturation() == 1.0);
+    bc2[1] = SaturationBoundaryCondition(SaturationBoundaryCondition::Dirichlet, 0.8);
+    BOOST_CHECK(bc2[1].isDirichlet());
+    BOOST_CHECK(bc2[1].saturation() == 0.8);
 }

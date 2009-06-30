@@ -36,10 +36,11 @@
 #include "../EulerUpstream.hpp"
 #include "../GridInterfaceEuler.hpp"
 #include "../ReservoirPropertyInterface.hpp"
+#include "../BoundaryConditions.hpp"
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/yaspgrid.hh>
 #include <dune/common/mpihelper.hh>
-
+#include <dune/grid/common/SparseVector.hpp>
 
 int main(int argc, char** argv)
 {
@@ -69,8 +70,18 @@ int main(int argc, char** argv)
     // Make the grid interface
     Dune::GridInterfaceEuler<GridType> g(grid);
 
+    // Reservoir properties.
     Dune::ReservoirPropertyInterface<3> res_prop;
     res_prop.init(parser);
+
+    // Make pressure equation boundary conditions.
+    // Pressure 1.0e5 on the left, 0.0 on the right.
+    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
+    // and that boundary id 0 means interiour face/intersection.
+    typedef Dune::FlowBoundaryCondition BC;
+    Dune::FlowBoundaryConditions bcond(7);
+    bcond[1] = BC(BC::Dirichlet, 1.0e5);
+    bcond[2] = BC(BC::Dirichlet, 0.0);
 
     // Make a solver.
     Dune::EulerUpstream transport_solver;

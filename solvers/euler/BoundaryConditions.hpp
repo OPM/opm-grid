@@ -44,15 +44,15 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 namespace Dune
 {
 
-    class BoundaryCondition
+    class FlowBoundaryCondition
     {
     public:
 	enum BCType { Dirichlet, Neumann };
-	BoundaryCondition()
+	FlowBoundaryCondition()
 	    : type_(Neumann), value_(0.0)
 	{
 	}
-	BoundaryCondition(BCType type, double value)
+	FlowBoundaryCondition(BCType type, double value)
 	    : type_(type), value_(value)
 	{
 	}
@@ -80,7 +80,35 @@ namespace Dune
     };
 
 
-    typedef std::vector<BoundaryCondition> BoundaryConditions;
+    class SaturationBoundaryCondition
+    {
+    public:
+	enum BCType { Dirichlet };
+	SaturationBoundaryCondition()
+	    : type_(Dirichlet), value_(1.0)
+	{
+	}
+	SaturationBoundaryCondition(BCType type, double value)
+	    : type_(type), value_(value)
+	{
+	}
+	bool isDirichlet() const
+	{
+	    return type_ == Dirichlet;
+	}
+	double saturation() const
+	{
+	    ASSERT(type_ == Dirichlet);
+	    return value_;
+	}
+    private:
+	BCType type_;
+	double value_;
+    };
+
+
+    typedef std::vector<FlowBoundaryCondition> FlowBoundaryConditions;
+    typedef std::vector<SaturationBoundaryCondition> SaturationBoundaryConditions;
 
 
 } // namespace Dune
