@@ -62,7 +62,7 @@ namespace Dune {
 
         template<class Matrix>
         void evaluate(const CellIter& c,
-                      const Matrix&   Kt,
+                      const Matrix&   K,
                       Matrix&         Binv)
         {
             typedef typename CellIter::FaceIterator FI;
@@ -113,10 +113,8 @@ namespace Dune {
             // Binv <- diag(A) * Binv * diag(A)
             symmetricUpdate(fa, Binv);
 
-            // T2 <- N*K -- Assumes K (i.e., perm) is stored in C order
-            // (i.e., transposed from the point of view of a FortranMatrix<T>).
-            //
-            matMulAdd_NT(Scalar(1.0), T1, Kt, Scalar(0.0), T2);
+            // T2 <- N*K
+            matMulAdd_NN(Scalar(1.0), T1, K, Scalar(0.0), T2);
 
             // Binv <- (T2*N' + Binv) / vol(c)
             //      == (N*K*N' + t*(diag(A) * (I - Q*Q') * diag(A))) / vol(c)
@@ -124,7 +122,7 @@ namespace Dune {
             // where t = 6/d * TRACE(K) (== 2*TRACE(K) for 3D).
             //
             Scalar t = 0.0;
-            for (int j = 0; j < dim; ++j) t += Kt(j,j);
+            for (int j = 0; j < dim; ++j) t += K(j,j);
 
             matMulAdd_NT(Scalar(1.0)     /        c->volume() , T2, T1,
                          Scalar(6.0) * t / (dim * c->volume()), Binv  );

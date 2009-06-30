@@ -204,6 +204,25 @@ namespace Dune {
 
 
     template<class Matrix>
+    void matMulAdd_NN(const typename Matrix::value_type& a1,
+                      const Matrix&                      A ,
+                      const Matrix&                      B ,
+                      const typename Matrix::value_type& a2,
+                      Matrix&                            C)
+    {
+        ASSERT(A.numRows() == C.numRows());
+        ASSERT(A.numCols() == B.numRows());
+        ASSERT(B.numCols() == C.numCols());
+
+        Dune::BLAS_LAPACK::GEMM("No Transpose", "No Transpose",
+                                A.numRows(), B.numCols(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                B.data(), B.leadingDimension(),
+                                a2, C.data(), C.leadingDimension());
+    }
+
+
+    template<class Matrix>
     void matMulAdd_NT(const typename Matrix::value_type& a1,
                       const Matrix&                      A ,
                       const Matrix&                      B ,
