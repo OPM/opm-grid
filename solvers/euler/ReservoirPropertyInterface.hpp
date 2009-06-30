@@ -39,7 +39,7 @@
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/cpgrid/EclipseGridParser.hpp>
 #include <dune/grid/cpgrid/EclipseGridInspector.hpp>
-#include <dune/solvers/mimetic/FortranMatrix.hpp>
+#include <dune/solvers/mimetic/Matrix.hpp>
 
 namespace Dune
 {
@@ -50,7 +50,7 @@ namespace Dune
     class ReservoirPropertyInterface
     {
     public:
-	typedef FortranMatrix<double, false> permtensor_t;
+	typedef CMatrix<double, SharedData> permtensor_t;
 
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),

@@ -42,7 +42,7 @@
 
 #include <dune/solvers/mimetic/fortran.hpp>
 #include <dune/solvers/mimetic/blas_lapack.hpp>
-#include <dune/solvers/mimetic/FortranMatrix.hpp>
+#include <dune/solvers/mimetic/Matrix.hpp>
 
 namespace Dune {
     template<class CellIter, int dim, bool computeInverseIP> class MimeticIPEvaluator;
@@ -60,10 +60,11 @@ namespace Dune {
         {}
 
 
-        template<class Matrix>
-        void evaluate(const CellIter& c,
-                      const Matrix&   K,
-                      Matrix&         Binv)
+        template<template<typename> class SP1,
+                 template<typename> class SP2>
+        void evaluate(const CellIter&            c,
+                      const CMatrix<Scalar,SP1>& K,
+                      FortranMatrix<Scalar,SP2>& Binv)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
@@ -78,9 +79,9 @@ namespace Dune {
             ASSERT(t2_.size()     >= nf * dim);
             ASSERT(fa_.size()     >= nf * nf);
 
-            FortranMatrix<Scalar,false> T1(nf, dim, &t1_[0]);
-            FortranMatrix<Scalar,false> T2(nf, dim, &t2_[0]);
-            FortranMatrix<Scalar,false> fa(nf, nf , &fa_[0]);
+            FortranMatrix<Scalar,SharedData> T1(nf, dim, &t1_[0]);
+            FortranMatrix<Scalar,SharedData> T2(nf, dim, &t2_[0]);
+            FortranMatrix<Scalar,SharedData> fa(nf, nf , &fa_[0]);
 
             // Clear matrices of any residual data.
             zero(Binv);  zero(T1);  zero(T2);  zero(fa);
@@ -121,9 +122,8 @@ namespace Dune {
             //
             // where t = 6/d * TRACE(K) (== 2*TRACE(K) for 3D).
             //
-            Scalar t = 0.0;
-            for (int j = 0; j < dim; ++j) t += K(j,j);
-
+            Scalar t = 0.0; //trace(K);
+            for (int i = 0; i < dim; ++i) t += K(i,i);
             matMulAdd_NT(Scalar(1.0)     /        c->volume() , T2, T1,
                          Scalar(6.0) * t / (dim * c->volume()), Binv  );
         }
