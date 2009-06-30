@@ -77,11 +77,11 @@ void test_evaluator(const Interface& g)
 
     // Set dummy permeability K=diag(10,1,...,1,0.1).
     std::vector<Scalar> perm(dim * dim, Scalar(0.0));
-    Dune::FortranMatrix<Scalar,false> Kt(dim, dim, &perm[0]);
+    Dune::FortranMatrix<Scalar,false> K(dim, dim, &perm[0]);
     for (int i = 0; i < dim; ++i)
-        Kt(i,i) = 1.0;
-    Kt(0    ,0    ) *= 10.0;
-    Kt(dim-1,dim-1) /= 10.0;
+        K(i,i) = 1.0;
+    K(0    ,0    ) *= 10.0;
+    K(dim-1,dim-1) /= 10.0;
 
     // Storage for inverse ip.
     std::vector<Scalar> ip_store(max_nf * max_nf, Scalar(0.0));
@@ -93,7 +93,7 @@ void test_evaluator(const Interface& g)
                                                numf[count],
                                                &ip_store[0]);
 
-        ip.evaluate(c, Kt, Binv);
+        ip.evaluate(c, K, Binv);
 
         std::cout << count << " -> Binv = [\n" << Binv << "]\n";
     }
