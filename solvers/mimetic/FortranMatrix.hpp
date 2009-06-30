@@ -241,9 +241,9 @@ namespace Dune {
     }
 
 
-    template<class charT, class traits, class Matrix>
+    template<class charT, class traits, class T, bool ownsItsData>
     std::basic_ostream<charT,traits>&
-    operator<<(std::basic_ostream<charT,traits>& os, const Matrix& A)
+    operator<<(std::basic_ostream<charT,traits>& os, const FortranMatrix<T, ownsItsData>& A)
     {
         for (int i = 0; i < A.numRows(); ++i) {
             for (int j = 0; j < A.numCols(); ++j)
