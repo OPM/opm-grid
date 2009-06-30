@@ -63,9 +63,11 @@ void test_interface(const Interface& g)
         int fcount = 0;
 	for (; f != c->faceend(); ++f, ++fcount) {
 	    std::cout << "        Face number: " << fcount
+		      << "\n            Local index    = " << f->localIndex()
 		      << "\n            Boundary       = " << f->boundary()
 		      << "\n            Boundary Id    = " << f->boundaryId()
-		      << "\n            Neighbour cell = " << f->neighbourIndex()
+		      << "\n            My cell        = " << f->cellIndex()
+		      << "\n            Neighbour cell = " << f->neighbourCellIndex()
 		      << "\n            Face area      = " << f->area()
 		      << "\n            Face centroid  = " << f->centroid()
 		      << "\n            Face normal    = " << f->normal() << '\n';
