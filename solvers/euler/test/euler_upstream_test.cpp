@@ -32,6 +32,7 @@
   You should have received a copy of the GNU General Public License
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "config.h"
 #include "../EulerUpstream.hpp"
 #include "../GridInterfaceEuler.hpp"
@@ -41,52 +42,109 @@
 #include <dune/grid/yaspgrid.hh>
 #include <dune/common/mpihelper.hh>
 #include <dune/grid/common/SparseVector.hpp>
+#include <dune/grid/common/SparseTable.hpp>
+#include <dune/grid/common/Volumes.hpp>
+
+namespace Dune
+{
+
+    template <class GridInterface>
+    class TestSolution
+    {
+    public:
+	TestSolution(const GridInterface& g,
+		     const typename GridInterface::CellIterator::Vector& v)
+	{
+	    // Make a flux consistent with a constant velocity field.
+	    typename GridInterface::CellIterator c = g.cellbegin();
+	    std::vector<double> cell_fluxes;
+	    for (; c != g.cellend(); ++c) {
+		cell_fluxes.clear();
+		typename GridInterface::CellIterator::FaceIterator f = c->facebegin();
+		for (; f != c->faceend(); ++f) {
+		    //double flux = Dune::template inner<typename GridInterface::CellIterator::Vector>(v, f->normal())*f->area();
+		    double flux = inner(v, f->normal())*f->area();
+		    cell_fluxes.push_back(flux);
+		}
+		halfface_fluxes_.appendRow(cell_fluxes.begin(), cell_fluxes.end());
+	    }
+	}
+
+	typedef typename GridInterface::CellIterator::FaceIterator FaceIter;
+	double outflux(const FaceIter& f)
+	{
+	    return halfface_fluxes_[f->cellIndex()][f->localIndex()];
+	}
+
+    private:
+	SparseTable<double> halfface_fluxes_;
+    };
+
+} // namespace Dune
+
+
+using namespace Dune;
+
 
 int main(int argc, char** argv)
 {
-    Dune::parameter::ParameterGroup param(argc, argv);
-    Dune::MPIHelper::instance(argc,argv);
+    parameter::ParameterGroup param(argc, argv);
+    MPIHelper::instance(argc,argv);
 
     // Make a grid.
 //     const int dim = 3;
-//     typedef Dune::YaspGrid<dim> GridType;
-//     typedef Dune::FieldVector<int,dim> iTuple;
-//     typedef Dune::FieldVector<double,dim> fTuple;
-//     typedef Dune::FieldVector<bool,dim> bTuple;
+//     typedef YaspGrid<dim> GridType;
+//     typedef FieldVector<int,dim> iTuple;
+//     typedef FieldVector<double,dim> fTuple;
+//     typedef FieldVector<bool,dim> bTuple;
 //     fTuple cell_sz(1.0);
 //     iTuple dims(3);
 //     bTuple periodic(false);
 //     int overlap = 1;
-//     Dune::YaspGrid<dim> grid(cell_sz, dims, periodic, overlap);
+//     YaspGrid<dim> grid(cell_sz, dims, periodic, overlap);
 //     grid.globalRefine(2);
 
     // Make a grid
-    typedef Dune::CpGrid GridType;
-    Dune::CpGrid grid;
-    Dune::EclipseGridParser parser(param.get<std::string>("filename"));
+    typedef CpGrid GridType;
+    CpGrid grid;
+    EclipseGridParser parser(param.get<std::string>("filename"));
     double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
     grid.processEclipseFormat(parser, z_tolerance);
 
     // Make the grid interface
-    Dune::GridInterfaceEuler<GridType> g(grid);
+    typedef GridInterfaceEuler<GridType> GridInterface;
+    GridInterface g(grid);
 
     // Reservoir properties.
-    Dune::ReservoirPropertyInterface<3> res_prop;
+    ReservoirPropertyInterface<3> res_prop;
     res_prop.init(parser);
 
-    // Make pressure equation boundary conditions.
+    // Make flow equation boundary conditions.
     // Pressure 1.0e5 on the left, 0.0 on the right.
     // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
     // and that boundary id 0 means interiour face/intersection.
-    typedef Dune::FlowBoundaryCondition BC;
-    Dune::FlowBoundaryConditions bcond(7);
-    bcond[1] = BC(BC::Dirichlet, 1.0e5);
-    bcond[2] = BC(BC::Dirichlet, 0.0);
+    typedef FlowBoundaryCondition BC;
+    FlowBoundaryConditions flow_bcond(7);
+    flow_bcond[1] = BC(BC::Dirichlet, 1.0e5);
+    flow_bcond[2] = BC(BC::Dirichlet, 0.0);
+
+    // Make transport equation boundary conditions.
+    // The default one is fine (sat = 1.0 on inflow).
+    SaturationBoundaryConditions sat_bcond(7);
+
+    // No injection or production.
+    SparseVector<double> injection_rates(g.numberOfCells());
 
     // Make a solver.
-    Dune::EulerUpstream transport_solver;
+    // EulerUpstream transport_solver(g, res_prop, sat_bcond);
 
-
-    //transport_solver.transportSolve(sat, time, resdata, boundary, face_fluxes);
+    // Define a flow field with constant velocity
+    FieldVector<double, 3> vel(0.0);
+    vel[2] = 1.0;
+    TestSolution<GridInterface> flow_solution(g, vel);
+    // Solve a step.
+    //double time = 1.0;
+    std::vector<double> sat(g.numberOfCells(), 0.0);
+    // transport_solver.transportSolve(sat, time, flow_solution);
 }
 
