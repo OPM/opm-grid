@@ -55,17 +55,16 @@ namespace Dune
 	{
 	public:
 	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
-	    Intersection(const DuneGrid& grid, DuneIntersectionIter it)
-		: grid_(grid), iter_(it)
+	    Intersection(const DuneGrid& grid, DuneIntersectionIter it, int local_index)
+		: grid_(grid), iter_(it), local_index_(local_index)
 	    {
 	    }
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
-	    //typedef typename DuneGrid::LeafIndexSet::IndexType Index;
 	    typedef int Index;
 
-	    enum { BoundaryMarkerIndex = -1 };
+	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = -2};
 
 	    Scalar area() const
 	    {
@@ -92,13 +91,23 @@ namespace Dune
 		return iter_->boundaryId();
 	    }
 
-	    Index neighbourIndex() const
+	    Index cellIndex() const
+	    {
+		return grid_.leafIndexSet().index(*iter_->inside());
+	    }
+
+	    Index neighbourCellIndex() const
 	    {
 		if (iter_->boundary()) {
 		    return BoundaryMarkerIndex;
 		} else {
 		    return grid_.leafIndexSet().index(*iter_->outside());
 		}
+	    }
+
+	    Index localIndex() const
+	    {
+		return local_index_;
 	    }
 
 	    /// Used by iterator facade.
@@ -109,16 +118,20 @@ namespace Dune
 	    /// Used by iterator facade.
 	    bool equal(const Intersection& other) const
 	    {
+		// Note that we do not compare the local_index_ members,
+		// since they may or may not be equal for end iterators.
 		return iter_ == other.iter_;
 	    }
 	    /// Used by iterator facade.
 	    void increment()
 	    {
 		++iter_;
+		++local_index_;
 	    }
 	private:
 	    const DuneGrid& grid_;
 	    DuneIntersectionIter iter_;
+	    int local_index_;
 
 	    LocalVector localCentroid() const
 	    {
@@ -147,12 +160,12 @@ namespace Dune
 
 	    FaceIterator facebegin() const
 	    {
-		return FaceIterator(grid_, iter_->ileafbegin());
+		return FaceIterator(grid_, iter_->ileafbegin(), 0);
 	    }
 
 	    FaceIterator faceend() const
 	    {
-		return FaceIterator(grid_, iter_->ileafend());
+		return FaceIterator(grid_, iter_->ileafend(), FaceIterator::LocalEndIndex);
 	    }
 
 	    Scalar volume() const
