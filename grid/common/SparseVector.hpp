@@ -34,8 +34,8 @@
 */
 
 
-#ifndef OPENRS_SPARSETABLE_HEADER
-#define OPENRS_SPARSETABLE_HEADER
+#ifndef OPENRS_SPARSEVECTOR_HEADER
+#define OPENRS_SPARSEVECTOR_HEADER
 
 #include <vector>
 #include <numeric>
@@ -61,6 +61,8 @@ namespace Dune
 	{
 	}
 
+	/// Constructs a SparseVector with a given size, but no nonzero
+	/// elements.
 	explicit SparseVector(int size)
 	    : size_(size), default_elem_()
 	{
