@@ -1,4 +1,4 @@
-// $Id: fvector.hh 10785 2009-06-08 13:48:42Z atgeirr $
+// $Id: fvector.hh 10858 2009-06-30 14:27:37Z atgeirr $
 #ifndef DUNE_FVECTOR_HH
 #define DUNE_FVECTOR_HH
 
@@ -311,6 +311,9 @@ representing a field and a compile-time given size.
 	//! export the type representing the field
 	typedef K field_type;
 
+        //! export the contained type for STL-type purposes
+	typedef K value_type;
+
 	//! export the type representing the components
 	typedef K block_type;
 
@@ -399,13 +402,13 @@ representing a field and a compile-time given size.
     /** \brief copy constructor */
     FieldVector ( const FieldVector &other )
     {
-      for( size_type i = 0; i < SIZE; ++i )
+      for( int i = 0; i < SIZE; ++i ) // Change size_type to int to remove warning. SIZE is also int.
         p[ i ] = other[ i ];
     }
 
       /** \brief Assigment from other vector */
       FieldVector& operator= (const FieldVector& other) {
-          for (size_type i=0; i<SIZE; i++)
+          for (int i=0; i<SIZE; i++)
               p[i] = other[i];
           return *this;
       }
@@ -831,22 +834,32 @@ representing a field and a compile-time given size.
 	//===== access to components
 
 	//! random access 
+#ifdef DUNE_ISTL_WITH_CHECKING
 	K& operator[] (size_type i)
 	{
-#ifdef DUNE_ISTL_WITH_CHECKING
 	  if (i != 0) DUNE_THROW(MathError,"index out of range");
-#endif
 	  return p;
 	}
+#else
+	K& operator[] (size_type)
+	{
+	  return p;
+	}
+#endif
 
 	//! same for read only access
+#ifdef DUNE_ISTL_WITH_CHECKING
 	const K& operator[] (size_type i) const
 	{
-#ifdef DUNE_ISTL_WITH_CHECKING
 	  if (i != 0) DUNE_THROW(MathError,"index out of range");
-#endif
 	  return p;
 	}
+#else
+	const K& operator[] (size_type) const
+	{
+	  return p;
+	}
+#endif
 
 	//! Iterator class for sequential access
     typedef FieldIterator<FieldVector<K,n>,K> Iterator;
