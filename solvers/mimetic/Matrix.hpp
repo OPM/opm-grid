@@ -117,8 +117,8 @@ namespace Dune {
 
         int idx(int row, int col) const
         {
-            ASSERT ((0 <= row) && (row <= numRows()));
-            ASSERT ((0 <= col) && (col <= numCols()));
+            ASSERT ((0 <= row) && (row < numRows()));
+            ASSERT ((0 <= col) && (col < numCols()));
 
             return row*numCols() + col;
         }
