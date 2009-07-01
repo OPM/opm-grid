@@ -60,11 +60,10 @@ namespace Dune {
         {}
 
 
-        template<template<typename> class SP1,
-                 template<typename> class SP2>
-        void evaluate(const CellIter&            c,
-                      const CMatrix<Scalar,SP1>& K,
-                      FortranMatrix<Scalar,SP2>& Binv)
+        template<class permtensor_t, template<typename> class SP>
+        void evaluate(const CellIter&           c,
+                      const permtensor_t&       K,
+                      FortranMatrix<Scalar,SP>& Binv)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
