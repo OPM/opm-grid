@@ -90,9 +90,13 @@ namespace Dune {
     template<typename T, template<typename> class StoragePolicy>
     class CMatrix : private StoragePolicy<T> {
     public:
+        CMatrix()
+            : StoragePolicy<T>(0, 0),
+	      rows_(0), cols_(0)
+        {}
         CMatrix(int rows, int cols, T* data)
-            : StoragePolicy<T>(rows * cols, data)
-            , rows_(rows), cols_(cols)
+            : StoragePolicy<T>(rows * cols, data),
+	      rows_(rows), cols_(cols)
         {}
 
         typedef typename StoragePolicy<T>::ValueType ValueType;
