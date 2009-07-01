@@ -173,9 +173,11 @@ namespace Dune {
 
 
     template<typename T, template<typename> class StoragePolicy>
-    T trace(const FortranMatrix<T,StoragePolicy>& A)
+    typename FortranMatrix<T,StoragePolicy>::ValueType
+    trace(const FortranMatrix<T,StoragePolicy>& A)
     {
-        T ret = 0.0;
+        typename FortranMatrix<T,StoragePolicy>::ValueType ret(0);
+
         for (int i = 0; i < std::min(A.numRows(), A.numCols()); ++i) {
             ret += A(i,i);
         }
@@ -184,11 +186,16 @@ namespace Dune {
 
 
     template<typename T, template<typename> class StoragePolicy>
-    T trace(const CMatrix<T,StoragePolicy>& A)
+    typename CMatrix<T,StoragePolicy>::ValueType
+    trace(const CMatrix<T,StoragePolicy>& A)
     {
-        const FortranMatrix<T,SharedData> At(A.numCols(), A.numRows(),
-                                             const_cast<T*>(A.data()));
-        return trace(At);
+        typedef typename CMatrix<T,StoragePolicy>::ValueType ValueType;
+        typedef FortranMatrix<ValueType,SharedData>          FMat;
+
+        const FMat At(A.numCols(), A.numRows(),
+                      const_cast<ValueType*>(A.data()));
+
+        return ValueType(trace(At));
     }
 
 
