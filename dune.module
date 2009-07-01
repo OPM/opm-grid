@@ -6,4 +6,4 @@ Module: dune-cornerpoint
 Version: 0.2
 Maintainer: atgeirr@sintef.no
 #depending on 
-Depends: dune-common dune-grid
+Depends: dune-common dune-grid dune-istl
