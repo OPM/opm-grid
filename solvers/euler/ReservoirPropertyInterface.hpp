@@ -58,6 +58,7 @@ namespace Dune
 	      viscosity1_(1.0),
 	      viscosity2_(0.3)
 	{
+	    computeCflFactors();
 	}
 
 	void init(const EclipseGridParser& parser)
@@ -121,40 +122,81 @@ namespace Dune
 	    }
 	}
 
-	double porosity(int cell_index)
+	double porosity(int cell_index) const
 	{
 	    return porosity_[cell_index];
 	}
-	const permtensor_t& permeability(int cell_index)
+	const permtensor_t& permeability(int cell_index) const
 	{
 	    return permtensor_t(dim, dim, &permeability_[dim*dim*cell_index]);
 	}
-	double mobilityFirstPhase(int cell_index, double saturation)
+	double mobilityFirstPhase(int cell_index, double saturation) const
 	{
 	    return relPermFirstPhase(cell_index, saturation)/viscosity1_;
 	}
-	double mobilitySecondPhase(int cell_index, double saturation)
+	double mobilitySecondPhase(int cell_index, double saturation) const
 	{
 	    return relPermSecondPhase(cell_index, saturation)/viscosity1_;
 	}
-	double totalMobility(int cell_index, double saturation)
+	double totalMobility(int cell_index, double saturation) const
 	{
 	    double l1 = mobilityFirstPhase(cell_index, saturation);
 	    double l2 = mobilitySecondPhase(cell_index, saturation);
 	    return l1 + l2;
 	}
-	double densityDifference()
+	double densityDifference() const
 	{
 	    return density1_ - density2_;
 	}
+	double cflFactor() const
+	{
+	    return cfl_factor_;
+	}
+	double cflFactorGravity() const
+	{
+	    return cfl_factor_gravity_;
+	}
     private:
-	double relPermFirstPhase(int cell_index, double saturation)
+	double relPermFirstPhase(int /*cell_index*/, double saturation) const
 	{
 	    return saturation*saturation;
 	}
-	double relPermSecondPhase(int cell_index, double saturation)
+	double relPermSecondPhase(int /*cell_index*/, double saturation) const
 	{
 	    return (1.0 - saturation)*(1.0 - saturation);
+	}
+	void relMobs(double s, double& mob_first, double& mob_gravity)
+	{
+	    // This is a hack for now, we should make this rock-dependant,
+	    // for the multi-rock case.
+	    const double cell_index = 0;
+	    double l1 = mobilityFirstPhase(cell_index, s);
+	    double l2 = mobilitySecondPhase(cell_index, s);
+	    mob_first = l1/(l1 + l2);
+	    mob_gravity = l1*l2/(l1 + l2);
+	}
+	void computeCflFactors()
+	{
+	    MESSAGE("Cfl factors are computed disregarding multiple rock possibility.");
+	    const int N = 257;
+	    double delta = 1.0/double(N - 1);
+	    double last_m1, last_mg;
+	    double max_der1 = -1e100;
+	    double max_derg = -1e100;
+	    relMobs(0.0, last_m1, last_mg);
+	    for (int i = 1; i < N; ++i) {
+		double s = double(i)*delta;
+		double m1, mg;
+		relMobs(s, m1, mg);
+		double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
+		double est_deriv_mg = std::fabs(mg - last_mg)/delta;
+		max_der1 = std::max(max_der1, est_deriv_m1);
+		max_derg = std::max(max_derg, est_deriv_mg);
+		last_m1 = m1;
+		last_mg = mg;
+	    }
+	    cfl_factor_ = 1.0/max_der1;
+	    cfl_factor_gravity_ = 1.0/max_derg;
 	}
 
 	std::vector<double> porosity_;
@@ -163,6 +205,8 @@ namespace Dune
 	double density2_;
 	double viscosity1_;
 	double viscosity2_;
+	double cfl_factor_;
+	double cfl_factor_gravity_;
     };
 
 

@@ -71,7 +71,7 @@ namespace Dune
 	}
 
 	typedef typename GridInterface::CellIterator::FaceIterator FaceIter;
-	double outflux(const FaceIter& f)
+	double outflux(const FaceIter& f) const
 	{
 	    return halfface_fluxes_[f->cellIndex()][f->localIndex()];
 	}
@@ -136,15 +136,19 @@ int main(int argc, char** argv)
     SparseVector<double> injection_rates(g.numberOfCells());
 
     // Make a solver.
-    // EulerUpstream transport_solver(g, res_prop, sat_bcond);
+    typedef EulerUpstream<GridInterface, ReservoirPropertyInterface<3>, SaturationBoundaryConditions> TransportSolver;
+    TransportSolver transport_solver(g, res_prop, sat_bcond, injection_rates);
 
     // Define a flow field with constant velocity
     FieldVector<double, 3> vel(0.0);
-    vel[2] = 1.0;
+    vel[0] = 2.0;
+    vel[1] = 1.0;
     TestSolution<GridInterface> flow_solution(g, vel);
     // Solve a step.
-    //double time = 1.0;
+    double time = 1.0;
     std::vector<double> sat(g.numberOfCells(), 0.0);
-    // transport_solver.transportSolve(sat, time, flow_solution);
+    FieldVector<double, 3> gravity(0.0);
+    gravity[2] = -9.81;
+    //transport_solver.transportSolve(sat, time, gravity, flow_solution);
 }
 

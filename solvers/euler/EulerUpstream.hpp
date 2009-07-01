@@ -38,73 +38,63 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include "../../common/param/ParameterGroup.hpp"
+#include <dune/grid/common/SparseVector.hpp>
 #include <tr1/unordered_map>
 
 
 namespace Dune {
 
     /// Class for doing simple transport by explicit Euler upstream method for general grid.
-    //template <class GridInterface, class Problem, class ReservoirProperties>
+    template <class GridInterface, class ReservoirProperties, class BoundaryConditions>
     class EulerUpstream
     {
     public:
 	EulerUpstream();
-// 	EulerUpstream(const GridInterface& grid,
-// 		      const Problem& problem,
-// 		      const ReservoirProperties& resprop);
+ 	EulerUpstream(const GridInterface& grid,
+ 		      const ReservoirProperties& resprop,
+		      const BoundaryConditions& boundary,
+		      const SparseVector<double>& injection_rates);
 	void init(const parameter::ParameterGroup& param);
 	void display();
-	/**
-	   Set the courant number. that is dt=dt_cfl*courant_number.
-	   For this explicite methode it should be < 1.
-	*/
+
+	/// \brief Set the Courant number.
+	/// That is dt = dt_cfl*courant_number.
+	/// For this explicit method it should be < 1.
 	void setCourantNumber(double cn);
 
-	//typedef typename grid_t::point_t point_t;
-	template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
+	/// \brief Solve transport equation, evolving \param saturation
+	/// for \param time seconds.
+	/// Cfl type conditions may force many explicit timesteps to
+	/// be taken, before the function returns.
+	template <class PressureSolution>
 	void transportSolve(std::vector<double>& saturation,
 			    const double time,
-			    const flowsys_t& flow_system,
-			    const grid_t& my_grid,
-			    const rock_t& rock_data,
-			    const well_t& well_data,
-			    const boundary_t& boundary,
-			    const typename grid_t::point_t& gravity,
-			    const std::vector<double>& flux_vector) const;
-	/**
-	   Routione to do one euler upstream time step
-	   /param saturation output saturation
-	   /param dt time step
-	   /param flowsys class for calculating fluid properties
-	   /param velocity input velocity
-	   /param gravity input gravity vector
-	   /param permeability input vector of matrixes of permability
-	   /param porosity input porosity
-	   /param source vector of rate for each cell
-	*/
+			    const typename GridInterface::Vector& gravity,
+			    const PressureSolution& pressure_sol) const;
 
     protected:
-	template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
+	typedef typename GridInterface::CellIterator CIt;
+	typedef typename CIt::FaceIterator FIt;
+
+	void initPeriodics() const;
+
+	template <class PressureSolution>
+	double computeCflTime(const std::vector<double>& saturation,
+			      const double time,
+			      const typename GridInterface::Vector& gravity,
+			      const PressureSolution& pressure_sol) const;
+
+	template <class PressureSolution>
 	void smallTimeStep(std::vector<double>& saturation,
-			   const double dt,
-			   const flowsys_t& flowsys,
-			   const grid_t& grid,
-			   const rock_t& rock_data,
-			   const well_t& well_data,
-			   const boundary_t& boundary,
-			   const typename grid_t::point_t& gravity,
-			   const std::vector<double>& flux_vector) const;
+			   const double time,
+			   const typename GridInterface::Vector& gravity,
+			   const PressureSolution& pressure_sol) const;
 	
-	template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
-	void computeSatDelta(const std::vector<double>& saturation,
-			     const double dt,
-			     const flowsys_t& flowsys,
-			     const grid_t& grid,
-			     const rock_t& rock_data,
-			     const well_t& well_data,
-			     const boundary_t& boundary,
-			     const typename grid_t::point_t& gravity,
-			     const std::vector<double>& flux_vector,
+	template <class PressureSolution>
+	void computeSatDelta(std::vector<double>& saturation,
+			     const double time,
+			     const typename GridInterface::Vector& gravity,
+			     const PressureSolution& pressure_sol,
 			     std::vector<double>& sat_change) const;
 
 
@@ -119,31 +109,26 @@ namespace Dune {
 
 	void checkAndPossiblyClampSat(std::vector<double>& s) const;
 
-	template <class boundary_t>
-	void initPeriodics(const boundary_t& boundary) const;
 
-	template <class grid_t, class fluid_t, class rock_t>
-	double computeCflTime(const grid_t& my_grid, const fluid_t& flow_system,
-			      const rock_t rock_data, const std::vector<double>& flux_vector,
-			      double time, const typename grid_t::point_t& gravity) const;
-
+	const GridInterface& grid_;
+	const ReservoirProperties& reservoir_properties_;
+	const BoundaryConditions& boundary_;
+	SparseVector<double> injection_rates_;
 	bool method_viscous_;
 	bool method_gravity_;
 	bool method_capillary_;
+	// The courant_number is the multiplied with the cfl time to get the time step.
 	double courant_number_;
 	int minimum_small_steps_;
 	bool check_sat_;
 	bool clamp_sat_;
-	/**
-	 * courant_number is the used to multiply with the cfl time to get the time step
-	 */
+
 	// We store the periodic boundary conditions for fast access while awaiting
 	// a rewrite of the boundary objects that does the same...
-	mutable std::tr1::unordered_map<int, int> periodic_partner_;
+	mutable std::tr1::unordered_map<FIt, FIt> periodic_partner_;
     };
 } // namespace Dune
 
 #include "EulerUpstream_impl.hpp"
-
 
 #endif // OPENRS_EULERUPSTREAM_HEADER

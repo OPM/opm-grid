@@ -42,20 +42,25 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <cassert>
 #include <cmath>
 #include <algorithm>
-#include "../../grid/common/ErrorMacros.hpp"
-// #include "EntityType.hpp"
-// #include "FullMatrix.hpp"
-// #include "CflCalculator.hpp"
-// #include "GridHelper.hpp"
-// #include "Average.hpp"
-
+#include <dune/grid/common/ErrorMacros.hpp>
+#include <dune/grid/common/Average.hpp>
+				    // #include "EntityType.hpp"
+				    // #include "FullMatrix.hpp"
+#include "CflCalculator.hpp"
+				    // #include "GridHelper.hpp"
 
 namespace Dune
 {
 
 
-    inline EulerUpstream::EulerUpstream()
-	: method_viscous_(true),
+    template <class GI, class RP, class BC>
+    inline EulerUpstream<GI, RP, BC>::EulerUpstream(const GI& g, const RP& r, const BC& b,
+						    const SparseVector<double>& injection_rates)
+	: grid_(g),
+	  reservoir_properties_(r),
+	  boundary_(b),
+	  injection_rates_(injection_rates),
+	  method_viscous_(true),
 	  method_gravity_(true),
 	  method_capillary_(true),
 	  courant_number_(0.5),
@@ -63,11 +68,13 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
+	initPeriodics();
     }
 
 
 
-    inline void EulerUpstream::init(const parameter::ParameterGroup& param)
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param)
     {
 	courant_number_ = param.getDefault("courant_number", courant_number_);
 	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
@@ -80,7 +87,8 @@ namespace Dune
 
 
 
-    inline void EulerUpstream::display()
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::display()
     {
 	using namespace std;
 	cout << endl;
@@ -91,31 +99,23 @@ namespace Dune
 
 
 
-    inline void EulerUpstream::setCourantNumber(double cn)
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::setCourantNumber(double cn)
     {
 	courant_number_ = cn;
     }
-    
-#if 0
 
-    template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
-    inline void EulerUpstream::transportSolve(std::vector<double>& saturation,
-					      const double time,
-					      const flowsys_t& flow_system,
-					      const grid_t& my_grid,
-					      const rock_t& rock_data,
-					      const well_t& well_data,
-					      const boundary_t& boundary,
-					      const typename grid_t::point_t& gravity,
-					      const std::vector<double>& flux_vector) const
+
+
+    template <class GI, class RP, class BC>
+    template <class PressureSolution>
+    void EulerUpstream<GI, RP, BC>::transportSolve(std::vector<double>& saturation,
+						   const double time,
+						   const typename GI::Vector& gravity,
+						   const PressureSolution& pressure_sol) const
     {
-	// Initialize periodic boundary data. It would be more optimal to do this once,
-	// instead of for every transportSolve(), but that would not fit well with being able
-	// to give a new boundary object (and grid etc.) for every call.
-	initPeriodics(boundary);
-
 	// Compute the cfl time-step.
-	double cfl_dt = computeCflTime(my_grid, flow_system, rock_data, flux_vector, time, gravity);
+	double cfl_dt = computeCflTime(saturation, time, gravity, pressure_sol);
 
 	// Compute the number of small steps to take, and the actual small timestep.
 	int nr_transport_steps;
@@ -147,13 +147,8 @@ namespace Dune
 		for (int q = 0; q < nr_transport_steps; ++q) {
 		    smallTimeStep(saturation,
 				  dt_transport,
-				  flow_system,
-				  my_grid,
-				  rock_data,
-				  well_data,
-				  boundary,
 				  gravity,
-				  flux_vector);
+				  pressure_sol);
 		}
 		finished = true;
 	    }
@@ -175,83 +170,33 @@ namespace Dune
 
 
 
-    /*
-    template <class grid_t, class rock_t, class fluid_t>
-    inline typename grid_t::point_t EulerUpstream::
-    estimateCapPressureGradient(const grid_t& grid,
-				const rock_t& rock,
-				const fluid_t& fluid,
-				int cell,
-				int face,
-				const std::vector<double>& sat) const
-    {
-	// Find neighbouring cell and face: nbcell and nbface.
-	// If we are not on a periodic boundary, nbface is of course equal to face.
-	typedef typename grid_t::point_t point_t;
-	int nbcell = grid_helper::neighbourCell(grid, cell, face);
-	int nbface = face;
-	if (nbcell == -1) {
-	    std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
-	    if (it == periodic_partner_.end()) {
-		// At (nonperiodic) boundaries, we just return a zero gradient.
-		point_t g;
-		g.zero();
-		return g;
-	    } else {
-		nbface = it->second;
-		nbcell = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
-	    }
-	}
-
-	// Estimate the gradient like a finite difference between
-	// cell centers, except that in order to handle periodic
-	// conditions we pass through the face centroid(s).
-	point_t cell_c = grid.getCellCentroid(cell);
-	point_t nb_c = grid.getCellCentroid(nbcell);
-	point_t f_c = grid.getFaceCentroid(face);
-	point_t nbf_c = grid.getFaceCentroid(nbface);
-	double d0 = cell_c.dist(f_c);
-	double d1 = nb_c.dist(nbf_c);
-	double cp0 = fluid.capPressure(cell, sat[cell],
-				       rock.getPermeability(cell).trace()/rock_t::Dimension,
-				       rock.getPorosity(cell));
-	double cp1 = fluid.capPressure(nbcell, sat[nbcell],
-				       rock.getPermeability(nbcell).trace()/rock_t::Dimension,
-				       rock.getPorosity(nbcell));
-	double val = (cp1 - cp0)/(d0 + d1);
-	point_t dir = nb_c - nbf_c + f_c - cell_c;
-	dir.normalize();
-	return dir*val;
-    }
-    */
 
 
-
-
-    template <class boundary_t>
-    inline void EulerUpstream::initPeriodics(const boundary_t& boundary) const
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::initPeriodics() const
     {
 	// Store the periodic boundaries, if any.
 	periodic_partner_.clear();
-	for (int i = 0; i < boundary.getNumberOfPeriodicConditions(); ++i) {
-	    std::pair<int, int> partners = boundary.getPeriodicConditionFaces(i);
+	MESSAGE("Not yet supporting periodic boundaries, should this be done in grid instead?");
+#if 0
+	for (int i = 0; i < boundary_.getNumberOfPeriodicConditions(); ++i) {
+	    std::pair<int, int> partners = boundary_.getPeriodicConditionFaces(i);
 	    periodic_partner_[partners.first] = partners.second;
 	    periodic_partner_[partners.second] = partners.first;
 	}
-
+#endif
     }
 
 
 
 
 
-    template <class grid_t, class fluid_t, class rock_t>
-    inline double EulerUpstream::computeCflTime(const grid_t& my_grid,
-						     const fluid_t& flow_system,
-						     const rock_t rock_data,
-						     const std::vector<double>& flux_vector,
-						     double time,
-						     const typename grid_t::point_t& gravity) const
+    template <class GI, class RP, class BC>
+    template <class PressureSolution>
+    inline double EulerUpstream<GI, RP, BC>::computeCflTime(const std::vector<double>& /*saturation*/,
+							    const double /*time*/,
+							    const typename GI::Vector& gravity,
+							    const PressureSolution& pressure_sol) const
     {
 	// Deal with cfl stuff, compute the necessary number of small time steps.
 	double cfl_dt_v = 1e99;
@@ -260,11 +205,7 @@ namespace Dune
 
 	// Viscous cfl.
 	if (method_viscous_) {
-	    cfl_dt_v =
-		cfl_calculator::findCFLtimeVelocity(my_grid,
-						    flow_system,
-						    flux_vector,
-						    rock_data);
+	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(grid_, reservoir_properties_, pressure_sol);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for velocity is " << cfl_dt_v/samcode::units::DAYS2SECONDS
 		      << " and total impes time is " << time/samcode::units::DAYS2SECONDS
@@ -274,11 +215,7 @@ namespace Dune
 
 	// Gravity cfl.
 	if (method_gravity_) {
-	    cfl_dt_g =
-		cfl_calculator::findCFLtimeGravity(my_grid,
-						   flow_system,
-						   gravity,
-						   rock_data);
+	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(grid_, reservoir_properties_, gravity);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for gravity is " << cfl_dt_g/samcode::units::DAYS2SECONDS
 		      << " and total impes time is " << time/samcode::units::DAYS2SECONDS
@@ -308,7 +245,63 @@ namespace Dune
 
 
 
-    inline void EulerUpstream::checkAndPossiblyClampSat(std::vector<double>& s) const
+
+    /*
+      template <class grid_t, class rock_t, class fluid_t>
+      inline typename grid_t::point_t EulerUpstream::
+      estimateCapPressureGradient(const grid_t& grid,
+      const rock_t& rock,
+      const fluid_t& fluid,
+      int cell,
+      int face,
+      const std::vector<double>& sat) const
+      {
+      // Find neighbouring cell and face: nbcell and nbface.
+      // If we are not on a periodic boundary, nbface is of course equal to face.
+      typedef typename grid_t::point_t point_t;
+      int nbcell = grid_helper::neighbourCell(grid, cell, face);
+      int nbface = face;
+      if (nbcell == -1) {
+      std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
+      if (it == periodic_partner_.end()) {
+      // At (nonperiodic) boundaries, we just return a zero gradient.
+      point_t g;
+      g.zero();
+      return g;
+      } else {
+      nbface = it->second;
+      nbcell = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
+      }
+      }
+
+      // Estimate the gradient like a finite difference between
+      // cell centers, except that in order to handle periodic
+      // conditions we pass through the face centroid(s).
+      point_t cell_c = grid.getCellCentroid(cell);
+      point_t nb_c = grid.getCellCentroid(nbcell);
+      point_t f_c = grid.getFaceCentroid(face);
+      point_t nbf_c = grid.getFaceCentroid(nbface);
+      double d0 = cell_c.dist(f_c);
+      double d1 = nb_c.dist(nbf_c);
+      double cp0 = fluid.capPressure(cell, sat[cell],
+      rock.getPermeability(cell).trace()/rock_t::Dimension,
+      rock.getPorosity(cell));
+      double cp1 = fluid.capPressure(nbcell, sat[nbcell],
+      rock.getPermeability(nbcell).trace()/rock_t::Dimension,
+      rock.getPorosity(nbcell));
+      double val = (cp1 - cp0)/(d0 + d1);
+      point_t dir = nb_c - nbf_c + f_c - cell_c;
+      dir.normalize();
+      return dir*val;
+      }
+    */
+
+
+
+
+
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::checkAndPossiblyClampSat(std::vector<double>& s) const
     {
 	int num_cells = s.size();
 	for (int cell = 0; cell < num_cells; ++cell) {
@@ -326,20 +319,15 @@ namespace Dune
 
 
 	
-    template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
-    inline void EulerUpstream::smallTimeStep(std::vector<double>& saturation,
-						  const double dt,
-						  const flowsys_t& flowsys,
-						  const grid_t& grid,
-						  const rock_t& rock_data,
-						  const well_t& well_data,
-						  const boundary_t& boundary,
-						  const typename grid_t::point_t& gravity,
-						  const std::vector<double>& flux_vector) const
+    template <class GI, class RP, class BC>
+    template <class PressureSolution>
+    inline void EulerUpstream<GI, RP, BC>::smallTimeStep(std::vector<double>& saturation,
+							 const double dt,
+							 const typename GI::Vector& gravity,
+							 const PressureSolution& pressure_sol) const
     {
 	std::vector<double> sat_change;
-	computeSatDelta(saturation, dt, flowsys, grid, rock_data, well_data,
-			boundary, gravity, flux_vector, sat_change);
+	computeSatDelta(saturation, dt, gravity, pressure_sol, sat_change);
 	int num_cells = saturation.size();
 	for (int i = 0; i < num_cells; ++i) {
 	    saturation[i] += sat_change[i];
@@ -352,168 +340,173 @@ namespace Dune
 
 
     /*
-    template <class grid_t, class flowsys_t, class rock_t, class well_t>
-    inline void wellDelta(const std::vector<double>& saturation,
-			  const double dt,
-			  const flowsys_t& flowsys,
-			  const grid_t& grid,
-			  const rock_t& rock_data,
-			  const well_t& well_data,
-			  std::vector<double>& sat_change)
-    {
-	// Source terms from wells.
-	for (int i = 0; i < well_data.getNumberOfWells(); ++i) {
-	    typename well_t::well_type well = well_data.getWell(i);
-	    const std::vector<int>& cell_index = well.cellIndices();
-	    for (int j = 0; j < well.numberOfCells(); ++j){
-		double dS = 0.0;
-		double source_rate = well.getRate(j);
-		if ( source_rate < 0) {
-		    dS -= source_rate*(flowsys.mobilityOne(cell_index[j], saturation[cell_index[j]])
-				       /flowsys.totalMobility(cell_index[j], saturation[cell_index[j]]));
-		}
-		if (source_rate > 0) {
-		    dS-= source_rate; 
-		}
-		sat_change[cell_index[j]] -= (dt/rock_data.getPorosity(cell_index[j]))*dS/grid.getCellVolume(cell_index[j]);
-	    }
-	}	 
-    }
+      template <class grid_t, class flowsys_t, class rock_t, class well_t>
+      inline void wellDelta(const std::vector<double>& saturation,
+      const double dt,
+      const flowsys_t& flowsys,
+      const grid_t& grid,
+      const rock_t& rock_data,
+      const well_t& well_data,
+      std::vector<double>& sat_change)
+      {
+      // Source terms from wells.
+      for (int i = 0; i < well_data.getNumberOfWells(); ++i) {
+      typename well_t::well_type well = well_data.getWell(i);
+      const std::vector<int>& cell_index = well.cellIndices();
+      for (int j = 0; j < well.numberOfCells(); ++j){
+      double dS = 0.0;
+      double source_rate = well.getRate(j);
+      if ( source_rate < 0) {
+      dS -= source_rate*(flowsys.mobilityOne(cell_index[j], saturation[cell_index[j]])
+      /flowsys.totalMobility(cell_index[j], saturation[cell_index[j]]));
+      }
+      if (source_rate > 0) {
+      dS-= source_rate; 
+      }
+      sat_change[cell_index[j]] -= (dt/rock_data.getPorosity(cell_index[j]))*dS/grid.getCellVolume(cell_index[j]);
+      }
+      }	 
+      }
 
     */
 
 
 
-    template <class grid_t,class flowsys_t, class rock_t, class well_t, class boundary_t>
-    inline void EulerUpstream::computeSatDelta(const std::vector<double>& saturation,
-						    const double dt,
-						    const flowsys_t& flowsys,
-						    const grid_t& grid,
-						    const rock_t& rock_data,
-						    const well_t& well_data,
-						    const boundary_t& boundary,
-						    const typename grid_t::point_t& gravity,
-						    const std::vector<double>& flux_vector,
-						    std::vector<double>& sat_change) const
+    template <class GI, class RP, class BC>
+    template <class PressureSolution>
+    inline void EulerUpstream<GI, RP, BC>::computeSatDelta(std::vector<double>& saturation,
+							   const double dt,
+							   const typename GI::Vector& gravity,
+							   const PressureSolution& pressure_sol,
+							   std::vector<double>& sat_change) const
     {
-	using namespace grid;
-	typedef typename grid_t::range_t range_t;
-	typedef typename grid_t::point_t point_t;
-	typedef typename rock_t::permtensor_t permtensor_t;
+	typedef typename GI::Vector Vector;
+	typedef typename RP::permtensor_t permtensor_t;
 
 	// Make sure sat_change is zero, and has the right size.
 	sat_change.clear();
 	sat_change.resize(saturation.size(), 0.0);
 
 	// For every face, we will modify sat_change for adjacent cells.
-	int num_faces = grid.template numberOf<FaceType>();
-	for (int face = 0; face < num_faces; ++face){
-	    // Find the cell indices and saturations of adjacent cells.
-	    double dS = 0.0;
-	    const range_t face_halfface = grid.template neighbours<FaceType, HalfFaceType>(face);
-	    int cell[2];
-	    double cell_sat[2];
-	    if (face_halfface.size() == 2) {
-		cell[0] = grid.template neighbours<HalfFaceType, CellType>(face_halfface[0])[0];
-		cell[1] = grid.template neighbours<HalfFaceType, CellType>(face_halfface[1])[0];
-		cell_sat[0] = saturation[cell[0]];
-		cell_sat[1] = saturation[cell[1]];
-	    } else {
-		cell[0] = grid.template neighbours<HalfFaceType, CellType>(face_halfface[0])[0];
-		cell_sat[0] = saturation[cell[0]];
-		std::tr1::unordered_map<int, int>::iterator it = periodic_partner_.find(face);
-		if (it == periodic_partner_.end()) {
-		    cell_sat[1] = boundary.getSaturationAtBoundaryFace(face);
-		    cell[1] = cell[0];
+	// We loop over every cell and intersection, and modify only if
+	// this cell has lower index than the neighbour, or we are on the boundary.
+	typename GI::CellIterator c = grid_.cellbegin();
+	for (; c != grid_.cellend(); ++c) {
+	    double flux = 0.0;
+	    for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
+		double dS = 0.0;
+		int cell[2];
+		double cell_sat[2];
+		if (f->boundary()) {
+		    cell[0] = f->cellIndex();
+		    cell_sat[0] = saturation[cell[0]];
+		    typename std::tr1::unordered_map<FIt, FIt>::iterator it = periodic_partner_.find(f);
+		    if (it == periodic_partner_.end()) {
+			cell[1] = cell[0];
+			cell_sat[1] = boundary_.saturation(f->boundaryId());
+		    } else {
+			FIt nbface = it->second;
+			ASSERT(nbface != f);
+			cell[1] = nbface->cellIndex();
+			ASSERT(cell[0] != cell[1]);
+			// Periodic faces will be visited twice, but only once
+			// should they contribute. We make sure that we skip the
+			// periodic faces half the time.
+			if (cell[0] > cell[1]) {
+			    // We skip this face.
+			    continue;
+			}
+			cell_sat[1] = saturation[cell[1]];
+		    }
 		} else {
-		    int nbface = it->second;
-		    ASSERT(nbface != face);
-		    // Periodic faces will be visited twice, but only once
-		    // should they contribute. We make sure that we skip the
-		    // periodic faces half the time.
-		    if (nbface < face) continue;
-		    cell[1] = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
-		    ASSERT(cell[1] != cell[0]);
+		    cell[0] = f->cellIndex();
+		    cell[1] = f->neighbourCellIndex();
+		    ASSERT(cell[0] != cell[1]);
+		    if (cell[0] > cell[1]) {
+			// We skip this face.
+			continue;
+		    }
+		    cell_sat[0] = saturation[cell[0]];
 		    cell_sat[1] = saturation[cell[1]];
 		}
-	    }
 
-	    // Get some local properties, and compute averages.
-	    const int halfface_index = face_halfface[0];
-	    const double loc_area = grid.getFaceArea(face);
-	    const double loc_flux = flux_vector[halfface_index];
-	    const point_t loc_halfface_normal = grid.getHalfFaceNormal(halfface_index);
-	    // Doing arithmetic averages. Should we consider harmonic or geometric instead?
-	    using utils::arithmeticAverage;
-	    const permtensor_t loc_perm = arithmeticAverage(rock_data.getPermeability(cell[0]),
-							    rock_data.getPermeability(cell[1]));
-	    const double average_saturation = arithmeticAverage(cell_sat[0], cell_sat[1]);
-	    const double aver_mob_phase1 = arithmeticAverage(flowsys.mobilityOne(cell[0], average_saturation),
-							     flowsys.mobilityOne(cell[1], average_saturation));
-	    const double aver_mob_phase2 = arithmeticAverage(flowsys.mobilityTwo(cell[0], 1.0 - average_saturation), 
-							     flowsys.mobilityTwo(cell[1], 1.0 - average_saturation));
+		// Get some local properties, and compute averages.
+		const double loc_area = f->area();
+		const double loc_flux = pressure_sol.outflux(f);
+		const Vector loc_halfface_normal = f->normal();
+		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
+		using utils::arithmeticAverage;
+		const permtensor_t loc_perm
+		    = arithmeticAverage(reservoir_properties_.permeability(cell[0]),
+					reservoir_properties_.permeability(cell[1]));
+		const double average_saturation
+		    = arithmeticAverage(cell_sat[0], cell_sat[1]);
+		const double aver_mob_phase1
+		    = arithmeticAverage(reservoir_properties_.mobilityFirstPhase(cell[0], average_saturation),
+					reservoir_properties_.mobilityFirstPhase(cell[1], average_saturation));
+		const double aver_mob_phase2
+		    = arithmeticAverage(reservoir_properties_.mobilitySecondPhase(cell[0], 1.0 - average_saturation), 
+					reservoir_properties_.mobilitySecondPhase(cell[1], 1.0 - average_saturation));
 
-	    // The local gravity flux is needed for finding the correct phase mobilities.
-	    const double loc_gravity_flux = method_gravity_ ?
-		loc_area*flowsys.densityDiff()*(loc_halfface_normal*(loc_perm*gravity)) : 0.0;
+		// The local gravity flux is needed for finding the correct phase mobilities.
+		const double loc_gravity_flux = method_gravity_ ?
+		    loc_area*reservoir_properties_.densityDiff()*(loc_halfface_normal*(loc_perm*gravity)) : 0.0;
 
-	    // Find the correct phasemobilities to use
-	    const double flux_phase1 = loc_flux + loc_gravity_flux*aver_mob_phase2;
-	    const double flux_phase2 = loc_flux - loc_gravity_flux*aver_mob_phase1;
-	    double lambda_one;
-	    double lambda_two;
-	    // total velocity term
-	    if (flux_phase1 > 0){
-		lambda_one = flowsys.mobilityOne(cell[0], cell_sat[0]);
-	    } else {
-		lambda_one = flowsys.mobilityOne(cell[1], cell_sat[1]); 
-	    }
-	    if (flux_phase2 > 0){
-		lambda_two = flowsys.mobilityTwo(cell[0], 1.0 - cell_sat[0] );
-	    } else {
-		lambda_two = flowsys.mobilityTwo(cell[1], 1.0 - cell_sat[1] );
-	    }
-
-	    // Viscous (pressure driven) term.
-	    if (method_viscous_) {
-		dS+=loc_flux*(lambda_one/(lambda_two+lambda_one));
-	    }
-
-	    // Gravity term.
-	    if (method_gravity_) {
-		if (cell[0] != cell[1]) {
-		    // We only add gravity flux on internal or periodic faces.
-		    dS+=loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
+		// Find the correct phasemobilities to use
+		const double flux_phase1 = loc_flux + loc_gravity_flux*aver_mob_phase2;
+		const double flux_phase2 = loc_flux - loc_gravity_flux*aver_mob_phase1;
+		double lambda_one;
+		double lambda_two;
+		// total velocity term
+		if (flux_phase1 > 0){
+		    lambda_one = reservoir_properties_.mobilityFirstPhase(cell[0], cell_sat[0]);
+		} else {
+		    lambda_one = reservoir_properties_.mobilityFirstPhase(cell[1], cell_sat[1]); 
 		}
-	    }
-	    /*
-	    // Capillary term.
-	    if (method_capillary_) {
+		if (flux_phase2 > 0){
+		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[0], 1.0 - cell_sat[0] );
+		} else {
+		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[1], 1.0 - cell_sat[1] );
+		}
+
+		// Viscous (pressure driven) term.
+		if (method_viscous_) {
+		    dS+=loc_flux*(lambda_one/(lambda_two+lambda_one));
+		}
+
+		// Gravity term.
+		if (method_gravity_) {
+		    if (cell[0] != cell[1]) {
+			// We only add gravity flux on internal or periodic faces.
+			dS+=loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
+		    }
+		}
+		/*
+		// Capillary term.
+		if (method_capillary_) {
 		// J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
 		// p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
-		point_t cap_term = loc_perm
-		    *estimateCapPressureGradient(grid, rock_data, flowsys, cell[0], face, saturation)
-		    *aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
+		Vector cap_term = loc_perm
+		*estimateCapPressureGradient(grid, rock_data, flowsys, cell[0], face, saturation)
+		*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
 		dS += cap_term*loc_halfface_normal*loc_area;
-	    }
-	    */
-	    // Modify saturation.
-	    if (cell[0] != cell[1]){
-		sat_change[cell[0]] -= (dt/rock_data.getPorosity(cell[0]))*dS/grid.getCellVolume(cell[0]);
-		sat_change[cell[1]] += (dt/rock_data.getPorosity(cell[1]))*dS/grid.getCellVolume(cell[1]);
-	    } else {
-		assert(cell[0] == cell[1]);
-		sat_change[cell[0]] -= (dt/rock_data.getPorosity(cell[0]))
-		    *dS/grid.getCellVolume(cell[0]);
+		}
+		*/
+		// Modify saturation.
+		if (cell[0] != cell[1]){
+		    sat_change[cell[0]] -= (dt/reservoir_properties_.porosity(cell[0]))*dS/c->volume();
+		    sat_change[cell[1]] += (dt/reservoir_properties_.porosity(cell[1]))*dS/f->neighbourCellVolume();
+		} else {
+		    ASSERT(cell[0] == cell[1]);
+		    sat_change[cell[0]] -= (dt/reservoir_properties_.porosity(cell[0]))
+			*dS/c->volume();
+		}
 	    }
 	}
-
 	// wellDelta(saturation, dt, flowsys, grid, rock_data, well_data, sat_change);
     }
-#endif
 
 } // end namespace Dune
-
 
 
 #endif // OPENRS_EULERUPSTREAM_IMPL_HEADER

@@ -110,6 +110,11 @@ namespace Dune
 		return local_index_;
 	    }
 
+	    Scalar neighbourCellVolume() const
+	    {
+		return iter_->outside()->geometry().volume();
+	    }
+
 	    /// Used by iterator facade.
 	    const Intersection& dereference() const
 	    {
@@ -213,11 +218,15 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
+	typedef GIE::Cell<DuneGrid> CellIterator;
+	typedef typename CellIterator::Vector Vector;
+	typedef typename CellIterator::Scalar Scalar;
+	typedef typename CellIterator::Index Index;
+
 	GridInterfaceEuler(const DuneGrid& grid)
 	    : grid_(grid)
 	{
 	}
-	typedef GIE::Cell<DuneGrid> CellIterator;
 	CellIterator cellbegin() const
 	{
 	    return CellIterator(grid_, grid_.template leafbegin<0>());
