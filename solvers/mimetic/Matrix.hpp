@@ -40,6 +40,9 @@
 #include <ostream>
 #include <vector>
 #include <boost/bind.hpp>
+
+#include <dune/common/fvector.hh>
+
 #include <dune/grid/common/ErrorMacros.hpp>
 #include <dune/solvers/mimetic/fortran.hpp>
 #include <dune/solvers/mimetic/blas_lapack.hpp>
@@ -58,12 +61,10 @@ namespace Dune {
             }
         }
 
-        typedef T ValueType;
+        T&       operator[](int i)       { return data_[i]; }
+        const T& operator[](int i) const { return data_[i]; }
 
-        ValueType&       operator[](int i)       { return data_[i]; }
-        const ValueType& operator[](int i) const { return data_[i]; }
-
-	int size() const { return data_.size(); }
+        int size() const { return data_.size(); }
     private:
         std::vector<T> data_;
     };
@@ -78,12 +79,10 @@ namespace Dune {
             ASSERT(data_ != 0);
         }
 
-        typedef  T ValueType;
+        T&       operator[](int i)       { return data_[i]; }
+        const T& operator[](int i) const { return data_[i]; }
 
-        ValueType&       operator[](int i)       { return data_[i]; }
-        const ValueType& operator[](int i) const { return data_[i]; }
-
-	int size() const { return sz_; }
+        int size() const { return sz_; }
     private:
         int sz_;
         T*  data_;
@@ -98,11 +97,9 @@ namespace Dune {
             ASSERT(data_ != 0);
         }
 
-        typedef  T ValueType;
+        const T& operator[](int i) const { return data_[i]; }
 
-        const ValueType& operator[](int i) const { return data_[i]; }
-
-	int size() const { return sz_; }
+        int size() const { return sz_; }
     private:
         int sz_;
         const T*  data_;
@@ -117,50 +114,50 @@ namespace Dune {
               rows_(0), cols_(0)
         {}
 
-	template <typename DataPointer>
+        template <typename DataPointer>
         CMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data),
               rows_(rows), cols_(cols)
         {}
 
-	template <class OtherMatrixType>
-	CMatrix(const OtherMatrixType& m)
-	    : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
-	      rows_(m.numRows()), cols_(m.numCols())
-	{
-	}
+        template <class OtherMatrixType>
+        CMatrix(const OtherMatrixType& m)
+            : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
+              rows_(m.numRows()), cols_(m.numCols())
+        {
+        }
 
-	template <class OtherMatrixType>
-	void operator+= (const OtherMatrixType& m)
-	{
-	    ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
-	    std::transform(data(), data() + this->size(),
-			   m.data(), data(), std::plus<T>());
-	}
+        template <template<typename> class OtherStoragePolicy>
+        void operator+= (const CMatrix<T,OtherStoragePolicy>& m)
+        {
+            ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
+            std::transform(data(), data() + this->size(),
+                           m.data(), data(), std::plus<T>());
+        }
 
-	void operator*= (const T& scalar)
-	{
-	    std::transform(data(), data() + this->size(),
-			   data(), boost::bind(std::multiplies<T>(), _1, scalar));
-	}
+        void operator*= (const T& scalar)
+        {
+            std::transform(data(), data() + this->size(),
+                           data(), boost::bind(std::multiplies<T>(), _1, scalar));
+        }
 
-        typedef typename StoragePolicy<T>::ValueType ValueType;
+        typedef T value_type;
 
         int      numRows()          const { return rows_;     }
         int      numCols()          const { return cols_;     }
         int      leadingDimension() const { return numCols(); }
 
-        ValueType&       operator()(int row, int col)
+        value_type&       operator()(int row, int col)
         {
             return this->operator[](idx(row, col));
         }
-        const ValueType& operator()(int row, int col) const
+        const value_type& operator()(int row, int col) const
         {
             return this->operator[](idx(row, col));
         }
 
-        ValueType*       data()       { return &this->operator[](0); }
-        const ValueType* data() const { return &this->operator[](0); }
+        value_type*       data()       { return &this->operator[](0); }
+        const value_type* data() const { return &this->operator[](0); }
     private:
         int rows_, cols_;
 
@@ -177,12 +174,13 @@ namespace Dune {
     template<typename T, template<typename> class StoragePolicy>
     class FortranMatrix : private StoragePolicy<T> {
     public:
-        FortranMatrix(int rows, int cols, T* data)
+        template<typename DataPointer>
+        FortranMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data)
             , rows_(rows), cols_(cols)
         {}
 
-        typedef typename StoragePolicy<T>::ValueType ValueType;
+        typedef T value_type;
 
         int      numRows()          const { return rows_;     }
         int      numCols()          const { return cols_;     }
@@ -217,15 +215,15 @@ namespace Dune {
     void zero(Matrix& A)
     {
         std::fill_n(A.data(), A.numRows() * A.numCols(),
-                    typename Matrix::ValueType(0.0));
+                    typename Matrix::value_type(0.0));
     }
 
 
-    template<typename T, template<typename> class StoragePolicy>
-    typename FortranMatrix<T,StoragePolicy>::ValueType
-    trace(const FortranMatrix<T,StoragePolicy>& A)
+    template<class Matrix>
+    typename Matrix::value_type
+    trace(const Matrix& A)
     {
-        typename FortranMatrix<T,StoragePolicy>::ValueType ret(0);
+        typename Matrix::value_type ret(0);
 
         for (int i = 0; i < std::min(A.numRows(), A.numCols()); ++i) {
             ret += A(i,i);
@@ -234,39 +232,32 @@ namespace Dune {
     }
 
 
-    template<typename T, template<typename> class StoragePolicy>
-    typename CMatrix<T,StoragePolicy>::ValueType
-    trace(const CMatrix<T,StoragePolicy>& A)
+    template<class Matrix, int rows>
+    FieldVector<typename Matrix::value_type, rows>
+    prod(const Matrix& A, const FieldVector<typename Matrix::value_type,rows>& x)
     {
-        typedef typename CMatrix<T,StoragePolicy>::ValueType ValueType;
-        typedef FortranMatrix<ValueType,SharedData>          FMat;
+        const int cols = rows;
+        ASSERT (A.numRows() == rows);
+        ASSERT (A.numCols() == cols);
 
-        const FMat At(A.numCols(), A.numRows(),
-                      const_cast<ValueType*>(A.data()));
-
-        return ValueType(trace(At));
+        FieldVector<typename Matrix::value_type, rows> res(0.0);
+        for (int c = 0; c < cols; ++c) {
+            for (int r = 0; r < rows; ++r) {
+                res[r] += A(r, c)*x[c];
+            }
+        }
+        return res;
     }
 
-    template<class Matrix, class Vector>
-    Vector prod(const Matrix& A, const Vector& x)
-    {
-	Vector res(0.0);
-	for (int c = 0; c < A.numCols(); ++c) {
-	    for (int r = 0; r < A.numRows(); ++r) {
-		res[r] = A(r, c)*x[c];
-	    }
-	}
-	return res;
-    }
 
     // A <- orth(A)
     template<typename T, template<typename> class StoragePolicy>
     int orthogonalizeColumns(FortranMatrix<T,StoragePolicy>& A)
     {
-        typedef typename FortranMatrix<T,StoragePolicy>::ValueType ValueType;
+        typedef typename FortranMatrix<T,StoragePolicy>::value_type value_type;
 
-        static std::vector<ValueType> tau;
-        static std::vector<ValueType> work;
+        static std::vector<value_type> tau;
+        static std::vector<value_type> work;
 
         if (tau .size() <      A.numCols()) tau .resize(     A.numCols());
         if (work.size() < 64 * A.numRows()) work.resize(64 * A.numRows());  // 64 from ILAENV
@@ -323,17 +314,17 @@ namespace Dune {
     void symmetricUpdate(const FortranMatrix<T,StoragePolicy>& A,
                          FortranMatrix<T,StoragePolicy>&       B)
     {
-        typedef typename FortranMatrix<T,StoragePolicy>::ValueType ValueType;
+        typedef typename FortranMatrix<T,StoragePolicy>::value_type value_type;
 
         // B <- A*B
         Dune::BLAS_LAPACK::TRMM("Left" , "Upper", "No transpose", "Non-unit",
-                                B.numRows(), B.numCols(), ValueType(1.0),
+                                B.numRows(), B.numCols(), value_type(1.0),
                                 A.data(), A.leadingDimension(),
                                 B.data(), B.leadingDimension());
 
         // B <- B*A (== A * B_orig * A)
         Dune::BLAS_LAPACK::TRMM("Right", "Upper", "No transpose", "Non-unit",
-                                B.numRows(), B.numCols(), ValueType(1.0),
+                                B.numRows(), B.numCols(), value_type(1.0),
                                 A.data(), A.leadingDimension(),
                                 B.data(), B.leadingDimension());
 
@@ -402,11 +393,10 @@ namespace Dune {
                       const T&                    a2,
                       FortranMatrix<T,SP3>&       C)
     {
-        typedef typename CMatrix<T,SP2>::ValueType  ValueType;
-        typedef FortranMatrix<ValueType,SharedData> FMat;
+        typedef typename CMatrix<T,SP2>::value_type           value_type;
+        typedef FortranMatrix<value_type,ImmutableSharedData> FMat;
 
-        const FMat Bt(B.numCols(), B.numRows(),
-                      const_cast<ValueType*>(B.data()));
+        const FMat Bt(B.numCols(), B.numRows(), B.data());
 
         matMulAdd_NT(a1, A, Bt, a2, C);
     }
