@@ -235,13 +235,38 @@ namespace Dune {
         {
             ASSERT (!cellFaces_.empty());
 
-            typename BCRSMatrix<BlockType>::size_type nnz = 0;
-            for (int c = 0; c < cellFaces_.size(); ++c) {
-                const int nf = cellFaces_[c].size();
-                nnz += nf * (nf - 1);
+            typedef SparseTable<int>::row_type::iterator fi;
+
+            // Clear any residual data, prepare for assembling structure.
+            S_.setSize(total_num_faces_, total_num_faces_);
+            S_.setBuildMode(BCRSMatrix<BlockType>::random);
+
+            // Compute row sizes
+            for (int f = 0; f < total_num_faces_; ++f) {
+                S_.setrowsize(f, 1);
             }
 
-            S_.setSize(total_num_faces_, total_num_faces_, nnz);
+            for (int c = 0; c < cellFaces_.size(); ++c) {
+                const int nf = cellFaces_[c].size();
+                fi fb = cellFaces_[c].begin(), fe = cellFaces_[c].end();
+
+                for (fi f = fb; f != fe; ++f) {
+                    S_.incrementrowsize(*f, nf - 1);
+                }
+            }
+            S_.endrowsizes();
+
+            // Compute actual connections (the non-zero structure).
+            for (int c = 0; c < cellFaces_.size(); ++c) {
+                fi fb = cellFaces_[c].begin(), fe = cellFaces_[c].end();
+
+                for (fi i = fb; i != fe; ++i) {
+                    for (fi j = fb; j != fe; ++j) {
+                        S_.addindex(*i, *j);
+                    }
+                }
+            }
+            S_.endindices();
         }
     };
 } // namespace Dune
