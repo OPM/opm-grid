@@ -8,7 +8,8 @@ LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \
          ../cpgrid/libcpgrid.la \
 	 ../preprocess/libpreprocess.la \
-         ../../common/param/libparam.la
+         ../../common/param/libparam.la \
+         ../common/libtemporaryhack.la
 
 #CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
