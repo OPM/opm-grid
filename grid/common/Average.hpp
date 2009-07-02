@@ -48,13 +48,13 @@ namespace Dune {
 
 	/// Computes the arithmetic average:
 	/// a_A(t_1, t_2) = (t_1 + t_2)/2.
-	template <typename T>
+	template <typename T, typename Tresult = T>
 	T arithmeticAverage(const T& t1, const T& t2)
 	{
 	    // To avoid some user errors, we disallow taking averages of
 	    // integral values.
 	    BOOST_STATIC_ASSERT(std::tr1::is_integral<T>::value == false);
-	    T retval(t1);
+	    Tresult retval(t1);
 	    retval += t2;
 	    retval *= 0.5;
 	    return retval;
