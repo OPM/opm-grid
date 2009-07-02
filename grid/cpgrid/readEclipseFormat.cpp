@@ -40,6 +40,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include "EclipseGridInspector.hpp"
 #include "../preprocess/preprocess.h"
 #include "../common/GeometryHelpers.hpp"
+#include "../common/StopWatch.hpp"
 
 #define VERBOSE
 
@@ -250,6 +251,10 @@ namespace Dune
 	    std::vector<point_t> cell_centroids;
 	    std::vector<double>  cell_volumes;
 	    using namespace GeometryHelpers;
+#ifdef VERBOSE
+	    time::StopWatch clock;
+	    clock.start();
+#endif
 	    // Get the points.
 	    int np = output.number_of_nodes;
 	    points.reserve(np);
@@ -262,6 +267,10 @@ namespace Dune
 		}
 		points.push_back(pt);
 	    }
+#ifdef VERBOSE
+	    std::cout << "Points:             " << clock.secsSinceLast() << std::endl;
+#endif
+
 	    // Get the face data.
 	    // \TODO Both the face and (especially) the cell section
 	    // is not very efficient. It could be rewritten easily
@@ -282,6 +291,9 @@ namespace Dune
 		face_centroids.push_back(centroid);
 		face_areas.push_back(area);
 	    }
+#ifdef VERBOSE
+	    std::cout << "Faces:              " << clock.secsSinceLast() << std::endl;
+#endif
 	    // Get the cell data.
 	    int nc = output.number_of_cells;
 	    std::vector<int> face_indices;
@@ -309,6 +321,9 @@ namespace Dune
 		cell_centroids.push_back(cell_centroid);
 		cell_volumes.push_back(tot_cell_vol);
 	    }
+#ifdef VERBOSE
+	    std::cout << "Cells:              " << clock.secsSinceLast() << std::endl;
+#endif
 
 
 	    // \TODO Fix the code below , as it is:
@@ -339,11 +354,17 @@ namespace Dune
 	    std::transform(points.begin(), points.end(),
 			   std::back_inserter(pg), mpointg);
 	    pointgeom.assign(pg.begin(), pg.end());
+#ifdef VERBOSE
+	    std::cout << "Transforms/copies:  " << clock.secsSinceLast() << std::endl;
+#endif
 
 	    // The final, combined object (yes, a lot of copying goes on here).
 	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
+#ifdef VERBOSE
+	    std::cout << "Final construction: " << clock.secsSinceLast() << std::endl;
+#endif
 	}
 
 	void logCartIndices(int idx, const processed_grid& output, int& i, int& j, int& k)
