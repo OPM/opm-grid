@@ -39,9 +39,8 @@
 #include <algorithm>
 #include <ostream>
 #include <vector>
-
+#include <boost/bind.hpp>
 #include <dune/grid/common/ErrorMacros.hpp>
-
 #include <dune/solvers/mimetic/fortran.hpp>
 #include <dune/solvers/mimetic/blas_lapack.hpp>
 
@@ -63,6 +62,8 @@ namespace Dune {
 
         ValueType&       operator[](int i)       { return data_[i]; }
         const ValueType& operator[](int i) const { return data_[i]; }
+
+	int size() const { return data_.size(); }
     private:
         std::vector<T> data_;
     };
@@ -81,9 +82,30 @@ namespace Dune {
 
         ValueType&       operator[](int i)       { return data_[i]; }
         const ValueType& operator[](int i) const { return data_[i]; }
+
+	int size() const { return sz_; }
     private:
         int sz_;
         T*  data_;
+    };
+
+    template<typename T>
+    class ImmutableSharedData {
+    public:
+        ImmutableSharedData(int sz, const T* data)
+            : sz_(sz), data_(data)
+        {
+            ASSERT(data_ != 0);
+        }
+
+        typedef  T ValueType;
+
+        const ValueType& operator[](int i) const { return data_[i]; }
+
+	int size() const { return sz_; }
+    private:
+        int sz_;
+        const T*  data_;
     };
 
 
@@ -94,10 +116,33 @@ namespace Dune {
             : StoragePolicy<T>(0, 0),
               rows_(0), cols_(0)
         {}
-        CMatrix(int rows, int cols, T* data)
+
+	template <typename DataPointer>
+        CMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data),
               rows_(rows), cols_(cols)
         {}
+
+	template <class OtherMatrixType>
+	CMatrix(const OtherMatrixType& m)
+	    : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
+	      rows_(m.numRows()), cols_(m.numCols())
+	{
+	}
+
+	template <class OtherMatrixType>
+	void operator+= (const OtherMatrixType& m)
+	{
+	    ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
+	    std::transform(data(), data() + this->size(),
+			   m.data(), data(), std::plus<T>());
+	}
+
+	void operator*= (const T& scalar)
+	{
+	    std::transform(data(), data() + this->size(),
+			   data(), boost::bind(std::multiplies<T>(), _1, scalar));
+	}
 
         typedef typename StoragePolicy<T>::ValueType ValueType;
 
@@ -202,6 +247,17 @@ namespace Dune {
         return ValueType(trace(At));
     }
 
+    template<class Matrix, class Vector>
+    Vector prod(const Matrix& A, const Vector& x)
+    {
+	Vector res(0.0);
+	for (int c = 0; c < A.numCols(); ++c) {
+	    for (int r = 0; r < A.numRows(); ++r) {
+		res[r] = A(r, c)*x[c];
+	    }
+	}
+	return res;
+    }
 
     // A <- orth(A)
     template<typename T, template<typename> class StoragePolicy>
