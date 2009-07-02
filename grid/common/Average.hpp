@@ -49,7 +49,7 @@ namespace Dune {
 	/// Computes the arithmetic average:
 	/// a_A(t_1, t_2) = (t_1 + t_2)/2.
 	template <typename T, typename Tresult = T>
-	T arithmeticAverage(const T& t1, const T& t2)
+	Tresult arithmeticAverage(const T& t1, const T& t2)
 	{
 	    // To avoid some user errors, we disallow taking averages of
 	    // integral values.
