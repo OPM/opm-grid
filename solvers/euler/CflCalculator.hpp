@@ -82,6 +82,7 @@ namespace Dune {
 				  const typename Grid::Vector& gravity)
 	{
 	    typedef typename ReservoirProperties::PermTensor PermTensor;
+	    typedef typename ReservoirProperties::MutablePermTensor MutablePermTensor;
 	    const int dimension = Grid::Vector::dimension;
 	    double dt = 1e100;
 	    typename Grid::CellIterator c = grid.cellbegin();
@@ -89,14 +90,18 @@ namespace Dune {
 		double flux = 0.0;
 		typename Grid::CellIterator::FaceIterator f = c->facebegin();
 		for (; f != c->faceend(); ++f) {
-		    typedef OwnCMatrix mytensor_t;
-		    mytensor_t loc_perm;
+		    // UGLY WARNING
+		    MutablePermTensor loc_perm_aver;
+		    const double* permdata = 0;
 		    if (!f->boundary()) {
-			loc_perm = utils::arithmeticAverage<PermTensor, mytensor_t>(resprop.permeability(f->cellIndex()),
-                                                                                    resprop.permeability(f->neighbourCellIndex()));
+			PermTensor K0 = resprop.permeability(f->cellIndex());
+			PermTensor K1 = resprop.permeability(f->neighbourCellIndex());
+			loc_perm_aver = utils::arithmeticAverage<PermTensor, MutablePermTensor>(K0, K1);
+			permdata = loc_perm_aver.data();
 		    } else {
-			loc_perm = resprop.permeability(f->cellIndex());
+			permdata = resprop.permeability(f->cellIndex()).data();
 		    }
+		    PermTensor loc_perm(dimension, dimension, permdata);
 		    typename Grid::Vector loc_halfface_normal = f->normal();
 		    double loc_gravity_flux = 0.0;
 		    for (int k = 0; k < dimension; ++k) {

@@ -51,7 +51,7 @@ namespace Dune
     {
     public:
 	typedef ImmutableCMatrix PermTensor;
-	typedef SharedCMatrix    MutablePermTensor;
+	typedef OwnCMatrix       MutablePermTensor;
 
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),
