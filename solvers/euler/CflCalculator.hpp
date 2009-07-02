@@ -37,21 +37,11 @@
 #define OPENRS_CFLCALCULATOR_HEADER
 
 #include <dune/grid/common/ErrorMacros.hpp>
+#include <dune/grid/common/Average.hpp>
 #include <dune/solvers/mimetic/Matrix.hpp>
 
 namespace Dune {
     namespace cfl_calculator {
-
-	template <class matrix_t>
-	inline void computePermeabilityAverage(const matrix_t& K1,
-					       const matrix_t& K2,
-					       matrix_t& Kaver)
-	{
-	    Kaver = K1;
-	    Kaver += K2;
-	    Kaver *= 0.5;
-	}
-
 
 
 	template <class Grid, class ReservoirProperties, class PressureSolution>
@@ -99,11 +89,11 @@ namespace Dune {
 		double flux = 0.0;
 		typename Grid::CellIterator::FaceIterator f = c->facebegin();
 		for (; f != c->faceend(); ++f) {
-		    CMatrix<double, OwnData> loc_perm;
+		    typedef CMatrix<double, OwnData> mytensor_t;
+		    mytensor_t loc_perm;
 		    if (!f->boundary()) {
-			computePermeabilityAverage(resprop.permeability(f->cellIndex()),
-						   resprop.permeability(f->neighbourCellIndex()),
-						   loc_perm);
+			loc_perm = utils::arithmeticAverage<permtensor_t, mytensor_t>(resprop.permeability(f->cellIndex()),
+										      resprop.permeability(f->neighbourCellIndex()));
 		    } else {
 			loc_perm = resprop.permeability(f->cellIndex());
 		    }
@@ -111,7 +101,7 @@ namespace Dune {
 		    double loc_gravity_flux = 0.0;
 		    for (int k = 0; k < dimension; ++k) {
 			for (int q = 0; q < dimension; ++q) {
-			    loc_gravity_flux += loc_halfface_normal[q]*(loc_perm(q,k)*gravity[k]*resprop.densityDiff());
+			    loc_gravity_flux += loc_halfface_normal[q]*(loc_perm(q,k)*gravity[k]*resprop.densityDifference());
 			}
 		    }
 		    loc_gravity_flux *= f->area();

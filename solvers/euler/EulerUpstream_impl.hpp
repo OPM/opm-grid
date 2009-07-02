@@ -15,23 +15,23 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_EULERUPSTREAM_IMPL_HEADER
@@ -44,10 +44,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <algorithm>
 #include <dune/grid/common/ErrorMacros.hpp>
 #include <dune/grid/common/Average.hpp>
-				    // #include "EntityType.hpp"
-				    // #include "FullMatrix.hpp"
+#include <dune/grid/common/Units.hpp>
 #include "CflCalculator.hpp"
-				    // #include "GridHelper.hpp"
 
 namespace Dune
 {
@@ -173,7 +171,7 @@ namespace Dune
 
 
     template <class GI, class RP, class BC>
-    inline void EulerUpstream<GI, RP, BC>::initPeriodics() const
+    inline void EulerUpstream<GI, RP, BC>::initPeriodics()
     {
 	// Store the periodic boundaries, if any.
 	periodic_partner_.clear();
@@ -194,7 +192,11 @@ namespace Dune
     template <class GI, class RP, class BC>
     template <class PressureSolution>
     inline double EulerUpstream<GI, RP, BC>::computeCflTime(const std::vector<double>& /*saturation*/,
-							    const double /*time*/,
+#ifdef VERBOSE
+							    const double time,
+#else
+							    const double,
+#endif
 							    const typename GI::Vector& gravity,
 							    const PressureSolution& pressure_sol) const
     {
@@ -207,8 +209,8 @@ namespace Dune
 	if (method_viscous_) {
 	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(grid_, reservoir_properties_, pressure_sol);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for velocity is " << cfl_dt_v/samcode::units::DAYS2SECONDS
-		      << " and total impes time is " << time/samcode::units::DAYS2SECONDS
+	    std::cout << "CFL dt for velocity is " << cfl_dt_v/Dune::units::DAYS2SECONDS
+		      << " and total impes time is " << time/Dune::units::DAYS2SECONDS
 		      << " in days." << std::endl;
 #endif // VERBOSE
 	}
@@ -217,8 +219,8 @@ namespace Dune
 	if (method_gravity_) {
 	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(grid_, reservoir_properties_, gravity);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for gravity is " << cfl_dt_g/samcode::units::DAYS2SECONDS
-		      << " and total impes time is " << time/samcode::units::DAYS2SECONDS
+	    std::cout << "CFL dt for gravity is " << cfl_dt_g/Dune::units::DAYS2SECONDS
+		      << " and total impes time is " << time/Dune::units::DAYS2SECONDS
 		      << " in days." << std::endl;
 #endif // VERBOSE
 	}
@@ -233,8 +235,8 @@ namespace Dune
 	double cfl_dt = std::min(std::min(cfl_dt_v, cfl_dt_g), cfl_dt_c);
 	cfl_dt *= courant_number_;
 #ifdef VERBOSE
-	std::cout << "Final modified CFL dt is " << cfl_dt/samcode::units::DAYS2SECONDS
-		  << " and total impes time is " << time/samcode::units::DAYS2SECONDS
+	std::cout << "Final modified CFL dt is " << cfl_dt/Dune::units::DAYS2SECONDS
+		  << " and total impes time is " << time/Dune::units::DAYS2SECONDS
 		  << " in days." << std::endl;
 #endif // VERBOSE
 	return cfl_dt;
@@ -370,6 +372,16 @@ namespace Dune
 
     */
 
+    namespace
+    {
+	template <typename T, template <typename> class StoragePolicy>
+	CMatrix<T, OwnData> arithAver(const CMatrix<T, StoragePolicy>& m1,
+				      const CMatrix<T, StoragePolicy>& m2)
+	{
+	    return utils::arithmeticAverage<CMatrix<T, StoragePolicy>, CMatrix<T, OwnData> >(m1, m2);
+	}
+    } // anon namespace
+
 
 
     template <class GI, class RP, class BC>
@@ -392,7 +404,6 @@ namespace Dune
 	// this cell has lower index than the neighbour, or we are on the boundary.
 	typename GI::CellIterator c = grid_.cellbegin();
 	for (; c != grid_.cellend(); ++c) {
-	    double flux = 0.0;
 	    for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
 		double dS = 0.0;
 		int cell[2];
@@ -400,10 +411,10 @@ namespace Dune
 		if (f->boundary()) {
 		    cell[0] = f->cellIndex();
 		    cell_sat[0] = saturation[cell[0]];
-		    typename std::tr1::unordered_map<FIt, FIt>::iterator it = periodic_partner_.find(f);
+		    typename PartnerMapType::const_iterator it = periodic_partner_.find(f);
 		    if (it == periodic_partner_.end()) {
 			cell[1] = cell[0];
-			cell_sat[1] = boundary_.saturation(f->boundaryId());
+			cell_sat[1] = boundary_[f->boundaryId()].saturation();
 		    } else {
 			FIt nbface = it->second;
 			ASSERT(nbface != f);
@@ -433,12 +444,12 @@ namespace Dune
 		// Get some local properties, and compute averages.
 		const double loc_area = f->area();
 		const double loc_flux = pressure_sol.outflux(f);
-		const Vector loc_halfface_normal = f->normal();
+		const Vector loc_normal = f->normal();
 		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		using utils::arithmeticAverage;
 		const permtensor_t loc_perm
-		    = arithmeticAverage(reservoir_properties_.permeability(cell[0]),
-					reservoir_properties_.permeability(cell[1]));
+		    = arithAver(reservoir_properties_.permeability(cell[0]),
+				reservoir_properties_.permeability(cell[1]));
 		const double average_saturation
 		    = arithmeticAverage(cell_sat[0], cell_sat[1]);
 		const double aver_mob_phase1
@@ -449,9 +460,11 @@ namespace Dune
 					reservoir_properties_.mobilitySecondPhase(cell[1], 1.0 - average_saturation));
 
 		// The local gravity flux is needed for finding the correct phase mobilities.
-		const double loc_gravity_flux = method_gravity_ ?
-		    loc_area*reservoir_properties_.densityDiff()*(loc_halfface_normal*(loc_perm*gravity)) : 0.0;
-
+		double loc_gravity_flux = 0.0;
+		if (method_gravity_) {
+		    double grav_comp = inner(loc_normal, prod(loc_perm, gravity));
+		    loc_gravity_flux = loc_area*reservoir_properties_.densityDifference()*grav_comp;
+		}
 		// Find the correct phasemobilities to use
 		const double flux_phase1 = loc_flux + loc_gravity_flux*aver_mob_phase2;
 		const double flux_phase2 = loc_flux - loc_gravity_flux*aver_mob_phase1;
@@ -489,7 +502,7 @@ namespace Dune
 		Vector cap_term = loc_perm
 		*estimateCapPressureGradient(grid, rock_data, flowsys, cell[0], face, saturation)
 		*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
-		dS += cap_term*loc_halfface_normal*loc_area;
+		dS += cap_term*loc_normal*loc_area;
 		}
 		*/
 		// Modify saturation.

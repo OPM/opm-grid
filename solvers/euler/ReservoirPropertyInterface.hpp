@@ -50,7 +50,8 @@ namespace Dune
     class ReservoirPropertyInterface
     {
     public:
-	typedef CMatrix<double, SharedData> permtensor_t;
+	typedef CMatrix<double, ImmutableSharedData> permtensor_t;
+	typedef CMatrix<double, SharedData> mod_permtensor_t;
 
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),
@@ -90,7 +91,7 @@ namespace Dune
 		    permeability_.clear();
 		    permeability_.resize(dim*dim*num_cells, 0.0);
 		    for (int i = 0; i < num_cells; ++i) {
-			permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
+			mod_permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
 			for (int dd = 0; dd < dim; ++dd) {
 			    K(dd, dd) = (*(perm[dd]))[i];
 			}
@@ -103,7 +104,7 @@ namespace Dune
 		    permeability_.clear();
 		    permeability_.resize(dim*dim*num_cells, 0.0);
 		    for (int i = 0; i < num_cells; ++i) {
-			permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
+			mod_permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
 			for (int dd = 0; dd < dim; ++dd) {
 			    K(dd, dd) = perm[i];
 			}
@@ -114,7 +115,7 @@ namespace Dune
 		permeability_.clear();
 		permeability_.resize(dim*dim*num_cells, 0.0);
 		for (int i = 0; i < num_cells; ++i) {
-		    permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
+		    mod_permtensor_t K(dim, dim, &permeability_[dim*dim*i]);
 		    for (int dd = 0; dd < dim; ++dd) {
 			K(dd, dd) = 1.0;
 		    }
@@ -126,9 +127,10 @@ namespace Dune
 	{
 	    return porosity_[cell_index];
 	}
-	const permtensor_t& permeability(int cell_index) const
+	permtensor_t permeability(int cell_index) const
 	{
-	    return permtensor_t(dim, dim, &permeability_[dim*dim*cell_index]);
+	    const permtensor_t K(dim, dim, &permeability_[dim*dim*cell_index]);
+	    return K;
 	}
 	double mobilityFirstPhase(int cell_index, double saturation) const
 	{

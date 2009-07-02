@@ -76,7 +76,7 @@ namespace Dune {
 	typedef typename GridInterface::CellIterator CIt;
 	typedef typename CIt::FaceIterator FIt;
 
-	void initPeriodics() const;
+	void initPeriodics();
 
 	template <class PressureSolution>
 	double computeCflTime(const std::vector<double>& saturation,
@@ -125,8 +125,10 @@ namespace Dune {
 
 	// We store the periodic boundary conditions for fast access while awaiting
 	// a rewrite of the boundary objects that does the same...
-	mutable std::tr1::unordered_map<FIt, FIt> periodic_partner_;
+	typedef std::map<FIt, FIt> PartnerMapType;
+	PartnerMapType periodic_partner_;
     };
+
 } // namespace Dune
 
 #include "EulerUpstream_impl.hpp"

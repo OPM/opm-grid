@@ -33,6 +33,8 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define VERBOSE
+
 #include "config.h"
 #include "../EulerUpstream.hpp"
 #include "../GridInterfaceEuler.hpp"
@@ -149,6 +151,6 @@ int main(int argc, char** argv)
     std::vector<double> sat(g.numberOfCells(), 0.0);
     FieldVector<double, 3> gravity(0.0);
     gravity[2] = -9.81;
-    //transport_solver.transportSolve(sat, time, gravity, flow_solution);
+    transport_solver.transportSolve(sat, time, gravity, flow_solution);
 }
 

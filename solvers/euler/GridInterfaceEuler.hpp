@@ -37,6 +37,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #define OPENRS_GRIDINTERFACEEULER_HEADER
 
 
+#include <climits>
 #include <dune/common/fvector.hh>
 #include <dune/grid/common/referenceelements.hh>
 #include <boost/iterator/iterator_facade.hpp>
@@ -64,7 +65,7 @@ namespace Dune
 	    typedef typename DuneGrid::ctype Scalar;
 	    typedef int Index;
 
-	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = -2};
+	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
 
 	    Scalar area() const
 	    {
@@ -132,6 +133,15 @@ namespace Dune
 	    {
 		++iter_;
 		++local_index_;
+	    }
+	    /// Gives an ordering of intersections.
+	    bool operator<(const Intersection& other) const
+	    {
+		if (cellIndex() == other.cellIndex()) {
+		    return localIndex() < other.localIndex();
+		} else {
+		    return cellIndex() < other.cellIndex();
+		}
 	    }
 	private:
 	    const DuneGrid& grid_;
