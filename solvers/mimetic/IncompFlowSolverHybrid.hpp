@@ -221,7 +221,7 @@ namespace Dune {
                         l2g.push_back(s + (p - (faces.begin() + s)));
                     }
                 }
-                ASSERT(l2g.size() == ncf);
+                ASSERT(int(l2g.size()) == ncf);
 
                 cellFaces_.appendRow(l2g       .begin(), l2g       .end());
                 Binv_     .appendRow(Binv_alloc.begin(), Binv_alloc.end());
