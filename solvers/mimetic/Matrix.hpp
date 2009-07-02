@@ -76,7 +76,7 @@ namespace Dune {
         SharedData(int sz, T* data)
             : sz_(sz), data_(data)
         {
-            ASSERT(data_ != 0);
+            ASSERT((sz == 0) == (data == 0));
         }
 
         T&       operator[](int i)       { return data_[i]; }
@@ -87,6 +87,7 @@ namespace Dune {
         int sz_;
         T*  data_;
     };
+
 
     template<typename T>
     class ImmutableSharedData {
@@ -106,6 +107,139 @@ namespace Dune {
     };
 
 
+    class OrderingBase {
+    public:
+        OrderingBase()
+            : rows_(0), cols_(0)
+        {}
+
+        OrderingBase(int rows, int cols)
+            : rows_(rows), cols_(cols)
+        {}
+
+        int numRows() const { return rows_; }
+        int numCols() const { return cols_; }
+
+    private:
+        int rows_, cols_;
+    };
+
+
+    class COrdering : public OrderingBase {
+    public:
+        COrdering()
+            : OrderingBase()
+        {}
+
+        COrdering(int rows, int cols)
+            : OrderingBase(rows, cols)
+        {}
+
+        int leadingDimension() const { return numCols(); }
+
+        int idx(int row, int col) const
+        {
+            ASSERT ((0 <= row) && (row < numRows()));
+            ASSERT ((0 <= col) && (col < numCols()));
+
+            return row*numCols() + col;
+        }
+    };
+
+
+    class FortranOrdering : public OrderingBase {
+    public:
+        FortranOrdering()
+            : OrderingBase()
+        {}
+
+        FortranOrdering(int rows, int cols)
+            : OrderingBase(rows, cols)
+        {}
+
+        int leadingDimension() const { return numRows(); }
+
+        int idx(int row, int col) const
+        {
+            ASSERT ((0 <= row) && (row < numRows()));
+            ASSERT ((0 <= col) && (col < numCols()));
+
+            return row + col*numRows();
+        }
+    };
+
+
+    template<typename                 T,
+             template<typename> class StoragePolicy,
+             class                    OrderingPolicy>
+    class FullMatrix : private StoragePolicy<T>,
+                       private OrderingPolicy
+    {
+    public:
+        FullMatrix()
+            : StoragePolicy<T>(0, 0),
+              OrderingPolicy()
+        {}
+
+        template <typename DataPointer>
+        FullMatrix(int rows, int cols, DataPointer data)
+            : StoragePolicy<T>(rows * cols, data),
+              OrderingPolicy(rows, cols)
+        {}
+
+        template <template<typename> class OtherSP>
+        explicit FullMatrix(const FullMatrix<T, OtherSP, OrderingPolicy>& m)
+            : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
+              OrderingPolicy(m.numRows(), m.numCols())
+        {
+        }
+
+        template <template<typename> class OtherSP>
+        void operator+= (const FullMatrix<T, OtherSP, OrderingPolicy>& m)
+        {
+            ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
+            std::transform(data(), data() + this->size(),
+                           m.data(), data(), std::plus<T>());
+        }
+
+        void operator*= (const T& scalar)
+        {
+            std::transform(data(), data() + this->size(),
+                           data(), boost::bind(std::multiplies<T>(), _1, scalar));
+        }
+
+        typedef T value_type;
+
+        using OrderingPolicy::numRows;
+        using OrderingPolicy::numCols;
+        using OrderingPolicy::leadingDimension;
+
+        value_type&       operator()(int row, int col)
+        {
+            return this->operator[](this->idx(row, col));
+        }
+        const value_type& operator()(int row, int col) const
+        {
+            return this->operator[](this->idx(row, col));
+        }
+
+        value_type*       data()       { return &this->operator[](0); }
+        const value_type* data() const { return &this->operator[](0); }
+    };
+
+
+    // Convenience typedefs
+    typedef FullMatrix<double, OwnData,             COrdering>        OwnCMatrix;
+    typedef FullMatrix<double, SharedData,          COrdering>        SharedCMatrix;
+    typedef FullMatrix<double, ImmutableSharedData, COrdering>        ImmutableCMatrix;
+
+
+    typedef FullMatrix<double, OwnData,             FortranOrdering>  OwnFortranMatrix;
+    typedef FullMatrix<double, SharedData,          FortranOrdering>  SharedFortranMatrix;
+    typedef FullMatrix<double, ImmutableSharedData, FortranOrdering>  ImmutableFortranMatrix;
+
+
+#if 0
     template<typename T, template<typename> class StoragePolicy>
     class CMatrix : private StoragePolicy<T> {
     public:
@@ -208,7 +342,7 @@ namespace Dune {
             return row + col*numRows();
         }
     };
-
+#endif
 
 
     template<class Matrix>
@@ -252,9 +386,9 @@ namespace Dune {
 
     // A <- orth(A)
     template<typename T, template<typename> class StoragePolicy>
-    int orthogonalizeColumns(FortranMatrix<T,StoragePolicy>& A)
+    int orthogonalizeColumns(FullMatrix<T,StoragePolicy,FortranOrdering>& A)
     {
-        typedef typename FortranMatrix<T,StoragePolicy>::value_type value_type;
+        typedef typename FullMatrix<T,StoragePolicy,FortranOrdering>::value_type value_type;
 
         static std::vector<value_type> tau;
         static std::vector<value_type> work;
@@ -287,10 +421,10 @@ namespace Dune {
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
     template<typename T, template<typename> class StoragePolicy>
-    void symmetricUpdate(const T&                              a1,
-                         const FortranMatrix<T,StoragePolicy>& A ,
-                         const T&                              a2,
-                         FortranMatrix<T,StoragePolicy>&       C )
+    void symmetricUpdate(const T&                                           a1,
+                         const FullMatrix<T,StoragePolicy,FortranOrdering>& A ,
+                         const T&                                           a2,
+                         FullMatrix<T,StoragePolicy,FortranOrdering>&       C )
     {
         Dune::BLAS_LAPACK::SYRK("Upper"     , "No transpose"      ,
                                 C.numRows() , A.numCols()         ,
@@ -311,10 +445,10 @@ namespace Dune {
     // B <- A*B*A'
     // Assumes T is an arithmetic (floating point) type, and that A==A'.
     template<typename T, template<typename> class StoragePolicy>
-    void symmetricUpdate(const FortranMatrix<T,StoragePolicy>& A,
-                         FortranMatrix<T,StoragePolicy>&       B)
+    void symmetricUpdate(const FullMatrix<T,StoragePolicy,FortranOrdering>& A,
+                         FullMatrix<T,StoragePolicy,FortranOrdering>&       B)
     {
-        typedef typename FortranMatrix<T,StoragePolicy>::value_type value_type;
+        typedef typename FullMatrix<T,StoragePolicy,FortranOrdering>::value_type value_type;
 
         // B <- A*B
         Dune::BLAS_LAPACK::TRMM("Left" , "Upper", "No transpose", "Non-unit",
@@ -343,11 +477,11 @@ namespace Dune {
              template<typename> class SP1,
              template<typename> class SP2,
              template<typename> class SP3>
-    void matMulAdd_NN(const T&                    a1,
-                      const FortranMatrix<T,SP1>& A ,
-                      const FortranMatrix<T,SP2>& B ,
-                      const T&                    a2,
-                      FortranMatrix<T,SP3>&       C)
+    void matMulAdd_NN(const T&                             a1,
+                      const FullMatrix<T,SP1,FortranOrdering>& A ,
+                      const FullMatrix<T,SP2,FortranOrdering>& B ,
+                      const T&                             a2,
+                      FullMatrix<T,SP3,FortranOrdering>&       C)
     {
         ASSERT(A.numRows() == C.numRows());
         ASSERT(A.numCols() == B.numRows());
@@ -365,11 +499,11 @@ namespace Dune {
              template<typename> class SP1,
              template<typename> class SP2,
              template<typename> class SP3>
-    void matMulAdd_NT(const T&                    a1,
-                      const FortranMatrix<T,SP1>& A ,
-                      const FortranMatrix<T,SP2>& B ,
-                      const T&                    a2,
-                      FortranMatrix<T,SP3>&       C)
+    void matMulAdd_NT(const T&                                 a1,
+                      const FullMatrix<T,SP1,FortranOrdering>& A ,
+                      const FullMatrix<T,SP2,FortranOrdering>& B ,
+                      const T&                                 a2,
+                      FullMatrix<T,SP3,FortranOrdering>&       C)
     {
         ASSERT(A.numRows() == C.numRows());
         ASSERT(B.numRows() == C.numCols());
@@ -387,14 +521,14 @@ namespace Dune {
              template<typename> class SP1,
              template<typename> class SP2,
              template<typename> class SP3>
-    void matMulAdd_NN(const T&                    a1,
-                      const FortranMatrix<T,SP1>& A ,
-                      const CMatrix<T,SP2>&       B ,
-                      const T&                    a2,
-                      FortranMatrix<T,SP3>&       C)
+    void matMulAdd_NN(const T&                                 a1,
+                      const FullMatrix<T,SP1,FortranOrdering>& A ,
+                      const FullMatrix<T,SP2,COrdering>&       B ,
+                      const T&                                 a2,
+                      FullMatrix<T,SP3,FortranOrdering>&       C)
     {
-        typedef typename CMatrix<T,SP2>::value_type           value_type;
-        typedef FortranMatrix<value_type,ImmutableSharedData> FMat;
+        typedef typename FullMatrix<T,SP2,COrdering>::value_type           value_type;
+        typedef FullMatrix<value_type,ImmutableSharedData,FortranOrdering> FMat;
 
         const FMat Bt(B.numCols(), B.numRows(), B.data());
 
@@ -403,28 +537,10 @@ namespace Dune {
 
 
     template<class charT, class traits,
-             typename                 T,
-             template<typename> class StoragePolicy>
+             typename T, template<typename> class SP, class OP>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
-               const FortranMatrix<T,StoragePolicy>& A)
-    {
-        for (int i = 0; i < A.numRows(); ++i) {
-            for (int j = 0; j < A.numCols(); ++j)
-                os << A(i,j) << ' ';
-            os << '\n';
-        }
-
-        return os;
-    }
-
-
-    template<class charT, class traits,
-             typename                 T,
-             template<typename> class StoragePolicy>
-    std::basic_ostream<charT,traits>&
-    operator<<(std::basic_ostream<charT,traits>& os,
-               const CMatrix<T,StoragePolicy>& A)
+               const FullMatrix<T,SP,OP>& A)
     {
         for (int i = 0; i < A.numRows(); ++i) {
             for (int j = 0; j < A.numCols(); ++j)
