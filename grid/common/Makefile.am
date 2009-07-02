@@ -8,7 +8,7 @@ common_HEADERS = SparseTable.hpp ErrorMacros.hpp
 
 lib_LTLIBRARIES = libtemporaryhack.la
 
-libtemporaryhack_la_SOURCES = GeometryHelpers.cpp
+libtemporaryhack_la_SOURCES = GeometryHelpers.cpp StopWatch.cpp
 
 include $(top_srcdir)/am/global-rules
 
