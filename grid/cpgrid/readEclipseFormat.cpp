@@ -41,6 +41,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include "../preprocess/preprocess.h"
 #include "../common/GeometryHelpers.hpp"
 
+#define VERBOSE
+
 namespace Dune
 {
 
@@ -65,6 +67,9 @@ namespace Dune
     void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance)
     {
 	// Read eclipse file data.
+#ifdef VERBOSE
+	std::cout << "Parsing " << filename << std::endl;
+#endif
 	EclipseGridParser parser(filename);
 	processEclipseFormat(parser, z_tolerance);
     }
@@ -91,6 +96,9 @@ namespace Dune
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance)
     {
 	// Process.
+#ifdef VERBOSE
+	std::cout << "Processing eclipse data." << std::endl;
+#endif
 	processed_grid output;
 	process_grdecl(&input_data, z_tolerance, &output);
 
@@ -131,11 +139,23 @@ namespace Dune
 	*/
 
 	// Move data into the grid's structures.
+#ifdef VERBOSE
+	std::cout << "Building topology." << std::endl;
+#endif
 	buildTopo(output, cell_to_face_, face_to_cell_, cell_to_point_);
+#ifdef VERBOSE
+	std::cout << "Building geometry." << std::endl;
+#endif
 	buildGeom(output, cell_to_face_, geometry_, face_normals_);
 
+#ifdef VERBOSE
+	std::cout << "Cleaning up." << std::endl;
+#endif
 	// Clean up the output struct.
 	free_processed_grid(&output);
+#ifdef VERBOSE
+	std::cout << "Done with grid processing." << std::endl;
+#endif
     }
 
 
@@ -172,6 +192,14 @@ namespace Dune
 	    for (int i = 0; i < c2f.size(); ++i) {
 		c2p.appendRow(dummy, dummy);
 	    }
+#ifndef NDEBUG
+#ifdef VERBOSE
+	    std::cout << "Doing extra topology integrity check." << std::endl;
+#endif
+	    cpgrid::OrientedEntityTable<1, 0> f2c_again;
+	    c2f.makeInverseRelation(f2c_again);
+	    ASSERT(f2c == f2c_again);
+#endif
 	}
 
 
