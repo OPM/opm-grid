@@ -153,6 +153,36 @@ namespace
     void read_data(istream& is, vector<T>& data, bool error_on_nonnumerics = true)
     {
 	data.clear();
+	while (is) {
+	    T candidate;
+	    is >> candidate;
+	    if (is.rdstate() & ios::failbit) {
+		is.clear(is.rdstate() & ~ios::failbit);
+		string dummy;
+		is >> dummy;
+		if (dummy == "/") {
+		    break;
+		} else if (error_on_nonnumerics) {
+		    cerr << "Encountered format error while reading data values." << endl;
+		    throw exception();
+		}
+	    } else {
+		if (is.peek() == int('*')) {
+		    is.ignore(); // ignore the '*'
+		    int multiplier = int(candidate);
+		    is >> candidate;
+		    data.insert(data.end(), multiplier, candidate);
+		} else {
+		    data.push_back(candidate);
+		}
+	    }
+	}
+	if (!is) {
+	    cerr << "Encountered error while reading data values." << endl;
+	    throw exception();
+	}
+#if 0
+	data.clear();
 	int next = is.peek();
 	while (next != int('/')) {
 	    // Read more data
@@ -188,6 +218,7 @@ namespace
 	    cerr << "Encountered error while reading data values." << endl;
 	    throw exception();
 	}
+#endif
     }
 
 
