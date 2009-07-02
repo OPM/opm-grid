@@ -50,8 +50,8 @@ namespace Dune
     class ReservoirPropertyInterface
     {
     public:
-	typedef ImmutableCMatrix<double, ImmutableSharedData> PermTensor;
-	typedef SharedCMatrix<double, SharedData> MutablePermTensor;
+	typedef ImmutableCMatrix PermTensor;
+	typedef SharedCMatrix    MutablePermTensor;
 
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),

@@ -81,7 +81,7 @@ namespace Dune {
 				  const ReservoirProperties& resprop,
 				  const typename Grid::Vector& gravity)
 	{
-	    typedef typename ReservoirProperties::permtensor_t permtensor_t;
+	    typedef typename ReservoirProperties::PermTensor PermTensor;
 	    const int dimension = Grid::Vector::dimension;
 	    double dt = 1e100;
 	    typename Grid::CellIterator c = grid.cellbegin();
@@ -92,8 +92,8 @@ namespace Dune {
 		    typedef OwnCMatrix mytensor_t;
 		    mytensor_t loc_perm;
 		    if (!f->boundary()) {
-			loc_perm = utils::arithmeticAverage<permtensor_t, mytensor_t>(resprop.permeability(f->cellIndex()),
-										      resprop.permeability(f->neighbourCellIndex()));
+			loc_perm = utils::arithmeticAverage<PermTensor, mytensor_t>(resprop.permeability(f->cellIndex()),
+                                                                                    resprop.permeability(f->neighbourCellIndex()));
 		    } else {
 			loc_perm = resprop.permeability(f->cellIndex());
 		    }

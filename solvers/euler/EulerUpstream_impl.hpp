@@ -375,11 +375,12 @@ namespace Dune
     namespace
     {
 	template <typename T, template <typename> class StoragePolicy, class OrderingPolicy>
-	Matrix<T, OwnData, OrderingPolicy> arithAver(const Matrix<T, StoragePolicy, OrderingPolicy>& m1,
-						     const Matrix<T, StoragePolicy, OrderingPolicy>& m2)
+	FullMatrix<T, OwnData, OrderingPolicy>
+        arithAver(const FullMatrix<T, StoragePolicy, OrderingPolicy>& m1,
+                  const FullMatrix<T, StoragePolicy, OrderingPolicy>& m2)
 	{
-	    return utils::arithmeticAverage<Matrix<T, StoragePolicy, OrderingPolicy>,
-		Matrix<T, OwnData, OrderingPolicy> >(m1, m2);
+	    return utils::arithmeticAverage<FullMatrix<T, StoragePolicy, OrderingPolicy>,
+		FullMatrix<T, OwnData, OrderingPolicy> >(m1, m2);
 	}
     } // anon namespace
 
@@ -394,7 +395,8 @@ namespace Dune
 							   std::vector<double>& sat_change) const
     {
 	typedef typename GI::Vector Vector;
-	typedef typename RP::permtensor_t permtensor_t;
+	typedef typename RP::PermTensor PermTensor;
+	typedef typename RP::MutablePermTensor MutablePermTensor;
 
 	// Make sure sat_change is zero, and has the right size.
 	sat_change.clear();
@@ -448,7 +450,7 @@ namespace Dune
 		const Vector loc_normal = f->normal();
 		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		using utils::arithmeticAverage;
-		const permtensor_t loc_perm
+		const MutablePermTensor loc_perm
 		    = arithAver(reservoir_properties_.permeability(cell[0]),
 				reservoir_properties_.permeability(cell[1]));
 		const double average_saturation
