@@ -78,17 +78,18 @@ namespace Dune {
     }
 
 
-    template<class GI, class IP>
+    template<class GridInterface, class InnerProduct>
     class IncompFlowSolverHybrid {
-        typedef typename GI::Scalar Scalar;
+        typedef typename GridInterface::Scalar Scalar;
     public:
-        void init(const GI& g)
+        void init(const GridInterface& g)
         {
             ASSERT (topologyIsSane(g));
 
-            max_ncf_            = -1;
-            num_internal_faces_ =  0;
-            total_num_faces_    =  0;
+            max_ncf_                = -1;
+            num_internal_faces_     =  0;
+            total_num_faces_        =  0;
+            matrix_structure_valid_ = false;
 
             std::vector<int>(g.numberOfCells(), -1).swap(cellno_);
             cellFaces_.clear();
@@ -99,6 +100,28 @@ namespace Dune {
                 buildMatrixStructure();
             }
         }
+
+
+        template<class ReservoirInterface>
+        void assembleStatic(const GridInterface&      g,
+                            const ReservoirInterface& r)
+        {
+            ASSERT(matrix_structure_valid_);
+
+            typedef typename GridInterface     ::CellIterator CI;
+            typedef typename ReservoirInterface::PermTensor   PermTensor;
+
+            InnerProduct ip(max_ncf_);
+            int i = 0;
+            for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++i) {
+                const int nf = cellFaces_[c].size();
+
+                SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
+
+                ip.evaluate(c, r.permeability(c->index()), Binv);
+            }
+        }
+
 
         void printStats(std::ostream& os)
         {
@@ -132,15 +155,16 @@ namespace Dune {
         SparseTable<int>      cellFaces_;
         SparseTable<Scalar>   Binv_;
         BCRSMatrix<BlockType> S_;
+        bool                  matrix_structure_valid_;
 
 
 
         // ----------------------------------------------------------------
-        void buildGridTopology(const GI& g)
+        void buildGridTopology(const GridInterface& g)
         // ----------------------------------------------------------------
         {
-            typedef typename GI::CellIterator CI;
-            typedef typename CI::FaceIterator FI;
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
 
             const int nc = g.numberOfCells();
             std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
@@ -267,6 +291,8 @@ namespace Dune {
                 }
             }
             S_.endindices();
+
+            matrix_structure_valid_ = true;
         }
     };
 } // namespace Dune
