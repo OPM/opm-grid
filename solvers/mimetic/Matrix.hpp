@@ -65,6 +65,10 @@ namespace Dune {
         const T& operator[](int i) const { return data_[i]; }
 
         int size() const { return data_.size(); }
+
+        T*       data()       { return &data_[0]; }
+        const T* data() const { return &data_[0]; }
+
     private:
         std::vector<T> data_;
     };
@@ -83,6 +87,9 @@ namespace Dune {
         const T& operator[](int i) const { return data_[i]; }
 
         int size() const { return sz_; }
+
+        T*       data()       { return data_; }
+        const T* data() const { return data_; }
     private:
         int sz_;
         T*  data_;
@@ -101,6 +108,8 @@ namespace Dune {
         const T& operator[](int i) const { return data_[i]; }
 
         int size() const { return sz_; }
+
+        const T* data() const { return data_; }
     private:
         int sz_;
         const T*  data_;
@@ -210,6 +219,7 @@ namespace Dune {
 
         typedef T value_type;
 
+	using StoragePolicy<T>::data;
         using OrderingPolicy::numRows;
         using OrderingPolicy::numCols;
         using OrderingPolicy::leadingDimension;
@@ -222,127 +232,19 @@ namespace Dune {
         {
             return this->operator[](this->idx(row, col));
         }
-
-        value_type*       data()       { return &this->operator[](0); }
-        const value_type* data() const { return &this->operator[](0); }
     };
 
 
     // Convenience typedefs
     typedef FullMatrix<double, OwnData,             COrdering>        OwnCMatrix;
     typedef FullMatrix<double, SharedData,          COrdering>        SharedCMatrix;
-    typedef FullMatrix<double, ImmutableSharedData, COrdering>        ImmutableCMatrix;
+    typedef const FullMatrix<double, ImmutableSharedData, COrdering>  ImmutableCMatrix;
 
 
-    typedef FullMatrix<double, OwnData,             FortranOrdering>  OwnFortranMatrix;
-    typedef FullMatrix<double, SharedData,          FortranOrdering>  SharedFortranMatrix;
-    typedef FullMatrix<double, ImmutableSharedData, FortranOrdering>  ImmutableFortranMatrix;
+    typedef FullMatrix<double, OwnData,             FortranOrdering>       OwnFortranMatrix;
+    typedef FullMatrix<double, SharedData,          FortranOrdering>       SharedFortranMatrix;
+    typedef const FullMatrix<double, ImmutableSharedData, FortranOrdering> ImmutableFortranMatrix;
 
-
-#if 0
-    template<typename T, template<typename> class StoragePolicy>
-    class CMatrix : private StoragePolicy<T> {
-    public:
-        CMatrix()
-            : StoragePolicy<T>(0, 0),
-              rows_(0), cols_(0)
-        {}
-
-        template <typename DataPointer>
-        CMatrix(int rows, int cols, DataPointer data)
-            : StoragePolicy<T>(rows * cols, data),
-              rows_(rows), cols_(cols)
-        {}
-
-        template <class OtherMatrixType>
-        CMatrix(const OtherMatrixType& m)
-            : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
-              rows_(m.numRows()), cols_(m.numCols())
-        {
-        }
-
-        template <template<typename> class OtherStoragePolicy>
-        void operator+= (const CMatrix<T,OtherStoragePolicy>& m)
-        {
-            ASSERT(numRows() == m.numRows() && numCols() == m.numCols());
-            std::transform(data(), data() + this->size(),
-                           m.data(), data(), std::plus<T>());
-        }
-
-        void operator*= (const T& scalar)
-        {
-            std::transform(data(), data() + this->size(),
-                           data(), boost::bind(std::multiplies<T>(), _1, scalar));
-        }
-
-        typedef T value_type;
-
-        int      numRows()          const { return rows_;     }
-        int      numCols()          const { return cols_;     }
-        int      leadingDimension() const { return numCols(); }
-
-        value_type&       operator()(int row, int col)
-        {
-            return this->operator[](idx(row, col));
-        }
-        const value_type& operator()(int row, int col) const
-        {
-            return this->operator[](idx(row, col));
-        }
-
-        value_type*       data()       { return &this->operator[](0); }
-        const value_type* data() const { return &this->operator[](0); }
-    private:
-        int rows_, cols_;
-
-        int idx(int row, int col) const
-        {
-            ASSERT ((0 <= row) && (row < numRows()));
-            ASSERT ((0 <= col) && (col < numCols()));
-
-            return row*numCols() + col;
-        }
-    };
-
-
-    template<typename T, template<typename> class StoragePolicy>
-    class FortranMatrix : private StoragePolicy<T> {
-    public:
-        template<typename DataPointer>
-        FortranMatrix(int rows, int cols, DataPointer data)
-            : StoragePolicy<T>(rows * cols, data)
-            , rows_(rows), cols_(cols)
-        {}
-
-        typedef T value_type;
-
-        int      numRows()          const { return rows_;     }
-        int      numCols()          const { return cols_;     }
-        int      leadingDimension() const { return numRows(); }
-
-        T&       operator()(int row, int col)
-        {
-            return this->operator[](idx(row, col));
-        }
-        const T& operator()(int row, int col) const
-        {
-            return this->operator[](idx(row, col));
-        }
-
-        T*       data()       { return &this->operator[](0); }
-        const T* data() const { return &this->operator[](0); }
-    private:
-        int rows_, cols_;
-
-        int idx(int row, int col) const
-        {
-            ASSERT ((0 <= row) && (row < numRows()));
-            ASSERT ((0 <= col) && (col < numCols()));
-
-            return row + col*numRows();
-        }
-    };
-#endif
 
 
     template<class Matrix>
