@@ -46,11 +46,13 @@
 #include <dune/grid/CpGrid.hpp>
 
 #include <dune/solvers/euler/GridInterfaceEuler.hpp>
+#include <dune/solvers/euler/ReservoirPropertyInterface.hpp>
 
 #include <dune/solvers/mimetic/fortran.hpp>
 #include <dune/solvers/mimetic/blas_lapack.hpp>
 #include <dune/solvers/mimetic/Matrix.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
+#include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 
 template <int dim, class Interface>
 void test_evaluator(const Interface& g)
@@ -59,7 +61,7 @@ void test_evaluator(const Interface& g)
     typedef typename CI       ::FaceIterator FI;
     typedef typename CI       ::Scalar       Scalar;
 
-    typedef Dune::FortranMatrix<Scalar, Dune::SharedData> Matrix;
+    typedef Dune::SharedFortranMatrix FMat;
 
     std::cout << "Called test_evaluator()" << std::endl;
 
@@ -79,7 +81,7 @@ void test_evaluator(const Interface& g)
 
     // Set dummy permeability K=diag(10,1,...,1,0.1).
     std::vector<Scalar> perm(dim * dim, Scalar(0.0));
-    Dune::CMatrix<Scalar,Dune::SharedData> K(dim, dim, &perm[0]);
+    Dune::SharedCMatrix K(dim, dim, &perm[0]);
     for (int i = 0; i < dim; ++i)
         K(i,i) = 1.0;
     K(0    ,0    ) *= 10.0;
@@ -91,12 +93,25 @@ void test_evaluator(const Interface& g)
     // Loop grid whilst building (and outputing) the inverse IP matrix.
     int count = 0;
     for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++count) {
-        Matrix Binv(numf[count], numf[count], &ip_store[0]);
+        FMat Binv(numf[count], numf[count], &ip_store[0]);
 
         ip.evaluate(c, K, Binv);
 
         std::cout << count << " -> Binv = [\n" << Binv << "]\n";
     }
+}
+
+
+template<int dim, class Interface>
+void test_flowsolver(const Interface& g)
+{
+    typedef typename Interface::CellIterator           CI;
+    typedef Dune::MimeticIPEvaluator<CI,dim,true>      IP;
+    typedef Dune::IncompFlowSolverHybrid<Interface,IP> FlowSolver;
+
+    FlowSolver solver;
+    solver.init(g);
+    solver.printStats(std::cout);
 }
 
 
@@ -144,7 +159,9 @@ void check_cpgrid()
 
     // Test the interface
     Dune::GridInterfaceEuler<Dune::CpGrid> gie(grid);
-    test_evaluator<3>(gie);
+    //test_evaluator<3>(gie);
+
+    test_flowsolver<3>(gie);
 }
 
 
@@ -157,8 +174,10 @@ int main (int argc , char **argv) {
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #endif
-	check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
+	//check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
 	check_cpgrid<0>();
+	check_cpgrid<1>();
+	check_cpgrid<2>();
 
     } catch (Dune::Exception &e) {
 	std::cerr << e << std::endl;

@@ -60,10 +60,10 @@ namespace Dune {
         {}
 
 
-        template<class permtensor_t, template<typename> class SP>
-        void evaluate(const CellIter&           c,
-                      const permtensor_t&       K,
-                      FortranMatrix<Scalar,SP>& Binv)
+        template<class PermTensor, template<typename> class SP>
+        void evaluate(const CellIter&                      c,
+                      const PermTensor&                    K,
+                      FullMatrix<Scalar,SP,FortranOrdering>& Binv)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
@@ -78,9 +78,9 @@ namespace Dune {
             ASSERT(t2_.size()     >= nf * dim);
             ASSERT(fa_.size()     >= nf * nf);
 
-            FortranMatrix<Scalar,SharedData> T1(nf, dim, &t1_[0]);
-            FortranMatrix<Scalar,SharedData> T2(nf, dim, &t2_[0]);
-            FortranMatrix<Scalar,SharedData> fa(nf, nf , &fa_[0]);
+            SharedFortranMatrix T1(nf, dim, &t1_[0]);
+            SharedFortranMatrix T2(nf, dim, &t2_[0]);
+            SharedFortranMatrix fa(nf, nf , &fa_[0]);
 
             // Clear matrices of any residual data.
             zero(Binv);  zero(T1);  zero(T2);  zero(fa);
