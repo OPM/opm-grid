@@ -89,7 +89,7 @@ namespace Dune {
 		double flux = 0.0;
 		typename Grid::CellIterator::FaceIterator f = c->facebegin();
 		for (; f != c->faceend(); ++f) {
-		    typedef CMatrix<double, OwnData> mytensor_t;
+		    typedef OwnCMatrix mytensor_t;
 		    mytensor_t loc_perm;
 		    if (!f->boundary()) {
 			loc_perm = utils::arithmeticAverage<permtensor_t, mytensor_t>(resprop.permeability(f->cellIndex()),

@@ -374,11 +374,12 @@ namespace Dune
 
     namespace
     {
-	template <typename T, template <typename> class StoragePolicy>
-	CMatrix<T, OwnData> arithAver(const CMatrix<T, StoragePolicy>& m1,
-				      const CMatrix<T, StoragePolicy>& m2)
+	template <typename T, template <typename> class StoragePolicy, class OrderingPolicy>
+	Matrix<T, OwnData, OrderingPolicy> arithAver(const Matrix<T, StoragePolicy, OrderingPolicy>& m1,
+						     const Matrix<T, StoragePolicy, OrderingPolicy>& m2)
 	{
-	    return utils::arithmeticAverage<CMatrix<T, StoragePolicy>, CMatrix<T, OwnData> >(m1, m2);
+	    return utils::arithmeticAverage<Matrix<T, StoragePolicy, OrderingPolicy>,
+		Matrix<T, OwnData, OrderingPolicy> >(m1, m2);
 	}
     } // anon namespace
 
