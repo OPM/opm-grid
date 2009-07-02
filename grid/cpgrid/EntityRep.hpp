@@ -397,11 +397,55 @@ namespace Dune
 	    /// @brief Makes the inverse relation, mapping codim_to entities
 	    /// to their codim_from neighbours.
 	    ///
-	    /// Implementation note: The algorithm should be changed
-	    /// to a two-pass O(n) algorithm.
+	    /// Implementation note: The algorithm has been changed
+	    /// to a three-pass O(n) algorithm.
 	    /// @param inv  The OrientedEntityTable 
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
+		int maxind = -1;
+		for (int i = 0; i < size(); ++i) {
+		    EntityRep<codim_from> from_ent(i, true);
+		    row_type r = operator[](from_ent);
+		    for (int j = 0; j < r.size(); ++j) {
+			EntityRep<codim_to> to_ent = r[j];
+			int ind = to_ent.index();
+			maxind = std::max(ind, maxind);
+		    }
+		}
+		std::vector<int> new_sizes(maxind + 1);
+		int datacount = 0;
+		for (int i = 0; i < size(); ++i) {
+		    EntityRep<codim_from> from_ent(i, true);
+		    row_type r = operator[](from_ent);
+		    datacount += r.size();
+		    for (int j = 0; j < r.size(); ++j) {
+			EntityRep<codim_to> to_ent = r[j];
+			int ind = to_ent.index();
+			++new_sizes[ind];
+		    }
+		}
+		std::vector<int> cumul_sizes(new_sizes.size() + 1);
+		cumul_sizes[0] = 0;
+		std::partial_sum(new_sizes.begin(), new_sizes.end(), cumul_sizes.begin() + 1);
+		std::vector<int> new_data(datacount);
+		for (int i = 0; i < size(); ++i) {
+		    EntityRep<codim_from> from_ent(i, true);
+		    row_type r = operator[](from_ent);
+		    datacount += r.size();
+		    for (int j = 0; j < r.size(); ++j) {
+			EntityRep<codim_to> to_ent = r[j];
+			int ind = to_ent.index();
+			int data_ind = cumul_sizes[ind];
+			new_data[data_ind] = to_ent.orientation() ? i : ~i;
+			++cumul_sizes[ind];
+		    }
+		}
+		inv = OrientedEntityTable<codim_to, codim_from>(new_data.begin(),
+								new_data.end(),
+								new_sizes.begin(),
+								new_sizes.end());
+
+#if 0
 		typedef std::multimap<int, int> RelationMap;
 		RelationMap rm;
 		for (int i = 0; i < size(); ++i) {
@@ -428,6 +472,7 @@ namespace Dune
 								new_data.end(),
 								new_sizes.begin(),
 								new_sizes.end());
+#endif
 	    }
 
 	private:
