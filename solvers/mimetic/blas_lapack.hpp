@@ -178,7 +178,7 @@ namespace Dune {
                   &m, &n, &a, A, &ldA, B, &ldB);
         }
 
-        
+
         //--------------------------------------------------------------------------
         template<typename T>
         void GEQRF(const int m    , const int  n   ,
