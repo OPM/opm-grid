@@ -71,6 +71,7 @@ void test_interface(const Interface& g)
 		      << "\n            Face area      = " << f->area()
 		      << "\n            Face centroid  = " << f->centroid()
 		      << "\n            Face normal    = " << f->normal() << '\n';
+	    typename Interface::CellIterator::FaceIterator::Cell this_c = f->cell();
 	}
 	std::cout << "    Total face count for cell: " << fcount << '\n';
     }

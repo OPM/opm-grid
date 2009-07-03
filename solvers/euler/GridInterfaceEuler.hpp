@@ -49,6 +49,9 @@ namespace Dune
     namespace GIE
     {
 
+	template <class DuneGrid, class EntityPointerType>
+	class Cell;
+
 	template <class DuneGrid>
 	class Intersection : public boost::iterator_facade<Intersection<DuneGrid>,
 							   const Intersection<DuneGrid>,
@@ -64,6 +67,7 @@ namespace Dune
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
 	    typedef int Index;
+	    typedef GIE::Cell<DuneGrid, typename DuneGrid::template Codim<0>::EntityPointer> Cell;
 
 	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
 
@@ -92,9 +96,19 @@ namespace Dune
 		return iter_->boundaryId();
 	    }
 
+	    Cell cell() const
+	    {
+		return Cell(grid_, iter_->inside());
+	    }
+
 	    Index cellIndex() const
 	    {
 		return grid_.leafIndexSet().index(*iter_->inside());
+	    }
+
+	    Cell neighbourCell() const
+	    {
+		return Cell(grid_, iter_->outside());
 	    }
 
 	    Index neighbourCellIndex() const
@@ -157,14 +171,11 @@ namespace Dune
 	};
 
 
-	template <class DuneGrid>
-	class Cell : public boost::iterator_facade<Cell<DuneGrid>,
-						   const Cell<DuneGrid>,
-						   boost::forward_traversal_tag>
+	template <class DuneGrid, class EntityPointerType>
+	class Cell
 	{
 	public:
-	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
-	    Cell(const DuneGrid& grid, DuneCellIter it)
+	    Cell(const DuneGrid& grid, EntityPointerType it)
 		: grid_(grid), iter_(it)
 	    {
 	    }
@@ -200,26 +211,48 @@ namespace Dune
 	    {
 		return grid_.leafIndexSet().index(*iter_);
 	    }
+	protected:
+	    const DuneGrid& grid_;
+	    EntityPointerType iter_;
+	};
 
+
+	template <class DuneGrid>
+	class CellIterator
+	    : public boost::iterator_facade<CellIterator<DuneGrid>,
+					    const CellIterator<DuneGrid>,
+					    boost::forward_traversal_tag>,
+	      public Cell<DuneGrid, typename DuneGrid::template Codim<0>::LeafIterator>
+	{
+	private:
+	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
+	    typedef Cell<DuneGrid, DuneCellIter> CellType;
+	public:
+	    typedef typename CellType::Vector Vector;
+	    typedef typename CellType::Scalar Scalar;
+	    typedef typename CellType::Index Index;
+
+	    CellIterator(const DuneGrid& grid, DuneCellIter it)
+		: CellType(grid, it)
+	    {
+	    }
 	    /// Used by iterator facade.
-	    const Cell& dereference() const
+	    const CellIterator& dereference() const
 	    {
 		return *this;
 	    }
 	    /// Used by iterator facade.
-	    bool equal(const Cell& other) const
+	    bool equal(const CellIterator& other) const
 	    {
-		return iter_ == other.iter_;
+		return CellType::iter_ == other.CellType::iter_;
 	    }
 	    /// Used by iterator facade.
 	    void increment()
 	    {
-		++iter_;
+		++CellType::iter_;
 	    }
-	private:
-	    const DuneGrid& grid_;
-	    DuneCellIter iter_;
 	};
+
 
     } // namespace GIE
 
@@ -228,7 +261,7 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
-	typedef GIE::Cell<DuneGrid> CellIterator;
+	typedef GIE::CellIterator<DuneGrid> CellIterator;
 	typedef typename CellIterator::Vector Vector;
 	typedef typename CellIterator::Scalar Scalar;
 	typedef typename CellIterator::Index Index;
