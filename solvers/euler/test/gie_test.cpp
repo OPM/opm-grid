@@ -79,8 +79,8 @@ void test_interface(const Interface& g)
 }
 
 
-template <int dim, int refinement=1>
-void check_yasp(bool p0=false) {
+template <int dim, int refinement>
+void check_yasp(bool p0 = false) {
     typedef Dune::FieldVector<int,dim> iTupel;
     typedef Dune::FieldVector<double,dim> fTupel;
     typedef Dune::FieldVector<bool,dim> bTupel;
@@ -136,8 +136,8 @@ int main (int argc , char **argv) {
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #endif
-	check_yasp<1>();
-	check_yasp<2>();
+	check_yasp<1,1>();
+	check_yasp<2,1>();
 
 	check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
 	check_cpgrid<0>();

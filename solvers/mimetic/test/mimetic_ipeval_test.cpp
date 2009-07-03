@@ -115,7 +115,7 @@ void test_flowsolver(const Interface& g)
 }
 
 
-template <int dim, int refinement=1>
+template <int dim, int refinement>
 void check_yasp(bool p0=false) {
     typedef Dune::FieldVector<int,dim> iTupel;
     typedef Dune::FieldVector<double,dim> fTupel;
