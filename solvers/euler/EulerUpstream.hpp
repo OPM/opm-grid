@@ -98,14 +98,8 @@ namespace Dune {
 			     std::vector<double>& sat_change) const;
 
 
-	template <class grid_t, class rock_t, class fluid_t>
-	typename grid_t::point_t
-	estimateCapPressureGradient(const grid_t& grid,
-				    const rock_t& rock,
-				    const fluid_t& fluid,
-				    int cell,
-				    int face,
-				    const std::vector<double>& sat) const;
+	typename GridInterface::Vector
+	estimateCapPressureGradient(FIt f, const std::vector<double>& sat) const;
 
 	void checkAndPossiblyClampSat(std::vector<double>& s) const;
 

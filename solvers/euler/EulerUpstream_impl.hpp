@@ -248,55 +248,55 @@ namespace Dune
 
 
 
-    /*
-      template <class grid_t, class rock_t, class fluid_t>
-      inline typename grid_t::point_t EulerUpstream::
-      estimateCapPressureGradient(const grid_t& grid,
-      const rock_t& rock,
-      const fluid_t& fluid,
-      int cell,
-      int face,
-      const std::vector<double>& sat) const
-      {
-      // Find neighbouring cell and face: nbcell and nbface.
-      // If we are not on a periodic boundary, nbface is of course equal to face.
-      typedef typename grid_t::point_t point_t;
-      int nbcell = grid_helper::neighbourCell(grid, cell, face);
-      int nbface = face;
-      if (nbcell == -1) {
-      std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
-      if (it == periodic_partner_.end()) {
-      // At (nonperiodic) boundaries, we just return a zero gradient.
-      point_t g;
-      g.zero();
-      return g;
-      } else {
-      nbface = it->second;
-      nbcell = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
-      }
-      }
+    template <class GI, class RP, class BC>
+    inline typename GI::Vector
+    EulerUpstream<GI, RP, BC>::estimateCapPressureGradient(FIt f, const std::vector<double>& sat) const
+    {
+	typedef typename GI::CellIterator::FaceIterator Face;
+	typedef typename Face::Cell Cell;
+	typedef typename GI::Vector Vector;
 
-      // Estimate the gradient like a finite difference between
-      // cell centers, except that in order to handle periodic
-      // conditions we pass through the face centroid(s).
-      point_t cell_c = grid.getCellCentroid(cell);
-      point_t nb_c = grid.getCellCentroid(nbcell);
-      point_t f_c = grid.getFaceCentroid(face);
-      point_t nbf_c = grid.getFaceCentroid(nbface);
-      double d0 = cell_c.dist(f_c);
-      double d1 = nb_c.dist(nbf_c);
-      double cp0 = fluid.capPressure(cell, sat[cell],
-      rock.getPermeability(cell).trace()/rock_t::Dimension,
-      rock.getPorosity(cell));
-      double cp1 = fluid.capPressure(nbcell, sat[nbcell],
-      rock.getPermeability(nbcell).trace()/rock_t::Dimension,
-      rock.getPorosity(nbcell));
-      double val = (cp1 - cp0)/(d0 + d1);
-      point_t dir = nb_c - nbf_c + f_c - cell_c;
-      dir.normalize();
-      return dir*val;
-      }
-    */
+	// For now, we return zero on boundaries. Obviously we should have
+	// capillary pressure boundary conditions.
+	if (f->boundary()) {
+	    return Vector(0.0);
+	}
+	// Find neighbouring cell and face: nbc and nbf.
+	// If we are not on a periodic boundary, nbf is of course equal to f.
+	Cell c = f->cell();
+	Cell nb = f->boundary() ? c : f->neighbourCell();
+	Face nbf = f; // Must change for periodic boundaries
+// 	if (f->boundary()) {
+// 	    std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
+// 	    if (it == periodic_partner_.end()) {
+// 		// At (nonperiodic) boundaries, we just return a zero gradient.
+// 		Vector g(0.0);
+// 		return g;
+// 	    } else {
+// 		nbface = it->second;
+// 		nbcell = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
+// 	    }
+// 	}
+
+	// Estimate the gradient like a finite difference between
+	// cell centers, except that in order to handle periodic
+	// conditions we pass through the face centroid(s).
+	Vector cell_c = c.centroid();
+	Vector nb_c = nb.centroid();
+	Vector f_c = f->centroid();
+	Vector nbf_c = nbf->centroid();
+	double d0 = (cell_c - f_c).two_norm();
+	double d1 = (nb_c - nbf_c).two_norm();
+	int cell = c.index();
+	int nbcell = nb.index();
+	double cp0 = reservoir_properties_.capillaryPressure(cell, sat[cell]);
+	double cp1 = reservoir_properties_.capillaryPressure(nbcell, sat[nbcell]);
+	double val = (cp1 - cp0)/(d0 + d1);
+	Vector res = nb_c - nbf_c + f_c - cell_c;
+	res /= res.two_norm();
+	res *= val;
+	return res;
+    }
 
 
 
@@ -497,17 +497,15 @@ namespace Dune
 			dS+=loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
 		    }
 		}
-		/*
+
 		// Capillary term.
 		if (method_capillary_) {
-		// J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
-		// p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
-		Vector cap_term = loc_perm
-		*estimateCapPressureGradient(grid, rock_data, flowsys, cell[0], face, saturation)
-		*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
-		dS += cap_term*loc_normal*loc_area;
+		    // J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
+		    // p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
+		    double cap_term = inner(loc_normal, prod(loc_perm, estimateCapPressureGradient(f, saturation)));
+		    dS += cap_term*loc_area*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
 		}
-		*/
+
 		// Modify saturation.
 		if (cell[0] != cell[1]){
 		    sat_change[cell[0]] -= (dt/reservoir_properties_.porosity(cell[0]))*dS/c->volume();
