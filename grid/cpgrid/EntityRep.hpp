@@ -431,7 +431,6 @@ namespace Dune
 		for (int i = 0; i < size(); ++i) {
 		    EntityRep<codim_from> from_ent(i, true);
 		    row_type r = operator[](from_ent);
-		    datacount += r.size();
 		    for (int j = 0; j < r.size(); ++j) {
 			EntityRep<codim_to> to_ent = r[j];
 			int ind = to_ent.index();
