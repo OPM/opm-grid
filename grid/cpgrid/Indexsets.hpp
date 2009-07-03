@@ -54,12 +54,12 @@ namespace Dune
 	    {
 		GeometryType t;
 		t.makeSingular(3);
-		gt_.push_back(t);
+		geom_types_.push_back(t);
 	    }
 
-	    const std::vector<GeometryType>& geomTypes(int /*codim*/) const
+	    const std::vector<GeometryType>& geomTypes(int codim) const
 	    {
-		return gt_;
+		return codim == 0 ? geom_types_ : empty_;
 	    }
 
 	    int size(GeometryType type) const
@@ -110,12 +110,13 @@ namespace Dune
 	    template <class EntityType>
 	    bool contains(const EntityType& e) const
 	    {
-		return EntityType::codimension != 1;
+		return EntityType::codimension == 0;
 	    }
 
 	private:
 	    const GridType& grid_;
-	    std::vector<GeometryType> gt_;
+	    std::vector<GeometryType> geom_types_;
+	    std::vector<GeometryType> empty_;
 	};
 
 

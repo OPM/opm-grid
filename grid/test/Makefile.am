@@ -1,6 +1,6 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
-check_PROGRAMS = cpgrid_test
+check_PROGRAMS = cpgrid_test mapper_test
 
 noinst_PROGRAMS = grid_read_test finitevolume_test #dumux_test
 
@@ -15,6 +15,9 @@ LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
 cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
+mapper_test_SOURCES = mapper_test.cpp
+mapper_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh \
                             transportproblem2.hh unitcube.hh vtkout.hh
