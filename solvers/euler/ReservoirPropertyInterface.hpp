@@ -59,11 +59,12 @@ namespace Dune
 	      viscosity1_(1.0),
 	      viscosity2_(0.3)
 	{
-	    computeCflFactors();
 	}
 
 	void init(const EclipseGridParser& parser)
 	{
+	    THROW("This code is wrong, correct code in ReservoirPropertyCapillary");
+
 	    EclipseGridInspector inspector(parser);
 	    boost::array<int, 3> sz = inspector.gridSize();
 	    int num_cells = sz[0]*sz[1]*sz[2];
@@ -121,6 +122,7 @@ namespace Dune
 		    }
 		}
 	    }
+	    computeCflFactors();
 	}
 
 	double porosity(int cell_index) const
@@ -157,6 +159,10 @@ namespace Dune
 	double cflFactorGravity() const
 	{
 	    return cfl_factor_gravity_;
+	}
+	double capillaryPressure(int /*cell_index*/, double /*saturation*/) const
+	{
+	    return 0.0;
 	}
     private:
 	double relPermFirstPhase(int /*cell_index*/, double saturation) const
