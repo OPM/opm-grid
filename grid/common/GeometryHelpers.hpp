@@ -37,6 +37,8 @@
 #ifndef OPENRS_GEOMETRYHELPERS_HEADER
 #define OPENRS_GEOMETRYHELPERS_HEADER
 
+#include <cmath>
+
 #include "ErrorMacros.hpp"
 #include "Volumes.hpp"
 
