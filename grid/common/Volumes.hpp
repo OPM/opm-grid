@@ -35,9 +35,10 @@
 #ifndef OPENRS_VOLUMES_HEADER
 #define OPENRS_VOLUMES_HEADER
 
+#include <numeric>
+
 #include <dune/common/misc.hh>
 #include <dune/common/fvector.hh>
-#include <numeric>
 
 namespace Dune
 {
