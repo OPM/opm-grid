@@ -28,6 +28,7 @@ DUNE_CHECK_ALL
 #       below.  This is due to the macros' explicit use of the $LIBS
 #       variable.
 AX_BOOST_BASE([[1.37]])
+AX_BOOST_DATE_TIME
 AX_BOOST_FILESYSTEM
 AX_BOOST_SYSTEM
 AX_BOOST_UNIT_TEST_FRAMEWORK

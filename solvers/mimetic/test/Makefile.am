@@ -10,6 +10,7 @@ mimetic_ipeval_test_LDADD    = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
                                $(BOOST_SYSTEM_LIB)                             \
                                ../../../grid/cpgrid/libcpgrid.la               \
                                ../../../grid/preprocess/libpreprocess.la       \
+                               ../../../grid/common/libtemporaryhack.la        \
                                ../../../common/param/libparam.la -llapack -lblas
 
 TESTS = $(check_PROGRAMS)

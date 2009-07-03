@@ -10,6 +10,7 @@ euler_upstream_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
                     $(BOOST_SYSTEM_LIB) \
                     ../../../grid/cpgrid/libcpgrid.la \
                     ../../../grid/preprocess/libpreprocess.la \
+                    ../../../grid/common/libtemporaryhack.la \
                     ../../../common/param/libparam.la -llapack -lblas
 
 gie_test_SOURCES = gie_test.cpp
@@ -19,6 +20,7 @@ gie_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
                     $(BOOST_SYSTEM_LIB) \
                     ../../../grid/cpgrid/libcpgrid.la \
                     ../../../grid/preprocess/libpreprocess.la \
+                    ../../../grid/common/libtemporaryhack.la \
                     ../../../common/param/libparam.la
 
 boundaryconditions_test_SOURCES = boundaryconditions_test.cpp

@@ -8,7 +8,10 @@ common_HEADERS = SparseTable.hpp ErrorMacros.hpp
 
 lib_LTLIBRARIES = libtemporaryhack.la
 
-libtemporaryhack_la_SOURCES = GeometryHelpers.cpp StopWatch.cpp
+libtemporaryhack_la_SOURCES = GeometryHelpers.hpp GeometryHelpers.cpp \
+                              StopWatch.hpp StopWatch.cpp
+libtemporaryhack_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
+libtemporaryhack_la_LIBADD   = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
 
 include $(top_srcdir)/am/global-rules
 
