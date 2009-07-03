@@ -123,6 +123,18 @@ namespace Dune {
         }
 
 
+        template<class ReservoirInterface>
+        void solve(const GridInterface&      g,
+                   const ReservoirInterface& r)
+        {
+#if 0
+            assembleDynamic(g, r);
+            solveLinSys();
+            computePressureAndFluxes();
+#endif
+        }
+
+
         void printStats(std::ostream& os)
         {
             os << "IncompFlowSolverHybrid<>:\n"
