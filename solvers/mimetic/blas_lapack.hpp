@@ -43,6 +43,19 @@
 extern "C" {
 #endif
 
+#ifdef DGEMV
+#undef DGEMV
+#endif
+#define  DGEMV F77_NAME(dgemv,DGEMV)
+
+    // y <- a1*op(A)*x + a2*y  where op(X) \in {X, X.', X'}
+    void DGEMV(F77_CHARACTER_TYPE,
+               const int*    m   , const int*    n,
+               const double* a1  , const double* A, const int* ldA ,
+                                   const double* x, const int* incX,
+               const double* a2  ,       double* y, const int* incY);
+
+
 #ifdef DGEMM
 #undef DGEMM
 #endif
@@ -108,6 +121,28 @@ extern "C" {
 
 namespace Dune {
     namespace BLAS_LAPACK {
+        //--------------------------------------------------------------------------
+        template<typename T>
+        void GEMV(const char* transA,
+                  const int   m     , const int   n,
+                  const T&    a1    , const T*    A, const int ldA ,
+                                      const T*    x, const int incX,
+                  const T&    a2    ,       T*    y, const int incY);
+
+        template<>
+        void GEMV<double>(const char*   transA,
+                          const int     m     , const int     n,
+                          const double& a1    , const double* A, const int ldA,
+                                                const double* x, const int incX,
+                          const double& a2    ,       double* y, const int incY)
+        {
+            ASSERT((transA[0] == 'N') || (transA[0] == 'T'));
+
+            DGEMV(F77_CHARACTER(transA[0]),
+                  &m, &n, &a1, A, &ldA, x, &incX, &a2, y, &incY);
+        }
+
+
         //--------------------------------------------------------------------------
         template<typename T>
         void GEMM(const char* transA, const char* transB,
