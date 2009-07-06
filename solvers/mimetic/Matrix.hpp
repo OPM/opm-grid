@@ -375,6 +375,24 @@ namespace Dune {
     }
 
 
+    template<typename                 T ,
+             template<typename> class SP>
+    void vecMulAdd_N(const T&                                a1,
+                     const FullMatrix<T,SP,FortranOrdering>& A ,
+                     const std::vector<T>&                   x ,
+                     const T&                                a2,
+                     std::vector<T>&                         y)
+    {
+        ASSERT(A.numRows() == y.size());
+        ASSERT(A.numCols() == x.size());
+
+        Dune::BLAS_LAPACK::GEMV("No Transpose",
+                                A.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                &x[0], 1, a2, &y[0], 1);
+    }
+
+
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -392,7 +410,7 @@ namespace Dune {
         Dune::BLAS_LAPACK::GEMM("No Transpose", "No Transpose",
                                 A.numRows(), B.numCols(), A.numCols(),
                                 a1, A.data(), A.leadingDimension(),
-                                B.data(), B.leadingDimension(),
+                                    B.data(), B.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
     }
 
@@ -414,7 +432,29 @@ namespace Dune {
         Dune::BLAS_LAPACK::GEMM("No Transpose", "Transpose",
                                 A.numRows(), B.numRows(), A.numCols(),
                                 a1, A.data(), A.leadingDimension(),
-                                B.data(), B.leadingDimension(),
+                                    B.data(), B.leadingDimension(),
+                                a2, C.data(), C.leadingDimension());
+    }
+
+
+    template<typename                 T  ,
+             template<typename> class SP1,
+             template<typename> class SP2,
+             template<typename> class SP3>
+    void matMulAdd_TN(const T&                                 a1,
+                      const FullMatrix<T,SP1,FortranOrdering>& A ,
+                      const FullMatrix<T,SP2,FortranOrdering>& B ,
+                      const T&                                 a2,
+                      FullMatrix<T,SP3,FortranOrdering>&       C)
+    {
+        ASSERT (A.numCols() == C.numRows());
+        ASSERT (A.numRows() == B.numRows());
+        ASSERT (B.numCols() == C.numCols());
+
+        Dune::BLAS_LAPACK::GEMM("Transpose", "No Transpose",
+                                A.numRows(), B.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                    B.data(), B.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
     }
 
