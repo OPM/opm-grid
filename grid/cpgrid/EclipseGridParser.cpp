@@ -1,15 +1,15 @@
 //===========================================================================
-//                                                                           
-// File: EclipseGridParser.C                                                 
-//                                                                           
-// Created: Thu Dec  6 08:46:05 2007                                         
-//                                                                           
+//
+// File: EclipseGridParser.C
+//
+// Created: Thu Dec  6 08:46:05 2007
+//
 // Author: Atgeirr F Rasmussen <atgeirr@sintef.no>
 //
 // $Date$
-//                                                                           
+//
 // Revision: $Id: EclipseGridParser.C,v 1.4 2008/08/18 14:16:14 atgeirr Exp $
-//                                                                           
+//
 //===========================================================================
 
 /*
@@ -48,29 +48,30 @@ using namespace std;
 namespace Dune
 {
 
-// ---------- List of allowed keywords ----------
+// ---------- List of supported keywords ----------
 
 namespace EclipseKeywords
 {
-    const int num_integer_fields = 4;
-    string integer_fields[num_integer_fields] =  { string("SPECGRID"),
-						   string("ACTNUM"),
-						   string("SATNUM"),
-						   string("EQLNUM")};
-    const int num_floating_fields = 18;
-    string floating_fields[num_floating_fields] = 
-        { string("COORD"),  string("ZCORN"),  string("PERMX"),
-          string("PERMY"),  string("PERMZ"),  string("PERMXX"),
-          string("PERMYY"), string("PERMZZ"), string("PERMXY"),
-          string("PERMYZ"), string("PERMZX"), string("PORO"),
-          string("BULKMOD"), string("YOUNGMOD"), string("LAMEMOD"),
+    string integer_fields[] =  { string("SPECGRID"),
+                                 string("ACTNUM"),
+                                 string("SATNUM"),
+                                 string("EQLNUM")};
+    const int num_integer_fields = sizeof(integer_fields) / sizeof(integer_fields[0]);
+
+    string floating_fields[] =
+        { string("COORD"),    string("ZCORN"),      string("PERMX"),
+          string("PERMY"),    string("PERMZ"),      string("PERMXX"),
+          string("PERMYY"),   string("PERMZZ"),     string("PERMXY"),
+          string("PERMYZ"),   string("PERMZX"),     string("PORO"),
+          string("BULKMOD"),  string("YOUNGMOD"),   string("LAMEMOD"),
           string("SHEARMOD"), string("POISSONMOD"), string("PWAVEMOD")
         };
+    const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
-    const int num_ignored_fields = 1;
-    string ignored_fields[num_ignored_fields] =
+    string ignored_fields[] =
 	{ string("MAPUNITS")
 	};
+    const int num_ignored_fields = sizeof(ignored_fields) / sizeof(ignored_fields[0]);
 
 } // namespace EclipseKeywords
 
@@ -289,7 +290,7 @@ void EclipseGridParser::read(istream& is)
 	default:
 	    cerr << "Keyword " << keyword << " not recognized." << endl;
 	    throw exception();
-	} 
+	}
 	is >> ignoreWhitespace;
     }
 
