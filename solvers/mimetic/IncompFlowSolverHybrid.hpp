@@ -37,10 +37,14 @@
 #define OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
 
 #include <algorithm>
+#include <functional>
 #include <map>
+#include <numeric>
 #include <ostream>
 #include <utility>
 #include <vector>
+
+#include <boost/bind.hpp>
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
@@ -75,6 +79,19 @@ namespace Dune {
 
             return sane;
         }
+
+
+        template<typename T>
+        class axpby : public std::binary_function<T,T,T> {
+        public:
+            axpby(const T& a, const T& b) : a_(a), b_(b) {}
+            T operator()(const T& x, const T& y)
+            {
+                return a_*x + b_*y;
+            }
+        private:
+            T a_, b_;
+        };
     }
 
 
@@ -93,11 +110,13 @@ namespace Dune {
 
             std::vector<int>(g.numberOfCells(), -1).swap(cellno_);
             cellFaces_.clear();
+            F_        .clear();
+            std::vector<Scalar>(g.numberOfCells()).swap(L_);
             Binv_     .clear();
 
             if (g.numberOfCells() > 0) {
                 buildGridTopology(g);
-                buildMatrixStructure();
+                buildSystemStructure();
             }
         }
 
@@ -114,7 +133,7 @@ namespace Dune {
             InnerProduct ip(max_ncf_);
             int i = 0;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++i) {
-                const int nf = cellFaces_[c].size();
+                const int nf = cellFaces_[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
 
@@ -123,19 +142,23 @@ namespace Dune {
         }
 
 
-        template<class ReservoirInterface>
-        void solve(const GridInterface&      g,
-                   const ReservoirInterface& r)
+        template<class ReservoirInterface, class BCInterface>
+        void solve(const GridInterface&       g  ,
+                   const ReservoirInterface&  r  ,
+                   const BCInterface&         bc ,
+                   const std::vector<double>& src,
+                   const std::vector<double>& sat)
         {
+            assembleDynamic(g, r, bc, src, sat);
 #if 0
-            assembleDynamic(g, r);
             solveLinSys();
             computePressureAndFluxes();
 #endif
         }
 
 
-        void printStats(std::ostream& os)
+        template<typename charT, class traits>
+        void printStats(std::basic_ostream<charT,traits>& os)
         {
             os << "IncompFlowSolverHybrid<>:\n"
                << "\tMaximum number of cell faces = " << max_ncf_ << '\n'
@@ -163,11 +186,20 @@ namespace Dune {
         int                   max_ncf_;
         int                   num_internal_faces_;
         int                   total_num_faces_;
+
+        bool                  matrix_structure_valid_;
+
         std::vector<int>      cellno_;
         SparseTable<int>      cellFaces_;
-        SparseTable<Scalar>   Binv_;
+
+        SparseTable<Scalar>   F_;
+        std::vector<Scalar>   L_;
+        SparseTable<Scalar>   Binv_, f_;
+
+        std::vector<Scalar>   g_;
+
         BCRSMatrix<BlockType> S_;
-        bool                  matrix_structure_valid_;
+        std::vector<Scalar>   rhs_;
 
 
 
@@ -225,6 +257,7 @@ namespace Dune {
                 const int ncf = num_cf[cellno_[c0]];
                 std::vector<int>    l2g; l2g.reserve(ncf);
                 std::vector<Scalar> Binv_alloc(ncf * ncf);
+                std::vector<Scalar> F_alloc(ncf);
 
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
@@ -260,13 +293,15 @@ namespace Dune {
                 ASSERT(int(l2g.size()) == ncf);
 
                 cellFaces_.appendRow(l2g       .begin(), l2g       .end());
+                F_        .appendRow(F_alloc   .begin(), F_alloc   .end());
+                f_        .appendRow(F_alloc   .begin(), F_alloc   .end());
                 Binv_     .appendRow(Binv_alloc.begin(), Binv_alloc.end());
             }
         }
 
 
         // ----------------------------------------------------------------
-        void buildMatrixStructure()
+        void buildSystemStructure()
         // ----------------------------------------------------------------
         {
             ASSERT (!cellFaces_.empty());
@@ -303,8 +338,146 @@ namespace Dune {
                 }
             }
             S_.endindices();
+            std::vector<Scalar>(total_num_faces_).swap(rhs_);
+            std::vector<Scalar>(cellFaces_.size()).swap(g_);
 
             matrix_structure_valid_ = true;
+        }
+
+
+        template<class ReservoirInterface, class BCInterface>
+        void assembleDynamic(const GridInterface&       g  ,
+                             const ReservoirInterface&  r  ,
+                             const BCInterface&         bc ,
+                             const std::vector<double>& src,
+                             const std::vector<double>& sat)
+        {
+            typedef typename GridInterface::CellIterator CI;
+
+            std::vector<double> mob(ReservoirInterface::NumberOfPhases);
+            std::vector<double> rho(ReservoirInterface::NumberOfPhases);
+
+            std::vector<Scalar> data_store(max_ncf_ * max_ncf_);
+            std::vector<Scalar> e  (max_ncf_);
+            std::vector<Scalar> rhs(max_ncf_);
+
+            std::vector<unsigned char> dirichlet_faces(max_ncf_);
+
+            // Clear residual data
+            S_ = 0;
+            std::fill(g_  .begin(), g_  .end(), Scalar(0.0));
+            std::fill(rhs_.begin(), rhs_.end(), Scalar(0.0));
+
+            std::fill(e   .begin(), e   .end(), Scalar(1.0));
+
+            // Assemble dynamic contributions for each cell
+            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+                const int ci = c->index();
+                const int c0 = cellno_[ci];
+                const int nf = cellFaces_[c0].size();
+
+                r.phaseMobility(ci, sat[ci], mob);
+                r.phaseDensity (ci,          rho);
+
+                const double totmob = std::accumulate   (mob.begin(), mob.end(), 0.0);
+                const double omega  = std::inner_product(rho.begin(), rho.end(),
+                                                         mob.begin(), 0.0) / totmob;
+
+                SharedFortranMatrix    S  (nf, nf, &data_store[0]);
+                ImmutableFortranMatrix one(nf, 1 , &e[0]);
+
+                setExternalContrib(c, c0, bc, src[ci], rhs, dirichlet_faces);
+
+                buildCellContrib(c0, totmob, omega, one, S, rhs);
+
+                addCellContrib(S, rhs, dirichlet_faces,
+                               cellFaces_[c0].begin(),
+                               cellFaces_[c0].end());
+            }
+        }
+
+
+        void buildCellContrib(const int c, const Scalar totmob, const Scalar omega,
+                              const ImmutableFortranMatrix& one,
+                              SharedFortranMatrix& S, std::vector<Scalar>& rhs)
+        {
+            std::transform(Binv_[c].begin(), Binv_[c].end(), S.data(),
+                           boost::bind(std::multiplies<Scalar>(), _1, totmob));
+
+            // Ft <- B^{-t} * ones([size(S,2),1])
+            SharedFortranMatrix Ft(S.numRows(), 1, &F_[c][0]);
+            matMulAdd_TN(Scalar(1.0), S, one, Scalar(0.0), Ft);
+
+            L_[c]  = std::accumulate   (Ft.data(), Ft.data() + Ft.numRows(), 0.0);
+            g_[c] -= std::inner_product(Ft.data(), Ft.data() + Ft.numRows(),
+                                        f_[c].begin(), Scalar(0.0));
+
+            // rhs <- B^{-1}*f - r (==B^{-1}f + E\pi - f)
+            vecMulAdd_N(Scalar(1.0), S, &f_[c][0], -Scalar(1.0), &rhs[0]);
+
+            // rhs <- rhs + g_[c]/L_[c]*F
+            std::transform(rhs.begin(), rhs.end(), Ft.data(), rhs.begin(),
+                           axpby<Scalar>(Scalar(1.0), Scalar(g_[c] / L_[c])));
+
+            // S <- S - F'*F/L_c
+            symmetricUpdate(-1.0/L_[c], Ft, 1.0, S);
+        }
+
+
+        template<class BCInterface>
+        void setExternalContrib(const typename GridInterface::CellIterator c,
+                                const int c0, const BCInterface& bc,
+                                const double src,
+                                std::vector<unsigned char> dF,
+                                std::vector<Scalar>& rhs)
+        {
+            typedef typename GridInterface::CellIterator::FaceIterator FI;
+            typedef std::vector<unsigned char>::value_type uchar;
+
+            std::fill(f_[c0].begin(), f_[c0].end(), Scalar(0.0));
+            std::fill(rhs   .begin(), rhs   .end(), Scalar(0.0));
+            std::fill(dF    .begin(), dF    .end(), uchar(0));
+
+            g_[c0] = src;
+
+            int k = 0;
+            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
+                if (f->boundary()) {
+                    const int bid = f->boundaryId();
+
+                    if (bc[bid].isDirichlet()) {
+                        f_[c0][k] = bc[bid].pressure();
+                        dF    [k] = uchar(1);
+                        rhs   [k] = -f_[c0][k];
+                    } else {
+                        ASSERT (bc[bid].isNeumann());
+                        rhs[k] = bc[bid].outflux();
+                    }
+                }
+            }
+        }
+
+
+        template<class L2GIterator>
+        void addCellContrib(const SharedFortranMatrix&        S  ,
+                            const std::vector<Scalar>&        rhs,
+                            const std::vector<unsigned char>& dF ,
+                            L2GIterator&                      b  ,
+                            L2GIterator&                      e  )
+        {
+            int r = 0;
+            for (L2GIterator i = b; i != e; ++i, ++r) {
+
+                int c = 0;
+                for (L2GIterator j = b; j != e; ++j, ++c) {
+                    S_[*i][*j] += S(r,c);
+                }
+
+                // Handle Dirichlet (prescribed pressure) conditions.
+                if (dF[r]) S_[*i][*i] += 1.0;
+
+                rhs_[*i] += rhs[r];
+            }
         }
     };
 } // namespace Dune
