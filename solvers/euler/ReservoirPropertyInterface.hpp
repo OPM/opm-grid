@@ -53,6 +53,8 @@ namespace Dune
 	typedef ImmutableCMatrix PermTensor;
 	typedef OwnCMatrix       MutablePermTensor;
 
+        enum { NumberOfPhases = 2 };
+
 	ReservoirPropertyInterface()
 	    : density1_(1013.9),
 	      density2_(834.7),
@@ -148,6 +150,18 @@ namespace Dune
 	    double l2 = mobilitySecondPhase(cell_index, saturation);
 	    return l1 + l2;
 	}
+        void phaseDensity(int cell_index, std::vector<double>& density)
+        {
+            ASSERT (density.size() >= NumberOfPhases);
+            density[0] = density1_;
+            density[1] = density2_;
+        }
+        void phaseMobility(int cell_index, double sat, std::vector<double>& mob)
+        {
+            ASSERT (mob.size() >= NumberOfPhases);
+            mob[0] = mobilityFirstPhase(cell_index, sat);
+            mob[1] = mobilitySecondPhase(cell_index, sat);
+        }
 	double densityDifference() const
 	{
 	    return density1_ - density2_;
