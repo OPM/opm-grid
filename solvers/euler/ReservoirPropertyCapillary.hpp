@@ -49,73 +49,94 @@ namespace Dune
 {
 
     namespace {
-        // Extract pointers to appropriate tensor fields from input deck.
-        // The tensor is, generally,
+        void setScalarPermIfNeeded(boost::array<int,9>& kmap,
+                                   int i, int j, int k)
+        {
+            if (kmap[j] == 0) { kmap[j] = kmap[i]; }
+            if (kmap[k] == 0) { kmap[k] = kmap[i]; }
+        }
+
+        // Extract pointers to appropriate tensor components from
+        // input deck.  The permeability tensor is, generally,
         //
         //        [ kxx  kxy  kxz ]
         //    K = [ kyx  kyy  kyz ]
         //        [ kzx  kzy  kzz ]
         //
-        // which is stored in a linear array as
+        // We store these values in a linear array as
         //
-        //        [  0    1    2    3    4    5    6    7    8
+        //        [  0    1    2    3    4    5    6    7    8  ]
         //    K = [ kxx, kxy, kxz, kyx, kyy, kyz, kzx, kzy, kzz ]
         //
-        // We explicitly enforce symmetric tensors.  In other words,
+        // Moreover, we explicitly enforce symmetric tensors.
+        // Specifically,
         //
-        //        3     1    6     2    7     5
-        //       kyx = kxy, kzx = kxz, kzy = kyz
+        //     3     1       6     2       7     5
+        //    kyx = kxy,    kzx = kxz,    kzy = kyz
         //
         // However, we make no attempt at enforcing positive definite
         // tensors.
         //
-        void fillTensor(const EclipseGridParser& parser,
-                        std::vector<const std::vector<double>*> tensor,
-                        boost::array<int,9>& tensor_map)
+        void fillTensor(const EclipseGridParser&                 parser,
+                        std::vector<const std::vector<double>*>& tensor,
+                        boost::array<int,9>&                     kmap)
         {
             ASSERT (tensor.size() == 1);
-            for (int i = 0; i < 9; ++i) { tensor_map[i] = 0; }
+            for (int i = 0; i < 9; ++i) { kmap[i] = 0; }
 
+            enum { xx, xy, xz,    // 0, 1, 2
+                   yx, yy, yz,    // 3, 4, 5
+                   zx, zy, zz };  // 6, 7, 8
+
+            // -----------------------------------------------------------
             // 1st row: [kxx, kxy, kxz]
             if (parser.hasField("PERMX" )) {
-                tensor_map[0] = tensor.size();
+                kmap[xx] = tensor.size();
                 tensor.push_back(&parser.getFloatingPointValue("PERMX" ));
+
+                setScalarPermIfNeeded(kmap, xx, yy, zz);
             }
             if (parser.hasField("PERMXY")) {
-                tensor_map[1] = tensor_map[3] = tensor.size();
+                kmap[xy] = kmap[yx] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMXY"));
             }
             if (parser.hasField("PERMXZ")) {
-                tensor_map[2] = tensor_map[6] = tensor.size();
+                kmap[xz] = kmap[zx] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMXZ"));
             }
 
+            // -----------------------------------------------------------
             // 2nd row: [kyx, kyy, kyz]
             if (parser.hasField("PERMYX")) {
-                tensor_map[1] = tensor_map[3] = tensor.size();
+                kmap[yx] = kmap[xy] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMYX"));
             }
             if (parser.hasField("PERMY" )) {
-                tensor_map[4] = tensor.size();
+                kmap[yy] = tensor.size();
                 tensor.push_back(&parser.getFloatingPointValue("PERMY" ));
+
+                setScalarPermIfNeeded(kmap, yy, zz, xx);
             }
             if (parser.hasField("PERMYZ")) {
-                tensor_map[5] = tensor_map[7] = tensor.size();
+                kmap[yz] = kmap[zy] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMYZ"));
             }
 
+            // -----------------------------------------------------------
             // 3rd row: [kzx, kzy, kzz]
             if (parser.hasField("PERMZX")) {
-                tensor_map[2] = tensor_map[6] = tensor.size();
+                kmap[zx] = kmap[xz] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMZX"));
             }
             if (parser.hasField("PERMZY")) {
-                tensor_map[5] = tensor_map[7] = tensor.size();
+                kmap[zy] = kmap[yz] = tensor.size();  // Enforce symmetry.
                 tensor.push_back(&parser.getFloatingPointValue("PERMZY"));
             }
             if (parser.hasField("PERMZ" )) {
-                tensor_map[8] = tensor.size();
+                kmap[zz] = tensor.size();
                 tensor.push_back(&parser.getFloatingPointValue("PERMZ" ));
+
+                setScalarPermIfNeeded(kmap, zz, xx, yy);
             }
         }
     }
@@ -275,8 +296,7 @@ namespace Dune
         }
 
         void assignPermeability(const EclipseGridParser& parser,
-                                const std::vector<int>& global_cell,
-                                const double dflt_perm)
+                                const std::vector<int>& global_cell)
         {
             int num_global_cells = -1;
             if (parser.hasField("SPECGRID")) {
@@ -302,7 +322,7 @@ namespace Dune
 
                 for (int c = 0; c < nc; ++c, off += dim*dim) {
                     SharedPermTensor K(dim, dim, &permeability_[off]);
-                    int kix = 0;
+                    int       kix  = 0;
                     const int glob = global_cell[c];
 
                     for (int i = 0; i < dim; ++i) {
