@@ -82,9 +82,9 @@ namespace Dune {
 	: path_(ID_path_root), parent_(0), output_is_enabled_(true)
 	{
 	    if (argc < 2) {
-		std::cerr << "Usage: " << argv[0]
-			  << "[paramfilename1.{xml,param} ] "
-			  << "[paramfilename2.{xml,param} ] "
+		std::cerr << "Usage: " << argv[0] << " "
+			  << "[paramfilename1.{xml,param}] "
+			  << "[paramfilename2.{xml,param}] "
 			  << "[overridden_arg1=value1] "
 			  << "[overridden_arg2=value2] "
 			  << "[...]" << std::endl;
