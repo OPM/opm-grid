@@ -48,6 +48,77 @@
 namespace Dune
 {
 
+    namespace {
+        // Extract pointers to appropriate tensor fields from input deck.
+        // The tensor is, generally,
+        //
+        //        [ kxx  kxy  kxz ]
+        //    K = [ kyx  kyy  kyz ]
+        //        [ kzx  kzy  kzz ]
+        //
+        // which is stored in a linear array as
+        //
+        //        [  0    1    2    3    4    5    6    7    8
+        //    K = [ kxx, kxy, kxz, kyx, kyy, kyz, kzx, kzy, kzz ]
+        //
+        // We explicitly enforce symmetric tensors.  In other words,
+        //
+        //        3     1    6     2    7     5
+        //       kyx = kxy, kzx = kxz, kzy = kyz
+        //
+        // However, we make no attempt at enforcing positive definite
+        // tensors.
+        //
+        void fillTensor(const EclipseGridParser& parser,
+                        std::vector<const std::vector<double>*> tensor,
+                        boost::array<int,9>& tensor_map)
+        {
+            ASSERT (tensor.size() == 1);
+            for (int i = 0; i < 9; ++i) { tensor_map[i] = 0; }
+
+            // 1st row: [kxx, kxy, kxz]
+            if (parser.hasField("PERMX" )) {
+                tensor_map[0] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMX" ));
+            }
+            if (parser.hasField("PERMXY")) {
+                tensor_map[1] = tensor_map[3] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMXY"));
+            }
+            if (parser.hasField("PERMXZ")) {
+                tensor_map[2] = tensor_map[6] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMXZ"));
+            }
+
+            // 2nd row: [kyx, kyy, kyz]
+            if (parser.hasField("PERMYX")) {
+                tensor_map[1] = tensor_map[3] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMYX"));
+            }
+            if (parser.hasField("PERMY" )) {
+                tensor_map[4] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMY" ));
+            }
+            if (parser.hasField("PERMYZ")) {
+                tensor_map[5] = tensor_map[7] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMYZ"));
+            }
+
+            // 3rd row: [kzx, kzy, kzz]
+            if (parser.hasField("PERMZX")) {
+                tensor_map[2] = tensor_map[6] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMZX"));
+            }
+            if (parser.hasField("PERMZY")) {
+                tensor_map[5] = tensor_map[7] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMZY"));
+            }
+            if (parser.hasField("PERMZ" )) {
+                tensor_map[8] = tensor.size();
+                tensor.push_back(&parser.getFloatingPointValue("PERMZ" ));
+            }
+        }
+    }
 
     /// A property class for incompressible two-phase flow.
     template <int dim>
@@ -56,7 +127,7 @@ namespace Dune
     public:
 	typedef ImmutableCMatrix PermTensor;
 	typedef OwnCMatrix       MutablePermTensor;
-	typedef SharedCMatrix       SharedPermTensor;
+	typedef SharedCMatrix    SharedPermTensor;
 
 	ReservoirPropertyCapillary()
 	    : density1_(1013.9),
@@ -67,107 +138,24 @@ namespace Dune
 	}
 
 	void init(const EclipseGridParser& parser,
-		  const int num_grid_cells,
-		  const boost::array<int,3> log_cart_sz,
-		  const std::vector<int>& log_cart_to_grid_cell,
-		  const std::string& rock_list_filename)
+                  const std::vector<int>& global_cell,
+                  const std::string* rock_list_filename = 0)
 	{
 	    BOOST_STATIC_ASSERT(dim == 3);
-	    int num_orig_cells = log_cart_sz[0]*log_cart_sz[1]*log_cart_sz[2];
-	    // Porosity...
-	    if (parser.hasField("PORO")) {
-		// ... from eclipse file.
-		const std::vector<double> poro = parser.getFloatingPointValue("PORO");
-		ASSERT(int(poro.size) == num_orig_cells);
-		porosity_.resize(num_grid_cells, -1e100);
-		for (int i = 0; i < num_orig_cells; ++i) {
-		    int ind = log_cart_to_grid_cell[i];
-		    if (ind != -1) {
-			porosity_[ind] = poro[i];
-		    }
-		}
-	    } else {
-		// ... is default.
-		porosity_.clear();
-		porosity_.resize(num_grid_cells, 1.0);
-	    }
 
-	    // Permeability...
-	    if (parser.hasField("PERMX")) {
-		// ... from eclipse file
-		if (parser.hasField("PERMY")) {
-		    // Diagonal tensor.
-		    ASSERT(parser.hasField("PERMZ"));
-		    const std::vector<double>* perm[dim] = { &parser.getFloatingPointValue("PERMX"),
-							     &parser.getFloatingPointValue("PERMY"),
-							     &parser.getFloatingPointValue("PERMZ") };
-		    ASSERT(int(perm[0]->size()) == num_orig_cells);
-		    ASSERT(int(perm[1]->size()) == num_orig_cells);
-		    ASSERT(int(perm[2]->size()) == num_orig_cells);
-		    permeability_.clear();
-		    permeability_.resize(dim*dim*num_grid_cells, 0.0);
-		    for (int i = 0; i < num_orig_cells; ++i) {
-			int ind = log_cart_to_grid_cell[i];
-			if (ind != -1) {
-			    SharedPermTensor K(dim, dim, &permeability_[dim*dim*ind]);
-			    for (int dd = 0; dd < dim; ++dd) {
-				K(dd, dd) = (*(perm[dd]))[i];
-			    }
-			}
-		    }
-		} else {
-		    // Only a scalar.
-		    ASSERT(!parser.hasField("PERMZ"));
-		    const std::vector<double>& perm = parser.getFloatingPointValue("PERMX");
-		    ASSERT(int(perm.size()) == num_orig_cells);
-		    permeability_.clear();
-		    permeability_.resize(dim*dim*num_grid_cells, 0.0);
-		    for (int i = 0; i < num_orig_cells; ++i) {
-			int ind = log_cart_to_grid_cell[i];
-			if (ind != -1) {
-			    SharedPermTensor K(dim, dim, &permeability_[dim*dim*ind]);
-			    for (int dd = 0; dd < dim; ++dd) {
-				K(dd, dd) = perm[i];
-			    }
-			}
-		    }
-		}
-	    } else {
-		// ... is default.
-		permeability_.clear();
-		permeability_.resize(dim*dim*num_grid_cells, 0.0);
-		for (int ind = 0; ind < num_grid_cells; ++ind) {
-		    SharedPermTensor K(dim, dim, &permeability_[dim*dim*ind]);
-		    for (int dd = 0; dd < dim; ++dd) {
-			K(dd, dd) = 1.0;
-		    }
-		}
-	    }
+            std::fill(permfield_valid_.begin(),
+                      permfield_valid_.end()  ,
+                      std::vector<unsigned char>::value_type(0));
 
-	    // ----- New code -----
+            assignPorosity    (parser, global_cell);
+            assignPermeability(parser, global_cell);
+            assignRockTable   (parser, global_cell);
 
-	    // Rockdependent stuff.
-	    readRocks(rock_list_filename);
+            if (rock_list_filename) {
+                readRocks(*rock_list_filename);
+            }
 
-	    // Multiple rocks - read rock ids from SATNUM.
-	    if (parser.hasField("SATNUM")) {
-		// From eclipse file.
-		const std::vector<int>& satnum = parser.getIntegerValue("SATNUM");
-		ASSERT(int(satnum.size()) == num_orig_cells);
-		cell_to_rock_.resize(num_grid_cells, -1);
-		for (int i = 0; i < num_orig_cells; ++i) {
-		    int ind = log_cart_to_grid_cell[i];
-		    if (ind != -1) {
-			cell_to_rock_[ind] = satnum[i];
-		    }
-		}
-	    } else {
-		// By default.
-		cell_to_rock_.clear();
-		cell_to_rock_.resize(num_grid_cells, 0);
-	    }
-	    // Make cfl calculations.
-	    computeCflFactors();
+            computeCflFactors();
 	}
 
 	double porosity(int cell_index) const
@@ -176,9 +164,21 @@ namespace Dune
 	}
 	PermTensor permeability(int cell_index) const
 	{
+            ASSERT (permfield_valid_[cell_index]);
+
 	    const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
 	    return K;
 	}
+        SharedPermTensor permeabilityModifiable(int cell_index)
+        {
+            // Typically only used for assigning synthetic perm values.
+            SharedPermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
+
+            // Trust caller!
+            permfield_valid_[cell_index] = std::vector<unsigned char>::value_type(1);
+
+            return K;
+        }
 	double mobilityFirstPhase(int cell_index, double saturation) const
 	{
 	    return relPermFirstPhase(cell_index, saturation)/viscosity1_;
@@ -260,6 +260,81 @@ namespace Dune
 	    cfl_factor_gravity_ = 1.0/max_derg;
 	}
 
+        void assignPorosity(const EclipseGridParser& parser,
+                            const std::vector<int>& global_cell)
+        {
+            porosity_.assign(global_cell.size(), 1.0);
+
+            if (parser.hasField("PORO")) {
+                const std::vector<double>& poro = parser.getFloatingPointValue("PORO");
+
+                for (int c = 0; c < int(porosity_.size()); ++c) {
+                    porosity_[c] = poro[global_cell[c]];
+                }
+            }
+        }
+
+        void assignPermeability(const EclipseGridParser& parser,
+                                const std::vector<int>& global_cell,
+                                const double dflt_perm)
+        {
+            int num_global_cells = -1;
+            if (parser.hasField("SPECGRID")) {
+                const std::vector<int>& n = parser.getIntegerValue("SPECGRID");
+                num_global_cells = n[0] * n[1] * n[2];
+            }
+            ASSERT (num_global_cells > 0);
+
+            permeability_.assign(dim * dim * global_cell.size(), 0.0);
+
+            std::vector<const std::vector<double>*> tensor;
+            tensor.reserve(10);
+
+            const std::vector<double> zero(num_global_cells, 0.0);
+            tensor.push_back(&zero);
+
+            boost::array<int,9> kmap;
+            fillTensor(parser, tensor, kmap);
+
+            if (tensor.size() > 1) {
+                const int nc  = global_cell.size();
+                int       off = 0;
+
+                for (int c = 0; c < nc; ++c, off += dim*dim) {
+                    SharedPermTensor K(dim, dim, &permeability_[off]);
+                    int kix = 0;
+                    const int glob = global_cell[c];
+
+                    for (int i = 0; i < dim; ++i) {
+                        for (int j = 0; j < dim; ++j, ++kix) {
+                            K(i,j) = (*tensor[kmap[kix]])[glob];
+                        }
+                    }
+
+                    permfield_valid_[c] = std::vector<unsigned char>::value_type(1);
+                }
+            }
+            // Don't set any default values.  It is infinitely better
+            // to experience a reproducible crash than subtle errors
+            // resulting from a (poorly chosen) default value...
+        }
+
+        void assignRockTable(const EclipseGridParser& parser,
+                             const std::vector<int>& global_cell)
+        {
+            const int nc = global_cell.size();
+
+            cell_to_rock_.assign(nc, 0);
+
+            if (parser.hasField("SATNUM")) {
+                const std::vector<int>& satnum = parser.getIntegerValue("SATNUM");
+
+                for (int c = 0; c < nc; ++c) {
+                    cell_to_rock_[c] = satnum[global_cell[c]];
+                }
+            }
+        }
+
 	struct Rock {
 	    typedef utils::NonuniformTableLinear< std::vector<double> > TabFunc;
 	    TabFunc krw_;
@@ -322,8 +397,10 @@ namespace Dune
 	    return r;
 	}
 
-	std::vector<double> porosity_;
-	std::vector<double> permeability_;
+	std::vector<double>        porosity_;
+	std::vector<double>        permeability_;
+        std::vector<unsigned char> permfield_valid_;
+
 	double density1_;
 	double density2_;
 	double viscosity1_;
@@ -332,7 +409,6 @@ namespace Dune
 	double cfl_factor_gravity_;
 	std::vector<Rock> rock_;
 	std::vector<int> cell_to_rock_;
-
     };
 
 
