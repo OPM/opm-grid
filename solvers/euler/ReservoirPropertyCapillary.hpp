@@ -125,23 +125,23 @@ namespace Dune
     class ReservoirPropertyCapillary
     {
     public:
-	typedef ImmutableCMatrix PermTensor;
-	typedef OwnCMatrix       MutablePermTensor;
-	typedef SharedCMatrix    SharedPermTensor;
+        typedef ImmutableCMatrix PermTensor;
+        typedef OwnCMatrix       MutablePermTensor;
+        typedef SharedCMatrix    SharedPermTensor;
 
-	ReservoirPropertyCapillary()
-	    : density1_(1013.9),
-	      density2_(834.7),
-	      viscosity1_(1.0),
-	      viscosity2_(0.3)
-	{
-	}
+        ReservoirPropertyCapillary()
+            : density1_(1013.9),
+              density2_(834.7),
+              viscosity1_(1.0),
+              viscosity2_(0.3)
+        {
+        }
 
-	void init(const EclipseGridParser& parser,
+        void init(const EclipseGridParser& parser,
                   const std::vector<int>& global_cell,
                   const std::string* rock_list_filename = 0)
-	{
-	    BOOST_STATIC_ASSERT(dim == 3);
+        {
+            BOOST_STATIC_ASSERT(dim == 3);
 
             std::fill(permfield_valid_.begin(),
                       permfield_valid_.end()  ,
@@ -156,19 +156,19 @@ namespace Dune
             }
 
             computeCflFactors();
-	}
+        }
 
-	double porosity(int cell_index) const
-	{
-	    return porosity_[cell_index];
-	}
-	PermTensor permeability(int cell_index) const
-	{
+        double porosity(int cell_index) const
+        {
+            return porosity_[cell_index];
+        }
+        PermTensor permeability(int cell_index) const
+        {
             ASSERT (permfield_valid_[cell_index]);
 
-	    const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
-	    return K;
-	}
+            const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
+            return K;
+        }
         SharedPermTensor permeabilityModifiable(int cell_index)
         {
             // Typically only used for assigning synthetic perm values.
@@ -179,86 +179,86 @@ namespace Dune
 
             return K;
         }
-	double mobilityFirstPhase(int cell_index, double saturation) const
-	{
-	    return relPermFirstPhase(cell_index, saturation)/viscosity1_;
-	}
-	double mobilitySecondPhase(int cell_index, double saturation) const
-	{
-	    return relPermSecondPhase(cell_index, saturation)/viscosity1_;
-	}
-	double totalMobility(int cell_index, double saturation) const
-	{
-	    double l1 = mobilityFirstPhase(cell_index, saturation);
-	    double l2 = mobilitySecondPhase(cell_index, saturation);
-	    return l1 + l2;
-	}
-	double densityDifference() const
-	{
-	    return density1_ - density2_;
-	}
-	double cflFactor() const
-	{
-	    return cfl_factor_;
-	}
-	double cflFactorGravity() const
-	{
-	    return cfl_factor_gravity_;
-	}
-	double capillaryPressure(int cell_index, double saturation) const
-	{
-	    // p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-	    double sigma_cos_theta = 1.0; // An approximation.
-	    double perm = trace(permeability(cell_index))/double(dim);
-	    double poro = porosity(cell_index);
-	    double sqrt_k_phi = std::sqrt(perm/poro);
-	    int r = cell_to_rock_[cell_index];
-	    return rock_[r].Jfunc_(saturation)
-		*sigma_cos_theta/sqrt_k_phi;
-	}
+        double mobilityFirstPhase(int cell_index, double saturation) const
+        {
+            return relPermFirstPhase(cell_index, saturation)/viscosity1_;
+        }
+        double mobilitySecondPhase(int cell_index, double saturation) const
+        {
+            return relPermSecondPhase(cell_index, saturation)/viscosity1_;
+        }
+        double totalMobility(int cell_index, double saturation) const
+        {
+            double l1 = mobilityFirstPhase(cell_index, saturation);
+            double l2 = mobilitySecondPhase(cell_index, saturation);
+            return l1 + l2;
+        }
+        double densityDifference() const
+        {
+            return density1_ - density2_;
+        }
+        double cflFactor() const
+        {
+            return cfl_factor_;
+        }
+        double cflFactorGravity() const
+        {
+            return cfl_factor_gravity_;
+        }
+        double capillaryPressure(int cell_index, double saturation) const
+        {
+            // p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+            double sigma_cos_theta = 1.0; // An approximation.
+            double perm = trace(permeability(cell_index))/double(dim);
+            double poro = porosity(cell_index);
+            double sqrt_k_phi = std::sqrt(perm/poro);
+            int r = cell_to_rock_[cell_index];
+            return rock_[r].Jfunc_(saturation)
+                *sigma_cos_theta/sqrt_k_phi;
+        }
 
     private:
-	double relPermFirstPhase(int cell_index, double saturation) const
-	{
-	    return rock_[cell_to_rock_[cell_index]].krw_(saturation);
-	}
-	double relPermSecondPhase(int cell_index, double saturation) const
-	{
-	    return rock_[cell_to_rock_[cell_index]].kro_(saturation);
-	}
-	void relMobs(double s, double& mob_first, double& mob_gravity)
-	{
-	    // This is a hack for now, we should make this rock-dependant,
-	    // for the multi-rock case.
-	    const double cell_index = 0;
-	    double l1 = mobilityFirstPhase(cell_index, s);
-	    double l2 = mobilitySecondPhase(cell_index, s);
-	    mob_first = l1/(l1 + l2);
-	    mob_gravity = l1*l2/(l1 + l2);
-	}
-	void computeCflFactors()
-	{
-	    MESSAGE("Cfl factors are computed disregarding multiple rock possibility.");
-	    const int N = 257;
-	    double delta = 1.0/double(N - 1);
-	    double last_m1, last_mg;
-	    double max_der1 = -1e100;
-	    double max_derg = -1e100;
-	    relMobs(0.0, last_m1, last_mg);
-	    for (int i = 1; i < N; ++i) {
-		double s = double(i)*delta;
-		double m1, mg;
-		relMobs(s, m1, mg);
-		double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
-		double est_deriv_mg = std::fabs(mg - last_mg)/delta;
-		max_der1 = std::max(max_der1, est_deriv_m1);
-		max_derg = std::max(max_derg, est_deriv_mg);
-		last_m1 = m1;
-		last_mg = mg;
-	    }
-	    cfl_factor_ = 1.0/max_der1;
-	    cfl_factor_gravity_ = 1.0/max_derg;
-	}
+        double relPermFirstPhase(int cell_index, double saturation) const
+        {
+            return rock_[cell_to_rock_[cell_index]].krw_(saturation);
+        }
+        double relPermSecondPhase(int cell_index, double saturation) const
+        {
+            return rock_[cell_to_rock_[cell_index]].kro_(saturation);
+        }
+        void relMobs(double s, double& mob_first, double& mob_gravity)
+        {
+            // This is a hack for now, we should make this rock-dependant,
+            // for the multi-rock case.
+            const double cell_index = 0;
+            double l1 = mobilityFirstPhase(cell_index, s);
+            double l2 = mobilitySecondPhase(cell_index, s);
+            mob_first = l1/(l1 + l2);
+            mob_gravity = l1*l2/(l1 + l2);
+        }
+        void computeCflFactors()
+        {
+            MESSAGE("Cfl factors are computed disregarding multiple rock possibility.");
+            const int N = 257;
+            double delta = 1.0/double(N - 1);
+            double last_m1, last_mg;
+            double max_der1 = -1e100;
+            double max_derg = -1e100;
+            relMobs(0.0, last_m1, last_mg);
+            for (int i = 1; i < N; ++i) {
+                double s = double(i)*delta;
+                double m1, mg;
+                relMobs(s, m1, mg);
+                double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
+                double est_deriv_mg = std::fabs(mg - last_mg)/delta;
+                max_der1 = std::max(max_der1, est_deriv_m1);
+                max_derg = std::max(max_derg, est_deriv_mg);
+                last_m1 = m1;
+                last_mg = mg;
+            }
+            cfl_factor_ = 1.0/max_der1;
+            cfl_factor_gravity_ = 1.0/max_derg;
+        }
 
         void assignPorosity(const EclipseGridParser& parser,
                             const std::vector<int>& global_cell)
@@ -335,80 +335,80 @@ namespace Dune
             }
         }
 
-	struct Rock {
-	    typedef utils::NonuniformTableLinear< std::vector<double> > TabFunc;
-	    TabFunc krw_;
-	    TabFunc kro_;
-	    TabFunc Jfunc_;
-	    TabFunc invJfunc_;
-	};
+        struct Rock {
+            typedef utils::NonuniformTableLinear< std::vector<double> > TabFunc;
+            TabFunc krw_;
+            TabFunc kro_;
+            TabFunc Jfunc_;
+            TabFunc invJfunc_;
+        };
 
-	void readRocks(const std::string& rock_list_file)
-	{
-	    std::ifstream rl(rock_list_file.c_str());
-	    if (!rl) {
-		THROW("Could not open file " << rock_list_file);
-	    }
-	    int num_rocks = -1;
-	    rl >> num_rocks;
-	    ASSERT(num_rocks >= 1);
-	    for (int i = 0; i < num_rocks; ++i) {
-		std::string rockname;
-		rl >> rockname;
-		std::string rockfilename = rock_list_file;
-		rockfilename.replace(rockfilename.begin() + rockfilename.find_last_of('/') + 1,
-				     rockfilename.end(), rockname);
-		std::ifstream rock_stream(rockfilename.c_str());
-		if (!rock_stream) {
-		    THROW("Could not open file " << rockfilename);
-		}
-		rock_.push_back(readStatoilFormat(rock_stream));
-	    }
-	}
+        void readRocks(const std::string& rock_list_file)
+        {
+            std::ifstream rl(rock_list_file.c_str());
+            if (!rl) {
+                THROW("Could not open file " << rock_list_file);
+            }
+            int num_rocks = -1;
+            rl >> num_rocks;
+            ASSERT(num_rocks >= 1);
+            for (int i = 0; i < num_rocks; ++i) {
+                std::string rockname;
+                rl >> rockname;
+                std::string rockfilename = rock_list_file;
+                rockfilename.replace(rockfilename.begin() + rockfilename.find_last_of('/') + 1,
+                                     rockfilename.end(), rockname);
+                std::ifstream rock_stream(rockfilename.c_str());
+                if (!rock_stream) {
+                    THROW("Could not open file " << rockfilename);
+                }
+                rock_.push_back(readStatoilFormat(rock_stream));
+            }
+        }
 
-	Rock readStatoilFormat(std::istream& is)
-	{
-	    std::string firstline;
-	    std::getline(is, firstline);
-	    typedef FieldVector<double, 4> Data;
-	    std::istream_iterator<Data> start(is);
-	    std::istream_iterator<Data> end;
-	    std::vector<Data> data(start, end);
-	    if (!is.eof()) {
-		THROW("Reading stopped but we're not at eof: something went wrong reading data.");
-	    }
-	    std::vector<double> svals, krw, kro, Jfunc;
-	    for (int i = 0; i < int(data.size()); ++i) {
-		svals.push_back(data[i][0]);
-		krw.push_back(data[i][1]);
-		kro.push_back(data[i][2]);
-		Jfunc.push_back(data[i][3]);
-	    }
-	    typedef typename Rock::TabFunc TFun;
-	    Rock r;
-	    r.krw_ = TFun(svals, krw);
-	    r.kro_ = TFun(svals, kro);
-	    r.Jfunc_ = TFun(svals, Jfunc);
-	    std::vector<double> invJfunc(Jfunc);
-	    std::reverse(invJfunc.begin(), invJfunc.end());
-	    std::vector<double> invsvals(svals);
-	    std::reverse(invsvals.begin(), invsvals.end());
-	    r.invJfunc_ = TFun(invJfunc, invsvals);
-	    return r;
-	}
+        Rock readStatoilFormat(std::istream& is)
+        {
+            std::string firstline;
+            std::getline(is, firstline);
+            typedef FieldVector<double, 4> Data;
+            std::istream_iterator<Data> start(is);
+            std::istream_iterator<Data> end;
+            std::vector<Data> data(start, end);
+            if (!is.eof()) {
+                THROW("Reading stopped but we're not at eof: something went wrong reading data.");
+            }
+            std::vector<double> svals, krw, kro, Jfunc;
+            for (int i = 0; i < int(data.size()); ++i) {
+                svals.push_back(data[i][0]);
+                krw.push_back(data[i][1]);
+                kro.push_back(data[i][2]);
+                Jfunc.push_back(data[i][3]);
+            }
+            typedef typename Rock::TabFunc TFun;
+            Rock r;
+            r.krw_ = TFun(svals, krw);
+            r.kro_ = TFun(svals, kro);
+            r.Jfunc_ = TFun(svals, Jfunc);
+            std::vector<double> invJfunc(Jfunc);
+            std::reverse(invJfunc.begin(), invJfunc.end());
+            std::vector<double> invsvals(svals);
+            std::reverse(invsvals.begin(), invsvals.end());
+            r.invJfunc_ = TFun(invJfunc, invsvals);
+            return r;
+        }
 
-	std::vector<double>        porosity_;
-	std::vector<double>        permeability_;
+        std::vector<double>        porosity_;
+        std::vector<double>        permeability_;
         std::vector<unsigned char> permfield_valid_;
 
-	double density1_;
-	double density2_;
-	double viscosity1_;
-	double viscosity2_;
-	double cfl_factor_;
-	double cfl_factor_gravity_;
-	std::vector<Rock> rock_;
-	std::vector<int> cell_to_rock_;
+        double density1_;
+        double density2_;
+        double viscosity1_;
+        double viscosity2_;
+        double cfl_factor_;
+        double cfl_factor_gravity_;
+        std::vector<Rock> rock_;
+        std::vector<int> cell_to_rock_;
     };
 
 
