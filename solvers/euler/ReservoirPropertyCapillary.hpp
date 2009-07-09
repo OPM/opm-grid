@@ -150,6 +150,8 @@ namespace Dune
         typedef OwnCMatrix       MutablePermTensor;
         typedef SharedCMatrix    SharedPermTensor;
 
+        enum { NumberOfPhases = 2 };
+
         ReservoirPropertyCapillary()
             : density1_(1013.9),
               density2_(834.7),
@@ -214,6 +216,18 @@ namespace Dune
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
+        void phaseDensity(int cell_index, std::vector<double>& density) const
+        {
+            ASSERT (density.size() >= NumberOfPhases);
+            density[0] = density1_;
+            density[1] = density2_;
+        }
+        void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
+        {
+            ASSERT (mob.size() >= NumberOfPhases);
+            mob[0] = mobilityFirstPhase(cell_index, sat);
+            mob[1] = mobilitySecondPhase(cell_index, sat);
+        }
         double densityDifference() const
         {
             return density1_ - density2_;
@@ -241,11 +255,27 @@ namespace Dune
     private:
         double relPermFirstPhase(int cell_index, double saturation) const
         {
-            return rock_[cell_to_rock_[cell_index]].krw_(saturation);
+            if (rock_.size() > 0) {
+                const int region = cell_to_rock_[cell_index];
+                ASSERT (region < rock_.size());
+                return rock_[region].krw_(saturation);
+            } else {
+                // HACK ALERT!
+                // Use quadratic rel-perm if no known rock table exists.
+                return saturation * saturation;
+            }
         }
         double relPermSecondPhase(int cell_index, double saturation) const
         {
-            return rock_[cell_to_rock_[cell_index]].kro_(saturation);
+            if (rock_.size() > 0) {
+                const int region = cell_to_rock_[cell_index];
+                ASSERT (region < rock_.size());
+                return rock_[region].kro_(saturation);
+            } else {
+                // HACK ALERT!
+                // Use quadratic rel-perm if no known rock table exists.
+                return (1 - saturation) * (1 - saturation);
+            }
         }
         void relMobs(double s, double& mob_first, double& mob_gravity)
         {
