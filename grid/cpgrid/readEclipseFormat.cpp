@@ -14,23 +14,23 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
@@ -111,9 +111,9 @@ namespace Dune
 	std::cout << "Cells:" << num_cells << "   Faces:"  << num_faces
 		  << "   Points:" << num_points << std::endl;
 
- 
+
 // 	// Faces cell numbers
-// 	std::cout << "\nFace number, internal cell numbers" << std::endl; 
+// 	std::cout << "\nFace number, internal cell numbers" << std::endl;
 // 	for (int i=0; i<output.number_of_faces; ++i){
 // 	    int c1 = output.face_neighbors[2*i];
 // 	    int c2 = output.face_neighbors[2*i+1];
@@ -148,6 +148,12 @@ namespace Dune
 	std::cout << "Building geometry." << std::endl;
 #endif
 	buildGeom(output, cell_to_face_, geometry_, face_normals_);
+
+#ifdef VERBOSE
+        std::cout << "Map local to global cell index." << std::endl;
+#endif
+        global_cell_.assign(output.local_cell_index,
+                            output.local_cell_index + output.number_of_cells);
 
 #ifdef VERBOSE
 	std::cout << "Cleaning up." << std::endl;
