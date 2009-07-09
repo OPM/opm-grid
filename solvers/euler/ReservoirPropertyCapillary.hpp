@@ -205,9 +205,8 @@ namespace Dune
         {
             BOOST_STATIC_ASSERT(dim == 3);
 
-            std::fill(permfield_valid_.begin(),
-                      permfield_valid_.end()  ,
-                      std::vector<unsigned char>::value_type(0));
+            permfield_valid_.assign(global_cell.size(),
+                                    std::vector<unsigned char>::value_type(0));
 
             assignPorosity    (parser, global_cell);
             assignPermeability(parser, global_cell);
