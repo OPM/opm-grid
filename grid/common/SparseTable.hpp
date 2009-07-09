@@ -133,6 +133,7 @@ namespace Dune
 
 	/// Defining the row type, returned by operator[].
 	typedef boost::iterator_range<const T*> row_type;
+	typedef boost::iterator_range<T*>       mutable_row_type;
 
 	/// Returns a row of the table.
 	row_type operator[](int row) const
@@ -141,6 +142,14 @@ namespace Dune
 	    const T* start_ptr = data_.empty() ? 0 : &data_[0];
 	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
 	}
+        mutable_row_type operator[](int row)
+        {
+            ASSERT ((0 <= row) && (row < size()));
+            ASSERT (!data_.empty());
+
+            int s = row_start_[row], e = row_start_[row + 1];
+            return mutable_row_type(&data_[s], &data_[e]);
+        }
 
 	/// Equality.
 	bool operator==(const SparseTable& other) const
