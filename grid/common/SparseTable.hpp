@@ -13,23 +13,23 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_SPARSETABLE_HEADER
@@ -52,96 +52,96 @@ namespace Dune
     class SparseTable
     {
     public:
-	/// Default constructor. Yields an empty SparseTable.
-	SparseTable()
-	{
-	}
+        /// Default constructor. Yields an empty SparseTable.
+        SparseTable()
+        {
+        }
 
-	/// A constructor taking all the data for the table and row sizes.
-	/// \param data_beg The start of the table data.
-	/// \param data_end One-beyond-end of the table data.
-	/// \param rowsize_beg The start of the row length data.
-	/// \param rowsize_end One beyond the end of the row length data.
-	template <typename DataIter, typename IntegerIter>
-	SparseTable(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
-	    : data_(data_beg, data_end)
-	{
-	    // Since we do not store the row sizes, but cumulative row sizes,
-	    // we have to create the cumulative ones.
-	    int num_rows = rowsize_end - rowsize_beg;
-	    if (num_rows < 1) {
-		THROW("Must have at least one row. Got " << num_rows << " rows.");
-	    }
+        /// A constructor taking all the data for the table and row sizes.
+        /// \param data_beg The start of the table data.
+        /// \param data_end One-beyond-end of the table data.
+        /// \param rowsize_beg The start of the row length data.
+        /// \param rowsize_end One beyond the end of the row length data.
+        template <typename DataIter, typename IntegerIter>
+        SparseTable(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
+            : data_(data_beg, data_end)
+        {
+            // Since we do not store the row sizes, but cumulative row sizes,
+            // we have to create the cumulative ones.
+            int num_rows = rowsize_end - rowsize_beg;
+            if (num_rows < 1) {
+                THROW("Must have at least one row. Got " << num_rows << " rows.");
+            }
 #ifndef NDEBUG
-	    if (*std::min_element(rowsize_beg, rowsize_end) < 0) {
-		THROW("All row sizes must be at least 0.");
-	    }
+            if (*std::min_element(rowsize_beg, rowsize_end) < 0) {
+                THROW("All row sizes must be at least 0.");
+            }
 #endif
-	    row_start_.resize(num_rows + 1);
-	    row_start_[0] = 0;
-	    std::partial_sum(rowsize_beg, rowsize_end, row_start_.begin() + 1);
-	    // Check that data_ and row_start_ match.
-	    if (int(data_.size()) != row_start_.back()) {
-		THROW("End of row start indices different from data size.");
-	    }
-	}
+            row_start_.resize(num_rows + 1);
+            row_start_[0] = 0;
+            std::partial_sum(rowsize_beg, rowsize_end, row_start_.begin() + 1);
+            // Check that data_ and row_start_ match.
+            if (int(data_.size()) != row_start_.back()) {
+                THROW("End of row start indices different from data size.");
+            }
+        }
 
 
-	/// Appends a row to the table.
-	template <typename DataIter>
-	void appendRow(DataIter row_beg, DataIter row_end)
-	{
-	    data_.insert(data_.end(), row_beg, row_end);
-	    if (row_start_.empty()) {
-		row_start_.reserve(2);
-		row_start_.push_back(0);
-	    }
-	    row_start_.push_back(data_.size());
-	}
+        /// Appends a row to the table.
+        template <typename DataIter>
+        void appendRow(DataIter row_beg, DataIter row_end)
+        {
+            data_.insert(data_.end(), row_beg, row_end);
+            if (row_start_.empty()) {
+                row_start_.reserve(2);
+                row_start_.push_back(0);
+            }
+            row_start_.push_back(data_.size());
+        }
 
-	/// True if the table contains no rows.
-	bool empty() const
-	{
-	    return row_start_.empty();
-	}
+        /// True if the table contains no rows.
+        bool empty() const
+        {
+            return row_start_.empty();
+        }
 
-	/// Returns the number of rows in the table.
-	int size() const
-	{
-	    return empty() ? 0 : row_start_.size() - 1;
-	}
+        /// Returns the number of rows in the table.
+        int size() const
+        {
+            return empty() ? 0 : row_start_.size() - 1;
+        }
 
-	/// Returns the number of data elements.
-	int dataSize() const
-	{
-	    return data_.size();
-	}
+        /// Returns the number of data elements.
+        int dataSize() const
+        {
+            return data_.size();
+        }
 
-	/// Returns the size of a table row.
-	int rowSize(int row) const
-	{
-	    ASSERT(row >= 0 && row < size());
-	    return row_start_[row + 1] - row_start_[row];
-	}
+        /// Returns the size of a table row.
+        int rowSize(int row) const
+        {
+            ASSERT(row >= 0 && row < size());
+            return row_start_[row + 1] - row_start_[row];
+        }
 
-	/// Makes the table empty().
-	void clear()
-	{
-	    data_.clear();
-	    row_start_.clear();
-	}
+        /// Makes the table empty().
+        void clear()
+        {
+            data_.clear();
+            row_start_.clear();
+        }
 
-	/// Defining the row type, returned by operator[].
-	typedef boost::iterator_range<const T*> row_type;
-	typedef boost::iterator_range<T*>       mutable_row_type;
+        /// Defining the row type, returned by operator[].
+        typedef boost::iterator_range<const T*> row_type;
+        typedef boost::iterator_range<T*>       mutable_row_type;
 
-	/// Returns a row of the table.
-	row_type operator[](int row) const
-	{
-	    ASSERT(row >= 0 && row < size());
-	    const T* start_ptr = data_.empty() ? 0 : &data_[0];
-	    return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
-	}
+        /// Returns a row of the table.
+        row_type operator[](int row) const
+        {
+            ASSERT(row >= 0 && row < size());
+            const T* start_ptr = data_.empty() ? 0 : &data_[0];
+            return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
+        }
         mutable_row_type operator[](int row)
         {
             ASSERT ((0 <= row) && (row < size()));
@@ -151,17 +151,17 @@ namespace Dune
             return mutable_row_type(&data_[s], &data_[e]);
         }
 
-	/// Equality.
-	bool operator==(const SparseTable& other) const
-	{
-	    return data_ == other.data_ && row_start_ == other.row_start_;
-	}
+        /// Equality.
+        bool operator==(const SparseTable& other) const
+        {
+            return data_ == other.data_ && row_start_ == other.row_start_;
+        }
 
     private:
-	std::vector<T> data_;
-	// Like in the compressed row sparse matrix format,
-	// row_start_.size() is equal to the number of rows + 1.
-	std::vector<int> row_start_;
+        std::vector<T> data_;
+        // Like in the compressed row sparse matrix format,
+        // row_start_.size() is equal to the number of rows + 1.
+        std::vector<int> row_start_;
     };
 
 } // namespace Dune
