@@ -14,27 +14,30 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 
 #include <fstream>
+#include <vector>
+
+#include <dune/grid/common/ErrorMacros.hpp>
 #include "../CpGrid.hpp"
 
 namespace Dune
@@ -50,6 +53,8 @@ namespace Dune
 	void readGeom(std::istream& geom,
 		      cpgrid::DefaultGeometryPolicy& gpol,
 		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
+        void readMap (std::istream& map,
+                      std::vector<int>& global_cell);
     } // anon namespace
 
 
@@ -73,6 +78,20 @@ namespace Dune
 	    }
 	    readGeom(file, geometry_, face_normals_);
 	}
+        std::string mapfilename = grid_prefix + "-map.dat";
+        {
+            std::ifstream file(mapfilename.c_str());
+            if (file) {
+                readMap(file, global_cell_);
+            } else {
+                // Unable to open map file.
+                // Assume default (identity) cell mapping.
+                global_cell_.resize(size(0));
+                for (int c = 0; c < global_cell_.size(); ++c) {
+                    global_cell_[c] = c;
+                }
+            }
+        }
     }
 
 
@@ -304,6 +323,29 @@ namespace Dune
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
 	}
+
+        void readMap(std::istream& map, std::vector<int>& global_cell)
+        {
+            typedef FieldVector<int,3> IntVec;
+            IntVec n;
+            map >> n;  ASSERT ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
+
+            const int num_global_cells = n[0] * n[1] * n[2];
+
+            int num_cells;
+            map >> num_cells;  ASSERT (num_cells > 0);
+
+            global_cell.resize(num_cells);
+
+            IntVec p; int c = 0;
+            while (map >> p) {
+                int glob = p[0] + n[0]*(p[1] + n[1]*p[2]);
+                ASSERT (glob < num_global_cells);
+
+                global_cell[c++] = glob;
+            }
+            ASSERT (c == num_cells);
+        }
 
     } //anon namespace
 
