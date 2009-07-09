@@ -36,19 +36,57 @@
 #ifndef OPENRS_RESERVOIRPROPERTYCAPILLARY_HEADER
 #define OPENRS_RESERVOIRPROPERTYCAPILLARY_HEADER
 
+#include <fstream>
+
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/cpgrid/EclipseGridParser.hpp>
 #include <dune/grid/cpgrid/EclipseGridInspector.hpp>
 #include <dune/solvers/mimetic/Matrix.hpp>
+
 #include "NonuniformTableLinear.hpp"
 #include "ReservoirPropertyInterface.hpp"
-#include <fstream>
 
 
 namespace Dune
 {
 
     namespace {
+        bool structurallyReasonableTensor(const EclipseGridParser& parser)
+        {
+            const bool xx = parser.hasField("PERMX" );
+            const bool xy = parser.hasField("PERMXY");
+            const bool xz = parser.hasField("PERMXZ");
+
+            const bool yx = parser.hasField("PERMYX");
+            const bool yy = parser.hasField("PERMY" );
+            const bool yz = parser.hasField("PERMYZ");
+
+            const bool zx = parser.hasField("PERMZX");
+            const bool zy = parser.hasField("PERMZY");
+            const bool zz = parser.hasField("PERMZ" );
+
+            bool ret;
+            if (xx || xy || xz ||
+                yx || yy || yz ||
+                zx || zy || zz) {
+                // At least one tensor component specified on input.
+                // Verify that any remaining components are OK from a
+                // structural point of view.  In particular, there
+                // must not be any cross-components (e.g., k_{xy})
+                // unless the corresponding diagonal component (e.g.,
+                // k_{xx}) is present as well...
+                //
+                ret =         xx || !(xy || xz || yx || zx) ;
+                ret = ret && (yy || !(yx || yz || xy || zy));
+                ret = ret && (zz || !(zx || zy || xz || yz));
+            } else {
+                // No permeability components.  We deem this officially OK!
+                ret = true;
+            }
+
+            return ret;
+        }
+
         void setScalarPermIfNeeded(boost::array<int,9>& kmap,
                                    int i, int j, int k)
         {
@@ -81,6 +119,7 @@ namespace Dune
                         std::vector<const std::vector<double>*>& tensor,
                         boost::array<int,9>&                     kmap)
         {
+            ASSERT (structurallyReasonableTensor(parser));
             ASSERT (tensor.size() == 1);
             for (int i = 0; i < 9; ++i) { kmap[i] = 0; }
 
