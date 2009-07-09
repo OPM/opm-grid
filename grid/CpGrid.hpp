@@ -221,6 +221,11 @@ namespace Dune
 	void createCartesian(const array<int, 3>& dims,
 			     const array<double, 3>& cellsize);
 
+        const std::vector<int>& globalCell() const
+        {
+            return global_cell_;
+        }
+
 	// --- Dune interface below ---
 
 
@@ -529,6 +534,8 @@ namespace Dune
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 	cpgrid::OrientedEntityTable<0, 3> cell_to_point_;
+
+        std::vector<int>                  global_cell_;
 
 	typedef cpgrid::DefaultGeometryPolicy Geom;
 
