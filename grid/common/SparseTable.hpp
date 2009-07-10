@@ -41,6 +41,8 @@
 #include <boost/range/iterator_range.hpp>
 #include "ErrorMacros.hpp"
 
+#include <ostream>
+
 namespace Dune
 {
 
@@ -155,6 +157,22 @@ namespace Dune
         bool operator==(const SparseTable& other) const
         {
             return data_ == other.data_ && row_start_ == other.row_start_;
+        }
+
+        template<class charT, class traits>
+        void print(std::basic_ostream<charT, traits>& os) const
+        {
+            os << "Number of rows: " << size() << '\n';
+
+            os << "Row starts = [";
+            std::copy(row_start_.begin(), row_start_.end(),
+                      std::ostream_iterator<int>(os, " "));
+            os << "\b]\n";
+
+            os << "Data values = [";
+            std::copy(data_.begin(), data_.end(),
+                      std::ostream_iterator<T>(os, " "));
+            os << "\b]\n";
         }
 
     private:
