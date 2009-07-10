@@ -61,8 +61,8 @@ namespace Dune {
 
 
         template<class PermTensor, template<typename> class SP>
-        void evaluate(const CellIter&                      c,
-                      const PermTensor&                    K,
+        void evaluate(const CellIter&                        c,
+                      const PermTensor&                      K,
                       FullMatrix<Scalar,SP,FortranOrdering>& Binv)
         {
             typedef typename CellIter::FaceIterator FI;
@@ -71,12 +71,12 @@ namespace Dune {
 
             const int nf = Binv.numRows();
 
-            ASSERT(Binv.numRows() <= max_nf_);
-            ASSERT(Binv.numRows() == Binv.numCols());
-            ASSERT(FV::size       == dim);
-            ASSERT(t1_.size()     >= nf * dim);
-            ASSERT(t2_.size()     >= nf * dim);
-            ASSERT(fa_.size()     >= nf * nf);
+            ASSERT(Binv.numRows()  <= max_nf_);
+            ASSERT(Binv.numRows()  == Binv.numCols());
+            ASSERT(FV::size        == dim);
+            ASSERT(int(t1_.size()) >= nf * dim);
+            ASSERT(int(t2_.size()) >= nf * dim);
+            ASSERT(int(fa_.size()) >= nf * nf);
 
             SharedFortranMatrix T1(nf, dim, &t1_[0]);
             SharedFortranMatrix T2(nf, dim, &t2_[0]);
