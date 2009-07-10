@@ -393,6 +393,21 @@ namespace Dune {
     }
 
 
+    template<typename                 T ,
+             template<typename> class SP>
+    void vecMulAdd_N(const T&                                a1,
+                     const FullMatrix<T,SP,FortranOrdering>& A ,
+                     const T*                                x ,
+                     const T&                                a2,
+                     T*                                      y)
+    {
+        Dune::BLAS_LAPACK::GEMV("No Transpose",
+                                A.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                x, 1, a2, y, 1);
+    }
+
+
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -407,8 +422,11 @@ namespace Dune {
         ASSERT(A.numCols() == B.numRows());
         ASSERT(B.numCols() == C.numCols());
 
-        Dune::BLAS_LAPACK::GEMM("No Transpose", "No Transpose",
-                                A.numRows(), B.numCols(), A.numCols(),
+        int m = A.numRows();  // Number of *rows* in A
+        int n = B.numCols();  // Number of *cols* in B
+        int k = A.numCols();  // Number of *cols* in A (== numer of *rows* in B)
+        
+        Dune::BLAS_LAPACK::GEMM("No Transpose", "No Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
@@ -429,8 +447,11 @@ namespace Dune {
         ASSERT(B.numRows() == C.numCols());
         ASSERT(A.numCols() == B.numCols());
 
-        Dune::BLAS_LAPACK::GEMM("No Transpose", "Transpose",
-                                A.numRows(), B.numRows(), A.numCols(),
+        int m = A.numRows();  // Number of *rows* in A
+        int n = B.numRows();  // Number of *cols* in B'
+        int k = A.numCols();  // Number of *cols* in A (== numer of *rows* in B')
+        
+        Dune::BLAS_LAPACK::GEMM("No Transpose", "Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
@@ -451,8 +472,11 @@ namespace Dune {
         ASSERT (A.numRows() == B.numRows());
         ASSERT (B.numCols() == C.numCols());
 
-        Dune::BLAS_LAPACK::GEMM("Transpose", "No Transpose",
-                                A.numRows(), B.numRows(), A.numCols(),
+        int m = A.numCols();  // Number of *rows* in A'
+        int n = B.numCols();  // Number of *cols* in B
+        int k = A.numRows();  // Number of *cols* in A' (== numer of *rows* in B)
+        
+        Dune::BLAS_LAPACK::GEMM("Transpose", "No Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
                                 a2, C.data(), C.leadingDimension());
