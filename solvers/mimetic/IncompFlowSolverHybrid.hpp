@@ -48,11 +48,24 @@
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
+
+#include <dune/istl/bvector.hh>
 #include <dune/istl/bcrsmatrix.hh>
 #include <dune/istl/operators.hh>
+#include <dune/istl/io.hh>
+
+#include <dune/istl/overlappingschwarz.hh>
+#include <dune/istl/schwarz.hh>
+#include <dune/istl/preconditioners.hh>
+#include <dune/istl/solvers.hh>
+#include <dune/istl/owneroverlapcopy.hh>
 
 #include <dune/grid/common/ErrorMacros.hpp>
 #include <dune/grid/common/SparseTable.hpp>
+
+#include <dune/solvers/euler/BoundaryConditions.hpp>
+
+#include <iostream>
 
 namespace Dune {
     namespace {
@@ -95,9 +108,33 @@ namespace Dune {
     }
 
 
-    template<class GridInterface, class InnerProduct>
+    template<class GridInterface, class BCInterface, class InnerProduct>
     class IncompFlowSolverHybrid {
         typedef typename GridInterface::Scalar Scalar;
+
+        class FlowSolution {
+        public:
+            typedef typename GridInterface::Scalar       Scalar;
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
+
+            friend class IncompFlowSolverHybrid;
+
+            Scalar pressure(const CI& c) const
+            {
+                return pressure_[cellno_[c->index()]];
+            }
+            Scalar outflux (const FI& f) const
+            {
+                return outflux_[cellno_[f->cellIndex()]][f->localIndex()];
+            }
+        private:
+            std::vector< int  > cellno_;
+            SparseTable< int  > cellFaces_;
+            std::vector<Scalar> pressure_;
+            SparseTable<Scalar> outflux_;
+        };
+
     public:
         void init(const GridInterface& g)
         {
@@ -108,11 +145,12 @@ namespace Dune {
             total_num_faces_        =  0;
             matrix_structure_valid_ = false;
 
-            std::vector<int>(g.numberOfCells(), -1).swap(cellno_);
-            cellFaces_.clear();
-            F_        .clear();
+            std::vector<int>(g.numberOfCells(), -1).swap(flowSolution_.cellno_);
+            flowSolution_.cellFaces_.clear();
+
             std::vector<Scalar>(g.numberOfCells()).swap(L_);
-            Binv_     .clear();
+            std::vector<Scalar>(g.numberOfCells()).swap(g_);
+            Binv_.clear();   F_.clear();   f_.clear();
 
             if (g.numberOfCells() > 0) {
                 buildGridTopology(g);
@@ -132,8 +170,9 @@ namespace Dune {
 
             InnerProduct ip(max_ncf_);
             int i = 0;
+            const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++i) {
-                const int nf = cellFaces_[i].size();
+                const int nf = cellFaces[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
 
@@ -142,18 +181,23 @@ namespace Dune {
         }
 
 
-        template<class ReservoirInterface, class BCInterface>
+        template<class ReservoirInterface>
         void solve(const GridInterface&       g  ,
                    const ReservoirInterface&  r  ,
+                   const std::vector<double>& sat,
                    const BCInterface&         bc ,
-                   const std::vector<double>& src,
-                   const std::vector<double>& sat)
+                   const std::vector<double>& src)
         {
-            assembleDynamic(g, r, bc, src, sat);
-#if 0
-            solveLinSys();
-            computePressureAndFluxes();
-#endif
+            assembleDynamic(g, r, sat, bc, src);
+            solveLinearSystem();
+            computePressureAndFluxes(g, r, sat);
+        }
+
+
+        typedef const FlowSolution& SolutionType;
+        SolutionType getSolution()
+        {
+            return flowSolution_;
         }
 
 
@@ -165,42 +209,69 @@ namespace Dune {
                << "\tNumber of internal faces     = " << num_internal_faces_ << '\n'
                << "\tTotal number of faces        = " << total_num_faces_ << '\n';
 
+            const std::vector<int>& cell = flowSolution_.cellno_;
             os << "cell index map = [";
-            std::copy(cellno_.begin(), cellno_.end(),
+            std::copy(cell.begin(), cell.end(),
                       std::ostream_iterator<int>(os, " "));
             os << "\b]\n";
 
+            const SparseTable<int>& cf = flowSolution_.cellFaces_;
             os << "cell faces     =\n";
-            for (int i = 0; i < cellFaces_.size(); ++i)
+            for (int i = 0; i < cf.size(); ++i)
             {
                 os << "\t[" << i << "] -> [";
-                std::copy(cellFaces_[i].begin(), cellFaces_[i].end(),
+                std::copy(cf[i].begin(), cf[i].end(),
                           std::ostream_iterator<int>(os, ","));
                 os << "\b]\n";
             }
         }
 
+        template<class charT, class traits>
+        void printIP(std::basic_ostream<charT,traits>& os)
+        {
+            const SparseTable<int>& cf = flowSolution_.cellFaces_;
+            // Loop grid whilst building (and outputing) the inverse IP matrix.
+            for (int c = 0; c != cf.size(); ++c) {
+                const int nf = cf[c].size();
+                ImmutableFortranMatrix Binv(nf, nf, &Binv_[c][0]);
+
+                os << c << " -> Binv = [\n" << Binv << "]\n";
+            }
+        }
+
+        void printSystem(const std::string& prefix)
+        {
+            writeMatrixToMatlab(S_, prefix + "-mat.dat");
+
+            std::string rhsfile(prefix + "-rhs.dat");
+            std::ofstream rhs(rhsfile.c_str());
+            std::copy(rhs_.begin(), rhs_.end(),
+                      std::ostream_iterator<VectorBlockType>(rhs, "\n"));
+        }
+
     private:
-        typedef FieldMatrix<Scalar, 1, 1> BlockType;
+        // ----------------------------------------------------------------
+        int max_ncf_;
+        int num_internal_faces_;
+        int total_num_faces_;
 
-        int                   max_ncf_;
-        int                   num_internal_faces_;
-        int                   total_num_faces_;
+        // ----------------------------------------------------------------
+        std::vector<Scalar> L_, g_;
+        SparseTable<Scalar> Binv_, F_, f_;
 
-        bool                  matrix_structure_valid_;
+        // ----------------------------------------------------------------
+        // Actual, assembled system of linear equations
+        typedef FieldVector<Scalar, 1   > VectorBlockType;
+        typedef FieldMatrix<Scalar, 1, 1> MatrixBlockType;
 
-        std::vector<int>      cellno_;
-        SparseTable<int>      cellFaces_;
+        BCRSMatrix <MatrixBlockType>      S_;    // System matrix
+        BlockVector<VectorBlockType>      rhs_;  // System RHS
+        BlockVector<VectorBlockType>      soln_; // System solution (contact pressure)
+        bool                              matrix_structure_valid_;
 
-        SparseTable<Scalar>   F_;
-        std::vector<Scalar>   L_;
-        SparseTable<Scalar>   Binv_, f_;
-
-        std::vector<Scalar>   g_;
-
-        BCRSMatrix<BlockType> S_;
-        std::vector<Scalar>   rhs_;
-
+        // ----------------------------------------------------------------
+        // Physical quantities (derived)
+        FlowSolution flowSolution_;
 
 
         // ----------------------------------------------------------------
@@ -215,13 +286,15 @@ namespace Dune {
             std::vector<int> num_cf         ;   num_cf.reserve(nc);
             std::vector<int> faces          ;
 
+            std::vector<int>& cell = flowSolution_.cellno_;
+
             // First pass: enumerate internal faces.
             int cellno = 0; fpos.push_back(0);
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++cellno) {
                 const int c0 = c->index();
-                ASSERT((0 <= c0) && (c0 < nc) && (cellno_[c0] == -1));
+                ASSERT((0 <= c0) && (c0 < nc) && (cell[c0] == -1));
 
-                cellno_[c0] = cellno;
+                cell[c0] = cellno;
 
                 num_cf.push_back(0);
                 int& ncf = num_cf.back();
@@ -231,7 +304,7 @@ namespace Dune {
                         const int c1 = f->neighbourCellIndex();
                         ASSERT((0 <= c1) && (c1 < nc) && (c1 != c0));
 
-                        if (cellno_[c1] == -1) {
+                        if (cell[c1] == -1) {
                             // Previously undiscovered internal face.
                             faces.push_back(c1);
                         }
@@ -246,15 +319,17 @@ namespace Dune {
 
             total_num_faces_ = num_internal_faces_ = int(faces.size());
 
+            SparseTable<int>& cf = flowSolution_.cellFaces_;
+
             // Second pass: build cell-to-face mapping, including boundary.
             typedef std::vector<int>::iterator VII;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
 
-                ASSERT((0 <= c0         ) && (c0 < nc         ) &&
-                       (0 <= cellno_[c0]) && (cellno_[c0] < nc));
+                ASSERT ((0 <=      c0 ) && (     c0  < nc) &&
+                        (0 <= cell[c0]) && (cell[c0] < nc));
 
-                const int ncf = num_cf[cellno_[c0]];
+                const int ncf = num_cf[cell[c0]];
                 std::vector<int>    l2g; l2g.reserve(ncf);
                 std::vector<Scalar> Binv_alloc(ncf * ncf);
                 std::vector<Scalar> F_alloc(ncf);
@@ -275,14 +350,14 @@ namespace Dune {
                         // faulted cells).
 
                         const int c1 = f->neighbourCellIndex();
-                        ASSERT((0 <= c1         ) && (c1 < nc         ) &&
-                               (0 <= cellno_[c1]) && (cellno_[c1] < nc));
+                        ASSERT ((0 <=      c1 ) && (     c1  < nc) &&
+                                (0 <= cell[c1]) && (cell[c1] < nc));
 
                         int t = c0, seek = c1;
-                        if (cellno_[seek] < cellno_[t])
+                        if (cell[seek] < cell[t])
                             std::swap(t, seek);
 
-                        int s = fpos[cellno_[t]], e = fpos[cellno_[t] + 1];
+                        int s = fpos[cell[t]], e = fpos[cell[t] + 1];
 
                         VII p = std::find(faces.begin() + s, faces.begin() + e, seek);
                         ASSERT(p != faces.begin() + e);
@@ -292,10 +367,13 @@ namespace Dune {
                 }
                 ASSERT(int(l2g.size()) == ncf);
 
-                cellFaces_.appendRow(l2g       .begin(), l2g       .end());
-                F_        .appendRow(F_alloc   .begin(), F_alloc   .end());
-                f_        .appendRow(F_alloc   .begin(), F_alloc   .end());
-                Binv_     .appendRow(Binv_alloc.begin(), Binv_alloc.end());
+                cf   .appendRow(l2g       .begin(), l2g       .end());
+                F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
+                f_   .appendRow(F_alloc   .begin(), F_alloc   .end());
+                Binv_.appendRow(Binv_alloc.begin(), Binv_alloc.end());
+
+                flowSolution_.outflux_
+                    .appendRow (F_alloc   .begin(), F_alloc   .end());
             }
         }
 
@@ -304,22 +382,26 @@ namespace Dune {
         void buildSystemStructure()
         // ----------------------------------------------------------------
         {
-            ASSERT (!cellFaces_.empty());
+            ASSERT (!flowSolution_.cellFaces_.empty());
 
-            typedef SparseTable<int>::row_type::iterator fi;
+            const   SparseTable<int>& cf = flowSolution_.cellFaces_;
+            typedef SparseTable<int>::row_type::const_iterator fi;
 
             // Clear any residual data, prepare for assembling structure.
             S_.setSize(total_num_faces_, total_num_faces_);
-            S_.setBuildMode(BCRSMatrix<BlockType>::random);
+            S_.setBuildMode(BCRSMatrix<MatrixBlockType>::random);
+
+            rhs_ .resize(total_num_faces_);  rhs_  = 0;
+            soln_.resize(total_num_faces_);  soln_ = 0;
 
             // Compute row sizes
             for (int f = 0; f < total_num_faces_; ++f) {
                 S_.setrowsize(f, 1);
             }
 
-            for (int c = 0; c < cellFaces_.size(); ++c) {
-                const int nf = cellFaces_[c].size();
-                fi fb = cellFaces_[c].begin(), fe = cellFaces_[c].end();
+            for (int c = 0; c < cf.size(); ++c) {
+                const int nf = cf[c].size();
+                fi fb = cf[c].begin(), fe = cf[c].end();
 
                 for (fi f = fb; f != fe; ++f) {
                     S_.incrementrowsize(*f, nf - 1);
@@ -328,8 +410,8 @@ namespace Dune {
             S_.endrowsizes();
 
             // Compute actual connections (the non-zero structure).
-            for (int c = 0; c < cellFaces_.size(); ++c) {
-                fi fb = cellFaces_[c].begin(), fe = cellFaces_[c].end();
+            for (int c = 0; c < cf.size(); ++c) {
+                fi fb = cf[c].begin(), fe = cf[c].end();
 
                 for (fi i = fb; i != fe; ++i) {
                     for (fi j = fb; j != fe; ++j) {
@@ -338,21 +420,23 @@ namespace Dune {
                 }
             }
             S_.endindices();
-            std::vector<Scalar>(total_num_faces_).swap(rhs_);
-            std::vector<Scalar>(cellFaces_.size()).swap(g_);
+            std::vector<Scalar>(cf.size()).swap(flowSolution_.pressure_);
 
             matrix_structure_valid_ = true;
         }
 
 
-        template<class ReservoirInterface, class BCInterface>
+        template<class ReservoirInterface>
         void assembleDynamic(const GridInterface&       g  ,
                              const ReservoirInterface&  r  ,
+                             const std::vector<double>& sat,
                              const BCInterface&         bc ,
-                             const std::vector<double>& src,
-                             const std::vector<double>& sat)
+                             const std::vector<double>& src)
         {
             typedef typename GridInterface::CellIterator CI;
+
+            const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
 
             std::vector<double> mob(ReservoirInterface::NumberOfPhases);
             std::vector<double> rho(ReservoirInterface::NumberOfPhases);
@@ -373,8 +457,8 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int ci = c->index();
-                const int c0 = cellno_[ci];
-                const int nf = cellFaces_[c0].size();
+                const int c0 = cell[ci];            ASSERT (c0 < cf.size());
+                const int nf = cf[c0].size();
 
                 r.phaseMobility(ci, sat[ci], mob);
                 r.phaseDensity (ci,          rho);
@@ -390,9 +474,86 @@ namespace Dune {
 
                 buildCellContrib(c0, totmob, omega, one, S, rhs);
 
-                addCellContrib(S, rhs, dirichlet_faces,
-                               cellFaces_[c0].begin(),
-                               cellFaces_[c0].end());
+                addCellContrib(S, rhs, dirichlet_faces, cf[c0]);
+            }
+        }
+
+
+        void solveLinearSystem()
+        {
+            // Adapted from DuMux...
+            Scalar residTol = 1.0e-8;
+
+            typedef BCRSMatrix <MatrixBlockType>        Matrix;
+            typedef BlockVector<VectorBlockType>        Vector;
+            typedef MatrixAdapter<Matrix,Vector,Vector> Adapter;
+
+            S_[0][0] += 1;
+            Adapter opS(S_);
+
+            // initialize the preconditioner
+            Dune::SeqILU0<Matrix,Vector,Vector> precond(S_, 1.0);
+
+            // invert the linear equation system
+            Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol, 500, 1);
+
+            Dune::InverseOperatorResult result;
+            soln_ = 0.0;
+            linsolve.apply(soln_, rhs_, result);
+        }
+
+
+        template<class ReservoirInterface>
+        void computePressureAndFluxes(const GridInterface&       g  ,
+                                      const ReservoirInterface&  r  ,
+                                      const std::vector<double>& sat)
+        {
+            typedef typename GridInterface::CellIterator CI;
+
+            const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
+
+            std::vector<Scalar>& p = flowSolution_.pressure_;
+            SparseTable<Scalar>& v = flowSolution_.outflux_;
+
+            std::vector<double> mob(ReservoirInterface::NumberOfPhases);
+            std::vector<double> rho(ReservoirInterface::NumberOfPhases);
+            std::vector<double> pi (max_ncf_);
+
+            // Assemble dynamic contributions for each cell
+            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+                const int ci = c->index();
+                const int c0 = cell[ci];
+                const int nf = cf[c0].size();
+
+                r.phaseMobility(ci, sat[ci], mob);
+                r.phaseDensity (ci,          rho);
+
+                const double totmob = std::accumulate(mob.begin(), mob.end(), 0.0);
+
+                // Extract contact pressures for cell 'c'.
+                for (int i = 0; i < nf; ++i) {
+                    pi[i] = soln_[cf[c0][i]];
+                }
+
+                // Compute cell pressure in cell 'c'.
+                p[c0] = (g_[c0] +
+                         std::inner_product(F_[c0].begin(), F_[c0].end(),
+                                            pi.begin(), 0.0)) / L_[c0];
+
+                // Compute cell (out) fluxes for cell 'c'.
+                // 1) Form system right hand side, r = f + Cp - D\pi
+                std::transform(f_[c0].begin(), f_[c0].end(), pi.begin(),
+                               pi    .begin(),
+                               boost::bind(std::minus<Scalar>(),
+                                           boost::bind(std::plus<Scalar>(),
+                                                       _1,
+                                                       p[c0]),
+                                           _2));
+                
+                // 2) Solve system Bv = r
+                ImmutableFortranMatrix Binv(nf, nf, &Binv_[c0][0]);
+                vecMulAdd_N(totmob, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
             }
         }
 
@@ -424,12 +585,11 @@ namespace Dune {
         }
 
 
-        template<class BCInterface>
         void setExternalContrib(const typename GridInterface::CellIterator c,
                                 const int c0, const BCInterface& bc,
                                 const double src,
-                                std::vector<unsigned char> dF,
-                                std::vector<Scalar>& rhs)
+                                std::vector<Scalar>& rhs,
+                                std::vector<unsigned char>& dF)
         {
             typedef typename GridInterface::CellIterator::FaceIterator FI;
             typedef std::vector<unsigned char>::value_type uchar;
@@ -458,18 +618,19 @@ namespace Dune {
         }
 
 
-        template<class L2GIterator>
+        template<class L2G>
         void addCellContrib(const SharedFortranMatrix&        S  ,
                             const std::vector<Scalar>&        rhs,
                             const std::vector<unsigned char>& dF ,
-                            L2GIterator&                      b  ,
-                            L2GIterator&                      e  )
+                            const L2G&                        l2g)
         {
+            typedef typename L2G::const_iterator it;
+
             int r = 0;
-            for (L2GIterator i = b; i != e; ++i, ++r) {
+            for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
 
                 int c = 0;
-                for (L2GIterator j = b; j != e; ++j, ++c) {
+                for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
                     S_[*i][*j] += S(r,c);
                 }
 
