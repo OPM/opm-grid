@@ -101,7 +101,7 @@ void test_evaluator(const Interface& g)
     }
 }
 
-
+#if 0
 template<int dim, class Interface>
 void test_flowsolver(const Interface& g)
 {
@@ -113,6 +113,7 @@ void test_flowsolver(const Interface& g)
     solver.init(g);
     solver.printStats(std::cout);
 }
+#endif
 
 
 template <int dim, int refinement>
@@ -159,9 +160,10 @@ void check_cpgrid()
 
     // Test the interface
     Dune::GridInterfaceEuler<Dune::CpGrid> gie(grid);
-    //test_evaluator<3>(gie);
-
+    test_evaluator<3>(gie);
+#if 0
     test_flowsolver<3>(gie);
+#endif
 }
 
 
