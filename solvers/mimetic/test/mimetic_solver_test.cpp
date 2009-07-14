@@ -37,6 +37,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <iomanip>
 
 #include <boost/static_assert.hpp>
 
@@ -148,6 +149,7 @@ template<int dim, class GI, class RI>
 void test_flowsolver(const GI& g, const RI& r)
 {
     typedef typename GI::CellIterator               CI;
+    typedef typename CI::FaceIterator               FI;
     typedef Dune::MimeticIPEvaluator<CI,dim,true>   IP;
     typedef Dune::FlowBoundaryConditions            FBC;
     typedef Dune::IncompFlowSolverHybrid<GI,FBC,IP> FlowSolver;
@@ -174,8 +176,21 @@ void test_flowsolver(const GI& g, const RI& r)
 
     typedef typename FlowSolver::SolutionType FlowSolution;
     FlowSolution soln = solver.getSolution();
-    std::cout << soln.pressure(g.cellbegin()) << '\n';
-    std::cout << soln.outflux (g.cellbegin()->facebegin()) << '\n';
+    std::cout << "Cell Pressure:\n";
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+        std::cout << '\t' << std::scientific << std::setprecision(15)
+                  << soln.pressure(c) << '\n';
+    }
+
+    std::cout << "Cell (Out) Fluxes:\n";
+    std::cout << "flux = [\n";
+    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+        for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+            std::cout << soln.outflux(f) << ' ';
+        }
+        std::cout << "\b\n";
+    }
+    std::cout << "]\n";
 }
 
 
