@@ -192,10 +192,10 @@ namespace Dune
         enum { NumberOfPhases = 2 };
 
         ReservoirPropertyCapillary()
-            : density1_(1013.9),
-              density2_(834.7),
-              viscosity1_(1.0),
-              viscosity2_(0.3)
+            : density1_  (1013.9), // kg/m^3
+              density2_  ( 834.7), // kg/m^3
+              viscosity1_(   1.0), // cP
+              viscosity2_(  10.0)  // cP
         {
         }
 
@@ -242,11 +242,13 @@ namespace Dune
         }
         double mobilityFirstPhase(int cell_index, double saturation) const
         {
-            return relPermFirstPhase(cell_index, saturation)/viscosity1_;
+            return relPermFirstPhase(cell_index, saturation) /
+                (viscosity1_ / 1.0e3); // cP -> Pa*s
         }
         double mobilitySecondPhase(int cell_index, double saturation) const
         {
-            return relPermSecondPhase(cell_index, saturation)/viscosity1_;
+            return relPermSecondPhase(cell_index, saturation) /
+                (viscosity2_ / 1.0e3); // cP -> Pa*s
         }
         double totalMobility(int cell_index, double saturation) const
         {
@@ -257,8 +259,8 @@ namespace Dune
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
-            density[0] = density1_;
-            density[1] = density2_;
+            density[0] = density1_ / 1.0e3; // cP -> Pa*s
+            density[1] = density2_ / 1.0e3; // cP -> Pa*s
         }
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
         {
