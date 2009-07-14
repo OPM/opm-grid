@@ -517,7 +517,6 @@ namespace Dune {
             SparseTable<Scalar>& v = flowSolution_.outflux_;
 
             std::vector<double> mob(ReservoirInterface::NumberOfPhases);
-            std::vector<double> rho(ReservoirInterface::NumberOfPhases);
             std::vector<double> pi (max_ncf_);
 
             // Assemble dynamic contributions for each cell
@@ -525,11 +524,6 @@ namespace Dune {
                 const int ci = c->index();
                 const int c0 = cell[ci];
                 const int nf = cf[c0].size();
-
-                r.phaseMobility(ci, sat[ci], mob);
-                r.phaseDensity (ci,          rho);
-
-                const double totmob = std::accumulate(mob.begin(), mob.end(), 0.0);
 
                 // Extract contact pressures for cell 'c'.
                 for (int i = 0; i < nf; ++i) {
@@ -550,8 +544,11 @@ namespace Dune {
                                                        _1,
                                                        p[c0]),
                                            _2));
-                
+
                 // 2) Solve system Bv = r
+                r.phaseMobility(ci, sat[ci], mob);
+                const double totmob = std::accumulate(mob.begin(), mob.end(), 0.0);
+
                 ImmutableFortranMatrix Binv(nf, nf, &Binv_[c0][0]);
                 vecMulAdd_N(totmob, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
             }
@@ -573,7 +570,7 @@ namespace Dune {
             g_[c] -= std::inner_product(Ft.data(), Ft.data() + Ft.numRows(),
                                         f_[c].begin(), Scalar(0.0));
 
-            // rhs <- B^{-1}*f - r (==B^{-1}f + E\pi - f)
+            // rhs <- B^{-1}*f - r (==B^{-1}f + E\pi - h)
             vecMulAdd_N(Scalar(1.0), S, &f_[c][0], -Scalar(1.0), &rhs[0]);
 
             // rhs <- rhs + g_[c]/L_[c]*F
