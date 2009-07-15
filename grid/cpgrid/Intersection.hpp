@@ -14,23 +14,23 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_INTERSECTION_HEADER
@@ -40,8 +40,16 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <dune/grid/common/gridenums.hh>
-#include "Entity.hpp"
+
 #include "../common/ErrorMacros.hpp"
+
+// The next statement is a layering violation: we only #include
+// preprocess.h to get at its "enum face_tag" definition.  Enum
+// face_tag is needed in method Intersection::boundaryId().  This hack
+// is in dire need of a better solution!
+#include "../preprocess/preprocess.h"
+
+#include "Entity.hpp"
 #include "Geometry.hpp"
 
 namespace Dune
@@ -103,7 +111,30 @@ namespace Dune
             /// (and of course 0 for the non-boundaries).
             int boundaryId() const
             {
-                return boundary() ? 0 : 1;
+                int ret = 0;
+                if (boundary()) {
+                    typedef OrientedEntityTable<0,1>::row_type::value_type Face;
+                    const Face& f = faces_of_cell_[subindex_];
+                    const bool normal_is_in = !f.orientation();
+                    enum face_tag tag = pgrid_->face_tag_[f];
+
+                    switch (tag) {
+                    case LEFT:
+                        //                   LEFT : RIGHT
+                        ret = normal_is_in ? 1    : 2; // min(I) : max(I)
+                        break;
+                    case BACK:
+                        //                   BACK : FRONT
+                        ret = normal_is_in ? 3    : 4; // min(J) : max(J)
+                        break;
+                    case TOP:
+                        // Note: TOP at min(K) as 'z' measures *depth*.
+                        //                   TOP  : BOTTOM
+                        ret = normal_is_in ? 5    : 6; // min(K) : max(K)
+                        break;
+                    }
+                }
+                return ret;
             }
 
             bool neighbor() const
