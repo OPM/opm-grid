@@ -173,13 +173,12 @@ void test_flowsolver(const GI& g, const RI& r)
     
     solver.solve(g, r, sat, bcs, src);
     solver.printSystem("system");
-
+#if 0
     typedef typename FlowSolver::SolutionType FlowSolution;
     FlowSolution soln = solver.getSolution();
-    std::cout << "Cell Pressure:\n";
+    std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-        std::cout << '\t' << std::scientific << std::setprecision(15)
-                  << soln.pressure(c) << '\n';
+        std::cout << '\t' << soln.pressure(c) << '\n';
     }
 
     std::cout << "Cell (Out) Fluxes:\n";
@@ -191,6 +190,7 @@ void test_flowsolver(const GI& g, const RI& r)
         std::cout << "\b\n";
     }
     std::cout << "]\n";
+#endif
 }
 
 
