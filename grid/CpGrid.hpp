@@ -536,6 +536,7 @@ namespace Dune
 	cpgrid::OrientedEntityTable<0, 3> cell_to_point_;
 
         std::vector<int>                  global_cell_;
+        cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
 
 	typedef cpgrid::DefaultGeometryPolicy Geom;
 

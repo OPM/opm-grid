@@ -155,6 +155,9 @@ namespace Dune
         global_cell_.assign(output.local_cell_index,
                             output.local_cell_index + output.number_of_cells);
 
+        face_tag_.assign(output.face_tag,
+                         output.face_tag + output.number_of_faces);
+
 #ifdef VERBOSE
 	std::cout << "Cleaning up." << std::endl;
 #endif
