@@ -59,6 +59,8 @@
 #include <dune/istl/preconditioners.hh>
 #include <dune/istl/solvers.hh>
 #include <dune/istl/owneroverlapcopy.hh>
+#include <dune/istl/paamg/amg.hh>
+#include <dune/istl/paamg/pinfo.hh>
 
 #include <dune/grid/common/ErrorMacros.hpp>
 #include <dune/grid/common/SparseTable.hpp>
@@ -189,7 +191,11 @@ namespace Dune {
                    const std::vector<double>& src)
         {
             assembleDynamic(g, r, sat, bc, src);
+#if 0
             solveLinearSystem();
+#else
+            solveLinearSystemAMG();
+#endif
             computePressureAndFluxes(g, r, sat);
         }
 
@@ -498,6 +504,58 @@ namespace Dune {
             Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol, 500, 1);
 
             Dune::InverseOperatorResult result;
+            soln_ = 0.0;
+            linsolve.apply(soln_, rhs_, result);
+        }
+
+
+        void solveLinearSystemAMG()
+        {
+            // Adapted from upscaling.cc by Arne Rekdal, 2009
+            Scalar residTol = 1.0e-8;
+
+            // Representation types for linear system.
+            typedef BCRSMatrix <MatrixBlockType>        Matrix;
+            typedef BlockVector<VectorBlockType>        Vector;
+            typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
+
+            // AMG specific types.
+#define FIRST_DIAGONAL 1
+#define SYMMETRIC 1
+
+#if FIRST_DIAGONAL
+            typedef Amg::FirstDiagonal CouplingMetric;
+#else
+            typedef Amg::RowSum        CouplingMetric;
+#endif
+
+#if SYMMETRIC
+            typedef Amg::SymmetricCriterion<Matrix,CouplingMetric>   CriterionBase;
+#else
+            typedef Amg::UnSymmetricCriterion<Matrix,CouplingMetric> CriterionBase;
+#endif
+
+            typedef SeqILU0<Matrix,Vector,Vector>        Smoother;
+            typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
+            typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
+
+            // Regularize the matrix (only for pure Neumann problems...)
+            S_[0][0] += 1;
+            Operator opS(S_);
+
+            // initialize the preconditioner
+            double    relax = 1;
+            typename Precond::SmootherArgs smootherArgs;
+            smootherArgs.relaxationFactor = relax;
+
+            Criterion criterion;
+            Precond precond(opS, criterion, smootherArgs);
+
+            // invert the linear equation system
+            int verbose = 1;
+            CGSolver<Vector> linsolve(opS, precond, residTol, S_.N(), verbose);
+
+            InverseOperatorResult result;
             soln_ = 0.0;
             linsolve.apply(soln_, rhs_, result);
         }
