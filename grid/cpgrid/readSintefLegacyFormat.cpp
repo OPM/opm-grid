@@ -86,8 +86,9 @@ namespace Dune
             } else {
                 // Unable to open map file.
                 // Assume default (identity) cell mapping.
-                global_cell_.resize(size(0));
-                for (int c = 0; c < global_cell_.size(); ++c) {
+		int num_cells = size(0);
+                global_cell_.resize(num_cells);
+                for (int c = 0; c < num_cells; ++c) {
                     global_cell_[c] = c;
                 }
             }
