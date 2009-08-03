@@ -402,6 +402,8 @@ namespace Dune
 	    /// @param inv  The OrientedEntityTable 
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
+		// Find the maximum index used. This will give (one less than) the size
+		// of the table to be created.
 		int maxind = -1;
 		for (int i = 0; i < size(); ++i) {
 		    EntityRep<codim_from> from_ent(i, true);
@@ -412,6 +414,7 @@ namespace Dune
 			maxind = std::max(ind, maxind);
 		    }
 		}
+		// Build the new_sizes vector and compute datacount.
 		std::vector<int> new_sizes(maxind + 1);
 		int datacount = 0;
 		for (int i = 0; i < size(); ++i) {
@@ -424,9 +427,13 @@ namespace Dune
 			++new_sizes[ind];
 		    }
 		}
+		// Compute the cumulative sizes.
 		std::vector<int> cumul_sizes(new_sizes.size() + 1);
 		cumul_sizes[0] = 0;
 		std::partial_sum(new_sizes.begin(), new_sizes.end(), cumul_sizes.begin() + 1);
+		// Using the cumulative sizes array as indices, we populate new_data.
+		// Note that cumul_sizes[ind] is not kept constant, but incremented so that
+		// it always gives the correct index for new data corresponding to index ind.
 		std::vector<int> new_data(datacount);
 		for (int i = 0; i < size(); ++i) {
 		    EntityRep<codim_from> from_ent(i, true);
@@ -443,35 +450,6 @@ namespace Dune
 								new_data.end(),
 								new_sizes.begin(),
 								new_sizes.end());
-
-#if 0
-		typedef std::multimap<int, int> RelationMap;
-		RelationMap rm;
-		for (int i = 0; i < size(); ++i) {
-		    EntityRep<codim_from> from_ent(i);
-		    row_type r = operator[](from_ent);
-		    for (int j = 0; j < r.size(); ++j) {
-			EntityRep<codim_to> to_ent = r[j];
-			// Making sure all the keys we insert are positive.
-			int from = to_ent.orientation() ? i : ~i;
-			rm.insert(std::make_pair(to_ent.index(), from));
-		    }
-		}
-		ASSERT(int(rm.size()) == super_t::dataSize());
-		std::vector<int> new_data;
-		new_data.reserve(rm.size());
-		int last = (--rm.end())->first; // The last key.
-		std::vector<int> new_sizes(last + 1, 0);
-		for (typename RelationMap::iterator it = rm.begin(); it != rm.end(); ++it) {
-		    new_data.push_back(it->second);
-		    ++new_sizes[it->first];
-		}
-		ASSERT(new_data.size() == rm.size());
-		inv = OrientedEntityTable<codim_to, codim_from>(new_data.begin(),
-								new_data.end(),
-								new_sizes.begin(),
-								new_sizes.end());
-#endif
 	    }
 
 	private:
