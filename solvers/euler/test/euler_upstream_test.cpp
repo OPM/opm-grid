@@ -113,14 +113,14 @@ int main(int argc, char** argv)
     double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
     grid.processEclipseFormat(parser, z_tolerance);
 
-#if 0
     // Make the grid interface
     typedef GridInterfaceEuler<GridType> GridInterface;
     GridInterface g(grid);
 
     // Reservoir properties.
     ReservoirPropertyCapillary<3> res_prop;
-    res_prop.init(parser);                // <---- \TODO This needs more parameters
+    std::string rock_list = param.get<std::string>("rock_list");
+    res_prop.init(parser, grid.globalCell(), &rock_list);
 
     // Make flow equation boundary conditions.
     // Pressure 1.0e5 on the left, 0.0 on the right.
@@ -153,6 +153,5 @@ int main(int argc, char** argv)
     FieldVector<double, 3> gravity(0.0);
     gravity[2] = -9.81;
     transport_solver.transportSolve(sat, time, gravity, flow_solution);
-#endif
 }
 
