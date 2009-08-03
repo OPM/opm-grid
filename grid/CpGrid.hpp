@@ -563,6 +563,13 @@ namespace Dune
 	};
 
 	/// \todo Please doc me !
+// 	template <>
+// 	struct hasEntity<CpGrid, 3>
+// 	{
+// 	    static const bool v = true;
+// 	};
+
+	/// \todo Please doc me !
 	template <>
 	struct isParallel<CpGrid>
 	{
