@@ -282,14 +282,20 @@ namespace Dune
         }
         double capillaryPressure(int cell_index, double saturation) const
         {
-            // p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-            double sigma_cos_theta = 1.0; // An approximation.
-            double perm = trace(permeability(cell_index))/double(dim);
-            double poro = porosity(cell_index);
-            double sqrt_k_phi = std::sqrt(perm/poro);
-            int r = cell_to_rock_[cell_index];
-            return rock_[r].Jfunc_(saturation)
-                *sigma_cos_theta/sqrt_k_phi;
+            if (rock_.size() > 0) {
+		// p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+		double sigma_cos_theta = 1.0; // An approximation.
+		double perm = trace(permeability(cell_index))/double(dim);
+		double poro = porosity(cell_index);
+		double sqrt_k_phi = std::sqrt(perm/poro);
+		int r = cell_to_rock_[cell_index];
+		return rock_[r].Jfunc_(saturation)
+		    *sigma_cos_theta/sqrt_k_phi;
+            } else {
+                // HACK ALERT!
+                // Use zero capillary pressure if no known rock table exists.
+                return 0.0;
+            }
         }
 
     private:
@@ -297,7 +303,7 @@ namespace Dune
         {
             if (rock_.size() > 0) {
                 const int region = cell_to_rock_[cell_index];
-                ASSERT (region < rock_.size());
+                ASSERT (region < int(rock_.size()));
                 return rock_[region].krw_(saturation);
             } else {
                 // HACK ALERT!
@@ -309,7 +315,7 @@ namespace Dune
         {
             if (rock_.size() > 0) {
                 const int region = cell_to_rock_[cell_index];
-                ASSERT (region < rock_.size());
+                ASSERT (region < int(rock_.size()));
                 return rock_[region].kro_(saturation);
             } else {
                 // HACK ALERT!
@@ -383,6 +389,7 @@ namespace Dune
             const std::vector<double> zero(num_global_cells, 0.0);
             tensor.push_back(&zero);
 
+	    BOOST_STATIC_ASSERT(dim == 3);
             boost::array<int,9> kmap;
             fillTensor(parser, tensor, kmap);
 
