@@ -563,11 +563,11 @@ namespace Dune
 	};
 
 	/// \todo Please doc me !
-// 	template <>
-// 	struct hasEntity<CpGrid, 3>
-// 	{
-// 	    static const bool v = true;
-// 	};
+	template <>
+	struct hasEntity<CpGrid, 3>
+	{
+	    static const bool v = true;
+	};
 
 	/// \todo Please doc me !
 	template <>
@@ -577,11 +577,11 @@ namespace Dune
 	};
 
 	/// \todo Please doc me !
-	template <>
-	struct isLevelwiseConforming<CpGrid>
-	{
-	    static const bool v = true;
-	};
+// 	template <>
+// 	struct isLevelwiseConforming<CpGrid>
+// 	{
+// 	    static const bool v = true;
+// 	};
 
 	/// \todo Please doc me !
 // 	template <>

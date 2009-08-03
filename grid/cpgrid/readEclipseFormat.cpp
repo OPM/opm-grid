@@ -52,6 +52,7 @@ namespace Dune
     namespace
     {
 	void buildTopo(const processed_grid& output,
+		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
 		       cpgrid::OrientedEntityTable<0, 3>& c2p);
@@ -143,18 +144,16 @@ namespace Dune
 #ifdef VERBOSE
 	std::cout << "Building topology." << std::endl;
 #endif
-	buildTopo(output, cell_to_face_, face_to_cell_, cell_to_point_);
+	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, cell_to_point_);
+
 #ifdef VERBOSE
 	std::cout << "Building geometry." << std::endl;
 #endif
 	buildGeom(output, cell_to_face_, geometry_, face_normals_);
 
 #ifdef VERBOSE
-        std::cout << "Map local to global cell index." << std::endl;
+        std::cout << "Assigning face tags." << std::endl;
 #endif
-        global_cell_.assign(output.local_cell_index,
-                            output.local_cell_index + output.number_of_cells);
-
         face_tag_.assign(output.face_tag,
                          output.face_tag + output.number_of_faces);
 
@@ -173,10 +172,15 @@ namespace Dune
     {
 
 	void buildTopo(const processed_grid& output,
+		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
 		       cpgrid::OrientedEntityTable<0, 3>& c2p)
 	{
+	    // Map local to global cell index.
+	    global_cell.assign(output.local_cell_index,
+			       output.local_cell_index + output.number_of_cells);
+
 	    // Build face to cell.
 	    f2c.clear();
 	    int nf = output.number_of_faces;
@@ -195,12 +199,45 @@ namespace Dune
 		ASSERT(cellcount == 1 || cellcount == 2);
 		f2c.appendRow(cells, cells + cellcount);
 	    }
+
 	    // Build cell to face.
 	    f2c.makeInverseRelation(c2f);
+
 	    // Build cell to point
-	    const cpgrid::EntityRep<3>* dummy = 0;
+// 	    const cpgrid::EntityRep<3>* dummy = 0;
+// 	    for (int i = 0; i < c2f.size(); ++i) {
+// 		c2p.appendRow(dummy, dummy);
+// 	    }
 	    for (int i = 0; i < c2f.size(); ++i) {
-		c2p.appendRow(dummy, dummy);
+		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i)];
+		// We know that the bottom and top faces come last.
+		int numf = cf.size();
+		int bot_face = cf[numf - 2].index();
+		int bfbegin = output.face_ptr[bot_face];
+		ASSERT(output.face_ptr[bot_face + 1] - bfbegin == 4);
+		int top_face = cf[numf - 1].index();
+		int tfbegin = output.face_ptr[top_face];
+		ASSERT(output.face_ptr[top_face + 1] - tfbegin == 4);
+		// We want the corners in 'x fastest, then y, then z' order,
+		// so we need to take the face_nodes in noncyclic order: 0 1 3 2.
+		int corners[8] = { output.face_nodes[bfbegin],
+				   output.face_nodes[bfbegin + 1],
+				   output.face_nodes[bfbegin + 3],
+				   output.face_nodes[bfbegin + 2],
+				   output.face_nodes[tfbegin],
+				   output.face_nodes[tfbegin + 1],
+				   output.face_nodes[tfbegin + 3],
+				   output.face_nodes[tfbegin + 2] };
+		typedef cpgrid::EntityRep<3> VRep;
+		VRep corner_reps[8] = { VRep(corners[0]), 
+					VRep(corners[1]),
+					VRep(corners[2]),
+					VRep(corners[3]),
+					VRep(corners[4]),
+					VRep(corners[5]),
+					VRep(corners[6]),
+					VRep(corners[7]) };
+		c2p.appendRow(corner_reps, corner_reps + 8);
 	    }
 #ifndef NDEBUG
 #ifdef VERBOSE
