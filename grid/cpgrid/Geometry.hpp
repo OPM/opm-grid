@@ -41,6 +41,10 @@ namespace Dune
     namespace cpgrid
     {
 
+	/// This class encapsulates geometry for both vertices, intersections and cells.
+	/// For vertices and cells we use the cube type, but without providing nonsingular
+	/// global() and local() mappings. However, we do provide corner[s]().
+	/// For intersections, we use the singular type, and no corners().
 	template <int dim, int dimworld>
 	class Geometry
 	{
@@ -56,21 +60,29 @@ namespace Dune
 	    typedef FieldVector<ctype, dimworld> WorldPointType;
 	    typedef FieldVector<ctype, dim> LocalPointType;
 
-	    Geometry(const WorldPointType& pos, ctype vol)
-		: pos_(pos), vol_(vol)
+	    Geometry(const WorldPointType& pos,
+		     ctype vol,
+		     const WorldPointType* allcorners = 0,
+		     const int* corner_indicies = 0)
+		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indicies)
 	    {
+		ASSERT(dim != 3 || (allcorners && corner_indicies));
 	    }
 
 	    Geometry()
-		: pos_(0.0), vol_(0.0)
+		: pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
 	    {
 	    }
 
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the reference cube to the cell.
 	    const WorldPointType& global(const LocalPointType&) const
 	    {
 		return pos_;
 	    }
 
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the cell to the reference cube.
 	    LocalPointType local(const WorldPointType&) const
 	    {
 		LocalPointType dummy(0.0);
@@ -82,25 +94,44 @@ namespace Dune
 		return vol_;
 	    }
 
+	    /// Using the cube type for all entities now (cells and vertices),
+	    /// but we use the singular type for intersections.
 	    GeometryType type() const
 	    {
 		GeometryType t;
-		t.makeSingular(dim);
+		if (dim == 2) {
+		    t.makeSingular(dim);
+		} else {
+		    t.makeCube(dim);
+		}
 		return t;
 	    }
 
 	    /// The number of corners of this convex polytope.
-	    /// Returning 0 as long as we are using the singular geometry/refelem approach.
+	    /// Returning 8 or 1, depending on whether we are a hexahedron or not.
 	    int corners() const
 	    {
-		return 0;
+		if (dim == 3) {
+		    return 8;
+		} else if (dim == 0) {
+		    return 1;
+		} else {
+		    return 0;
+		}
 	    }
 
 	    /// The corner method requires the points, which we may not necessarily want to provide.
 	    /// We will need it for visualization purposes though. For now we throw.
-	    WorldPointType corner(int) const
+	    WorldPointType corner(int cor) const
 	    {
-		THROW("Meaningless call to cpgrid::Geometry::corner(int): Geometry has no corners.");
+		if (dim == 3) {
+		    return allcorners_[cor_idx_[cor]];
+		} else if (dim == 0) {
+		    return pos_;
+		} else {
+		    // return pos_;
+		    THROW("Meaningless call to cpgrid::Geometry::corner(int): Geometry has no corners.");
+		}
 	    }
 
 	    ctype volume() const
@@ -136,6 +167,8 @@ namespace Dune
 	private:
 	    WorldPointType pos_;
 	    double vol_;
+	    const WorldPointType* allcorners_; // For dimension 3 only
+	    const int* cor_idx_;               // For dimension 3 only
 	};
 
 

@@ -53,13 +53,15 @@ namespace Dune
 		: grid_(grid)
 	    {
 		GeometryType t;
-		t.makeSingular(3);
-		geom_types_.push_back(t);
+		t.makeCube(3);
+		geom_types_[0].push_back(t);
+		t.makeCube(0);
+		geom_types_[3].push_back(t);
 	    }
 
 	    const std::vector<GeometryType>& geomTypes(int codim) const
 	    {
-		return codim == 0 ? geom_types_ : empty_;
+		return geom_types_[codim];
 	    }
 
 	    int size(GeometryType type) const
@@ -84,12 +86,6 @@ namespace Dune
 		return e.index();
 	    }
 
-// 	    template<class EntityType>
-// 	    int subIndex(const EntityType& e, int i) const 
-// 	    {
-// 		return grid_.cell_to_face_[e][i].index();
-// 	    }
-
 	    template <int cc>
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
@@ -110,13 +106,12 @@ namespace Dune
 	    template <class EntityType>
 	    bool contains(const EntityType& e) const
 	    {
-		return EntityType::codimension == 0;
+		return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
 	    }
 
 	private:
 	    const GridType& grid_;
-	    std::vector<GeometryType> geom_types_;
-	    std::vector<GeometryType> empty_;
+	    std::vector<GeometryType> geom_types_[4];
 	};
 
 

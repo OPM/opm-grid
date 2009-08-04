@@ -288,7 +288,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, 0);
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0);
         }
 
 
@@ -296,7 +296,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim));
         }
 
 
@@ -304,7 +304,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0);
         }
 
 
@@ -312,7 +312,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim));
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim));
         }
 
 
@@ -332,7 +332,7 @@ namespace Dune
 	    case 0: return cell_to_face_.size();
 	    case 1: // return face_to_cell_.size();
 	    case 2: // return 0;
-	    case 3: // return geomVector<3>().size();
+	    case 3: return geomVector<3>().size();
 	    default: return 0;
 	    }
         }
@@ -350,12 +350,12 @@ namespace Dune
         /// number of leaf entities per geometry type in this process
         int size (GeometryType type) const
         {
-	    if (type.isSingular()) {
+	    if (type.isCube()) {
 		return size(3 - type.dim());
 	    } else {
 		return 0;
 	    }
-        }
+	}
 
 
         /// \brief Access to the GlobalIdSet
@@ -533,7 +533,7 @@ namespace Dune
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
-	cpgrid::OrientedEntityTable<0, 3> cell_to_point_;
+	std::vector< array<int,8> > cell_to_point_;
 
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
@@ -549,6 +549,7 @@ namespace Dune
 	}
 	typedef FieldVector<ctype, 3> PointType;
 	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
+	std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve.
     }; // end Class CpGrid
 
 

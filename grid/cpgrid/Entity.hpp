@@ -128,11 +128,11 @@ namespace Dune
 		return InteriorEntity;
 	    }
 
-	    /// Using a singular as GeometryType for our entities.
+	    /// Using the cube type for all entities now (cells and vertices).
 	    GeometryType type() const
 	    {
 		GeometryType t;
-		t.makeSingular(3 - codim);
+		t.makeCube(3 - codim);
 		return t;
 	    }
 
@@ -141,7 +141,13 @@ namespace Dune
 	    int count() const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		return int(cc == 0);
+ 		if (cc == 0) {
+ 		    return 1;
+ 		} else if (cc == 3) {
+		    return 8;
+		} else {
+		    return 0;
+		}
 // 		if (cc == 0) {
 // 		    return 1;
 // 		} else if (cc == 1) {
@@ -156,9 +162,18 @@ namespace Dune
 	    typename Codim<cc>::EntityPointer subEntity(int i) const
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
-		ASSERT(cc == 0 && i == 0); // In case we have to remove the compile time assert.
-		typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
-		return se;
+		if (cc == 0) {
+		    ASSERT(i == 0);
+		    typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
+		    return se;
+		} else if (cc == 3) {
+		    ASSERT(i >= 0 && i < 8);
+		    int corner_index = pgrid_->cell_to_point_[EntityRep<codim>::index()][i];
+		    typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
+		    return se;
+		} else {
+		    THROW("No subentity exists of codimension " << cc);
+		}
 // 		int index = 0;
 // 		if (cc == 1) {
 // 		    index = pgrid_->cell_to_face_[*this][i].index();

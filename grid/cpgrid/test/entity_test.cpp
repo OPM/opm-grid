@@ -207,8 +207,11 @@ BOOST_AUTO_TEST_CASE(entity)
     BOOST_CHECK(e2 != e4);
     BOOST_CHECK(e3 != e4);
     BOOST_CHECK_EQUAL(e1.level(), 0);
-    BOOST_CHECK(e1.type().isSingular()); // Our new type
+    // BOOST_CHECK(e1.type().isSingular()); // Our new type
+    BOOST_CHECK(e1.type().isCube());
     BOOST_CHECK_EQUAL(e1.partitionType(), InteriorEntity);
+    cpgrid::Entity<3, CpGrid> e5(g, 0);
+    BOOST_CHECK(e5.type().isCube());
 
     // Cannot check other members without a real grid.
     // Put in more checks when it is possible to construct

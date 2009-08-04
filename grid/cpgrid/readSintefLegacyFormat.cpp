@@ -49,7 +49,7 @@ namespace Dune
 	void readTopo(std::istream& topo,
 		      cpgrid::OrientedEntityTable<0, 1>& c2f,
 		      cpgrid::OrientedEntityTable<1, 0>& f2c,
-		      cpgrid::OrientedEntityTable<0, 3>& c2p);
+		      std::vector<array<int,8> >& c2p);
 	void readGeom(std::istream& geom,
 		      cpgrid::DefaultGeometryPolicy& gpol,
 		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
@@ -104,7 +104,7 @@ namespace Dune
 	void readTopo(std::istream& topo,
 		      cpgrid::OrientedEntityTable<0, 1>& c2f,
 		      cpgrid::OrientedEntityTable<1, 0>& f2c,
-		      cpgrid::OrientedEntityTable<0, 3>& c2p)
+		      std::vector<array<int,8> >& c2p)
 	{
 	    // Check header
 	    std::string topo_header;
@@ -188,10 +188,8 @@ namespace Dune
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
 	    // Build cell to point
-	    const cpgrid::EntityRep<3>* dummy = 0;
-	    for (int i = 0; i < c2f.size(); ++i) {
-		c2p.appendRow(dummy, dummy);
-	    }
+	    MESSAGE("Warning: Not yet making a proper cell to point mapping for Sintef legacy grid.");
+	    c2p.resize(c2f.size());
 	} // void readTopo()
 
 

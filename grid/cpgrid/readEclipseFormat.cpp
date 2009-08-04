@@ -55,11 +55,13 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       cpgrid::OrientedEntityTable<0, 3>& c2p);
+		       std::vector<array<int,8> >& c2p);
 	void buildGeom(const processed_grid& output,
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
+		       const std::vector<array<int,8> >& c2p,
 		       cpgrid::DefaultGeometryPolicy& gpol,
-		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
+		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
+		       std::vector<FieldVector<double, 3> >& allcorners);
 	void logCartIndices(int idx, const processed_grid& output, int& i, int& j, int& k);
     } // anon namespace
 
@@ -149,7 +151,7 @@ namespace Dune
 #ifdef VERBOSE
 	std::cout << "Building geometry." << std::endl;
 #endif
-	buildGeom(output, cell_to_face_, geometry_, face_normals_);
+	buildGeom(output, cell_to_face_, cell_to_point_, geometry_, face_normals_, allcorners_);
 
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
@@ -175,7 +177,7 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       cpgrid::OrientedEntityTable<0, 3>& c2p)
+		       std::vector<array<int,8> >& c2p)
 	{
 	    // Map local to global cell index.
 	    global_cell.assign(output.local_cell_index,
@@ -208,6 +210,8 @@ namespace Dune
 // 	    for (int i = 0; i < c2f.size(); ++i) {
 // 		c2p.appendRow(dummy, dummy);
 // 	    }
+	    c2p.clear();
+	    c2p.reserve(c2f.size());
 	    for (int i = 0; i < c2f.size(); ++i) {
 		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i)];
 		// We know that the bottom and top faces come last.
@@ -220,24 +224,15 @@ namespace Dune
 		ASSERT(output.face_ptr[top_face + 1] - tfbegin == 4);
 		// We want the corners in 'x fastest, then y, then z' order,
 		// so we need to take the face_nodes in noncyclic order: 0 1 3 2.
-		int corners[8] = { output.face_nodes[bfbegin],
-				   output.face_nodes[bfbegin + 1],
-				   output.face_nodes[bfbegin + 3],
-				   output.face_nodes[bfbegin + 2],
-				   output.face_nodes[tfbegin],
-				   output.face_nodes[tfbegin + 1],
-				   output.face_nodes[tfbegin + 3],
-				   output.face_nodes[tfbegin + 2] };
-		typedef cpgrid::EntityRep<3> VRep;
-		VRep corner_reps[8] = { VRep(corners[0]), 
-					VRep(corners[1]),
-					VRep(corners[2]),
-					VRep(corners[3]),
-					VRep(corners[4]),
-					VRep(corners[5]),
-					VRep(corners[6]),
-					VRep(corners[7]) };
-		c2p.appendRow(corner_reps, corner_reps + 8);
+		array<int,8> corners = {{ output.face_nodes[bfbegin],
+					  output.face_nodes[bfbegin + 1],
+					  output.face_nodes[bfbegin + 3],
+					  output.face_nodes[bfbegin + 2],
+					  output.face_nodes[tfbegin],
+					  output.face_nodes[tfbegin + 1],
+					  output.face_nodes[tfbegin + 3],
+					  output.face_nodes[tfbegin + 2] }};
+		c2p.push_back(corners);
 	    }
 #ifndef NDEBUG
 #ifdef VERBOSE
@@ -277,20 +272,38 @@ namespace Dune
 	template <int dim>
 	struct MakeGeometry
 	{
-	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3> pos, double vol = 1.0)
+	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3>& pos, double vol = 1.0)
 	    {
 		return cpgrid::Geometry<dim, 3>(pos, vol);
+	    }
+	};
+
+	template <>
+	struct MakeGeometry<3>
+	{
+	    const FieldVector<double, 3>* allcorners_;
+	    MakeGeometry(const FieldVector<double, 3>* allcorners)
+		: allcorners_(allcorners)
+	    {
+	    }
+	    cpgrid::Geometry<3, 3> operator()(const FieldVector<double, 3>& pos,
+					      double vol,
+					      const array<int,8>& corner_indices)
+	    {
+		return cpgrid::Geometry<3, 3>(pos, vol, allcorners_, &corner_indices[0]);
 	    }
 	};
 
 
 	void buildGeom(const processed_grid& output,
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
+		       const std::vector<array<int,8> >& c2p,
 		       cpgrid::DefaultGeometryPolicy& gpol,
-		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
+		       cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
+		       std::vector<FieldVector<double, 3> >& allcorners)
 	{
 	    typedef FieldVector<double, 3> point_t;
-	    std::vector<point_t> points;
+	    std::vector<point_t>& points = allcorners;
 	    std::vector<point_t> face_normals;
 	    std::vector<point_t> face_centroids;
 	    std::vector<double>  face_areas;
@@ -303,6 +316,7 @@ namespace Dune
 #endif
 	    // Get the points.
 	    int np = output.number_of_nodes;
+	    points.clear();
 	    points.reserve(np);
 	    for (int i = 0; i < np; ++i) {
 		// \TODO add a convenience explicit constructor
@@ -380,10 +394,14 @@ namespace Dune
 	    // Cells
 	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
 	    std::vector<cpgrid::Geometry<3, 3> > cg;
-	    MakeGeometry<3> mcellg;
-	    std::transform(cell_centroids.begin(), cell_centroids.end(),
-			   cell_volumes.begin(),
-			   std::back_inserter(cg), mcellg);
+	    cg.reserve(nc);
+	    MakeGeometry<3> mcellg(&allcorners[0]);
+// 	    std::transform(cell_centroids.begin(), cell_centroids.end(),
+// 			   cell_volumes.begin(),
+// 			   std::back_inserter(cg), mcellg);
+	    for (int c = 0;  c < nc; ++c) {
+		cg.push_back(mcellg(cell_centroids[c], cell_volumes[c], c2p[c]));
+	    }
 	    cellgeom.assign(cg.begin(), cg.end());
 	    // Faces
 	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
