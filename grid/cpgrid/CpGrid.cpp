@@ -59,9 +59,9 @@ namespace Dune
 	    array<int, 3> dims = {{ param.get<int>("nx"),
 				    param.get<int>("ny"),
 				    param.get<int>("nz") }};
-	    array<double, 3> cellsz = {{ param.get<int>("dx"),
-					 param.get<int>("dy"),
-					 param.get<int>("dz") }};
+	    array<double, 3> cellsz = {{ param.get<double>("dx"),
+					 param.get<double>("dy"),
+					 param.get<double>("dz") }};
 	    createCartesian(dims, cellsz);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
