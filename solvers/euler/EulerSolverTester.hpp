@@ -50,7 +50,7 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <fstream>
 #include <iterator>
-
+#include <boost/lexical_cast.hpp>
 
 namespace Dune
 {
@@ -134,7 +134,8 @@ namespace Dune
 	    // Make transport equation boundary conditions.
 	    // The default one is fine (sat = 1.0 on inflow).
 	    sat_bcond_.resize(7); // 7 since 0 is not
-	    time_ = param.get<double>("time");
+	    simulation_steps_ = param.getDefault("simulation_steps", 1);
+	    stepsize_ = param.get<double>("stepsize");
 	}
 
 	void run()
@@ -156,22 +157,23 @@ namespace Dune
 	    FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -9.81;
 
-	    // Solve a step.
-	    transport_solver.transportSolve(sat, time_, gravity, flow_solution);
-
-	    output("testsolution", "saturation", sat);
+	    // Solve some steps.
+	    for (int i = 0; i < simulation_steps_; ++i) {
+		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solution);
+		output("testsolution-" + boost::lexical_cast<std::string>(i), "saturation", sat);
+	    }
 	}
 
 	template <class CellData>
 	void output(const std::string& filename, const std::string& fieldname, const CellData& celldata)
 	{
 	    // VTK output.
-// 	    Dune::VTKWriter<typename GridType::LeafGridView> vtkwriter(grid_.leafView());
-// 	    vtkwriter.addCellData(celldata, fieldname);
-// 	    vtkwriter.write(filename, Dune::VTKOptions::ascii);
+	    Dune::VTKWriter<typename GridType::LeafGridView> vtkwriter(grid_.leafView());
+	    vtkwriter.addCellData(celldata, fieldname);
+	    vtkwriter.write(filename, Dune::VTKOptions::ascii);
 	    // Dumping the saturation.
-	    std::ofstream os((filename + "_" + fieldname).c_str());
-	    std::copy(celldata.begin(), celldata.end(), std::ostream_iterator<double>(os, "\n"));
+// 	    std::ofstream os((filename + "_" + fieldname).c_str());
+// 	    std::copy(celldata.begin(), celldata.end(), std::ostream_iterator<double>(os, "\n"));
 	}
 
 
@@ -185,7 +187,8 @@ namespace Dune
 	GridType grid_;
 	ReservoirPropertyCapillary<3> res_prop_;
 	SaturationBoundaryConditions sat_bcond_;
-	double time_;
+	int simulation_steps_;
+	double stepsize_;
     };
 
 
