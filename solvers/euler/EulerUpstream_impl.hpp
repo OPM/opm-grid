@@ -459,8 +459,8 @@ namespace Dune
 		    = arithmeticAverage<double, double>(reservoir_properties_.mobilityFirstPhase(cell[0], average_saturation),
 							reservoir_properties_.mobilityFirstPhase(cell[1], average_saturation));
 		const double aver_mob_phase2
-		    = arithmeticAverage<double, double>(reservoir_properties_.mobilitySecondPhase(cell[0], 1.0 - average_saturation), 
-							reservoir_properties_.mobilitySecondPhase(cell[1], 1.0 - average_saturation));
+		    = arithmeticAverage<double, double>(reservoir_properties_.mobilitySecondPhase(cell[0], average_saturation), 
+							reservoir_properties_.mobilitySecondPhase(cell[1], average_saturation));
 
 		// The local gravity flux is needed for finding the correct phase mobilities.
 		double loc_gravity_flux = 0.0;
@@ -480,9 +480,9 @@ namespace Dune
 		    lambda_one = reservoir_properties_.mobilityFirstPhase(cell[1], cell_sat[1]); 
 		}
 		if (flux_phase2 > 0){
-		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[0], 1.0 - cell_sat[0] );
+		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[0], cell_sat[0] );
 		} else {
-		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[1], 1.0 - cell_sat[1] );
+		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[1], cell_sat[1] );
 		}
 
 		// Viscous (pressure driven) term.
