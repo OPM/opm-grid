@@ -219,6 +219,21 @@ namespace Dune
             computeCflFactors();
         }
 
+        void init(const int num_cells, double uniform_poro = 1.0, double uniform_perm = 1.0)
+        {
+            permfield_valid_.assign(num_cells, std::vector<unsigned char>::value_type(1));
+	    porosity_.assign(num_cells, uniform_poro);
+	    permeability_.assign(dim*dim*num_cells, 0.0);
+	    for (int i = 0; i < num_cells; ++i) {
+		SharedPermTensor K = permeabilityModifiable(i);
+		for (int dd = 0; dd < dim; ++dd) {
+		    K(dd, dd) = uniform_perm;
+		}
+	    }
+	    cell_to_rock_.assign(num_cells, 0);
+            computeCflFactors();
+        }
+
         double porosity(int cell_index) const
         {
             return porosity_[cell_index];
@@ -427,7 +442,7 @@ namespace Dune
                 const std::vector<int>& satnum = parser.getIntegerValue("SATNUM");
 
                 for (int c = 0; c < nc; ++c) {
-                    cell_to_rock_[c] = satnum[global_cell[c]];
+                    cell_to_rock_[c] = satnum[global_cell[c]] - 1;
                 }
             }
         }
