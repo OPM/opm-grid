@@ -144,13 +144,13 @@ namespace Dune
             const T* start_ptr = data_.empty() ? 0 : &data_[0];
             return row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
         }
+
+        /// Returns a mutable row of the table.
         mutable_row_type operator[](int row)
         {
-            ASSERT ((0 <= row) && (row < size()));
-            ASSERT (!data_.empty());
-
-            int s = row_start_[row], e = row_start_[row + 1];
-            return mutable_row_type(&data_[s], &data_[e]);
+            ASSERT(row >= 0 && row < size());
+            T* start_ptr = data_.empty() ? 0 : &data_[0];
+            return mutable_row_type(start_ptr + row_start_[row], start_ptr + row_start_[row + 1]);
         }
 
         /// Equality.
