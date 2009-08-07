@@ -49,6 +49,7 @@
 #include <dune/grid/common/SparseVector.hpp>
 #include <dune/grid/common/SparseTable.hpp>
 #include <dune/grid/common/Volumes.hpp>
+#include <dune/grid/common/Units.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
@@ -64,16 +65,18 @@ namespace Dune
     class SimulatorTester
     {
     public:
+	typedef FieldVector<double, 3> Vector;
+
 	SimulatorTester()
 	    : simulation_steps_(1),
-	      stepsize_(0.1)
+	      stepsize_(1.0*Dune::units::DAYS2SECONDS)
 	{
 	}
 
 	void init(const parameter::ParameterGroup& param)
 	{
 	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
-	    stepsize_ = param.getDefault("stepsize", stepsize_);
+	    stepsize_ = param.getDefault("stepsize", stepsize_)*Dune::units::DAYS2SECONDS;
 	    // Initialize grid and reservoir properties.
 	    // Parts copied from CpGrid::init().
 	    std::string fileformat = param.getDefault<std::string>("fileformat", "eclipse");
@@ -105,12 +108,26 @@ namespace Dune
 	    // Make grid interface.
 	    ginterf_.init(grid_);
 	    // Make flow equation boundary conditions.
-	    // Pressure 1.0e5 on the left, 0.0 on the right.
+	    // Default is pressure 1.0e5 on the left, 0.0 on the right.
 	    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
 	    // and that boundary id 0 means interiour face/intersection.
 	    flow_bcond_.resize(7);
-	    flow_bcond_[1] = FBC(FBC::Dirichlet, 1.0e5);
-	    flow_bcond_[2] = FBC(FBC::Dirichlet, 0.0);
+	    std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
+	    FBC::BCType bct = FBC::Dirichlet;
+	    double leftval = 1.0e5;
+	    double rightval = 0.0;
+	    if (flow_bc_type == "neumann") {
+		bct = FBC::Neumann;
+		leftval = param.get<double>("left_flux");
+		rightval = param.getDefault<double>("right_flux", -leftval);
+	    } else if (flow_bc_type == "dirichlet") {
+		leftval = param.getDefault<double>("left_pressure", leftval);
+		rightval = param.getDefault<double>("right_pressure", rightval);
+	    } else {
+		THROW("Unknown flow boundary condition type " << flow_bc_type);
+	    }
+	    flow_bcond_[1] = FBC(bct, leftval);
+	    flow_bcond_[2] = FBC(bct, rightval);
 	    // Make transport equation boundary conditions.
 	    // The default ones are fine (sat = 1.0 on inflow).
 	    transport_bcond_.resize(7); // Again 7 conditions, see comment above.
@@ -118,6 +135,29 @@ namespace Dune
 	    flow_solver_.init(ginterf_);
 	    flow_solver_.assembleStatic(ginterf_, res_prop_);
 	}
+
+	template <class FlowSol>
+	void estimateCellVelocity(std::vector<double>& cell_velocity,
+				  const FlowSol& flow_solution)
+	{
+	    // Algorithm used is same as in halfFaceFluxToCellVelocity.hpp
+	    // in the Sintef legacy c++ code.
+	    cell_velocity.clear();
+	    cell_velocity.resize(ginterf_.numberOfCells());
+	    for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+		int numf = 0;
+		Vector cell_v(0.0);
+		for (FaceIter f = c->facebegin(); f != c->faceend(); ++f, ++numf) {
+		    double flux = flow_solution.outflux(f);
+		    Vector v = f->centroid();
+		    v -= c->centroid();
+		    v *= flux/c->volume();
+		    cell_v += v;
+		}
+		cell_velocity[c->index()] = cell_v.two_norm();
+	    }
+	}
+
 
 	void run()
 	{
@@ -135,13 +175,24 @@ namespace Dune
 	    if (gravity.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
 	    }
+
 	    // Solve some steps.
 	    for (int i = 0; i < simulation_steps_; ++i) {
+		std::cout << "================    Simulation step number " << i << "    ===============" << std::endl;
+		// Flow.
 		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src);
+		// Transport.
 		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solver_.getSolution());
-		output("testsolution-" + boost::lexical_cast<std::string>(i), "saturation", sat);
+		// Output.
+		std::vector<double> cell_velocity;
+		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
+		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
+		vtkwriter.addCellData(cell_velocity, "velocity");
+		vtkwriter.addCellData(sat, "saturation");
+		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i), Dune::VTKOptions::ascii);
 	    }
 	}
+
 
 	template <class CellData>
 	void output(const std::string& filename, const std::string& fieldname, const CellData& celldata)
