@@ -266,24 +266,37 @@ namespace Dune
 	typedef typename CellIterator::Scalar Scalar;
 	typedef typename CellIterator::Index Index;
 
-	GridInterfaceEuler(const DuneGrid& grid)
-	    : grid_(grid)
+	GridInterfaceEuler()
+	    : pgrid_(0)
 	{
+	}
+	GridInterfaceEuler(const DuneGrid& grid)
+	    : pgrid_(&grid)
+	{
+	}
+	void init(const DuneGrid& grid)
+	{
+	    pgrid_ = &grid;
 	}
 	CellIterator cellbegin() const
 	{
-	    return CellIterator(grid_, grid_.template leafbegin<0>());
+	    return CellIterator(grid(), grid().template leafbegin<0>());
 	}
 	CellIterator cellend() const
 	{
-	    return CellIterator(grid_, grid_.template leafend<0>());
+	    return CellIterator(grid(), grid().template leafend<0>());
 	}
         int numberOfCells() const
         {
-            return grid_.size(0);
+            return grid().size(0);
         }
+	const DuneGrid& grid() const
+	{
+	    ASSERT(pgrid_);
+	    return *pgrid_;
+	}
     private:
-	const DuneGrid& grid_;
+	const DuneGrid* pgrid_;
     };
 
 
