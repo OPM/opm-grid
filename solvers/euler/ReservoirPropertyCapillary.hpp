@@ -42,6 +42,7 @@
 #include <dune/grid/cpgrid/EclipseGridParser.hpp>
 #include <dune/grid/cpgrid/EclipseGridInspector.hpp>
 #include <dune/solvers/mimetic/Matrix.hpp>
+#include <dune/grid/common/Units.hpp>
 
 #include "NonuniformTableLinear.hpp"
 #include "ReservoirPropertyInterface.hpp"
@@ -193,9 +194,9 @@ namespace Dune
 
         ReservoirPropertyCapillary()
             : density1_  (1013.9), // kg/m^3
-              density2_  ( 834.7), // kg/m^3
-              viscosity1_(   1.0), // cP
-              viscosity2_(  10.0)  // cP
+              density2_  (834.7),  // kg/m^3
+              viscosity1_(1.0*Dune::units::VISCOSITY_UNIT), // Pa*s
+              viscosity2_(3.0*Dune::units::VISCOSITY_UNIT) // Pa*s
         {
         }
 
@@ -219,7 +220,7 @@ namespace Dune
             computeCflFactors();
         }
 
-        void init(const int num_cells, double uniform_poro = 1.0, double uniform_perm = 1.0)
+        void init(const int num_cells, double uniform_poro = 0.2, double uniform_perm = 1.0*units::MILLIDARCY)
         {
             permfield_valid_.assign(num_cells, std::vector<unsigned char>::value_type(1));
 	    porosity_.assign(num_cells, uniform_poro);
@@ -257,13 +258,11 @@ namespace Dune
         }
         double mobilityFirstPhase(int cell_index, double saturation) const
         {
-            return relPermFirstPhase(cell_index, saturation) /
-                (viscosity1_ / 1.0e3); // cP -> Pa*s
+            return relPermFirstPhase(cell_index, saturation) / viscosity1_;
         }
         double mobilitySecondPhase(int cell_index, double saturation) const
         {
-            return relPermSecondPhase(cell_index, saturation) /
-                (viscosity2_ / 1.0e3); // cP -> Pa*s
+            return relPermSecondPhase(cell_index, saturation) / viscosity2_;
         }
         double totalMobility(int cell_index, double saturation) const
         {
@@ -271,6 +270,7 @@ namespace Dune
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
+	/// \todo Check if we should divide here. Judging by the comment, I think not.
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
@@ -419,7 +419,7 @@ namespace Dune
 
                     for (int i = 0; i < dim; ++i) {
                         for (int j = 0; j < dim; ++j, ++kix) {
-                            K(i,j) = (*tensor[kmap[kix]])[glob];
+                            K(i,j) = (*tensor[kmap[kix]])[glob]*Dune::units::MILLIDARCY;
                         }
                     }
 
