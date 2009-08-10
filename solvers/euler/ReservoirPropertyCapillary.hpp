@@ -274,8 +274,8 @@ namespace Dune
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
-            density[0] = density1_ / 1.0e3; // cP -> Pa*s
-            density[1] = density2_ / 1.0e3; // cP -> Pa*s
+            density[0] = density1_;// / 1.0e3; // cP -> Pa*s
+            density[1] = density2_;// / 1.0e3; // cP -> Pa*s
         }
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
         {
