@@ -56,6 +56,8 @@ AC_CONFIG_FILES([
   solvers/euler/test/Makefile
   solvers/mimetic/Makefile
   solvers/mimetic/test/Makefile
+  upscaling/Makefile
+  upscaling/test/Makefile
   doc/Makefile
   doc/doxygen/Makefile
   doc/doxygen/Doxyfile
