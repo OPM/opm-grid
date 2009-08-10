@@ -159,6 +159,20 @@ namespace Dune
 	}
 
 
+	template <class FlowSol>
+	void getCellPressure(std::vector<double>& cell_pressure,
+			     const FlowSol& flow_solution)
+	{
+	    // Algorithm used is same as in halfFaceFluxToCellVelocity.hpp
+	    // in the Sintef legacy c++ code.
+	    cell_pressure.clear();
+	    cell_pressure.resize(ginterf_.numberOfCells());
+	    for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+		cell_pressure[c->index()] = flow_solution.pressure(c);
+	    }
+	}
+
+
 	void run()
 	{
 	    // No injection or production.
@@ -181,14 +195,20 @@ namespace Dune
 		std::cout << "================    Simulation step number " << i << "    ===============" << std::endl;
 		// Flow.
 		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src);
+// 		if (i == 0) {
+// 		    flow_solver_.printSystem("linsys_dump_mimetic");
+// 		}
 		// Transport.
 		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solver_.getSolution());
 		// Output.
 		std::vector<double> cell_velocity;
 		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
+		std::vector<double> cell_pressure;
+		getCellPressure(cell_pressure, flow_solver_.getSolution());
 		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
 		vtkwriter.addCellData(cell_velocity, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
+		vtkwriter.addCellData(cell_pressure, "pressure");
 		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i), Dune::VTKOptions::ascii);
 	    }
 	}
