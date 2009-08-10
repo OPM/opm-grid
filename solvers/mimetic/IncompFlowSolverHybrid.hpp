@@ -191,6 +191,7 @@ namespace Dune {
                    const std::vector<double>& src)
         {
             assembleDynamic(g, r, sat, bc, src);
+            // printSystem("linsys_mimetic");
 #if 0
             solveLinearSystem();
 #else
@@ -452,6 +453,7 @@ namespace Dune {
             std::vector<Scalar> rhs(max_ncf_);
 
             std::vector<unsigned char> dirichlet_faces(max_ncf_);
+            std::vector<Scalar> prescribed_pressure(max_ncf_);
 
             // Clear residual data
             S_ = 0;
@@ -476,11 +478,11 @@ namespace Dune {
                 SharedFortranMatrix    S  (nf, nf, &data_store[0]);
                 ImmutableFortranMatrix one(nf, 1 , &e[0]);
 
-                setExternalContrib(c, c0, bc, src[ci], rhs, dirichlet_faces);
+                setExternalContrib(c, c0, bc, src[ci], rhs, dirichlet_faces, prescribed_pressure);
 
                 buildCellContrib(c0, totmob, omega, one, S, rhs);
 
-                addCellContrib(S, rhs, dirichlet_faces, cf[c0]);
+                addCellContrib(S, rhs, dirichlet_faces, prescribed_pressure, cf[c0]);
             }
         }
 
@@ -488,13 +490,14 @@ namespace Dune {
         void solveLinearSystem()
         {
             // Adapted from DuMux...
-            Scalar residTol = 1.0e-8;
+            Scalar residTol = 1.0e-12;
 
             typedef BCRSMatrix <MatrixBlockType>        Matrix;
             typedef BlockVector<VectorBlockType>        Vector;
             typedef MatrixAdapter<Matrix,Vector,Vector> Adapter;
 
-            S_[0][0] += 1;
+            // Regularize the matrix (only for pure Neumann problems...)
+            // S_[0][0] += 1;
             Adapter opS(S_);
 
             // initialize the preconditioner
@@ -540,7 +543,7 @@ namespace Dune {
             typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
 
             // Regularize the matrix (only for pure Neumann problems...)
-            S_[0][0] += 1;
+            // S_[0][0] += 1;
             Operator opS(S_);
 
             // initialize the preconditioner
@@ -596,7 +599,7 @@ namespace Dune {
                 // Compute cell (out) fluxes for cell 'c'.
                 // 1) Form system right hand side, r = f + Cp - D\pi
                 std::transform(f_[c0].begin(), f_[c0].end(), pi.begin(),
-                               pi    .begin(),
+                               pi    .begin(), //_1 + p[c0] - _2);
                                boost::bind(std::minus<Scalar>(),
                                            boost::bind(std::plus<Scalar>(),
                                                        _1,
@@ -611,6 +614,43 @@ namespace Dune {
                 vecMulAdd_N(totmob, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
             }
         }
+
+
+        void setExternalContrib(const typename GridInterface::CellIterator c,
+                                const int c0, const BCInterface& bc,
+                                const double src,
+                                std::vector<Scalar>& rhs,
+                                std::vector<unsigned char>& dF,
+                                std::vector<double>& prescribed_pressure)
+        {
+            typedef typename GridInterface::CellIterator::FaceIterator FI;
+
+            std::fill(f_[c0].begin(), f_[c0].end(), Scalar(0.0));
+            std::fill(rhs   .begin(), rhs   .end(), Scalar(0.0));
+            std::fill(dF    .begin(), dF    .end(), false);
+
+            g_[c0] = src;
+
+            int k = 0;
+            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
+                if (f->boundary()) {
+                    const int bid = f->boundaryId();
+
+                    if (bc[bid].isDirichlet()) {
+                        // f_[c0][k] = bc[bid].pressure(); // WRONG: R O N G -- Wrong
+                        // f_ must be zero (in absence of gravity)
+                        dF    [k] = true;
+                        // rhs   [k] = -bc[bid].pressure(); //f_[c0][k];
+                        prescribed_pressure[k] = bc[bid].pressure();
+                    } else {
+                        ASSERT (bc[bid].isNeumann());
+                        rhs[k] = bc[bid].outflux();
+                    }
+                }
+            }
+        }
+
+
 
 
         void buildCellContrib(const int c, const Scalar totmob, const Scalar omega,
@@ -640,58 +680,33 @@ namespace Dune {
         }
 
 
-        void setExternalContrib(const typename GridInterface::CellIterator c,
-                                const int c0, const BCInterface& bc,
-                                const double src,
-                                std::vector<Scalar>& rhs,
-                                std::vector<unsigned char>& dF)
-        {
-            typedef typename GridInterface::CellIterator::FaceIterator FI;
-            typedef std::vector<unsigned char>::value_type uchar;
-
-            std::fill(f_[c0].begin(), f_[c0].end(), Scalar(0.0));
-            std::fill(rhs   .begin(), rhs   .end(), Scalar(0.0));
-            std::fill(dF    .begin(), dF    .end(), uchar(0));
-
-            g_[c0] = src;
-
-            int k = 0;
-            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
-                if (f->boundary()) {
-                    const int bid = f->boundaryId();
-
-                    if (bc[bid].isDirichlet()) {
-                        f_[c0][k] = bc[bid].pressure();
-                        dF    [k] = uchar(1);
-                        rhs   [k] = -f_[c0][k];
-                    } else {
-                        ASSERT (bc[bid].isNeumann());
-                        rhs[k] = bc[bid].outflux();
-                    }
-                }
-            }
-        }
 
 
+        /// \param l2g local-to-global face map.
         template<class L2G>
         void addCellContrib(const SharedFortranMatrix&        S  ,
                             const std::vector<Scalar>&        rhs,
                             const std::vector<unsigned char>& dF ,
+                            const std::vector<Scalar>&        prescribed_pressure,
                             const L2G&                        l2g)
         {
             typedef typename L2G::const_iterator it;
 
             int r = 0;
             for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
-
+                if (dF[r]) {
+                    S_[*i][*i] = S(r,r);
+                    rhs_[*i] = S(r,r) * prescribed_pressure[r];
+                    continue;
+                }
                 int c = 0;
                 for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
-                    S_[*i][*j] += S(r,c);
+                    if (!dF[c]) {
+                        S_[*i][*j] += S(r,c);
+                    } else {
+                        rhs_[*i] -= S(r,c) * prescribed_pressure[c];
+                    }
                 }
-
-                // Handle Dirichlet (prescribed pressure) conditions.
-                if (dF[r]) S_[*i][*i] += 1.0;
-
                 rhs_[*i] += rhs[r];
             }
         }
