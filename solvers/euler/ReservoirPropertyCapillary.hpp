@@ -37,6 +37,7 @@
 #define OPENRS_RESERVOIRPROPERTYCAPILLARY_HEADER
 
 #include <fstream>
+#include <boost/static_assert.hpp>
 
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/cpgrid/EclipseGridParser.hpp>
