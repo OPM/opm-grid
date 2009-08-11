@@ -36,7 +36,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_GRIDINTERFACEEULER_HEADER
 #define OPENRS_GRIDINTERFACEEULER_HEADER
 
-
+#include "config.h"
 #include <climits>
 #include <dune/common/fvector.hh>
 #include <dune/grid/common/referenceelements.hh>
