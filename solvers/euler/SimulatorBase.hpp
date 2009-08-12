@@ -37,26 +37,28 @@
 #define OPENRS_SIMULATORBASE_HEADER
 
 
+#include <fstream>
+#include <iterator>
 
+#include <boost/lexical_cast.hpp>
+
+#include <dune/common/param/ParameterGroup.hpp>
+
+#include <dune/grid/common/SparseVector.hpp>
+#include <dune/grid/common/SparseTable.hpp>
+#include <dune/grid/common/Volumes.hpp>
+#include <dune/grid/common/Units.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/grid/CpGrid.hpp>
+#include <dune/grid/yaspgrid.hh>
 
 #include <dune/solvers/euler/EulerUpstream.hpp>
 #include <dune/solvers/euler/GridInterfaceEuler.hpp>
 #include <dune/solvers/euler/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/euler/BoundaryConditions.hpp>
 #include <dune/solvers/euler/setupGridAndProps.hpp>
-#include <dune/common/param/ParameterGroup.hpp>
-#include <dune/grid/CpGrid.hpp>
-#include <dune/grid/yaspgrid.hh>
-#include <dune/grid/common/SparseVector.hpp>
-#include <dune/grid/common/SparseTable.hpp>
-#include <dune/grid/common/Volumes.hpp>
-#include <dune/grid/common/Units.hpp>
-#include <dune/grid/io/file/vtk/vtkwriter.hh>
-#include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
-#include <fstream>
-#include <iterator>
-#include <boost/lexical_cast.hpp>
+#include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 
 namespace Dune
 {
@@ -70,14 +72,15 @@ namespace Dune
 
 	SimulatorBase()
 	    : simulation_steps_(1),
-	      stepsize_(1.0*Dune::units::DAYS2SECONDS)
+	      stepsize_(1.0)    // init() expects units of days!
 	{
 	}
 
 	void init(const parameter::ParameterGroup& param)
 	{
 	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
-	    stepsize_ = param.getDefault("stepsize", stepsize_)*Dune::units::DAYS2SECONDS;
+	    stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
+                                                  Dune::unit::day);
 
 	    setupGridAndProps(param, grid_, res_prop_);
 
@@ -90,7 +93,7 @@ namespace Dune
 	    flow_bcond_.resize(7);
 	    std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
 	    FBC::BCType bct = FBC::Dirichlet;
-	    double leftval = 1.0e5;
+	    double leftval = 1.0*Dune::unit::barsa;
 	    double rightval = 0.0;
 	    if (flow_bc_type == "neumann") {
 		bct = FBC::Neumann;
@@ -153,12 +156,13 @@ namespace Dune
 	    SparseVector<double> injection_rates(ginterf_.numberOfCells());
 	    std::vector<double> src(ginterf_.numberOfCells());
 	    // Make a transport solver.
-	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_, injection_rates);
+	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_,
+                                             injection_rates);
 	    // Initial saturation.
 	    std::vector<double> sat(ginterf_.numberOfCells(), 0.0);
 	    // Gravity.
 	    FieldVector<double, 3> gravity(0.0);
-	    // gravity[2] = -9.81;
+	    // gravity[2] = Dune::unit::gravity;
 	    // Compute flow field.
 	    if (gravity.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
@@ -166,14 +170,16 @@ namespace Dune
 
 	    // Solve some steps.
 	    for (int i = 0; i < simulation_steps_; ++i) {
-		std::cout << "================    Simulation step number " << i << "    ===============" << std::endl;
+		std::cout << "================    Simulation step number " << i
+                          << "    ===============" << std::endl;
 		// Flow.
-		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src);
+		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src, gravity);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
-		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solver_.getSolution());
+		transport_solver.transportSolve(sat, stepsize_, gravity,
+                                                flow_solver_.getSolution());
 		// Output.
 		std::vector<double> cell_velocity;
 		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
@@ -183,7 +189,8 @@ namespace Dune
 		vtkwriter.addCellData(cell_velocity, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
 		vtkwriter.addCellData(cell_pressure, "pressure");
-		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i), Dune::VTKOptions::ascii);
+		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),
+                                Dune::VTKOptions::ascii);
 	    }
 	}
 

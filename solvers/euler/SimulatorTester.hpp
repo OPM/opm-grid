@@ -55,12 +55,13 @@ namespace Dune
 	    SparseVector<double> injection_rates(ginterf_.numberOfCells());
 	    std::vector<double> src(ginterf_.numberOfCells());
 	    // Make a transport solver.
-	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_, injection_rates);
+	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_,
+                                             injection_rates);
 	    // Initial saturation.
 	    std::vector<double> sat(ginterf_.numberOfCells(), 0.0);
 	    // Gravity.
 	    FieldVector<double, 3> gravity(0.0);
-	    // gravity[2] = -9.81;
+	    // gravity[2] = -Dune::unit::gravity;
 	    // Compute flow field.
 	    if (gravity.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
@@ -68,14 +69,16 @@ namespace Dune
 
 	    // Solve some steps.
 	    for (int i = 0; i < simulation_steps_; ++i) {
-		std::cout << "================    Simulation step number " << i << "    ===============" << std::endl;
+		std::cout << "================    Simulation step number " << i
+                          << "    ===============" << std::endl;
 		// Flow.
-		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src);
+		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src, gravity);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
-		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solver_.getSolution());
+		transport_solver.transportSolve(sat, stepsize_, gravity,
+                                                flow_solver_.getSolution());
 		// Output.
 		std::vector<double> cell_velocity;
 		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
@@ -85,7 +88,8 @@ namespace Dune
 		vtkwriter.addCellData(cell_velocity, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
 		vtkwriter.addCellData(cell_pressure, "pressure");
-		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i), Dune::VTKOptions::ascii);
+		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),
+                                Dune::VTKOptions::ascii);
 	    }
 	}
 
