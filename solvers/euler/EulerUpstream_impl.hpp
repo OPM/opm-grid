@@ -207,10 +207,13 @@ namespace Dune
 
 	// Viscous cfl.
 	if (method_viscous_) {
-	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(grid_, reservoir_properties_, pressure_sol);
+	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(grid_, reservoir_properties_,
+                                                           pressure_sol);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for velocity is " << cfl_dt_v/Dune::units::DAYS2SECONDS
-		      << " and total impes time is " << time/Dune::units::DAYS2SECONDS
+	    std::cout << "CFL dt for velocity is "
+                      << Dune::unit::convert::to(cfl_dt_v, Dune::unit::day)
+		      << " and total impes time is "
+                      << Dune::unit::convert::to(time, Dune::unit::day)
 		      << " in days." << std::endl;
 #endif // VERBOSE
 	}
@@ -219,8 +222,10 @@ namespace Dune
 	if (method_gravity_) {
 	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(grid_, reservoir_properties_, gravity);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for gravity is " << cfl_dt_g/Dune::units::DAYS2SECONDS
-		      << " and total impes time is " << time/Dune::units::DAYS2SECONDS
+	    std::cout << "CFL dt for gravity is "
+                      << Dune::unit::convert::to(cfl_dt_g, Dune::unit::day)
+		      << " and total impes time is "
+                      << Dune::unit::convert::to(time, Dune::unit::day)
 		      << " in days." << std::endl;
 #endif // VERBOSE
 	}
@@ -235,8 +240,10 @@ namespace Dune
 	double cfl_dt = std::min(std::min(cfl_dt_v, cfl_dt_g), cfl_dt_c);
 	cfl_dt *= courant_number_;
 #ifdef VERBOSE
-	std::cout << "Final modified CFL dt is " << cfl_dt/Dune::units::DAYS2SECONDS
-		  << " and total impes time is " << time/Dune::units::DAYS2SECONDS
+	std::cout << "Final modified CFL dt is "
+                  << Dune::unit::convert::to(cfl_dt, Dune::unit::day)
+		  << " and total impes time is "
+                  << Dune::unit::convert::to(time, Dune::unit::day)
 		  << " in days." << std::endl;
 #endif // VERBOSE
 	return cfl_dt;
