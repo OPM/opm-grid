@@ -148,6 +148,7 @@ namespace Dune {
             num_internal_faces_     =  0;
             total_num_faces_        =  0;
             matrix_structure_valid_ = false;
+            do_regularization_      = true; // Assume pure Neumann by default.
 
             std::vector<int>(g.numberOfCells(), -1).swap(flowSolution_.cellno_);
             flowSolution_.cellFaces_.clear();
@@ -190,9 +191,10 @@ namespace Dune {
                    const ReservoirInterface&  r  ,
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
-                   const std::vector<double>& src)
+                   const std::vector<double>& src,
+                   const typename GridInterface::CellIterator::Vector& grav)
         {
-            assembleDynamic(g, r, sat, bc, src);
+            assembleDynamic(g, r, sat, bc, src, grav);
             // printSystem("linsys_mimetic");
 #if 0
             solveLinearSystem();
@@ -277,6 +279,7 @@ namespace Dune {
         BlockVector<VectorBlockType>      rhs_;  // System RHS
         BlockVector<VectorBlockType>      soln_; // System solution (contact pressure)
         bool                              matrix_structure_valid_;
+        bool                              do_regularization_;
 
         // ----------------------------------------------------------------
         // Physical quantities (derived)
@@ -440,7 +443,8 @@ namespace Dune {
                              const ReservoirInterface&  r  ,
                              const std::vector<double>& sat,
                              const BCInterface&         bc ,
-                             const std::vector<double>& src)
+                             const std::vector<double>& src,
+                             const typename GridInterface::CellIterator::Vector& grav)
         {
             typedef typename GridInterface::CellIterator CI;
 
@@ -464,6 +468,12 @@ namespace Dune {
 
             std::fill(e   .begin(), e   .end(), Scalar(1.0));
 
+            // We will have to regularize resulting system if there
+            // are no prescribed pressures (i.e., Dirichlet BC's).
+            do_regularization_ = true;
+
+            InnerProduct ip(max_ncf_);
+
             // Assemble dynamic contributions for each cell
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int ci = c->index();
@@ -480,11 +490,18 @@ namespace Dune {
                 SharedFortranMatrix    S  (nf, nf, &data_store[0]);
                 ImmutableFortranMatrix one(nf, 1 , &e[0]);
 
-                setExternalContrib(c, c0, bc, src[ci], rhs, dirichlet_faces, prescribed_pressure);
+                typename SparseTable<double>::mutable_row_type gterm = f_[c0];
+                std::fill(gterm.begin(), gterm.end(), Scalar(0.0));
+                ip.gravityTerm(c, grav, omega, gterm);
+
+                setExternalContrib(c, c0, bc, src[ci], rhs,
+                                   dirichlet_faces,
+                                   prescribed_pressure);
 
                 buildCellContrib(c0, totmob, omega, one, S, rhs);
 
-                addCellContrib(S, rhs, dirichlet_faces, prescribed_pressure, cf[c0]);
+                addCellContrib(S, rhs, dirichlet_faces,
+                               prescribed_pressure, cf[c0]);
             }
         }
 
@@ -499,7 +516,9 @@ namespace Dune {
             typedef MatrixAdapter<Matrix,Vector,Vector> Adapter;
 
             // Regularize the matrix (only for pure Neumann problems...)
-            // S_[0][0] += 1;
+            if (do_regularization_) {
+                S_[0][0] *= 2;
+            }
             Adapter opS(S_);
 
             // initialize the preconditioner
@@ -545,11 +564,13 @@ namespace Dune {
             typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
 
             // Regularize the matrix (only for pure Neumann problems...)
-            // S_[0][0] += 1;
+            if (do_regularization_) {
+                S_[0][0] *= 2;
+            }
             Operator opS(S_);
 
             // initialize the preconditioner
-            double    relax = 1;
+            double relax = 1;
             typename Precond::SmootherArgs smootherArgs;
             smootherArgs.relaxationFactor = relax;
 
@@ -627,7 +648,6 @@ namespace Dune {
         {
             typedef typename GridInterface::CellIterator::FaceIterator FI;
 
-            std::fill(f_[c0].begin(), f_[c0].end(), Scalar(0.0));
             std::fill(rhs   .begin(), rhs   .end(), Scalar(0.0));
             std::fill(dF    .begin(), dF    .end(), false);
 
@@ -639,11 +659,9 @@ namespace Dune {
                     const int bid = f->boundaryId();
 
                     if (bc[bid].isDirichlet()) {
-                        // f_[c0][k] = bc[bid].pressure(); // WRONG: R O N G -- Wrong
-                        // f_ must be zero (in absence of gravity)
-                        dF    [k] = true;
-                        // rhs   [k] = -bc[bid].pressure(); //f_[c0][k];
+                        dF [k]                 = true;
                         prescribed_pressure[k] = bc[bid].pressure();
+                        do_regularization_     = false;
                     } else {
                         ASSERT (bc[bid].isNeumann());
                         rhs[k] = bc[bid].outflux();
