@@ -194,10 +194,10 @@ namespace Dune
         enum { NumberOfPhases = 2 };
 
         ReservoirPropertyCapillary()
-            : density1_  (1013.9), // kg/m^3
-              density2_  (834.7),  // kg/m^3
-              viscosity1_(1.0*Dune::units::VISCOSITY_UNIT), // Pa*s
-              viscosity2_(3.0*Dune::units::VISCOSITY_UNIT) // Pa*s
+            : density1_  (1013.9*unit::kilogram/unit::cubic(unit::meter)),
+              density2_  ( 834.7*unit::kilogram/unit::cubic(unit::meter)),
+              viscosity1_(   1.0*prefix::centi*unit::Poise),
+              viscosity2_(   3.0*prefix::centi*unit::Poise)
         {
         }
 
@@ -221,7 +221,8 @@ namespace Dune
             computeCflFactors();
         }
 
-        void init(const int num_cells, double uniform_poro = 0.2, double uniform_perm = 1.0*units::MILLIDARCY)
+        void init(const int num_cells, double uniform_poro = 0.2,
+                  double uniform_perm = 100.0*prefix::milli*unit::darcy)
         {
             permfield_valid_.assign(num_cells, std::vector<unsigned char>::value_type(1));
 	    porosity_.assign(num_cells, uniform_poro);
@@ -271,12 +272,11 @@ namespace Dune
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
-	/// \todo Check if we should divide here. Judging by the comment, I think not.
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
-            density[0] = density1_;// / 1.0e3; // cP -> Pa*s
-            density[1] = density2_;// / 1.0e3; // cP -> Pa*s
+            density[0] = density1_;
+            density[1] = density2_;
         }
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
         {
@@ -409,6 +409,13 @@ namespace Dune
             boost::array<int,9> kmap;
             fillTensor(parser, tensor, kmap);
 
+            // Assign permeability values only if such values are
+            // given in the input deck represented by 'parser'.  In
+            // other words: Don't set any (arbitrary) default values.
+            // It is infinitely better to experience a reproducible
+            // crash than subtle errors resulting from a (poorly
+            // chosen) default value...
+            //
             if (tensor.size() > 1) {
                 const int nc  = global_cell.size();
                 int       off = 0;
@@ -420,16 +427,14 @@ namespace Dune
 
                     for (int i = 0; i < dim; ++i) {
                         for (int j = 0; j < dim; ++j, ++kix) {
-                            K(i,j) = (*tensor[kmap[kix]])[glob]*Dune::units::MILLIDARCY;
+                            K(i,j) = unit::convert::from((*tensor[kmap[kix]])[glob],
+                                                         prefix::milli*unit::darcy);
                         }
                     }
 
                     permfield_valid_[c] = std::vector<unsigned char>::value_type(1);
                 }
             }
-            // Don't set any default values.  It is infinitely better
-            // to experience a reproducible crash than subtle errors
-            // resulting from a (poorly chosen) default value...
         }
 
         void assignRockTable(const EclipseGridParser& parser,
