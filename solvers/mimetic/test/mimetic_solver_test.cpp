@@ -44,6 +44,7 @@
 #include <dune/common/array.hh>
 #include <dune/common/mpihelper.hh>
 
+#include <dune/grid/common/Units.hpp>
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
 
@@ -162,18 +163,27 @@ void test_flowsolver(const GI& g, const RI& r)
     //solver.printIP(std::cout);
 
     typedef Dune::FlowBoundaryCondition BC;
-    FBC bcs(7);
+    FBC flow_bc(7);
+    //flow_bc[1] = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
+    //flow_bc[2] = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+    flow_bc[5] = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
+
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
-
+#if 0
     if (g.numberOfCells() > 1) {
         src[0]     = 1.0;
         src.back() = -1.0;
     }
-    
-    solver.solve(g, r, sat, bcs, src);
-    solver.printSystem("system");
+#endif
+
+    typename CI::Vector gravity;
+    gravity[0] = gravity[1] = 0.0;
+    gravity[2] = Dune::unit::gravity;
+    solver.solve(g, r, sat, flow_bc, src, gravity);
+
 #if 0
+    solver.printSystem("system");
     typedef typename FlowSolver::SolutionType FlowSolution;
     FlowSolution soln = solver.getSolution();
     std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
@@ -216,7 +226,7 @@ int main(int argc, char** argv)
     ReservoirPropertyCapillary<3> res_prop;
     res_prop.init(parser, grid.globalCell());
 
-    assign_permeability<3>(res_prop, g.numberOfCells(), 1.0);
+    assign_permeability<3>(res_prop, g.numberOfCells(), 0.1*Dune::unit::darcy);
     test_flowsolver<3>(g, res_prop);
 
 #if 0
