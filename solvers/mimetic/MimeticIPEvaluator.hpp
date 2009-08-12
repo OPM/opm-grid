@@ -127,6 +127,26 @@ namespace Dune {
                          Scalar(6.0) * t / (dim * c->volume()), Binv  );
         }
 
+        template<class Point, class Vector>
+        void gravityTerm(const CellIter& c,
+                         const Point&    grav,
+                         const Scalar    omega,
+                         Vector&         gterm) const
+        {
+            typedef typename CellIter::FaceIterator FI;
+            typedef FieldVector<double,dim> Point;
+
+            ASSERT (gterm.size() <= max_nf_);
+
+            const Point cc = c->centroid();
+            int i = 0;
+            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++i) {
+                Point fc = f->centroid();
+                fc -= cc;
+                gterm[i] = omega * (fc * grav);
+            }
+        }
+
     private:
         int                 max_nf_      ;
         std::vector<Scalar> fa_, t1_, t2_;
