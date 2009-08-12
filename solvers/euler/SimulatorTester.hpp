@@ -75,9 +75,8 @@ namespace Dune
 // 		}
 		// Transport.
 		transport_solver_.transportSolve(sat, stepsize_, gravity,
-						 flow_solver_.getSolution(), injection_rates);
-		transport_solver.transportSolve(sat, stepsize_, gravity,
-                                                flow_solver_.getSolution());
+						 flow_solver_.getSolution(),
+						 injection_rates);
 		// Output.
 		std::vector<double> cell_velocity;
 		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());

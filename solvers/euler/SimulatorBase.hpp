@@ -72,10 +72,9 @@ namespace Dune
 
 	SimulatorBase()
 	    : simulation_steps_(1),
-	      stepsize_(1.0*Dune::units::DAYS2SECONDS),
-	      init_saturation_(0.0)
-	      stepsize_(1.0)    // init() expects units of days! Yes, but now the meaning of stepsize_ changes
+	      stepsize_(1.0),   // init() expects units of days! Yes, but now the meaning of stepsize_ changes
 	                        // from days (here) to seconds (after init()). Solution to that?
+	      init_saturation_(0.0)
 	{
 	}
 
