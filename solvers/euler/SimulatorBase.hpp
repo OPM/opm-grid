@@ -72,7 +72,10 @@ namespace Dune
 
 	SimulatorBase()
 	    : simulation_steps_(1),
-	      stepsize_(1.0)    // init() expects units of days!
+	      stepsize_(1.0*Dune::units::DAYS2SECONDS),
+	      init_saturation_(0.0)
+	      stepsize_(1.0)    // init() expects units of days! Yes, but now the meaning of stepsize_ changes
+	                        // from days (here) to seconds (after init()). Solution to that?
 	{
 	}
 
@@ -81,6 +84,7 @@ namespace Dune
 	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
 	    stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
                                                   Dune::unit::day);
+	    init_saturation_ = param.getDefault("init_saturation", init_saturation_);
 
 	    setupGridAndProps(param, grid_, res_prop_);
 
@@ -110,9 +114,16 @@ namespace Dune
 	    // Make transport equation boundary conditions.
 	    // The default ones are fine (sat = 1.0 on inflow).
 	    transport_bcond_.resize(7); // Again 7 conditions, see comment above.
-	    // Make flow solver.
+	    // Initialize flow solver.
 	    flow_solver_.init(ginterf_);
 	    flow_solver_.assembleStatic(ginterf_, res_prop_);
+	    // Initialize transport solver.
+	    transport_solver_.init(param, ginterf_, res_prop_, transport_bcond_);
+
+	    // Write any unused parameters.
+	    std::cout << "====================   Unused parameters:   ====================\n";
+	    param.displayUsage();
+	    std::cout << "================================================================\n";
 	}
 
 	template <class FlowSol>
@@ -149,51 +160,6 @@ namespace Dune
 	    }
 	}
 
-
-	void run()
-	{
-	    // No injection or production.
-	    SparseVector<double> injection_rates(ginterf_.numberOfCells());
-	    std::vector<double> src(ginterf_.numberOfCells());
-	    // Make a transport solver.
-	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_,
-                                             injection_rates);
-	    // Initial saturation.
-	    std::vector<double> sat(ginterf_.numberOfCells(), 0.0);
-	    // Gravity.
-	    FieldVector<double, 3> gravity(0.0);
-	    // gravity[2] = Dune::unit::gravity;
-	    // Compute flow field.
-	    if (gravity.two_norm() > 0.0) {
-		MESSAGE("Warning: Gravity not handled by flow solver.");
-	    }
-
-	    // Solve some steps.
-	    for (int i = 0; i < simulation_steps_; ++i) {
-		std::cout << "================    Simulation step number " << i
-                          << "    ===============" << std::endl;
-		// Flow.
-		flow_solver_.solve(ginterf_, res_prop_, sat, flow_bcond_, src, gravity);
-// 		if (i == 0) {
-// 		    flow_solver_.printSystem("linsys_dump_mimetic");
-// 		}
-		// Transport.
-		transport_solver.transportSolve(sat, stepsize_, gravity,
-                                                flow_solver_.getSolution());
-		// Output.
-		std::vector<double> cell_velocity;
-		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
-		std::vector<double> cell_pressure;
-		getCellPressure(cell_pressure, flow_solver_.getSolution());
-		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
-		vtkwriter.addCellData(cell_velocity, "velocity");
-		vtkwriter.addCellData(sat, "saturation");
-		vtkwriter.addCellData(cell_pressure, "pressure");
-		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),
-                                Dune::VTKOptions::ascii);
-	    }
-	}
-
     protected:
 	typedef CpGrid                                      GridType;
 	typedef GridInterfaceEuler<GridType>                GridInterface;
@@ -207,13 +173,15 @@ namespace Dune
 
 	int simulation_steps_;
 	double stepsize_;
+	double init_saturation_;
+
 	GridType grid_;
 	GridInterface ginterf_;
 	ReservoirPropertyCapillary<3> res_prop_;
 	FBCs flow_bcond_;
 	SaturationBoundaryConditions transport_bcond_;
 	FlowSolver flow_solver_;
-	//TransportSolver transport_solver_;
+	TransportSolver transport_solver_;
     };
 
 

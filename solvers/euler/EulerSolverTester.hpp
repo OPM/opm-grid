@@ -145,7 +145,7 @@ namespace Dune
 	    // No injection or production.
 	    SparseVector<double> injection_rates(g.numberOfCells());
 	    // Make a solver.
-	    TransportSolver transport_solver(g, res_prop_, sat_bcond_, injection_rates);
+	    TransportSolver transport_solver(g, res_prop_, sat_bcond_);
 	    // Define a flow field with constant velocity.
 	    FieldVector<double, 3> vel(0.0);
 	    vel[0] = 1.0;
@@ -159,7 +159,7 @@ namespace Dune
 
 	    // Solve some steps.
 	    for (int i = 0; i < simulation_steps_; ++i) {
-		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solution);
+		transport_solver.transportSolve(sat, stepsize_, gravity, flow_solution, injection_rates);
 		output("testsolution-" + boost::lexical_cast<std::string>(i), "saturation", sat);
 	    }
 	}

@@ -52,12 +52,26 @@ namespace Dune
 
 
     template <class GI, class RP, class BC>
-    inline EulerUpstream<GI, RP, BC>::EulerUpstream(const GI& g, const RP& r, const BC& b,
-						    const SparseVector<double>& injection_rates)
-	: grid_(g),
-	  reservoir_properties_(r),
-	  boundary_(b),
-	  injection_rates_(injection_rates),
+    inline EulerUpstream<GI, RP, BC>::EulerUpstream()
+	: pgrid_(0),
+	  preservoir_properties_(0),
+	  pboundary_(0),
+	  method_viscous_(true),
+	  method_gravity_(true),
+	  method_capillary_(true),
+	  courant_number_(0.5),
+	  minimum_small_steps_(1),
+	  check_sat_(true),
+	  clamp_sat_(false)
+    {
+	initPeriodics();
+    }
+
+    template <class GI, class RP, class BC>
+    inline EulerUpstream<GI, RP, BC>::EulerUpstream(const GI& g, const RP& r, const BC& b)
+	: pgrid_(&g),
+	  preservoir_properties_(&r),
+	  pboundary_(&b),
 	  method_viscous_(true),
 	  method_gravity_(true),
 	  method_capillary_(true),
@@ -74,6 +88,25 @@ namespace Dune
     template <class GI, class RP, class BC>
     inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param)
     {
+	courant_number_ = param.getDefault("courant_number", courant_number_);
+	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
+	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
+	method_capillary_ = param.getDefault("method_capillary", method_capillary_);
+	minimum_small_steps_ = param.getDefault("minimum_small_steps", minimum_small_steps_);
+	check_sat_ = param.getDefault("check_sat", check_sat_);
+	clamp_sat_ = param.getDefault("clamp_sat", clamp_sat_);
+    }
+
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param,
+						const GI& g, const RP& r, const BC& b)
+    {
+	pgrid_ = &g;
+	preservoir_properties_ = &r;
+	pboundary_ = &b;
+
+	initPeriodics();
+
 	courant_number_ = param.getDefault("courant_number", courant_number_);
 	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
 	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
@@ -110,8 +143,12 @@ namespace Dune
     void EulerUpstream<GI, RP, BC>::transportSolve(std::vector<double>& saturation,
 						   const double time,
 						   const typename GI::Vector& gravity,
-						   const PressureSolution& pressure_sol) const
+						   const PressureSolution& pressure_sol,
+						   const SparseVector<double>& injection_rates) const
     {
+	if (injection_rates.nonzeroSize() != 0) {
+	    MESSAGE("Warning: EulerUpstream currently ignores source terms.");
+	}
 	// Compute the cfl time-step.
 	double cfl_dt = computeCflTime(saturation, time, gravity, pressure_sol);
 
@@ -207,8 +244,9 @@ namespace Dune
 
 	// Viscous cfl.
 	if (method_viscous_) {
-	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(grid_, reservoir_properties_,
-                                                           pressure_sol);
+	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(*pgrid_,
+							   *preservoir_properties_,
+							   pressure_sol);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for velocity is "
                       << Dune::unit::convert::to(cfl_dt_v, Dune::unit::day)
@@ -220,7 +258,7 @@ namespace Dune
 
 	// Gravity cfl.
 	if (method_gravity_) {
-	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(grid_, reservoir_properties_, gravity);
+	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(*pgrid_, *preservoir_properties_, gravity);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for gravity is "
                       << Dune::unit::convert::to(cfl_dt_g, Dune::unit::day)
@@ -296,8 +334,8 @@ namespace Dune
 	double d1 = (nb_c - nbf_c).two_norm();
 	int cell = c.index();
 	int nbcell = nb.index();
-	double cp0 = reservoir_properties_.capillaryPressure(cell, sat[cell]);
-	double cp1 = reservoir_properties_.capillaryPressure(nbcell, sat[nbcell]);
+	double cp0 = preservoir_properties_->capillaryPressure(cell, sat[cell]);
+	double cp1 = preservoir_properties_->capillaryPressure(nbcell, sat[nbcell]);
 	double val = (cp1 - cp0)/(d0 + d1);
 	Vector res = nb_c - nbf_c + f_c - cell_c;
 	res /= res.two_norm();
@@ -412,8 +450,8 @@ namespace Dune
 	// For every face, we will modify sat_change for adjacent cells.
 	// We loop over every cell and intersection, and modify only if
 	// this cell has lower index than the neighbour, or we are on the boundary.
-	typename GI::CellIterator c = grid_.cellbegin();
-	for (; c != grid_.cellend(); ++c) {
+	typename GI::CellIterator c = pgrid_->cellbegin();
+	for (; c != pgrid_->cellend(); ++c) {
 	    for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
 		double dS = 0.0;
 		int cell[2];
@@ -424,7 +462,7 @@ namespace Dune
 		    typename PartnerMapType::const_iterator it = periodic_partner_.find(f);
 		    if (it == periodic_partner_.end()) {
 			cell[1] = cell[0];
-			cell_sat[1] = boundary_[f->boundaryId()].saturation();
+			cell_sat[1] = (*pboundary_)[f->boundaryId()].saturation();
 		    } else {
 			FIt nbface = it->second;
 			ASSERT(nbface != f);
@@ -458,22 +496,22 @@ namespace Dune
 		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		using utils::arithmeticAverage;
 		const MutablePermTensor loc_perm
-		    = arithAver(reservoir_properties_.permeability(cell[0]),
-				reservoir_properties_.permeability(cell[1]));
+		    = arithAver(preservoir_properties_->permeability(cell[0]),
+				preservoir_properties_->permeability(cell[1]));
 		const double average_saturation
 		    = arithmeticAverage<double, double>(cell_sat[0], cell_sat[1]);
 		const double aver_mob_phase1
-		    = arithmeticAverage<double, double>(reservoir_properties_.mobilityFirstPhase(cell[0], average_saturation),
-							reservoir_properties_.mobilityFirstPhase(cell[1], average_saturation));
+		    = arithmeticAverage<double, double>(preservoir_properties_->mobilityFirstPhase(cell[0], average_saturation),
+							preservoir_properties_->mobilityFirstPhase(cell[1], average_saturation));
 		const double aver_mob_phase2
-		    = arithmeticAverage<double, double>(reservoir_properties_.mobilitySecondPhase(cell[0], average_saturation), 
-							reservoir_properties_.mobilitySecondPhase(cell[1], average_saturation));
+		    = arithmeticAverage<double, double>(preservoir_properties_->mobilitySecondPhase(cell[0], average_saturation), 
+							preservoir_properties_->mobilitySecondPhase(cell[1], average_saturation));
 
 		// The local gravity flux is needed for finding the correct phase mobilities.
 		double loc_gravity_flux = 0.0;
 		if (method_gravity_) {
 		    double grav_comp = inner(loc_normal, prod(loc_perm, gravity));
-		    loc_gravity_flux = loc_area*reservoir_properties_.densityDifference()*grav_comp;
+		    loc_gravity_flux = loc_area*preservoir_properties_->densityDifference()*grav_comp;
 		}
 		// Find the correct phasemobilities to use
 		const double flux_phase1 = loc_flux + loc_gravity_flux*aver_mob_phase2;
@@ -482,14 +520,14 @@ namespace Dune
 		double lambda_two;
 		// total velocity term
 		if (flux_phase1 > 0){
-		    lambda_one = reservoir_properties_.mobilityFirstPhase(cell[0], cell_sat[0]);
+		    lambda_one = preservoir_properties_->mobilityFirstPhase(cell[0], cell_sat[0]);
 		} else {
-		    lambda_one = reservoir_properties_.mobilityFirstPhase(cell[1], cell_sat[1]); 
+		    lambda_one = preservoir_properties_->mobilityFirstPhase(cell[1], cell_sat[1]); 
 		}
 		if (flux_phase2 > 0){
-		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[0], cell_sat[0] );
+		    lambda_two = preservoir_properties_->mobilitySecondPhase(cell[0], cell_sat[0] );
 		} else {
-		    lambda_two = reservoir_properties_.mobilitySecondPhase(cell[1], cell_sat[1] );
+		    lambda_two = preservoir_properties_->mobilitySecondPhase(cell[1], cell_sat[1] );
 		}
 
 		// Viscous (pressure driven) term.
@@ -515,11 +553,11 @@ namespace Dune
 
 		// Modify saturation.
 		if (cell[0] != cell[1]){
-		    sat_change[cell[0]] -= (dt/reservoir_properties_.porosity(cell[0]))*dS/c->volume();
-		    sat_change[cell[1]] += (dt/reservoir_properties_.porosity(cell[1]))*dS/f->neighbourCellVolume();
+		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/c->volume();
+		    sat_change[cell[1]] += (dt/preservoir_properties_->porosity(cell[1]))*dS/f->neighbourCellVolume();
 		} else {
 		    ASSERT(cell[0] == cell[1]);
-		    sat_change[cell[0]] -= (dt/reservoir_properties_.porosity(cell[0]))
+		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))
 			*dS/c->volume();
 		}
 	    }

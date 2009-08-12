@@ -52,9 +52,12 @@ namespace Dune {
 	EulerUpstream();
  	EulerUpstream(const GridInterface& grid,
  		      const ReservoirProperties& resprop,
-		      const BoundaryConditions& boundary,
-		      const SparseVector<double>& injection_rates);
+		      const BoundaryConditions& boundary);
 	void init(const parameter::ParameterGroup& param);
+	void init(const parameter::ParameterGroup& param,
+		  const GridInterface& grid,
+		  const ReservoirProperties& resprop,
+		  const BoundaryConditions& boundary);
 	void display();
 
 	/// \brief Set the Courant number.
@@ -70,7 +73,8 @@ namespace Dune {
 	void transportSolve(std::vector<double>& saturation,
 			    const double time,
 			    const typename GridInterface::Vector& gravity,
-			    const PressureSolution& pressure_sol) const;
+			    const PressureSolution& pressure_sol,
+			    const SparseVector<double>& injection_rates) const;
 
     protected:
 	typedef typename GridInterface::CellIterator CIt;
@@ -104,10 +108,9 @@ namespace Dune {
 	void checkAndPossiblyClampSat(std::vector<double>& s) const;
 
 
-	const GridInterface& grid_;
-	const ReservoirProperties& reservoir_properties_;
-	const BoundaryConditions& boundary_;
-	SparseVector<double> injection_rates_;
+	const GridInterface* pgrid_;
+	const ReservoirProperties* preservoir_properties_;
+	const BoundaryConditions* pboundary_;
 	bool method_viscous_;
 	bool method_gravity_;
 	bool method_capillary_;

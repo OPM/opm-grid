@@ -54,11 +54,8 @@ namespace Dune
 	    // No injection or production.
 	    SparseVector<double> injection_rates(ginterf_.numberOfCells());
 	    std::vector<double> src(ginterf_.numberOfCells());
-	    // Make a transport solver.
-	    TransportSolver transport_solver(ginterf_, res_prop_, transport_bcond_,
-                                             injection_rates);
 	    // Initial saturation.
-	    std::vector<double> sat(ginterf_.numberOfCells(), 0.0);
+	    std::vector<double> sat(ginterf_.numberOfCells(), init_saturation_);
 	    // Gravity.
 	    FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
@@ -77,6 +74,8 @@ namespace Dune
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
+		transport_solver_.transportSolve(sat, stepsize_, gravity,
+						 flow_solver_.getSolution(), injection_rates);
 		transport_solver.transportSolve(sat, stepsize_, gravity,
                                                 flow_solver_.getSolution());
 		// Output.
