@@ -1,43 +1,46 @@
 //===========================================================================
-//                                                                           
-// File: EclipseGridInspector.C                                              
-//                                                                           
-// Created: Mon Jun  2 12:17:51 2008                                         
-//                                                                           
+//
+// File: EclipseGridInspector.C
+//
+// Created: Mon Jun  2 12:17:51 2008
+//
 // Author: Atgeirr F Rasmussen <atgeirr@sintef.no>
 //
-// $Date$
-//                                                                           
+// $Date:$
+//
+// $Revision:$
+//
 // Revision: $Id: EclipseGridInspector.C,v 1.2 2008/08/18 14:16:13 atgeirr Exp $
-//                                                                           
+//
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "EclipseGridInspector.hpp"
 #include <stdexcept>
 #include <numeric>
 #include <cmath>
 #include <cfloat>
 #include <algorithm>
+
+#include "EclipseGridInspector.hpp"
 
 namespace Dune
 {
@@ -49,9 +52,11 @@ EclipseGridInspector::EclipseGridInspector(const EclipseGridParser& parser)
     keywords.push_back("SPECGRID");
     keywords.push_back("COORD");
     keywords.push_back("ZCORN");
+
     if (!parser_.hasFields(keywords)) {
 	throw std::runtime_error("Needed field is missing in file");
     }
+
     const std::vector<int>& sg = parser_.getIntegerValue("SPECGRID");
     logical_gridsize_[0] = sg[0];
     logical_gridsize_[1] = sg[1];
@@ -109,16 +114,16 @@ double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) cons
 double EclipseGridInspector::cellVolumeVerticalPillars(int cell_idx) const
 {
     int i, j, k;
-    int horIdx = (cell_idx+1) - 
+    int horIdx = (cell_idx+1) -
         int(std::floor(((double)(cell_idx+1))/
                        ((double)(logical_gridsize_[0] * logical_gridsize_[1])))) *
         logical_gridsize_[0]*logical_gridsize_[1]; // index in the corresponding horizon
-    if (horIdx == 0) { 
+    if (horIdx == 0) {
         horIdx = logical_gridsize_[0] * logical_gridsize_[1];
     }
     i = horIdx - int(std::floor(((double)horIdx)/((double)logical_gridsize_[0]))) * logical_gridsize_[0];
-    if (i == 0) { 
-        i = logical_gridsize_[1]; 
+    if (i == 0) {
+        i = logical_gridsize_[1];
     }
     j = (horIdx-i)/logical_gridsize_[0] + 1;
     k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
@@ -172,7 +177,7 @@ std::vector<double> EclipseGridInspector::getGridLimits() const
         if        (coord[pillarindex * 6 + 4] < ymin)
             ymin = coord[pillarindex * 6 + 4];
     }
-    
+
     std::vector<double> gridlimits;
     gridlimits.push_back(xmin);
     gridlimits.push_back(xmax);
@@ -180,7 +185,7 @@ std::vector<double> EclipseGridInspector::getGridLimits() const
     gridlimits.push_back(ymax);
     gridlimits.push_back(*min_element(zcorn.begin(), zcorn.end()));
     gridlimits.push_back(*max_element(zcorn.begin(), zcorn.end()));
-    
+
     return gridlimits;
 }
 
