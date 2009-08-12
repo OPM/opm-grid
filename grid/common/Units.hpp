@@ -55,11 +55,8 @@ namespace Dune
     namespace unit
     {
         // Common powers
-        template<typename T>
-        inline T square(const T& v) { return v * v;     }
-
-        template<typename T>
-        inline T cubic (const T& v) { return v * v * v; }
+        inline double square(const double& v) { return v * v;     }
+        inline double cubic (const double& v) { return v * v * v; }
 
         // --------------------------------------------------------------
         // Basic (fundamental) units and conversions
@@ -139,16 +136,15 @@ namespace Dune
             // internal units of measurements.  Note: The internal units
             // of measurements are *ALWAYS*, and exclusively, SI.
             //
-            // Example: Convert a std::vector<double> kx, containing
-            // permeability values in units of milli-darcy (mD) to the
-            // equivalent values in m^2.
+            // Example: Convert a double kx, containing a
+            // permeability value in units of milli-darcy (mD) to the
+            // equivalent value in SI units (m^2).
             //
             //    using namespace Dune::unit;
             //    using namespace Dune::prefix;
             //    convert::from(kx, milli*darcy);
             //
-            template<typename T>
-            inline T from(const T q, const T unit)
+            inline double from(const double q, const double unit)
             {
                 return q * unit;
             }
@@ -158,15 +154,14 @@ namespace Dune
             // of measurements are *ALWAYS*, and exclusively, SI.
             //
             // Example: Convert a std::vector<double> p, containing
-            // pressure values in Pascal (i.e., unit::Pascal) to the
-            // equivalent values in Psi (unit::psia).
+            // pressure values in the SI unit Pascal (i.e., unit::Pascal)
+	    // to the equivalent values in Psi (unit::psia).
             //
             //    using namespace Dune::unit;
             //    std::transform(p.begin(), p.end(), p.begin(),
-            //                   boost::bind(convert::to<double>, _1, psia));
+            //                   boost::bind(convert::to, _1, psia));
             //
-            template<typename T>
-            inline T to(const T q, const T unit)
+            inline double to(const double q, const double unit)
             {
                 return q / unit;
             }

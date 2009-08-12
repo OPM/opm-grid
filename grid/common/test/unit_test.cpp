@@ -68,7 +68,7 @@ int main()
     std::cout << "\b] (m^3/s)\n";
 
     std::transform(flux.begin(), flux.end(), flux.begin(),
-                   boost::bind(convert::to<double>, _1, cubic(meter)/year));
+                   boost::bind(convert::to, _1, cubic(meter)/year));
     std::cout << "     = [";
     std::copy(flux.begin(), flux.end(),
               std::ostream_iterator<double>(std::cout, " "));
