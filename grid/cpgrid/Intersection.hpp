@@ -104,11 +104,6 @@ namespace Dune
             }
 
             /// Returns the boundary id of this intersection.
-            /// There is no way to set boundary ids in the grid yet,
-            /// and we have no way to provide a useful default without
-            /// for instance north/south/east/west/up/down
-            /// info. Therefore we just return 1 for every boundary
-            /// (and of course 0 for the non-boundaries).
             int boundaryId() const
             {
                 int ret = 0;
