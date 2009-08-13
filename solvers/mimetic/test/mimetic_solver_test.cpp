@@ -43,18 +43,18 @@
 
 #include <dune/common/array.hh>
 #include <dune/common/mpihelper.hh>
+#include <dune/common/Units.hpp>
 
-#include <dune/grid/common/Units.hpp>
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
 
-#include <dune/solvers/euler/GridInterfaceEuler.hpp>
-#include <dune/solvers/euler/ReservoirPropertyCapillary.hpp>
-#include <dune/solvers/euler/BoundaryConditions.hpp>
+#include <dune/solvers/common/fortran.hpp>
+#include <dune/solvers/common/blas_lapack.hpp>
+#include <dune/solvers/common/Matrix.hpp>
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/BoundaryConditions.hpp>
 
-#include <dune/solvers/mimetic/fortran.hpp>
-#include <dune/solvers/mimetic/blas_lapack.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 

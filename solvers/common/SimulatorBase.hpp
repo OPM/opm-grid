@@ -44,19 +44,22 @@
 
 #include <dune/common/param/ParameterGroup.hpp>
 
-#include <dune/grid/common/SparseVector.hpp>
-#include <dune/grid/common/SparseTable.hpp>
+#include <dune/common/SparseVector.hpp>
+#include <dune/common/SparseTable.hpp>
+#include <dune/common/Units.hpp>
+
 #include <dune/grid/common/Volumes.hpp>
-#include <dune/grid/common/Units.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/yaspgrid.hh>
 
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/BoundaryConditions.hpp>
+#include <dune/solvers/common/setupGridAndProps.hpp>
+
 #include <dune/solvers/euler/EulerUpstream.hpp>
-#include <dune/solvers/euler/GridInterfaceEuler.hpp>
-#include <dune/solvers/euler/ReservoirPropertyCapillary.hpp>
-#include <dune/solvers/euler/BoundaryConditions.hpp>
-#include <dune/solvers/euler/setupGridAndProps.hpp>
+
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 

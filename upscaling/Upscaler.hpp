@@ -36,7 +36,8 @@
 #define OPENRS_UPSCALER_HEADER
 
 #include "config.h"
-#include <dune/solvers/euler/SimulatorBase.hpp>
+#include <dune/solvers/common/SimulatorBase.hpp>
+
 // #include "FluxChecker.hpp"
 // #include "UpscalingBoundary.hpp"
 // #include "NewFluid.hpp"

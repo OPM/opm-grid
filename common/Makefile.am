@@ -2,7 +2,8 @@
 
 SUBDIRS = . param
 
-common_HEADERS = Average.hpp SparseTable.hpp StopWatch.hpp ErrorMacros.hpp SparseVector.hpp Units.hpp
+common_HEADERS = Average.hpp SparseTable.hpp StopWatch.hpp \
+                 ErrorMacros.hpp SparseVector.hpp Units.hpp
 
 commondir = $(includedir)/dune/common
 

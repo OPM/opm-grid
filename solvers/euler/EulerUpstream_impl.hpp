@@ -42,10 +42,12 @@
 #include <cassert>
 #include <cmath>
 #include <algorithm>
-#include <dune/grid/common/ErrorMacros.hpp>
-#include <dune/grid/common/Average.hpp>
-#include <dune/grid/common/Units.hpp>
-#include "CflCalculator.hpp"
+
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/common/Average.hpp>
+#include <dune/common/Units.hpp>
+
+#include <dune/solvers/euler/CflCalculator.hpp>
 
 namespace Dune
 {

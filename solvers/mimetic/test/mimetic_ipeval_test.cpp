@@ -45,12 +45,12 @@
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
 
-#include <dune/solvers/euler/GridInterfaceEuler.hpp>
-#include <dune/solvers/euler/ReservoirPropertyInterface.hpp>
+#include <dune/solvers/common/fortran.hpp>
+#include <dune/solvers/common/blas_lapack.hpp>
+#include <dune/solvers/common/Matrix.hpp>
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/solvers/common/ReservoirPropertyInterface.hpp>
 
-#include <dune/solvers/mimetic/fortran.hpp>
-#include <dune/solvers/mimetic/blas_lapack.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 

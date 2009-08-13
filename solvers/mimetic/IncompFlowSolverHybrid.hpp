@@ -50,6 +50,8 @@
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/common/SparseTable.hpp>
 
 #include <dune/istl/bvector.hh>
 #include <dune/istl/bcrsmatrix.hh>
@@ -64,10 +66,7 @@
 #include <dune/istl/paamg/amg.hh>
 #include <dune/istl/paamg/pinfo.hh>
 
-#include <dune/grid/common/ErrorMacros.hpp>
-#include <dune/grid/common/SparseTable.hpp>
-
-#include <dune/solvers/euler/BoundaryConditions.hpp>
+#include <dune/solvers/common/BoundaryConditions.hpp>
 
 namespace Dune {
     namespace {

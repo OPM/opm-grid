@@ -36,21 +36,24 @@
 #ifndef OPENRS_EULERSOLVERTESTER_HEADER
 #define OPENRS_EULERSOLVERTESTER_HEADER
 
-
-#include "../EulerUpstream.hpp"
-#include "../GridInterfaceEuler.hpp"
-#include "../ReservoirPropertyCapillary.hpp"
-#include "../BoundaryConditions.hpp"
-#include <dune/common/param/ParameterGroup.hpp>
-#include <dune/grid/CpGrid.hpp>
-#include <dune/grid/yaspgrid.hh>
-#include <dune/grid/common/SparseVector.hpp>
-#include <dune/grid/common/SparseTable.hpp>
-#include <dune/grid/common/Volumes.hpp>
-#include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <fstream>
 #include <iterator>
 #include <boost/lexical_cast.hpp>
+
+#include <dune/common/param/ParameterGroup.hpp>
+#include <dune/common/SparseVector.hpp>
+#include <dune/common/SparseTable.hpp>
+
+#include <dune/grid/common/Volumes.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/grid/CpGrid.hpp>
+#include <dune/grid/yaspgrid.hh>
+
+#include <dune/solvers/common/BoundaryConditions.hpp>
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+
+#include "../EulerUpstream.hpp"
 
 namespace Dune
 {

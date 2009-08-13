@@ -36,9 +36,10 @@
 #ifndef OPENRS_CFLCALCULATOR_HEADER
 #define OPENRS_CFLCALCULATOR_HEADER
 
-#include <dune/grid/common/ErrorMacros.hpp>
-#include <dune/grid/common/Average.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/common/Average.hpp>
+
+#include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
     namespace cfl_calculator {

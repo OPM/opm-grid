@@ -38,11 +38,11 @@
 
 #include <vector>
 
-#include <dune/grid/common/ErrorMacros.hpp>
+#include <dune/common/ErrorMacros.hpp>
 
-#include <dune/solvers/mimetic/fortran.hpp>
-#include <dune/solvers/mimetic/blas_lapack.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
+#include <dune/solvers/common/fortran.hpp>
+#include <dune/solvers/common/blas_lapack.hpp>
+#include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
     template<class CellIter, int dim, bool computeInverseIP> class MimeticIPEvaluator;

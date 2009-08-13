@@ -38,7 +38,7 @@
 
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/solvers/euler/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 
 namespace Dune
 {

@@ -36,10 +36,10 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_EULERUPSTREAM_HEADER
 #define OPENRS_EULERUPSTREAM_HEADER
 
-
-#include "../../common/param/ParameterGroup.hpp"
-#include <dune/grid/common/SparseVector.hpp>
 #include <tr1/unordered_map>
+
+#include <dune/common/param/ParameterGroup.hpp>
+#include <dune/common/SparseVector.hpp>
 
 
 namespace Dune {
