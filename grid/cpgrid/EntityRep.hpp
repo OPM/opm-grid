@@ -39,7 +39,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <boost/static_assert.hpp>
-#include "../common/SparseTable.hpp"
+#include <dune/common/SparseTable.hpp>
 #include <map>
 #include <climits>
 #include <boost/algorithm/minmax_element.hpp>

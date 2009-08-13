@@ -36,11 +36,11 @@
 
 #include <fstream>
 #include "../CpGrid.hpp"
-#include "EclipseGridParser.hpp"
-#include "EclipseGridInspector.hpp"
-#include "../preprocess/preprocess.h"
-#include "../common/GeometryHelpers.hpp"
-#include "../common/StopWatch.hpp"
+#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/grid/common/EclipseGridInspector.hpp>
+#include <dune/grid/preprocess/preprocess.h>
+#include <dune/grid/common/GeometryHelpers.hpp>
+#include <dune/common/StopWatch.hpp>
 
 #define VERBOSE
 

@@ -37,7 +37,7 @@
 #include <fstream>
 #include <vector>
 
-#include <dune/grid/common/ErrorMacros.hpp>
+#include <dune/common/ErrorMacros.hpp>
 #include "../CpGrid.hpp"
 
 namespace Dune

@@ -37,7 +37,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #define OPENRS_INDEXSETS_HEADER
 
 #include <dune/common/geometrytype.hh>
-#include "../common/ErrorMacros.hpp"
+#include <dune/common/ErrorMacros.hpp>
 namespace Dune
 {
     namespace cpgrid

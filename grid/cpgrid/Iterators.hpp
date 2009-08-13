@@ -38,7 +38,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/grid/common/gridenums.hh>
 #include "Entity.hpp"
-#include "../common/ErrorMacros.hpp"
+#include <dune/common/ErrorMacros.hpp>
 
 namespace Dune
 {

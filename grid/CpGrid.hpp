@@ -54,11 +54,9 @@
 #include "cpgrid/Intersection.hpp"
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
-//#include "cpgrid/GridView.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
-#include "cpgrid/EclipseGridParser.hpp"
-
-#include "common/SparseTable.hpp"
+#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/common/SparseTable.hpp>
 #include "preprocess/preprocess.h"
 
 
