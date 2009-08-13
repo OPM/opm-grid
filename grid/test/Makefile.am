@@ -2,7 +2,7 @@
 
 check_PROGRAMS = cpgrid_test mapper_test
 
-noinst_PROGRAMS = grid_read_test finitevolume_test #dumux_test
+noinst_PROGRAMS = grid_read_test finitevolume_test old_new_cpgrid_test #dumux_test
 
 LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \

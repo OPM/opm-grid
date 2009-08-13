@@ -34,6 +34,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #include "../CpGrid.hpp"
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 using namespace Dune;
 
@@ -41,16 +42,24 @@ int main(int argc, char** argv)
 {
     if (argc < 2) {
 	std::cerr << "Usage: " << argv[0]
-			  << "[eclipse grdecl filename ] "
-			  << "[...]" << std::endl;
+		  << "[eclipse grdecl filename ] "
+		  << "[z-tolerance] "
+		  << "[...]" << std::endl;
 	exit(EXIT_FAILURE);
     }
 
+    // readEclipseFormat
     CpGrid grid;
     const std::string filename = argv[1];
-    grid.readEclipseFormat(filename, 0.0);
+    double z_tolerance = 0.0;
+    if (argc > 2) {
+	z_tolerance = atof(argv[2]);
+    }
+    std::cout << "z-tolerance = " << z_tolerance << std::endl;
+    grid.readEclipseFormat(filename, z_tolerance);
 
-//     CpGrid slf_grid;
-//     const std::string slf_grid_prefix = argv[2];
-//     slf_grid.readSintefLegacyFormat(slf_grid_prefix);
+    Dune::VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
+    vtkwriter.write("dune.vtk", Dune::VTKOptions::ascii);
+
+    return 0;
 }
