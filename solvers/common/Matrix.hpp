@@ -42,10 +42,10 @@
 #include <boost/bind.hpp>
 
 #include <dune/common/fvector.hh>
+#include <dune/common/ErrorMacros.hpp>
 
-#include <dune/grid/common/ErrorMacros.hpp>
-#include <dune/solvers/mimetic/fortran.hpp>
-#include <dune/solvers/mimetic/blas_lapack.hpp>
+#include <dune/solvers/common/fortran.hpp>
+#include <dune/solvers/common/blas_lapack.hpp>
 
 namespace Dune {
 

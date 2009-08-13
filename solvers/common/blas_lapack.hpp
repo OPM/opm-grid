@@ -36,8 +36,8 @@
 #ifndef OPENRS_BLAS_LAPACK_HEADER
 #define OPENRS_BLAS_LAPACK_HEADER
 
-#include <dune/grid/common/ErrorMacros.hpp>
-#include <dune/solvers/mimetic/fortran.hpp>
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/solvers/common/fortran.hpp>
 
 #ifdef __cplusplus
 extern "C" {
