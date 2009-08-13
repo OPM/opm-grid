@@ -38,7 +38,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 
 #include <vector>
-#include <dune/grid/common/ErrorMacros.hpp>
+
+#include <dune/common/ErrorMacros.hpp>
 
 
 namespace Dune

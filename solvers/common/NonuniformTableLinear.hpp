@@ -38,8 +38,9 @@
 #include <cassert>
 #include <cmath>
 #include <exception>
-#include "linearInterpolation.hpp"
-#include <dune/grid/common/ErrorMacros.hpp>
+
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/solvers/common/linearInterpolation.hpp>
 
 namespace Dune {
     namespace utils {

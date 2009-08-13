@@ -40,13 +40,13 @@
 #include <boost/static_assert.hpp>
 
 #include <dune/common/fmatrix.hh>
-#include <dune/grid/cpgrid/EclipseGridParser.hpp>
-#include <dune/grid/cpgrid/EclipseGridInspector.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
-#include <dune/grid/common/Units.hpp>
+#include <dune/common/Units.hpp>
+#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/grid/common/EclipseGridInspector.hpp>
 
-#include "NonuniformTableLinear.hpp"
-#include "ReservoirPropertyInterface.hpp"
+#include <dune/solvers/common/NonuniformTableLinear.hpp>
+#include <dune/solvers/common/Matrix.hpp>
+#include <dune/solvers/common/ReservoirPropertyInterface.hpp>
 
 
 namespace Dune

@@ -37,9 +37,9 @@
 #define OPENRS_RESERVOIRPROPERTYINTERFACE_HEADER
 
 #include <dune/common/fmatrix.hh>
-#include <dune/grid/cpgrid/EclipseGridParser.hpp>
-#include <dune/grid/cpgrid/EclipseGridInspector.hpp>
-#include <dune/solvers/mimetic/Matrix.hpp>
+#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/grid/common/EclipseGridInspector.hpp>
+#include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune
 {
