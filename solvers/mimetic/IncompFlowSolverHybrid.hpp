@@ -69,8 +69,6 @@
 
 #include <dune/solvers/euler/BoundaryConditions.hpp>
 
-#include <iostream>
-
 namespace Dune {
     namespace {
         template<class GI>
