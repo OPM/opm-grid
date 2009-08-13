@@ -6,9 +6,9 @@
 //
 // Author: Atgeirr F Rasmussen <atgeirr@sintef.no>
 //
-// $Date:$
+// $Date$
 //
-// $Revision:$
+// $Revision$
 //
 // Revision: $Id: EclipseGridParser.C,v 1.4 2008/08/18 14:16:14 atgeirr Exp $
 //
