@@ -44,6 +44,7 @@ AC_CONFIG_FILES([
   m4/Makefile
   common/Makefile
   common/param/Makefile
+  common/test/Makefile
   grid/Makefile
   grid/test/Makefile
   grid/common/Makefile
