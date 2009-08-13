@@ -37,9 +37,7 @@
 #define OPENRS_SIMULATORTESTER_HEADER
 
 
-
-
-#include <dune/solvers/euler/SimulatorBase.hpp>
+#include <dune/solvers/common/SimulatorBase.hpp>
 
 namespace Dune
 {
