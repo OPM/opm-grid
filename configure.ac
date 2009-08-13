@@ -53,6 +53,8 @@ AC_CONFIG_FILES([
   grid/cpgrid/Makefile
   grid/cpgrid/test/Makefile
   solvers/Makefile
+  solvers/common/Makefile
+  solvers/common/test/Makefile
   solvers/euler/Makefile
   solvers/euler/test/Makefile
   solvers/mimetic/Makefile
