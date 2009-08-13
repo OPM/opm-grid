@@ -9,7 +9,8 @@ LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          ../cpgrid/libcpgrid.la \
 	 ../preprocess/libpreprocess.la \
          ../../common/param/libparam.la \
-         ../common/libtemporaryhack.la
+         ../common/libtemporaryhack.la \
+         ../../common/libcommon_hack.la
 
 #CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
@@ -25,6 +26,9 @@ finitevolume_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 grid_read_test_SOURCES = grid_read_test.cpp
 grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
+old_new_cpgrid_test_SOURCES = old_new_cpgrid_test.cpp
+old_new_cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 #dumux_test_SOURCES = dumux_test.cpp
 #dumux_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) -I/Users/atgeirr/openrs/dune-mux-1.0-rc1
