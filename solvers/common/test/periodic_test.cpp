@@ -46,6 +46,7 @@ int main(int argc, char** argv)
     parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);
+    grid.setUniqueBoundaryIds(true);
     GridInterfaceEuler<CpGrid> gi(grid);
     typedef FlowBoundaryCondition FBC;
     boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic, 1.0e5),
