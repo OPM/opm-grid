@@ -7,3 +7,9 @@ Desired functionality:
 ======================
 
   - FaceIterator-dependent boundary condition value query methods.
+
+
+Other wishes:
+=============
+
+  - Combine all created libraries into one.
