@@ -108,26 +108,33 @@ namespace Dune
             {
                 int ret = 0;
                 if (boundary()) {
-                    typedef OrientedEntityTable<0,1>::row_type::value_type Face;
-                    const Face& f = faces_of_cell_[subindex_];
-                    const bool normal_is_in = !f.orientation();
-                    enum face_tag tag = pgrid_->face_tag_[f];
+		    if (pgrid_->uniqueBoundaryIds()) {
+			// Use the unique boundary ids.
+			EntityRep<1> face = faces_of_cell_[subindex_];
+			return pgrid_->unique_boundary_ids_[face];
+		    } else {
+			// Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
+			typedef OrientedEntityTable<0,1>::row_type::value_type Face;
+			const Face& f = faces_of_cell_[subindex_];
+			const bool normal_is_in = !f.orientation();
+			enum face_tag tag = pgrid_->face_tag_[f];
 
-                    switch (tag) {
-                    case LEFT:
-                        //                   LEFT : RIGHT
-                        ret = normal_is_in ? 1    : 2; // min(I) : max(I)
-                        break;
-                    case BACK:
-                        //                   BACK : FRONT
-                        ret = normal_is_in ? 3    : 4; // min(J) : max(J)
-                        break;
-                    case TOP:
-                        // Note: TOP at min(K) as 'z' measures *depth*.
-                        //                   TOP  : BOTTOM
-                        ret = normal_is_in ? 5    : 6; // min(K) : max(K)
-                        break;
-                    }
+			switch (tag) {
+			case LEFT:
+			    //                   LEFT : RIGHT
+			    ret = normal_is_in ? 1    : 2; // min(I) : max(I)
+			    break;
+			case BACK:
+			    //                   BACK : FRONT
+			    ret = normal_is_in ? 3    : 4; // min(J) : max(J)
+			    break;
+			case TOP:
+			    // Note: TOP at min(K) as 'z' measures *depth*.
+			    //                   TOP  : BOTTOM
+			    ret = normal_is_in ? 5    : 6; // min(K) : max(K)
+			    break;
+			}
+		    }
                 }
                 return ret;
             }

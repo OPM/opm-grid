@@ -219,15 +219,39 @@ namespace Dune
 	void createCartesian(const array<int, 3>& dims,
 			     const array<double, 3>& cellsize);
 
+	/// Access the vector mapping (i, j, k) based indices to
+	/// cell numbers/ordering used by the grid. This should
+	/// only be used by classes that really need it, such as
+	/// those dealing with permeability fields that come from
+	/// the same grdecl file that the grid was constructed from.
         const std::vector<int>& globalCell() const
         {
             return global_cell_;
         }
 
+	/// Is the grid currently using unique boundary ids?
+	/// \return true if each boundary intersection has a unique id
+	///         false if we use the (default) 1-6 ids for i- i+ j- j+ k- k+ boundaries.
+	bool uniqueBoundaryIds() const
+	{
+	    return use_unique_boundary_ids_;
+	}
+
+	/// Set whether we want to have unique boundary ids.
+	/// \param uids if true, each boundary intersection will have a unique boundary id.
+	void setUniqueBoundaryIds(bool uids)
+	{
+	    use_unique_boundary_ids_ = uids;
+	    if (use_unique_boundary_ids_ && unique_boundary_ids_.empty()) {
+		computeUniqueBoundaryIds();
+	    }
+	}
+
 	// --- Dune interface below ---
 
 
-        /// Return grid name.
+        /// Return grid name. It's the same as the class name.
+	/// What did you expect, something funny?
         std::string name() const
         {
             return "CpGrid";
@@ -511,6 +535,8 @@ namespace Dune
 
     private:
 
+	// --------- Friends ---------
+
 	template <int cd, class GridType>
 	friend class cpgrid::Entity;
 
@@ -520,34 +546,41 @@ namespace Dune
 	template <class GridType>
 	friend class cpgrid::IndexSet;
 
-        /// \todo Please doc me !
+
+	// --------- Data members ---------
+
+	// Dune-ish stuff
         CollectiveCommunication ccobj_;
-
 	cpgrid::IndexSet<CpGrid> index_set_;
-
 	cpgrid::IdSet<CpGrid> id_set_;
-
-
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 	std::vector< array<int,8> > cell_to_point_;
-
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
-
-	typedef cpgrid::DefaultGeometryPolicy Geom;
-
 	// Representing geometry
+	typedef cpgrid::DefaultGeometryPolicy Geom;
 	Geom geometry_;
+	typedef FieldVector<ctype, 3> PointType;
+	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
+	std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve.
+	// Boundary information (optional).
+	bool use_unique_boundary_ids_;
+	cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
+
+	// --------- Methods ---------
+
+	// Return the geometry vector corresponding to the given codim.
 	template <int codim>
 	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	{
 	    return geometry_.geomVector<codim>();
 	}
-	typedef FieldVector<ctype, 3> PointType;
-	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
-	std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve.
+
+	// Make unique boundary ids for all intersections.
+	void computeUniqueBoundaryIds();
+
     }; // end Class CpGrid
 
 

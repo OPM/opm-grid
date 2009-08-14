@@ -69,6 +69,8 @@ namespace Dune
     }
 
 
+
+
     void CpGrid::createCartesian(const array<int, 3>& dims,
 				 const array<double, 3>& cellsize)
     {
@@ -110,6 +112,34 @@ namespace Dune
 	g.actnum = &actnum[0];
 	processEclipseFormat(g, 0.0);
     }
+
+
+
+
+    void CpGrid::computeUniqueBoundaryIds()
+    {
+	// Perhaps we should make available a more comprehensive interface
+	// for EntityVariable, so that we don't have to build a separate
+	// vector and assign() to unique_boundary_ids_ at the end.
+	int num_faces = face_to_cell_.size();
+	std::vector<int> ids(num_faces, 0);
+	int count = 0;
+	for (int i = 0; i < num_faces; ++i) {
+	    cpgrid::EntityRep<1> face(i, true);
+	    if (face_to_cell_[face].size() == 1) {
+		// It's on the boundary.
+		// Important! Since boundary ids run from 1 to n,
+		// we use preincrement instead of postincrement below.
+		ids[i] = ++count;
+	    }
+	}
+	unique_boundary_ids_.assign(ids.begin(), ids.end());
+#ifdef VERBOSE
+	std::cout << "computeUniqueBoundaryIds() gave all boundary intersections\n"
+		  << "unique boundaryId()s ranging from 1 to " << count << std::endl;
+#endif
+    }
+
 
 
 } // namespace Dune
