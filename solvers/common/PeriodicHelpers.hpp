@@ -137,7 +137,7 @@ namespace Dune
 	}
 	int num_bdy = bface_iters.size();
 	if (max_bid != num_bdy) {
-	    THROW("ceratePeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
+	    THROW("createPeriodic() assumes that every boundary face has a unique boundary id. That seems to be violated.");
 	}
 
 	// Store boundary face info in a suitable structure. Also find side total volumes.
@@ -213,7 +213,7 @@ namespace Dune
 	    if (master_bc.isPeriodic()) {
 		face_bc = FBC(FBC::Periodic, master_bc.pressureDifference());
 		int bid1 = bfinfo[i].bid;
-		int bid2 = bfinfo[bfinfo[i].partner_face_index].bid;
+		int bid2 = bfinfo[i].partner_bid;
 		if (bid1 < bid2) {
 		    fbcs.setPeriodicPartners(bid1, bid2);
 		}
