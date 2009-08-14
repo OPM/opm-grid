@@ -85,7 +85,8 @@ namespace Dune
             return value_;
         }
 
-        void write(std::ostream& os) const
+        template<typename charT, class traits>
+        void write(std::basic_ostream<charT,traits>& os) const
         {
             os << "Type: " << type_ << "   Value: " << value_;
         }
@@ -94,7 +95,10 @@ namespace Dune
         double value_;
     };
 
-    std::ostream& operator<<(std::ostream& os, const FlowBoundaryCondition& fbc)
+    template<typename charT, class traits>
+    std::basic_ostream<charT,traits>&
+    operator<<(std::basic_ostream<charT,traits>& os,
+               const FlowBoundaryCondition& fbc)
     {
         fbc.write(os);
         return os;
@@ -164,7 +168,8 @@ namespace Dune
             return periodic_partner_bid_[boundary_id];
         }
 
-        void write(std::ostream& os) const
+        template<typename charT, class traits>
+        void write(std::basic_ostream<charT,traits>& os) const
         {
             for (int i = 0;  i < int(fbcs_.size()); ++i) {
                 os << fbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
@@ -176,7 +181,10 @@ namespace Dune
         std::vector<int> periodic_partner_bid_;
     };
 
-    std::ostream& operator<<(std::ostream& os, const FlowBoundaryConditions& fbcs)
+    template<typename charT, class traits>
+    std::basic_ostream<charT,traits>&
+    operator<<(std::basic_ostream<charT,traits>& os,
+               const FlowBoundaryConditions& fbcs)
     {
         fbcs.write(os);
         return os;
