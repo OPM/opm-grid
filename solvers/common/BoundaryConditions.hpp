@@ -38,7 +38,7 @@
 
 
 #include <vector>
-
+#include <ostream>
 #include <dune/common/ErrorMacros.hpp>
 
 
@@ -84,10 +84,21 @@ namespace Dune
             ASSERT(type_ == Periodic);
             return value_;
         }
+
+	void write(std::ostream& os) const
+	{
+	    os << "Type: " << type_ << "   Value: " << value_;
+	}
     private:
         BCType type_;
         double value_;
     };
+
+    std::ostream& operator<<(std::ostream& os, const FlowBoundaryCondition& fbc)
+    {
+	fbc.write(os);
+	return os;
+    }
 
     class FlowBoundaryConditions
     {
@@ -153,11 +164,23 @@ namespace Dune
             return periodic_partner_bid_[boundary_id];
         }
 
+	void write(std::ostream& os) const
+	{
+	    for (int i = 0;  i < int(fbcs_.size()); ++i) {
+		os << fbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
+	    }
+	    os << std::endl;
+	}
     private:
         std::vector<FlowBoundaryCondition> fbcs_;
         std::vector<int> periodic_partner_bid_;
     };
 
+    std::ostream& operator<<(std::ostream& os, const FlowBoundaryConditions& fbcs)
+    {
+	fbcs.write(os);
+	return os;
+    }
 
     class SaturationBoundaryCondition
     {
