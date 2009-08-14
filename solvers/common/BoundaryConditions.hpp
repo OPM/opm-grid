@@ -48,7 +48,7 @@ namespace Dune
     class FlowBoundaryCondition
     {
     public:
-	enum BCType { Dirichlet, Neumann };
+	enum BCType { Dirichlet, Neumann, Periodic };
 	FlowBoundaryCondition()
 	    : type_(Neumann), value_(0.0)
 	{
@@ -65,6 +65,10 @@ namespace Dune
 	{
 	    return type_ == Neumann;
 	}
+	bool isPeriodic() const
+	{
+	    return type_ == Neumann;
+	}
 	double pressure() const
 	{
 	    ASSERT(type_ == Dirichlet);
@@ -75,9 +79,71 @@ namespace Dune
 	    ASSERT(type_ == Neumann);
 	    return value_;
 	}
+	double jump() const
+	{
+	    ASSERT(type_ == Periodic);
+	    return value_;
+	}
     private:
 	BCType type_;
 	double value_;
+    };
+
+    class FlowBoundaryConditions
+    {
+    public:
+	FlowBoundaryConditions()
+	{
+	}
+
+	FlowBoundaryConditions(int num_different_boundary_ids)
+	    : fbcs_(num_different_boundary_ids),
+	      periodic_partner_bid_(num_different_boundary_ids, 0)
+	{
+	}
+
+	void resize(int new_size)
+	{
+	    fbcs_.resize(new_size);
+	    periodic_partner_bid_.resize(new_size, 0);
+	}
+
+	bool empty() const
+	{
+	    return fbcs_.empty();
+	}
+
+	const FlowBoundaryCondition& operator[](int boundary_id) const
+	{
+	    ASSERT(boundary_id >= 0 && boundary_id < int(fbcs_.size()));
+	    return fbcs_[boundary_id];
+	}
+
+	FlowBoundaryCondition& operator[](int boundary_id)
+	{
+	    ASSERT(boundary_id >= 0 && boundary_id < int(fbcs_.size()));
+	    return fbcs_[boundary_id];
+	}
+
+	void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
+	{
+	    ASSERT(boundary_id_1 >= 0 && boundary_id_1 < int(periodic_partner_bid_.size()));
+	    ASSERT(boundary_id_2 >= 0 && boundary_id_2 < int(periodic_partner_bid_.size()));
+	    ASSERT(periodic_partner_bid_[boundary_id_1] == 0);
+	    ASSERT(periodic_partner_bid_[boundary_id_2] == 0);
+	    periodic_partner_bid_[boundary_id_1] = boundary_id_2;
+	    periodic_partner_bid_[boundary_id_2] = boundary_id_1;
+	}
+
+	int getPeriodicPartner(int boundary_id) const
+	{
+	    ASSERT(boundary_id >= 0 && boundary_id < int(periodic_partner_bid_.size()));
+	    return periodic_partner_bid_[boundary_id];
+	}
+
+    private:
+	std::vector<FlowBoundaryCondition> fbcs_;
+	std::vector<int> periodic_partner_bid_;
     };
 
 
@@ -107,8 +173,6 @@ namespace Dune
 	double value_;
     };
 
-
-    typedef std::vector<FlowBoundaryCondition> FlowBoundaryConditions;
     typedef std::vector<SaturationBoundaryCondition> SaturationBoundaryConditions;
 
 
