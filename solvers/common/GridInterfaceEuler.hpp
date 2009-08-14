@@ -60,7 +60,7 @@ namespace Dune
 	public:
 	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
 	    Intersection(const DuneGrid& grid, DuneIntersectionIter it, int local_index)
-		: grid_(grid), iter_(it), local_index_(local_index)
+		: pgrid_(&grid), iter_(it), local_index_(local_index)
 	    {
 	    }
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
@@ -98,17 +98,17 @@ namespace Dune
 
 	    Cell cell() const
 	    {
-		return Cell(grid_, iter_->inside());
+		return Cell(*pgrid_, iter_->inside());
 	    }
 
 	    Index cellIndex() const
 	    {
-		return grid_.leafIndexSet().index(*iter_->inside());
+		return pgrid_->leafIndexSet().index(*iter_->inside());
 	    }
 
 	    Cell neighbourCell() const
 	    {
-		return Cell(grid_, iter_->outside());
+		return Cell(*pgrid_, iter_->outside());
 	    }
 
 	    Index neighbourCellIndex() const
@@ -116,7 +116,7 @@ namespace Dune
 		if (iter_->boundary()) {
 		    return BoundaryMarkerIndex;
 		} else {
-		    return grid_.leafIndexSet().index(*iter_->outside());
+		    return pgrid_->leafIndexSet().index(*iter_->outside());
 		}
 	    }
 
@@ -158,7 +158,7 @@ namespace Dune
 		}
 	    }
 	private:
-	    const DuneGrid& grid_;
+	    const DuneGrid* pgrid_;
 	    DuneIntersectionIter iter_;
 	    int local_index_;
 
