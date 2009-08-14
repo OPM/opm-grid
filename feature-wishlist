@@ -1,0 +1,9 @@
+Required functionality:
+=======================
+
+  - Parallelism
+
+Desired functionality:
+======================
+
+  - FaceIterator-dependent boundary condition value query methods.
