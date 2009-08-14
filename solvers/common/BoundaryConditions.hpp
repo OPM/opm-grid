@@ -85,10 +85,10 @@ namespace Dune
             return value_;
         }
 
-	void write(std::ostream& os) const
-	{
-	    os << "Type: " << type_ << "   Value: " << value_;
-	}
+        void write(std::ostream& os) const
+        {
+            os << "Type: " << type_ << "   Value: " << value_;
+        }
     private:
         BCType type_;
         double value_;
@@ -96,8 +96,8 @@ namespace Dune
 
     std::ostream& operator<<(std::ostream& os, const FlowBoundaryCondition& fbc)
     {
-	fbc.write(os);
-	return os;
+        fbc.write(os);
+        return os;
     }
 
     class FlowBoundaryConditions
@@ -133,7 +133,7 @@ namespace Dune
         void clear()
         {
             fbcs_.clear();
-	    periodic_partner_bid_.clear();
+            periodic_partner_bid_.clear();
         }
 
         const FlowBoundaryCondition& operator[](int boundary_id) const
@@ -164,13 +164,13 @@ namespace Dune
             return periodic_partner_bid_[boundary_id];
         }
 
-	void write(std::ostream& os) const
-	{
-	    for (int i = 0;  i < int(fbcs_.size()); ++i) {
-		os << fbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
-	    }
-	    os << std::endl;
-	}
+        void write(std::ostream& os) const
+        {
+            for (int i = 0;  i < int(fbcs_.size()); ++i) {
+                os << fbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
+            }
+            os << std::endl;
+        }
     private:
         std::vector<FlowBoundaryCondition> fbcs_;
         std::vector<int> periodic_partner_bid_;
@@ -178,8 +178,8 @@ namespace Dune
 
     std::ostream& operator<<(std::ostream& os, const FlowBoundaryConditions& fbcs)
     {
-	fbcs.write(os);
-	return os;
+        fbcs.write(os);
+        return os;
     }
 
     class SaturationBoundaryCondition
