@@ -34,7 +34,28 @@
 */
 
 #include "../PeriodicHelpers.hpp"
+#include <dune/solvers/common/BoundaryConditions.hpp>
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/grid/CpGrid.hpp>
+#include <boost/array.hpp>
 
-int main()
+using namespace Dune;
+
+int main(int argc, char** argv)
 {
+    parameter::ParameterGroup param(argc, argv);
+    CpGrid grid;
+    grid.init(param);
+    GridInterfaceEuler<CpGrid> gi(grid);
+    typedef FlowBoundaryCondition FBC;
+    boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic, 1.0e5),
+			    FBC(FBC::Periodic, -1.0e5),
+			    FBC(FBC::Neumann, -1.0),
+			    FBC(FBC::Neumann, 1.0),
+			    FBC(FBC::Neumann, 0.0),
+			    FBC(FBC::Neumann, 0.0) }};
+    FlowBoundaryConditions fbc;
+    createPeriodic(fbc, gi, cond);
+    std::cout << fbc;
 }
+

@@ -1,5 +1,5 @@
-check_PROGRAMS = boundaryconditions_test periodic_test
-noinst_PROGRAMS = gie_test simulator_test
+check_PROGRAMS = boundaryconditions_test
+noinst_PROGRAMS = gie_test simulator_test periodic_test
 
 # Common flags
 AM_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)

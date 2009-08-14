@@ -40,6 +40,7 @@
 #include <dune/common/array.hh>
 #include <dune/common/fvector.hh>
 #include <algorithm>
+#include <boost/array.hpp>
 
 namespace Dune
 {
@@ -101,15 +102,13 @@ namespace Dune
     template <class GridInterface>
     void createPeriodic(FlowBoundaryConditions& fbcs,
 			const GridInterface& g,
-			const array<FlowBoundaryCondition, 2*GridInterface::Dimension> conditions,
+			const boost::array<FlowBoundaryCondition, 2*GridInterface::Dimension> conditions,
 			double spatial_tolerance = 1e-6)
     {
 	// Check the conditions given.
 	for (int i = 0; i < GridInterface::Dimension; ++i) {
 	    if (conditions[2*i].isPeriodic()) {
 		ASSERT(conditions[2*i + 1].isPeriodic());
-		ASSERT(conditions.getPeriodicPartner(2*i) == 2*i + 1);
-		ASSERT(conditions.getPeriodicPartner(2*i + 1) == 2*i);
 		ASSERT(conditions[2*i].pressureDifference() == -conditions[2*i + 1].pressureDifference());
 	    }
 	}
