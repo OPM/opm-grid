@@ -108,9 +108,21 @@ namespace Dune
             periodic_partner_bid_.resize(new_size, 0);
         }
 
+        void resize(int new_size, FlowBoundaryCondition fbc)
+        {
+            fbcs_.resize(new_size, fbc);
+            periodic_partner_bid_.resize(new_size, 0);
+        }
+
         bool empty() const
         {
             return fbcs_.empty();
+        }
+
+        void clear()
+        {
+            fbcs_.clear();
+	    periodic_partner_bid_.clear();
         }
 
         const FlowBoundaryCondition& operator[](int boundary_id) const
