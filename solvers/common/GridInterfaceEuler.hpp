@@ -265,6 +265,7 @@ namespace Dune
 	typedef typename CellIterator::Vector Vector;
 	typedef typename CellIterator::Scalar Scalar;
 	typedef typename CellIterator::Index Index;
+	enum { Dimension = DuneGrid::dimension };
 
 	GridInterfaceEuler()
 	    : pgrid_(0)
