@@ -57,19 +57,28 @@ namespace Dune
     namespace cpgrid
     {
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
         template <class GridType>
         class Intersection
         {
         public:
+	    /// @brief
+	    /// @todo Doc me!
 	    enum { dimension = 3 };
 	    enum { dimensionworld = 3 };
+	    /// @brief
+	    /// @todo Doc me!
 	    typedef cpgrid::Entity<0, GridType> Entity;
 	    typedef cpgrid::EntityPointer<0, GridType> EntityPointer;
 	    typedef cpgrid::Geometry<2,3> Geometry;
 	    typedef cpgrid::Geometry<2,3> LocalGeometry;
 	    typedef double ctype;
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
             Intersection(const GridType& grid, EntityRep<0> cell, int subindex, bool update_now = true)
 		: pgrid_(&grid),
 		  index_(cell.index()),
@@ -88,16 +97,28 @@ namespace Dune
 		}
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             bool operator==(const Intersection& other) const
             {
                 return subindex_ == other.subindex_  &&  index_ == other.index_  &&  pgrid_ == other.pgrid_;
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             bool operator!=(const Intersection& other) const
             {
                 return !operator==(other);
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             bool boundary() const
             {
 		return is_on_boundary_;
@@ -139,21 +160,33 @@ namespace Dune
                 return ret;
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             bool neighbor() const
             {
                 return !boundary();
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             EntityPointer inside() const
             {
                 return EntityPointer(*pgrid_, index_);
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             EntityPointer outside() const
             {
                 return EntityPointer(*pgrid_, nbcell());
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    bool conforming() const
 	    {
 		return true;
@@ -161,11 +194,17 @@ namespace Dune
 
             // Geometrical information about this intersection in
             // local coordinates of the inside() entity.
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             const LocalGeometry& geometryInInside() const
 	    {
 		return in_inside_geom_;
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             const LocalGeometry& intersectionSelfLocal() const
             {
                 return geometryInInside();
@@ -173,6 +212,9 @@ namespace Dune
 
             // Geometrical information about this intersection in
             // local coordinates of the outside() entity.
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             const LocalGeometry& geometryInOutside() const
 	    {
 		if (boundary()) {
@@ -181,22 +223,34 @@ namespace Dune
 		return in_outside_geom_;
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             const LocalGeometry& intersectionNeighborLocal() const
             {
                 return geometryInOutside();
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             const Geometry& geometry() const
             {
 		return global_geom_;
             }
 
+ 	    /// @brief
+	    /// @todo Doc me!
+	    /// @return 
             /// Is this really just the same as geometry()?
             const Geometry& intersectionGlobal() const
             {
                 return geometry();
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             GeometryType type() const
             {
                 return geometry().type();
@@ -211,6 +265,9 @@ namespace Dune
                 // return subindex_;
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             int numberInSelf() const
             {
                 return indexInInside();
@@ -234,22 +291,37 @@ namespace Dune
 // 		return -1;
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
             int numberInNeighbor() const
             {
                 return indexInOutside();
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             FieldVector<ctype, 3> outerNormal(const FieldVector<ctype, 2>&) const
             {
                 return pgrid_->face_normals_[faces_of_cell_[subindex_]];
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             FieldVector<ctype, 3> integrationOuterNormal(const FieldVector<ctype, 2>& unused) const
             {
                 FieldVector<ctype, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
                 return n*=geometry().integrationElement(unused);
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             FieldVector<ctype, 3> unitOuterNormal(const FieldVector<ctype, 2>&) const
             {
                 return pgrid_->face_normals_[faces_of_cell_[subindex_]];

@@ -43,7 +43,11 @@
 namespace Dune
 {
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template <typename T>
     FieldVector<T, 3> cross(const FieldVector<T, 3>& a, const FieldVector<T, 3>& b)
     {
@@ -54,6 +58,11 @@ namespace Dune
 	return res;
     }
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template <class Vector>
     typename Vector::value_type inner(const Vector& a, const Vector& b)
     {

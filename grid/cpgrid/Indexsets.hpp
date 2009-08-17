@@ -43,12 +43,20 @@ namespace Dune
     namespace cpgrid
     {
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
 	template <class GridType>
 	class IndexSet
 	{
 	public:
+	    /// @brief
+	    /// @todo Doc me!
 	    typedef int IndexType;
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    IndexSet(const GridType& grid)
 		: grid_(grid)
 	    {
@@ -59,39 +67,73 @@ namespace Dune
 		geom_types_[3].push_back(t);
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    const std::vector<GeometryType>& geomTypes(int codim) const
 	    {
 		return geom_types_[codim];
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    int size(GeometryType type) const
 	    {
 		return grid_.size(type);
 	    }
 
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    int size(int codim) const
 	    {
 		return grid_.size(codim);
 	    }
 
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @return
+	    /// @param
 	    template<int cd>
 	    IndexType index(const typename GridType::template Codim<cd>::Entity& e) const 
 	    {
 		return e.index(); 
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @return
+	    /// @param
 	    template<class EntityType>
 	    IndexType index(const EntityType& e) const 
 	    {
 		return e.index();
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @return
+	    /// @param
 	    template <int cc>
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
 		return index(e.subEntity<cc>(i));
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @return
+	    /// @param
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i, unsigned int cc) const 
 	    {
 		switch(cc) {
@@ -101,8 +143,14 @@ namespace Dune
 		case 3: return index(e.template subEntity<3>(i));
 		default: THROW("Codimension " << cc << " not supported.");
 		}
+
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @return
+	    /// @param
 	    template <class EntityType>
 	    bool contains(const EntityType& e) const
 	    {

@@ -49,17 +49,28 @@ namespace Dune
 	class Geometry
 	{
 	public:
-
+	    /// @brief
+	    /// @todo Doc me
 	    enum { dimension = 3 };
 	    enum { mydimension = dim };
 	    enum { coorddimension = 3 };
 	    enum { dimensionworld = 3 };
 
+	    /// @brief
+	    /// @todo Doc me
 	    typedef double ctype;
 
+	    /// @brief
+	    /// @todo Doc me
 	    typedef FieldVector<ctype, dimworld> WorldPointType;
+	    /// @brief
+	    /// @todo Doc me
 	    typedef FieldVector<ctype, dim> LocalPointType;
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam Doc me!
+	    /// @param
 	    Geometry(const WorldPointType& pos,
 		     ctype vol,
 		     const WorldPointType* allcorners = 0,
@@ -69,6 +80,8 @@ namespace Dune
 		ASSERT(dim != 3 || (allcorners && corner_indicies));
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
 	    Geometry()
 		: pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
 	    {
@@ -89,6 +102,10 @@ namespace Dune
 		return dummy;
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    double integrationElement(const LocalPointType&) const
 	    {
 		return vol_;
@@ -134,6 +151,9 @@ namespace Dune
 		}
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    ctype volume() const
 	    {
 		return vol_;
@@ -147,6 +167,8 @@ namespace Dune
 		return pos_;
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalPointType& local) const
 	    {
@@ -155,7 +177,8 @@ namespace Dune
 		return dummy;
 	    }
 
-
+	    /// @brief
+	    /// @todo Doc me!
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalPointType& local) const
 	    {

@@ -49,13 +49,20 @@ namespace Dune
 	struct GetFaceGeom;
 	struct GetPointGeom;
 
+	/// @brief
+	/// @todo Doc me!
 	class DefaultGeometryPolicy
 	{
 	public:
+	    /// @brief
+	    /// @todo Doc me
 	    DefaultGeometryPolicy()
 	    {
 	    }
 
+	    /// @brief
+	    /// @todo Doc me
+	    /// @param
 	    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
 				  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
 				  const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
@@ -63,6 +70,11 @@ namespace Dune
 	    {
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @param
+	    /// @return
 	    template <int codim>
 	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	    {
@@ -80,8 +92,16 @@ namespace Dune
 	    EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;
 	};
 
+	/// @brief
+	/// @todo Doc me!
 	struct GetCellGeom
 	{
+	    
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @param
+	    /// @return
 	    static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
 	    value(const DefaultGeometryPolicy& geom)
 	    {
@@ -89,9 +109,15 @@ namespace Dune
 	    }
 	};
 
-
+	/// @brief
+	/// @todo Doc me!
 	struct GetFaceGeom
 	{
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @param
+	    /// @return
 	    static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
 	    value(const DefaultGeometryPolicy& geom)
 	    {
@@ -99,8 +125,15 @@ namespace Dune
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
 	struct GetPointGeom
 	{
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
+	    /// @param
+	    /// @return 
 	    static const EntityVariable<cpgrid::Geometry<0, 3>, 3>&
 	    value(const DefaultGeometryPolicy& geom)
 	    {

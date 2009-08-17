@@ -47,20 +47,26 @@ namespace Dune
     {
 
 
-
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
 	template <int codim, class GridType>
 	class Entity : public EntityRep<codim>
 	{
 	public:
-
+	/// @brief
+	/// @todo Doc me!
 	    enum { codimension = codim };
 	    enum { dimension = 3 };
 	    enum { mydimension = dimension - codimension };
 	    enum { dimensionworld = 3 };
 
+
 	    typedef typename GridType::template Codim<codim>::EntityPointer EntityPointer;
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam
 	    template <int cd>
 	    struct Codim
 	    {

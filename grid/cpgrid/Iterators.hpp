@@ -55,6 +55,9 @@ namespace Dune
 	class Iterator : public EntityPointer<cd, GridType>
 	{
 	public:
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    Iterator(const GridType& grid, int index)
 		: EntityPointer<cd, GridType>(grid, index)
 	    {
@@ -82,11 +85,17 @@ namespace Dune
 	class HierarchicIterator : public EntityPointer<0, GridType>
 	{
 	public:
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    HierarchicIterator(const GridType& grid)
 		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex)
 	    {
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    HierarchicIterator& operator++()
 	    {
 		THROW("Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");

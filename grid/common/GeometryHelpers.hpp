@@ -47,7 +47,11 @@ namespace Dune
 
     namespace GeometryHelpers
     {
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	Point average(const Vector<Point>& points)
 	{
@@ -61,7 +65,11 @@ namespace Dune
 	    return pt;
 	}
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	double polygonArea(const Vector<Point>& points,
 			   const Point& centroid)
@@ -76,7 +84,11 @@ namespace Dune
 	}
 
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	Point polygonCentroid(const Vector<Point>& points,
 			      const Point& inpoint)
@@ -97,7 +109,11 @@ namespace Dune
 	}
 
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	Point polygonNormal(const Vector<Point>& points,
 			    const Point& centroid)
@@ -117,7 +133,11 @@ namespace Dune
 	}
 
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	double polygonCellVolume(const Vector<Point>& points,
 				 const Point& face_centroid,
@@ -136,7 +156,11 @@ namespace Dune
 	}
 
 
-
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <class Point, template <class> class Vector>
 	Point polygonCellCentroid(const Vector<Point>& points,
 				  const Point& face_centroid,
