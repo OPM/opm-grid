@@ -132,7 +132,7 @@ namespace Dune
 		    if (pgrid_->uniqueBoundaryIds()) {
 			// Use the unique boundary ids.
 			EntityRep<1> face = faces_of_cell_[subindex_];
-			return pgrid_->unique_boundary_ids_[face];
+			ret = pgrid_->unique_boundary_ids_[face];
 		    } else {
 			// Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
 			typedef OrientedEntityTable<0,1>::row_type::value_type Face;
@@ -260,8 +260,9 @@ namespace Dune
             /// where intersection is contained in.
             int indexInInside() const
             {
-		THROW("Meaningless to call indexInInside() for intersection,\n"
-		      "since there are no subentities in the corresponding (singular) reference element.");
+		THROW("Meaningless call to indexInInside() for intersection\n"
+		      "There are no subentities in the corresponding "
+                      "(singular) reference element.");
                 // return subindex_;
             }
 
@@ -277,8 +278,9 @@ namespace Dune
             /// where intersection is contained in.
             int indexInOutside() const
             {
-		THROW("Meaningless to call indexInInside() for intersection,\n"
-		      "since there are no subentities in the corresponding (singular) reference element.");
+		THROW("Meaningless call to indexInOutside() for intersection.\n"
+		      "There are no subentities in the corresponding "
+                      "(singular) reference element.");
 //                 EntityRep<1> face = faces_of_cell_[subindex_];
 //                 EntityRep<0> nb(nbcell());
 //                 OrientedEntityTable<0,1>::row_type faces_of_nb = pgrid_->cell_to_face_[nb];
