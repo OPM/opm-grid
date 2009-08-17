@@ -51,15 +51,22 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+	void addOuterCellLayer(const grdecl& original,
+			       std::vector<double>& new_coord,
+			       std::vector<double>& new_zcorn,
+			       std::vector<int>& new_actnum,
+			       grdecl& output);
 	void removeOuterCellLayer(processed_grid& grid);
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       std::vector<array<int,8> >& c2p);
+		       std::vector<array<int,8> >& c2p,
+		       std::vector<int>& face_to_output_face);
 	void buildGeom(const processed_grid& output,
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
+		       const std::vector<int>& face_to_output_face,
 		       cpgrid::DefaultGeometryPolicy& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners);
@@ -68,19 +75,25 @@ namespace Dune
 
 
 
+
+
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance)
+    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension)
     {
 	// Read eclipse file data.
 #ifdef VERBOSE
 	std::cout << "Parsing " << filename << std::endl;
 #endif
 	EclipseGridParser parser(filename);
-	processEclipseFormat(parser, z_tolerance);
+	processEclipseFormat(parser, z_tolerance, periodic_extension);
     }
 
+
+
+
+
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance)
+    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension)
     {
 	EclipseGridInspector inspector(parser);
 
@@ -93,12 +106,26 @@ namespace Dune
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
 	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
 
+	// Extend grid periodically with one layer of cells in the (i, j) directions.
+	if (periodic_extension) {
+	    std::vector<double> new_coord;
+	    std::vector<double> new_zcorn;
+	    std::vector<int> new_actnum;
+	    grdecl new_g;	    
+	    addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
+	    processEclipseFormat(new_g, z_tolerance, true);
+	}
+
 	// Make the grid
 	processEclipseFormat(g, z_tolerance);
     }
 
+
+
+
+
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance)
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary)
     {
 	// Process.
 #ifdef VERBOSE
@@ -106,6 +133,9 @@ namespace Dune
 #endif
 	processed_grid output;
 	process_grdecl(&input_data, z_tolerance, &output);
+	if (remove_ij_boundary) {
+	    removeOuterCellLayer(output);
+	}
 
 	/*
 	//-------------------- Start compare code ----------------------------------
@@ -147,12 +177,13 @@ namespace Dune
 #ifdef VERBOSE
 	std::cout << "Building topology." << std::endl;
 #endif
-	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, cell_to_point_);
+	std::vector<int> face_to_output_face;
+	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, cell_to_point_, face_to_output_face);
 
 #ifdef VERBOSE
 	std::cout << "Building geometry." << std::endl;
 #endif
-	buildGeom(output, cell_to_face_, cell_to_point_, geometry_, face_normals_, allcorners_);
+	buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_, face_normals_, allcorners_);
 
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
@@ -171,21 +202,14 @@ namespace Dune
     }
 
 
+
+    // ---- Implementation details below ----
+
+
+
+
     namespace
     {
-
-#if 0
-/* Input structure holding raw cornerpoint spec. */
-    struct grdecl{
-        int           dims[3];
-        const double *coord;
-        const double *zcorn;
-        const int    *actnum;
-    };
-
-#endif
-
-
 
 	typedef boost::array<int, 3> coord_t;
 	typedef boost::array<double, 8> cellz_t;
@@ -423,11 +447,13 @@ namespace Dune
 
 
 
+
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       std::vector<array<int,8> >& c2p)
+		       std::vector<array<int,8> >& c2p,
+		       std::vector<int>& face_to_output_face)
 	{
 	    // Map local to global cell index.
 	    global_cell.assign(output.local_cell_index,
@@ -437,6 +463,7 @@ namespace Dune
 	    f2c.clear();
 	    int nf = output.number_of_faces;
 	    cpgrid::EntityRep<0> cells[2];
+	    face_to_output_face.clear();
 	    for (int i = 0; i < nf; ++i) {
 		const int* fnc = output.face_neighbors + 2*i;
 		int cellcount = 0;
@@ -448,8 +475,13 @@ namespace Dune
 		    cells[cellcount].setValue(fnc[1], false);
 		    ++cellcount;
 		}
-		ASSERT(cellcount == 1 || cellcount == 2);
-		f2c.appendRow(cells, cells + cellcount);
+		// Assertation below is no longer true, due to periodic_extension etc.
+		// Instead, the appendRow() is put inside an if test.
+		// ASSERT(cellcount == 1 || cellcount == 2);
+		if (cellcount > 0) {
+		    f2c.appendRow(cells, cells + cellcount);
+		    face_to_output_face.push_back(i);
+		}
 	    }
 
 	    // Build cell to face.
@@ -466,10 +498,10 @@ namespace Dune
 		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i)];
 		// We know that the bottom and top faces come last.
 		int numf = cf.size();
-		int bot_face = cf[numf - 2].index();
+		int bot_face = face_to_output_face[cf[numf - 2].index()];
 		int bfbegin = output.face_ptr[bot_face];
 		ASSERT(output.face_ptr[bot_face + 1] - bfbegin == 4);
-		int top_face = cf[numf - 1].index();
+		int top_face = face_to_output_face[cf[numf - 1].index()];
 		int tfbegin = output.face_ptr[top_face];
 		ASSERT(output.face_ptr[top_face + 1] - tfbegin == 4);
 		// We want the corners in 'x fastest, then y, then z' order,
@@ -493,6 +525,10 @@ namespace Dune
 	    ASSERT(f2c == f2c_again);
 #endif
 	}
+
+
+
+
 
 
 	template <typename T>
@@ -545,9 +581,13 @@ namespace Dune
 	};
 
 
+
+
+
 	void buildGeom(const processed_grid& output,
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
+		       const std::vector<int>& face_to_output_face,
 		       cpgrid::DefaultGeometryPolicy& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners)
@@ -592,7 +632,8 @@ namespace Dune
 	    for (int face = 0; face < nf; ++face) {
 		// Computations in this loop could be speeded up
 		// by doing more of them simultaneously.
-		IndirectArray<point_t> face_pts(points, fn + fp[face], fn + fp[face+1]);
+		int output_face = face_to_output_face[face];
+		IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
 		point_t avg = average(face_pts);
 		point_t centroid = polygonCentroid(face_pts, avg);
 		point_t normal = polygonNormal(face_pts, centroid);
@@ -680,6 +721,10 @@ namespace Dune
 	    std::cout << "Final construction: " << clock.secsSinceLast() << std::endl;
 #endif
 	}
+
+
+
+
 
 	void logCartIndices(int idx, const processed_grid& output, int& i, int& j, int& k)
 	{

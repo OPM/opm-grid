@@ -204,15 +204,28 @@ namespace Dune
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
-	void readEclipseFormat(const std::string& filename, double z_tolerance = 0.0);
+	/// \param z_tolerance points along a pillar that are closer together in z
+	///        coordinate than this parameter, will be replaced by a single point.
+	/// \param periodic_extension if true, the grid will be (possibly) refined, so that
+	///        intersections/faces along i and j boundaries will match those on the other
+	///        side. That is, i- faces will match i+ faces etc.
+	void readEclipseFormat(const std::string& filename, double z_tolerance = 0.0, bool periodic_extension = false);
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param input_data the data contained in a parser object.
-	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance = 0.0);
+	/// \param z_tolerance points along a pillar that are closer together in z
+	///        coordinate than this parameter, will be replaced by a single point.
+	/// \param periodic_extension if true, the grid will be (possibly) refined, so that
+	///        intersections/faces along i and j boundaries will match those on the other
+	///        side. That is, i- faces will match i+ faces etc.
+	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance = 0.0, bool periodic_extension = false);
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param input_data the data in grdecl format, declared in preprocess.h.
-	void processEclipseFormat(const grdecl& input_data, double z_tolerance = 0.0);
+	/// \param z_tolerance points along a pillar that are closer together in z
+	///        coordinate than this parameter, will be replaced by a single point.
+	/// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
+	void processEclipseFormat(const grdecl& input_data, double z_tolerance = 0.0, bool remove_ij_boundary = false);
 
 	/// Create a cartesian grid.
 	/// \param dims the number of cells in each cartesian direction.
