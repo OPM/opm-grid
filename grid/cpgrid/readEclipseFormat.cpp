@@ -51,6 +51,7 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+	void removeOuterCellLayer(processed_grid& grid);
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
@@ -172,6 +173,255 @@ namespace Dune
 
     namespace
     {
+
+#if 0
+/* Input structure holding raw cornerpoint spec. */
+    struct grdecl{
+        int           dims[3];
+        const double *coord;
+        const double *zcorn;
+        const int    *actnum;
+    };
+
+#endif
+
+
+
+	typedef boost::array<int, 3> coord_t;
+	typedef boost::array<double, 8> cellz_t;
+
+	cellz_t getCellZvals(const coord_t& c, const coord_t& n, const double* z)
+	{
+	    // cout << c << endl;
+	    int delta[3] = { 1,
+			     2*n[0],
+			     4*n[0]*n[1] };
+	    int ix = 2*(c[0]*delta[0] + c[1]*delta[1] + c[2]*delta[2]);
+	    // cout << ix << endl;
+	    cellz_t cellz = {{ z[ix], z[ix + delta[0]],
+			       z[ix + delta[1]], z[ix + delta[1] + delta[0]],
+			       z[ix + delta[2]], z[ix + delta[2] + delta[0]],
+			       z[ix + delta[2] + delta[1]], z[ix + delta[2] + delta[1] + delta[0]] }};
+	    return cellz;
+	}
+
+
+
+	void setCellZvals(const coord_t& c, const coord_t& n, double* z, const cellz_t& cellvals)
+	{
+	    int delta[3] = { 1,
+			     2*n[0],
+			     4*n[0]*n[1] };
+	    int ix = 2*(c[0]*delta[0] + c[1]*delta[1] + c[2]*delta[2]);
+	    z[ix]                                  = cellvals[0];
+	    z[ix + delta[0]]                       = cellvals[1];
+	    z[ix + delta[1]]                       = cellvals[2];
+	    z[ix + delta[1] + delta[0]]            = cellvals[3];
+	    z[ix + delta[2]]                       = cellvals[4];
+	    z[ix + delta[2] + delta[0]]            = cellvals[5];
+	    z[ix + delta[2] + delta[1]]            = cellvals[6];
+	    z[ix + delta[2] + delta[1] + delta[0]] = cellvals[7];
+	}
+
+	coord_t indexToIjk(const coord_t& n, const int index)
+	{
+	    coord_t c;
+	    c[2] = index/(n[0]*n[1]);
+	    c[1] = (index%(n[0]*n[1]))/n[0];
+	    c[0] = index%n[0];
+	    return c;
+	}
+
+
+	/// Add an outer cell layer in the (i, j) directions,
+	/// repeating the cells on the other side (for periodic
+	/// boundary conditions).
+	void addOuterCellLayer(const grdecl& original,
+			       std::vector<double>& new_coord,
+			       std::vector<double>& new_zcorn,
+			       std::vector<int>& new_actnum,
+			       grdecl& output)
+	{
+	    // Based on periodic_extension.cpp from the old C++ code,
+	    // with a few changes:
+	    //  1. We want actnum of the added cells to be true.
+	    //  2. We do not treat other fields such as PORO, SATNUM etc.
+	    //     since the grid will be reduced back to its regular
+	    //     size before those fields are processed.
+
+	    MESSAGE("WARNING: Assuming vertical pillars in a cartesian grid.");
+
+	    // Build new-to-old cell index table.
+	    // First expand in x.
+	    coord_t n = {{ original.dims[0], original.dims[1], original.dims[2] }};
+	    std::vector<int> x_new2old;
+	    x_new2old.reserve((n[0]+2)*n[1]*n[2]);
+	    for (int kz = 0; kz < n[2]; ++kz) {
+		for (int jy = 0; jy < n[1]; ++jy) {
+		    int row_ix = kz*n[0]*n[1] + jy*n[0];
+		    x_new2old.push_back(row_ix + n[0] - 1);
+		    for (int ix = 1; ix < n[0] + 1; ++ix) {
+			x_new2old.push_back(row_ix + ix - 1);
+		    }
+		    x_new2old.push_back(row_ix);
+		}
+	    }
+	    // copy(x_new2old.begin(), x_new2old.end(), ostream_iterator<int>(cout, " "));
+	    // cout << endl;
+	    // Then expand in y.
+	    const int num_new_cells = (n[0]+2)*(n[1]+2)*n[2];
+	    std::vector<int> new2old;
+	    new2old.reserve(num_new_cells);
+	    for (int kz = 0; kz < n[2]; ++kz) {
+		for (int jy = 0; jy < n[1] + 2; ++jy) {
+		    int offset = kz*(n[0] + 2)*n[1] + (jy - 1)*(n[0] + 2);
+		    if (jy == 0) {
+			offset = kz*(n[0] + 2)*n[1] + (n[1] - 1)*(n[0] + 2);
+		    } else if (jy == n[1] + 1) {
+			offset = kz*(n[0] + 2)*n[1];
+		    }
+		    for (int ix = 0; ix < n[0] + 2; ++ix) {
+			new2old.push_back(x_new2old[offset + ix]);
+		    }
+		}
+	    }
+	    ASSERT(int(new2old.size()) == num_new_cells);
+	    // copy(new2old.begin(), new2old.end(), ostream_iterator<int>(cout, " "));
+	    // cout << endl;
+	    // On second thought, we should have used a multidimensional array or something...
+
+	    // Build new COORD field.
+	    std::vector<double> coord;
+	    coord.reserve(6*(n[0] + 3)*(n[1] + 3));
+	    const double* old_coord = original.coord;
+	    double dx = old_coord[6] - old_coord[0];
+	    double dy = old_coord[6*(n[0] + 1) + 1] - old_coord[1];
+	    double ox = old_coord[0] - dx;
+	    double oy = old_coord[1] - dy;
+	    for (int jy = 0; jy < n[1] + 3; ++jy) {
+		double y = oy + jy*dy;
+		for (int ix = 0; ix < n[0] + 3; ++ix) {
+		    double x = ox + ix*dx;
+		    coord.push_back(x);
+		    coord.push_back(y);
+		    coord.push_back(0.0);
+		    coord.push_back(x);
+		    coord.push_back(y);
+		    coord.push_back(1.0);
+		}
+	    }
+
+	    // Build new ZCORN field, PERMX, PORO, ACTNUM, SATNUM.
+	    const double* old_zcorn = original.zcorn;
+	    const int* old_actnum = original.actnum;
+	    std::vector<double> zcorn(8*num_new_cells);
+	    std::vector<int> actnum(num_new_cells);
+	    coord_t new_n = {{ n[0] + 2, n[1] + 2, n[2] }};
+	    for (int kz = 0; kz < new_n[2]; ++kz) {
+		for (int jy = 0; jy < new_n[1]; ++jy) {
+		    for (int ix = 0; ix < new_n[0]; ++ix) {
+			int new_cell_index = ix + jy*(new_n[0]) + kz*(new_n[0])*(new_n[1]);
+			int old_cell_index = new2old[new_cell_index];
+			cellz_t cellvals = getCellZvals(indexToIjk(n, old_cell_index), n, old_zcorn);
+			// cout << new_cell_index << ' ' << old_cell_index << ' ' << cellvals << endl;
+			setCellZvals(indexToIjk(new_n, new_cell_index), new_n, &zcorn[0], cellvals);
+			actnum[new_cell_index] = old_actnum[old_cell_index];
+			if (ix == 0 || ix == new_n[0] - 1
+			    || jy == 0 || jy == new_n[1] - 1) {
+			    actnum[new_cell_index] = 1;  // This line is changed from the original.
+			}
+		    }
+		}
+	    }
+
+	    // Clamp z-coord to make shoe box shape
+// 	    if (param.getDefault<bool>("clamp_z", true)) {
+// 		double zb;
+// 		double zt;
+// 		findTopAndBottomZ(n, old_zcorn, zb, zt);
+// 		for (int i = 0; i < int(zcorn.size()); ++i) {
+// 		    zcorn[i] =  min(zt, max(zb, zcorn[i]));
+// 		}
+// 	    }
+
+	    // Build output.
+	    new_coord.swap(coord);
+	    new_zcorn.swap(zcorn);
+	    new_actnum.swap(actnum);	
+	    output.dims[0] = new_n[0];
+	    output.dims[1] = new_n[1];
+	    output.dims[2] = new_n[2];
+	    output.coord = &new_coord[0];
+	    output.zcorn = &new_zcorn[0];
+	    output.actnum = &new_actnum[0];
+	}
+
+
+
+
+	/// Helper function used by removeOuterCellLayer().
+	int newLogCartFromOld(const int idx, const int dim[3])
+	{
+	    // Compute old (i, j, k).
+	    const int Nx = dim[0];
+	    const int Ny = dim[1];
+	    const int NxNy = Nx*Ny;
+	    int k = idx/NxNy;
+	    // if (k <= 0 || k >= dim[2] - 1) return -1;
+	    int j = (idx - NxNy*k)/Nx;
+	    if (j <= 0 || j >= Ny - 1) return -1;
+	    int i = idx - Nx*j - Nx*Ny*k;
+	    if (i <= 0 || i >= Nx - 1) return -1;
+	    // return (Nx - 2)*(Ny - 2)*(k - 1) + (Nx - 2)*(j - 1) + (i - 1);
+	    return (Nx - 2)*(Ny - 2)*k + (Nx - 2)*(j - 1) + (i - 1);
+	}
+
+	/// Removes all (i, j) boundary cells from a grid.
+	void removeOuterCellLayer(processed_grid& grid)
+	{
+	    // Remove outer cells as follows:
+	    //   1. Build a new local_cell_index (in a new variable), compute new number_of_cells.
+	    //   2. Build the inverse lookup: From old logical cartesian to new cell indices.
+	    //   3. Modify face_neighbours by replacing each entry by its new cell index (or -1).
+	    //   4. Modify dimensions[], number_of_cells and replace local_cell_index.
+	    // After this, we still have the same number of faces, it's just that some of them may
+	    // have only (-1, -1) as neighbours.
+
+	    // Part 1 and 2 in one pass.
+	    std::vector<int> new_index_to_new_lcart;
+	    new_index_to_new_lcart.reserve(grid.number_of_cells); // A little too large, but no problem.
+	    int num_old_lcart = grid.dimensions[0]*grid.dimensions[1]*grid.dimensions[2];
+	    std::vector<int> old_lcart_to_new_index(num_old_lcart, -1);
+	    for (int i = 0; i < grid.number_of_cells; ++i) {
+		int old_lcart = grid.local_cell_index[i];
+		int new_lcart = newLogCartFromOld(old_lcart, grid.dimensions);
+		if (new_lcart != -1) {
+		    old_lcart_to_new_index[old_lcart] = new_index_to_new_lcart.size();
+		    new_index_to_new_lcart.push_back(new_lcart);
+		} else {
+		    old_lcart_to_new_index[old_lcart] = -1;
+		}
+	    }
+
+	    // Part 3, modfying the face->cell connections.
+	    for (int i = 0; i < 2*grid.number_of_faces; ++i) {
+		int old_index = grid.face_neighbors[i];
+		int old_lcart = grid.local_cell_index[old_index];
+		int new_index = old_lcart_to_new_index[old_lcart];
+		grid.face_neighbors[i] = new_index; // May be -1, if cell is to be removed.
+	    }
+
+	    // Part 4, modifying the other output data.
+	    grid.dimensions[0] = grid.dimensions[0] - 2;
+	    grid.dimensions[1] = grid.dimensions[1] - 2;
+	    grid.dimensions[2] = grid.dimensions[2] - 2;
+	    grid.number_of_cells = new_index_to_new_lcart.size();
+	    std::copy(new_index_to_new_lcart.begin(), new_index_to_new_lcart.end(), grid.local_cell_index);
+	}
+
+
+
+
 
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
