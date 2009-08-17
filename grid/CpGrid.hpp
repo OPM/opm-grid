@@ -186,7 +186,8 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid()
-	    : index_set_(*this), id_set_(*this)
+	    : index_set_(*this), id_set_(*this),
+              use_unique_boundary_ids_(false)
 	{
 	}
 
