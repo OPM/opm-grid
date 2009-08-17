@@ -295,8 +295,8 @@ namespace Dune {
         static std::vector<value_type> tau;
         static std::vector<value_type> work;
 
-        if (tau .size() <      A.numCols()) tau .resize(     A.numCols());
-        if (work.size() < 64 * A.numRows()) work.resize(64 * A.numRows());  // 64 from ILAENV
+        if (int(tau .size()) <      A.numCols()) tau .resize(     A.numCols());
+        if (int(work.size()) < 64 * A.numRows()) work.resize(64 * A.numRows());  // 64 from ILAENV
 
         int info = 0;
 
