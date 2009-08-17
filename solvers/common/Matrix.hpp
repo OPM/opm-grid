@@ -49,9 +49,15 @@
 
 namespace Dune {
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template<typename T>
     class OwnData {
     public :
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         OwnData(int sz, const T* data)
         {
             if (data) {
@@ -61,72 +67,138 @@ namespace Dune {
             }
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         T&       operator[](int i)       { return data_[i]; }
         const T& operator[](int i) const { return data_[i]; }
 
+
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         int size() const { return data_.size(); }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         T*       data()       { return &data_[0]; }
+	
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         const T* data() const { return &data_[0]; }
 
     private:
         std::vector<T> data_;
     };
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @return
     template<typename T>
     class SharedData {
     public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         SharedData(int sz, T* data)
             : sz_(sz), data_(data)
         {
             ASSERT((sz == 0) == (data == 0));
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         T&       operator[](int i)       { return data_[i]; }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         const T& operator[](int i) const { return data_[i]; }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         int size() const { return sz_; }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         T*       data()       { return data_; }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         const T* data() const { return data_; }
     private:
         int sz_;
         T*  data_;
     };
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template<typename T>
     class ImmutableSharedData {
     public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         ImmutableSharedData(int sz, const T* data)
             : sz_(sz), data_(data)
         {
             ASSERT(data_ != 0);
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         const T& operator[](int i) const { return data_[i]; }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         int size() const { return sz_; }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         const T* data() const { return data_; }
     private:
         int sz_;
         const T*  data_;
     };
 
-
+    /// @brief
+    /// @todo Doc me!
     class OrderingBase {
     public:
+	/// @brief
+	/// @todo Doc me!
         OrderingBase()
             : rows_(0), cols_(0)
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         OrderingBase(int rows, int cols)
             : rows_(rows), cols_(cols)
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         int numRows() const { return rows_; }
+
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         int numCols() const { return cols_; }
 
     private:
@@ -134,18 +206,32 @@ namespace Dune {
     };
 
 
+    /// @brief
+    /// @todo Doc me!
     class COrdering : public OrderingBase {
     public:
+	/// @brief
+	/// @todo Doc me!	
         COrdering()
             : OrderingBase()
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         COrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         int leadingDimension() const { return numCols(); }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -156,18 +242,33 @@ namespace Dune {
     };
 
 
+    /// @brief
+    /// @todo Doc me!
     class FortranOrdering : public OrderingBase {
     public:
+	/// @brief
+	/// @todo Doc me!
         FortranOrdering()
             : OrderingBase()
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         FortranOrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         int leadingDimension() const { return numRows(); }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -178,6 +279,9 @@ namespace Dune {
     };
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template<typename                 T,
              template<typename> class StoragePolicy,
              class                    OrderingPolicy>
@@ -185,17 +289,27 @@ namespace Dune {
                        private OrderingPolicy
     {
     public:
+	/// @brief
+	/// @todo Doc me!	
         FullMatrix()
             : StoragePolicy<T>(0, 0),
               OrderingPolicy()
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param	
         template <typename DataPointer>
         FullMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data),
               OrderingPolicy(rows, cols)
         {}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template <template<typename> class OtherSP>
         explicit FullMatrix(const FullMatrix<T, OtherSP, OrderingPolicy>& m)
             : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
@@ -203,6 +317,10 @@ namespace Dune {
         {
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template <template<typename> class OtherSP>
         void operator+= (const FullMatrix<T, OtherSP, OrderingPolicy>& m)
         {
@@ -211,12 +329,17 @@ namespace Dune {
                            m.data(), data(), std::plus<T>());
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void operator*= (const T& scalar)
         {
             std::transform(data(), data() + this->size(),
                            data(), boost::bind(std::multiplies<T>(), _1, scalar));
         }
 
+	/// @brief
+	/// @todo Doc me!
         typedef T value_type;
 
 	using StoragePolicy<T>::data;
@@ -224,10 +347,17 @@ namespace Dune {
         using OrderingPolicy::numCols;
         using OrderingPolicy::leadingDimension;
 
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         value_type&       operator()(int row, int col)
         {
             return this->operator[](this->idx(row, col));
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         const value_type& operator()(int row, int col) const
         {
             return this->operator[](this->idx(row, col));
@@ -236,6 +366,8 @@ namespace Dune {
 
 
     // Convenience typedefs
+    /// @brief
+    /// @todo Doc me!
     typedef FullMatrix<double, OwnData,             COrdering>        OwnCMatrix;
     typedef FullMatrix<double, SharedData,          COrdering>        SharedCMatrix;
     typedef const FullMatrix<double, ImmutableSharedData, COrdering>  ImmutableCMatrix;
@@ -246,7 +378,10 @@ namespace Dune {
     typedef const FullMatrix<double, ImmutableSharedData, FortranOrdering> ImmutableFortranMatrix;
 
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @param
+    /// @return
     template<class Matrix>
     void zero(Matrix& A)
     {
@@ -254,7 +389,11 @@ namespace Dune {
                     typename Matrix::value_type(0.0));
     }
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template<class Matrix>
     typename Matrix::value_type
     trace(const Matrix& A)
@@ -268,6 +407,11 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template<class Matrix, int rows>
     FieldVector<typename Matrix::value_type, rows>
     prod(const Matrix& A, const FieldVector<typename Matrix::value_type,rows>& x)
@@ -287,6 +431,12 @@ namespace Dune {
 
 
     // A <- orth(A)
+    
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template<typename T, template<typename> class StoragePolicy>
     int orthogonalizeColumns(FullMatrix<T,StoragePolicy,FortranOrdering>& A)
     {
@@ -322,6 +472,11 @@ namespace Dune {
 
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
+    
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename T, template<typename> class StoragePolicy>
     void symmetricUpdate(const T&                                           a1,
                          const FullMatrix<T,StoragePolicy,FortranOrdering>& A ,
@@ -346,6 +501,10 @@ namespace Dune {
 
     // B <- A*B*A'
     // Assumes T is an arithmetic (floating point) type, and that A==A'.
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename T, template<typename> class StoragePolicy>
     void symmetricUpdate(const FullMatrix<T,StoragePolicy,FortranOrdering>& A,
                          FullMatrix<T,StoragePolicy,FortranOrdering>&       B)
@@ -375,6 +534,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_N(const T&                                a1,
@@ -393,6 +556,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_N(const T&                                a1,
@@ -408,6 +575,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -433,6 +604,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -458,6 +633,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -483,6 +662,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -502,6 +685,10 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<class charT, class traits,
              typename T, template<typename> class SP, class OP>
     std::basic_ostream<charT,traits>&

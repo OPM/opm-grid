@@ -46,21 +46,44 @@ namespace Dune
 {
 
 
-
+    /// @brief
+    /// @todo Doc me!
     struct BoundaryFaceInfo
     {
+	/// @brief
+	/// @todo Doc me!
 	int face_index;
+	/// @brief
+	/// @todo Doc me!
 	int bid;
+	/// @brief
+	/// @todo Doc me!
 	int canon_pos;
+	/// @brief
+	/// @todo Doc me!
 	int partner_face_index;
+	/// @brief
+	/// @todo Doc me!
 	int partner_bid;
+	/// @brief
+	/// @todo Doc me!
 	double area;
+	/// @brief
+	/// @todo Doc me!
 	FieldVector<double,3> centroid;
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	bool operator<(const BoundaryFaceInfo& other) const
 	{
 	    return cmpval() < other.cmpval();
 	}
+
+	/// @brief
+	/// @todo Doc me!
+	/// @return
 	double cmpval() const
 	{
 	    return centroid[(canon_pos/2 + 1)%3] + M_PI*centroid[(canon_pos/2 + 2)%3];
@@ -68,6 +91,10 @@ namespace Dune
     };
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @param
+    /// @return
     bool match(std::vector<BoundaryFaceInfo>& bfaces, int face, int lower, int upper)
     {
 	const double area_tol = 1e-6;
@@ -99,6 +126,9 @@ namespace Dune
     /// periodic boundary conditions in any cartesian directions.
     /// The grid interface needs to export boundary ids that are
     /// unique for each boundary face for this to be possible.
+    /// @brief
+    /// @todo Doc me
+    /// @tparam
     template <class GridInterface>
     void createPeriodic(FlowBoundaryConditions& fbcs,
 			const GridInterface& g,
@@ -118,6 +148,7 @@ namespace Dune
 	typedef typename GridInterface::CellIterator CI;
 	typedef typename CI::FaceIterator FI;
 	typedef typename GridInterface::Vector Vector;
+
 	std::vector<FI> bface_iters;
 	Vector low(1e100);
 	Vector hi(-1e100);

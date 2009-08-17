@@ -45,46 +45,79 @@
 namespace Dune
 {
 
+    /// @brief
+    /// @todo Doc me!
     class FlowBoundaryCondition
     {
     public:
+	/// @brief
+	/// @todo Doc me!
         enum BCType { Dirichlet, Neumann, Periodic };
+
+	/// @brief
+	/// @todo Doc me!
         FlowBoundaryCondition()
             : type_(Neumann), value_(0.0)
         {
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         FlowBoundaryCondition(BCType type, double value)
             : type_(type), value_(value)
         {
         }
+
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         bool isDirichlet() const
         {
             return type_ == Dirichlet;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         bool isNeumann() const
         {
             return type_ == Neumann;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         bool isPeriodic() const
         {
             return type_ == Periodic;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double pressure() const
         {
             ASSERT(type_ == Dirichlet);
             return value_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double outflux() const
         {
             ASSERT(type_ == Neumann);
             return value_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double pressureDifference() const
         {
             ASSERT(type_ == Periodic);
             return value_;
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template<typename charT, class traits>
         void write(std::basic_ostream<charT,traits>& os) const
         {

@@ -50,11 +50,21 @@ namespace Dune
     class ReservoirPropertyInterface
     {
     public:
+	
+	/// @brief
+	/// @todo Doc me!
         typedef ImmutableCMatrix PermTensor;
+	/// @brief
+	/// @todo Doc me!
         typedef OwnCMatrix       MutablePermTensor;
 
+	/// @brief
+	/// @todo Doc me!
         enum { NumberOfPhases = 2 };
 
+
+	/// @brief
+	/// @todo Doc me!
         ReservoirPropertyInterface()
             : density1_(1013.9),
               density2_(834.7),
@@ -63,6 +73,9 @@ namespace Dune
         {
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void init(const EclipseGridParser& parser)
         {
             THROW("This code is wrong, correct code in ReservoirPropertyCapillary");
@@ -127,53 +140,92 @@ namespace Dune
             computeCflFactors();
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double porosity(int cell_index) const
         {
             return porosity_[cell_index];
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         PermTensor permeability(int cell_index) const
         {
             const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
             return K;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double mobilityFirstPhase(int cell_index, double saturation) const
         {
             return relPermFirstPhase(cell_index, saturation)/viscosity1_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double mobilitySecondPhase(int cell_index, double saturation) const
         {
             return relPermSecondPhase(cell_index, saturation)/viscosity1_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double totalMobility(int cell_index, double saturation) const
         {
             double l1 = mobilityFirstPhase(cell_index, saturation);
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void phaseDensity(int cell_index, std::vector<double>& density)
         {
             ASSERT (density.size() >= NumberOfPhases);
             density[0] = density1_;
             density[1] = density2_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob)
         {
             ASSERT (mob.size() >= NumberOfPhases);
             mob[0] = mobilityFirstPhase(cell_index, sat);
             mob[1] = mobilitySecondPhase(cell_index, sat);
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double densityDifference() const
         {
             return density1_ - density2_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double cflFactor() const
         {
             return cfl_factor_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double cflFactorGravity() const
         {
             return cfl_factor_gravity_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double capillaryPressure(int /*cell_index*/, double /*saturation*/) const
         {
             return 0.0;

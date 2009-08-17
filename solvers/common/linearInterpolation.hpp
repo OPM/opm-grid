@@ -64,7 +64,11 @@ namespace Dune
 	}
     }
 
-
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
     template <typename T>
     T linearInterpolationDerivative(const std::vector<double>& xv,
 				    const std::vector<T>& yv,

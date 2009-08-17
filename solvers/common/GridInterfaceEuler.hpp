@@ -48,69 +48,107 @@ namespace Dune
 
     namespace GIE
     {
-
 	template <class DuneGrid, class EntityPointerType>
 	class Cell;
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class DuneGrid>
 	class Intersection : public boost::iterator_facade<Intersection<DuneGrid>,
 							   const Intersection<DuneGrid>,
 							   boost::forward_traversal_tag>
 	{
 	public:
+	    /// @brief
+	    /// @todo Doc me!
 	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    Intersection(const DuneGrid& grid, DuneIntersectionIter it, int local_index)
 		: pgrid_(&grid), iter_(it), local_index_(local_index)
 	    {
 	    }
+	    /// @brief
+	    /// @todo Doc me!
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
 	    typedef int Index;
 	    typedef GIE::Cell<DuneGrid, typename DuneGrid::template Codim<0>::EntityPointer> Cell;
-
+	    /// @brief
+	    /// @todo Doc me!
 	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Scalar area() const
 	    {
 		return iter_->geometry().volume();
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Vector centroid() const
 	    {
 		return iter_->geometry().global(localCentroid());
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Vector normal() const
 	    {
 		return iter_->unitOuterNormal(localCentroid());
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    bool boundary() const
 	    {
 		return iter_->boundary();
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    int boundaryId() const
 	    {
 		return iter_->boundaryId();
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Cell cell() const
 	    {
 		return Cell(*pgrid_, iter_->inside());
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Index cellIndex() const
 	    {
 		return pgrid_->leafIndexSet().index(*iter_->inside());
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Cell neighbourCell() const
 	    {
 		return Cell(*pgrid_, iter_->outside());
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Index neighbourCellIndex() const
 	    {
 		if (iter_->boundary()) {
@@ -120,11 +158,17 @@ namespace Dune
 		}
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Index localIndex() const
 	    {
 		return local_index_;
 	    }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    Scalar neighbourCellVolume() const
 	    {
 		return iter_->outside()->geometry().volume();

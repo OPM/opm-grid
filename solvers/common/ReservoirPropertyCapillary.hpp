@@ -53,6 +53,11 @@ namespace Dune
 {
 
     namespace {
+
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         bool structurallyReasonableTensor(const EclipseGridParser& parser)
         {
             const bool xx = parser.hasField("PERMX" );
@@ -89,6 +94,10 @@ namespace Dune
             return ret;
         }
 
+
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void setScalarPermIfNeeded(boost::array<int,9>& kmap,
                                    int i, int j, int k)
         {
@@ -117,6 +126,9 @@ namespace Dune
         // However, we make no attempt at enforcing positive definite
         // tensors.
         //
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void fillTensor(const EclipseGridParser&                 parser,
                         std::vector<const std::vector<double>*>& tensor,
                         boost::array<int,9>&                     kmap)
@@ -183,16 +195,29 @@ namespace Dune
     }
 
     /// A property class for incompressible two-phase flow.
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template <int dim>
     class ReservoirPropertyCapillary
     {
     public:
+	/// @brief
+	/// @todo Doc me!
         typedef ImmutableCMatrix PermTensor;
+	/// @brief
+	/// @todo Doc me!
         typedef OwnCMatrix       MutablePermTensor;
+	/// @brief
+	/// @todo Doc me!
         typedef SharedCMatrix    SharedPermTensor;
 
+	/// @brief
+	/// @todo Doc me!
         enum { NumberOfPhases = 2 };
 
+	/// @brief
+	/// @todo Doc me!
         ReservoirPropertyCapillary()
             : density1_  (1013.9*unit::kilogram/unit::cubic(unit::meter)),
               density2_  ( 834.7*unit::kilogram/unit::cubic(unit::meter)),
@@ -201,6 +226,9 @@ namespace Dune
         {
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void init(const EclipseGridParser& parser,
                   const std::vector<int>& global_cell,
                   const std::string* rock_list_filename = 0)
@@ -221,6 +249,9 @@ namespace Dune
             computeCflFactors();
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void init(const int num_cells, double uniform_poro = 0.2,
                   double uniform_perm = 100.0*prefix::milli*unit::darcy)
         {
@@ -237,10 +268,18 @@ namespace Dune
             computeCflFactors();
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double porosity(int cell_index) const
         {
             return porosity_[cell_index];
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         PermTensor permeability(int cell_index) const
         {
             ASSERT (permfield_valid_[cell_index]);
@@ -248,6 +287,10 @@ namespace Dune
             const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
             return K;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         SharedPermTensor permeabilityModifiable(int cell_index)
         {
             // Typically only used for assigning synthetic perm values.
@@ -258,44 +301,77 @@ namespace Dune
 
             return K;
         }
+		/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double mobilityFirstPhase(int cell_index, double saturation) const
         {
             return relPermFirstPhase(cell_index, saturation) / viscosity1_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double mobilitySecondPhase(int cell_index, double saturation) const
         {
             return relPermSecondPhase(cell_index, saturation) / viscosity2_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double totalMobility(int cell_index, double saturation) const
         {
             double l1 = mobilityFirstPhase(cell_index, saturation);
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
             density[0] = density1_;
             density[1] = density2_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
         {
             ASSERT (mob.size() >= NumberOfPhases);
             mob[0] = mobilityFirstPhase(cell_index, sat);
             mob[1] = mobilitySecondPhase(cell_index, sat);
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double densityDifference() const
         {
             return density1_ - density2_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         double cflFactor() const
         {
             return cfl_factor_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double cflFactorGravity() const
         {
             return cfl_factor_gravity_;
         }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         double capillaryPressure(int cell_index, double saturation) const
         {
             if (rock_.size() > 0) {

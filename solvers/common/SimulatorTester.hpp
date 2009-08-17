@@ -44,9 +44,13 @@ namespace Dune
 
 
 
+    /// @brief
+    /// @todo Doc me!
     class SimulatorTester : public SimulatorBase
     {
     public:
+	/// @brief
+	/// @todo Doc me!
 	void run()
 	{
 	    // No injection or production.

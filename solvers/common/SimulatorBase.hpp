@@ -68,11 +68,22 @@ namespace Dune
 
 
 
+
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     class SimulatorBase
     {
     public:
+
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
 	typedef FieldVector<double, 3> Vector;
 
+
+	/// @brief
+	/// @todo Doc me!
 	SimulatorBase()
 	    : simulation_steps_(1),
 	      stepsize_(1.0),   // init() expects units of days! Yes, but now the meaning of stepsize_ changes
@@ -81,6 +92,9 @@ namespace Dune
 	{
 	}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
 	void init(const parameter::ParameterGroup& param)
 	{
 	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
@@ -128,6 +142,10 @@ namespace Dune
 	    std::cout << "================================================================\n";
 	}
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class FlowSol>
 	void estimateCellVelocity(std::vector<double>& cell_velocity,
 				  const FlowSol& flow_solution)
@@ -151,6 +169,10 @@ namespace Dune
 	}
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class FlowSol>
 	void getCellPressure(std::vector<double>& cell_pressure,
 			     const FlowSol& flow_solution)

@@ -43,6 +43,9 @@
 namespace Dune
 {
 
+    /// @brief
+    /// @todo Doc me!
+    /// @param
     inline void setupGridAndProps(const parameter::ParameterGroup& param,
 				  CpGrid& grid,
 				  ReservoirPropertyCapillary<3>& res_prop)

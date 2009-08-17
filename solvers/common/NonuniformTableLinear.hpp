@@ -45,6 +45,10 @@
 namespace Dune {
     namespace utils {
 
+
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
 	struct ValueOutOfRangeException : public std::exception {};
 
 	/// \brief This class uses linear interpolation to compute the value
@@ -53,15 +57,42 @@ namespace Dune {
 	template<class vector_t>
 	class NonuniformTableLinear {
 	public:
+
+
+	    /// @brief
+	    /// @todo Doc me!
 	    NonuniformTableLinear();
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    NonuniformTableLinear(const vector_t& x_values,
 				  const vector_t& y_values);
 
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    double operator()(const double x) const;
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
 	    double derivative(const double x) const;
 
+
+	    /// @brief
+	    /// @todo Doc me!
 	    enum RangePolicy {Throw = 0, ClosestValue = 1, Extrapolate = 2};
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    void setLeftPolicy(RangePolicy rp);
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    void setRightPolicy(RangePolicy rp);
 
 	protected:
@@ -73,6 +104,11 @@ namespace Dune {
 
 
 	// A utility function
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template <typename FI>
 	bool isNondecreasing(FI beg, FI end)
 	{
