@@ -50,11 +50,11 @@ int main(int argc, char** argv)
     GridInterfaceEuler<CpGrid> gi(grid);
     typedef FlowBoundaryCondition FBC;
     boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic, 1.0e5),
-			    FBC(FBC::Periodic, -1.0e5),
-			    FBC(FBC::Neumann, -1.0),
-			    FBC(FBC::Neumann, 1.0),
-			    FBC(FBC::Neumann, 0.0),
-			    FBC(FBC::Neumann, 0.0) }};
+				   FBC(FBC::Periodic, -1.0e5),
+				   FBC(FBC::Periodic, 0.0),
+				   FBC(FBC::Periodic, 0.0),
+				   FBC(FBC::Neumann, 0.0),
+				   FBC(FBC::Neumann, 0.0) }};
     FlowBoundaryConditions fbc;
     createPeriodic(fbc, gi, cond);
     std::cout << fbc;
