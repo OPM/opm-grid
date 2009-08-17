@@ -61,8 +61,9 @@ namespace Dune
 	} else if (fileformat == "eclipse") {
 	    EclipseGridParser parser(param.get<std::string>("filename"));
 	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
+	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
+	    grid.processEclipseFormat(parser, z_tolerance, periodic_extension);
 	    std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
-	    grid.processEclipseFormat(parser, z_tolerance);
 	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
 	    res_prop.init(parser, grid.globalCell(), rl_ptr);
 	} else if (fileformat == "cartesian") {
