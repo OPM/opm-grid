@@ -2,7 +2,7 @@
 
 check_PROGRAMS = cpgrid_test mapper_test
 
-noinst_PROGRAMS = grid_read_test finitevolume_test old_new_cpgrid_test #dumux_test
+noinst_PROGRAMS = grid_read_test finitevolume_test old_new_cpgrid_test make_vtk_test #dumux_test
 
 LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \
@@ -29,6 +29,10 @@ grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 old_new_cpgrid_test_SOURCES = old_new_cpgrid_test.cpp
 old_new_cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
+make_vtk_test_SOURCES = make_vtk_test.cpp
+make_vtk_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+make_vtk_test_LDADD = $(LDADD) -llapack -lblas
 
 #dumux_test_SOURCES = dumux_test.cpp
 #dumux_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) -I/Users/atgeirr/openrs/dune-mux-1.0-rc1

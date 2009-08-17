@@ -106,18 +106,19 @@ namespace Dune
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
 	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
 
-	// Extend grid periodically with one layer of cells in the (i, j) directions.
 	if (periodic_extension) {
+	    // Extend grid periodically with one layer of cells in the (i, j) directions.
 	    std::vector<double> new_coord;
 	    std::vector<double> new_zcorn;
 	    std::vector<int> new_actnum;
 	    grdecl new_g;	    
 	    addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
+	    // Make the grid.
 	    processEclipseFormat(new_g, z_tolerance, true);
+	} else {
+	    // Make the grid.
+	    processEclipseFormat(g, z_tolerance);
 	}
-
-	// Make the grid
-	processEclipseFormat(g, z_tolerance);
     }
 
 
@@ -256,6 +257,13 @@ namespace Dune
 	    return c;
 	}
 
+	void findTopAndBottomZ(const coord_t& n, const std::vector<double>& z, double& zb, double& zt)
+	{
+	    int numperlevel = 4*n[0]*n[1];
+	    zb = *std::max_element(z.begin(), z.begin() + numperlevel);
+	    zt = *std::min_element(z.end() - numperlevel, z.end());
+	}
+
 
 	/// Add an outer cell layer in the (i, j) directions,
 	/// repeating the cells on the other side (for periodic
@@ -359,14 +367,15 @@ namespace Dune
 	    }
 
 	    // Clamp z-coord to make shoe box shape
-// 	    if (param.getDefault<bool>("clamp_z", true)) {
-// 		double zb;
-// 		double zt;
-// 		findTopAndBottomZ(n, old_zcorn, zb, zt);
-// 		for (int i = 0; i < int(zcorn.size()); ++i) {
-// 		    zcorn[i] =  min(zt, max(zb, zcorn[i]));
-// 		}
-// 	    }
+	    bool clamp_z = true;
+	    if (clamp_z) {
+		double zb;
+		double zt;
+		findTopAndBottomZ(new_n, zcorn, zb, zt);
+		for (int i = 0; i < int(zcorn.size()); ++i) {
+		    zcorn[i] =  std::min(zt, std::max(zb, zcorn[i]));
+		}
+	    }
 
 	    // Build output.
 	    new_coord.swap(coord);
@@ -626,7 +635,7 @@ namespace Dune
 	    // is not very efficient. It could be rewritten easily
 	    // (focus on the polygonCellXXX methods first).
 	    // \TODO Use exact geometry instead of these approximations.
-	    int nf = output.number_of_faces;
+	    int nf = face_to_output_face.size();
 	    const int* fn = output.face_nodes;
 	    const int* fp = output.face_ptr;
 	    for (int face = 0; face < nf; ++face) {

@@ -54,7 +54,8 @@ namespace Dune
 	} else if (fileformat == "eclipse") {
 	    std::string filename = param.get<std::string>("filename");
 	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
-	    readEclipseFormat(filename, z_tolerance);
+	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
+	    readEclipseFormat(filename, z_tolerance, periodic_extension);
 	} else if (fileformat == "cartesian") {
 	    array<int, 3> dims = {{ param.get<int>("nx"),
 				    param.get<int>("ny"),
