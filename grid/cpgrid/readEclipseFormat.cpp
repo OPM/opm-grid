@@ -439,9 +439,11 @@ namespace Dune
 	    // Part 3, modfying the face->cell connections.
 	    for (int i = 0; i < 2*grid.number_of_faces; ++i) {
 		int old_index = grid.face_neighbors[i];
-		int old_lcart = grid.local_cell_index[old_index];
-		int new_index = old_lcart_to_new_index[old_lcart];
-		grid.face_neighbors[i] = new_index; // May be -1, if cell is to be removed.
+		if (old_index != -1) {
+		    int old_lcart = grid.local_cell_index[old_index];
+		    int new_index = old_lcart_to_new_index[old_lcart];
+		    grid.face_neighbors[i] = new_index; // May be -1, if cell is to be removed.
+		}
 	    }
 
 	    // Part 4, modifying the other output data.
