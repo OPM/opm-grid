@@ -672,7 +672,8 @@ namespace Dune
 		double tot_cell_vol = 0.0;
 		for (int local_index = 0; local_index < cf.size(); ++local_index) {
 		    int face = cf[local_index].index();
-		    IndirectArray<point_t> face_pts(points, fn + fp[face], fn + fp[face+1]);
+		    int output_face = face_to_output_face[face];
+		    IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
 		    double small_vol = polygonCellVolume(face_pts, face_centroids[face], cell_avg);
 		    tot_cell_vol += small_vol;
 		    point_t face_contrib = polygonCellCentroid(face_pts, face_centroids[face], cell_avg);
