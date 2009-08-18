@@ -68,7 +68,7 @@ namespace Dune
 	typedef MimeticIPEvaluator<CellIter,
 				   Dimension,
 				   true>                    InnerProd;
-	typedef FlowBoundaryCondition                       FBC;
+	typedef FlowBC                                      FBC;
 	typedef FlowBoundaryConditions                      FBCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       FBCs,
