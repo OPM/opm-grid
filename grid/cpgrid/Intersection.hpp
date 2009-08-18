@@ -79,6 +79,20 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
+            Intersection()
+		: pgrid_(0),
+		  index_(-1),
+		  subindex_(-1),
+		  faces_of_cell_(),
+		  global_geom_(),
+		  in_inside_geom_(),
+		  nbcell_(-1), // Init to self, which is invalid.
+		  is_on_boundary_(false)
+            {
+            }
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
             Intersection(const GridType& grid, EntityRep<0> cell, int subindex, bool update_now = true)
 		: pgrid_(&grid),
 		  index_(cell.index()),
@@ -397,6 +411,11 @@ namespace Dune
         {
         public:
             typedef cpgrid::Intersection<GridType> Intersection;
+
+            IntersectionIterator()
+		: Intersection()
+            {
+            }
 
             IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
 		: Intersection(grid, cell, 0, !at_end)

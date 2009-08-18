@@ -251,8 +251,14 @@ namespace Dune
 	{
 	public:
 	    typedef EntityRep<codim_to> ToType;
+	    typedef ToType* ToTypePtr;
 	    typedef typename SparseTable<ToType>::row_type R;
 
+	    /// @brief Default constructor yielding an empty range.
+	    OrientedEntityRange()
+		: R(ToTypePtr(0), ToTypePtr(0)), orientation_(true)
+	    {
+	    }
 	    /// @brief Constructor taking a row type and an orientation.
 	    /// @param R Row type
 	    /// @param orientation True if positive orientation.
