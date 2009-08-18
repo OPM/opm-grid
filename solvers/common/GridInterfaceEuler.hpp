@@ -67,6 +67,13 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
+	    Intersection()
+		: pgrid_(0), iter_(), local_index_(-1)
+	    {
+	    }
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    Intersection(const DuneGrid& grid, DuneIntersectionIter it, int local_index)
 		: pgrid_(&grid), iter_(it), local_index_(local_index)
 	    {
