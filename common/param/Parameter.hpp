@@ -45,23 +45,48 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 namespace Dune {
     /// See ParameterGroup.hpp for how to use the parameter system
     namespace parameter {
+	/// @brief
+	/// @todo Doc me!
 	class Parameter : public ParameterMapItem {
 	public:
+	    /// @brief
+	    /// @todo Doc me! 
 	    virtual ~Parameter() {}
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    virtual std::string getTag() const {return ID_xmltag__param;}
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
 	    Parameter(const std::string& value, const std::string& type)
                 : value_(value), type_(type) {}
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    std::string getValue() const {return value_;}
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
 	    std::string getType() const {return type_;}
 	private:
 	    std::string value_;
 	    std::string type_;
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	std::string correct_parameter_tag(const ParameterMapItem& item);
 	std::string correct_type(const Parameter& parameter,
                                  const std::string& type);
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template<>
 	struct ParameterMapItemTrait<int> {
 	    static int convert(const ParameterMapItem& item,
@@ -92,6 +117,11 @@ namespace Dune {
 	    static std::string type() {return ID_param_type__int;}
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template<>
 	struct ParameterMapItemTrait<double> {
 	    static double convert(const ParameterMapItem& item,
@@ -122,6 +152,11 @@ namespace Dune {
 	    static std::string type() {return ID_param_type__float;}
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template<>
 	struct ParameterMapItemTrait<bool> {
 	    static bool convert(const ParameterMapItem& item,
@@ -151,6 +186,11 @@ namespace Dune {
 	    static std::string type() {return ID_param_type__bool;}
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template<>
 	struct ParameterMapItemTrait<std::string> {
 	    static std::string convert(const ParameterMapItem& item,

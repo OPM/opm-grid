@@ -44,6 +44,11 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Dune {
     namespace parameter {
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementNone {
 	    template<typename T>
 	    std::string operator()(const T&) const {
@@ -51,6 +56,10 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	struct ParameterRequirementProbability {
 	    std::string operator()(double x) const {
 		if ( (x < 0.0) || (x > 1.0) ) {
@@ -64,6 +73,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementPositive {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
@@ -77,6 +91,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementNegative {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
@@ -90,6 +109,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementNonPositive {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
@@ -103,6 +127,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementNonNegative {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
@@ -116,6 +145,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	struct ParameterRequirementNonZero {
 	    template<typename T>
 	    std::string operator()(const T& x) const {
@@ -127,6 +161,10 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	struct ParameterRequirementNonEmpty {
 	    std::string operator()(const std::string& x) const {
 		if (x != "") {
@@ -137,6 +175,11 @@ namespace Dune {
 	    }
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
 	template<class Requirement1, class Requirement2>
 	struct ParameterRequirementAnd {
 	    ParameterRequirementAnd(const Requirement1& r1, const Requirement2& r2) :
@@ -159,12 +202,19 @@ namespace Dune {
 	    const Requirement2 r2_;
 	};
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
 	struct ParameterRequirementMemberOf {
 	    ParameterRequirementMemberOf(const std::vector<std::string>& elements)
 	    : elements_(elements) {
 		assert(elements_.size() > 0);
 	    }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	    std::string operator()(const std::string& x) const {
 		if (std::find(elements_.begin(), elements_.end(), x) == elements_.end()) {
 		    if (elements_.size() == 1) {

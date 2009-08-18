@@ -52,7 +52,7 @@ namespace Dune {
 	    /// Destructor
 	    virtual ~ParameterMapItem() {}
 
-	    /// \brief This function returs a string describing
+	    /// \brief This function returns a string describing
 	    ///        the ParameterMapItem.
 	    virtual std::string getTag() const = 0;
 	    void setUsed() const { used_ = true; }
