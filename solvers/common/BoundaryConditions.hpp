@@ -139,21 +139,21 @@ namespace Dune
 	/// @return the pressure condition value
         double pressure() const
         {
-            ASSERT(type_ == Dirichlet);
+            ASSERT (isDirichlet());
             return value_;
         }
 	/// @brief Query a Neumann condition.
 	/// @return the outwards flux condition value.
         double outflux() const
         {
-            ASSERT(type_ == Neumann);
+            ASSERT (isNeumann());
             return value_;
         }
 	/// @brief Query a Periodic condition.
 	/// @return the pressure difference condition value.
         double pressureDifference() const
         {
-            ASSERT(type_ == Periodic);
+            ASSERT (isPeriodic());
             return value_;
         }
     };
