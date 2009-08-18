@@ -212,16 +212,27 @@ namespace Dune
     template <class GI, class RP, class BC>
     inline void EulerUpstream<GI, RP, BC>::initPeriodics()
     {
-	// Store the periodic boundaries, if any.
-	periodic_partner_.clear();
-	MESSAGE("Not yet supporting periodic boundaries, should this be done in grid instead?");
-#if 0
-	for (int i = 0; i < boundary_.getNumberOfPeriodicConditions(); ++i) {
-	    std::pair<int, int> partners = boundary_.getPeriodicConditionFaces(i);
-	    periodic_partner_[partners.first] = partners.second;
-	    periodic_partner_[partners.second] = partners.first;
+	int maxbid = 0;
+	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
+		int bid = f->boundaryId();
+		maxbid = std::max(maxbid, bid);
+	    }
 	}
-#endif
+	bid_to_face_.clear();
+	bid_to_face_.resize(maxbid + 1);
+	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
+		int bid = f->boundaryId();
+		if ((*pboundary_)[bid].isPeriodic()) {
+		    bid_to_face_[bid] = f;
+		}
+	    }
+	}
+// 	periodic_partner_.clear();
+// 	    std::pair<int, int> partners = boundary_.getPeriodicConditionFaces(i);
+// 	    periodic_partner_[partners.first] = partners.second;
+// 	    periodic_partner_[partners.second] = partners.first;
     }
 
 
@@ -297,7 +308,7 @@ namespace Dune
 
     template <class GI, class RP, class BC>
     inline typename GI::Vector
-    EulerUpstream<GI, RP, BC>::estimateCapPressureGradient(FIt f, const std::vector<double>& sat) const
+    EulerUpstream<GI, RP, BC>::estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& sat) const
     {
 	typedef typename GI::CellIterator::FaceIterator Face;
 	typedef typename Face::Cell Cell;
@@ -311,8 +322,7 @@ namespace Dune
 	// Find neighbouring cell and face: nbc and nbf.
 	// If we are not on a periodic boundary, nbf is of course equal to f.
 	Cell c = f->cell();
-	Cell nb = f->boundary() ? c : f->neighbourCell();
-	Face nbf = f; // Must change for periodic boundaries
+	Cell nb = f->boundary() ? (f == nbf ? c : nbf->cell()) : f->neighbourCell();
 // 	if (f->boundary()) {
 // 	    std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
 // 	    if (it == periodic_partner_.end()) {
@@ -455,18 +465,19 @@ namespace Dune
 	typename GI::CellIterator c = pgrid_->cellbegin();
 	for (; c != pgrid_->cellend(); ++c) {
 	    for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
+		// Neighbour face, will be changed if on a periodic boundary.
+		FIt nbface = f;
 		double dS = 0.0;
 		int cell[2];
 		double cell_sat[2];
+		double cell_vol[2];
+		cell[0] = f->cellIndex();
+		cell_sat[0] = saturation[cell[0]];
+		cell_vol[0] = c->volume();
 		if (f->boundary()) {
-		    cell[0] = f->cellIndex();
-		    cell_sat[0] = saturation[cell[0]];
-		    typename PartnerMapType::const_iterator it = periodic_partner_.find(f);
-		    if (it == periodic_partner_.end()) {
-			cell[1] = cell[0];
-			cell_sat[1] = (*pboundary_)[f->boundaryId()].saturation();
-		    } else {
-			FIt nbface = it->second;
+		    int bid = f->boundaryId();
+		    if ((*pboundary_)[bid].isPeriodic()) {
+			nbface = bid_to_face_[pboundary_->getPeriodicPartner(bid)];
 			ASSERT(nbface != f);
 			cell[1] = nbface->cellIndex();
 			ASSERT(cell[0] != cell[1]);
@@ -478,17 +489,22 @@ namespace Dune
 			    continue;
 			}
 			cell_sat[1] = saturation[cell[1]];
+			cell_vol[1] = nbface->cell().volume();
+		    } else {
+			ASSERT((*pboundary_)[bid].isDirichlet());
+			cell[1] = cell[0];
+			cell_sat[1] = (*pboundary_)[bid].saturation();
+			cell_vol[1] = cell_vol[0];
 		    }
 		} else {
-		    cell[0] = f->cellIndex();
 		    cell[1] = f->neighbourCellIndex();
 		    ASSERT(cell[0] != cell[1]);
 		    if (cell[0] > cell[1]) {
 			// We skip this face.
 			continue;
 		    }
-		    cell_sat[0] = saturation[cell[0]];
 		    cell_sat[1] = saturation[cell[1]];
+		    cell_vol[1] = f->neighbourCellVolume();
 		}
 
 		// Get some local properties, and compute averages.
@@ -549,18 +565,17 @@ namespace Dune
 		if (method_capillary_) {
 		    // J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
 		    // p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
-		    double cap_term = inner(loc_normal, prod(loc_perm, estimateCapPressureGradient(f, saturation)));
+		    double cap_term = inner(loc_normal, prod(loc_perm, estimateCapPressureGradient(f, nbface, saturation)));
 		    dS += cap_term*loc_area*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
 		}
 
 		// Modify saturation.
 		if (cell[0] != cell[1]){
-		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/c->volume();
-		    sat_change[cell[1]] += (dt/preservoir_properties_->porosity(cell[1]))*dS/f->neighbourCellVolume();
+		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/cell_vol[0];
+		    sat_change[cell[1]] += (dt/preservoir_properties_->porosity(cell[1]))*dS/cell_vol[1];
 		} else {
 		    ASSERT(cell[0] == cell[1]);
-		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))
-			*dS/c->volume();
+		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/cell_vol[0];
 		}
 	    }
 	}

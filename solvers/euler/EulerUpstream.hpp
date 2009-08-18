@@ -120,7 +120,7 @@ namespace Dune {
 
 
 	typename GridInterface::Vector
-	estimateCapPressureGradient(FIt f, const std::vector<double>& sat) const;
+	estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& sat) const;
 
 	void checkAndPossiblyClampSat(std::vector<double>& s) const;
 
@@ -137,10 +137,9 @@ namespace Dune {
 	bool check_sat_;
 	bool clamp_sat_;
 
-	// We store the periodic boundary conditions for fast access while awaiting
-	// a rewrite of the boundary objects that does the same...
-	typedef std::map<FIt, FIt> PartnerMapType;
-	PartnerMapType periodic_partner_;
+	// Boundary id to face iterator mapping. May be mostly or completely empty.
+	// Obviously requires unique-face-per-bid grids.
+	std::vector<FIt> bid_to_face_;
     };
 
 } // namespace Dune
