@@ -2,6 +2,7 @@ Required functionality:
 =======================
 
   - Parallelism.
+  - Compressibility.
 
 Desired functionality:
 ======================
@@ -13,3 +14,5 @@ Other wishes:
 =============
 
   - Combine all created libraries into one.
+  - DuMux integration (for capillary, thermal, miscibility effects).
+  - Quick TPFA incompressible solver w/capillary effects.
