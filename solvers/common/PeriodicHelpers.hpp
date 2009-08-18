@@ -132,7 +132,7 @@ namespace Dune
     template <class GridInterface>
     void createPeriodic(FlowBoundaryConditions& fbcs,
 			const GridInterface& g,
-			const boost::array<FlowBoundaryCondition, 2*GridInterface::Dimension> conditions,
+			const boost::array<FlowBC, 2*GridInterface::Dimension> conditions,
 			double spatial_tolerance = 1e-6)
     {
 	// Check the conditions given.
@@ -231,7 +231,7 @@ namespace Dune
 
 	// Resize the conditions object, with an easily detectable default
 	// condition.
-	typedef FlowBoundaryCondition FBC;
+	typedef FlowBC FBC;
 	const double insane_pressure = 1e100;
 	fbcs.clear();
 	fbcs.resize(max_bid + 1, FBC(FBC::Dirichlet, insane_pressure));

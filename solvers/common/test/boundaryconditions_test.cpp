@@ -46,15 +46,15 @@ using namespace Dune;
 
 BOOST_AUTO_TEST_CASE(flowboundarycondition)
 {
-    FlowBoundaryCondition bc1;
+    FlowBC bc1;
     BOOST_CHECK(bc1.isNeumann());
     BOOST_CHECK(bc1.outflux() == 0.0);
     BOOST_CHECK(!bc1.isDirichlet());
-    FlowBoundaryCondition bc2(FlowBoundaryCondition::Neumann, 5.0);
+    FlowBC bc2(FlowBC::Neumann, 5.0);
     BOOST_CHECK(bc2.isNeumann());
     BOOST_CHECK(bc2.outflux() == 5.0);
     BOOST_CHECK(!bc2.isDirichlet());
-    FlowBoundaryCondition bc3(FlowBoundaryCondition::Dirichlet, 10.0);
+    FlowBC bc3(FlowBC::Dirichlet, 10.0);
     BOOST_CHECK(bc3.isDirichlet());
     BOOST_CHECK(bc3.pressure() == 10.0);
     BOOST_CHECK(!bc3.isNeumann());
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(flowboundaryconditions)
     BOOST_CHECK(bc2[1].isNeumann());
     BOOST_CHECK(bc2[1].outflux() == 0.0);
     BOOST_CHECK(!bc2[1].isDirichlet());
-    bc2[1] = FlowBoundaryCondition(FlowBoundaryCondition::Dirichlet, 10.0);
+    bc2[1] = FlowBC(FlowBC::Dirichlet, 10.0);
     BOOST_CHECK(bc2[1].isDirichlet());
     BOOST_CHECK(bc2[1].pressure() == 10.0);
     BOOST_CHECK(!bc2[1].isNeumann());

@@ -191,7 +191,7 @@ namespace Dune
 	typedef GridInterface::CellIterator                 CellIter;
 	typedef CellIter::FaceIterator                      FaceIter;
 	typedef Dune::MimeticIPEvaluator<CellIter, 3, true> InnerProd;
-	typedef Dune::FlowBoundaryCondition                 FBC;
+	typedef Dune::FlowBC                                FBC;
 	typedef Dune::FlowBoundaryConditions                FBCs;
 	typedef Dune::IncompFlowSolverHybrid<GridInterface, FBCs, InnerProd> FlowSolver;
 
