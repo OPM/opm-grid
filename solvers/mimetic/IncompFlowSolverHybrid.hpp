@@ -70,6 +70,11 @@
 
 namespace Dune {
     namespace {
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	/// @return
         template<class GI>
         bool topologyIsSane(const GI& g)
         {
@@ -95,10 +100,20 @@ namespace Dune {
         }
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
         template<typename T>
         class axpby : public std::binary_function<T,T,T> {
         public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
             axpby(const T& a, const T& b) : a_(a), b_(b) {}
+
+	/// @brief
+	/// @todoc me!
+	/// @return
             T operator()(const T& x, const T& y)
             {
                 return a_*x + b_*y;
@@ -109,22 +124,35 @@ namespace Dune {
     }
 
 
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template<class GridInterface, class BCInterface, class InnerProduct>
     class IncompFlowSolverHybrid {
         typedef typename GridInterface::Scalar Scalar;
 
         class FlowSolution {
         public:
+	    /// @brief
+	    /// @todo Doc me!
             typedef typename GridInterface::Scalar       Scalar;
             typedef typename GridInterface::CellIterator CI;
             typedef typename CI           ::FaceIterator FI;
 
             friend class IncompFlowSolverHybrid;
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             Scalar pressure(const CI& c) const
             {
                 return pressure_[cellno_[c->index()]];
             }
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
             Scalar outflux (const FI& f) const
             {
                 return outflux_[cellno_[f->cellIndex()]][f->localIndex()];
@@ -137,6 +165,9 @@ namespace Dune {
         };
 
     public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void init(const GridInterface& g)
         {
             ASSERT (topologyIsSane(g));
@@ -161,6 +192,10 @@ namespace Dune {
         }
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template<class ReservoirInterface>
         void assembleStatic(const GridInterface&      g,
                             const ReservoirInterface& r)
@@ -183,6 +218,10 @@ namespace Dune {
         }
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template<class ReservoirInterface>
         void solve(const GridInterface&       g  ,
                    const ReservoirInterface&  r  ,
@@ -202,13 +241,22 @@ namespace Dune {
         }
 
 
+	/// @brief
+	/// @todo Doc me!
         typedef const FlowSolution& SolutionType;
+	/// @brief
+	/// @todo Doc me!
+	/// @return
         SolutionType getSolution()
         {
             return flowSolution_;
         }
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template<typename charT, class traits>
         void printStats(std::basic_ostream<charT,traits>& os)
         {
@@ -234,6 +282,10 @@ namespace Dune {
             }
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
         template<class charT, class traits>
         void printIP(std::basic_ostream<charT,traits>& os)
         {
@@ -247,6 +299,9 @@ namespace Dune {
             }
         }
 
+	/// @brief
+	/// @todo Doc me!
+	/// @param
         void printSystem(const std::string& prefix)
         {
             writeMatrixToMatlab(S_, prefix + "-mat.dat");

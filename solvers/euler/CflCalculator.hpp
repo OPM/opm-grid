@@ -45,6 +45,10 @@ namespace Dune {
     namespace cfl_calculator {
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class Grid, class ReservoirProperties, class PressureSolution>
 	double findCFLtimeVelocity(const Grid& grid,
 				   const ReservoirProperties& resprop,
@@ -77,6 +81,10 @@ namespace Dune {
 	}
 
 
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class Grid, class ReservoirProperties>
 	double findCFLtimeGravity(const Grid& grid,
 				  const ReservoirProperties& resprop,

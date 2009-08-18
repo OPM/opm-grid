@@ -59,10 +59,17 @@ namespace Dune
 {
 
 
+
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
     template <class GridInterface>
     class TestSolution
     {
     public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
 	TestSolution(const GridInterface& g,
 		     const typename GridInterface::CellIterator::Vector& v)
 	{
@@ -81,7 +88,13 @@ namespace Dune
 	    }
 	}
 
+	/// @brief
+	/// @todo Doc me!
 	typedef typename GridInterface::CellIterator::FaceIterator FaceIter;
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
 	double outflux(const FaceIter& f) const
 	{
 	    return halfface_fluxes_[f->cellIndex()][f->localIndex()];
@@ -94,9 +107,14 @@ namespace Dune
 
 
 
+    /// @brief
+    /// @todo Doc me!
     class EulerSolverTester
     {
     public:
+	/// @brief
+	/// @todo Doc me!
+	/// @param
 	void init(const parameter::ParameterGroup& param)
 	{
 	    // Initialize grid and reservoir properties.
@@ -141,6 +159,8 @@ namespace Dune
 	    stepsize_ = param.get<double>("stepsize");
 	}
 
+	/// @brief
+	/// @todo Doc me!
 	void run()
 	{
 	    // Make the grid interface
@@ -167,6 +187,11 @@ namespace Dune
 	    }
 	}
 
+
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
 	template <class CellData>
 	void output(const std::string& filename, const std::string& fieldname, const CellData& celldata)
 	{

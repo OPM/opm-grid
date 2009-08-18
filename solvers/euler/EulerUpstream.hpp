@@ -45,19 +45,34 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 namespace Dune {
 
     /// Class for doing simple transport by explicit Euler upstream method for general grid.
+    /// @tparam
     template <class GridInterface, class ReservoirProperties, class BoundaryConditions>
     class EulerUpstream
     {
     public:
+	/// @brief
+	/// @todo Doc me
 	EulerUpstream();
+	/// @brief
+	/// @todo Doc me
+	/// @param
  	EulerUpstream(const GridInterface& grid,
  		      const ReservoirProperties& resprop,
 		      const BoundaryConditions& boundary);
+	/// @brief
+	/// @todo Doc me
+	/// @param
 	void init(const parameter::ParameterGroup& param);
+	/// @brief
+	/// @todo Doc me
+	/// @param
 	void init(const parameter::ParameterGroup& param,
 		  const GridInterface& grid,
 		  const ReservoirProperties& resprop,
 		  const BoundaryConditions& boundary);
+	/// @brief
+	/// @todo Doc me
+	/// @param
 	void display();
 
 	/// \brief Set the Courant number.
@@ -69,6 +84,8 @@ namespace Dune {
 	/// for \param time seconds.
 	/// Cfl type conditions may force many explicit timesteps to
 	/// be taken, before the function returns.
+	/// @tparam
+	/// @param
 	template <class PressureSolution>
 	void transportSolve(std::vector<double>& saturation,
 			    const double time,
