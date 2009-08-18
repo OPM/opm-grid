@@ -52,6 +52,7 @@
 #include <dune/solvers/common/BoundaryConditions.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/setupGridAndProps.hpp>
 
 #include "../EulerUpstream.hpp"
 
@@ -112,39 +113,25 @@ namespace Dune
     class EulerSolverTester
     {
     public:
+	EulerSolverTester()
+	    : simulation_steps_(1),
+	      stepsize_(365),
+	      init_saturation_(0.0)
+	{
+	}
+
 	/// @brief
 	/// @todo Doc me!
 	/// @param
 	void init(const parameter::ParameterGroup& param)
 	{
-	    // Initialize grid and reservoir properties.
-	    // Parts copied from CpGrid::init().
-	    std::string fileformat = param.get<std::string>("fileformat");
-	    if (fileformat == "sintef_legacy") {
-		std::string grid_prefix = param.get<std::string>("grid_prefix");
-		grid_.readSintefLegacyFormat(grid_prefix);
-		MESSAGE("Warning: We do not yet read legacy reservoir properties. Using defaults.");
-		res_prop_.init(grid_.size(0));
-	    } else if (fileformat == "eclipse") {
-		EclipseGridParser parser(param.get<std::string>("filename"));
-		double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
-		grid_.processEclipseFormat(parser, z_tolerance);
-		std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
-		std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
-		res_prop_.init(parser, grid_.globalCell(), rl_ptr);
-	    } else if (fileformat == "cartesian") {
-		array<int, 3> dims = {{ param.get<int>("nx"),
-					param.get<int>("ny"),
-					param.get<int>("nz") }};
-		array<double, 3> cellsz = {{ param.get<double>("dx"),
-					     param.get<double>("dy"),
-					     param.get<double>("dz") }};
-		grid_.createCartesian(dims, cellsz);
-		MESSAGE("Warning: For generated cartesian grids, we use default reservoir properties.");
-		res_prop_.init(grid_.size(0));
-	    } else {
-		THROW("Unknown file format string: " << fileformat);
-	    }
+	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
+	    stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
+                                                  Dune::unit::day);
+	    init_saturation_ = param.getDefault("init_saturation", init_saturation_);
+
+	    setupGridAndProps(param, grid_, res_prop_);
+
 	    // Make flow equation boundary conditions.
 	    // Pressure 1.0e5 on the left, 0.0 on the right.
 	    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
@@ -154,9 +141,7 @@ namespace Dune
 // 	    flow_bcond[2] = BC(BC::Dirichlet, 0.0);
 	    // Make transport equation boundary conditions.
 	    // The default one is fine (sat = 1.0 on inflow).
-	    sat_bcond_.resize(7); // 7 since 0 is not
-	    simulation_steps_ = param.getDefault("simulation_steps", 1);
-	    stepsize_ = param.get<double>("stepsize");
+	    sat_bcond_.resize(7); // 7 since 0 is for interiour faces.
 	}
 
 	/// @brief
@@ -210,13 +195,14 @@ namespace Dune
     private:
 	typedef CpGrid GridType;
 	typedef GridInterfaceEuler<GridType> GridInterface;
-	typedef FlowBoundaryCondition BC;
+	typedef FlowBC BC;
 	typedef EulerUpstream<GridInterface, ReservoirPropertyCapillary<3>, SaturationBoundaryConditions> TransportSolver;
 	GridType grid_;
 	ReservoirPropertyCapillary<3> res_prop_;
 	SaturationBoundaryConditions sat_bcond_;
 	int simulation_steps_;
 	double stepsize_;
+	double init_saturation_;
     };
 
 
