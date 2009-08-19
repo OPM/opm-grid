@@ -46,6 +46,8 @@
 #include <utility>
 #include <vector>
 
+#include <tr1/unordered_map>
+
 #include <boost/bind.hpp>
 
 #include <dune/common/fvector.hh>
@@ -70,11 +72,11 @@
 
 namespace Dune {
     namespace {
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
+        /// @return
         template<class GI>
         bool topologyIsSane(const GI& g)
         {
@@ -100,20 +102,20 @@ namespace Dune {
         }
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
         template<typename T>
         class axpby : public std::binary_function<T,T,T> {
         public:
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+            /// @brief
+            /// @todo Doc me!
+            /// @param
             axpby(const T& a, const T& b) : a_(a), b_(b) {}
 
-	/// @brief
-	/// @todoc me!
-	/// @return
+            /// @brief
+            /// @todoc me!
+            /// @return
             T operator()(const T& x, const T& y)
             {
                 return a_*x + b_*y;
@@ -127,32 +129,36 @@ namespace Dune {
     /// @brief
     /// @todo Doc me!
     /// @tparam
-    template<class GridInterface, class BCInterface, class InnerProduct>
+    template<class GridInterface,
+             class ReservoirInterface,
+             class BCInterface,
+             class InnerProduct>
     class IncompFlowSolverHybrid {
         typedef typename GridInterface::Scalar Scalar;
+        enum FaceType { Internal, Dirichlet, Neumann, Periodic };
 
         class FlowSolution {
         public:
-	    /// @brief
-	    /// @todo Doc me!
+            /// @brief
+            /// @todo Doc me!
             typedef typename GridInterface::Scalar       Scalar;
             typedef typename GridInterface::CellIterator CI;
             typedef typename CI           ::FaceIterator FI;
 
             friend class IncompFlowSolverHybrid;
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            /// @return
             Scalar pressure(const CI& c) const
             {
                 return pressure_[cellno_[c->index()]];
             }
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            /// @return
             Scalar outflux (const FI& f) const
             {
                 return outflux_[cellno_[f->cellIndex()]][f->localIndex()];
@@ -165,42 +171,117 @@ namespace Dune {
         };
 
     public:
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-        void init(const GridInterface& g)
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void init(const GridInterface&      g,
+                  const ReservoirInterface& r,
+                  const BCInterface&        bc)
         {
-            ASSERT (topologyIsSane(g));
+            clear();
 
+            if (g.numberOfCells() > 0) {
+                enumerateDof(g, bc);
+                allocateConnections(bc);
+                setConnections(bc);
+                computeInnerProducts(r);
+            }
+        }
+
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void clear()
+        {
+            pgrid_                  =  0;
             max_ncf_                = -1;
             num_internal_faces_     =  0;
             total_num_faces_        =  0;
             matrix_structure_valid_ = false;
             do_regularization_      = true; // Assume pure Neumann by default.
 
-            std::vector<int>(g.numberOfCells(), -1).swap(flowSolution_.cellno_);
-            flowSolution_.cellFaces_.clear();
+            bdry_id_map_.clear();
 
-            std::vector<Scalar>(g.numberOfCells()).swap(L_);
-            std::vector<Scalar>(g.numberOfCells()).swap(g_);
+            std::vector<Scalar>().swap(L_);
+            std::vector<Scalar>().swap(g_);
             Binv_.clear();   F_.clear();   f_.clear();
 
-            if (g.numberOfCells() > 0) {
-                buildGridTopology(g);
-                buildSystemStructure();
-            }
+            std::vector<int>().swap(flowSolution_.cellno_);
+            flowSolution_.cellFaces_.clear();
+
+            cleared_state_ = true;
         }
 
-
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-        template<class ReservoirInterface>
-        void assembleStatic(const GridInterface&      g,
-                            const ReservoirInterface& r)
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void enumerateDof(const GridInterface& g, const BCInterface& bc)
         {
-            ASSERT(matrix_structure_valid_);
+            ASSERT2 (cleared_state_,
+                     "You must call clear() prior to enumerateDof()");
+            ASSERT  (topologyIsSane(g));
+
+            enumerateGridDof(g);
+            enumerateBCDof(g, bc);
+
+            pgrid_ = &g;
+            cleared_state_ = false;
+        }
+
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void allocateConnections(const BCInterface& bc)
+        {
+            ASSERT2 (!cleared_state_,
+                     "You must call enumerateDof() prior "
+                     "to allocateConnections()");
+            ASSERT  (!matrix_structure_valid_);
+
+            // Clear any residual data, prepare for assembling structure.
+            S_.setSize(total_num_faces_, total_num_faces_);
+            S_.setBuildMode(BCRSMatrix<MatrixBlockType>::random);
+
+            // Compute row sizes
+            for (int f = 0; f < total_num_faces_; ++f) {
+                S_.setrowsize(f, 1);
+            }
+
+            allocateGridConnections();
+            allocateBCConnections(bc);
+
+            S_.endrowsizes();
+
+            rhs_ .resize(total_num_faces_);
+            soln_.resize(total_num_faces_);
+        }
+
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void setConnections(const BCInterface& bc)
+        {
+            setGridConnections();
+            setBCConnections(bc);
+
+            S_.endindices();
+
+            const int nc = pgrid_->numberOfCells();
+            std::vector<Scalar>(nc).swap(flowSolution_.pressure_);
+            std::vector<Scalar>(nc).swap(g_);
+            std::vector<Scalar>(nc).swap(L_);
+
+            matrix_structure_valid_ = true;
+        }
+
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void computeInnerProducts(const ReservoirInterface& r)
+        {
+            ASSERT2 (matrix_structure_valid_,
+                     "You must call connectionsCompleted() prior "
+                     "to computeInnerProducts()");
 
             typedef typename GridInterface     ::CellIterator CI;
             typedef typename ReservoirInterface::PermTensor   PermTensor;
@@ -208,7 +289,7 @@ namespace Dune {
             InnerProduct ip(max_ncf_);
             int i = 0;
             const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
-            for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++i) {
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c, ++i) {
                 const int nf = cellFaces[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
@@ -218,45 +299,43 @@ namespace Dune {
         }
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-        template<class ReservoirInterface>
-        void solve(const GridInterface&       g  ,
-                   const ReservoirInterface&  r  ,
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void solve(const ReservoirInterface&  r  ,
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
                    const typename GridInterface::CellIterator::Vector& grav)
         {
-            assembleDynamic(g, r, sat, bc, src, grav);
+            assembleDynamic(r, sat, bc, src, grav);
             // printSystem("linsys_mimetic");
 #if 0
             solveLinearSystem();
 #else
             solveLinearSystemAMG();
 #endif
-            computePressureAndFluxes(g, r, sat);
+            computePressureAndFluxes(r, sat);
         }
 
 
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef const FlowSolution& SolutionType;
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         SolutionType getSolution()
         {
             return flowSolution_;
         }
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template<typename charT, class traits>
         void printStats(std::basic_ostream<charT,traits>& os)
         {
@@ -282,10 +361,10 @@ namespace Dune {
             }
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template<class charT, class traits>
         void printIP(std::basic_ostream<charT,traits>& os)
         {
@@ -299,9 +378,9 @@ namespace Dune {
             }
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         void printSystem(const std::string& prefix)
         {
             writeMatrixToMatlab(S_, prefix + "-mat.dat");
@@ -313,10 +392,18 @@ namespace Dune {
         }
 
     private:
+        typedef std::pair<int,int>                 DofID;
+        typedef std::tr1::unordered_map<int,DofID> BdryIdMapType;
+        typedef BdryIdMapType::const_iterator      BdryIdMapIterator;
+
+        const GridInterface* pgrid_;
+        BdryIdMapType        bdry_id_map_;
+
         // ----------------------------------------------------------------
-        int max_ncf_;
-        int num_internal_faces_;
-        int total_num_faces_;
+        bool cleared_state_;
+        int  max_ncf_;
+        int  num_internal_faces_;
+        int  total_num_faces_;
 
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
@@ -339,7 +426,7 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildGridTopology(const GridInterface& g)
+        void enumerateGridDof(const GridInterface& g)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
@@ -349,6 +436,9 @@ namespace Dune {
             std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
             std::vector<int> num_cf         ;   num_cf.reserve(nc);
             std::vector<int> faces          ;
+
+            // Allocate cell structures.
+            std::vector<int>(nc, -1).swap(flowSolution_.cellno_);
 
             std::vector<int>& cell = flowSolution_.cellno_;
 
@@ -429,7 +519,7 @@ namespace Dune {
                         l2g.push_back(s + (p - (faces.begin() + s)));
                     }
                 }
-                ASSERT(int(l2g.size()) == ncf);
+                ASSERT (int(l2g.size()) == ncf);
 
                 cf   .appendRow(l2g       .begin(), l2g       .end());
                 F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
@@ -443,25 +533,36 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildSystemStructure()
+        void enumerateBCDof(const GridInterface& g, const BCInterface& bc)
         // ----------------------------------------------------------------
         {
-            ASSERT (!flowSolution_.cellFaces_.empty());
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
 
+            const std::vector<int>& cell = flowSolution_.cellno_;
+
+            bdry_id_map_.clear();
+            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+                for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                    if (f->boundary()) {
+                        const int bid = f->boundaryId();
+                        if (bc[bid].isPeriodic()) {
+                            DofID dof(cell[c->index()], f->localIndex());
+                            bdry_id_map_.insert(std::make_pair(bid, dof));
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        // ----------------------------------------------------------------
+        void allocateGridConnections()
+        // ----------------------------------------------------------------
+        {
             const   SparseTable<int>& cf = flowSolution_.cellFaces_;
             typedef SparseTable<int>::row_type::const_iterator fi;
-
-            // Clear any residual data, prepare for assembling structure.
-            S_.setSize(total_num_faces_, total_num_faces_);
-            S_.setBuildMode(BCRSMatrix<MatrixBlockType>::random);
-
-            rhs_ .resize(total_num_faces_);  rhs_  = 0;
-            soln_.resize(total_num_faces_);  soln_ = 0;
-
-            // Compute row sizes
-            for (int f = 0; f < total_num_faces_; ++f) {
-                S_.setrowsize(f, 1);
-            }
 
             for (int c = 0; c < cf.size(); ++c) {
                 const int nf = cf[c].size();
@@ -471,7 +572,79 @@ namespace Dune {
                     S_.incrementrowsize(*f, nf - 1);
                 }
             }
-            S_.endrowsizes();
+        }
+
+
+        // ----------------------------------------------------------------
+        void allocateBCConnections(const BCInterface& bc)
+        // ----------------------------------------------------------------
+        {
+            // Include system connections for periodic boundary
+            // conditions, if any.  We make an arbitrary choice in
+            // that the face/degree-of-freedom with the minimum
+            // numerical id of the two periodic partners represents
+            // the coupling.  Suppose <i_p> is this minimum dof-id.
+            // We then need to introduce a *symmetric* coupling to
+            // <i_p> to each of the dof's of the cell *NOT* containing
+            // <i_p>.  This choice is implemented in the following
+            // loop by introducing couplings only when dof1 (self) is
+            // less than dof2 (other).
+            //
+            // See also: setBCConnections() and addCellContrib().
+            //
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
+
+            const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
+
+            if (!bdry_id_map_.empty()) {
+                // At least one periodic BC.  Allocate corresponding
+                // connections.
+                for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+                    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                        if (f->boundary()) {
+                            const int bid = f->boundaryId();
+                            if (bc[bid].isPeriodic()) {
+                                // dof-id of self
+                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+
+                                // dof-id of other
+                                BdryIdMapIterator j =
+                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                ASSERT (j != bdry_id_map_.end());
+                                const int c2   = j->second.first;
+                                const int dof2 = cf[c2][j->second.second];
+
+                                if (dof1 < dof2) {
+                                    // Allocate storage for the actual
+                                    // couplings.
+                                    //
+                                    // Note: The equivalence
+                                    // dof1==dof2 is handled
+                                    // automatically in this loop.
+                                    //
+                                    const int ndof = cf.rowSize(c2);
+                                    S_.incrementrowsize(dof1, ndof);          // self->other
+                                    for (int dof = 0; dof < ndof; ++dof) {
+                                        S_.incrementrowsize(cf[c2][dof], 1);  // other->self
+                                    }
+                               }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        // ----------------------------------------------------------------
+        void setGridConnections()
+        // ----------------------------------------------------------------
+        {
+            const   SparseTable<int>& cf = flowSolution_.cellFaces_;
+            typedef SparseTable<int>::row_type::const_iterator fi;
 
             // Compute actual connections (the non-zero structure).
             for (int c = 0; c < cf.size(); ++c) {
@@ -483,20 +656,79 @@ namespace Dune {
                     }
                 }
             }
-            S_.endindices();
-            std::vector<Scalar>(cf.size()).swap(flowSolution_.pressure_);
-
-            matrix_structure_valid_ = true;
         }
 
 
-        template<class ReservoirInterface>
-        void assembleDynamic(const GridInterface&       g  ,
-                             const ReservoirInterface&  r  ,
+        // ----------------------------------------------------------------
+        void setBCConnections(const BCInterface& bc)
+        // ----------------------------------------------------------------
+        {
+            // Include system connections for periodic boundary
+            // conditions, if any.  We make an arbitrary choice in
+            // that the face/degree-of-freedom with the minimum
+            // numerical id of the two periodic partners represents
+            // the coupling.  Suppose <i_p> is this minimum dof-id.
+            // We then need to introduce a *symmetric* coupling to
+            // <i_p> to each of the dof's of the cell *NOT* containing
+            // <i_p>.  This choice is implemented in the following
+            // loop by introducing couplings only when dof1 (self) is
+            // less than dof2 (other).
+            //
+            // See also: allocateBCConnections() and addCellContrib().
+            //
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
+
+            const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
+
+            if (!bdry_id_map_.empty()) {
+                // At least one periodic BC.  Assign periodic
+                // connections.
+                for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+                    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                        if (f->boundary()) {
+                            const int bid = f->boundaryId();
+                            if (bc[bid].isPeriodic()) {
+                                // dof-id of self
+                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+
+                                // dof-id of other
+                                BdryIdMapIterator j =
+                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                ASSERT (j != bdry_id_map_.end());
+                                const int c2   = j->second.first;
+                                const int dof2 = cf[c2][j->second.second];
+
+                                if (dof1 < dof2) {
+                                    // Assign actual couplings.
+                                    //
+                                    // Note: The equivalence
+                                    // dof1==dof2 is handled
+                                    // automatically in this loop.
+                                    //
+                                    const int ndof = cf.rowSize(c2);
+                                    for (int dof = 0; dof < ndof; ++dof) {
+                                        S_.addindex(dof1, cf[c2][dof]);  // self->other
+                                        S_.addindex(cf[c2][dof], dof1);  // other->self
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+
+
+        // ----------------------------------------------------------------
+        void assembleDynamic(const ReservoirInterface&  r  ,
                              const std::vector<double>& sat,
                              const BCInterface&         bc ,
                              const std::vector<double>& src,
                              const typename GridInterface::CellIterator::Vector& grav)
+        // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
 
@@ -510,15 +742,17 @@ namespace Dune {
             std::vector<Scalar> e  (max_ncf_);
             std::vector<Scalar> rhs(max_ncf_);
 
-            std::vector<unsigned char> dirichlet_faces(max_ncf_);
-            std::vector<Scalar> prescribed_pressure(max_ncf_);
+            std::vector<FaceType> facetype(max_ncf_);
+            std::vector<Scalar>   condval (max_ncf_);
+            std::vector<int>      ppartner(max_ncf_);
 
             // Clear residual data
-            S_ = 0;
-            std::fill(g_  .begin(), g_  .end(), Scalar(0.0));
-            std::fill(rhs_.begin(), rhs_.end(), Scalar(0.0));
+            S_   = 0.0;
+            rhs_ = 0.0;
 
-            std::fill(e   .begin(), e   .end(), Scalar(1.0));
+            std::fill(g_.begin(), g_.end(), Scalar(0.0));
+            std::fill(L_.begin(), L_.end(), Scalar(0.0));
+            std::fill(e .begin(), e .end(), Scalar(1.0));
 
             // We will have to regularize resulting system if there
             // are no prescribed pressures (i.e., Dirichlet BC's).
@@ -527,7 +761,7 @@ namespace Dune {
             InnerProduct ip(max_ncf_);
 
             // Assemble dynamic contributions for each cell
-            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
@@ -547,18 +781,19 @@ namespace Dune {
                 ip.gravityTerm(c, grav, omega, gterm);
 
                 setExternalContrib(c, c0, bc, src[ci], rhs,
-                                   dirichlet_faces,
-                                   prescribed_pressure);
+                                   facetype, condval, ppartner);
 
                 buildCellContrib(c0, totmob, omega, one, S, rhs);
 
-                addCellContrib(S, rhs, dirichlet_faces,
-                               prescribed_pressure, cf[c0]);
+                addCellContrib(S, rhs, facetype, condval, ppartner, cf[c0]);
             }
         }
 
 
+
+        // ----------------------------------------------------------------
         void solveLinearSystem()
+        // ----------------------------------------------------------------
         {
             // Adapted from DuMux...
             Scalar residTol = 1.0e-12;
@@ -585,7 +820,10 @@ namespace Dune {
         }
 
 
+
+        // ----------------------------------------------------------------
         void solveLinearSystemAMG()
+        // ----------------------------------------------------------------
         {
             // Adapted from upscaling.cc by Arne Rekdal, 2009
             Scalar residTol = 1.0e-8;
@@ -639,10 +877,11 @@ namespace Dune {
         }
 
 
-        template<class ReservoirInterface>
-        void computePressureAndFluxes(const GridInterface&       g  ,
-                                      const ReservoirInterface&  r  ,
+
+        // ----------------------------------------------------------------
+        void computePressureAndFluxes(const ReservoirInterface&  r  ,
                                       const std::vector<double>& sat)
+        // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
 
@@ -656,7 +895,7 @@ namespace Dune {
             std::vector<double> pi (max_ncf_);
 
             // Assemble dynamic contributions for each cell
-            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
                 const int c0 = cell[ci];
                 const int nf = cf[c0].size();
@@ -691,17 +930,27 @@ namespace Dune {
         }
 
 
+
+
+        // ----------------------------------------------------------------
         void setExternalContrib(const typename GridInterface::CellIterator c,
                                 const int c0, const BCInterface& bc,
-                                const double src,
-                                std::vector<Scalar>& rhs,
-                                std::vector<unsigned char>& dF,
-                                std::vector<double>& prescribed_pressure)
+                                const double           src,
+                                std::vector<Scalar>&   rhs,
+                                std::vector<FaceType>& facetype,
+                                std::vector<double>&   condval,
+                                std::vector<int>&      ppartner)
+        // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator::FaceIterator FI;
 
-            std::fill(rhs   .begin(), rhs   .end(), Scalar(0.0));
-            std::fill(dF    .begin(), dF    .end(), false);
+            const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
+
+            std::fill(rhs     .begin(), rhs     .end(), Scalar(0.0));
+            std::fill(facetype.begin(), facetype.end(), Internal   );
+            std::fill(condval .begin(), condval .end(), Scalar(0.0));
+            std::fill(ppartner.begin(), ppartner.end(), -1         );
 
             g_[c0] = src;
 
@@ -711,12 +960,21 @@ namespace Dune {
                     const int bid = f->boundaryId();
 
                     if (bc[bid].isDirichlet()) {
-                        dF [k]                 = true;
-                        prescribed_pressure[k] = bc[bid].pressure();
-                        do_regularization_     = false;
+                        facetype[k]        = Dirichlet;
+                        condval[k]         = bc[bid].pressure();
+                        do_regularization_ = false;
+                    } else if (bc[bid].isPeriodic()) {
+                        BdryIdMapIterator j =
+                            bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                        ASSERT (j != bdry_id_map_.end());
+
+                        facetype[k] = Periodic;
+                        condval[k]  = bc[bid].pressureDifference();
+                        ppartner[k] = cf[j->second.first][j->second.second];
                     } else {
                         ASSERT (bc[bid].isNeumann());
-                        rhs[k] = bc[bid].outflux();
+                        facetype[k] = Neumann;
+                        rhs[k]      = bc[bid].outflux();
                     }
                 }
             }
@@ -725,9 +983,11 @@ namespace Dune {
 
 
 
+        // ----------------------------------------------------------------
         void buildCellContrib(const int c, const Scalar totmob, const Scalar omega,
                               const ImmutableFortranMatrix& one,
                               SharedFortranMatrix& S, std::vector<Scalar>& rhs)
+        // ----------------------------------------------------------------
         {
             std::transform(Binv_[c].begin(), Binv_[c].end(), S.data(),
                            boost::bind(std::multiplies<Scalar>(), _1, totmob));
@@ -753,33 +1013,89 @@ namespace Dune {
 
 
 
-
+        // ----------------------------------------------------------------
         /// \param l2g local-to-global face map.
         template<class L2G>
-        void addCellContrib(const SharedFortranMatrix&        S  ,
-                            const std::vector<Scalar>&        rhs,
-                            const std::vector<unsigned char>& dF ,
-                            const std::vector<Scalar>&        prescribed_pressure,
-                            const L2G&                        l2g)
+        void addCellContrib(const SharedFortranMatrix&   S       ,
+                            const std::vector<Scalar>&   rhs     ,
+                            const std::vector<FaceType>& facetype,
+                            const std::vector<Scalar>&   condval ,
+                            const std::vector<int>&      ppartner,
+                            const L2G&                   l2g)
+        // ----------------------------------------------------------------
         {
             typedef typename L2G::const_iterator it;
 
             int r = 0;
             for (it i = l2g.begin(); i != l2g.end(); ++i, ++r) {
-                if (dF[r]) {
+                // Indirection for periodic BC handling.
+                int ii = *i;
+
+                switch (facetype[r]) {
+                case Dirichlet:
+                    // Pressure is already known.  Assemble trivial
+                    // equation of the form: a*x = a*p where 'p' is
+                    // the known pressure value (i.e., condval[r]).
+                    //
                     S_[*i][*i] = S(r,r);
-                    rhs_[*i] = S(r,r) * prescribed_pressure[r];
-                    continue;
-                }
-                int c = 0;
-                for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
-                    if (!dF[c]) {
-                        S_[*i][*j] += S(r,c);
-                    } else {
-                        rhs_[*i] -= S(r,c) * prescribed_pressure[c];
+                    rhs_[*i]   = S(r,r) * condval[r];
+                    break;
+                case Periodic:
+                    // Periodic boundary condition.  Contact pressures
+                    // linked by relations of the form
+                    //
+                    //      a*(x0 - x1) = a*pd
+                    //
+                    // where 'pd' is the known pressure difference
+                    // x0-x1 (condval[r]).  Preserve matrix symmetry
+                    // by assembling both of the equations
+                    //
+                    //      a*(x0-x1) = a*  pd, and  (1)
+                    //      a*(x1-x0) = a*(-pd)      (2)
+                    //
+                    ASSERT ((0 <= ppartner[r]) && (ppartner[r] < rhs_.size()));
+                    ASSERT (ii != ppartner[r]);
+
+                    {
+                        const double a = S(r,r), b = a * condval[r];
+
+                        // Equation (1)
+                        S_  [         ii][         ii] += a;
+                        S_  [         ii][ppartner[r]] -= a;
+                        rhs_[         ii]              += b;
+
+                        // Equation (2)
+                        S_  [ppartner[r]][         ii] -= a;
+                        S_  [ppartner[r]][ppartner[r]] += a;
+                        rhs_[ppartner[r]]              -= b;
                     }
+
+                    ii = std::min(ii, ppartner[r]);
+
+                    // INTENTIONAL FALL-THROUGH!
+                    // IOW: Don't insert <break;> here!
+                    //
+                default:
+                    int c = 0;
+                    for (it j = l2g.begin(); j != l2g.end(); ++j, ++c) {
+                        // Indirection for periodic BC handling.
+                        int jj = *j;
+
+                        if (facetype[c] == Dirichlet) {
+                            rhs_[ii] -= S(r,c) * condval[c];
+                            continue;
+                        }
+                        if (facetype[c] == Periodic) {
+                            ASSERT ((0 <= ppartner[c]) && (ppartner[c] < rhs_.size()));
+                            ASSERT (jj != ppartner[c]);
+                            rhs_[ii] -= S(r,c) * condval[c];
+                            jj = std::min(jj, ppartner[c]);
+                        }
+                        S_[ii][jj] += S(r,c);
+                    }
+                    break;
                 }
-                rhs_[*i] += rhs[r];
+                rhs_[ii] += rhs[r];
             }
         }
     };
