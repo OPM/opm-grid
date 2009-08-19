@@ -2,7 +2,8 @@
 
 check_PROGRAMS =
 noinst_PROGRAMS = mimetic_ipeval_test \
-                  mimetic_solver_test
+                  mimetic_solver_test \
+                  mimetic_periodic_test
 
 LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
         $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
@@ -18,7 +19,9 @@ mimetic_ipeval_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS
 mimetic_solver_test_SOURCES  = mimetic_solver_test.cpp
 mimetic_solver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
+mimetic_periodic_test_SOURCES  = mimetic_periodic_test.cpp
+mimetic_periodic_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
 TESTS = $(check_PROGRAMS)
 
 include $(top_srcdir)/am/global-rules
-

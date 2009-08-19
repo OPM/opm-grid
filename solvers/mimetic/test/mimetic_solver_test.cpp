@@ -149,24 +149,25 @@ void assign_permeability(RI& r, int nc, double k)
 template<int dim, class GI, class RI>
 void test_flowsolver(const GI& g, const RI& r)
 {
-    typedef typename GI::CellIterator               CI;
-    typedef typename CI::FaceIterator               FI;
-    typedef Dune::MimeticIPEvaluator<CI,dim,true>   IP;
-    typedef Dune::FlowBoundaryConditions            FBC;
-    typedef Dune::IncompFlowSolverHybrid<GI,FBC,IP> FlowSolver;
+    typedef typename GI::CellIterator                  CI;
+    typedef typename CI::FaceIterator                  FI;
+    typedef Dune::MimeticIPEvaluator<CI,dim,true>      IP;
+    typedef Dune::FlowBoundaryConditions               FBC;
+    typedef Dune::IncompFlowSolverHybrid<GI,RI,FBC,IP> FlowSolver;
 
     FlowSolver solver;
-    solver.init(g);
-    // solver.printStats(std::cout);
-
-    solver.assembleStatic(g, r);
-    //solver.printIP(std::cout);
 
     typedef Dune::FlowBC BC;
     FBC flow_bc(7);
     //flow_bc[1] = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     //flow_bc[2] = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
     flow_bc[5] = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
+
+    solver.init(g, r, flow_bc);
+    // solver.printStats(std::cout);
+
+    //solver.assembleStatic(g, r);
+    //solver.printIP(std::cout);
 
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
@@ -180,7 +181,7 @@ void test_flowsolver(const GI& g, const RI& r)
     typename CI::Vector gravity;
     gravity[0] = gravity[1] = 0.0;
     gravity[2] = Dune::unit::gravity;
-    solver.solve(g, r, sat, flow_bc, src, gravity);
+    solver.solve(r, sat, flow_bc, src, gravity);
 
 #if 0
     solver.printSystem("system");
