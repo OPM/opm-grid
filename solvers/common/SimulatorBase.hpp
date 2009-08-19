@@ -131,8 +131,8 @@ namespace Dune
 	    // The default ones are fine (sat = 1.0 on inflow).
 	    transport_bcond_.resize(7); // Again 7 conditions, see comment above.
 	    // Initialize flow solver.
-	    flow_solver_.init(ginterf_);
-	    flow_solver_.assembleStatic(ginterf_, res_prop_);
+	    flow_solver_.init(ginterf_, res_prop_, flow_bcond_);
+	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
 	    // Initialize transport solver.
 	    transport_solver_.init(param, ginterf_, res_prop_, transport_bcond_);
 
@@ -193,7 +193,9 @@ namespace Dune
 	typedef Dune::MimeticIPEvaluator<CellIter, 3, true> InnerProd;
 	typedef Dune::FlowBC                                FBC;
 	typedef Dune::FlowBoundaryConditions                FBCs;
-	typedef Dune::IncompFlowSolverHybrid<GridInterface, FBCs, InnerProd> FlowSolver;
+	typedef Dune::IncompFlowSolverHybrid<GridInterface,
+                                             ReservoirPropertyCapillary<3>,
+                                             FBCs, InnerProd> FlowSolver;
 
 	int simulation_steps_;
 	double stepsize_;

@@ -71,6 +71,7 @@ namespace Dune
 	typedef FlowBC                                      FBC;
 	typedef FlowBoundaryConditions                      FBCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
+                                       ResProp,
 				       FBCs,
 				       InnerProd>           FlowSolver;
 	typedef EulerUpstream<GridInterface,
