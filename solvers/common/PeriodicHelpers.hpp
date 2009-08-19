@@ -249,7 +249,7 @@ namespace Dune
 		    fbcs.setPeriodicPartners(bid1, bid2);
 		}
 	    } else if (master_bc.isNeumann()) {
-		face_bc = FBC(FBC::Dirichlet, master_bc.outflux()*bfinfo[i].area/side_areas[bfinfo[i].canon_pos]);
+		face_bc = FBC(FBC::Neumann, master_bc.outflux()*bfinfo[i].area/side_areas[bfinfo[i].canon_pos]);
 	    } else if (master_bc.isDirichlet()) {
 		face_bc = FBC(FBC::Dirichlet, master_bc.pressure());
 	    } else {
