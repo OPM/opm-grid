@@ -296,8 +296,6 @@ namespace Dune
             ASSERT(boundary_id_2 >= 0 && boundary_id_2 < int(periodic_partner_bid_.size()));
             ASSERT(periodic_partner_bid_[boundary_id_1] == 0);
             ASSERT(periodic_partner_bid_[boundary_id_2] == 0);
-	    ASSERT(bcs_[boundary_id_1].isPeriodic());
-	    ASSERT(bcs_[boundary_id_2].isPeriodic());
             periodic_partner_bid_[boundary_id_1] = boundary_id_2;
             periodic_partner_bid_[boundary_id_2] = boundary_id_1;
         }
