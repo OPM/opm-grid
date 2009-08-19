@@ -91,10 +91,10 @@ BOOST_AUTO_TEST_CASE(flowboundaryconditions)
 
 BOOST_AUTO_TEST_CASE(saturationboundarycondition)
 {
-    SaturationBoundaryCondition bc1;
+    SatBC bc1;
     BOOST_CHECK(bc1.isDirichlet());
     BOOST_CHECK(bc1.saturation() == 1.0);
-    SaturationBoundaryCondition bc2(SaturationBoundaryCondition::Dirichlet, 0.3);
+    SatBC bc2(SatBC::Dirichlet, 0.3);
     BOOST_CHECK(bc2.isDirichlet());
     BOOST_CHECK(bc2.saturation() == 0.3);
 }
@@ -108,7 +108,7 @@ BOOST_AUTO_TEST_CASE(saturationboundaryconditions)
     BOOST_CHECK(bc2[0].saturation() == 1.0);
     BOOST_CHECK(bc2[1].isDirichlet());
     BOOST_CHECK(bc2[1].saturation() == 1.0);
-    bc2[1] = SaturationBoundaryCondition(SaturationBoundaryCondition::Dirichlet, 0.8);
+    bc2[1] = SatBC(SatBC::Dirichlet, 0.8);
     BOOST_CHECK(bc2[1].isDirichlet());
     BOOST_CHECK(bc2[1].saturation() == 0.8);
 }

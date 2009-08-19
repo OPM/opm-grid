@@ -46,7 +46,6 @@ namespace Dune
 {
 
     /// @brief A class for building boundary conditions in a uniform way.
-    /// @todo Doc me!
     class BCBase
     {
     public:
@@ -103,6 +102,7 @@ namespace Dune
 	double value_;
     };
 
+    /// @brief Stream insertion for BCBase.
     template<typename charT, class traits>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
@@ -113,14 +113,15 @@ namespace Dune
     }
 
 
+
+
     /// @brief A class for representing a flow boundary condition.
-    /// @todo Doc me!
     class FlowBC : public BCBase
     {
     public:
-	/// @brief Default constructor, that makes a Neumann condition with value 0.0.
+	/// @brief Default constructor, that makes a noflow condition (Neumann, value 0.0).
         FlowBC()
-            : BCBase()
+            : BCBase(Neumann, 0.0)
         {
         }
 	/// @brief Constructor taking a type and value.
@@ -129,8 +130,10 @@ namespace Dune
         FlowBC(BCType type, double value)
             : BCBase(type, value)
         {
+	    ASSERT(isNeumann() || isDirichlet() || isPeriodic());
         }
 
+	/// @brief Forwarding the relevant type queries.
 	using BCBase::isDirichlet;
 	using BCBase::isNeumann;
 	using BCBase::isPeriodic;
@@ -160,209 +163,131 @@ namespace Dune
 
 
 
-    class FlowBoundaryConditions
+    /// @brief A class for representing a saturation boundary condition.
+    class SatBC : public BCBase
     {
     public:
-        FlowBoundaryConditions()
+	/// @brief Default constructor, that makes a Dirichlet condition with value 1.0.
+        SatBC()
+            : BCBase(Dirichlet, 1.0)
         {
         }
-
-        FlowBoundaryConditions(int num_different_boundary_ids)
-            : fbcs_(num_different_boundary_ids),
-              periodic_partner_bid_(num_different_boundary_ids, 0)
+	/// @brief Constructor taking a type and value.
+	/// @param type the condition type.
+	/// @param value the condition value.
+        SatBC(BCType type, double value)
+            : BCBase(type, value)
         {
+	    ASSERT(isDirichlet() || isPeriodic());
         }
+	/// @brief Forwarding the relevant type queries.
+	using BCBase::isDirichlet;
+	using BCBase::isPeriodic;
 
-        void resize(int new_size)
-        {
-            fbcs_.resize(new_size);
-            periodic_partner_bid_.resize(new_size, 0);
-        }
-
-        void resize(int new_size, FlowBC fbc)
-        {
-            fbcs_.resize(new_size, fbc);
-            periodic_partner_bid_.resize(new_size, 0);
-        }
-
-        bool empty() const
-        {
-            return fbcs_.empty();
-        }
-
-        void clear()
-        {
-            fbcs_.clear();
-            periodic_partner_bid_.clear();
-        }
-
-        const FlowBC& operator[](int boundary_id) const
-        {
-            ASSERT(boundary_id >= 0 && boundary_id < int(fbcs_.size()));
-            return fbcs_[boundary_id];
-        }
-
-        FlowBC& operator[](int boundary_id)
-        {
-            ASSERT(boundary_id >= 0 && boundary_id < int(fbcs_.size()));
-            return fbcs_[boundary_id];
-        }
-
-        void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
-        {
-            ASSERT(boundary_id_1 >= 0 && boundary_id_1 < int(periodic_partner_bid_.size()));
-            ASSERT(boundary_id_2 >= 0 && boundary_id_2 < int(periodic_partner_bid_.size()));
-            ASSERT(periodic_partner_bid_[boundary_id_1] == 0);
-            ASSERT(periodic_partner_bid_[boundary_id_2] == 0);
-            periodic_partner_bid_[boundary_id_1] = boundary_id_2;
-            periodic_partner_bid_[boundary_id_2] = boundary_id_1;
-        }
-
-        int getPeriodicPartner(int boundary_id) const
-        {
-            ASSERT(boundary_id >= 0 && boundary_id < int(periodic_partner_bid_.size()));
-            return periodic_partner_bid_[boundary_id];
-        }
-
-        template<typename charT, class traits>
-        void write(std::basic_ostream<charT,traits>& os) const
-        {
-            for (int i = 0;  i < int(fbcs_.size()); ++i) {
-                os << fbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
-            }
-            os << std::endl;
-        }
-    private:
-        std::vector<FlowBC> fbcs_;
-        std::vector<int> periodic_partner_bid_;
-    };
-
-    template<typename charT, class traits>
-    std::basic_ostream<charT,traits>&
-    operator<<(std::basic_ostream<charT,traits>& os,
-               const FlowBoundaryConditions& fbcs)
-    {
-        fbcs.write(os);
-        return os;
-    }
-
-
-
-
-
-    class SaturationBoundaryCondition
-    {
-    public:
-        enum BCType { Dirichlet, Periodic };
-        SaturationBoundaryCondition()
-            : type_(Dirichlet), value_(1.0)
-        {
-        }
-        SaturationBoundaryCondition(BCType type, double value)
-            : type_(type), value_(value)
-        {
-        }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
-        bool isDirichlet() const
-        {
-            return type_ == Dirichlet;
-        }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
-        bool isPeriodic() const
-        {
-            return type_ == Periodic;
-        }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+	/// @brief Query a Dirichlet condition.
+	/// @return the boundary saturation value
         double saturation() const
         {
-            ASSERT(type_ == Dirichlet);
+            ASSERT (isDirichlet());
             return value_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+	/// @brief Query a Periodic condition.
+	/// @return the saturation difference value.
         double saturationDifference() const
         {
-            ASSERT(type_ == Periodic);
+            ASSERT (isPeriodic());
             return value_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-        template<typename charT, class traits>
-        void write(std::basic_ostream<charT,traits>& os) const
-        {
-            os << "Type: " << type_ << "   Value: " << value_;
-        }
-    private:
-        BCType type_;
-        double value_;
     };
 
-    template<typename charT, class traits>
-    std::basic_ostream<charT,traits>&
-    operator<<(std::basic_ostream<charT,traits>& os,
-               const SaturationBoundaryCondition& sbc)
-    {
-        sbc.write(os);
-        return os;
-    }
 
-
-
-    class SaturationBoundaryConditions
+    /// @brief A class for representing a capillary pressure boundary condition.
+    class PcapBC : public BCBase
     {
     public:
-        SaturationBoundaryConditions()
+	/// @brief Default constructor, that makes a Dirichlet condition with value 0.0.
+        PcapBC()
+            : BCBase(Dirichlet, 0.0)
+        {
+        }
+	/// @brief Constructor taking a type and value.
+	/// @param type the condition type.
+	/// @param value the condition value.
+        PcapBC(BCType type, double value)
+            : BCBase(type, value)
+        {
+	    ASSERT(isDirichlet() || isPeriodic());
+        }
+	/// @brief Forwarding the relevant type queries.
+	using BCBase::isDirichlet;
+	using BCBase::isPeriodic;
+
+	/// @brief Query a Dirichlet condition.
+	/// @return the boundary saturation value
+        double capPressure() const
+        {
+            ASSERT (isDirichlet());
+            return value_;
+        }
+	/// @brief Query a Periodic condition.
+	/// @return the saturation difference value.
+        double capPressureDifference() const
+        {
+            ASSERT (isPeriodic());
+            return value_;
+        }
+    };
+
+
+
+
+    template <class BC>
+    class BoundaryConditions
+    {
+    public:
+        BoundaryConditions()
         {
         }
 
-        SaturationBoundaryConditions(int num_different_boundary_ids)
-            : sbcs_(num_different_boundary_ids),
+        BoundaryConditions(int num_different_boundary_ids)
+            : bcs_(num_different_boundary_ids),
               periodic_partner_bid_(num_different_boundary_ids, 0)
         {
         }
 
         void resize(int new_size)
         {
-            sbcs_.resize(new_size);
+            bcs_.resize(new_size);
             periodic_partner_bid_.resize(new_size, 0);
         }
 
-        void resize(int new_size, SaturationBoundaryCondition sbc)
+        void resize(int new_size, BC bc)
         {
-            sbcs_.resize(new_size, sbc);
+            bcs_.resize(new_size, bc);
             periodic_partner_bid_.resize(new_size, 0);
         }
 
         bool empty() const
         {
-            return sbcs_.empty();
+            return bcs_.empty();
         }
 
         void clear()
         {
-            sbcs_.clear();
+            bcs_.clear();
             periodic_partner_bid_.clear();
         }
 
-        const SaturationBoundaryCondition& operator[](int boundary_id) const
+        const BC& operator[](int boundary_id) const
         {
-            ASSERT(boundary_id >= 0 && boundary_id < int(sbcs_.size()));
-            return sbcs_[boundary_id];
+            ASSERT(boundary_id >= 0 && boundary_id < int(bcs_.size()));
+            return bcs_[boundary_id];
         }
 
-        SaturationBoundaryCondition& operator[](int boundary_id)
+        BC& operator[](int boundary_id)
         {
-            ASSERT(boundary_id >= 0 && boundary_id < int(sbcs_.size()));
-            return sbcs_[boundary_id];
+            ASSERT(boundary_id >= 0 && boundary_id < int(bcs_.size()));
+            return bcs_[boundary_id];
         }
 
         void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
@@ -371,6 +296,8 @@ namespace Dune
             ASSERT(boundary_id_2 >= 0 && boundary_id_2 < int(periodic_partner_bid_.size()));
             ASSERT(periodic_partner_bid_[boundary_id_1] == 0);
             ASSERT(periodic_partner_bid_[boundary_id_2] == 0);
+	    ASSERT(bcs_[boundary_id_1].isPeriodic());
+	    ASSERT(bcs_[boundary_id_2].isPeriodic());
             periodic_partner_bid_[boundary_id_1] = boundary_id_2;
             periodic_partner_bid_[boundary_id_2] = boundary_id_1;
         }
@@ -384,24 +311,30 @@ namespace Dune
         template<typename charT, class traits>
         void write(std::basic_ostream<charT,traits>& os) const
         {
-            for (int i = 0;  i < int(sbcs_.size()); ++i) {
-                os << sbcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
+            for (int i = 0;  i < int(bcs_.size()); ++i) {
+                os << bcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
             }
             os << std::endl;
         }
     private:
-        std::vector<SaturationBoundaryCondition> sbcs_;
+        std::vector<BC> bcs_;
         std::vector<int> periodic_partner_bid_;
     };
 
-    template<typename charT, class traits>
+    template<typename charT, class traits, class BC>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
-               const SaturationBoundaryConditions& sbcs)
+               const BoundaryConditions<BC>& bcs)
     {
-        sbcs.write(os);
+        bcs.write(os);
         return os;
     }
+
+
+    typedef BoundaryConditions<FlowBC> FlowBoundaryConditions;
+    typedef BoundaryConditions<SatBC> SaturationBoundaryConditions;
+    typedef BoundaryConditions<PcapBC> CapillaryPressureBoundaryConditions;
+
 
 
 } // namespace Dune
