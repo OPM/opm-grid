@@ -38,10 +38,6 @@
 #include "config.h"
 #include <dune/solvers/common/SimulatorBase.hpp>
 
-// #include "FluxChecker.hpp"
-// #include "UpscalingBoundary.hpp"
-// #include "NewFluid.hpp"
-// #include "TransportSolverDummy.hpp"
 
 namespace Dune
 {
@@ -50,45 +46,19 @@ namespace Dune
        @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
        @date Thu Aug 28 14:45:51 2008
     */
-//     template <class grid_t,
-// 	      class reservoir_properties_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
     class Upscaler : public SimulatorBase
     {
     public:
-	// ------- Typedefs and enums -------
-
-	typedef CpGrid                                GridType;
-	enum { Dimension = GridType::dimension };
-	typedef GridInterfaceEuler<GridType>          GridInterface;
-	typedef GridInterface::CellIterator           CellIter;
-	typedef CellIter::FaceIterator                FaceIter;
-	typedef ReservoirPropertyCapillary<Dimension> ResProp;
-	typedef MimeticIPEvaluator<CellIter,
-				   Dimension,
-				   true>              InnerProd;
-	typedef FlowBC                                FBC;
-	typedef BoundaryConditions<true, true>        BCs;
-	typedef IncompFlowSolverHybrid<GridInterface,
-                                       ResProp,
-				       BCs,
-				       InnerProd>     FlowSolver;
-	typedef EulerUpstream<GridInterface,
-			      ResProp,
-			      BCs>                    TransportSolver;
-
-
 	// ------- Methods -------
 
 	/// Default constructor.
-	//	Upscaler();
+	Upscaler();
 
 	/// Initializes the upscaler.
-	void init(parameter::ParameterGroup& param);
+	void init(const parameter::ParameterGroup& param);
 
 	/// A type for the upscaled permeability.
-	typedef ResProp::PermTensor permtensor_t;
+	typedef ResProp::MutablePermTensor permtensor_t;
 
 	/// Does a single-phase upscaling.
 	/// @return an upscaled permeability tensor.
@@ -110,9 +80,6 @@ namespace Dune
 					const double pressure_drop,
 					const permtensor_t& upscaled_perm);
 
-	/// Accessor for the fine-scale fluid property object. For testing purposes.
-	// const fluid_t& fluid() const;
-
 	/// Accessor for the grid object.
 	const GridType& grid() const;
 
@@ -122,20 +89,28 @@ namespace Dune
 	const Dune::array<std::vector<double>, Dimension>& lastSaturations() const;
 
     private:
-	// Methods.
+	// ------- Typedefs and enums -------
+	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
+
+	// ------- Methods -------
 	// std::vector<double> setupInitialSaturation(double target_saturation);
-	double computeAverageVelocity(const std::vector<double>& hface_fluxes,
+	template <class FlowSol>
+	double computeAverageVelocity(const FlowSol& flow_solution,
 				      const int flow_dir) const;
-	double computeAveragePhaseVelocity(const std::vector<double>& hface_fluxes,
+	template <class FlowSol>
+	double computeAveragePhaseVelocity(const FlowSol& flow_solution,
 					   const std::vector<double>& saturations,
 					   const int flow_dir) const;
 	double computeDelta(const int flow_dir) const;
 
 
 
+	// ------- Data members -------
 	// FluxChecker flux_checker_;
 	// typename grid_t::point_t gravity_;
 	Dune::array<std::vector<double>, Dimension> last_saturations_;
+	BoundaryConditionType bctype_;
+	int periodic_dir_;
     };
 
 } // namespace Dune

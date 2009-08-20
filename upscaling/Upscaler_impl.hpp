@@ -36,111 +36,89 @@
 #define OPENRS_UPSCALER_IMPL_HEADER
 
 
-//#include "GridFactory.hpp"
-//#include "WellsPressureAndRate.hpp"
-//#include "MatrixInverse.hpp"
-//#include "Units.hpp"
-
-//#include <algorithm>
-
-//#include <dune/solvers/euler/setupGridAndProps.hpp>
-
 namespace Dune
 {
 
-	/*
-	// Gravity is not used yet.
-	std::fill(gravity_.begin(), gravity_.end(), 0.0);
-
-	// Set up flux checker.
-	flux_checker_.init(param);
-
-
-	*/
-
-#if 0
-
-    namespace Upscaler_helper
+    inline Upscaler::Upscaler()
+	: bctype_(Fixed),
+	  periodic_dir_(0)
     {
-	class SinglePhaseFluid
-	{
-	public:
-	    typedef double saturation_t;
-	    double mixtureDensity(int /*cell*/, const double /*S*/) const
-	    {
-		return 1.0;
-	    }
-	    double totalMobility(int /*cell*/, const double /*S*/) const
-	    {
-		return 1.0;
-	    }
-	    double calculateDensityOfMixture(const double /*S*/) const
-	    {
-		return 1.0;
-	    }
-	};
     }
 
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline typename rock_t::permtensor_t
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::upscaleSinglePhase()
+
+
+    inline void Upscaler::init(const parameter::ParameterGroup& param)
+    {
+	SimulatorBase::init(param);
+	int bctype = param.get<int>("boundary_condition_type");
+	if (bctype < 0 || bctype > 4) {
+	    THROW("Illegal boundary condition type (0-4 are legal): " << bctype);
+	} else {
+	    bctype_ = static_cast<BoundaryConditionType>(bctype);
+	}
+	if (bctype_ == PeriodicSingleDirection) {
+	    periodic_dir_ = param.getDefault("periodic_direction", periodic_dir_);
+	}
+    }
+
+
     inline Upscaler::permtensor_t
     Upscaler::upscaleSinglePhase()
     {
-	// Set up (no) wells and variables.
-	WellsPressureAndRate wells;
-	int num_cells = grid_.template numberOf<grid::CellType>();
-	std::vector<double> saturation(num_cells, 1.0);
-	std::vector<double> flux, cell_pressure, face_pressure;
-	typename rock_t::permtensor_t upscaled_K;
-	Upscaler_helper::SinglePhaseFluid single_fluid;
+	int num_cells = ginterf_.numberOfCells();
+	// No source or sink.
+	std::vector<double> src(num_cells, 0.0);
+	// Just water.
+	std::vector<double> sat(num_cells, 1.0);
+	// Gravity.
+	FieldVector<double, 3> gravity(0.0);
+	// gravity[2] = -Dune::unit::gravity;
+	if (gravity.two_norm() > 0.0) {
+	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
+	}
+
+	permtensor_t upscaled_K;
+	boost::array<FlowBC, 2*Dimension> fcond;
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
 	    // Set boundary direction for current pressure drop direction (0 = x, 1 = y, 2 = z).
-	    boundary_.setPressureDropDirection(static_cast<UpscalingBoundary::PressureDropDirection>(pdd));
-	    boundary_.setPressureDrop(1.0);
-	    boundary_.makeBoundaryConditions(grid_, gravity_, single_fluid);
+// 	    boundary_.setPressureDropDirection(static_cast<UpscalingBoundary::PressureDropDirection>(pdd));
+// 	    boundary_.setPressureDrop(1.0);
+// 	    boundary_.makeBoundaryConditions(grid_, gravity_, single_fluid);
 
 	    // Run pressure solver.
-	    pressure_solver_.pressureSolveAndUpdateWells(saturation, single_fluid, grid_, rock_,
-							 wells, boundary_, gravity_,
-							 flux, cell_pressure, face_pressure);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
 
 	    // Check and fix fluxes.
-	    flux_checker_.checkDivergence(grid_, wells, flux);
-	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+// 	    flux_checker_.checkDivergence(grid_, wells, flux);
+// 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
 	    // Compute upscaled K.
 	    double Q[Dimension];
-	    switch (boundary_.getConditionType()) {
-	    case UpscalingBoundary::Fixed:
+	    switch (bctype_) {
+	    case Fixed:
 		std::fill(Q, Q+Dimension, 0); // resetting Q
-		Q[pdd] = computeAverageVelocity(flux, pdd);
+		Q[pdd] = computeAverageVelocity(flow_solver_.getSolution(), pdd);
 		break;
-	    case UpscalingBoundary::Linear:
-	    case UpscalingBoundary::Periodic:
+	    case Linear:
+	    case Periodic:
 		for (int i = 0; i < Dimension; ++i) {
-		    Q[i] = computeAverageVelocity(flux, i);
+		    Q[i] = computeAverageVelocity(flow_solver_.getSolution(), i);
 		}
 		break;
 	    default:
-		THROW("Unknown boundary type: " << boundary_.getConditionType());
+		THROW("Unknown boundary type: " << bctype_);
 	    }
 	    double delta = computeDelta(pdd);
 	    for (int i = 0; i < Dimension; ++i) {
 		upscaled_K(i, pdd) = Q[i] * delta;
 	    }
 	}
-	// Commented out, because it is wrong for the single-phase upscaling,
-	// since we set the total mobility to 1.0 in SinglePhaseFluid.
-	// upscaled_K *= fluid_.getViscosityOne();
+	upscaled_K *= res_prop_.viscosityFirstPhase();
 	return upscaled_K;
     }
 
 
-
+#if 0
 
 //     template <class grid_t,
 // 	      class rock_t,
@@ -235,28 +213,8 @@ namespace Dune
 	// std::cout << relperm_matrix << std::endl;
 	return relperm_matrix;
     }
+#endif
 
-
-
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline const typename Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::fluid_t&
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::fluid() const
-//     {
-// 	return fluid_;
-//     }
-
-
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline const grid_t&
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::grid() const
     inline const Upscaler::GridType&
     Upscaler::grid() const
     {
@@ -264,14 +222,6 @@ namespace Dune
     }
 
 
-
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline const Go::Array<std::vector<double>, grid_t::Dimension>&
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::lastSaturations() const
     inline const Dune::array<std::vector<double>, Upscaler::Dimension>&
     Upscaler::lastSaturations() const
     {
@@ -279,38 +229,11 @@ namespace Dune
     }
 
 
-
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline std::vector<double>
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::setupInitialSaturation(double target_saturation)
-//     {
-// 	// For now, a very simple variant.
-// 	// Later, we should include more variants, and choose by means of a parameter.
-// 	int num_cells = grid_.template numberOf<grid::CellType>();
-// 	std::vector<double> s(num_cells, target_saturation);
-// 	return s;
-//     }
-
-
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline double
-//     Upscaler<grid_t,
-// 	     rock_t,
-// 	     pressure_solver_t,
-// 	     transport_solver_t>::computeAverageVelocity(const std::vector<double>& hface_fluxes,
-// 							 const int flow_dir) const
-    double Upscaler::computeAverageVelocity(const std::vector<double>& hface_fluxes,
+    template <class FlowSol>
+    double Upscaler::computeAverageVelocity(const FlowSol& flow_solution,
 					    const int flow_dir) const
     {
-	return boundary_.computeAverageVelocity(grid_, hface_fluxes, flow_dir);
+	return 0.0; //boundary_.computeAverageVelocity(grid_, hface_fluxes, flow_dir);
 
 	/*
 	double side1_flux = 0.0;
@@ -359,35 +282,22 @@ namespace Dune
 
 
 
-    template <class grid_t,
-	      class rock_t,
-	      class pressure_solver_t,
-	      class transport_solver_t>
-    inline double
-    Upscaler<grid_t,
-	     rock_t,
-	     pressure_solver_t,
-	     transport_solver_t>::computeAveragePhaseVelocity(const std::vector<double>& hface_fluxes,
-							      const std::vector<double>& saturations,
-							      const int flow_dir) const
+    template <class FlowSol>
+    inline double Upscaler::computeAveragePhaseVelocity(const FlowSol& flow_solution,
+							const std::vector<double>& saturations,
+							const int flow_dir) const
     {
-	return boundary_.computeAveragePhaseVelocity(grid_, fluid_, hface_fluxes, saturations, flow_dir);
+	return 0.0;
+	//return boundary_.computeAveragePhaseVelocity(grid_, fluid_, hface_fluxes, saturations, flow_dir);
     }
 
 
 
 
-    template <class grid_t,
-	      class rock_t,
-	      class pressure_solver_t,
-	      class transport_solver_t>
-    inline double
-    Upscaler<grid_t,
-	     rock_t,
-	     pressure_solver_t,
-	     transport_solver_t>::computeDelta(const int flow_dir) const
+    inline double Upscaler::computeDelta(const int flow_dir) const
     {
-	return boundary_.computeDelta(grid_, flow_dir);
+	return 0.0;
+	//return boundary_.computeDelta(grid_, flow_dir);
 	/*
 	double side1_pos = 0.0;
 	double side2_pos = 0.0;
@@ -419,7 +329,6 @@ namespace Dune
 	return  side2_pos/side2_area - side1_pos/side1_area;
 	*/
     }
-#endif
 
 } // namespace Dune
 

@@ -1,7 +1,7 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
-check_PROGRAMS = upscaling_test
-noinst_PROGRAMS = 
+check_PROGRAMS = 
+noinst_PROGRAMS = upscaling_test
 
 LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
         $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
