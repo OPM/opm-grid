@@ -129,8 +129,8 @@ namespace Dune
     /// @brief
     /// @todo Doc me
     /// @tparam
-    template <class GridInterface>
-    void createPeriodic(FlowBoundaryConditions& fbcs,
+    template <class BCs, class GridInterface>
+    void createPeriodic(BCs& fbcs,
 			const GridInterface& g,
 			const boost::array<FlowBC, 2*GridInterface::Dimension> conditions,
 			double spatial_tolerance = 1e-6)
@@ -148,7 +148,6 @@ namespace Dune
 	typedef typename GridInterface::CellIterator CI;
 	typedef typename CI::FaceIterator FI;
 	typedef typename GridInterface::Vector Vector;
-
 	std::vector<FI> bface_iters;
 	Vector low(1e100);
 	Vector hi(-1e100);
@@ -232,10 +231,8 @@ namespace Dune
 	// Resize the conditions object, with an easily detectable default
 	// condition.
 	typedef FlowBC FBC;
-	const double insane_pressure = 1e100;
 	fbcs.clear();
-	fbcs.resize(max_bid + 1, FBC(FBC::Dirichlet, insane_pressure));
-	fbcs[0] = FBC();
+	fbcs.resize(max_bid + 1);
 
 	// Now we have all the info, and the object to store it in. So we store it...
 	for (int i = 0; i < num_bdy; ++i) {
@@ -255,17 +252,17 @@ namespace Dune
 	    } else {
 		THROW("Boundary condition is unknown.");
 	    }
-	    fbcs[bfinfo[i].bid] = face_bc;
+	    fbcs.flowCond(bfinfo[i].bid) = face_bc;
 	}
 
 	// Check that all boundary faces were visited.
-	for (int i = 1; i <= max_bid; ++i) {
-	    if (fbcs[i].isDirichlet()) {
-		if (fbcs[i].pressure() == insane_pressure) {
-		    THROW("Not all boundary faces have been visited.");
-		}
-	    }
-	}
+// 	for (int i = 1; i <= max_bid; ++i) {
+// 	    if (fbcs[i].isDirichlet()) {
+// 		if (fbcs[i].pressure() == insane_pressure) {
+// 		    THROW("Not all boundary faces have been visited.");
+// 		}
+// 	    }
+// 	}
     }
 
 

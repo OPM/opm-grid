@@ -53,6 +53,15 @@ using namespace Dune;
 
 int main(int argc, char** argv)
 {
+    typedef Dune::GridInterfaceEuler<CpGrid>            GI;
+    typedef GI  ::CellIterator                          CI;
+    typedef CI  ::FaceIterator                          FI;
+    typedef Dune::MimeticIPEvaluator<CI,3,true>         IP;
+    typedef Dune::FlowBoundaryConditions                FBCs;
+    typedef Dune::BoundaryConditions<FBCs>              BCs;
+    typedef Dune::ReservoirPropertyCapillary<3>         RI;
+    typedef Dune::IncompFlowSolverHybrid<GI,RI,BCs,IP> FlowSolver;
+
     parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);
@@ -65,16 +74,8 @@ int main(int argc, char** argv)
                                    FBC(FBC::Neumann,   0.0),
                                    FBC(FBC::Neumann,   0.0),
                                    FBC(FBC::Neumann,   0.0) }};
-    FlowBoundaryConditions fbc;
+    BCs fbc;
     createPeriodic(fbc, g, cond);
-
-    typedef Dune::GridInterfaceEuler<CpGrid>            GI;
-    typedef GI  ::CellIterator                          CI;
-    typedef CI  ::FaceIterator                          FI;
-    typedef Dune::MimeticIPEvaluator<CI,3,true>         IP;
-    typedef Dune::FlowBoundaryConditions                FBCs;
-    typedef Dune::ReservoirPropertyCapillary<3>         RI;
-    typedef Dune::IncompFlowSolverHybrid<GI,RI,FBCs,IP> FlowSolver;
 
     RI r;
     r.init(g.numberOfCells());

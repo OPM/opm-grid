@@ -546,7 +546,7 @@ namespace Dune {
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         const int bid = f->boundaryId();
-                        if (bc[bid].isPeriodic()) {
+                        if (bc.flowCond(bid).isPeriodic()) {
                             DofID dof(cell[c->index()], f->localIndex());
                             bdry_id_map_.insert(std::make_pair(bid, dof));
                         }
@@ -605,7 +605,7 @@ namespace Dune {
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
-                            if (bc[bid].isPeriodic()) {
+                            if (bc.flowCond(bid).isPeriodic()) {
                                 // dof-id of self
                                 const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
@@ -689,7 +689,7 @@ namespace Dune {
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
-                            if (bc[bid].isPeriodic()) {
+                            if (bc.flowCond(bid).isPeriodic()) {
                                 // dof-id of self
                                 const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
@@ -958,23 +958,23 @@ namespace Dune {
             for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
                 if (f->boundary()) {
                     const int bid = f->boundaryId();
-
-                    if (bc[bid].isDirichlet()) {
+		    const FlowBC& bcond = bc.flowCond(bid);
+                    if (bcond.isDirichlet()) {
                         facetype[k]        = Dirichlet;
-                        condval[k]         = bc[bid].pressure();
+                        condval[k]         = bcond.pressure();
                         do_regularization_ = false;
-                    } else if (bc[bid].isPeriodic()) {
+                    } else if (bcond.isPeriodic()) {
                         BdryIdMapIterator j =
                             bdry_id_map_.find(bc.getPeriodicPartner(bid));
                         ASSERT (j != bdry_id_map_.end());
 
                         facetype[k] = Periodic;
-                        condval[k]  = bc[bid].pressureDifference();
+                        condval[k]  = bcond.pressureDifference();
                         ppartner[k] = cf[j->second.first][j->second.second];
                     } else {
-                        ASSERT (bc[bid].isNeumann());
+                        ASSERT (bcond.isNeumann());
                         facetype[k] = Neumann;
-                        rhs[k]      = bc[bid].outflux();
+                        rhs[k]      = bcond.outflux();
                     }
                 }
             }

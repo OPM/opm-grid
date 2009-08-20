@@ -141,7 +141,7 @@ namespace Dune
 // 	    flow_bcond[2] = BC(BC::Dirichlet, 0.0);
 	    // Make transport equation boundary conditions.
 	    // The default one is fine (sat = 1.0 on inflow).
-	    sat_bcond_.resize(7); // 7 since 0 is for interiour faces.
+	    bcond_.resize(7); // 7 since 0 is for interiour faces.
 	}
 
 	/// @brief
@@ -153,7 +153,7 @@ namespace Dune
 	    // No injection or production.
 	    SparseVector<double> injection_rates(g.numberOfCells());
 	    // Make a solver.
-	    TransportSolver transport_solver(g, res_prop_, sat_bcond_);
+	    TransportSolver transport_solver(g, res_prop_, bcond_);
 	    // Define a flow field with constant velocity.
 	    FieldVector<double, 3> vel(0.0);
 	    vel[0] = 1.0;
@@ -195,11 +195,11 @@ namespace Dune
     private:
 	typedef CpGrid GridType;
 	typedef GridInterfaceEuler<GridType> GridInterface;
-	typedef FlowBC BC;
-	typedef EulerUpstream<GridInterface, ReservoirPropertyCapillary<3>, SaturationBoundaryConditions> TransportSolver;
+	typedef BoundaryConditions<DummyVec<FlowBC>, SaturationBoundaryConditions> BCs;
+	typedef EulerUpstream<GridInterface, ReservoirPropertyCapillary<3>, BCs> TransportSolver;
 	GridType grid_;
 	ReservoirPropertyCapillary<3> res_prop_;
-	SaturationBoundaryConditions sat_bcond_;
+	BCs bcond_;
 	int simulation_steps_;
 	double stepsize_;
 	double init_saturation_;

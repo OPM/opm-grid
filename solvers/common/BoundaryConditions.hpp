@@ -241,53 +241,31 @@ namespace Dune
 
 
 
-    template <class BC>
-    class BoundaryConditions
+    class PeriodicConditionHandler
     {
     public:
-        BoundaryConditions()
+        PeriodicConditionHandler()
         {
         }
 
-        BoundaryConditions(int num_different_boundary_ids)
-            : bcs_(num_different_boundary_ids),
-              periodic_partner_bid_(num_different_boundary_ids, 0)
+        PeriodicConditionHandler(int num_different_boundary_ids)
+	    : periodic_partner_bid_(num_different_boundary_ids, 0)
         {
         }
 
         void resize(int new_size)
         {
-            bcs_.resize(new_size);
-            periodic_partner_bid_.resize(new_size, 0);
-        }
-
-        void resize(int new_size, BC bc)
-        {
-            bcs_.resize(new_size, bc);
             periodic_partner_bid_.resize(new_size, 0);
         }
 
         bool empty() const
         {
-            return bcs_.empty();
+            return periodic_partner_bid_.empty();
         }
 
         void clear()
         {
-            bcs_.clear();
             periodic_partner_bid_.clear();
-        }
-
-        const BC& operator[](int boundary_id) const
-        {
-            ASSERT(boundary_id >= 0 && boundary_id < int(bcs_.size()));
-            return bcs_[boundary_id];
-        }
-
-        BC& operator[](int boundary_id)
-        {
-            ASSERT(boundary_id >= 0 && boundary_id < int(bcs_.size()));
-            return bcs_[boundary_id];
         }
 
         void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
@@ -309,30 +287,121 @@ namespace Dune
         template<typename charT, class traits>
         void write(std::basic_ostream<charT,traits>& os) const
         {
-            for (int i = 0;  i < int(bcs_.size()); ++i) {
-                os << bcs_[i] << "   " << periodic_partner_bid_[i] << '\n';
+            for (int i = 0;  i < int(periodic_partner_bid_.size()); ++i) {
+                os << "Partner of bid " << i << " is " << periodic_partner_bid_[i] << '\n';
             }
             os << std::endl;
         }
     private:
-        std::vector<BC> bcs_;
         std::vector<int> periodic_partner_bid_;
     };
 
-    template<typename charT, class traits, class BC>
+    template<typename charT, class traits>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
-               const BoundaryConditions<BC>& bcs)
+               const PeriodicConditionHandler& pch)
     {
-        bcs.write(os);
+        pch.write(os);
         return os;
     }
 
 
-    typedef BoundaryConditions<FlowBC> FlowBoundaryConditions;
-    typedef BoundaryConditions<SatBC> SaturationBoundaryConditions;
-    typedef BoundaryConditions<PcapBC> CapillaryPressureBoundaryConditions;
 
+    typedef std::vector<FlowBC> FlowBoundaryConditions;
+    typedef std::vector<SatBC> SaturationBoundaryConditions;
+    typedef std::vector<PcapBC> CapillaryPressureBoundaryConditions;
+
+
+    template <typename T>
+    class DummyVec
+    {
+    public:
+	DummyVec() {}
+	DummyVec(int) {}
+	void resize(int) {}
+	void clear() {}
+    };
+
+    template <class FlowConds = DummyVec<FlowBC>, class SatConds = DummyVec<SatBC>, class PcapConds = DummyVec<PcapBC> >
+    class BoundaryConditions : public PeriodicConditionHandler,
+			       private FlowConds,
+			       private SatConds,
+			       private PcapConds
+    {
+    public:
+	FlowBC& flowCond(int i)
+	{
+	    return FlowConds::operator[](i);
+	}
+	const FlowBC& flowCond(int i) const
+	{
+	    return FlowConds::operator[](i);
+	}
+	SatBC& satCond(int i)
+	{
+	    return SatConds::operator[](i);
+	}
+	const SatBC& satCond(int i) const
+	{
+	    return SatConds::operator[](i);
+	}
+	PcapBC& pcapCond(int i)
+	{
+	    return PcapConds::operator[](i);
+	}
+	const PcapBC& pcapCond(int i) const
+	{
+	    return PcapConds::operator[](i);
+	}
+
+        BoundaryConditions()
+	{
+        }
+
+        BoundaryConditions(int num_different_boundary_ids)
+	    : PeriodicConditionHandler(num_different_boundary_ids),
+	      FlowConds(num_different_boundary_ids),
+	      SatConds(num_different_boundary_ids),
+	      PcapConds(num_different_boundary_ids)
+	{
+        }
+
+        void resize(int new_size)
+        {
+	    PeriodicConditionHandler::resize(new_size);
+	    FlowConds::resize(new_size);
+	    SatConds::resize(new_size);
+	    PcapConds::resize(new_size);
+        }
+
+        bool empty() const
+        {
+            return PeriodicConditionHandler::empty();
+        }
+
+        void clear()
+        {
+	    PeriodicConditionHandler::clear();
+	    FlowConds::clear();
+	    SatConds::clear();
+	    PcapConds::clear();
+        }
+
+        template<typename charT, class traits>
+        void write(std::basic_ostream<charT,traits>& os) const
+        {
+	    PeriodicConditionHandler::write(os);
+	}
+    };
+
+    template<typename charT, class traits, class F, class S, class P>
+    std::basic_ostream<charT,traits>&
+    operator<<(std::basic_ostream<charT,traits>& os,
+               const BoundaryConditions<F,S,P>& bcs)
+    {
+        bcs.write(os);
+        return os;
+    }
 
 
 } // namespace Dune

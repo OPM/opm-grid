@@ -92,9 +92,8 @@ namespace Dune
 	{
 	}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+	/// @brief Initialization from parameters.
+	/// @param param a parameter object
 	void init(const parameter::ParameterGroup& param)
 	{
 	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
@@ -110,7 +109,7 @@ namespace Dune
 	    // Default is pressure 1.0e5 on the left, 0.0 on the right.
 	    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
 	    // and that boundary id 0 means interiour face/intersection.
-	    flow_bcond_.resize(7);
+	    bcond_.resize(7);
 	    std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
 	    FBC::BCType bct = FBC::Dirichlet;
 	    double leftval = 1.0*Dune::unit::barsa;
@@ -125,16 +124,15 @@ namespace Dune
 	    } else {
 		THROW("Unknown flow boundary condition type " << flow_bc_type);
 	    }
-	    flow_bcond_[1] = FBC(bct, leftval);
-	    flow_bcond_[2] = FBC(bct, rightval);
-	    // Make transport equation boundary conditions.
-	    // The default ones are fine (sat = 1.0 on inflow).
-	    transport_bcond_.resize(7); // Again 7 conditions, see comment above.
+	    bcond_.flowCond(1) = FBC(bct, leftval);
+	    bcond_.flowCond(2) = FBC(bct, rightval);
+	    // For transport equation boundary conditions, 
+	    // the default ones are fine (sat = 1.0 on inflow).
 	    // Initialize flow solver.
-	    flow_solver_.init(ginterf_, res_prop_, flow_bcond_);
+	    flow_solver_.init(ginterf_, res_prop_, bcond_);
 	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
 	    // Initialize transport solver.
-	    transport_solver_.init(param, ginterf_, res_prop_, transport_bcond_);
+	    transport_solver_.init(param, ginterf_, res_prop_, bcond_);
 
 	    // Write any unused parameters.
 	    std::cout << "====================   Unused parameters:   ====================\n";
@@ -142,10 +140,10 @@ namespace Dune
 	    std::cout << "================================================================\n";
 	}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+	/// @brief Estimates a scalar cell velocity from outgoing fluxes.
+	/// @tparam FlowSol a flow solution type.
+	/// @param[out] cell_velocity the estimated velocities.
+	/// @param[in] flow_solution the object containing the fluxes.
 	template <class FlowSol>
 	void estimateCellVelocity(std::vector<double>& cell_velocity,
 				  const FlowSol& flow_solution)
@@ -187,15 +185,21 @@ namespace Dune
     protected:
 	typedef CpGrid                                      GridType;
 	typedef GridInterfaceEuler<GridType>                GridInterface;
-	typedef EulerUpstream<GridInterface, ReservoirPropertyCapillary<3>, SaturationBoundaryConditions> TransportSolver;
 	typedef GridInterface::CellIterator                 CellIter;
 	typedef CellIter::FaceIterator                      FaceIter;
-	typedef Dune::MimeticIPEvaluator<CellIter, 3, true> InnerProd;
-	typedef Dune::FlowBC                                FBC;
-	typedef Dune::FlowBoundaryConditions                FBCs;
-	typedef Dune::IncompFlowSolverHybrid<GridInterface,
-                                             ReservoirPropertyCapillary<3>,
-                                             FBCs, InnerProd> FlowSolver;
+	typedef MimeticIPEvaluator<CellIter, 3, true>       InnerProd;
+	typedef FlowBC                                      FBC;
+	typedef FlowBoundaryConditions                      FBCs;
+	typedef SaturationBoundaryConditions                SBCs;
+	typedef CapillaryPressureBoundaryConditions         CPBCs;
+	typedef BoundaryConditions<FBCs, SBCs, CPBCs>       BCs;
+	typedef IncompFlowSolverHybrid<GridInterface,
+				       ReservoirPropertyCapillary<3>,
+				       BCs,
+				       InnerProd> FlowSolver;
+	typedef EulerUpstream<GridInterface,
+			      ReservoirPropertyCapillary<3>,
+			      BCs> TransportSolver;
 
 	int simulation_steps_;
 	double stepsize_;
@@ -204,8 +208,7 @@ namespace Dune
 	GridType grid_;
 	GridInterface ginterf_;
 	ReservoirPropertyCapillary<3> res_prop_;
-	FBCs flow_bcond_;
-	SaturationBoundaryConditions transport_bcond_;
+	BCs bcond_;
 	FlowSolver flow_solver_;
 	TransportSolver transport_solver_;
     };

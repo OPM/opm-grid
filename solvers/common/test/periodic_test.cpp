@@ -55,8 +55,8 @@ int main(int argc, char** argv)
 				   FBC(FBC::Periodic, 0.0),
 				   FBC(FBC::Neumann, 0.0),
 				   FBC(FBC::Neumann, 0.0) }};
-    FlowBoundaryConditions fbc;
-    createPeriodic(fbc, gi, cond);
-    std::cout << fbc;
+    BoundaryConditions<FlowBoundaryConditions, SaturationBoundaryConditions, CapillaryPressureBoundaryConditions> bcs;
+    createPeriodic(bcs, gi, cond);
+    std::cout << bcs;
 }
 

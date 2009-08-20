@@ -224,7 +224,7 @@ namespace Dune
 	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
 		int bid = f->boundaryId();
-		if ((*pboundary_)[bid].isPeriodic()) {
+		if (pboundary_->satCond(bid).isPeriodic()) {
 		    bid_to_face_[bid] = f;
 		}
 	    }
@@ -476,7 +476,7 @@ namespace Dune
 		cell_vol[0] = c->volume();
 		if (f->boundary()) {
 		    int bid = f->boundaryId();
-		    if ((*pboundary_)[bid].isPeriodic()) {
+		    if (pboundary_->satCond(bid).isPeriodic()) {
 			nbface = bid_to_face_[pboundary_->getPeriodicPartner(bid)];
 			ASSERT(nbface != f);
 			cell[1] = nbface->cellIndex();
@@ -491,9 +491,9 @@ namespace Dune
 			cell_sat[1] = saturation[cell[1]];
 			cell_vol[1] = nbface->cell().volume();
 		    } else {
-			ASSERT((*pboundary_)[bid].isDirichlet());
+			ASSERT(pboundary_->satCond(bid).isDirichlet());
 			cell[1] = cell[0];
-			cell_sat[1] = (*pboundary_)[bid].saturation();
+			cell_sat[1] = pboundary_->satCond(bid).saturation();
 			cell_vol[1] = cell_vol[0];
 		    }
 		} else {
