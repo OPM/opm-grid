@@ -134,13 +134,14 @@ namespace Dune
 	    setupGridAndProps(param, grid_, res_prop_);
 
 	    // Make transport equation boundary conditions.
-	    if (param.getDefault("periodic_x_bdy", true)) {
+	    if (param.getDefault("periodic_x_bdy", false)) {
 		boost::array<SatBC, 6> scond = {{ SatBC(SatBC::Periodic, 0.0),
 						  SatBC(SatBC::Periodic, 0.0),
-						  SatBC(SatBC::Periodic, 0.0),
-						  SatBC(SatBC::Periodic, 0.0),
+						  SatBC(SatBC::Dirichlet, 0.0),
+						  SatBC(SatBC::Dirichlet, 0.0),
 						  SatBC(SatBC::Dirichlet, 0.0),
 						  SatBC(SatBC::Dirichlet, 0.0) }};
+		grid_.setUniqueBoundaryIds(true);
 		GridInterface gtmp(grid_);
 		createPeriodic(bcond_, gtmp, scond);
 	    } else {
@@ -166,6 +167,7 @@ namespace Dune
 	    TestSolution<GridInterface> flow_solution(g, vel);
 	    // Initial saturation.
 	    std::vector<double> sat(g.numberOfCells(), 0.0);
+	    std::fill(sat.begin() + g.numberOfCells()/3, sat.begin() + 2*g.numberOfCells()/3, 1.0);
 	    // Gravity.
 	    FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -9.81;
