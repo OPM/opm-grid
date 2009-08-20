@@ -1,4 +1,4 @@
-// $Id: referenceelements.hh 10837 2009-06-23 14:49:42Z atgeirr $
+// $Id: referenceelements.hh 10888 2009-07-14 06:10:25Z bska $
 
 #ifndef DUNE_REFERENCEELEMENTS_HH
 #define DUNE_REFERENCEELEMENTS_HH
@@ -98,6 +98,7 @@ namespace Dune
    * Interface for reference elements 
    ***********************************************************/
 
+#ifdef DUNE_ENABLE_OLD_NUMBERING
   //! This is the abstract base class for reference elements
   template<typename ctype, int dim>
   class ReferenceElement
@@ -1942,7 +1943,7 @@ namespace Dune
       static ReferenceSingularContainer<ctype,3> singulars;
       static ReferenceElementContainer<ctype,3> general;
   };
-
+#endif
   /** @} */
 }
 #endif

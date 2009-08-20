@@ -407,10 +407,8 @@ void checkIntersectionIterator(const GridViewType& view,
 	  // check intersectionSelfLocal
 	  FieldVector<double,dimworld> globalPos = intersectionGlobal.global(quad[i].position());
 	  FieldVector<double,dimworld> localPos  = eIt->geometry().global(intersectionSelfLocal.global(quad[i].position()));
-
-	  if ( !iIt->type().isSingular() &&  (globalPos - localPos).infinity_norm() > 1e-6)
-	      DUNE_THROW(GridError, "global( intersectionSelfLocal(global() ) is not the same as intersectionGlobal.global() at " << quad[i].position() << "!");
-
+          if( !iIt->type().isSingular() &&  (globalPos - localPos).infinity_norm() > 1e-6 )
+            DUNE_THROW( GridError, "entity.geometry().global( intersection.geometryInInside().global( x ) ) != intersection.geometry().global( x ) at x = " << quad[ i ].position() << "." );
       }
 
       // ////////////////////////////////////////////////////////////////

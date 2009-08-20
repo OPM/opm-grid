@@ -1,5 +1,5 @@
 // -*- tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
-// $Id: vtkwriter.hh 10892 2009-08-04 12:47:46Z atgeirr $
+// $Id: vtkwriter.hh 10931 2009-08-10 16:42:23Z bska $
 
 #ifndef DUNE_VTKWRITER_HH
 #define DUNE_VTKWRITER_HH
@@ -721,7 +721,7 @@ namespace Dune
       if( commRank == 0 )
       {
         file.open( parallelName.str().c_str() );
-        writeParallelHeader( file, name.c_str(), "", commSize );
+        writeParallelHeader( file, name.c_str(), ".", commSize );
         file.close();
       }
 
