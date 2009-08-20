@@ -49,14 +49,21 @@ int main(int argc, char** argv)
     grid.setUniqueBoundaryIds(true);
     GridInterfaceEuler<CpGrid> gi(grid);
     typedef FlowBC FBC;
-    boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic, 1.0e5),
-				   FBC(FBC::Periodic, -1.0e5),
-				   FBC(FBC::Periodic, 0.0),
-				   FBC(FBC::Periodic, 0.0),
-				   FBC(FBC::Neumann, 0.0),
-				   FBC(FBC::Neumann, 0.0) }};
+    boost::array<FBC, 6> fcond = {{ FBC(FBC::Periodic, 1.0e5),
+				    FBC(FBC::Periodic, -1.0e5),
+				    FBC(FBC::Periodic, 0.0),
+				    FBC(FBC::Periodic, 0.0),
+				    FBC(FBC::Neumann, 0.0),
+				    FBC(FBC::Neumann, 0.0) }};
+    typedef SatBC SBC;
+    boost::array<SBC, 6> scond = {{ SBC(SBC::Periodic, 0.0),
+				    SBC(SBC::Periodic, 0.0),
+				    SBC(SBC::Periodic, 0.0),
+				    SBC(SBC::Periodic, 0.0),
+				    SBC(SBC::Dirichlet, 0.0),
+				    SBC(SBC::Dirichlet, 0.0) }};
     BoundaryConditions<true, true> bcs;
-    createPeriodic(bcs, gi, cond);
+    createPeriodic(bcs, gi, fcond, scond);
     std::cout << bcs;
 }
 

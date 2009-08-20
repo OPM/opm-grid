@@ -53,6 +53,7 @@
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/common/setupGridAndProps.hpp>
+#include <dune/solvers/common/PeriodicHelpers.hpp>
 
 #include "../EulerUpstream.hpp"
 
@@ -132,16 +133,20 @@ namespace Dune
 
 	    setupGridAndProps(param, grid_, res_prop_);
 
-	    // Make flow equation boundary conditions.
-	    // Pressure 1.0e5 on the left, 0.0 on the right.
-	    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
-	    // and that boundary id 0 means interiour face/intersection.
-// 	    FlowBoundaryConditions flow_bcond(7);
-// 	    flow_bcond[1] = BC(BC::Dirichlet, 1.0e5);
-// 	    flow_bcond[2] = BC(BC::Dirichlet, 0.0);
 	    // Make transport equation boundary conditions.
-	    // The default one is fine (sat = 1.0 on inflow).
-	    bcond_.resize(7); // 7 since 0 is for interiour faces.
+	    if (param.getDefault("periodic_x_bdy", true)) {
+		boost::array<SatBC, 6> scond = {{ SatBC(SatBC::Periodic, 0.0),
+						  SatBC(SatBC::Periodic, 0.0),
+						  SatBC(SatBC::Periodic, 0.0),
+						  SatBC(SatBC::Periodic, 0.0),
+						  SatBC(SatBC::Dirichlet, 0.0),
+						  SatBC(SatBC::Dirichlet, 0.0) }};
+		GridInterface gtmp(grid_);
+		createPeriodic(bcond_, gtmp, scond);
+	    } else {
+		// The default one is fine (sat = 1.0 on inflow).
+		bcond_.resize(7); // 7 since 0 is for interiour faces.
+	    }
 	}
 
 	/// @brief

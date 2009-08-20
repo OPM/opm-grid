@@ -41,6 +41,7 @@
 #include <dune/common/fvector.hh>
 #include <algorithm>
 #include <boost/array.hpp>
+#include <boost/static_assert.hpp>
 
 namespace Dune
 {
@@ -122,6 +123,53 @@ namespace Dune
     }
 
 
+
+
+    template <class BCs>
+    void storeFlowCond(BCs& bcs,
+		       const std::vector<BoundaryFaceInfo>& bfinfo,
+		       const boost::array<FlowBC, 6>& fconditions,
+		       const boost::array<double, 6>& side_areas)
+    {
+	int num_bdy = bfinfo.size();
+	for (int i = 0; i < num_bdy; ++i) {
+	    FlowBC face_bc = fconditions[bfinfo[i].canon_pos];
+	    if (face_bc.isNeumann()) {
+		face_bc = FlowBC(FlowBC::Neumann, face_bc.outflux()*bfinfo[i].area/side_areas[bfinfo[i].canon_pos]);
+	    }
+	    bcs.flowCond(bfinfo[i].bid) = face_bc;
+	}
+    }
+
+
+
+
+
+    template <class BCs>
+    void storeSatCond(BCs& bcs,
+		      const std::vector<BoundaryFaceInfo>& bfinfo,
+		      const boost::array<SatBC, 6>& sconditions)
+    {
+	int num_bdy = bfinfo.size();
+	for (int i = 0; i < num_bdy; ++i) {
+	    bcs.satCond(bfinfo[i].bid) = sconditions[bfinfo[i].canon_pos];
+	}
+    }
+
+
+    template <class BC>
+    boost::array<bool, 6> extractPeriodic(const boost::array<BC, 6>& bcs)
+    {
+	boost::array<bool, 6> retval = {{ bcs[0].isPeriodic(),
+					  bcs[1].isPeriodic(),
+					  bcs[2].isPeriodic(),
+					  bcs[3].isPeriodic(),
+					  bcs[4].isPeriodic(),
+					  bcs[5].isPeriodic() }};
+	return retval;
+    }
+
+
     /// @brief Makes a boundary condition object representing
     /// periodic boundary conditions in any cartesian directions.
     /// The grid interface needs to export boundary ids that are
@@ -131,17 +179,89 @@ namespace Dune
     template <class BCs, class GridInterface>
     void createPeriodic(BCs& fbcs,
 			const GridInterface& g,
-			const boost::array<FlowBC, 2*GridInterface::Dimension> conditions,
+			const boost::array<FlowBC, 2*GridInterface::Dimension>& fconditions,
+			const boost::array<SatBC, 2*GridInterface::Dimension>& sconditions,
 			double spatial_tolerance = 1e-6)
     {
+	BOOST_STATIC_ASSERT(BCs::HasFlowConds);
+	BOOST_STATIC_ASSERT(BCs::HasSatConds);
 	// Check the conditions given.
 	for (int i = 0; i < GridInterface::Dimension; ++i) {
-	    if (conditions[2*i].isPeriodic()) {
-		ASSERT(conditions[2*i + 1].isPeriodic());
-		ASSERT(conditions[2*i].pressureDifference() == -conditions[2*i + 1].pressureDifference());
+	    if (fconditions[2*i].isPeriodic()) {
+		ASSERT(fconditions[2*i + 1].isPeriodic());
+		ASSERT(fconditions[2*i].pressureDifference() == -fconditions[2*i + 1].pressureDifference());
+		ASSERT(sconditions[2*i].isPeriodic());
+		ASSERT(sconditions[2*i + 1].isPeriodic());
+		ASSERT(sconditions[2*i].saturationDifference() == 0.0);
+		ASSERT(sconditions[2*i + 1].saturationDifference() == 0.0);
 	    }
 	}
+	std::vector<BoundaryFaceInfo> bfinfo;
+	boost::array<double, 6> side_areas;
+	createPeriodicImpl(fbcs, bfinfo, side_areas, g, extractPeriodic(fconditions), spatial_tolerance);
+	storeFlowCond(fbcs, bfinfo, fconditions, side_areas);
+	storeSatCond(fbcs, bfinfo, sconditions);
+    }
 
+
+
+
+    template <class BCs, class GridInterface>
+    void createPeriodic(BCs& fbcs,
+			const GridInterface& g,
+			const boost::array<FlowBC, 2*GridInterface::Dimension>& fconditions,
+			double spatial_tolerance = 1e-6)
+    {
+	BOOST_STATIC_ASSERT(BCs::HasFlowConds);
+	BOOST_STATIC_ASSERT(!BCs::HasSatConds);
+	// Check the conditions given.
+	for (int i = 0; i < GridInterface::Dimension; ++i) {
+	    if (fconditions[2*i].isPeriodic()) {
+		ASSERT(fconditions[2*i + 1].isPeriodic());
+		ASSERT(fconditions[2*i].pressureDifference() == -fconditions[2*i + 1].pressureDifference());
+	    }
+	}
+	std::vector<BoundaryFaceInfo> bfinfo;
+	boost::array<double, 6> side_areas;
+	createPeriodicImpl(fbcs, bfinfo, side_areas, g, extractPeriodic(fconditions), spatial_tolerance);
+	storeFlowCond(fbcs, bfinfo, fconditions, side_areas);
+    }
+
+
+
+
+    template <class BCs, class GridInterface>
+    void createPeriodic(BCs& fbcs,
+			const GridInterface& g,
+			const boost::array<SatBC, 2*GridInterface::Dimension>& sconditions,
+			double spatial_tolerance = 1e-6)
+    {
+	BOOST_STATIC_ASSERT(!BCs::HasFlowConds);
+	BOOST_STATIC_ASSERT(BCs::HasSatConds);
+	// Check the conditions given.
+	for (int i = 0; i < GridInterface::Dimension; ++i) {
+	    if (sconditions[2*i].isPeriodic()) {
+		ASSERT(sconditions[2*i + 1].isPeriodic());
+		ASSERT(sconditions[2*i].saturationDifference() == -sconditions[2*i + 1].saturationDifference());
+	    }
+	}
+	std::vector<BoundaryFaceInfo> bfinfo;
+	boost::array<double, 6> side_areas;
+	createPeriodicImpl(fbcs, bfinfo, side_areas, g, extractPeriodic(sconditions), spatial_tolerance);
+	storeSatCond(fbcs, bfinfo, sconditions);
+    }
+
+
+
+    /// @brief Common implementation for the various createPeriodic functions.
+    template <class BCs, class GridInterface>
+    void createPeriodicImpl(BCs& fbcs,
+			    std::vector<BoundaryFaceInfo>& bfinfo,
+			    boost::array<double, 6>& side_areas,
+			    const GridInterface& g,
+			    const boost::array<bool, 2*GridInterface::Dimension>& is_periodic,
+			    double spatial_tolerance = 1e-6)
+    {
 	// Pick out all boundary faces, simultaneously find the
 	// bounding box of their centroids, and the max id.
 	typedef typename GridInterface::CellIterator CI;
@@ -170,9 +290,8 @@ namespace Dune
 	}
 
 	// Store boundary face info in a suitable structure. Also find side total volumes.
-	array<double, 2*GridInterface::Dimension> side_areas;
 	std::fill(side_areas.begin(), side_areas.end(), 0.0);
-	std::vector<BoundaryFaceInfo> bfinfo;
+	bfinfo.clear();
 	bfinfo.reserve(num_bdy);
 	for (int i = 0; i < num_bdy; ++i) {
 	    BoundaryFaceInfo bf;
@@ -203,7 +322,9 @@ namespace Dune
 	    bf.centroid[bf.canon_pos/2] = 0.0;
 	    bfinfo.push_back(bf);
 	}
+	ASSERT(bfinfo.size() == bface_iters.size());
 
+	// Sort the infos so that partners end up close.
 	std::sort(bfinfo.begin(), bfinfo.end());
 
 	// Identify partners.
@@ -211,7 +332,7 @@ namespace Dune
 	    if (bfinfo[i].partner_face_index != -1) {
 		continue;
 	    }
-	    if (!conditions[bfinfo[i].canon_pos].isPeriodic()) {
+	    if (!is_periodic[bfinfo[i].canon_pos]) {
 		continue;
 	    }
 	    int lower = std::max(0, i - 10);
@@ -228,29 +349,17 @@ namespace Dune
 	}
 
 	// Resize the conditions object. We clear it first to make sure it's all defaults.
-	typedef FlowBC FBC;
 	fbcs.clear();
 	fbcs.resize(max_bid + 1);
 
 	// Now we have all the info, and the object to store it in. So we store it...
 	for (int i = 0; i < num_bdy; ++i) {
-	    FBC master_bc = conditions[bfinfo[i].canon_pos];
-	    FBC face_bc;
-	    if (master_bc.isPeriodic()) {
-		face_bc = FBC(FBC::Periodic, master_bc.pressureDifference());
-		int bid1 = bfinfo[i].bid;
-		int bid2 = bfinfo[i].partner_bid;
-		if (bid1 < bid2) {
-		    fbcs.setPeriodicPartners(bid1, bid2);
-		}
-	    } else if (master_bc.isNeumann()) {
-		face_bc = FBC(FBC::Neumann, master_bc.outflux()*bfinfo[i].area/side_areas[bfinfo[i].canon_pos]);
-	    } else if (master_bc.isDirichlet()) {
-		face_bc = FBC(FBC::Dirichlet, master_bc.pressure());
-	    } else {
-		THROW("Boundary condition is unknown.");
+	    int bid1 = bfinfo[i].bid;
+	    int bid2 = bfinfo[i].partner_bid;
+	    if (bid1 < bid2) {
+		// If there is no periodic partner, bid2 will be zero, so we will not end up here.
+		fbcs.setPeriodicPartners(bid1, bid2);
 	    }
-	    fbcs.flowCond(bfinfo[i].bid) = face_bc;
 	}
 
 	// Check that all boundary faces were visited.
