@@ -944,8 +944,7 @@ namespace Dune {
         {
             typedef typename GridInterface::CellIterator::FaceIterator FI;
 
-            const std::vector<int>& cell = flowSolution_.cellno_;
-            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
+            const SparseTable<int>& cf = flowSolution_.cellFaces_;
 
             std::fill(rhs     .begin(), rhs     .end(), Scalar(0.0));
             std::fill(facetype.begin(), facetype.end(), Internal   );
@@ -1037,8 +1036,8 @@ namespace Dune {
                     // equation of the form: a*x = a*p where 'p' is
                     // the known pressure value (i.e., condval[r]).
                     //
-                    S_[*i][*i] = S(r,r);
-                    rhs_[*i]   = S(r,r) * condval[r];
+                    S_  [ii][ii] = S(r,r);
+                    rhs_[ii]     = S(r,r) * condval[r];
                     break;
                 case Periodic:
                     // Periodic boundary condition.  Contact pressures
@@ -1088,8 +1087,10 @@ namespace Dune {
                         if (facetype[c] == Periodic) {
                             ASSERT ((0 <= ppartner[c]) && (ppartner[c] < rhs_.size()));
                             ASSERT (jj != ppartner[c]);
-                            rhs_[ii] -= S(r,c) * condval[c];
-                            jj = std::min(jj, ppartner[c]);
+                            if (ppartner[c] < jj) {
+                                rhs_[ii] -= S(r,c) * condval[c];
+                                jj = ppartner[c];
+                            }
                         }
                         S_[ii][jj] += S(r,c);
                     }
