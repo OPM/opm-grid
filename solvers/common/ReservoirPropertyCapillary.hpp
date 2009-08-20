@@ -268,6 +268,16 @@ namespace Dune
             computeCflFactors();
         }
 
+	double viscosityFirstPhase() const
+	{
+	    return viscosity1_;
+	}
+
+	double viscositySecondPhase() const
+	{
+	    return viscosity2_;
+	}
+
 	/// @brief
 	/// @todo Doc me!
 	/// @param
