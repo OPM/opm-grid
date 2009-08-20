@@ -39,8 +39,8 @@
 
 #include <vector>
 #include <ostream>
+#include <boost/mpl/if.hpp>
 #include <dune/common/ErrorMacros.hpp>
-
 
 namespace Dune
 {
@@ -306,12 +306,6 @@ namespace Dune
     }
 
 
-
-    typedef std::vector<FlowBC> FlowBoundaryConditions;
-    typedef std::vector<SatBC> SaturationBoundaryConditions;
-    typedef std::vector<PcapBC> CapillaryPressureBoundaryConditions;
-
-
     template <typename T>
     class DummyVec
     {
@@ -322,13 +316,20 @@ namespace Dune
 	void clear() {}
     };
 
-    template <class FlowConds = DummyVec<FlowBC>, class SatConds = DummyVec<SatBC>, class PcapConds = DummyVec<PcapBC> >
+    template <bool FC = false, bool SC = false, bool PC = false >
     class BoundaryConditions : public PeriodicConditionHandler,
-			       private FlowConds,
-			       private SatConds,
-			       private PcapConds
+			       private boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type,
+			       private boost::mpl::if_c<SC, std::vector<SatBC>,  DummyVec<SatBC>  >::type,
+			       private boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type
     {
     public:
+	typedef typename boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type FlowConds;
+	typedef typename boost::mpl::if_c<SC,  std::vector<SatBC>, DummyVec<SatBC>  >::type SatConds;
+	typedef typename boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type PcapConds;
+	const static bool HasFlowConds = FC;
+	const static bool HasSatConds = SC;
+	const static bool HasPcapConds = PC;
+
 	FlowBC& flowCond(int i)
 	{
 	    return FlowConds::operator[](i);
@@ -394,7 +395,7 @@ namespace Dune
 	}
     };
 
-    template<typename charT, class traits, class F, class S, class P>
+    template<typename charT, class traits, bool F, bool S, bool P>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
                const BoundaryConditions<F,S,P>& bcs)

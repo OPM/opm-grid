@@ -68,23 +68,23 @@ BOOST_AUTO_TEST_CASE(flowboundarycondition)
 
 BOOST_AUTO_TEST_CASE(flowboundaryconditions)
 {
-    FlowBoundaryConditions bc1;
+    BoundaryConditions<true> bc1;
     BOOST_CHECK(bc1.empty());
-    FlowBoundaryConditions bc2(2);
-    BOOST_CHECK(bc2[0].isNeumann());
-    BOOST_CHECK(bc2[0].outflux() == 0.0);
-    BOOST_CHECK(!bc2[0].isDirichlet());
-    BOOST_CHECK(bc2[1].isNeumann());
-    BOOST_CHECK(bc2[1].outflux() == 0.0);
-    BOOST_CHECK(!bc2[1].isDirichlet());
-    bc2[1] = FlowBC(FlowBC::Dirichlet, 10.0);
-    BOOST_CHECK(bc2[1].isDirichlet());
-    BOOST_CHECK(bc2[1].pressure() == 10.0);
-    BOOST_CHECK(!bc2[1].isNeumann());
+    BoundaryConditions<true> bc2(2);
+    BOOST_CHECK(bc2.flowCond(0).isNeumann());
+    BOOST_CHECK(bc2.flowCond(0).outflux() == 0.0);
+    BOOST_CHECK(!bc2.flowCond(0).isDirichlet());
+    BOOST_CHECK(bc2.flowCond(1).isNeumann());
+    BOOST_CHECK(bc2.flowCond(1).outflux() == 0.0);
+    BOOST_CHECK(!bc2.flowCond(1).isDirichlet());
+    bc2.flowCond(1) = FlowBC(FlowBC::Dirichlet, 10.0);
+    BOOST_CHECK(bc2.flowCond(1).isDirichlet());
+    BOOST_CHECK(bc2.flowCond(1).pressure() == 10.0);
+    BOOST_CHECK(!bc2.flowCond(1).isNeumann());
     // Tests that only run in debug mode.
 #ifndef NDEBUG
-    BOOST_CHECK_THROW(bc2[0].pressure(), std::exception);
-    BOOST_CHECK_THROW(bc2[1].outflux(), std::exception);
+    BOOST_CHECK_THROW(bc2.flowCond(0).pressure(), std::exception);
+    BOOST_CHECK_THROW(bc2.flowCond(1).outflux(), std::exception);
 #endif
 }
 
@@ -101,14 +101,14 @@ BOOST_AUTO_TEST_CASE(saturationboundarycondition)
 
 BOOST_AUTO_TEST_CASE(saturationboundaryconditions)
 {
-    SaturationBoundaryConditions bc1;
+    BoundaryConditions<false, true> bc1;
     BOOST_CHECK(bc1.empty());
-    SaturationBoundaryConditions bc2(2);
-    BOOST_CHECK(bc2[0].isDirichlet());
-    BOOST_CHECK(bc2[0].saturation() == 1.0);
-    BOOST_CHECK(bc2[1].isDirichlet());
-    BOOST_CHECK(bc2[1].saturation() == 1.0);
-    bc2[1] = SatBC(SatBC::Dirichlet, 0.8);
-    BOOST_CHECK(bc2[1].isDirichlet());
-    BOOST_CHECK(bc2[1].saturation() == 0.8);
+    BoundaryConditions<false, true> bc2(2);
+    BOOST_CHECK(bc2.satCond(0).isDirichlet());
+    BOOST_CHECK(bc2.satCond(0).saturation() == 1.0);
+    BOOST_CHECK(bc2.satCond(1).isDirichlet());
+    BOOST_CHECK(bc2.satCond(1).saturation() == 1.0);
+    bc2.satCond(1) = SatBC(SatBC::Dirichlet, 0.8);
+    BOOST_CHECK(bc2.satCond(1).isDirichlet());
+    BOOST_CHECK(bc2.satCond(1).saturation() == 0.8);
 }

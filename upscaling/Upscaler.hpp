@@ -69,14 +69,14 @@ namespace Dune
 				   Dimension,
 				   true>                    InnerProd;
 	typedef FlowBC                                      FBC;
-	typedef FlowBoundaryConditions                      FBCs;
+	typedef BoundaryConditions<true, true, true>        BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
                                        ResProp,
-				       FBCs,
+				       BCs,
 				       InnerProd>           FlowSolver;
 	typedef EulerUpstream<GridInterface,
 			      ResProp,
-			      SaturationBoundaryConditions> TransportSolver;
+			      BCs> TransportSolver;
 
 
 	// ------- Methods -------

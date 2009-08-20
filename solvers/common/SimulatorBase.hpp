@@ -189,10 +189,7 @@ namespace Dune
 	typedef CellIter::FaceIterator                      FaceIter;
 	typedef MimeticIPEvaluator<CellIter, 3, true>       InnerProd;
 	typedef FlowBC                                      FBC;
-	typedef FlowBoundaryConditions                      FBCs;
-	typedef SaturationBoundaryConditions                SBCs;
-	typedef CapillaryPressureBoundaryConditions         CPBCs;
-	typedef BoundaryConditions<FBCs, SBCs, CPBCs>       BCs;
+	typedef BoundaryConditions<true, true, true>        BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ReservoirPropertyCapillary<3>,
 				       BCs,
