@@ -111,11 +111,11 @@ namespace Dune
 	    // and that boundary id 0 means interiour face/intersection.
 	    bcond_.resize(7);
 	    std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
-	    FBC::BCType bct = FBC::Dirichlet;
+	    FlowBC::BCType bct = FlowBC::Dirichlet;
 	    double leftval = 1.0*Dune::unit::barsa;
 	    double rightval = 0.0;
 	    if (flow_bc_type == "neumann") {
-		bct = FBC::Neumann;
+		bct = FlowBC::Neumann;
 		leftval = param.get<double>("left_flux");
 		rightval = param.getDefault<double>("right_flux", -leftval);
 	    } else if (flow_bc_type == "dirichlet") {
@@ -124,8 +124,8 @@ namespace Dune
 	    } else {
 		THROW("Unknown flow boundary condition type " << flow_bc_type);
 	    }
-	    bcond_.flowCond(1) = FBC(bct, leftval);
-	    bcond_.flowCond(2) = FBC(bct, rightval);
+	    bcond_.flowCond(1) = FlowBC(bct, leftval);
+	    bcond_.flowCond(2) = FlowBC(bct, rightval);
 	    // For transport equation boundary conditions, 
 	    // the default ones are fine (sat = 1.0 on inflow).
 	    // Initialize flow solver.
@@ -183,20 +183,21 @@ namespace Dune
 	}
 
     protected:
-	typedef CpGrid                                 GridType;
-	typedef GridInterfaceEuler<GridType>           GridInterface;
-	typedef GridInterface::CellIterator            CellIter;
-	typedef CellIter::FaceIterator                 FaceIter;
-	typedef MimeticIPEvaluator<CellIter, 3, true>  InnerProd;
-	typedef FlowBC                                 FBC;
-	typedef BoundaryConditions<true, true>         BCs;
+	typedef CpGrid                                         GridType;
+ 	enum { Dimension = GridType::dimension };
+ 	typedef ReservoirPropertyCapillary<Dimension>          ResProp;
+	typedef GridInterfaceEuler<GridType>                   GridInterface;
+	typedef GridInterface::CellIterator                    CellIter;
+	typedef CellIter::FaceIterator                         FaceIter;
+	typedef MimeticIPEvaluator<CellIter, Dimension, true>  InnerProd;
+	typedef BoundaryConditions<true, true>                 BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
-				       ReservoirPropertyCapillary<3>,
+				       ResProp,
 				       BCs,
-				       InnerProd> FlowSolver;
+				       InnerProd>              FlowSolver;
 	typedef EulerUpstream<GridInterface,
-			      ReservoirPropertyCapillary<3>,
-			      BCs> TransportSolver;
+			      ResProp,
+			      BCs>                             TransportSolver;
 
 	int simulation_steps_;
 	double stepsize_;
