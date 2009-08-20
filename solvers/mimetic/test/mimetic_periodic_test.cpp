@@ -53,13 +53,13 @@ using namespace Dune;
 
 int main(int argc, char** argv)
 {
-    typedef Dune::GridInterfaceEuler<CpGrid>             GI;
-    typedef GI  ::CellIterator                           CI;
-    typedef CI  ::FaceIterator                           FI;
-    typedef Dune::MimeticIPEvaluator<CI,3,true>          IP;
-    typedef Dune::BoundaryConditions<true, false, false> BCs;
-    typedef Dune::ReservoirPropertyCapillary<3>          RI;
-    typedef Dune::IncompFlowSolverHybrid<GI,RI,BCs,IP>   FlowSolver;
+    typedef Dune::GridInterfaceEuler<CpGrid>           GI;
+    typedef GI  ::CellIterator                         CI;
+    typedef CI  ::FaceIterator                         FI;
+    typedef Dune::MimeticIPEvaluator<CI,3,true>        IP;
+    typedef Dune::BoundaryConditions<true, false>      BCs;
+    typedef Dune::ReservoirPropertyCapillary<3>        RI;
+    typedef Dune::IncompFlowSolverHybrid<GI,RI,BCs,IP> FlowSolver;
 
     parameter::ParameterGroup param(argc, argv);
     CpGrid grid;

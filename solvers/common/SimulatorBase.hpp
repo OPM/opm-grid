@@ -183,13 +183,13 @@ namespace Dune
 	}
 
     protected:
-	typedef CpGrid                                      GridType;
-	typedef GridInterfaceEuler<GridType>                GridInterface;
-	typedef GridInterface::CellIterator                 CellIter;
-	typedef CellIter::FaceIterator                      FaceIter;
-	typedef MimeticIPEvaluator<CellIter, 3, true>       InnerProd;
-	typedef FlowBC                                      FBC;
-	typedef BoundaryConditions<true, true, true>        BCs;
+	typedef CpGrid                                 GridType;
+	typedef GridInterfaceEuler<GridType>           GridInterface;
+	typedef GridInterface::CellIterator            CellIter;
+	typedef CellIter::FaceIterator                 FaceIter;
+	typedef MimeticIPEvaluator<CellIter, 3, true>  InnerProd;
+	typedef FlowBC                                 FBC;
+	typedef BoundaryConditions<true, true>         BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ReservoirPropertyCapillary<3>,
 				       BCs,

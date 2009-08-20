@@ -59,24 +59,24 @@ namespace Dune
     public:
 	// ------- Typedefs and enums -------
 
-	typedef CpGrid                                      GridType;
+	typedef CpGrid                                GridType;
 	enum { Dimension = GridType::dimension };
-	typedef GridInterfaceEuler<GridType>                GridInterface;
-	typedef GridInterface::CellIterator                 CellIter;
-	typedef CellIter::FaceIterator                      FaceIter;
-	typedef ReservoirPropertyCapillary<Dimension>       ResProp;
+	typedef GridInterfaceEuler<GridType>          GridInterface;
+	typedef GridInterface::CellIterator           CellIter;
+	typedef CellIter::FaceIterator                FaceIter;
+	typedef ReservoirPropertyCapillary<Dimension> ResProp;
 	typedef MimeticIPEvaluator<CellIter,
 				   Dimension,
-				   true>                    InnerProd;
-	typedef FlowBC                                      FBC;
-	typedef BoundaryConditions<true, true, true>        BCs;
+				   true>              InnerProd;
+	typedef FlowBC                                FBC;
+	typedef BoundaryConditions<true, true>        BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
                                        ResProp,
 				       BCs,
-				       InnerProd>           FlowSolver;
+				       InnerProd>     FlowSolver;
 	typedef EulerUpstream<GridInterface,
 			      ResProp,
-			      BCs> TransportSolver;
+			      BCs>                    TransportSolver;
 
 
 	// ------- Methods -------

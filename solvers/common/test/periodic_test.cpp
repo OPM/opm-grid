@@ -55,7 +55,7 @@ int main(int argc, char** argv)
 				   FBC(FBC::Periodic, 0.0),
 				   FBC(FBC::Neumann, 0.0),
 				   FBC(FBC::Neumann, 0.0) }};
-    BoundaryConditions<true, false, false> bcs;
+    BoundaryConditions<true, true> bcs;
     createPeriodic(bcs, gi, cond);
     std::cout << bcs;
 }

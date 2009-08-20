@@ -122,13 +122,12 @@ namespace Dune
     }
 
 
-    /// Makes a FlowBoundaryConditions object representing
+    /// @brief Makes a boundary condition object representing
     /// periodic boundary conditions in any cartesian directions.
     /// The grid interface needs to export boundary ids that are
     /// unique for each boundary face for this to be possible.
-    /// @brief
-    /// @todo Doc me
-    /// @tparam
+    /// @tparam BCs the boundary condition class
+    /// @tparam GridInterface grid interface class
     template <class BCs, class GridInterface>
     void createPeriodic(BCs& fbcs,
 			const GridInterface& g,
@@ -228,8 +227,7 @@ namespace Dune
 	    }
 	}
 
-	// Resize the conditions object, with an easily detectable default
-	// condition.
+	// Resize the conditions object. We clear it first to make sure it's all defaults.
 	typedef FlowBC FBC;
 	fbcs.clear();
 	fbcs.resize(max_bid + 1);

@@ -200,7 +200,7 @@ namespace Dune
         }
     };
 
-
+    /*
     /// @brief A class for representing a capillary pressure boundary condition.
     class PcapBC : public BCBase
     {
@@ -237,7 +237,7 @@ namespace Dune
             return value_;
         }
     };
-
+    */
 
 
 
@@ -316,19 +316,19 @@ namespace Dune
 	void clear() {}
     };
 
-    template <bool FC = false, bool SC = false, bool PC = false >
+    template <bool FC = false, bool SC = false>//, bool PC = false >
     class BoundaryConditions : public PeriodicConditionHandler,
 			       private boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type,
-			       private boost::mpl::if_c<SC, std::vector<SatBC>,  DummyVec<SatBC>  >::type,
-			       private boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type
+			       private boost::mpl::if_c<SC, std::vector<SatBC>,  DummyVec<SatBC>  >::type
+	      // private boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type
     {
     public:
 	typedef typename boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type FlowConds;
 	typedef typename boost::mpl::if_c<SC,  std::vector<SatBC>, DummyVec<SatBC>  >::type SatConds;
-	typedef typename boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type PcapConds;
+	// typedef typename boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type PcapConds;
 	const static bool HasFlowConds = FC;
 	const static bool HasSatConds = SC;
-	const static bool HasPcapConds = PC;
+	// const static bool HasPcapConds = PC;
 
 	FlowBC& flowCond(int i)
 	{
@@ -346,14 +346,14 @@ namespace Dune
 	{
 	    return SatConds::operator[](i);
 	}
-	PcapBC& pcapCond(int i)
-	{
-	    return PcapConds::operator[](i);
-	}
-	const PcapBC& pcapCond(int i) const
-	{
-	    return PcapConds::operator[](i);
-	}
+// 	PcapBC& pcapCond(int i)
+// 	{
+// 	    return PcapConds::operator[](i);
+// 	}
+// 	const PcapBC& pcapCond(int i) const
+// 	{
+// 	    return PcapConds::operator[](i);
+// 	}
 
         BoundaryConditions()
 	{
@@ -362,8 +362,8 @@ namespace Dune
         BoundaryConditions(int num_different_boundary_ids)
 	    : PeriodicConditionHandler(num_different_boundary_ids),
 	      FlowConds(num_different_boundary_ids),
-	      SatConds(num_different_boundary_ids),
-	      PcapConds(num_different_boundary_ids)
+	      SatConds(num_different_boundary_ids)
+// 	      PcapConds(num_different_boundary_ids)
 	{
         }
 
@@ -372,7 +372,7 @@ namespace Dune
 	    PeriodicConditionHandler::resize(new_size);
 	    FlowConds::resize(new_size);
 	    SatConds::resize(new_size);
-	    PcapConds::resize(new_size);
+	    // PcapConds::resize(new_size);
         }
 
         bool empty() const
@@ -385,7 +385,7 @@ namespace Dune
 	    PeriodicConditionHandler::clear();
 	    FlowConds::clear();
 	    SatConds::clear();
-	    PcapConds::clear();
+	    // PcapConds::clear();
         }
 
         template<typename charT, class traits>
@@ -395,10 +395,10 @@ namespace Dune
 	}
     };
 
-    template<typename charT, class traits, bool F, bool S, bool P>
+    template<typename charT, class traits, bool F, bool S> //, bool P>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
-               const BoundaryConditions<F,S,P>& bcs)
+               const BoundaryConditions<F,S>& bcs)
     {
         bcs.write(os);
         return os;
