@@ -958,7 +958,7 @@ namespace Dune {
             for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
                 if (f->boundary()) {
                     const int bid = f->boundaryId();
-		    const FlowBC& bcond = bc.flowCond(bid);
+                    const FlowBC& bcond = bc.flowCond(bid);
                     if (bcond.isDirichlet()) {
                         facetype[k]        = Dirichlet;
                         condval[k]         = bcond.pressure();
