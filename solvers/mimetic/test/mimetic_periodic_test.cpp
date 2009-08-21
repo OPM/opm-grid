@@ -38,6 +38,7 @@
 #include <boost/array.hpp>
 
 #include <dune/common/Units.hpp>
+#include <dune/common/param/ParameterGroup.hpp>
 
 #include <dune/grid/CpGrid.hpp>
 
