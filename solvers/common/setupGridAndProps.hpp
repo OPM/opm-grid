@@ -79,6 +79,9 @@ namespace Dune
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
 	}
+	if (param.getDefault("use_unique_boundary_ids", false)) {
+	    grid.setUniqueBoundaryIds(true);
+	}
     }
 
 } // namespace Dune
