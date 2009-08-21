@@ -398,6 +398,7 @@ namespace Dune {
 
         const GridInterface* pgrid_;
         BdryIdMapType        bdry_id_map_;
+        std::vector<int>     ppartner_dof_;
 
         // ----------------------------------------------------------------
         bool cleared_state_;
@@ -540,6 +541,7 @@ namespace Dune {
             typedef typename CI           ::FaceIterator FI;
 
             const std::vector<int>& cell = flowSolution_.cellno_;
+            const SparseTable<int>& cf   = flowSolution_.cellFaces_;
 
             bdry_id_map_.clear();
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
@@ -549,6 +551,29 @@ namespace Dune {
                         if (bc.flowCond(bid).isPeriodic()) {
                             DofID dof(cell[c->index()], f->localIndex());
                             bdry_id_map_.insert(std::make_pair(bid, dof));
+                        }
+                    }
+                }
+            }
+
+            ppartner_dof_.clear();
+            if (!bdry_id_map_.empty()) {
+                ppartner_dof_.assign(total_num_faces_, -1);
+                for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+                    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                        if (f->boundary()) {
+                            const int bid = f->boundaryId();
+                            if (bc.flowCond(bid).isPeriodic()) {
+                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+
+                                BdryIdMapIterator j =
+                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                ASSERT (j != bdry_id_map_.end());
+                                const int dof2 = cf[j->second.first][j->second.second];
+
+                                ppartner_dof_[dof1] = dof2;
+                                ppartner_dof_[dof2] = dof1;
+                            }
                         }
                     }
                 }
@@ -620,16 +645,17 @@ namespace Dune {
                                     // Allocate storage for the actual
                                     // couplings.
                                     //
-                                    // Note: The equivalence
-                                    // dof1==dof2 is handled
-                                    // automatically in this loop.
-                                    //
                                     const int ndof = cf.rowSize(c2);
-                                    S_.incrementrowsize(dof1, ndof);          // self->other
+                                    S_.incrementrowsize(dof1, ndof); // self->other
                                     for (int dof = 0; dof < ndof; ++dof) {
-                                        S_.incrementrowsize(cf[c2][dof], 1);  // other->self
+                                        int ii = cf[c2][dof];
+                                        int pp = ppartner_dof_[ii];
+                                        if ((pp != -1) && (pp != dof1) && (pp < ii)) {
+                                            S_.incrementrowsize(pp, 1);
+                                        }
+                                        S_.incrementrowsize(ii, 1);  // other->self
                                     }
-                               }
+                                }
                             }
                         }
                     }
@@ -703,14 +729,17 @@ namespace Dune {
                                 if (dof1 < dof2) {
                                     // Assign actual couplings.
                                     //
-                                    // Note: The equivalence
-                                    // dof1==dof2 is handled
-                                    // automatically in this loop.
-                                    //
                                     const int ndof = cf.rowSize(c2);
                                     for (int dof = 0; dof < ndof; ++dof) {
-                                        S_.addindex(dof1, cf[c2][dof]);  // self->other
-                                        S_.addindex(cf[c2][dof], dof1);  // other->self
+                                        int ii = cf[c2][dof];
+                                        int pp = ppartner_dof_[ii];
+                                        if ((pp != -1) && (pp != dof1) && (pp < ii)) {
+                                            ii = pp;
+                                        }
+                                        S_.addindex(dof1, ii);  // self->other
+                                        S_.addindex(ii, dof1);  // other->self
+                                        S_.addindex(dof2, ii);
+                                        S_.addindex(ii, dof2);
                                     }
                                 }
                             }
