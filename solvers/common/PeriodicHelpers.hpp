@@ -360,6 +360,7 @@ namespace Dune
 		// If there is no periodic partner, bid2 will be zero, so we will not end up here.
 		fbcs.setPeriodicPartners(bid1, bid2);
 	    }
+	    fbcs.setCanonicalBoundaryId(bid1, bfinfo[i].canon_pos + 1);
 	}
 
 	// Check that all boundary faces were visited.

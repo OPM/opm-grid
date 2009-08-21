@@ -249,23 +249,26 @@ namespace Dune
         }
 
         PeriodicConditionHandler(int num_different_boundary_ids)
-	    : periodic_partner_bid_(num_different_boundary_ids, 0)
+	    : periodic_partner_bid_(num_different_boundary_ids, 0),
+	      canonical_bid_(num_different_boundary_ids, 0)
         {
         }
 
         void resize(int new_size)
         {
             periodic_partner_bid_.resize(new_size, 0);
+            canonical_bid_.resize(new_size, 0);
         }
 
         bool empty() const
         {
-            return periodic_partner_bid_.empty();
+            return periodic_partner_bid_.empty() && canonical_bid_.empty();
         }
 
         void clear()
         {
             periodic_partner_bid_.clear();
+	    canonical_bid_.clear();
         }
 
         void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
@@ -284,16 +287,30 @@ namespace Dune
             return periodic_partner_bid_[boundary_id];
         }
 
+	void setCanonicalBoundaryId(int boundary_id, int canonical_bid)
+	{
+	    ASSERT(boundary_id >= 0 && boundary_id < int(canonical_bid_.size()));
+            canonical_bid_[boundary_id] = canonical_bid;
+	}
+
+        int getCanonicalBoundaryId(int boundary_id) const
+        {
+            ASSERT(boundary_id >= 0 && boundary_id < int(canonical_bid_.size()));
+            return canonical_bid_[boundary_id];
+        }
+
         template<typename charT, class traits>
         void write(std::basic_ostream<charT,traits>& os) const
         {
             for (int i = 0;  i < int(periodic_partner_bid_.size()); ++i) {
-                os << "Partner of bid " << i << " is " << periodic_partner_bid_[i] << '\n';
+                os << "Partner of bid " << i << " is " << periodic_partner_bid_[i]
+		   << "  (canonical bid is " << canonical_bid_[i] << '\n';
             }
             os << std::endl;
         }
     private:
         std::vector<int> periodic_partner_bid_;
+	std::vector<int> canonical_bid_;
     };
 
     template<typename charT, class traits>
