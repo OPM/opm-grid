@@ -52,7 +52,7 @@ namespace Dune
     {
 	// Initialize grid and reservoir properties.
 	// Parts copied from CpGrid::init().
-	std::string fileformat = param.getDefault<std::string>("fileformat", "eclipse");
+	std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
 	if (fileformat == "sintef_legacy") {
 	    std::string grid_prefix = param.get<std::string>("grid_prefix");
 	    grid.readSintefLegacyFormat(grid_prefix);
@@ -67,12 +67,12 @@ namespace Dune
 	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
 	    res_prop.init(parser, grid.globalCell(), rl_ptr);
 	} else if (fileformat == "cartesian") {
-	    array<int, 3> dims = {{ param.get<int>("nx"),
-				    param.get<int>("ny"),
-				    param.get<int>("nz") }};
-	    array<double, 3> cellsz = {{ param.get<double>("dx"),
-					 param.get<double>("dy"),
-					 param.get<double>("dz") }};
+	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+				    param.getDefault<int>("ny", 1),
+				    param.getDefault<int>("nz", 1) }};
+	    array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+					 param.getDefault<double>("dy", 1.0),
+					 param.getDefault<double>("dz", 1.0) }};
 	    grid.createCartesian(dims, cellsz);
 	    MESSAGE("Warning: For generated cartesian grids, we use default reservoir properties.");
 	    res_prop.init(grid.size(0));
