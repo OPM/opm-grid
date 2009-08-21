@@ -66,7 +66,6 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
-	initPeriodics();
     }
 
     template <class GI, class RP, class BC>
@@ -82,7 +81,6 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
-	initPeriodics();
     }
 
 
@@ -90,6 +88,13 @@ namespace Dune
     template <class GI, class RP, class BC>
     inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param)
     {
+	if (!pgrid_ || !preservoir_properties_ || !pboundary_) {
+	    THROW("Grid, reservoir properties and boundary conditions were not given.\n"
+		  "Use nondefault constructor or init() with more arguments.");
+	}
+
+	initPeriodics();
+
 	courant_number_ = param.getDefault("courant_number", courant_number_);
 	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
 	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
@@ -107,15 +112,7 @@ namespace Dune
 	preservoir_properties_ = &r;
 	pboundary_ = &b;
 
-	initPeriodics();
-
-	courant_number_ = param.getDefault("courant_number", courant_number_);
-	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
-	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
-	method_capillary_ = param.getDefault("method_capillary", method_capillary_);
-	minimum_small_steps_ = param.getDefault("minimum_small_steps", minimum_small_steps_);
-	check_sat_ = param.getDefault("check_sat", check_sat_);
-	clamp_sat_ = param.getDefault("clamp_sat", clamp_sat_);
+	init(param);
     }
 
 
@@ -314,9 +311,9 @@ namespace Dune
 	typedef typename Face::Cell Cell;
 	typedef typename GI::Vector Vector;
 
-	// For now, we return zero on boundaries. Obviously we should have
-	// capillary pressure boundary conditions.
-	if (f->boundary()) {
+	// At nonperiodic boundaries, we return a zero gradient.
+	// That is (sort of) a trivial Neumann (noflow) condition for the capillary pressure.
+	if (f->boundary() && !pboundary_->satCond(f->boundaryId()).isPeriodic()) {
 	    return Vector(0.0);
 	}
 	// Find neighbouring cell and face: nbc and nbf.
