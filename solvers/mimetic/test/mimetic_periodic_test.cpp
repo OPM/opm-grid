@@ -70,8 +70,8 @@ int main(int argc, char** argv)
     typedef FlowBC FBC;
     boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic,  1.0*unit::barsa),
                                    FBC(FBC::Periodic, -1.0*unit::barsa),
-                                   FBC(FBC::Neumann,   0.0),
-                                   FBC(FBC::Neumann,   0.0),
+                                   FBC(FBC::Periodic,  0.0),
+                                   FBC(FBC::Periodic,  0.0),
                                    FBC(FBC::Neumann,   0.0),
                                    FBC(FBC::Neumann,   0.0) }};
     BCs fbc;
@@ -93,8 +93,8 @@ int main(int argc, char** argv)
 #endif
     solver.solve(r, sat, fbc, src, gravity);
 
-    FlowSolver::SolutionType soln = solver.getSolution();
 #if 1
+    FlowSolver::SolutionType soln = solver.getSolution();
     std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
         std::cout << '\t' << soln.pressure(c) << '\n';
