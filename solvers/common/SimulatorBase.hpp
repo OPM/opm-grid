@@ -57,6 +57,7 @@
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
 #include <dune/solvers/common/setupGridAndProps.hpp>
+#include <dune/solvers/common/setupBoundaryConditions.hpp>
 
 #include <dune/solvers/euler/EulerUpstream.hpp>
 
@@ -96,43 +97,11 @@ namespace Dune
 	/// @param param a parameter object
 	void init(const parameter::ParameterGroup& param)
 	{
-	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
-	    stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
-                                                  Dune::unit::day);
-	    init_saturation_ = param.getDefault("init_saturation", init_saturation_);
-
-	    setupGridAndProps(param, grid_, res_prop_);
-
-	    // Make grid interface.
-	    ginterf_.init(grid_);
-	    // Make flow equation boundary conditions.
-	    // Default is pressure 1.0e5 on the left, 0.0 on the right.
-	    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
-	    // and that boundary id 0 means interiour face/intersection.
-	    bcond_.resize(7);
-	    std::string flow_bc_type = param.getDefault<std::string>("flow_bc_type", "dirichlet");
-	    FlowBC::BCType bct = FlowBC::Dirichlet;
-	    double leftval = 1.0*Dune::unit::barsa;
-	    double rightval = 0.0;
-	    if (flow_bc_type == "neumann") {
-		bct = FlowBC::Neumann;
-		leftval = param.get<double>("left_flux");
-		rightval = param.getDefault<double>("right_flux", -leftval);
-	    } else if (flow_bc_type == "dirichlet") {
-		leftval = param.getDefault<double>("left_pressure", leftval);
-		rightval = param.getDefault<double>("right_pressure", rightval);
-	    } else {
-		THROW("Unknown flow boundary condition type " << flow_bc_type);
-	    }
-	    bcond_.flowCond(1) = FlowBC(bct, leftval);
-	    bcond_.flowCond(2) = FlowBC(bct, rightval);
-	    // For transport equation boundary conditions, 
-	    // the default ones are fine (sat = 1.0 on inflow).
-	    // Initialize flow solver.
-	    flow_solver_.init(ginterf_, res_prop_, bcond_);
-	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
-	    // Initialize transport solver.
-	    transport_solver_.init(param, ginterf_, res_prop_, bcond_);
+	    initControl(param);
+	    initGridAndProps(param);
+	    initInitialConditions(param);
+	    initBoundaryConditions(param);
+	    initSolvers(param);
 
 	    // Write any unused parameters.
 	    std::cout << "====================   Unused parameters:   ====================\n";
@@ -202,13 +171,47 @@ namespace Dune
 	int simulation_steps_;
 	double stepsize_;
 	double init_saturation_;
-
 	GridType grid_;
 	GridInterface ginterf_;
 	ReservoirPropertyCapillary<3> res_prop_;
 	BCs bcond_;
 	FlowSolver flow_solver_;
 	TransportSolver transport_solver_;
+
+
+	virtual void initControl(const parameter::ParameterGroup& param)
+	{
+	    simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
+	    stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
+                                                  Dune::unit::day);
+	}
+
+	virtual void initGridAndProps(const parameter::ParameterGroup& param)
+	{
+	    setupGridAndProps(param, grid_, res_prop_);
+	    ginterf_.init(grid_);
+	}
+
+	virtual void initInitialConditions(const parameter::ParameterGroup& param)
+	{
+	    init_saturation_ = param.getDefault("init_saturation", init_saturation_);
+	}
+
+	virtual void initBoundaryConditions(const parameter::ParameterGroup& param)
+	{
+	    setupBoundaryConditions(param, ginterf_, bcond_);
+	}
+
+	virtual void initSolvers(const parameter::ParameterGroup& param)
+	{
+	    // Initialize flow solver.
+	    flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
+	    // Initialize transport solver.
+	    transport_solver_.init(param, ginterf_, res_prop_, bcond_);
+	}
+
+
     };
 
 
