@@ -55,7 +55,7 @@ namespace Dune
 	Upscaler();
 
 	/// Initializes the upscaler.
-	void init(const parameter::ParameterGroup& param);
+	// void init(const parameter::ParameterGroup& param); // The inherited one is fine, I hope.
 
 	/// A type for the upscaled permeability.
 	typedef ResProp::MutablePermTensor permtensor_t;
@@ -88,6 +88,11 @@ namespace Dune
 	/// contain the last computed (steady) saturation states (one for each cardinal direction).
 	const Dune::array<std::vector<double>, Dimension>& lastSaturations() const;
 
+    protected:
+	virtual void initInitialConditions(const parameter::ParameterGroup& param);
+	virtual void initBoundaryConditions(const parameter::ParameterGroup& param);
+	virtual void initSolvers(const parameter::ParameterGroup& param);
+
     private:
 	// ------- Typedefs and enums -------
 	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
@@ -96,11 +101,13 @@ namespace Dune
 	// std::vector<double> setupInitialSaturation(double target_saturation);
 	template <class FlowSol>
 	double computeAverageVelocity(const FlowSol& flow_solution,
-				      const int flow_dir) const;
+				      const int flow_dir,
+				      const int pdrop_dir) const;
 	template <class FlowSol>
 	double computeAveragePhaseVelocity(const FlowSol& flow_solution,
 					   const std::vector<double>& saturations,
-					   const int flow_dir) const;
+					   const int flow_dir,
+					   const int pdrop_dir) const;
 	double computeDelta(const int flow_dir) const;
 
 
@@ -110,7 +117,7 @@ namespace Dune
 	// typename grid_t::point_t gravity_;
 	Dune::array<std::vector<double>, Dimension> last_saturations_;
 	BoundaryConditionType bctype_;
-	int periodic_dir_;
+	bool twodim_hack_;
     };
 
 } // namespace Dune

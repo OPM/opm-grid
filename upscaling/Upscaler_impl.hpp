@@ -41,26 +41,25 @@ namespace Dune
 
     inline Upscaler::Upscaler()
 	: bctype_(Fixed),
-	  periodic_dir_(0)
+	  twodim_hack_(false)
     {
     }
 
-
-
-    inline void Upscaler::init(const parameter::ParameterGroup& param)
+    inline void Upscaler::initInitialConditions(const parameter::ParameterGroup& param)
     {
-	SimulatorBase::init(param);
-	int bctype = param.get<int>("boundary_condition_type");
-	if (bctype < 0 || bctype > 4) {
-	    THROW("Illegal boundary condition type (0-4 are legal): " << bctype);
-	} else {
-	    bctype_ = static_cast<BoundaryConditionType>(bctype);
-	}
-	if (bctype_ == PeriodicSingleDirection) {
-	    periodic_dir_ = param.getDefault("periodic_direction", periodic_dir_);
-	}
+	init_saturation_ = 1e100; // Not used. Yet.
     }
 
+    inline void Upscaler::initBoundaryConditions(const parameter::ParameterGroup& param)
+    {
+        int bct = param.get<int>("boundary_condition_type");
+	bctype_ = static_cast<BoundaryConditionType>(bct);
+	twodim_hack_ = param.getDefault("2d_hack", false);
+    }
+
+    inline void Upscaler::initSolvers(const parameter::ParameterGroup& param)
+    {
+    }
 
     inline Upscaler::permtensor_t
     Upscaler::upscaleSinglePhase()
@@ -80,10 +79,8 @@ namespace Dune
 	permtensor_t upscaled_K;
 	boost::array<FlowBC, 2*Dimension> fcond;
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
-	    // Set boundary direction for current pressure drop direction (0 = x, 1 = y, 2 = z).
-// 	    boundary_.setPressureDropDirection(static_cast<UpscalingBoundary::PressureDropDirection>(pdd));
-// 	    boundary_.setPressureDrop(1.0);
-// 	    boundary_.makeBoundaryConditions(grid_, gravity_, single_fluid);
+	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
+	    flow_solver_.init(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
 	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
@@ -97,12 +94,12 @@ namespace Dune
 	    switch (bctype_) {
 	    case Fixed:
 		std::fill(Q, Q+Dimension, 0); // resetting Q
-		Q[pdd] = computeAverageVelocity(flow_solver_.getSolution(), pdd);
+		Q[pdd] = computeAverageVelocity(flow_solver_.getSolution(), pdd, pdd);
 		break;
 	    case Linear:
 	    case Periodic:
 		for (int i = 0; i < Dimension; ++i) {
-		    Q[i] = computeAverageVelocity(flow_solver_.getSolution(), i);
+		    Q[i] = computeAverageVelocity(flow_solver_.getSolution(), i, pdd);
 		}
 		break;
 	    default:
@@ -231,52 +228,45 @@ namespace Dune
 
     template <class FlowSol>
     double Upscaler::computeAverageVelocity(const FlowSol& flow_solution,
-					    const int flow_dir) const
+					    const int flow_dir,
+					    const int pdrop_dir) const
     {
-	return 0.0; //boundary_.computeAverageVelocity(grid_, hface_fluxes, flow_dir);
-
-	/*
 	double side1_flux = 0.0;
 	double side2_flux = 0.0;
 	double side1_area = 0.0;
 	double side2_area = 0.0;
 
-	const std::vector<int>& bdyfaces = boundary_.boundaryFaces();
-	const std::vector<int>& canon_pos = boundary_.canonicalPositions();
-	UpscalingBoundary::PressureDropDirection pdd = boundary_.getPressureDropDirection();
-	const int num_bdyfaces = bdyfaces.size();
-	for (int i = 0; i < num_bdyfaces; ++i) {
-	    const int face = bdyfaces[i];
-	    if (canon_pos[i]/2 == flow_dir) {
-		typename grid_t::range_t hfaces = grid_.template neighbours<grid::FaceType, grid::HalfFaceType>(face);
-		ASSERT(hfaces.size() == 1);
-		const int hface = hfaces[0];
-		double flux = hface_fluxes[hface];
-		double area = grid_.getFaceArea(face);
-		// @@@ Check that using this is correct:
-		double norm_comp = grid_.getHalfFaceNormal(hface)[flow_dir];
-		if (canon_pos[i] == 2*flow_dir) {
-		    if (flow_dir == pdd && flux > 0.0) {
-			std::cerr << "Flow may be in wrong direction at face: " << face
-				  << " Magnitude: " << std::fabs(flux) << std::endl;
-			// THROW("Detected outflow at entry face: " << face);
-		    }
-		    side1_flux += flux*norm_comp;
-		    side1_area += area;
-		} else {
-		    if (flow_dir == pdd && flux < 0.0) {
-			std::cerr << "Flow may be in wrong direction at face: " << face
-				  << " Magnitude: " << std::fabs(flux) << std::endl;
-			// THROW("Detected inflow at exit face: " << face);
-		    }
-		    side2_flux += flux*norm_comp;
-		    side2_area += area;
+	for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+	    for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
+		if (f->boundary()) {
+		    int canon_bid = bcond_.getCanonicalBoundaryId(f->boundaryId());
+		    if ((canon_bid - 1)/2 == flow_dir) {
+			double flux = flow_solution.outflux(f);
+			double area = f->area();
+			double norm_comp = f->normal()[flow_dir];
+			if (canon_bid - 1 == 2*flow_dir) {
+			    if (flow_dir == pdrop_dir && flux > 0.0) {
+				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
+					  << " Magnitude: " << std::fabs(flux) << std::endl;
+				// THROW("Detected outflow at entry face: " << face);
+			    }
+			    side1_flux += flux*norm_comp;
+			    side1_area += area;
+			} else {
+			    if (flow_dir == pdrop_dir && flux < 0.0) {
+				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
+					  << " Magnitude: " << std::fabs(flux) << std::endl;
+				// THROW("Detected inflow at exit face: " << face);
+			    }
+			    side2_flux += flux*norm_comp;
+			    side2_area += area;
+			}
+		    }		    
 		}
 	    }
 	}
 	// q is the average velocity.
 	return 0.5*(side1_flux/side1_area + side2_flux/side2_area);
-	*/
     }
 
 
@@ -285,7 +275,8 @@ namespace Dune
     template <class FlowSol>
     inline double Upscaler::computeAveragePhaseVelocity(const FlowSol& flow_solution,
 							const std::vector<double>& saturations,
-							const int flow_dir) const
+							const int flow_dir,
+							const int pdrop_dir) const
     {
 	return 0.0;
 	//return boundary_.computeAveragePhaseVelocity(grid_, fluid_, hface_fluxes, saturations, flow_dir);
@@ -296,38 +287,30 @@ namespace Dune
 
     inline double Upscaler::computeDelta(const int flow_dir) const
     {
-	return 0.0;
-	//return boundary_.computeDelta(grid_, flow_dir);
-	/*
 	double side1_pos = 0.0;
 	double side2_pos = 0.0;
 	double side1_area = 0.0;
 	double side2_area = 0.0;
-
-	const std::vector<int>& bdyfaces = boundary_.boundaryFaces();
-	const std::vector<int>& canon_pos = boundary_.canonicalPositions();
-	const int num_bdyfaces = bdyfaces.size();
-	for (int i = 0; i < num_bdyfaces; ++i) {
-	    const int face = bdyfaces[i];
-	    if (canon_pos[i]/2 == flow_dir) {
-		typename grid_t::range_t hfaces = grid_.template neighbours<grid::FaceType, grid::HalfFaceType>(face);
-		ASSERT(hfaces.size() == 1);
-		double area = grid_.getFaceArea(face);
-		double pos_comp = grid_.getFaceCentroid(face)[flow_dir];
-		if (canon_pos[i] == 2*flow_dir) {
-		    // At flow entry face.
-		    side1_pos += area*pos_comp;
-		    side1_area += area;
-		} else {
-		    // At flow exit face.
-		    side2_pos += area*pos_comp;
-		    side2_area += area;
+	for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+	    for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
+		if (f->boundary()) {
+		    int canon_bid = bcond_.getCanonicalBoundaryId(f->boundaryId());
+		    if ((canon_bid - 1)/2 == flow_dir) {
+			double area = f->area();
+			double pos_comp = f->centroid()[flow_dir];
+			if (canon_bid - 1 == 2*flow_dir) {
+			    side1_pos += area*pos_comp;
+			    side1_area += area;
+			} else {
+			    side2_pos += area*pos_comp;
+			    side2_area += area;
+			}
+		    }		    
 		}
 	    }
 	}
 	// delta is the average length.
 	return  side2_pos/side2_area - side1_pos/side1_area;
-	*/
     }
 
 } // namespace Dune
