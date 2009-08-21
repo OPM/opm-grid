@@ -46,9 +46,9 @@ namespace Dune
     /// @brief Setup boundary conditions for a simulation.
     /// It is assumed that the boundary ids are 1-6, similar to cartesian case/Yaspgrid,
     /// unless periodic, in which case we assume unique boundary ids.
-    template <class GI, class BCs>
+    template <class GridType, class BCs>
     inline void setupBoundaryConditions(const parameter::ParameterGroup& param,
-					const GI& g,
+					const GridType& g,
 					BCs& bcs)
     {
 	if (param.getDefault("upscaling", false)) {
@@ -85,9 +85,9 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @param
-    template <class GI, class BCs>
+    template <class GridType, class BCs>
     inline void setupUpscalingConditions(const parameter::ParameterGroup& param,
-					 const GI& g,
+					 const GridType& g,
 					 BCs& bcs)
     {
 	// Caution: This enum is copied from Upscaler.hpp.
@@ -105,6 +105,7 @@ namespace Dune
 	switch (bctype) {
 	case Fixed:
 	    {
+		// ASSERT(!g.uniqueBoundaryIds());
 		bcs.clear();
 		bcs.resize(7);
 		bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, boundary_pressuredrop);
@@ -120,12 +121,23 @@ namespace Dune
 	    }
 	case Periodic:
 	    {
+		// ASSERT(g.uniqueBoundaryIds());
 		FlowBC fb(FlowBC::Periodic, 0.0);
 		boost::array<FlowBC, 6> fcond = {{ fb, fb, fb, fb, fb, fb }};
 		fcond[2*pddir] = FlowBC(FlowBC::Periodic, boundary_pressuredrop);
 		fcond[2*pddir + 1] = FlowBC(FlowBC::Periodic, -boundary_pressuredrop);
 		SatBC sb(SatBC::Periodic, 0.0);
 		boost::array<SatBC, 6> scond = {{ sb, sb, sb, sb, sb, sb }};
+		if (param.getDefault("2d_hack", false)) {
+		    fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
+		    fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
+		    fcond[4] = FlowBC(FlowBC::Neumann, 0.0);
+		    fcond[5] = FlowBC(FlowBC::Neumann, 0.0);
+		    scond[2] = SatBC(SatBC::Dirichlet, 1.0);
+		    scond[3] = SatBC(SatBC::Dirichlet, 1.0);
+		    scond[4] = SatBC(SatBC::Dirichlet, 1.0);
+		    scond[5] = SatBC(SatBC::Dirichlet, 1.0);
+		}
 		createPeriodic(bcs, g, fcond, scond);
 		break;
 	    }
