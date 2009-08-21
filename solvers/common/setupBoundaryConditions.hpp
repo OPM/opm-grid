@@ -52,7 +52,12 @@ namespace Dune
 					BCs& bcs)
     {
 	if (param.getDefault("upscaling", false)) {
-	    setupUpscalingConditions(param, g, bcs);
+	    int bct = param.get<int>("boundary_condition_type");
+	    int pddir = param.getDefault("pressure_drop_direction", 0);
+	    double pdrop = param.getDefault("boundary_pressuredrop", 1.0e5);
+	    double bdy_sat = param.getDefault("boundary_saturation", 1.0);
+	    bool twodim_hack = param.getDefault("2d_hack", false);
+	    setupUpscalingConditions(g, bct, pddir, pdrop, bdy_sat, twodim_hack, bcs);
 	    return;
 	}
 	// Make flow equation boundary conditions.
@@ -86,20 +91,21 @@ namespace Dune
     /// @todo Doc me!
     /// @param
     template <class GridType, class BCs>
-    inline void setupUpscalingConditions(const parameter::ParameterGroup& param,
-					 const GridType& g,
+    inline void setupUpscalingConditions(const GridType& g,
+					 int bct,
+					 int pddir,
+					 double pdrop,
+					 double bdy_sat,
+					 bool twodim_hack,
 					 BCs& bcs)
     {
 	// Caution: This enum is copied from Upscaler.hpp.
 	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
-        int bct = param.get<int>("boundary_condition_type");
         if (bct < 0 || bct > 2) {
             THROW("Illegal boundary condition type (0-2 are legal): " << bct); // Later on, we may allow 3 and 4.
         }
 	BoundaryConditionType bctype = static_cast<BoundaryConditionType>(bct);
-        int pddir = param.getDefault("pressure_drop_direction", 0);
         ASSERT(pddir >=0 && pddir <= 2);
-        double boundary_pressuredrop = param.getDefault("boundary_pressuredrop", 1.0e5);
 
 	// Flow conditions.
 	switch (bctype) {
@@ -108,10 +114,9 @@ namespace Dune
 		// ASSERT(!g.uniqueBoundaryIds());
 		bcs.clear();
 		bcs.resize(7);
-		bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, boundary_pressuredrop);
+		bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, pdrop);
 		bcs.flowCond(2*pddir + 2) = FlowBC(FlowBC::Dirichlet, 0.0);
-		double boundary_saturation = param.getDefault("boundary_saturation", 1.0);
-		bcs.satCond(2*pddir + 1) = SatBC(SatBC::Dirichlet, boundary_saturation); // The only possible inflow location.
+		bcs.satCond(2*pddir + 1) = SatBC(SatBC::Dirichlet, bdy_sat); // The only possible inflow location.
 		break;
 	    }
 	case Linear:
@@ -124,11 +129,11 @@ namespace Dune
 		// ASSERT(g.uniqueBoundaryIds());
 		FlowBC fb(FlowBC::Periodic, 0.0);
 		boost::array<FlowBC, 6> fcond = {{ fb, fb, fb, fb, fb, fb }};
-		fcond[2*pddir] = FlowBC(FlowBC::Periodic, boundary_pressuredrop);
-		fcond[2*pddir + 1] = FlowBC(FlowBC::Periodic, -boundary_pressuredrop);
+		fcond[2*pddir] = FlowBC(FlowBC::Periodic, pdrop);
+		fcond[2*pddir + 1] = FlowBC(FlowBC::Periodic, -pdrop);
 		SatBC sb(SatBC::Periodic, 0.0);
 		boost::array<SatBC, 6> scond = {{ sb, sb, sb, sb, sb, sb }};
-		if (param.getDefault("2d_hack", false)) {
+		if (twodim_hack) {
 		    fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
 		    fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
 		    fcond[4] = FlowBC(FlowBC::Neumann, 0.0);
