@@ -341,6 +341,16 @@ namespace Dune
 	/// @todo Doc me!
 	/// @param
 	/// @return
+        double fractionalFlow(int cell_index, double saturation) const
+        {
+            double l1 = mobilityFirstPhase(cell_index, saturation);
+            double l2 = mobilitySecondPhase(cell_index, saturation);
+            return l1/(l1 + l2);
+        }
+	/// @brief
+	/// @todo Doc me!
+	/// @param
+	/// @return
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
