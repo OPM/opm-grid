@@ -36,6 +36,9 @@
 #define OPENRS_UPSCALER_IMPL_HEADER
 
 
+#include <dune/solvers/common/MatrixInverse.hpp>
+
+
 namespace Dune
 {
 
@@ -77,7 +80,6 @@ namespace Dune
 	}
 
 	permtensor_t upscaled_K;
-	boost::array<FlowBC, 2*Dimension> fcond;
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
 	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
 	    flow_solver_.init(ginterf_, res_prop_, bcond_);
@@ -115,85 +117,77 @@ namespace Dune
     }
 
 
-#if 0
-
-//     template <class grid_t,
-// 	      class rock_t,
-// 	      class pressure_solver_t,
-// 	      class transport_solver_t>
-//     inline typename rock_t::permtensor_t
-//     Upscaler<grid_t, rock_t, pressure_solver_t, transport_solver_t>::
     inline Upscaler::permtensor_t
     Upscaler::
-    upscaleSteadyState(const Go::Array<std::vector<double>, Dimension>& initial_saturations,
+    upscaleSteadyState(const boost::array<std::vector<double>, Dimension>& initial_saturations,
 		       const double boundary_saturation,
 		       const double pressure_drop,
 		       const permtensor_t& upscaled_perm)
     {
-	// Set up (no) wells and some variables.
-	WellsPressureAndRate wells;
-	std::vector<double> flux, cell_pressure, face_pressure;
+	int num_cells = ginterf_.numberOfCells();
+	// No source or sink.
+	std::vector<double> src(num_cells, 0.0);
+	SparseVector<double> injection(num_cells);
+	// Just water.
+	std::vector<double> sat(num_cells, 1.0);
+	// Gravity.
+	FieldVector<double, 3> gravity(0.0);
+	// gravity[2] = -Dune::unit::gravity;
+	if (gravity.two_norm() > 0.0) {
+	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
+	}
+
+	permtensor_t upscaled_K;
 
 	// Loop over the three pressure drop directions (x, y, z).
 	permtensor_t relative_K; // v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
-	    // Set boundary direction for current pressure drop direction (0 = x, 1 = y, 2 = z).
-	    boundary_.setPressureDropDirection(static_cast<UpscalingBoundary::PressureDropDirection>(pdd));
-	    boundary_.setPressureDrop(pressure_drop);
-	    boundary_.setBoundarySaturation(boundary_saturation);
-	    boundary_.makeBoundaryConditions(grid_, gravity_, fluid_);
-
 	    // Set up initial saturation profile.
 	    // std::vector<double> saturation = setupInitialSaturation(target_saturation);
 	    std::vector<double> saturation = initial_saturations[pdd];
 
-	    // Do an initial pressure solve.
-	    pressure_solver_.pressureSolveAndUpdateWells(saturation, fluid_, grid_, rock_,
-							 wells, boundary_, gravity_,
-							 flux, cell_pressure, face_pressure);
+	    // Set up boundary conditions.
+	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
+
+	    // Set up solvers.
+	    flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
+
+	    // Run pressure solver.
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
 
 	    // Do a run till steady state. For now, we just do some pressure and transport steps...
-	    for (int iter = 0; iter < num_steps_; ++iter) {
+	    for (int iter = 0; iter < simulation_steps_; ++iter) {
 		// Check and fix fluxes.
-		flux_checker_.checkDivergence(grid_, wells, flux);
-		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+// 		flux_checker_.checkDivergence(grid_, wells, flux);
+// 		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
 		// Run transport solver.
-		transport_solver_.transportSolve(saturation,
-						 time_step_,
-						 fluid_,
-						 grid_,
-						 rock_,
-						 wells,
-						 boundary_,
-						 gravity_,
-						 flux);
+		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
 		// Run pressure solver.
-		pressure_solver_.pressureSolveAndUpdateWells(saturation, fluid_, grid_, rock_,
-							     wells, boundary_, gravity_,
-							     flux, cell_pressure, face_pressure);
+		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
 	    }
 
 	    // A check on the final fluxes.
-	    flux_checker_.checkDivergence(grid_, wells, flux);
-	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+// 	    flux_checker_.checkDivergence(grid_, wells, flux);
+// 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
 	    // Compute upscaled relperm.
 	    double Q[Dimension];
-	    switch (boundary_.getConditionType()) {
-	    case UpscalingBoundary::Fixed:
+	    switch (bctype_) {
+	    case Fixed:
 		std::fill(Q, Q+Dimension, 0); // resetting Q
-		Q[pdd] = computeAveragePhaseVelocity(flux, saturation, pdd);
+		Q[pdd] = computeAveragePhaseVelocity(flow_solver_.getSolution(), saturation, pdd, pdd);
 		break;
-	    case UpscalingBoundary::Linear:
-	    case UpscalingBoundary::Periodic:
+	    case Linear:
+	    case Periodic:
 		for (int i = 0; i < Dimension; ++i) {
-		    Q[i] = computeAveragePhaseVelocity(flux, saturation, i);
+		    Q[i] = computeAveragePhaseVelocity(flow_solver_.getSolution(), saturation, i, pdd);
 		}
 		break;
 	    default:
-		THROW("Unknown boundary type: " << boundary_.getConditionType());
+		THROW("Unknown boundary type: " << bctype_);
 	    }
 	    double delta = computeDelta(pdd);
 	    for (int i = 0; i < Dimension; ++i) {
@@ -205,12 +199,11 @@ namespace Dune
 	}
 
 	// Compute the relative K tensor.
-	relative_K *= fluid_.getViscosityOne();
-	permtensor_t relperm_matrix(relative_K*inverse(upscaled_perm));
+	relative_K *= res_prop_.viscosityFirstPhase();
+	permtensor_t relperm_matrix(matprod(relative_K, inverse3x3(upscaled_perm)));
 	// std::cout << relperm_matrix << std::endl;
 	return relperm_matrix;
     }
-#endif
 
     inline const Upscaler::GridType&
     Upscaler::grid() const
@@ -278,8 +271,48 @@ namespace Dune
 							const int flow_dir,
 							const int pdrop_dir) const
     {
-	return 0.0;
-	//return boundary_.computeAveragePhaseVelocity(grid_, fluid_, hface_fluxes, saturations, flow_dir);
+	// Apart from the two lines defining frac_flow and flux below, this code
+	// is identical to computeAverageVelocity().
+	// \todo Unify. Also, there is something fishy about using the cell's fractional flow.
+	// Should use the periodic partner's, perhaps?
+	// Or maybe just do this for outflow?
+	double side1_flux = 0.0;
+	double side2_flux = 0.0;
+	double side1_area = 0.0;
+	double side2_area = 0.0;
+
+	for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+	    for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
+		if (f->boundary()) {
+		    int canon_bid = bcond_.getCanonicalBoundaryId(f->boundaryId());
+		    if ((canon_bid - 1)/2 == flow_dir) {
+			double frac_flow = res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
+			double flux = flow_solution.outflux(f)*frac_flow;
+			double area = f->area();
+			double norm_comp = f->normal()[flow_dir];
+			if (canon_bid - 1 == 2*flow_dir) {
+			    if (flow_dir == pdrop_dir && flux > 0.0) {
+				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
+					  << " Magnitude: " << std::fabs(flux) << std::endl;
+				// THROW("Detected outflow at entry face: " << face);
+			    }
+			    side1_flux += flux*norm_comp;
+			    side1_area += area;
+			} else {
+			    if (flow_dir == pdrop_dir && flux < 0.0) {
+				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
+					  << " Magnitude: " << std::fabs(flux) << std::endl;
+				// THROW("Detected inflow at exit face: " << face);
+			    }
+			    side2_flux += flux*norm_comp;
+			    side2_area += area;
+			}
+		    }		    
+		}
+	    }
+	}
+	// q is the average velocity.
+	return 0.5*(side1_flux/side1_area + side2_flux/side2_area);
     }
 
 

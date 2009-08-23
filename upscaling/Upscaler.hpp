@@ -37,7 +37,7 @@
 
 #include "config.h"
 #include <dune/solvers/common/SimulatorBase.hpp>
-
+#include <boost/array.hpp>
 
 namespace Dune
 {
@@ -75,7 +75,7 @@ namespace Dune
 	/// @return the upscaled relative permeability matrix of the first phase (usually water).
 	/// The relative permeability matrix, call it k, is such that if K_w is the phase
 	/// permeability and K the absolute permeability, K_w = k*K.
-	permtensor_t upscaleSteadyState(const Dune::array<std::vector<double>, Dimension>& initial_saturations,
+	permtensor_t upscaleSteadyState(const boost::array<std::vector<double>, Dimension>& initial_saturations,
 					const double boundary_saturation,
 					const double pressure_drop,
 					const permtensor_t& upscaled_perm);
