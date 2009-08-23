@@ -81,6 +81,7 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
+	initPeriodics();
     }
 
 
@@ -88,13 +89,6 @@ namespace Dune
     template <class GI, class RP, class BC>
     inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param)
     {
-	if (!pgrid_ || !preservoir_properties_ || !pboundary_) {
-	    THROW("Grid, reservoir properties and boundary conditions were not given.\n"
-		  "Use nondefault constructor or init() with more arguments.");
-	}
-
-	initPeriodics();
-
 	courant_number_ = param.getDefault("courant_number", courant_number_);
 	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
 	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
@@ -108,11 +102,18 @@ namespace Dune
     inline void EulerUpstream<GI, RP, BC>::init(const parameter::ParameterGroup& param,
 						const GI& g, const RP& r, const BC& b)
     {
+	init(param);
+	initObj(g, r, b);
+    }
+
+
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::initObj(const GI& g, const RP& r, const BC& b)
+    {
 	pgrid_ = &g;
 	preservoir_properties_ = &r;
 	pboundary_ = &b;
-
-	init(param);
+	initPeriodics();
     }
 
 

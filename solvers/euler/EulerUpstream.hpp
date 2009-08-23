@@ -73,6 +73,12 @@ namespace Dune {
 	/// @brief
 	/// @todo Doc me
 	/// @param
+	void initObj(const GridInterface& grid,
+		     const ReservoirProperties& resprop,
+		     const BoundaryConditions& boundary);
+	/// @brief
+	/// @todo Doc me
+	/// @param
 	void display();
 
 	/// \brief Set the Courant number.
