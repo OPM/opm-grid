@@ -117,6 +117,9 @@ namespace Dune
 		bcs.flowCond(2*pddir + 1) = FlowBC(FlowBC::Dirichlet, pdrop);
 		bcs.flowCond(2*pddir + 2) = FlowBC(FlowBC::Dirichlet, 0.0);
 		bcs.satCond(2*pddir + 1) = SatBC(SatBC::Dirichlet, bdy_sat); // The only possible inflow location.
+		for (int i = 0; i < 7; ++i) {
+		    bcs.setCanonicalBoundaryId(i, i);
+		}
 		break;
 	    }
 	case Linear:
