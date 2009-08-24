@@ -79,7 +79,7 @@ namespace Dune
 	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
 	}
 
-	permtensor_t upscaled_K;
+	permtensor_t upscaled_K(3, 3, (double*)0);
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
 	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
 	    flow_solver_.init(ginterf_, res_prop_, bcond_);
@@ -137,7 +137,7 @@ namespace Dune
 	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
 	}
 
-	permtensor_t upscaled_K;
+	permtensor_t upscaled_K(3, 3, (double*)0);
 
 	// Loop over the three pressure drop directions (x, y, z).
 	permtensor_t relative_K; // v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
