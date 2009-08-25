@@ -44,8 +44,15 @@ namespace Dune
 
     inline Upscaler::Upscaler()
 	: bctype_(Fixed),
-	  twodim_hack_(false)
+	  twodim_hack_(false),
+	  residual_tolerance_(1e-8)
     {
+    }
+
+    inline void Upscaler::initControl(const parameter::ParameterGroup& param)
+    {
+	SimulatorBase::initControl(param);
+	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
     }
 
     inline void Upscaler::initInitialConditions(const parameter::ParameterGroup& param)
@@ -85,7 +92,7 @@ namespace Dune
 	    flow_solver_.init(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
 
 	    // Check and fix fluxes.
 // 	    flux_checker_.checkDivergence(grid_, wells, flux);
@@ -154,7 +161,7 @@ namespace Dune
 	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
 
 	    // Do a run till steady state. For now, we just do some pressure and transport steps...
 	    for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -166,7 +173,7 @@ namespace Dune
 		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
 		// Run pressure solver.
-		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
+		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
 	    }
 
 	    // A check on the final fluxes.

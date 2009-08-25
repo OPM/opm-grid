@@ -306,14 +306,15 @@ namespace Dune {
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
-                   const typename GridInterface::CellIterator::Vector& grav)
+                   const typename GridInterface::CellIterator::Vector& grav,
+		   double residual_tolerance = 1e-8)
         {
             assembleDynamic(r, sat, bc, src, grav);
             // printSystem("linsys_mimetic");
 #if 0
-            solveLinearSystem();
+            solveLinearSystem(residual_tolerance);
 #else
-            solveLinearSystemAMG();
+            solveLinearSystemAMG(residual_tolerance);
 #endif
             computePressureAndFluxes(r, sat);
         }
@@ -821,11 +822,11 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void solveLinearSystem()
+        void solveLinearSystem(double residual_tolerance)
         // ----------------------------------------------------------------
         {
             // Adapted from DuMux...
-            Scalar residTol = 1.0e-12;
+            Scalar residTol = residual_tolerance;
 
             typedef BCRSMatrix <MatrixBlockType>        Matrix;
             typedef BlockVector<VectorBlockType>        Vector;
@@ -851,11 +852,11 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void solveLinearSystemAMG()
+        void solveLinearSystemAMG(double residual_tolerance)
         // ----------------------------------------------------------------
         {
             // Adapted from upscaling.cc by Arne Rekdal, 2009
-            Scalar residTol = 1.0e-8;
+            Scalar residTol = residual_tolerance;
 
             // Representation types for linear system.
             typedef BCRSMatrix <MatrixBlockType>        Matrix;

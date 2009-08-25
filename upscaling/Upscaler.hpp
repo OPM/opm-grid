@@ -89,6 +89,7 @@ namespace Dune
 	const Dune::array<std::vector<double>, Dimension>& lastSaturations() const;
 
     protected:
+	virtual void initControl(const parameter::ParameterGroup& param);
 	virtual void initInitialConditions(const parameter::ParameterGroup& param);
 	virtual void initBoundaryConditions(const parameter::ParameterGroup& param);
 	virtual void initSolvers(const parameter::ParameterGroup& param);
@@ -118,6 +119,7 @@ namespace Dune
 	Dune::array<std::vector<double>, Dimension> last_saturations_;
 	BoundaryConditionType bctype_;
 	bool twodim_hack_;
+	double residual_tolerance_;
     };
 
 } // namespace Dune
