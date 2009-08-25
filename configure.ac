@@ -1,6 +1,6 @@
 # -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-AC_PREREQ(2.60)
+AC_PREREQ([[2.50]])
 
 DUNE_AC_INIT # gets module version from dune.module file
 AM_INIT_AUTOMAKE([foreign])
@@ -9,7 +9,7 @@ AM_INIT_AUTOMAKE([foreign])
 #LT_LANG([C++])
 #LT_OUTPUT
 
-AC_PROG_SED
+#AC_PROG_SED
 PKG_PROG_PKG_CONFIG([0.21])
 PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.0])
 
