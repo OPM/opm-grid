@@ -113,6 +113,20 @@ namespace Dune
             return empty() ? 0 : row_start_.size() - 1;
         }
 
+        /// Allocate storage for table of expected size
+        void reserve(int exptd_nrows, int exptd_ndata)
+        {
+            row_start_.reserve(exptd_nrows + 1);
+            data_.reserve(exptd_ndata);
+        }
+
+        /// Swap contents for other SparseTable<T>
+        void swap(SparseTable<T>& other)
+        {
+            row_start_.swap(other.row_start_);
+            data_.swap(other.data_);
+        }
+
         /// Returns the number of data elements.
         int dataSize() const
         {
