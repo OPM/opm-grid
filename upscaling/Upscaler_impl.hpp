@@ -162,7 +162,9 @@ namespace Dune
 	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
 
 	    // Set up solvers.
-	    flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    if (pdd == 0) {
+		flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    }
 	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
