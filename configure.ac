@@ -1,6 +1,6 @@
 # -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
-AC_PREREQ([[2.50]])
+AC_PREREQ([2.50])
 
 DUNE_AC_INIT # gets module version from dune.module file
 AM_INIT_AUTOMAKE([foreign])
