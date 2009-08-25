@@ -89,7 +89,12 @@ namespace Dune
 	permtensor_t upscaled_K(3, 3, (double*)0);
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
 	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
-	    flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    if (pdd == 0) {
+		// Only on first iteration, since we do not change the
+		// structure of the system, the way the flow solver is
+		// implemented.
+		flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    }
 
 	    // Run pressure solver.
 	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
