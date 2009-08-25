@@ -1,0 +1,233 @@
+All results are from my laptop. Your results may differ.
+
+Conclusions first: New code (without running the linear solver) is
+faster, by almost 4 seconds. When actually running the solver, the new
+code keeps its speed edge until the residual tolerance becomes low
+(less than 1e-10). This means that the Dune AMG is a little slower
+than SAMG, which is not all that surprising. The surprise is that it
+(mostly) keeps pace with SAMG, which was not quite expected.
+
+The codes seem to converge to different solutions, which is
+unfortunate, but explainable: The codes use
+    a) different approximations to areas, volumes and normals,
+    b) different linear systems (related to handling of bdy cond).
+The first difference is zero for cartesian grids, testing with a
+cartesian grid and heterogenous permeability should shed some light on
+this.
+
+The SAMG solver seems to give a little more precision (compared to its
+own 1e-16 solution) than the Dune solver. I offer no explanation, but
+do not think this necessarily means anything problematic. Will keep an
+eye on this, though.
+
+
+--Atgeirr
+
+
+Old old code (the code first delivered december 2006).
+=====================================================
+
+Command:
+--------
+atgeirr@elrond:~/gotools/mimetic_statoil$ time app/upscale_test ~/workdir/data/opm_data/grids/wave_orig.grdecl 0
+Computing tensor using FIXED boundary conditions.
+--------
+
+1) EPS = -1e-16 (negative means absolute residual, not relative!)
+
+156.231510034364	0.00000000000000	0.00000000000000	
+0.00000000000000	161.928040253848	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6524093079307	
+
+real	0m43.129s
+user	0m40.558s
+sys	0m2.447s
+
+
+2) EPS = -1e-8
+
+156.231510034373	0.00000000000000	0.00000000000000	
+0.00000000000000	161.928040253847	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6524093079313	
+
+real	0m40.681s
+user	0m38.129s
+sys	0m2.456s
+
+
+3) EPS = 1e-16 (relative residual)
+
+156.231510034364	0.00000000000000	0.00000000000000	
+0.00000000000000	161.928040253848	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6524093079307	
+
+real	0m43.110s
+user	0m40.551s
+sys	0m2.451s
+
+
+4) EPS = 1e-10
+
+156.231510032888	0.00000000000000	0.00000000000000	
+0.00000000000000	161.928040251955	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6524093060648	
+
+real	0m37.090s
+user	0m34.545s
+sys	0m2.426s
+
+
+5) EPS = 1e-8
+
+156.231510035841	0.00000000000000	0.00000000000000	
+0.00000000000000	161.928040509462	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6524097342785	
+
+real	0m33.974s
+user	0m31.551s
+sys	0m2.395s
+
+
+6) EPS = 1e-5
+
+156.232835862799	0.00000000000000	0.00000000000000	
+0.00000000000000	161.927447816447	0.00000000000000	
+0.00000000000000	0.00000000000000	31.6513325481661	
+
+real	0m29.270s
+user	0m26.752s
+sys	0m2.432s
+
+
+7) EPS = 1e-3
+
+156.289741449408	0.00000000000000	0.00000000000000	
+0.00000000000000	161.963502056854	0.00000000000000	
+0.00000000000000	0.00000000000000	31.7244015876773	
+
+real	0m26.270s
+user	0m23.765s
+sys	0m2.426s
+
+
+8) EPS = 1e-2
+
+155.645697059578	0.00000000000000	0.00000000000000	
+0.00000000000000	161.717893480317	0.00000000000000	
+0.00000000000000	0.00000000000000	38.3150616056072	
+
+real	0m24.720s
+user	0m22.243s
+sys	0m2.414s
+
+
+9) Not running the linear solver (commented out call to SAMG).
+
+real	0m14.999s
+user	0m12.867s
+sys	0m2.071s
+
+real	0m14.911s
+user	0m12.829s
+sys	0m2.039s
+
+
+
+
+New code (the dune-cornerpoint module).
+======================================
+
+Command:
+-------
+atgeirr@elrond:~/dune_release/dune-cornerpoint/upscaling/test$ time ./upscaling_test fileformat=eclipse filename=~/workdir/data/opm_data/grids/wave_orig.grdecl use_unique_boundary_ids=false boundary_condition_type=0 residual_tolerance=1e-8
+-------
+
+
+1) Debug mode (all others are in release mode), residual_tolerance = 1e-8
+[done to verify results with optimization, result identical => ok]
+
+156.108070493624 0 0 
+0 161.812986340526 0 
+0 0 31.2464464394367 
+
+real	4m58.007s
+user	4m49.991s
+sys	0m7.027s
+
+
+2) residual_tolerance = 1e-16 
+
+156.108072515849 0 0 
+0 161.812984342818 0 
+0 0 31.2464597239113 
+
+
+real	0m47.023s
+user	0m42.571s
+sys	0m4.231s
+
+
+3) residual_tolerance = 1e-10
+
+156.108072556463 0 0 
+0 161.812984353691 0 
+0 0 31.2464593728902 
+
+real	0m35.906s
+user	0m31.487s
+sys	0m4.179s
+
+
+4) residual_tolerance = 1e-8
+
+156.108070493624 0 0 
+0 161.812986340526 0 
+0 0 31.2464464394367 
+
+real	0m32.599s
+user	0m28.111s
+sys	0m4.231s
+
+
+5) residual_tolerance = 1e-5
+
+156.105632072812 0 0 
+0 161.811906903242 0 
+0 0 31.2401740405732 
+
+real	0m26.004s
+user	0m21.783s
+sys	0m4.110s
+
+
+6) residual_tolerance = 1e-3
+
+157.903332537278 0 0 
+0 159.271030166896 0 
+0 0 32.3461234723618 
+
+real	0m21.946s
+user	0m17.519s
+sys	0m4.194s
+
+
+7) residual_tolerance = 1e-2
+
+229.190446701104 0 0 
+0 169.760196673778 0 
+0 0 56.7072225968723 
+
+real	0m21.105s
+user	0m16.524s
+sys	0m4.207s
+
+
+8) Not running the linear solver.
+
+real	0m11.291s
+user	0m7.524s
+sys	0m3.723s
+
+real	0m11.242s
+user	0m7.507s
+sys	0m3.710s
