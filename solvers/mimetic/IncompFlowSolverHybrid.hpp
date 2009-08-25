@@ -446,6 +446,7 @@ namespace Dune {
 
             // First pass: enumerate internal faces.
             int cellno = 0; fpos.push_back(0);
+            int tot_ncf = 0, tot_ncf2 = 0;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++cellno) {
                 const int c0 = c->index();
                 ASSERT((0 <= c0) && (c0 < nc) && (cell[c0] == -1));
@@ -469,14 +470,27 @@ namespace Dune {
                 }
 
                 fpos.push_back(int(faces.size()));
-                max_ncf_ = std::max(max_ncf_, ncf);
+                max_ncf_  = std::max(max_ncf_, ncf);
+                tot_ncf  += ncf;
+                tot_ncf2 += ncf * ncf;
             }
             ASSERT(cellno == nc);
 
             total_num_faces_ = num_internal_faces_ = int(faces.size());
 
+            f_   .reserve(nc, tot_ncf );
+            F_   .reserve(nc, tot_ncf );
+            Binv_.reserve(nc, tot_ncf2);
+
+            flowSolution_.cellFaces_.reserve(nc, tot_ncf);
+            flowSolution_.outflux_  .reserve(nc, tot_ncf);
+
             SparseTable<int>& cf = flowSolution_.cellFaces_;
 
+            // Avoid (most) allocation(s) inside 'c' loop.
+            std::vector<int>    l2g;
+            std::vector<Scalar> F_alloc, Binv_alloc;
+            
             // Second pass: build cell-to-face mapping, including boundary.
             typedef std::vector<int>::iterator VII;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
@@ -486,14 +500,14 @@ namespace Dune {
                         (0 <= cell[c0]) && (cell[c0] < nc));
 
                 const int ncf = num_cf[cell[c0]];
-                std::vector<int>    l2g; l2g.reserve(ncf);
-                std::vector<Scalar> Binv_alloc(ncf * ncf);
-                std::vector<Scalar> F_alloc(ncf);
+                l2g       .resize(ncf      ,        0   );
+                F_alloc   .resize(ncf      , Scalar(0.0));
+                Binv_alloc.resize(ncf * ncf, Scalar(0.0));
 
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         // External, not counted before.  Add new face...
-                        l2g.push_back(total_num_faces_++);
+                        l2g[f->localIndex()] = total_num_faces_++;
                     } else {
                         // Internal face.  Need to determine during
                         // traversal of which cell we discovered this
@@ -518,10 +532,9 @@ namespace Dune {
                         VII p = std::find(faces.begin() + s, faces.begin() + e, seek);
                         ASSERT(p != faces.begin() + e);
 
-                        l2g.push_back(s + (p - (faces.begin() + s)));
+                        l2g[f->localIndex()] = s + (p - (faces.begin() + s));
                     }
                 }
-                ASSERT (int(l2g.size()) == ncf);
 
                 cf   .appendRow(l2g       .begin(), l2g       .end());
                 F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
