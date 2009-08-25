@@ -491,7 +491,7 @@ namespace Dune {
             std::vector<int>    l2g;        l2g       .reserve(max_ncf_);
             std::vector<Scalar> F_alloc;    F_alloc   .reserve(max_ncf_);
             std::vector<Scalar> Binv_alloc; Binv_alloc.reserve(max_ncf_ * max_ncf_);
-            
+
             // Second pass: build cell-to-face mapping, including boundary.
             typedef std::vector<int>::iterator VII;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
