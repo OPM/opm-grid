@@ -152,8 +152,12 @@ namespace Dune
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
 #endif
-        face_tag_.assign(output.face_tag,
-                         output.face_tag + output.number_of_faces);
+	int nf = face_to_output_face.size();
+	std::vector<enum face_tag> temp_tags(nf);
+	for (int i = 0; i < nf; ++i) {
+	    temp_tags[i] = output.face_tag[face_to_output_face[i]];
+	}
+	face_tag_.assign(temp_tags.begin(), temp_tags.end());
 
 #ifdef VERBOSE
 	std::cout << "Cleaning up." << std::endl;
