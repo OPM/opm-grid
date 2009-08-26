@@ -1,0 +1,120 @@
+Old old code (the code first delivered december 2006).
+=====================================================
+
+Command:
+--------
+atgeirr@elrond:~/gotools/mimetic_statoil$ time app/upscale_test ~/workdir/data/opm_data/grids/wave_zlim.grdecl 2
+Computing tensor using PERIODIC boundary conditions.
+--------
+
+1) EPS = 1e-16
+
+154.083438502815	0.0892604992569009	0.212772595133234	
+0.146359826095459	156.999934343510	0.0177304108534503	
+0.213914312649649	0.00862349720761078	28.8258061024766	
+
+real	0m49.700s
+user	0m46.868s
+sys	0m2.480s
+
+
+2) EPS = 1e-10
+
+154.083438504296	0.0892604955824901	0.212772484789619	
+0.146359823701169	156.999934345602	0.0177303899771650	
+0.213914312547322	0.00862349620390634	28.8258060039328	
+
+real	0m42.343s
+user	0m39.686s
+sys	0m2.417s
+
+
+
+
+
+Old code (delivered december 2008).
+==================================
+
+Command:
+-------
+atgeirr@elrond:~/workdir/trunk/zzz_work_here/upscaling/test_fall_2009$ time ../../../upscaling/upscale_singlephase config.xml
+-------
+
+[      154.269327967824     0.086113779584908     0.214772628024014 |
+|    0.0861138229423957      157.499004400429   0.00961100572800983 |
+|     0.214773290593839   0.00961022430314095      28.8157255228606 ]
+
+real	2m8.481s
+user	1m16.656s
+sys	0m51.289s
+
+
+
+New code (the dune-cornerpoint module).
+======================================
+
+Command:
+-------
+atgeirr@elrond:~/dune_release/dune-cornerpoint/upscaling/test$ ./upscaling_test fileformat=eclipse filename=~/workdir/data/opm_data/grids/wave_zlim.grdecl use_unique_boundary_ids=true boundary_condition_type=2 periodic_extension=true residual_tolerance=1e-10
+-------
+
+
+1) Debug mode (all others are in release mode), residual_tolerance = 1e-10
+[done to verify results with optimization, result identical => ok]
+
+154.14299689765 -0.0951137484162823 0.213990389076227 
+-0.0951137479212948 157.371580359195 0.00652322307363517 
+0.213990127124522 0.00652273083131193 28.4615206338715
+
+
+2) residual_tolerance = 1e-16
+
+154.142996896361 -0.09511374418474 0.213990133897884 
+-0.0951137442634729 157.371580348364 0.00652274146037189 
+0.213990133899447 0.0065227414798937 28.4615196615018 
+
+real	1m24.065s
+user	1m19.297s
+sys	0m4.258s
+
+
+3) residual_tolerance = 1e-10
+
+154.14299689765 -0.0951137484162823 0.213990389076227 
+-0.0951137479212948 157.371580359195 0.00652322307363517 
+0.213990127124522 0.00652273083131193 28.4615206338715 
+
+real	0m58.475s
+user	0m54.116s
+sys	0m4.134s
+
+
+4) No linear solver.
+
+real	0m11.577s
+user	0m7.962s
+sys	0m3.551s
+
+
+5) boundary_condition_type = 0, periodic_extension = true
+[after bugfix, we have a difference due to extension, but no longer a
+large one]
+
+154.746173362754 0 0 
+0 158.269808171916 0 
+0 0 29.0714824825093 
+
+real	0m46.266s
+user	0m42.007s
+sys	0m3.867s
+
+
+6) boundary_condition_type = 0, periodic_extension = false
+
+154.750896840188 0 0 
+0 158.27098254722 0 
+0 0 29.0774483359038 
+
+real	0m41.786s
+user	0m37.747s
+sys	0m3.847s
