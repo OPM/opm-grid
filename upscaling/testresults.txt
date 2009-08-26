@@ -133,6 +133,23 @@ sys	0m2.039s
 
 
 
+Old code (delivered december 2008).
+==================================
+
+Command:
+-------
+atgeirr@elrond:~/workdir/trunk/zzz_work_here/upscaling/test_fall_2009$ time ../../../upscaling/upscale_singlephase config.xml
+-------
+
+1) tolerance = 1e-10
+[      156.192703205124                     0                     0 |
+|                     0      159.455859912012                     0 |
+|                     0                     0      30.0168798433113 ]
+
+real	1m57.181s
+user	1m6.030s
+sys	0m50.704s
+
 
 New code (the dune-cornerpoint module).
 ======================================
@@ -231,3 +248,14 @@ sys	0m3.723s
 real	0m11.242s
 user	0m7.507s
 sys	0m3.710s
+
+
+9) After a little optimization in flow solver initialization.
+
+real	0m10.426s
+user	0m7.031s
+sys	0m3.372s
+
+real	0m10.543s
+user	0m7.065s
+sys	0m3.428s
