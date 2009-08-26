@@ -35,7 +35,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef SINTEF_ECLIPSEGRIDINSPECTOR_HEADER
 #define SINTEF_ECLIPSEGRIDINSPECTOR_HEADER
 
-#include "EclipseGridParser.hpp"
+#include <vector>
 #include <boost/array.hpp>
 
 
@@ -52,6 +52,9 @@ namespace Dune
    @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
    @date 2008/06/02 09:46:08
 */
+
+class EclipseGridParser;
+
 class EclipseGridInspector
 {
 public:

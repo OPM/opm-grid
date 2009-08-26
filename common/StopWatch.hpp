@@ -36,13 +36,6 @@
 #define OPENRS_STOPWATCH_HEADER
 
 #include <boost/date_time/posix_time/posix_time.hpp>
-#include <boost/scoped_ptr.hpp>
-
-namespace boost {
-    namespace posix_time {
-	class ptime;
-    }
-}
 
 namespace Dune
 {

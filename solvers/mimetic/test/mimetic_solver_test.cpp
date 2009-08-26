@@ -57,6 +57,7 @@
 
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/common/param/ParameterGroup.hpp>
 
 
 template <int dim, class Interface>

@@ -34,9 +34,9 @@
 */
 
 #include "config.h"
-                                 
 #include <fstream>
 #include "../CpGrid.hpp"
+#include <dune/common/param/ParameterGroup.hpp>
 
 namespace Dune
 {

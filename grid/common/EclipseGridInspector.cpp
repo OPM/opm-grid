@@ -39,8 +39,8 @@
 #include <cmath>
 #include <cfloat>
 #include <algorithm>
-
 #include "EclipseGridInspector.hpp"
+#include "EclipseGridParser.hpp"
 
 namespace Dune
 {

@@ -51,6 +51,7 @@
 
 #include "Entity.hpp"
 #include "Geometry.hpp"
+#include "OrientedEntityTable.hpp"
 
 namespace Dune
 {

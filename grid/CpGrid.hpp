@@ -44,10 +44,7 @@
 #include <dune/common/collectivecommunication.hh>
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
-#include <dune/common/timer.hh>
 #include <dune/common/array.hh>
-
-#include <dune/common/param/ParameterGroup.hpp>
 
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
@@ -55,8 +52,6 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
-#include <dune/grid/common/EclipseGridParser.hpp>
-#include <dune/common/SparseTable.hpp>
 #include "preprocess/preprocess.h"
 
 
@@ -64,6 +59,8 @@ namespace Dune
 {
 
     class CpGrid;
+    class EclipseGridParser;
+    namespace parameter { class ParameterGroup; }
 
     ////////////////////////////////////////////////////////////////////////
     //

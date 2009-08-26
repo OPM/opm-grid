@@ -2,7 +2,7 @@
 
 check_PROGRAMS = cpgrid_test mapper_test
 
-noinst_PROGRAMS = grid_read_test finitevolume_test old_new_cpgrid_test make_vtk_test #dumux_test
+noinst_PROGRAMS = finitevolume_test make_vtk_test #dumux_test
 
 LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \
@@ -23,12 +23,6 @@ mapper_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh \
                             transportproblem2.hh unitcube.hh vtkout.hh
 finitevolume_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-
-grid_read_test_SOURCES = grid_read_test.cpp
-grid_read_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-
-old_new_cpgrid_test_SOURCES = old_new_cpgrid_test.cpp
-old_new_cpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 make_vtk_test_SOURCES = make_vtk_test.cpp
 make_vtk_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)

@@ -38,6 +38,7 @@
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <boost/array.hpp>
+#include <dune/common/param/ParameterGroup.hpp>
 
 using namespace Dune;
 

@@ -15,6 +15,7 @@
 #include "evolve.hh"
 
 #include "../CpGrid.hpp"
+#include <dune/common/param/ParameterGroup.hpp>
 
 typedef Dune::CpGrid GridType;
 

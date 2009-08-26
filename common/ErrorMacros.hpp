@@ -35,13 +35,16 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_ERRORMACROS_HEADER
 #define OPENRS_ERRORMACROS_HEADER
 
-#include <iostream>
-#include <exception>
 
 /// Error macros. In order to use some of them, you must also
 /// include <iostream> or <exception>, so they are included by
 /// this file. The compile defines NDEBUG and NVERBOSE control
 /// the behaviour of these macros.
+
+#ifndef NVERBOSE
+  #include <iostream>
+#endif
+#include <exception>
 
 /// Usage: REPORT;
 /// Usage: MESSAGE("Message string.");
