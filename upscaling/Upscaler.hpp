@@ -55,7 +55,7 @@ namespace Dune
 	Upscaler();
 
 	/// Initializes the upscaler.
-	// void init(const parameter::ParameterGroup& param); // The inherited one is fine, I hope.
+	virtual void init(const parameter::ParameterGroup& param);
 
 	/// A type for the upscaled permeability.
 	typedef ResProp::MutablePermTensor permtensor_t;

@@ -49,6 +49,27 @@ namespace Dune
     {
     }
 
+    inline void Upscaler::init(const parameter::ParameterGroup& param)
+    {
+	// Get the bc type parameter already here, since we will fake some
+	// others depending on it.
+        int bct = param.get<int>("boundary_condition_type");
+	bctype_ = static_cast<BoundaryConditionType>(bct);
+	twodim_hack_ = param.getDefault("2d_hack", false);
+	parameter::ParameterGroup temp_param = param;
+	std::string true_if_periodic = bctype_ == Periodic ? "true" : "false";
+	std::tr1::shared_ptr<parameter::ParameterMapItem> use_unique(new parameter::Parameter(true_if_periodic, "bool"));
+	std::tr1::shared_ptr<parameter::ParameterMapItem> per_ext(new parameter::Parameter(true_if_periodic, "bool"));
+	if (!temp_param.has("use_unique_boundary_ids")) {
+	    temp_param.insert("use_unique_boundary_ids", use_unique);
+	}
+	if (!temp_param.has("periodic_extension")) {
+	    temp_param.insert("periodic_extension", per_ext);
+	}
+	SimulatorBase::init(temp_param);
+    }
+
+
     inline void Upscaler::initControl(const parameter::ParameterGroup& param)
     {
 	SimulatorBase::initControl(param);
@@ -62,9 +83,7 @@ namespace Dune
 
     inline void Upscaler::initBoundaryConditions(const parameter::ParameterGroup& param)
     {
-        int bct = param.get<int>("boundary_condition_type");
-	bctype_ = static_cast<BoundaryConditionType>(bct);
-	twodim_hack_ = param.getDefault("2d_hack", false);
+	// Already found parameters in init().
     }
 
     inline void Upscaler::initSolvers(const parameter::ParameterGroup& param)
