@@ -490,7 +490,7 @@ namespace Dune
 	    } else {
 		cfl_factor_ = 1e100;
 		cfl_factor_gravity_ = 1e100;
-		for (int r = 0; r < rock_.size(); ++r) {
+		for (int r = 0; r < int(rock_.size()); ++r) {
 		    std::pair<double, double> fac = computeSingleRockCflFactors(r);
 		    cfl_factor_ = std::min(cfl_factor_, fac.first);
 		    cfl_factor_gravity_ = std::min(cfl_factor_gravity_, fac.second);
