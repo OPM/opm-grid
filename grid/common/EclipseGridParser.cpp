@@ -54,10 +54,14 @@ namespace Dune
 
 namespace EclipseKeywords
 {
-    string integer_fields[] =  { string("SPECGRID"),
-                                 string("ACTNUM"),
-                                 string("SATNUM"),
-                                 string("EQLNUM")};
+    string integer_fields[] =
+	{ string("SPECGRID"),
+	  string("ACTNUM"),
+	  string("SATNUM"),
+	  string("EQLNUM"),
+	  string("REGNUM"),
+	  string("ROCKTYPE")
+	};
     const int num_integer_fields = sizeof(integer_fields) / sizeof(integer_fields[0]);
 
     string floating_fields[] =
