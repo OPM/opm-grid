@@ -53,14 +53,14 @@ namespace Dune {
     template<class CellIter, int dim>
     class MimeticIPEvaluator<CellIter,dim,true> {
     public:
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef typename CellIter::Scalar Scalar;
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         MimeticIPEvaluator(const int max_nf)
             : max_nf_(max_nf),
               fa_    (max_nf * max_nf),
@@ -70,10 +70,10 @@ namespace Dune {
 
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template<class PermTensor, template<typename> class SP>
         void evaluate(const CellIter&                        c,
                       const PermTensor&                      K,
