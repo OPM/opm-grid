@@ -11,6 +11,7 @@ entity_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
 BuildCpGrid_SOURCES = BuildCpGrid.cpp
 BuildCpGrid_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 BuildCpGrid_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) \
+                  $(BOOST_LDFLAGS) $(BOOST_SYSTEM_LIB) \
                   ../libcpgrid.la \
                   ../../common/libtemporaryhack.la \
                   ../../preprocess/libpreprocess.la \
