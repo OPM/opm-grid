@@ -45,22 +45,58 @@
 #include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
+    /// @class MimeticIPEvaluator<CellIter,dim,computeInverseIP>
+    ///
+    /// @brief
+    ///    Defines a class template for computing a matrix
+    ///    representation of the permeability-dependent inner product
+    ///    @f$b(v,w) = (v, K^{-1}\,w)@f$ of the velocity vectors
+    ///    @f$v@f$ and @f$w@f$.  The matrix entries are defined
+    ///    through the mimetic finite difference method of Brezzi
+    ///    et. al.
+    ///
+    /// @tparam CellIter
+    ///    Iterator type through which cell data such as the volume,
+    ///    centroid, and connecting faces may be accessed.  @code
+    ///    CellIter @endcode is expected to expose the method @code
+    ///    operator->() @endcode.
+    ///
+    /// @tparam dim
+    ///    Physical dimension of geometric quantities.  Usually, @code
+    ///    dim==3 @endcode in simulations on corner-point grid models.
+    ///
+    /// @tparam computeInverseIP
+    ///    Whether or not to compute the @em inverse of the mimetic
+    ///    inner product matrix.  Specifically, if @f$B@f$ is the
+    ///    matrix representation of the mimetic inner product, then
+    ///    setting @code computeInverseIP = true; @endcode means that
+    ///    the @code evaluate() @endcode method computes @f$B^{-1}@f$
+    ///    rather than @f$B@f$ itself.  This parameter is a concession
+    ///    to hybrid discretization methods based on Schur complement
+    ///    reduction which only need access to @f$B^{-1}@f$.  In the
+    ///    mimetic case there is an explicit formula for said inverse.
     template<class CellIter, int dim, bool computeInverseIP> class MimeticIPEvaluator;
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    ///    Specialization of general class template for the case of
+    ///    computing the inverse inner product.
     template<class CellIter, int dim>
     class MimeticIPEvaluator<CellIter,dim,true> {
     public:
         /// @brief
-        /// @todo Doc me!
+        ///    The element type of the matrix representation of the
+        ///    mimetic inner product.  Assumed to be a floating point
+        ///    type, and usually, @code Scalar @endcode is an alias
+        ///    for @code double @endcode.
         typedef typename CellIter::Scalar Scalar;
 
 
-        /// @brief
-        /// @todo Doc me!
-        /// @param
+        /// @brief Constructor.
+        /// @param [in] max_nf
+        ///    Maximum number of faces/connections of any single cell
+        ///    in the model.  Used to set the size of certain internal
+        ///    working arrays.  A cell with @f$n_f@f$ faces results in
+        ///    an inner product matrix of size @f$n_f \times n_f@f$.
         MimeticIPEvaluator(const int max_nf)
             : max_nf_(max_nf),
               fa_    (max_nf * max_nf),
@@ -69,11 +105,37 @@ namespace Dune {
         {}
 
 
-
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Main evaluation routine.  Computes the inverse of the
+        ///    matrix representation of the mimetic inner product in a
+        ///    single cell with permeability @f$K@f$.  Adds a
+        ///    regularization term in order to guarantee a positive
+        ///    definite matrix.
+        ///
+        /// @tparam PermTensor
+        ///    Type representing the permeability tensor in a single
+        ///    cell.  Assumed to expose a method @code operator()(int
+        ///    i, int j) @endcode such that the call @code K(i,j)
+        ///    @endcode retrieves the @f$ij@f$'th component of the
+        ///    cell permeability @f$K@f$.
+        ///
+        /// @tparam SP
+        ///    Type representing the @code FullMatrix<T,SP,OP>
+        ///    @endcode storage policy of the matrix into which the
+        ///    inverse inner product matrix entries will be stored.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the inverse of the mimetic
+        ///    inner product.
+        ///
+        /// @param [in] K
+        ///    Permeability tensor for cell @code *c @endcode.
+        ///
+        /// @param [out] Binv
+        ///    Inverse of matrix representation of the mimetic inner
+        ///    product for cell @code *c @endcode.  A square, full
+        ///    matrix with the number of rows equal to the number of
+        ///    faces in cell @code *c @endcode.
         template<class PermTensor, template<typename> class SP>
         void evaluate(const CellIter&                        c,
                       const PermTensor&                      K,
@@ -140,6 +202,41 @@ namespace Dune {
                          t           / c->volume(), Binv  );
         }
 
+
+        /// @brief
+        ///    Computes the mimetic discretization of the gravity term
+        ///    in Darcy's law.
+        ///
+        /// @tparam Point
+        ///    Type representing a geometric point or a vector between
+        ///    geometric points (e.g., a geometric direction and
+        ///    distance) in the discretized model.  Usually @code
+        ///    Point @endcode is an alias for a vector whose size is
+        ///    known at compile time, such as @code FieldVector<T,3>
+        ///    @endcode.
+        ///
+        /// @tparam Vector
+        ///    Type representing a possibly run-time sized
+        ///    one-dimensional mathematical vector.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the inverse of the mimetic
+        ///    inner product.
+        ///
+        /// @param [in] grav
+        ///    Gravity vector.
+        ///
+        /// @param [in] omega
+        ///    The value of @f$\omega = \sum_i \rho_i f_i@f$ in cell
+        ///    @code *c @endcode where @f$\rho_i@f$ and @f$f_i =
+        ///    \lambda_i / \sum_j \lambda_j@f$ are, respectively, the
+        ///    @em density and the saturation dependent <em>fractional
+        ///    flow</em> of fluid @f$i@f$.
+        ///
+        /// @param [out] gterm
+        ///    Mimetic discretization of the Darcy law gravity term.
+        ///    One scalar value for each face of cell @code *c
+        ///    @endcode.
         template<class Point, class Vector>
         void gravityTerm(const CellIter& c,
                          const Point&    grav,
