@@ -46,7 +46,6 @@
 
 #include <dune/solvers/common/NonuniformTableLinear.hpp>
 #include <dune/solvers/common/Matrix.hpp>
-#include <dune/solvers/common/ReservoirPropertyInterface.hpp>
 
 
 namespace Dune
@@ -435,38 +434,68 @@ namespace Dune
                 return (1 - saturation) * (1 - saturation);
             }
         }
-        void relMobs(double s, double& mob_first, double& mob_gravity)
+        void cflMobs(int rock, double s, double& mob_first, double& mob_gravity) const
         {
+	    if (rock == -1) {
+		// No rock dependency, we might just as well use the first cell.
+		const int cell_index = 0;
+		double l1 = mobilityFirstPhase(cell_index, s);
+		double l2 = mobilitySecondPhase(cell_index, s);
+		mob_first = l1/(l1 + l2);
+		mob_gravity = l1*l2/(l1 + l2);
+	    } else {
+		double krw = rock_[rock].krw_(s);
+		double kro = rock_[rock].kro_(s);
+		double l1 = krw/viscosity1_;
+		double l2 = kro/viscosity2_;
+		mob_first = l1/(l1 + l2);
+		mob_gravity = l1*l2/(l1 + l2);
+	    }
+	    
             // This is a hack for now, we should make this rock-dependant,
             // for the multi-rock case.
-            const double cell_index = 0;
+            const int cell_index = 0;
             double l1 = mobilityFirstPhase(cell_index, s);
             double l2 = mobilitySecondPhase(cell_index, s);
             mob_first = l1/(l1 + l2);
             mob_gravity = l1*l2/(l1 + l2);
         }
-        void computeCflFactors()
-        {
-            MESSAGE("Cfl factors are computed disregarding multiple rock possibility.");
+	std::pair<double, double> computeSingleRockCflFactors(int rock) const
+	{
             const int N = 257;
             double delta = 1.0/double(N - 1);
-            double last_m1, last_mg;
-            double max_der1 = -1e100;
-            double max_derg = -1e100;
-            relMobs(0.0, last_m1, last_mg);
-            for (int i = 1; i < N; ++i) {
-                double s = double(i)*delta;
-                double m1, mg;
-                relMobs(s, m1, mg);
-                double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
-                double est_deriv_mg = std::fabs(mg - last_mg)/delta;
-                max_der1 = std::max(max_der1, est_deriv_m1);
-                max_derg = std::max(max_derg, est_deriv_mg);
-                last_m1 = m1;
-                last_mg = mg;
-            }
-            cfl_factor_ = 1.0/max_der1;
-            cfl_factor_gravity_ = 1.0/max_derg;
+	    double last_m1, last_mg;
+	    double max_der1 = -1e100;
+	    double max_derg = -1e100;
+	    cflMobs(rock, 0.0, last_m1, last_mg);
+	    for (int i = 1; i < N; ++i) {
+		double s = double(i)*delta;
+		double m1, mg;
+		cflMobs(rock, s, m1, mg);
+		double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
+		double est_deriv_mg = std::fabs(mg - last_mg)/delta;
+		max_der1 = std::max(max_der1, est_deriv_m1);
+		max_derg = std::max(max_derg, est_deriv_mg);
+		last_m1 = m1;
+		last_mg = mg;
+	    }
+	    return std::make_pair(1.0/max_der1, 1.0/max_derg);
+	}
+        void computeCflFactors()
+        {
+	    if (rock_.empty()) {
+		std::pair<double, double> fac = computeSingleRockCflFactors(-1);
+		cfl_factor_ = fac.first;
+		cfl_factor_gravity_ = fac.second;
+	    } else {
+		cfl_factor_ = 1e100;
+		cfl_factor_gravity_ = 1e100;
+		for (int r = 0; r < rock_.size(); ++r) {
+		    std::pair<double, double> fac = computeSingleRockCflFactors(r);
+		    cfl_factor_ = std::min(cfl_factor_, fac.first);
+		    cfl_factor_gravity_ = std::min(cfl_factor_gravity_, fac.second);
+		}
+	    }
         }
 
         void assignPorosity(const EclipseGridParser& parser,
