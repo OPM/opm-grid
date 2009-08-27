@@ -101,9 +101,6 @@ namespace Dune
 	// Gravity.
 	FieldVector<double, 3> gravity(0.0);
 	// gravity[2] = -Dune::unit::gravity;
-	if (gravity.two_norm() > 0.0) {
-	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
-	}
 
 	permtensor_t upscaled_K(3, 3, (double*)0);
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
