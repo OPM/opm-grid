@@ -135,10 +135,9 @@ namespace Dune {
             //
             // where t = 6/d * TRACE(K) (== 2*TRACE(K) for 3D).
             //
-            Scalar t = 0.0; //trace(K);
-            for (int i = 0; i < dim; ++i) t += K(i,i);
-            matMulAdd_NT(Scalar(1.0)     /        c->volume() , T2, T1,
-                         Scalar(6.0) * t / (dim * c->volume()), Binv  );
+            Scalar t = Scalar(6.0) * trace(K) / dim;
+            matMulAdd_NT(Scalar(1.0) / c->volume(), T2, T1,
+                         t           / c->volume(), Binv  );
         }
 
         template<class Point, class Vector>
