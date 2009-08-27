@@ -38,6 +38,7 @@
 
 #include <boost/static_assert.hpp>
 #include <dune/common/geometrytype.hh>
+#include <dune/grid/common/gridenums.hh>
 #include "EntityRep.hpp"
 
 namespace Dune
