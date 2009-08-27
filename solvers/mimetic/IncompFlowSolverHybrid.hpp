@@ -73,10 +73,28 @@
 namespace Dune {
     namespace {
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Verify that each pair of connected cells in a grid are
+        ///    connected by a single face only.
+        ///
+        /// @tparam GI
+        ///    Type presenting an interface to a grid (typically a
+        ///    discretized geological model).  The type is assumed to
+        ///    expose a forward iterator type, @code CellIter
+        ///    @endcode, and a pair of delimiters @code cellbegin()
+        ///    @endcode and @code cellend() @endcode to traverse the
+        ///    cells of a grid.  The cell iterator, in turn, is
+        ///    expected to expose a forward iterator type @code
+        ///    FaceIter @endcode, and a pair of delimiters @code
+        ///    facebegin() @endcode and @code faceend() @endcode to
+        ///    traverse the faces of a cell.
+        ///
+        /// @param [in] g
+        ///    The grid.
+        ///
         /// @return
+        ///    @code true @endcode if every pair of connected grid
+        ///    cells are connected by a single face only and @code
+        ///    false @endcdode otherwise.
         template<class GI>
         bool topologyIsSane(const GI& g)
         {
@@ -103,19 +121,52 @@ namespace Dune {
 
 
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
+        ///    Type for constructing a binary function object which,
+        ///    together with the standard transforming algorithm @code
+        ///    std::transform() @endcode, implements the extended BLAS
+        ///    level 1 operation @f[ y \leftarrow ax + by. @f]
+        ///
+        /// @details
+        ///    Suppose @f$x@f$ and @f$y@f$ are collections of the same
+        ///    @code size() @endcode, for instance two equally sized
+        ///    @code std::vector<T>@endcode's for some element type
+        ///    @code T @endcode.  Then the statements
+        ///    @code
+        ///       T a = <some value>;
+        ///       T b = <some other value>;
+        ///       std::transform(x.begin(), x.end(), y.begin(),
+        ///                      y.begin(), axpby<T>(a, b));
+        ///    @endcode
+        ///    implement the extended BLAS level 1 operation outlined
+        ///    above for the elements of @f$x@f$ and @f$y@f$.
+        ///
+        /// @tparam T
+        ///    Element type of the collections to which the functor
+        ///    will be applied.  Expected to be an arithmetic type,
+        ///    and usually @code T @endcode is an alias for @code
+        ///    double @endcode.
         template<typename T>
         class axpby : public std::binary_function<T,T,T> {
         public:
-            /// @brief
-            /// @todo Doc me!
-            /// @param
+            /// @brief Constructor.
+            /// @param [in] a
+            ///    Constant multiplying the elements of @f$x@f$.
+            /// @param [in] b
+            ///    Constant multiplying the elements of @f$y@f$.
             axpby(const T& a, const T& b) : a_(a), b_(b) {}
 
             /// @brief
-            /// @todoc me!
+            ///    Function call operator required for functor
+            ///    behaviour.
+            ///
+            /// @param [in] x
+            ///    Single element of collection @f$x@f$.
+            ///
+            /// @param [in] y
+            ///    Single element of collection @f$y@f$.
+            ///
             /// @return
+            ///    Corresponding transformed value @f$ax + by@f$.
             T operator()(const T& x, const T& y)
             {
                 return a_*x + b_*y;
