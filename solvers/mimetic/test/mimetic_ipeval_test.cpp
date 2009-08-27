@@ -49,7 +49,6 @@
 #include <dune/solvers/common/blas_lapack.hpp>
 #include <dune/solvers/common/Matrix.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
-#include <dune/solvers/common/ReservoirPropertyInterface.hpp>
 
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
