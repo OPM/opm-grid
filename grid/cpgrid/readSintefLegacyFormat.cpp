@@ -329,8 +329,6 @@ namespace Dune
             IntVec n;
             map >> n;  ASSERT ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
 
-            const int num_global_cells = n[0] * n[1] * n[2];
-
             int num_cells;
             map >> num_cells;  ASSERT (num_cells > 0);
 
@@ -339,7 +337,7 @@ namespace Dune
             IntVec p; int c = 0;
             while (map >> p) {
                 int glob = p[0] + n[0]*(p[1] + n[1]*p[2]);
-                ASSERT (glob < num_global_cells);
+                ASSERT (glob < n[0] * n[1] * n[2]);
 
                 global_cell[c++] = glob;
             }
