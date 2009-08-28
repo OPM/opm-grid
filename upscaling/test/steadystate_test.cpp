@@ -59,8 +59,10 @@ int main(int argc, char** argv)
 
     // Then, compute some upscaled relative permeabilities.
     int num_cells = upscaler.grid().numberOfCells();
-    const int num_sats = 7;
-    double saturations[num_sats] = { 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 };
+    const int num_sats = 1;
+    double saturations[num_sats] = { 0.3 };
+//     const int num_sats = 7;
+//     double saturations[num_sats] = { 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 };
     // const int num_sats = 11;
     // double saturations[num_sats] = { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
     const int num_pdrops = 5;
@@ -73,8 +75,8 @@ int main(int argc, char** argv)
 	    double pdrop = pdrops[j];
 	    SteadyStateUpscaler::permtensor_t upscaled_relperm
 		= upscaler.upscaleSteadyState(init_sats, saturations[i], pdrop, upscaled_K);
-	    std::cout << "Tensor of upscaled relperms for saturation " << saturations[i]
-		      << " and pressure drop " << pdrop << ":\n" << upscaled_relperm << std::endl;
+	    std::cout << "\n\n\n\nTensor of upscaled relperms for saturation " << saturations[i]
+		      << " and pressure drop " << pdrop << ":\n" << upscaled_relperm << "\n\n\n" << std::endl;
 	    // Changing initial saturations for next pressure drop to equal the steady state of the last
 	    init_sats = upscaler.lastSaturations();
 	}

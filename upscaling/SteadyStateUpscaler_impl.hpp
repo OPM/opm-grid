@@ -72,12 +72,12 @@ namespace Dune
 		       const double pressure_drop,
 		       const permtensor_t& upscaled_perm)
     {
+	static int count = 0;
+	++count;
 	int num_cells = ginterf_.numberOfCells();
 	// No source or sink.
 	std::vector<double> src(num_cells, 0.0);
 	SparseVector<double> injection(num_cells);
-	// Just water.
-	std::vector<double> sat(num_cells, 1.0);
 	// Gravity.
 	FieldVector<double, 3> gravity(0.0);
 	// gravity[2] = -Dune::unit::gravity;
@@ -106,7 +106,7 @@ namespace Dune
 	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
+	    flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_);
 
 	    // Do a run till steady state. For now, we just do some pressure and transport steps...
 	    for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -118,7 +118,7 @@ namespace Dune
 		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
 		// Run pressure solver.
-		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
+		flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_);
 
 		// Output.
 		if (output_) {
@@ -128,9 +128,10 @@ namespace Dune
 		    getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
 		    Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
 		    vtkwriter.addCellData(cell_velocity, "velocity");
-		    vtkwriter.addCellData(sat, "saturation");
+		    vtkwriter.addCellData(saturation, "saturation");
 		    vtkwriter.addCellData(cell_pressure, "pressure");
-		    vtkwriter.write("output-steadystate-" + boost::lexical_cast<std::string>(initial_saturations[0][0])
+		    vtkwriter.write(std::string("output-steadystate")
+				    + '-' + boost::lexical_cast<std::string>(count)
 				    + '-' + boost::lexical_cast<std::string>(pdd)
 				    + '-' + boost::lexical_cast<std::string>(iter),
 				    Dune::VTKOptions::ascii);
