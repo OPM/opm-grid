@@ -49,7 +49,6 @@
 #include <dune/common/Units.hpp>
 
 #include <dune/grid/common/Volumes.hpp>
-#include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/yaspgrid.hh>
 

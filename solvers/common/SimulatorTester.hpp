@@ -38,6 +38,7 @@
 
 
 #include <dune/solvers/common/SimulatorBase.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 namespace Dune
 {
