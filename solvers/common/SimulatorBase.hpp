@@ -58,11 +58,13 @@
 #include <dune/solvers/common/BoundaryConditions.hpp>
 #include <dune/solvers/common/setupGridAndProps.hpp>
 #include <dune/solvers/common/setupBoundaryConditions.hpp>
+#include <dune/solvers/common/SimulatorUtilities.hpp>
 
 #include <dune/solvers/euler/EulerUpstream.hpp>
 
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
+
 
 namespace Dune
 {
@@ -108,7 +110,7 @@ namespace Dune
 	    param.displayUsage();
 	    std::cout << "================================================================\n";
 	}
-
+	/*
 	/// @brief Estimates a scalar cell velocity from outgoing fluxes.
 	/// @tparam FlowSol a flow solution type.
 	/// @param[out] cell_velocity the estimated velocities.
@@ -117,22 +119,7 @@ namespace Dune
 	void estimateCellVelocity(std::vector<double>& cell_velocity,
 				  const FlowSol& flow_solution)
 	{
-	    // Algorithm used is same as in halfFaceFluxToCellVelocity.hpp
-	    // in the Sintef legacy c++ code.
-	    cell_velocity.clear();
-	    cell_velocity.resize(ginterf_.numberOfCells());
-	    for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
-		int numf = 0;
-		Vector cell_v(0.0);
-		for (FaceIter f = c->facebegin(); f != c->faceend(); ++f, ++numf) {
-		    double flux = flow_solution.outflux(f);
-		    Vector v = f->centroid();
-		    v -= c->centroid();
-		    v *= flux/c->volume();
-		    cell_v += v;
-		}
-		cell_velocity[c->index()] = cell_v.two_norm();
-	    }
+	    estimateCellVelocity(cell_velocity, ginterf_, flow_solution);
 	}
 
 
@@ -144,13 +131,9 @@ namespace Dune
 	void getCellPressure(std::vector<double>& cell_pressure,
 			     const FlowSol& flow_solution)
 	{
-	    cell_pressure.clear();
-	    cell_pressure.resize(ginterf_.numberOfCells());
-	    for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
-		cell_pressure[c->index()] = flow_solution.pressure(c);
-	    }
+	    getCellPressure(cell_pressure, ginterf_, flow_solution);
 	}
-
+	*/
     protected:
 	typedef CpGrid                                         GridType;
  	enum { Dimension = GridType::dimension };

@@ -81,9 +81,9 @@ namespace Dune
 						 injection_rates);
 		// Output.
 		std::vector<double> cell_velocity;
-		estimateCellVelocity(cell_velocity, flow_solver_.getSolution());
+		estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
 		std::vector<double> cell_pressure;
-		getCellPressure(cell_pressure, flow_solver_.getSolution());
+		getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
 		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
 		vtkwriter.addCellData(cell_velocity, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
