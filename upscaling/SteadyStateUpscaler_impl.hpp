@@ -48,6 +48,7 @@ namespace Dune
 
     inline SteadyStateUpscaler::SteadyStateUpscaler()
 	: SinglePhaseUpscaler(),
+	  output_(false),
 	  simulation_steps_(10),
 	  stepsize_(0.1)
     {
@@ -56,6 +57,7 @@ namespace Dune
     inline void SteadyStateUpscaler::init(const parameter::ParameterGroup& param)
     {
 	SinglePhaseUpscaler::init(param);
+	output_ = param.getDefault("output", output_);
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
 					      Dune::unit::day);
@@ -85,8 +87,10 @@ namespace Dune
 
 	permtensor_t upscaled_K(3, 3, (double*)0);
 
+	// v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
+	permtensor_t relative_K(3, 3, (double*)0);
+
 	// Loop over the three pressure drop directions (x, y, z).
-	permtensor_t relative_K; // v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
 	for (int pdd = 0; pdd < Dimension; ++pdd) {
 	    // Set up initial saturation profile.
 	    // std::vector<double> saturation = setupInitialSaturation(target_saturation);
@@ -117,18 +121,20 @@ namespace Dune
 		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
 
 		// Output.
-		std::vector<double> cell_velocity;
-		estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
-		std::vector<double> cell_pressure;
-		getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
-		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
-		vtkwriter.addCellData(cell_velocity, "velocity");
-		vtkwriter.addCellData(sat, "saturation");
-		vtkwriter.addCellData(cell_pressure, "pressure");
-		vtkwriter.write("output-steadystate-" + boost::lexical_cast<std::string>(initial_saturations[0][0])
-				+ '-' + boost::lexical_cast<std::string>(pdd)
-				+ '-' + boost::lexical_cast<std::string>(iter),
-                                Dune::VTKOptions::ascii);
+		if (output_) {
+		    std::vector<double> cell_velocity;
+		    estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+		    std::vector<double> cell_pressure;
+		    getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
+		    Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
+		    vtkwriter.addCellData(cell_velocity, "velocity");
+		    vtkwriter.addCellData(sat, "saturation");
+		    vtkwriter.addCellData(cell_pressure, "pressure");
+		    vtkwriter.write("output-steadystate-" + boost::lexical_cast<std::string>(initial_saturations[0][0])
+				    + '-' + boost::lexical_cast<std::string>(pdd)
+				    + '-' + boost::lexical_cast<std::string>(iter),
+				    Dune::VTKOptions::ascii);
+		}
 	    }
 
 	    // A check on the final fluxes.

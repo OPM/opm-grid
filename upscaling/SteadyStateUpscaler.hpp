@@ -91,6 +91,7 @@ namespace Dune
 					   const int pdrop_dir) const;
 	// ------- Data members -------
 	boost::array<std::vector<double>, Dimension> last_saturations_;
+	bool output_;
 	int simulation_steps_;
 	double stepsize_;
 	TransportSolver transport_solver_;
