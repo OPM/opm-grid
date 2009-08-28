@@ -37,7 +37,10 @@
 #define OPENRS_STEADYSTATEUPSCALER_IMPL_HEADER
 
 
+#include <boost/lexical_cast.hpp>
 #include <dune/solvers/common/MatrixInverse.hpp>
+#include <dune/solvers/common/SimulatorUtilities.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 
 namespace Dune
@@ -45,8 +48,8 @@ namespace Dune
 
     inline SteadyStateUpscaler::SteadyStateUpscaler()
 	: SinglePhaseUpscaler(),
-	  simulation_steps_(1),
-	  stepsize_(1.0)
+	  simulation_steps_(10),
+	  stepsize_(0.1)
     {
     }
 
@@ -112,6 +115,20 @@ namespace Dune
 
 		// Run pressure solver.
 		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
+
+		// Output.
+		std::vector<double> cell_velocity;
+		estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+		std::vector<double> cell_pressure;
+		getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
+		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
+		vtkwriter.addCellData(cell_velocity, "velocity");
+		vtkwriter.addCellData(sat, "saturation");
+		vtkwriter.addCellData(cell_pressure, "pressure");
+		vtkwriter.write("output-steadystate-" + boost::lexical_cast<std::string>(initial_saturations[0][0])
+				+ '-' + boost::lexical_cast<std::string>(pdd)
+				+ '-' + boost::lexical_cast<std::string>(iter),
+                                Dune::VTKOptions::ascii);
 	    }
 
 	    // A check on the final fluxes.
