@@ -34,7 +34,7 @@
 */
 
 
-#include <dune/upscaling/Upscaler.hpp>
+#include <dune/upscaling/SinglePhaseUpscaler.hpp>
 #include <dune/common/Units.hpp>
 
 using namespace Dune;
@@ -45,9 +45,9 @@ int main(int argc, char** argv)
 {
     parameter::ParameterGroup param(argc, argv);
     // MPIHelper::instance(argc,argv);
-    Upscaler upscaler;
+    SinglePhaseUpscaler upscaler;
     upscaler.init(param);
-    Upscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
+    SinglePhaseUpscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
     upscaled_K *= (1.0/(milli*darcy));
     std::cout.precision(15);
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K << std::endl;

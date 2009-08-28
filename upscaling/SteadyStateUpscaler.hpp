@@ -1,10 +1,11 @@
 //===========================================================================
 //
-// File: Upscaler.hpp
+// File: SteadyStateUpscaler.hpp
 //
-// Created: Mon Aug 10 09:29:04 2009
+// Created: Fri Aug 28 14:01:19 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
+//            Bård Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -32,37 +33,31 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_UPSCALER_HEADER
-#define OPENRS_UPSCALER_HEADER
+#ifndef OPENRS_STEADYSTATEUPSCALER_HEADER
+#define OPENRS_STEADYSTATEUPSCALER_HEADER
+
 
 #include "config.h"
-#include <dune/solvers/common/SimulatorBase.hpp>
+#include "SinglePhaseUpscaler.hpp"
+#include <dune/solvers/euler/EulerUpstream.hpp>
 #include <boost/array.hpp>
 
 namespace Dune
 {
     /**
-       @brief A class for doing upscaling.
+       @brief A class for doing steady state upscaling.
        @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
-       @date Thu Aug 28 14:45:51 2008
     */
-    class Upscaler : public SimulatorBase
+    class SteadyStateUpscaler : public SinglePhaseUpscaler
     {
     public:
 	// ------- Methods -------
 
 	/// Default constructor.
-	Upscaler();
+	SteadyStateUpscaler();
 
 	/// Initializes the upscaler.
 	virtual void init(const parameter::ParameterGroup& param);
-
-	/// A type for the upscaled permeability.
-	typedef ResProp::MutablePermTensor permtensor_t;
-
-	/// Does a single-phase upscaling.
-	/// @return an upscaled permeability tensor.
-	permtensor_t upscaleSinglePhase();
 
 	/// Does a steady-state upscaling.
 	/// @param initial_saturation the initial saturation profiles for the steady-state computations.
@@ -80,51 +75,30 @@ namespace Dune
 					const double pressure_drop,
 					const permtensor_t& upscaled_perm);
 
-	/// Accessor for the grid object.
-	const GridType& grid() const;
-
 	/// Accessor for the steady state saturation fields. This is empty until
 	/// upscaleSteadyState() is called, at which point it will
 	/// contain the last computed (steady) saturation states (one for each cardinal direction).
-	const Dune::array<std::vector<double>, Dimension>& lastSaturations() const;
+	const boost::array<std::vector<double>, Dimension>& lastSaturations() const;
 
     protected:
-	virtual void initControl(const parameter::ParameterGroup& param);
-	virtual void initInitialConditions(const parameter::ParameterGroup& param);
-	virtual void initBoundaryConditions(const parameter::ParameterGroup& param);
-	virtual void initSolvers(const parameter::ParameterGroup& param);
-
-    private:
-	// ------- Typedefs and enums -------
-	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2, PeriodicSingleDirection = 3, Noflow = 4 };
-
+	// ------- Typedefs -------
+	typedef EulerUpstream<GridInterface, ResProp, BCs> TransportSolver;
 	// ------- Methods -------
-	// std::vector<double> setupInitialSaturation(double target_saturation);
-	template <class FlowSol>
-	double computeAverageVelocity(const FlowSol& flow_solution,
-				      const int flow_dir,
-				      const int pdrop_dir) const;
 	template <class FlowSol>
 	double computeAveragePhaseVelocity(const FlowSol& flow_solution,
 					   const std::vector<double>& saturations,
 					   const int flow_dir,
 					   const int pdrop_dir) const;
-	double computeDelta(const int flow_dir) const;
-
-
-
 	// ------- Data members -------
-	// FluxChecker flux_checker_;
-	// typename grid_t::point_t gravity_;
-	Dune::array<std::vector<double>, Dimension> last_saturations_;
-	BoundaryConditionType bctype_;
-	bool twodim_hack_;
-	double residual_tolerance_;
+	boost::array<std::vector<double>, Dimension> last_saturations_;
+	int simulation_steps_;
+	double stepsize_;
+	TransportSolver transport_solver_;
     };
 
 } // namespace Dune
 
-#include "Upscaler_impl.hpp"
+#include "SteadyStateUpscaler_impl.hpp"
 
 
-#endif // OPENRS_UPSCALER_HEADER
+#endif // OPENRS_STEADYSTATEUPSCALER_HEADER
