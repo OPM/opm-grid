@@ -137,12 +137,12 @@ namespace Dune
 		SatBC sb(SatBC::Periodic, 0.0);
 		boost::array<SatBC, 6> scond = {{ sb, sb, sb, sb, sb, sb }};
 		if (twodim_hack) {
-		    fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
-		    fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
+// 		    fcond[2] = FlowBC(FlowBC::Neumann, 0.0);
+// 		    fcond[3] = FlowBC(FlowBC::Neumann, 0.0);
 		    fcond[4] = FlowBC(FlowBC::Neumann, 0.0);
 		    fcond[5] = FlowBC(FlowBC::Neumann, 0.0);
-		    scond[2] = SatBC(SatBC::Dirichlet, 1.0);
-		    scond[3] = SatBC(SatBC::Dirichlet, 1.0);
+// 		    scond[2] = SatBC(SatBC::Dirichlet, 1.0);
+// 		    scond[3] = SatBC(SatBC::Dirichlet, 1.0);
 		    scond[4] = SatBC(SatBC::Dirichlet, 1.0);
 		    scond[5] = SatBC(SatBC::Dirichlet, 1.0);
 		}
