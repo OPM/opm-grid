@@ -185,31 +185,65 @@ namespace Dune {
              class BCInterface,
              class InnerProduct>
     class IncompFlowSolverHybrid {
+        /// @brief
+        ///    The element type of the matrix representation of the
+        ///    mimetic inner product.  Assumed to be a floating point
+        ///    type, and usually, @code Scalar @endcode is an alias
+        ///    for @code double @endcode.
         typedef typename GridInterface::Scalar Scalar;
+
+        /// @brief
+        ///   Tag for identifying which type of condition/equation to
+        ///   assemble into the global system of linear equation for
+        ///   any given face/connection.
         enum FaceType { Internal, Dirichlet, Neumann, Periodic };
 
+        /// @brief
+        ///    Type representing the solution to a given flow problem.
         class FlowSolution {
         public:
             /// @brief
-            /// @todo Doc me!
+            ///    The element type of the matrix representation of
+            ///    the mimetic inner product.  Assumed to be a
+            ///    floating point type, and usually, @code Scalar
+            ///    @endcode is an alias for @code double @endcode.
             typedef typename GridInterface::Scalar       Scalar;
+
+            /// @brief
+            ///    Convenience alias for the grid interface's cell
+            ///    iterator.
             typedef typename GridInterface::CellIterator CI;
+
+            /// @brief
+            ///    Convenience alias for the cell's face iterator.
             typedef typename CI           ::FaceIterator FI;
 
             friend class IncompFlowSolverHybrid;
 
             /// @brief
-            /// @todo Doc me!
-            /// @param
+            ///    Retrieve the current cell pressure in a given cell.
+            ///
+            /// @param [in] c
+            ///    Cell for which to retrieve the current cell
+            ///    pressure.
+            ///
             /// @return
+            ///    Current cell pressure in cell @code *c @endcode.
             Scalar pressure(const CI& c) const
             {
                 return pressure_[cellno_[c->index()]];
             }
+
             /// @brief
-            /// @todo Doc me!
-            /// @param
+            ///    Retrieve current flux across given face in
+            ///    direction of outward normal vector.
+            ///
+            /// @param [in] f
+            ///    Face across which to retrieve the current outward
+            ///    flux.
+            ///
             /// @return
+            ///    Current outward flux across face @code *f @endcode.
             Scalar outflux (const FI& f) const
             {
                 return outflux_[cellno_[f->cellIndex()]][f->localIndex()];
@@ -223,8 +257,25 @@ namespace Dune {
 
     public:
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    All-in-one initialization routine.  Enumerates all grid
+        ///    connections, allocates sufficient space, defines the
+        ///    structure of the global system of linear equations for
+        ///    the contact pressures, and computes the permeability
+        ///    dependent inner products for all of the grid's cells.
+        ///
+        /// @param [in] g
+        ///    The grid.
+        ///
+        /// @param [in] r
+        ///    The reservoir properties of each grid cell.
+        ///
+        /// @param [in] bc
+        ///    The boundary conditions describing how the current flow
+        ///    problem interacts with the outside world.  This is used
+        ///    only for the purpose of introducing additional
+        ///    couplings in the case of periodic boundary conditions.
+        ///    The specific values of the boundary conditions are not
+        ///    inspected in @code init() @endcode.
         void init(const GridInterface&      g,
                   const ReservoirInterface& r,
                   const BCInterface&        bc)
@@ -232,16 +283,19 @@ namespace Dune {
             clear();
 
             if (g.numberOfCells() > 0) {
-                enumerateDof(g, bc);
-                allocateConnections(bc);
-                setConnections(bc);
+                initSystemStructure(g, bc);
                 computeInnerProducts(r);
             }
         }
 
+
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Clear all topologic, geometric and rock-dependent
+        ///    information currently held in internal data structures.
+        ///    Release all memory resources in preparation of
+        ///    constructing a solver for a new problem.  Method @code
+        ///    clear() @endcode must be called prior to any other
+        ///    method of the class.
         void clear()
         {
             pgrid_                  =  0;
@@ -263,71 +317,51 @@ namespace Dune {
             cleared_state_ = true;
         }
 
+
         /// @brief
-        /// @todo Doc me!
-        /// @param
-        void enumerateDof(const GridInterface& g, const BCInterface& bc)
+        ///    Compute structure of coefficient matrix in final system
+        ///    of linear equations for this flow problem.  Allocates
+        ///    all storage needed by the flow solver itself.
+        ///
+        /// @param [in] g
+        ///    The grid.
+        ///
+        /// @param [in] bc
+        ///    The boundary conditions describing how the current flow
+        ///    problem interacts with the outside world.  This is used
+        ///    only for the purpose of introducing additional
+        ///    couplings in the case of periodic boundary conditions.
+        ///    The specific values of the boundary conditions are not
+        ///    inspected in @code init() @endcode.
+        void initSystemStructure(const GridInterface& g,
+                                 const BCInterface&   bc)
         {
             ASSERT2 (cleared_state_,
-                     "You must call clear() prior to enumerateDof()");
+                     "You must call clear() prior to initSystemStructure()");
             ASSERT  (topologyIsSane(g));
 
-            enumerateGridDof(g);
-            enumerateBCDof(g, bc);
-
-            pgrid_ = &g;
-            cleared_state_ = false;
+            enumerateDof(g, bc);
+            allocateConnections(bc);
+            setConnections(bc);
         }
 
-        /// @brief
-        /// @todo Doc me!
-        /// @param
-        void allocateConnections(const BCInterface& bc)
-        {
-            ASSERT2 (!cleared_state_,
-                     "You must call enumerateDof() prior "
-                     "to allocateConnections()");
-            ASSERT  (!matrix_structure_valid_);
-
-            // Clear any residual data, prepare for assembling structure.
-            S_.setSize(total_num_faces_, total_num_faces_);
-            S_.setBuildMode(BCRSMatrix<MatrixBlockType>::random);
-
-            // Compute row sizes
-            for (int f = 0; f < total_num_faces_; ++f) {
-                S_.setrowsize(f, 1);
-            }
-
-            allocateGridConnections();
-            allocateBCConnections(bc);
-
-            S_.endrowsizes();
-
-            rhs_ .resize(total_num_faces_);
-            soln_.resize(total_num_faces_);
-        }
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
-        void setConnections(const BCInterface& bc)
-        {
-            setGridConnections();
-            setBCConnections(bc);
-
-            S_.endindices();
-
-            const int nc = pgrid_->numberOfCells();
-            std::vector<Scalar>(nc).swap(flowSolution_.pressure_);
-            std::vector<Scalar>(nc).swap(g_);
-            std::vector<Scalar>(nc).swap(L_);
-
-            matrix_structure_valid_ = true;
-        }
-
-        /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Compute static (i.e., independent of saturation) parts
+        ///    of the spatially varying inner products @f$ (v,K^{-1}w)
+        ///    @f$ for each grid cell.  This is often a fairly
+        ///    expensive process, so in order to increase the speed of
+        ///    the system assembly we do not wish to perform this
+        ///    computation for each time step unless we have to.
+        ///    Moreover, if the permeability field changes but the
+        ///    grid connections remain static, we do not have to build
+        ///    a new matrix structure but need only compute new values
+        ///    for these static inner products.
+        ///
+        /// @param [in] r
+        ///    The reservoir properties of each grid cell.  In method
+        ///    @code computeInnerProducts() @endcode, we only inspect
+        ///    the permeability field of @code r @endcode.
         void computeInnerProducts(const ReservoirInterface& r)
         {
             ASSERT2 (matrix_structure_valid_,
@@ -351,8 +385,59 @@ namespace Dune {
 
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Construct and solve system of linear equations for the
+        ///    pressure values on each interface/contact between
+        ///    neighbouring grid cells.  Recover cell pressure and
+        ///    interface fluxes.  Following a call to @code solve()
+        ///    @encode, you may recover the flow solution from the
+        ///    @code getSolution() @endcode method.
+        ///
+        /// @param [in] r
+        ///    The reservoir properties of each grid cell.  In method
+        ///    @code solve() @endcode we query this object for the
+        ///    phase mobilities (i.e., @code r.phaseMobility()
+        ///    @endcode) and the phase densities (i.e., @code
+        ///    phaseDensity() @encode) of each phase.
+        ///
+        /// @param [in] sat
+        ///    Saturation of primary phase.  One scalar value for each
+        ///    grid cell.  This parameter currently limits @code
+        ///    IncompFlowSolverHybrid @endcode to two-phase flow
+        ///    problems.
+        ///
+        /// @param [in] bc
+        ///    The boundary conditions describing how the current flow
+        ///    problem interacts with the outside world.  Method @code
+        ///    solve() @endcode inspects the actual values of the
+        ///    boundary conditions whilst forming the system of linear
+        ///    equations.
+        ///
+        ///    Specifically, the @code bc.flowCond(bid) @endcode
+        ///    method is expected to yield a valid @code FlowBC
+        ///    @endcode object for which the methods @code pressure()
+        ///    @endcode, @code pressureDifference() @endcode, and
+        ///    @code outflux() @endcode yield valid responses
+        ///    depending on the type of the object.
+        ///
+        /// @param [in] src
+        ///    Explicit source terms.  One scalar value for each grid
+        ///    cell representing the rate (in units of m^3/s) of fluid
+        ///    being injected into (>0) or extracted from (<0) a given
+        ///    grid cell.
+        ///
+        /// @param [in] grav
+        ///    Gravity vector.  Its Euclidian two-norm value
+        ///    represents the strength of the gravity field (in units
+        ///    of m/s^2) while its direction is the direction of
+        ///    gravity in the current model.  The gravity may, in
+        ///    principle, be changed between calls of @code solve()
+        ///    @endcode.
+        ///
+        /// @param [in] residual_tolerance
+        ///    Control parameter for iterative linear solver software.
+        ///    The iteration process is terminated when the norm of
+        ///    the linear system residual is less than @code
+        ///    residual_tolerance @endcode times the initial residual.
         void solve(const ReservoirInterface&  r  ,
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
@@ -372,12 +457,23 @@ namespace Dune {
 
 
         /// @brief
-        /// @todo Doc me!
+        ///    Type representing the solution to the problem defined
+        ///    by the parameters to @code solve() @endcode.  Always a
+        ///    reference-to-const.  The @code SolutionType @endcode
+        ///    exposes methods @code pressure(c) @endcode and @code
+        ///    outflux(f) @endcode from which the cell pressure in
+        ///    cell @code *c @endcode and outward-pointing flux across
+        ///    interface @code *f @endcode may be recovered.
         typedef const FlowSolution& SolutionType;
 
         /// @brief
-        /// @todo Doc me!
+        ///    Recover the solution to the problem defined by the
+        ///    parameters to method @code solve() @endcode.  This
+        ///    solution is meaningless without a previous call to
+        ///    method @code solve() @endcode.
+        ///
         /// @return
+        ///    The current solution.  
         SolutionType getSolution()
         {
             return flowSolution_;
@@ -385,9 +481,19 @@ namespace Dune {
 
 
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Print statistics about the connections in the current
+        ///    model.  This is mostly for debugging purposes and
+        ///    should only rarely be used in client code.
+        ///
+        /// @tparam charT
+        ///    Character type of output stream.
+        ///
+        /// @tparam traits
+        ///    Character traits of @code charT @endcode.
+        ///
+        /// @param os
+        ///    Output stream into which the statistics will be
+        ///    printed.
         template<typename charT, class traits>
         void printStats(std::basic_ostream<charT,traits>& os)
         {
@@ -413,10 +519,23 @@ namespace Dune {
             }
         }
 
+
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Output the current (static) inner products.  This is
+        ///    only meaningfull following a call to method @code
+        ///    computeInnerProducts() @endcode and is mostly useful
+        ///    for debugging.  Only rarely should this method be used
+        ///    from client code.
+        ///
+        /// @tparam charT
+        ///    Character type of output stream.
+        ///
+        /// @tparam traits
+        ///    Character traits of @code charT @endcode.
+        ///
+        /// @param os
+        ///    Output stream into which the inner products will be
+        ///    printed.
         template<class charT, class traits>
         void printIP(std::basic_ostream<charT,traits>& os)
         {
@@ -430,9 +549,28 @@ namespace Dune {
             }
         }
 
+
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Output current system of linear equations to permanent
+        ///    storage in files.  One file for the coefficient matrix
+        ///    and one file for the right hand side.  This is mostly
+        ///    useful whilst debugging the solver and should rarely be
+        ///    used from client code.
+        ///
+        /// @details
+        ///    The system is stored in a format which is suitable for
+        ///    importing into MATLAB or MATLAB-compatible software.
+        ///    In particular, using the MATLAB @code LOAD @endcode and
+        ///    @code SPCONVERT @endcode functions makes it easy to
+        ///    reconstruct the system of linear equations from within
+        ///    MATLAB.
+        ///
+        /// @param [in] prefix
+        ///    Prefix from which file names for the coefficient matrix
+        ///    and right hand side data are derived.  Specifically,
+        ///    the matrix data is output to the file @code prefix +
+        ///    "-mat.dat" @endcode while the right hand side data is
+        ///    output to the file @code prefix + "-rhs.dat" @endcode.
         void printSystem(const std::string& prefix)
         {
             writeMatrixToMatlab(S_, prefix + "-mat.dat");
@@ -477,6 +615,17 @@ namespace Dune {
         // Physical quantities (derived)
         FlowSolution flowSolution_;
 
+
+        // ----------------------------------------------------------------
+        void enumerateDof(const GridInterface& g, const BCInterface& bc)
+        // ----------------------------------------------------------------
+        {
+            enumerateGridDof(g);
+            enumerateBCDof(g, bc);
+
+            pgrid_ = &g;
+            cleared_state_ = false;
+        }
 
         // ----------------------------------------------------------------
         void enumerateGridDof(const GridInterface& g)
@@ -649,6 +798,34 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
+        void allocateConnections(const BCInterface& bc)
+        // ----------------------------------------------------------------
+        {
+            ASSERT2 (!cleared_state_,
+                     "You must call enumerateDof() prior "
+                     "to allocateConnections()");
+            ASSERT  (!matrix_structure_valid_);
+
+            // Clear any residual data, prepare for assembling structure.
+            S_.setSize(total_num_faces_, total_num_faces_);
+            S_.setBuildMode(BCRSMatrix<MatrixBlockType>::random);
+
+            // Compute row sizes
+            for (int f = 0; f < total_num_faces_; ++f) {
+                S_.setrowsize(f, 1);
+            }
+
+            allocateGridConnections();
+            allocateBCConnections(bc);
+
+            S_.endrowsizes();
+
+            rhs_ .resize(total_num_faces_);
+            soln_.resize(total_num_faces_);
+        }
+
+
+        // ----------------------------------------------------------------
         void allocateGridConnections()
         // ----------------------------------------------------------------
         {
@@ -729,6 +906,24 @@ namespace Dune {
             }
         }
 
+
+
+        // ----------------------------------------------------------------
+        void setConnections(const BCInterface& bc)
+        // ----------------------------------------------------------------
+        {
+            setGridConnections();
+            setBCConnections(bc);
+
+            S_.endindices();
+
+            const int nc = pgrid_->numberOfCells();
+            std::vector<Scalar>(nc).swap(flowSolution_.pressure_);
+            std::vector<Scalar>(nc).swap(g_);
+            std::vector<Scalar>(nc).swap(L_);
+
+            matrix_structure_valid_ = true;
+        }
 
 
         // ----------------------------------------------------------------
