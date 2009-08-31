@@ -34,6 +34,8 @@
 */
 
 
+#define VERBOSE
+
 
 #include <dune/upscaling/SteadyStateUpscaler.hpp>
 #include <dune/common/Units.hpp>
@@ -53,9 +55,10 @@ int main(int argc, char** argv)
 
     // First, compute an upscaled permeability.
     SteadyStateUpscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
-    upscaled_K *= (1.0/(milli*darcy));
+    SteadyStateUpscaler::permtensor_t upscaled_K_copy = upscaled_K;
+    upscaled_K_copy *= (1.0/(milli*darcy));
     std::cout.precision(15);
-    std::cout << "Upscaled K in millidarcy:\n" << upscaled_K << std::endl;
+    std::cout << "Upscaled K in millidarcy:\n" << upscaled_K_copy << std::endl;
 
     // Then, compute some upscaled relative permeabilities.
     int num_cells = upscaler.grid().numberOfCells();
@@ -67,6 +70,8 @@ int main(int argc, char** argv)
     // double saturations[num_sats] = { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
     const int num_pdrops = 5;
     double pdrops[num_pdrops] = { 1e1, 1e2, 1e3, 1e4, 1e5};
+//     const int num_pdrops = 1;
+//     double pdrops[num_pdrops] = { 1e1 };
     for (int i = 0; i < num_sats; ++i) {
 	// Starting every computation with a trio of uniform profiles.
 	std::vector<double> init_sat(num_cells, saturations[i]);
