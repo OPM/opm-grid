@@ -56,9 +56,6 @@ namespace Dune
 	/// Default constructor.
 	SteadyStateUpscaler();
 
-	/// Initializes the upscaler.
-	virtual void init(const parameter::ParameterGroup& param);
-
 	/// Does a steady-state upscaling.
 	/// @param initial_saturation the initial saturation profiles for the steady-state computations.
 	/// There should be one such saturation vector for each cardinal direction, each vector having 
@@ -89,6 +86,10 @@ namespace Dune
 					   const std::vector<double>& saturations,
 					   const int flow_dir,
 					   const int pdrop_dir) const;
+	/// Override from superclass.
+	virtual void initImpl(const parameter::ParameterGroup& param);
+
+
 	// ------- Data members -------
 	boost::array<std::vector<double>, Dimension> last_saturations_;
 	bool output_;

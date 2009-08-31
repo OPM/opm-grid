@@ -54,9 +54,9 @@ namespace Dune
     {
     }
 
-    inline void SteadyStateUpscaler::init(const parameter::ParameterGroup& param)
+    inline void SteadyStateUpscaler::initImpl(const parameter::ParameterGroup& param)
     {
-	SinglePhaseUpscaler::init(param);
+	SinglePhaseUpscaler::initImpl(param);
 	output_ = param.getDefault("output", output_);
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
@@ -97,7 +97,7 @@ namespace Dune
 	    std::vector<double> saturation = initial_saturations[pdd];
 
 	    // Set up boundary conditions.
-	    setupUpscalingConditions(ginterf_, bctype_, pdd, 1.0, 1.0, twodim_hack_, bcond_);
+	    setupUpscalingConditions(ginterf_, bctype_, pdd, pressure_drop, boundary_saturation, twodim_hack_, bcond_);
 
 	    // Set up solvers.
 	    if (pdd == 0) {
@@ -106,7 +106,7 @@ namespace Dune
 	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_);
+	    flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
 
 	    // Do a run till steady state. For now, we just do some pressure and transport steps...
 	    for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -118,7 +118,7 @@ namespace Dune
 		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
 		// Run pressure solver.
-		flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_);
+		flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
 
 		// Output.
 		if (output_) {
