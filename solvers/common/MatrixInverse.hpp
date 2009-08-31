@@ -70,13 +70,13 @@ namespace Dune {
 	M matprod(const M& m1, const M& m2)
 	{
 	    typedef typename M::value_type T;
-	    ASSERT(m1.numRows() == 3 && m1.numCols() == 3);
-	    ASSERT(m2.numRows() == 3 && m2.numCols() == 3);
-	    M m(3, 3, (double*)0);
-	    for (int r = 0; r < r; ++r) {
-		for (int c = 0; c < c; ++c) {
+	    ASSERT(m1.numCols() == m2.numRows());
+	    int num_contracting = m1.numCols();
+	    M m(m1.numRows(), m2.numCols(), (double*)0);
+	    for (int r = 0; r < m1.numRows(); ++r) {
+		for (int c = 0; c < m2.numCols(); ++c) {
 		    m(r, c) = 0.0;
-		    for (int kk = 0; kk < 3; ++kk) {
+		    for (int kk = 0; kk < num_contracting; ++kk) {
 			m(r, c) += m1(r, kk)*m2(kk, c);
 		    }
 		}
