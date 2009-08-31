@@ -443,14 +443,15 @@ namespace Dune {
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
                    const typename GridInterface::CellIterator::Vector& grav,
-                   double residual_tolerance = 1e-8)
+                   double residual_tolerance = 1e-8,
+		   int linsolver_verbosity = 1)
         {
             assembleDynamic(r, sat, bc, src, grav);
             // printSystem("linsys_mimetic");
 #if 0
-            solveLinearSystem(residual_tolerance);
+            solveLinearSystem(residual_tolerance, linsolver_verbosity);
 #else
-            solveLinearSystemAMG(residual_tolerance);
+            solveLinearSystemAMG(residual_tolerance, linsolver_verbosity);
 #endif
             computePressureAndFluxes(r, sat);
         }
@@ -1082,7 +1083,7 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void solveLinearSystem(double residual_tolerance)
+        void solveLinearSystem(double residual_tolerance, int verbosity_level)
         // ----------------------------------------------------------------
         {
             // Adapted from DuMux...
@@ -1102,7 +1103,7 @@ namespace Dune {
             Dune::SeqILU0<Matrix,Vector,Vector> precond(S_, 1.0);
 
             // invert the linear equation system
-            Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol, 500, 1);
+            Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol, 500, verbosity_level);
 
             Dune::InverseOperatorResult result;
             soln_ = 0.0;
@@ -1112,7 +1113,7 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void solveLinearSystemAMG(double residual_tolerance)
+        void solveLinearSystemAMG(double residual_tolerance, int verbosity_level)
         // ----------------------------------------------------------------
         {
             // Adapted from upscaling.cc by Arne Rekdal, 2009
@@ -1155,11 +1156,11 @@ namespace Dune {
             smootherArgs.relaxationFactor = relax;
 
             Criterion criterion;
+	    criterion.setDebugLevel(verbosity_level);
             Precond precond(opS, criterion, smootherArgs);
 
             // invert the linear equation system
-            int verbose = 1;
-            CGSolver<Vector> linsolve(opS, precond, residTol, S_.N(), verbose);
+            CGSolver<Vector> linsolve(opS, precond, residTol, S_.N(), verbosity_level);
 
             InverseOperatorResult result;
             soln_ = 0.0;
