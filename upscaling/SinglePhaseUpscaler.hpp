@@ -70,7 +70,7 @@ namespace Dune
 	SinglePhaseUpscaler();
 
 	/// Initializes the upscaler.
-	virtual void init(const parameter::ParameterGroup& param);
+	void init(const parameter::ParameterGroup& param);
 
 	/// Access the grid.
 	const GridInterface& grid() const;
@@ -97,13 +97,15 @@ namespace Dune
 				      const int pdrop_dir) const;
 	double computeDelta(const int flow_dir) const;
 
-
+	virtual void initImpl(const parameter::ParameterGroup& param);
+	virtual void initFinal(const parameter::ParameterGroup& param);
 
 	// ------- Data members -------
 	// FluxChecker flux_checker_;
 	BoundaryConditionType bctype_;
 	bool twodim_hack_;
 	double residual_tolerance_;
+	int linsolver_verbosity_;
 
 	GridType grid_;
 	GridInterface ginterf_;

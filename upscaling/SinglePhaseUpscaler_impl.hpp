@@ -47,7 +47,8 @@ namespace Dune
     inline SinglePhaseUpscaler::SinglePhaseUpscaler()
 	: bctype_(Fixed),
 	  twodim_hack_(false),
-	  residual_tolerance_(1e-8)
+	  residual_tolerance_(1e-8),
+	  linsolver_verbosity_(0)
     {
     }
 
@@ -56,12 +57,21 @@ namespace Dune
 
     inline void SinglePhaseUpscaler::init(const parameter::ParameterGroup& param)
     {
+	initImpl(param);
+	initFinal(param);
+    }
+
+
+
+    inline void SinglePhaseUpscaler::initImpl(const parameter::ParameterGroup& param)
+    {
 	// Get the bc type parameter early, since we will fake some
 	// others depending on it.
         int bct = param.get<int>("boundary_condition_type");
 	bctype_ = static_cast<BoundaryConditionType>(bct);
 	twodim_hack_ = param.getDefault("2d_hack", false);
 	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
+	linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
 
 	// Faking some parameters depending on bc type.
 	parameter::ParameterGroup temp_param = param;
@@ -77,7 +87,12 @@ namespace Dune
 
 	setupGridAndProps(temp_param, grid_, res_prop_);
 	ginterf_.init(grid_);
+    }
 
+
+
+    inline void SinglePhaseUpscaler::initFinal(const parameter::ParameterGroup& param)
+    {
 	// Write any unused parameters.
 	std::cout << "====================   Unused parameters:   ====================\n";
 	param.displayUsage();
@@ -119,7 +134,7 @@ namespace Dune
 	    }
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
 
 	    // Check and fix fluxes.
 // 	    flux_checker_.checkDivergence(grid_, wells, flux);
