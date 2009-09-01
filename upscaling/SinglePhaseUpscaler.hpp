@@ -82,14 +82,13 @@ namespace Dune
     protected:
 	// ------- Typedefs and enums -------
 	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2 };
-	typedef GridInterface::CellIterator                    CellIter;
-	typedef CellIter::FaceIterator                         FaceIter;
-	typedef MimeticIPEvaluator<CellIter, Dimension, true>  InnerProd;
-	typedef BoundaryConditions<true, true>                 BCs;
+	typedef GridInterface::CellIterator                CellIter;
+	typedef CellIter::FaceIterator                     FaceIter;
+	typedef BoundaryConditions<true, true>             BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,
 				       BCs,
-				       InnerProd>              FlowSolver;
+				       MimeticIPEvaluator> FlowSolver;
 	// ------- Methods -------
 	template <class FlowSol>
 	double computeAverageVelocity(const FlowSol& flow_solution,

@@ -353,10 +353,10 @@ namespace Dune {
     /// @tparam InnerProduct
     ///    Type presenting a specific inner product defining a
     ///    discretization of the Darcy equation.
-    template<class GridInterface,
-             class ReservoirInterface,
-             class BCInterface,
-             class InnerProduct>
+    template<class                          GridInterface,
+             class                          ReservoirInterface,
+             class                          BCInterface,
+             template<class,int,bool> class InnerProduct>
     class IncompFlowSolverHybrid {
         /// @brief
         ///    The element type of the matrix representation of the
@@ -541,10 +541,11 @@ namespace Dune {
                      "You must call connectionsCompleted() prior "
                      "to computeInnerProducts()");
 
-            typedef typename GridInterface     ::CellIterator CI;
-            typedef typename ReservoirInterface::PermTensor   PermTensor;
+            typedef typename GridInterface     ::CellIterator               CI;
+            typedef typename ReservoirInterface::PermTensor                 PermTensor;
+            typedef          InnerProduct<CI,GridInterface::Dimension,true> IP;
 
-            InnerProduct ip(max_ncf_);
+            IP ip(max_ncf_);
             int i = 0;
             const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c, ++i) {
@@ -1222,7 +1223,8 @@ namespace Dune {
             // are no prescribed pressures (i.e., Dirichlet BC's).
             do_regularization_ = true;
 
-            InnerProduct ip(max_ncf_);
+            typedef InnerProduct<CI,GridInterface::Dimension,true> IP;
+            IP ip(max_ncf_);
 
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {

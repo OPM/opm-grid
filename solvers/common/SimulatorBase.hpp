@@ -140,12 +140,11 @@ namespace Dune
 	typedef GridInterfaceEuler<GridType>                   GridInterface;
 	typedef GridInterface::CellIterator                    CellIter;
 	typedef CellIter::FaceIterator                         FaceIter;
-	typedef MimeticIPEvaluator<CellIter, Dimension, true>  InnerProd;
 	typedef BoundaryConditions<true, true>                 BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,
 				       BCs,
-				       InnerProd>              FlowSolver;
+				       MimeticIPEvaluator>     FlowSolver;
 	typedef EulerUpstream<GridInterface,
 			      ResProp,
 			      BCs>                             TransportSolver;

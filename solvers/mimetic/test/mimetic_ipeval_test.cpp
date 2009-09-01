@@ -100,20 +100,6 @@ void test_evaluator(const Interface& g)
     }
 }
 
-#if 0
-template<int dim, class Interface>
-void test_flowsolver(const Interface& g)
-{
-    typedef typename Interface::CellIterator           CI;
-    typedef Dune::MimeticIPEvaluator<CI,dim,true>      IP;
-    typedef Dune::IncompFlowSolverHybrid<Interface,IP> FlowSolver;
-
-    FlowSolver solver;
-    solver.init(g);
-    solver.printStats(std::cout);
-}
-#endif
-
 
 template <int dim, int refinement>
 void check_yasp(bool p0=false) {

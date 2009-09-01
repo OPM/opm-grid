@@ -150,11 +150,11 @@ void assign_permeability(RI& r, int nc, double k)
 template<int dim, class GI, class RI>
 void test_flowsolver(const GI& g, const RI& r)
 {
-    typedef typename GI::CellIterator                  CI;
-    typedef typename CI::FaceIterator                  FI;
-    typedef Dune::MimeticIPEvaluator<CI,dim,true>      IP;
-    typedef Dune::BoundaryConditions<true, false>      FBC;
-    typedef Dune::IncompFlowSolverHybrid<GI,RI,FBC,IP> FlowSolver;
+    typedef typename GI::CellIterator                              CI;
+    typedef typename CI::FaceIterator                              FI;
+    typedef Dune::BoundaryConditions<true, false>                  FBC;
+    typedef Dune::IncompFlowSolverHybrid<GI, RI, FBC,
+                                         Dune::MimeticIPEvaluator> FlowSolver;
 
     FlowSolver solver;
 
