@@ -178,8 +178,181 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    ///    Solve mixed formulation of incompressible flow modelled by
+    ///    Darcy's law
+    ///    @f[@f{aligned}{
+    ///       v &= -K\lamda(\nabla p + \rho\vec{g}), \\ \nabla\cdot v &= q.
+    ///    @f}@f]
+    ///    The solver is based on a hybrid discretization scheme which
+    ///    yields a system of linear equations of the form
+    ///    @f[@f{bmatrix}{
+    ///        B & C & D \\ C^{T} & 0 & 0 \\ D^{T} & 0 & 0
+    ///      }\,
+    ///      @f{bmatrix}{v \\ -p \\ \pi@f} =
+    ///      @f{bmatrix}{f \\ g \\ h@f}
+    ///    @f]
+    ///    where @f$v@f$ represents the interface fluxes for each
+    ///    interface for each cell, @f$p@f$ are the cell pressures and
+    ///    @f$\pi@f$ are the interface pressures.
+    ///
+    ///    Through a Schur complement analysis, the above system of
+    ///    linear equations is reduced to an equivalent system of the
+    ///    form
+    ///    @f[@f{bmatrix}{
+    ///        B & C & D \\ 0 & -L & -F \\ 0 & 0 & S
+    ///      }\,
+    ///      @f{bamtrix}{v \\ -p \\ \pi@f} =
+    ///      @f{bmatrix}{f \\ \hat{g} \\ r@f}
+    ///    @f]
+    ///    where @f$L = C^{T}B^{-1}C@f$, @f$F=C^{T}B^{-1}D@f$, and
+    ///    @f$S = D^{T}B^{-1}D - F^{T}L^{-1}F@f$.  Similarly,
+    ///    @f$\hat{g} = g - C^{T}B^{-1}f@f$ and @f$r = D^{T}B^{-1}f +
+    ///    F^{T}L^{-1}\hat{g} - h@f$.
+    ///
+    ///    The system @f$S\pi = r@f$ is the system of linear equations
+    ///    which is actually solved using separte linear system solver
+    ///    software.  Then, a back substitution process yields the
+    ///    cell pressures and interface fluxes by solving the simpler
+    ///    systems
+    ///    @f[@f{aligned}{
+    ///       Lp &= \hat{g} + F\pi \\ Bv &= f + Cp - D\pi
+    ///    @f}@f]
+    ///    Specifically, the matrix @f$L@f$ is diagonal (a single
+    ///    scalar per grid cell) and the matrix @f$B^{-1}@f$ is
+    ///    available as a bi-product of the Schur reduction process.
+    ///    Finally, in the case of mimetic discretizations using the
+    ///    @code MimeticIPEvaluator @endcode class, the matrix
+    ///    @f$B^{-1}@f$ is directly available through an explicit
+    ///    formula.
+    ///
+    ///    The matrix @f$B@f$ is a product of two parts--one which
+    ///    depends only on the grid (i.e., the topology and geomtry)
+    ///    and the geological properties (i.e., the permeability
+    ///    field) and one part which depends only on the temporally
+    ///    varying fluid data (i.e., viscosities and saturation
+    ///    dependent relative permeabilities).  Furthermore, the
+    ///    matrices @f$C@f$ and @f$D@f$ depend @em only on the grid
+    ///    topolgy.  Consequently, the cost of assembling the system
+    ///    @f$S@f$ may be reduced, at least for simulations involving
+    ///    multiple pressure solves, by performing all of the static
+    ///    (i.e., the parts dependent only on the grid and geological
+    ///    properties) assembly once, at system initalization.  Then
+    ///    the system assembly process consists of calculating the
+    ///    saturation dependent contributions and adding these into
+    ///    the system of linear equations.
+    ///
+    ///    The code is structured in a manner similar to traditional
+    ///    FEM software implementations.  In particular, we assemble
+    ///    the coefficient matrix @f$S@f$ and system right hand side
+    ///    @f$r@f$ on a cell-by-cell basis.  This yields a number of
+    ///    important simplifications.  In particular, the matrix
+    ///    @f$D@f$ reduces to the identity on a single cell.  Its
+    ///    effects are produced only through a local-to-global map of
+    ///    degrees of freedom.  Similarly, on a single grid cell, the
+    ///    matrix @f$C=[1,1,\dots,1]^T@f$ with the number of elements
+    ///    equal to the number of interfaces (i.e., neighbours) of the
+    ///    cell.  Finally, the matrix @f$B^{-1}@f$ is computed as
+    ///    @f[B^{-1} = \hat{B}^{-1}/\lambda_T@f] where
+    ///    @f$\hat{B}^{-1}@f$ denotes the static part of @f$B^{-1}@f$
+    ///    and @f$\lambda_T@f$ denotes the @em total fluid @em
+    ///    mobility in the grid cell.  For ease of implementation of
+    ///    the back substitution process, we compute and store the
+    ///    values of @f$L@f$, @f$F@f$ and @f$\hat{g}@f$ during each
+    ///    system assembly process.
+    ///
+    ///    A final quirk of the implementation is that we always solve
+    ///    for every interface pressure, even if a given pressure
+    ///    value is known through, e.g., a prescribed pressure
+    ///    boundary condition.  This feature enables changing the type
+    ///    and value of a set of boundary conditions between pressure
+    ///    solves without having to reconstruct the sparsity structure
+    ///    of the coefficient matrix @f$S@f$--at least while no
+    ///    connections are introduced or removed.  Periodic boundary
+    ///    condtions introduce new connections (i.e., new non-zero
+    ///    coefficient matrix entries) so in order to gain maximum
+    ///    efficiency, you should initialize the flow solver system
+    ///    only after you know the existence of all periodic boundary
+    ///    conditions which will be employed in a given simulation.
+    ///
+    ///    The use of non-periodic boundary conditions after periodic
+    ///    connections have been introduced is fully supported.  This
+    ///    mode introduces a performance caveat.  Specifically, a few
+    ///    entries which would otherwise not have been entered into
+    ///    the matrix due to being automatically zero will become
+    ///    explicit zeros instead.  Consequently, each iteration of an
+    ///    iterative solver for the system @f$S\pi = r@f$ becomes
+    ///    slightly more expensive as explicit zero-multiplications
+    ///    occur.  Moreover, introducing explicit non-zero
+    ///    representation of matrix entries which are always zero
+    ///    increases the demand for memory resources.
+    ///
+    ///    The flow solver is initialized in a three-step process.
+    ///    The first step, represented by method @code clear()
+    ///    @endcode, releases any previously held data in the internal
+    ///    data structures and prepares the solver system for defining
+    ///    a new problem.  The second step, represented by the @code
+    ///    initSystemStructure() @endcode enumerates the primary
+    ///    degrees of freedom (i.e., the interface pressure values)
+    ///    and determines, and allocates, the coefficient matrix
+    ///    non-zero structure.  The third and final step, represented
+    ///    by method @code computeInnerProducts() @endcode, computes
+    ///    the static (i.e., geology and geomtry-dependent) inner
+    ///    product matrices @f$\hat{B}^{-1}@f$.  Method @code
+    ///    computeInnerProducts() @endcode is offered separately in
+    ///    order to support solve several different property models on
+    ///    the same underlying geometry (grid).  Finally, method @code
+    ///    init() @endcode is a convenience method which calls the
+    ///    other initialization methods in sequence.
+    ///
+    ///    Following solver intialization, a sequence of flow problems
+    ///    differing only by boundary condition type/value and/or
+    ///    differing fluid saturation values may be resolved by
+    ///    separate calls to the @code solve() @endcode method.  At
+    ///    any time following a call to @code solve() @endcode may the
+    ///    solution, represented by the type @code SolutionType
+    ///    @endcode, to the most recently resolved flow problem be
+    ///    retrieved through the @code getSolution() @endcode method.
+    ///    We note that @code SolutionType @endcode is @em always a
+    ///    reference-to-const.
+    ///
+    /// @tparam GridInterface
+    ///    Type presenting an interface to a grid (typically a
+    ///    discretized geological model).  The type is assumed to
+    ///    expose a forward iterator type, @code CellIter @endcode,
+    ///    and a pair of delimiters @code cellbegin() @endcode and
+    ///    @code cellend() @endcode to traverse the cells of a grid.
+    ///    The cell iterator, in turn, is expected to expose a forward
+    ///    iterator type @code FaceIter @endcode, and a pair of
+    ///    delimiters @code facebegin() @endcode and @code faceend()
+    ///    @endcode to traverse the faces of a cell.
+    ///
+    /// @tparam ReservoirInterface
+    ///    Type presenting an interface to reservoir properties such
+    ///    as permeability, porosity, and various fluid
+    ///    characteristics (density, mobility &c).  The type is
+    ///    assumed to expose a method, @code permeability() @endcode
+    ///    through which the assigned permeability of a single grid
+    ///    cell, represented by a @code GridInterface::CellIter
+    ///    @endcode, may be recovered.  The type is further expected
+    ///    to provide methods @code phaseMobility() @endcode and @code
+    ///    phaseDensity() @endcode for phase mobility and density in a
+    ///    single cell, respectively.
+    ///
+    /// @tparam BCInterface
+    ///    Type presenting an interface to boundary conditions.  The
+    ///    type is expected to provide a method, @code flowCond()
+    ///    @endcode, from which a @code BCInterface::FlowBC @endcode
+    ///    boundary condtion type of any given boundary face may be
+    ///    recovered.  The flow boundary condition type is expected to
+    ///    provide methods for quering the type of boundary condition
+    ///    (i.e., prescribed pressure values, prescribed flux values,
+    ///    or prescribed pressure drops in the case of periodic
+    ///    boundary conditions) as well as the numerical values of
+    ///    these conditions.
+    ///
+    /// @tparam InnerProduct
+    ///    Type presenting a specific inner product defining a
+    ///    discretization of the Darcy equation.
     template<class GridInterface,
              class ReservoirInterface,
              class BCInterface,
@@ -444,7 +617,7 @@ namespace Dune {
                    const std::vector<double>& src,
                    const typename GridInterface::CellIterator::Vector& grav,
                    double residual_tolerance = 1e-8,
-		   int linsolver_verbosity = 1)
+                   int linsolver_verbosity = 1)
         {
             assembleDynamic(r, sat, bc, src, grav);
             // printSystem("linsys_mimetic");
@@ -474,7 +647,7 @@ namespace Dune {
         ///    method @code solve() @endcode.
         ///
         /// @return
-        ///    The current solution.  
+        ///    The current solution.
         SolutionType getSolution()
         {
             return flowSolution_;
@@ -1099,14 +1272,18 @@ namespace Dune {
             }
             Adapter opS(S_);
 
-            // initialize the preconditioner
+            // Construct preconditioner.
             Dune::SeqILU0<Matrix,Vector,Vector> precond(S_, 1.0);
 
-            // invert the linear equation system
-            Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol, 500, verbosity_level);
+            // Construct solver for system of linear equations.
+            Dune::BiCGSTABSolver<Vector> linsolve(opS, precond, residTol,
+                                                  S_.N(), verbosity_level);
 
             Dune::InverseOperatorResult result;
             soln_ = 0.0;
+
+            // Solve system of linear equations to recover
+            // face/contact pressure values (soln_).
             linsolve.apply(soln_, rhs_, result);
         }
 
@@ -1150,20 +1327,23 @@ namespace Dune {
             }
             Operator opS(S_);
 
-            // initialize the preconditioner
+            // Construct preconditioner.
             double relax = 1;
             typename Precond::SmootherArgs smootherArgs;
             smootherArgs.relaxationFactor = relax;
 
             Criterion criterion;
-	    criterion.setDebugLevel(verbosity_level);
+            criterion.setDebugLevel(verbosity_level);
             Precond precond(opS, criterion, smootherArgs);
 
-            // invert the linear equation system
+            // Construct solver for system of linear equations.
             CGSolver<Vector> linsolve(opS, precond, residTol, S_.N(), verbosity_level);
 
             InverseOperatorResult result;
             soln_ = 0.0;
+
+            // Solve system of linear equations to recover
+            // face/contact pressure values (soln_).
             linsolve.apply(soln_, rhs_, result);
         }
 
