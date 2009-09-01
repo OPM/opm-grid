@@ -353,8 +353,8 @@ namespace Dune
         void phaseDensity(int cell_index, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
-            density[0] = density1_;
-            density[1] = density2_;
+            density[0] = viscosityFirstPhase();
+            density[1] = viscositySecondPhase();
         }
 	/// @brief
 	/// @todo Doc me!
