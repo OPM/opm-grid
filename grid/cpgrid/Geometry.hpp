@@ -180,7 +180,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
-	    jacobianInverseTransposed(const LocalPointType& local) const
+	    jacobianInverseTransposed(const LocalPointType& /*local*/) const
 	    {
 		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
 		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
