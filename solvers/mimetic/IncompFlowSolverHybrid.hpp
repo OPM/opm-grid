@@ -1249,7 +1249,7 @@ namespace Dune {
                 setExternalContrib(c, c0, bc, src[ci], rhs,
                                    facetype, condval, ppartner);
 
-                buildCellContrib(c0, totmob, omega, one, S, rhs);
+                buildCellContrib(c0, totmob, one, S, rhs);
 
                 addCellContrib(S, rhs, facetype, condval, ppartner, cf[c0]);
             }
@@ -1456,7 +1456,7 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildCellContrib(const int c, const Scalar totmob, const Scalar /*omega*/,
+        void buildCellContrib(const int c, const Scalar totmob,
                               const ImmutableFortranMatrix& one,
                               SharedFortranMatrix& S, std::vector<Scalar>& rhs)
         // ----------------------------------------------------------------
