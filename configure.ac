@@ -59,6 +59,8 @@ AC_CONFIG_FILES([
   solvers/euler/test/Makefile
   solvers/mimetic/Makefile
   solvers/mimetic/test/Makefile
+  solvers/multiscale/Makefile
+  solvers/multiscale/test/Makefile
   upscaling/Makefile
   upscaling/test/Makefile
   doc/Makefile
