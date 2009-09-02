@@ -101,9 +101,22 @@ namespace Dune
 	g.dims[0] = inspector.gridSize()[0];
 	g.dims[1] = inspector.gridSize()[1];
 	g.dims[2] = inspector.gridSize()[2];
+	if (!parser.hasField("COORD")) {
+	    THROW("Eclipse file missing required field COORD.");
+	}
 	g.coord = &(parser.getFloatingPointValue("COORD")[0]);
+	if (!parser.hasField("ZCORN")) {
+	    THROW("Eclipse file missing required field ZCORN.");
+	}
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
-	g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
+	std::vector<int> default_actnum; // Used only if needed.
+	if (parser.hasField("ACTNUM")) {
+	    g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
+	} else {
+	    int num_cells = g.dims[0]*g.dims[1]*g.dims[2];
+	    default_actnum.resize(num_cells, 1);
+	    g.actnum = &default_actnum[0]; // default_actnum dies at the end of this function
+	}
 
 	if (periodic_extension) {
 	    // Extend grid periodically with one layer of cells in the (i, j) directions.
