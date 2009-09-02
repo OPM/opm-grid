@@ -277,6 +277,16 @@ namespace Dune
 	    return viscosity2_;
 	}
 
+	double densityFirstPhase() const
+	{
+	    return density1_;
+	}
+
+	double densitySecondPhase() const
+	{
+	    return density2_;
+	}
+
 	/// @brief
 	/// @todo Doc me!
 	/// @param
@@ -350,11 +360,11 @@ namespace Dune
 	/// @todo Doc me!
 	/// @param
 	/// @return
-        void phaseDensity(int cell_index, std::vector<double>& density) const
+        void phaseDensity(int /*cell_index*/, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
-            density[0] = viscosityFirstPhase();
-            density[1] = viscositySecondPhase();
+            density[0] = densityFirstPhase();
+            density[1] = densitySecondPhase();
         }
 	/// @brief
 	/// @todo Doc me!

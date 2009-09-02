@@ -1456,7 +1456,7 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildCellContrib(const int c, const Scalar totmob, const Scalar omega,
+        void buildCellContrib(const int c, const Scalar totmob, const Scalar /*omega*/,
                               const ImmutableFortranMatrix& one,
                               SharedFortranMatrix& S, std::vector<Scalar>& rhs)
         // ----------------------------------------------------------------
@@ -1525,7 +1525,7 @@ namespace Dune {
                     //      a*(x0-x1) = a*  pd, and  (1)
                     //      a*(x1-x0) = a*(-pd)      (2)
                     //
-                    ASSERT ((0 <= ppartner[r]) && (ppartner[r] < rhs_.size()));
+                    ASSERT ((0 <= ppartner[r]) && (ppartner[r] < int(rhs_.size())));
                     ASSERT (ii != ppartner[r]);
 
                     {
@@ -1558,7 +1558,7 @@ namespace Dune {
                             continue;
                         }
                         if (facetype[c] == Periodic) {
-                            ASSERT ((0 <= ppartner[c]) && (ppartner[c] < rhs_.size()));
+                            ASSERT ((0 <= ppartner[c]) && (ppartner[c] < int(rhs_.size())));
                             ASSERT (jj != ppartner[c]);
                             if (ppartner[c] < jj) {
                                 rhs_[ii] -= S(r,c) * condval[c];
