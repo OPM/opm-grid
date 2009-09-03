@@ -53,10 +53,22 @@ namespace Dune
 
     namespace {
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        ///    Verify that a given permeability specification is sound
+        ///    from a structural point of view.  In particular, we
+        ///    verify that there are no off-diagonal permeability
+        ///    components such as @f$k_{xy}@f$ unless the
+        ///    corresponding diagonal components are known as well.
+        ///
+        /// @param parser [in]
+        ///    An Eclipse data parser capable of answering which
+        ///    permeability components are present in a given input
+        ///    deck.
+        ///
+        /// @return
+        ///    Whether or not the input permeability is sound from a
+        ///    structural point of view.  If no permeability is
+        ///    specified on input, we deem that the tensor is ok.
         bool structurallyReasonableTensor(const EclipseGridParser& parser)
         {
             const bool xx = parser.hasField("PERMX" );
@@ -95,8 +107,25 @@ namespace Dune
 
 
 	/// @brief
-	/// @todo Doc me!
-	/// @param
+        ///    Copy isotropic (scalar) permeability to other diagonal
+        ///    components if the latter have not (yet) been assigned a
+        ///    separate value.  Specifically, this function assigns
+        ///    copies of the @f$i@f$ permeability component (e.g.,
+        ///    'PERMX') to the @f$j@f$ and @f$k@f$ permeability (e.g.,
+        ///    'PERMY' and 'PERMZ') components if these have not
+        ///    previously been assigned.
+        ///
+        /// @param kmap
+        ///    Permeability indirection map.  In particular @code
+        ///    kmap[i] @endcode is the index (an integral number in
+        ///    the set [1..9]) into the permeability tensor
+        ///    representation of function @code fillTensor @endcode
+        ///    which represents permeability component @code i
+        ///    @endcode.
+        ///
+        /// @param [in] i
+        /// @param [in] j
+        /// @param [in] k
         void setScalarPermIfNeeded(boost::array<int,9>& kmap,
                                    int i, int j, int k)
         {
@@ -104,30 +133,39 @@ namespace Dune
             if (kmap[k] == 0) { kmap[k] = kmap[i]; }
         }
 
-        // Extract pointers to appropriate tensor components from
-        // input deck.  The permeability tensor is, generally,
-        //
-        //        [ kxx  kxy  kxz ]
-        //    K = [ kyx  kyy  kyz ]
-        //        [ kzx  kzy  kzz ]
-        //
-        // We store these values in a linear array as
-        //
-        //        [  0    1    2    3    4    5    6    7    8  ]
-        //    K = [ kxx, kxy, kxz, kyx, kyy, kyz, kzx, kzy, kzz ]
-        //
-        // Moreover, we explicitly enforce symmetric tensors.
-        // Specifically,
-        //
-        //     3     1       6     2       7     5
-        //    kyx = kxy,    kzx = kxz,    kzy = kyz
-        //
-        // However, we make no attempt at enforcing positive definite
-        // tensors.
-        //
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+
+        /// @brief
+        ///   Extract pointers to appropriate tensor components from
+        ///   input deck.  The permeability tensor is, generally,
+        ///   @code
+        ///        [ kxx  kxy  kxz ]
+        ///    K = [ kyx  kyy  kyz ]
+        ///        [ kzx  kzy  kzz ]
+        ///   @endcode
+        ///   We store these values in a linear array using natural
+        ///   ordering with the column index cycling the most rapidly.
+        ///   In particular we use the representation
+        ///   @code
+        ///        [  0    1    2    3    4    5    6    7    8  ]
+        ///    K = [ kxx, kxy, kxz, kyx, kyy, kyz, kzx, kzy, kzz ]
+        ///   @endcode
+        ///   Moreover, we explicitly enforce symmetric tensors by
+        ///   assigning
+        ///   @code
+        ///     3     1       6     2       7     5
+        ///    kyx = kxy,    kzx = kxz,    kzy = kyz
+        ///   @endcode
+        ///   However, we make no attempt at enforcing positive
+        ///   definite tensors.
+        ///
+        /// @param [in]  parser
+        ///    An Eclipse data parser capable of answering which
+        ///    permeability components are present in a given input
+        ///    deck as well as retrieving the numerical value of each
+        ///    permeabilty component in each grid cell.
+        ///
+        /// @param [out] tensor
+        /// @param [out] kmap
         void fillTensor(const EclipseGridParser&                 parser,
                         std::vector<const std::vector<double>*>& tensor,
                         boost::array<int,9>&                     kmap)
