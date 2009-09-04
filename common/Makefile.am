@@ -1,6 +1,6 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
-SUBDIRS = . param
+SUBDIRS = . param test
 
 common_HEADERS = Average.hpp SparseTable.hpp StopWatch.hpp \
                  ErrorMacros.hpp SparseVector.hpp Units.hpp
