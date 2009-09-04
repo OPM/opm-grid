@@ -1,7 +1,7 @@
 # $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
 
 # we need the module file to be able to build via dunecontrol
-EXTRA_DIST=dune.module
+EXTRA_DIST=dune.module patch-dune.sh changed_from_dune
 
 SUBDIRS = m4 common grid solvers upscaling doc
 

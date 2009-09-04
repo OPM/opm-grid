@@ -19,7 +19,7 @@ orientedentitytable_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS)
                     $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 
-buildcpgrid_test_SOURCES = buildcpgrid_test.cpp
+buildcpgrid_test_SOURCES = BuildCpGrid.hpp buildcpgrid_test.cpp
 buildcpgrid_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 buildcpgrid_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(DUNE_LIBS) \
                   $(BOOST_LDFLAGS) $(BOOST_SYSTEM_LIB) \
