@@ -17,6 +17,9 @@ AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([grid/CpGrid.hpp])
 AM_CONFIG_HEADER([config.h])
 
+# Make dune -> . symlink
+DUNE_SYMLINK
+
 # we need no more than the standard DE-stuff
 # this module depends on dune-common dune-grid
 # this implies checking for [dune-common], [dune-grid]
@@ -33,10 +36,13 @@ AX_BOOST_FILESYSTEM
 AX_BOOST_SYSTEM
 AX_BOOST_UNIT_TEST_FRAMEWORK
 
+# Set up flags for automated build system
+DUNE_AUTOBUILD_FLAGS
+
 # implicitly set the Dune-flags everywhere
-AC_SUBST(AM_CPPFLAGS, $DUNE_CPPFLAGS)
-AC_SUBST(AM_LDFLAGS, $DUNE_LDFLAGS)
-LIBS="$DUNE_LIBS"
+AC_SUBST(AM_CPPFLAGS, '$(DUNE_CPPFLAGS) -I$(top_srcdir)')
+AC_SUBST(AM_LDFLAGS, '$(DUNE_LDFLAGS) $(DUNE_LIBS)')
+
 
 AC_CONFIG_FILES([
   dune-cornerpoint.pc
