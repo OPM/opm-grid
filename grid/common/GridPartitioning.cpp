@@ -97,7 +97,7 @@ namespace Dune
 	}
     }
 
-
+#if 0
     void ensureConnectedPartitions(const CpGrid& grid, int& num_part, std::vector<int>& cell_part)
     {
 	std::vector<int> cell_colour(cell_part.size(), -1);
@@ -115,6 +115,33 @@ namespace Dune
 	}
 	if (int(colour_to_partition.size()) != num_part) {
 	    num_part = colour_to_partition.size();
+	    cell_part.swap(cell_colour);
+	}
+    }
+#endif
+
+
+    void ensureConnectedPartitions(const CpGrid& grid, int& num_part, std::vector<int>& cell_part)
+    {
+	std::vector<int> cell_colour(cell_part.size(), -1);
+        std::vector<int> partition_used(num_part, 0);
+        int max_part = num_part;
+	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
+	    int index = ix.index(*it);
+	    if (cell_colour[index] == -1) {
+		int part = cell_part[index];
+		int current_colour = part;
+                if (partition_used[part]) {
+                    current_colour = max_part++;
+                } else {
+                    partition_used[part] = true;
+                }
+		colourMyComponent(grid, it, current_colour, cell_part, cell_colour);
+	    }
+	}
+	if (max_part != num_part) {
+	    num_part = max_part;
 	    cell_part.swap(cell_colour);
 	}
     }
