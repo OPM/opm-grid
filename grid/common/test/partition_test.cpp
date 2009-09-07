@@ -52,18 +52,17 @@ int main()
     int num_part = -1;
     std::vector<int> cell_part;
     partition(g, split, num_part, cell_part);
-    /*
+
     // Check.
     if (num_part != 8) {
 	return EXIT_FAILURE;
     }
-    int cell_part_correct[] = { 0, 1, 0, 1, 2, 3,
-				0, 1, 0, 1, 2, 3,
-				4, 5, 4, 5, 6, 7,
-				4, 5, 4, 5, 6, 7 };
+    int cell_part_correct[] = { 0, 0, 4, 4, 1, 1, 5, 5,
+				0, 0, 4, 4, 1, 1, 5, 5,
+				2, 2, 6, 6, 3, 3, 7, 7 };
     if (!std::equal(cell_part.begin(), cell_part.end(), cell_part_correct)) {
 	return EXIT_FAILURE;
     }
-    */
+
     return EXIT_SUCCESS;
 }
