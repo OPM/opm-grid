@@ -46,6 +46,8 @@
 #include <dune/grid/common/grid.hh>
 #include <dune/common/array.hh>
 
+#include <boost/array.hpp>
+
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
 #include "cpgrid/Intersection.hpp"
@@ -229,6 +231,14 @@ namespace Dune
 	/// \param cellsize the size of each cell in each dimension.
 	void createCartesian(const array<int, 3>& dims,
 			     const array<double, 3>& cellsize);
+
+	/// The logical cartesian size of the grid.
+	/// This function is not part of the Dune grid interface,
+	/// and should be used with caution.
+        const boost::array<int, 3>& logicalCartesianSize() const
+        {
+            return logical_cartesian_size_;
+        }
 
 	/// Access the vector mapping (i, j, k) based indices to
 	/// cell numbers/ordering used by the grid. This should
@@ -568,6 +578,7 @@ namespace Dune
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 	std::vector< array<int,8> > cell_to_point_;
+	boost::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
 	// Representing geometry

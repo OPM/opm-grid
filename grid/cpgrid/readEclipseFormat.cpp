@@ -156,6 +156,7 @@ namespace Dune
 #endif
 	std::vector<int> face_to_output_face;
 	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, cell_to_point_, face_to_output_face);
+	std::copy(output.dimensions, output.dimensions + 3, logical_cartesian_size_.begin());
 
 #ifdef VERBOSE
 	std::cout << "Building geometry." << std::endl;
