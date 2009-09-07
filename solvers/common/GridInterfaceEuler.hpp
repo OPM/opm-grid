@@ -14,23 +14,23 @@
 //===========================================================================
 
 /*
-Copyright 2009 SINTEF ICT, Applied Mathematics.
-Copyright 2009 Statoil ASA.
+  Copyright 2009 SINTEF ICT, Applied Mathematics.
+  Copyright 2009 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of The Open Reservoir Simulator Project (OpenRS).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OpenRS is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OpenRS is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_GRIDINTERFACEEULER_HEADER
@@ -38,9 +38,13 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 #include "config.h"
 #include <climits>
+
+#include <boost/iterator/iterator_facade.hpp>
+#include <boost/scoped_ptr.hpp>
+
 #include <dune/common/fvector.hh>
 #include <dune/grid/common/referenceelements.hh>
-#include <boost/iterator/iterator_facade.hpp>
+#include <dune/grid/common/mcmgmapper.hh>
 
 namespace Dune
 {
@@ -48,19 +52,20 @@ namespace Dune
 
     namespace GIE
     {
-	template <class DuneGrid, class EntityPointerType>
+	template <class DuneGrid, class Mapper, class EntityPointerType>
 	class Cell;
 
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
 	/// @param
-	template <class DuneGrid>
-	class Intersection : public boost::iterator_facade<Intersection<DuneGrid>,
-							   const Intersection<DuneGrid>,
+	template <class DuneGrid, class Mapper>
+	class Intersection : public boost::iterator_facade<Intersection<DuneGrid, Mapper>,
+							   const Intersection<DuneGrid, Mapper>,
 							   boost::forward_traversal_tag>
 	{
 	public:
+
 	    /// @brief
 	    /// @todo Doc me!
 	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
@@ -74,8 +79,9 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Intersection(const DuneGrid& grid, DuneIntersectionIter it, int local_index)
-		: pgrid_(&grid), iter_(it), local_index_(local_index)
+	    Intersection(const DuneGrid& grid, const Mapper& mapper,
+                         DuneIntersectionIter it, int local_index)
+		: pgrid_(&grid), pmapper_(&mapper), iter_(it), local_index_(local_index)
 	    {
 	    }
 	    /// @brief
@@ -84,7 +90,7 @@ namespace Dune
 	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
 	    typedef typename DuneGrid::ctype Scalar;
 	    typedef int Index;
-	    typedef GIE::Cell<DuneGrid, typename DuneGrid::template Codim<0>::EntityPointer> Cell;
+	    typedef GIE::Cell<DuneGrid, Mapper, typename DuneGrid::template Codim<0>::EntityPointer> Cell;
 	    /// @brief
 	    /// @todo Doc me!
 	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
@@ -134,7 +140,7 @@ namespace Dune
 	    /// @return
 	    Cell cell() const
 	    {
-		return Cell(*pgrid_, iter_->inside());
+		return Cell(*pgrid_, *pmapper_, iter_->inside());
 	    }
 
 	    /// @brief
@@ -142,7 +148,7 @@ namespace Dune
 	    /// @return
 	    Index cellIndex() const
 	    {
-		return pgrid_->leafIndexSet().index(*iter_->inside());
+		return pmapper_->map(*iter_->inside());
 	    }
 
 	    /// @brief
@@ -150,7 +156,7 @@ namespace Dune
 	    /// @return
 	    Cell neighbourCell() const
 	    {
-		return Cell(*pgrid_, iter_->outside());
+		return Cell(*pgrid_, *pmapper_, iter_->outside());
 	    }
 
 	    /// @brief
@@ -161,7 +167,7 @@ namespace Dune
 		if (iter_->boundary()) {
 		    return BoundaryMarkerIndex;
 		} else {
-		    return pgrid_->leafIndexSet().index(*iter_->outside());
+		    return pmapper_->map(*iter_->outside());
 		}
 	    }
 
@@ -210,39 +216,41 @@ namespace Dune
 	    }
 	private:
 	    const DuneGrid* pgrid_;
+	    const Mapper*   pmapper_;
 	    DuneIntersectionIter iter_;
 	    int local_index_;
 
 	    LocalVector localCentroid() const
 	    {
-		typedef Dune::ReferenceElements<typename DuneGrid::ctype, DuneGrid::dimension - 1> RefElems;
+		typedef Dune::ReferenceElements<Scalar, DuneGrid::dimension-1> RefElems;
 		return RefElems::general(iter_->type()).position(0,0);
 	    }
 
 	};
 
 
-	template <class DuneGrid, class EntityPointerType>
+	template <class DuneGrid, class Mapper, class EntityPointerType>
 	class Cell
 	{
 	public:
-	    Cell(const DuneGrid& grid, EntityPointerType it)
-		: grid_(grid), iter_(it)
+	    Cell(const DuneGrid& grid, const Mapper& mapper, EntityPointerType it)
+		: grid_(grid), pmapper_(&mapper), iter_(it)
 	    {
 	    }
-	    typedef GIE::Intersection<DuneGrid> FaceIterator;
+	    typedef GIE::Intersection<DuneGrid, Mapper> FaceIterator;
 	    typedef typename FaceIterator::Vector Vector;
 	    typedef typename FaceIterator::Scalar Scalar;
 	    typedef typename FaceIterator::Index Index;
 
 	    FaceIterator facebegin() const
 	    {
-		return FaceIterator(grid_, iter_->ileafbegin(), 0);
+		return FaceIterator(grid_, *pmapper_, iter_->ileafbegin(), 0);
 	    }
 
 	    FaceIterator faceend() const
 	    {
-		return FaceIterator(grid_, iter_->ileafend(), FaceIterator::LocalEndIndex);
+		return FaceIterator(grid_, *pmapper_, iter_->ileafend(),
+                                    FaceIterator::LocalEndIndex);
 	    }
 
 	    Scalar volume() const
@@ -252,7 +260,7 @@ namespace Dune
 
 	    Vector centroid() const
 	    {
-		typedef Dune::ReferenceElements<typename DuneGrid::ctype, DuneGrid::dimension> RefElems;
+		typedef Dune::ReferenceElements<Scalar, DuneGrid::dimension> RefElems;
 		Vector localpt
 		    = RefElems::general(iter_->type()).position(0,0);
 		return iter_->geometry().global(localpt);
@@ -260,31 +268,32 @@ namespace Dune
 
 	    Index index() const
 	    {
-		return grid_.leafIndexSet().index(*iter_);
+                return pmapper_->map(*iter_);
 	    }
 	protected:
 	    const DuneGrid& grid_;
+	    const Mapper* pmapper_;
 	    EntityPointerType iter_;
 	};
 
 
-	template <class DuneGrid>
+	template <class DuneGrid, class Mapper>
 	class CellIterator
-	    : public boost::iterator_facade<CellIterator<DuneGrid>,
-					    const CellIterator<DuneGrid>,
+	    : public boost::iterator_facade<CellIterator<DuneGrid, Mapper>,
+					    const CellIterator<DuneGrid, Mapper>,
 					    boost::forward_traversal_tag>,
-	      public Cell<DuneGrid, typename DuneGrid::template Codim<0>::LeafIterator>
+	      public Cell<DuneGrid, Mapper, typename DuneGrid::template Codim<0>::LeafIterator>
 	{
 	private:
 	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
-	    typedef Cell<DuneGrid, DuneCellIter> CellType;
+	    typedef Cell<DuneGrid, Mapper, DuneCellIter> CellType;
 	public:
 	    typedef typename CellType::Vector Vector;
 	    typedef typename CellType::Scalar Scalar;
 	    typedef typename CellType::Index Index;
 
-	    CellIterator(const DuneGrid& grid, DuneCellIter it)
-		: CellType(grid, it)
+	    CellIterator(const DuneGrid& grid, const Mapper& mapper, DuneCellIter it)
+		: CellType(grid, mapper, it)
 	    {
 	    }
 	    /// Used by iterator facade.
@@ -304,6 +313,11 @@ namespace Dune
 	    }
 	};
 
+        template<int dim>
+        struct AllLayout {
+            template<class Arg>
+            bool contains(Arg) { return true; }
+        };
 
     } // namespace GIE
 
@@ -312,7 +326,8 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
-	typedef GIE::CellIterator<DuneGrid> CellIterator;
+        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllLayout> Mapper;
+	typedef GIE::CellIterator<DuneGrid, Mapper> CellIterator;
 	typedef typename CellIterator::Vector Vector;
 	typedef typename CellIterator::Scalar Scalar;
 	typedef typename CellIterator::Index Index;
@@ -323,20 +338,21 @@ namespace Dune
 	{
 	}
 	GridInterfaceEuler(const DuneGrid& grid)
-	    : pgrid_(&grid)
+	    : pgrid_(&grid), pmapper_(new Mapper(grid))
 	{
 	}
 	void init(const DuneGrid& grid)
 	{
 	    pgrid_ = &grid;
+            pmapper_.reset(new Mapper(grid));
 	}
 	CellIterator cellbegin() const
 	{
-	    return CellIterator(grid(), grid().template leafbegin<0>());
+	    return CellIterator(grid(), mapper(), grid().template leafbegin<0>());
 	}
 	CellIterator cellend() const
 	{
-	    return CellIterator(grid(), grid().template leafend<0>());
+	    return CellIterator(grid(), mapper(), grid().template leafend<0>());
 	}
         int numberOfCells() const
         {
@@ -347,8 +363,14 @@ namespace Dune
 	    ASSERT(pgrid_);
 	    return *pgrid_;
 	}
+	const Mapper& mapper() const
+	{
+	    ASSERT (pmapper_);
+	    return *pmapper_;
+	}
     private:
 	const DuneGrid* pgrid_;
+        boost::scoped_ptr<Mapper> pmapper_;
     };
 
 
