@@ -33,13 +33,18 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "../GridPartitioning.hpp"
+#include <dune/common/param/ParameterGroup.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/setupGridAndProps.hpp>
 #include <cstdlib>
 
 using namespace Dune;
 
-int main()
+int testPartition()
 {
     // Make grid.
     CpGrid g;
@@ -63,6 +68,38 @@ int main()
     if (!std::equal(cell_part.begin(), cell_part.end(), cell_part_correct)) {
 	return EXIT_FAILURE;
     }
-
     return EXIT_SUCCESS;
+}
+
+
+int main(int argc, char** argv)
+{
+    if (argc == 1) {
+	// Running in test mode.
+	return testPartition();
+    }
+
+    // Running in normal mode. Make grid.
+    parameter::ParameterGroup param(argc, argv);
+    CpGrid grid;
+    ReservoirPropertyCapillary<3> res_prop;
+    setupGridAndProps(param, grid, res_prop);
+
+    // Partition.
+    boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
+				    param.getDefault("sy", 1),
+				    param.getDefault("sz", 1) }};
+    int num_part = -1;
+    std::vector<int> cell_partition;
+    partition(grid, split, num_part, cell_partition);
+    std::cout << "Grid with " << cell_partition.size()
+	      << " cells was split into " << num_part
+	      << " partitions." << std::endl;
+
+    // Output.
+    VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
+    vtkwriter.addCellData(cell_partition, "partition");
+    std::string fname = param.get<std::string>("filename");
+    vtkwriter.write(fname.substr(0, fname.size() - 7) + "-partition", VTKOptions::ascii);
+
 }
