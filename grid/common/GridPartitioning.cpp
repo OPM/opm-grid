@@ -77,6 +77,49 @@ namespace Dune
     }
 
 
+    void colourMyComponent(const CpGrid& grid,
+			   const CpGrid::Codim<0>::EntityPointer& c,
+			   const int colour,
+			   const std::vector<int>& cell_part,
+			   std::vector<int>& cell_colour)
+    {
+	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	int my_index = ix.index(*c);
+	cell_colour[my_index] = colour;
+	// For each neighbour...
+	for (CpGrid::LeafIntersectionIterator it = c->ileafbegin(); it != c->ileafend(); ++it) {
+	    if (it->neighbor()) {
+		int nb_index = ix.index(*(it->outside()));
+		if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
+		    colourMyComponent(grid, it->outside(), colour, cell_part, cell_colour);
+		}
+	    }
+	}
+    }
+
+
+    void ensureConnectedPartitions(const CpGrid& grid, int& num_part, std::vector<int>& cell_part)
+    {
+	std::vector<int> cell_colour(cell_part.size(), -1);
+	std::vector<int> colour_to_partition;
+	colour_to_partition.reserve(num_part);
+	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
+	    int index = ix.index(*it);
+	    if (cell_colour[index] == -1) {
+		int part = cell_part[index];
+		int current_colour = colour_to_partition.size();
+		colour_to_partition.push_back(part);
+		colourMyComponent(grid, it, current_colour, cell_part, cell_colour);
+	    }
+	}
+	if (int(colour_to_partition.size()) != num_part) {
+	    num_part = colour_to_partition.size();
+	    cell_part.swap(cell_colour);
+	}
+    }
+
+
     void partition(const CpGrid& grid, const coord_t& initial_split, int& num_part, std::vector<int>& cell_part)
     {
 	// Checking that the initial split makes sense (that there may be at least one cell
@@ -118,7 +161,7 @@ namespace Dune
 	cell_part.swap(my_part);
 
 	// Check the connectivity, split.
-	// \todo implement!
+	ensureConnectedPartitions(grid, num_part, cell_part);
     }
 
 } // namespace Dune
