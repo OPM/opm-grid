@@ -66,7 +66,7 @@ namespace Dune
 	coord_t p_coord;
 	for (int i = 0; i < 3; ++i) {
 	    int n = lc_size[i]/initial_split[i];
-	    int extra = lc_size[i] % n;
+	    int extra = lc_size[i] % initial_split[i];
 	    if (c[i] < (n+1)*extra) {
 		p_coord[i] = c[i]/(n+1);
 	    } else {
