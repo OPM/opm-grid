@@ -97,6 +97,8 @@ void check_yasp(bool p0 = false) {
 
 #if HAVE_MPI
     Dune::YaspGrid<dim> grid(MPI_COMM_WORLD,Len,s,p,overlap);
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #else
     Dune::YaspGrid<dim> grid(Len,s,p,overlap);
 #endif
@@ -104,7 +106,13 @@ void check_yasp(bool p0 = false) {
 
     // Test the interface
     Dune::GridInterfaceEuler<Dune::YaspGrid<dim> > gie(grid);
+#if HAVE_MPI
+    if (rank == 0) {
+	test_interface(gie);
+    }
+#else
     test_interface(gie);
+#endif
 }
 
 
@@ -136,11 +144,11 @@ int main (int argc , char **argv) {
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #endif
-	check_yasp<1,1>();
+	//check_yasp<1,1>();
 	check_yasp<2,1>();
 
-	check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
-	check_cpgrid<0>();
+	//check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
+	//check_cpgrid<0>();
 
 #ifdef REFINE
 #undef REFINE
