@@ -73,7 +73,7 @@ namespace Dune
 		p_coord[i] = (c[i] - (n+1)*extra)/n + extra;
 	    }
 	}
-	return p_coord[0] + initial_split[0]*p_coord[1] + initial_split[0]*initial_split[1]*p_coord[2];
+	return p_coord[0] + initial_split[0]*(p_coord[1] + initial_split[1]*p_coord[2]);
     }
 
 
