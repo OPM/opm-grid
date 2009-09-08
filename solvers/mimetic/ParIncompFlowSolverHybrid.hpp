@@ -69,6 +69,7 @@
 #include <dune/istl/paamg/pinfo.hh>
 
 #include <dune/solvers/common/BoundaryConditions.hpp>
+#include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
     namespace {
@@ -357,7 +358,7 @@ namespace Dune {
              class                          ReservoirInterface,
              class                          BCInterface,
              template<class,int,bool> class InnerProduct>
-    class IncompFlowSolverHybrid {
+    class ParIncompFlowSolverHybrid {
         /// @brief
         ///    The element type of the matrix representation of the
         ///    mimetic inner product.  Assumed to be a floating point
@@ -429,6 +430,14 @@ namespace Dune {
         };
 
     public:
+
+	/// @brief Default constructor.
+	ParIncompFlowSolverHybrid()
+	{
+	    clear();
+	}
+
+
         /// @brief
         ///    All-in-one initialization routine.  Enumerates all grid
         ///    connections, allocates sufficient space, defines the
@@ -451,12 +460,13 @@ namespace Dune {
         ///    inspected in @code init() @endcode.
         void init(const GridInterface&      g,
                   const ReservoirInterface& r,
-                  const BCInterface&        bc)
+                  const BCInterface&        bc,
+		  const std::vector<int>&   partition)
         {
             clear();
 
             if (g.numberOfCells() > 0) {
-                initSystemStructure(g, bc);
+                initSystemStructure(g, bc, partition);
                 computeInnerProducts(r);
             }
         }
@@ -472,6 +482,7 @@ namespace Dune {
         void clear()
         {
             pgrid_                  =  0;
+	    ppartition_             =  0;
             max_ncf_                = -1;
             num_internal_faces_     =  0;
             total_num_faces_        =  0;
@@ -507,13 +518,14 @@ namespace Dune {
         ///    The specific values of the boundary conditions are not
         ///    inspected in @code init() @endcode.
         void initSystemStructure(const GridInterface& g,
-                                 const BCInterface&   bc)
+                                 const BCInterface&   bc,
+				 const std::vector<int>& partition)
         {
             ASSERT2 (cleared_state_,
                      "You must call clear() prior to initSystemStructure()");
             ASSERT  (topologyIsSane(g));
 
-            enumerateDof(g, bc);
+            enumerateDof(g, bc, partition);
             allocateConnections(bc);
             setConnections(bc);
         }
@@ -762,6 +774,7 @@ namespace Dune {
         typedef BdryIdMapType::const_iterator      BdryIdMapIterator;
 
         const GridInterface* pgrid_;
+	const std::vector<int>* ppartition_;
         BdryIdMapType        bdry_id_map_;
         std::vector<int>     ppartner_dof_;
 
@@ -792,18 +805,22 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void enumerateDof(const GridInterface& g, const BCInterface& bc)
+        void enumerateDof(const GridInterface& g,
+			  const BCInterface& bc,
+			  const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
-            enumerateGridDof(g);
-            enumerateBCDof(g, bc);
+            enumerateGridDof(g, partition);
+            enumerateBCDof(g, bc, partition);
 
             pgrid_ = &g;
+	    ppartition_ = &partition;
             cleared_state_ = false;
         }
 
         // ----------------------------------------------------------------
-        void enumerateGridDof(const GridInterface& g)
+        void enumerateGridDof(const GridInterface& g,
+			      const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
@@ -924,7 +941,9 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void enumerateBCDof(const GridInterface& g, const BCInterface& bc)
+        void enumerateBCDof(const GridInterface& g,
+			    const BCInterface& bc,
+			    const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
