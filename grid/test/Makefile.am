@@ -2,7 +2,7 @@
 
 check_PROGRAMS = cpgrid_test mapper_test
 
-noinst_PROGRAMS = finitevolume_test make_vtk_test #dumux_test
+noinst_PROGRAMS = finitevolume_test make_vtk_test partition_test
 
 LDADD =  $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
          $(DUNE_LIBS)  $(BOOST_SYSTEM_LIB) \
@@ -28,13 +28,12 @@ make_vtk_test_SOURCES = make_vtk_test.cpp
 make_vtk_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 make_vtk_test_LDADD = $(LDADD) -llapack -lblas
 
-#dumux_test_SOURCES = dumux_test.cpp
-#dumux_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) -I/Users/atgeirr/openrs/dune-mux-1.0-rc1
-#dumux_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
-#                       $(DUNE_LIBS) ../cpgrid/libcpgrid.la \
-#                       ../../common/param/libparam.la $(BOOST_SYSTEM_LIB)
 
-TESTS = $(check_PROGRAMS)
+partition_test_SOURCES = partition_test.cpp
+partition_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+partition_test_LDADD = $(LDADD) -llapack -lblas
+
+
+TESTS = $(check_PROGRAMS) partition_test
 
 include $(top_srcdir)/am/global-rules
-
