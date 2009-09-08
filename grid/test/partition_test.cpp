@@ -34,7 +34,7 @@
 */
 
 #include "config.h"
-#include "../GridPartitioning.hpp"
+#include <dune/grid/common/GridPartitioning.hpp>
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
