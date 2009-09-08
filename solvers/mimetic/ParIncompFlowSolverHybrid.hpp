@@ -923,7 +923,7 @@ namespace Dune {
                         VII p = std::find(faces.begin() + s, faces.begin() + e, seek);
                         ASSERT(p != faces.begin() + e);
 
-                        l2g[f->localIndex()] = s + (p - (faces.begin() + s));
+                        l2g[f->localIndex()] = p - faces.begin();
                     }
                 }
 
