@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: IncompFlowSolverHybrid.hpp
+// File: ParIncompFlowSolverHybrid.hpp
 //
 // Created: Tue Jun 30 10:25:40 2009
 //
@@ -33,11 +33,10 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
-#define OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
+#ifndef OPENRS_PARINCOMPFLOWSOLVERHYBRID_HEADER
+#define OPENRS_PARINCOMPFLOWSOLVERHYBRID_HEADER
 
 #include "config.h"
-
 #include <algorithm>
 #include <functional>
 #include <map>
@@ -47,7 +46,6 @@
 #include <vector>
 
 #include <tr1/unordered_map>
-
 #include <boost/bind.hpp>
 
 #include <dune/common/fvector.hh>
@@ -59,7 +57,6 @@
 #include <dune/istl/bcrsmatrix.hh>
 #include <dune/istl/operators.hh>
 #include <dune/istl/io.hh>
-
 #include <dune/istl/overlappingschwarz.hh>
 #include <dune/istl/schwarz.hh>
 #include <dune/istl/preconditioners.hh>
@@ -70,6 +67,7 @@
 
 #include <dune/solvers/common/BoundaryConditions.hpp>
 #include <dune/solvers/common/Matrix.hpp>
+
 
 namespace Dune {
     namespace {
@@ -392,7 +390,7 @@ namespace Dune {
             ///    Convenience alias for the cell's face iterator.
             typedef typename CI           ::FaceIterator FI;
 
-            friend class IncompFlowSolverHybrid;
+            friend class ParIncompFlowSolverHybrid;
 
             /// @brief
             ///    Retrieve the current cell pressure in a given cell.
@@ -1594,4 +1592,4 @@ namespace Dune {
     };
 } // namespace Dune
 
-#endif // OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
+#endif // OPENRS_PARINCOMPFLOWSOLVERHYBRID_HEADER
