@@ -210,7 +210,7 @@ namespace Dune
 	    /// @return a const reference to the varable, at e.
 	    const T& operator[](const EntityRep<codim>& e) const
 	    {
-		return get(e.index());
+		return EntityVariableBase<T>::get(e.index());
 	    }
 	};
 
@@ -238,7 +238,9 @@ namespace Dune
 	    /// reference, since we may need to flip the sign.
 	    const T operator[](const EntityRep<codim>& e) const
 	    {
-		return e.orientation() ? get(e.index()) : -get(e.index());
+		return e.orientation() ?
+		    EntityVariableBase<T>::get(e.index()) :
+		    -EntityVariableBase<T>::get(e.index());
 	    }
 	};
 
