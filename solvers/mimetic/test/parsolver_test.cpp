@@ -33,41 +33,116 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "../ParIncompFlowSolverHybrid.hpp"
-
-#include <iostream>
-
-#include <boost/array.hpp>
-
-#include <dune/common/Units.hpp>
+#include <dune/common/mpihelper.hh>
 #include <dune/common/param/ParameterGroup.hpp>
-
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/setupGridAndProps.hpp>
+#include <dune/solvers/common/GridInterfaceEuler.hpp>
+#include <dune/solvers/common/SimulatorUtilities.hpp>
+#include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/grid/common/GridPartitioning.hpp>
 
-#include <dune/solvers/common/PeriodicHelpers.hpp>
-#include <dune/solvers/common/BoundaryConditions.hpp>
-#include <dune/solvers/common/GridInterfaceEuler.hpp>
-#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 
-#include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
-
-//using namespace Dune;
-
-int main(int argc, char** argv)
+template<int dim, class RI>
+void assign_permeability(RI& r, int nc, double k)
 {
-    typedef Dune::GridInterfaceEuler<Dune::CpGrid>                    GI;
-    typedef GI  ::CellIterator                                        CI;
-    typedef CI  ::FaceIterator                                        FI;
-    typedef Dune::BoundaryConditions<true, false>                     BCs;
-    typedef Dune::ReservoirPropertyCapillary<3>                       RI;
-    typedef Dune::ParIncompFlowSolverHybrid<GI, RI, BCs,
-                                            Dune::MimeticIPEvaluator> FlowSolver;
+    typedef typename RI::SharedPermTensor Tensor;
+    for (int c = 0; c < nc; ++c) {
+        Tensor K = r.permeabilityModifiable(c);
+        for (int i = 0; i < dim; ++i) {
+            K(i,i) = k;
+        }
+    }
+}
 
-    Dune::parameter::ParameterGroup param(argc, argv);
+
+template<int dim, class Grid, class RI>
+void test_flowsolver(const Grid& grid, const RI& r, const std::vector<int>& partition, bool output_is_vtk = true)
+{
+    typedef Dune::GridInterfaceEuler<Grid>          GI;
+    typedef typename GI::CellIterator               CI;
+    typedef typename CI::FaceIterator               FI;
+    typedef Dune::BoundaryConditions<true, false>   FBC;
+    typedef Dune::ParIncompFlowSolverHybrid<GI, RI, FBC, Dune::MimeticIPEvaluator> FlowSolver;
+
+    GI g(grid);
+    FlowSolver solver;
+
+    typedef Dune::FlowBC BC;
+    FBC flow_bc(7);
+    //flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
+    //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+    flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
+    flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0);
+
+    solver.init(g, r, flow_bc, partition);
+    // solver.printStats(std::cout);
+
+    //solver.assembleStatic(g, r);
+    //solver.printIP(std::cout);
+
+    std::vector<double> src(g.numberOfCells(), 0.0);
+    std::vector<double> sat(g.numberOfCells(), 0.0);
+#if 0
+    if (g.numberOfCells() > 1) {
+        src[0]     = 1.0;
+        src.back() = -1.0;
+    }
+#endif
+
+    typename CI::Vector gravity(0.0);
+    //gravity[2] = Dune::unit::gravity;
+    solver.solve(r, sat, flow_bc, src, gravity);
+
+    if (output_is_vtk) {
+	std::vector<double> cell_velocity;
+	estimateCellVelocity(cell_velocity, g, solver.getSolution());
+	std::vector<double> cell_pressure;
+	getCellPressure(cell_pressure, g, solver.getSolution());
+	Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
+	vtkwriter.addCellData(cell_velocity, "velocity");
+	vtkwriter.addCellData(cell_pressure, "pressure");
+	vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
+    } else {
+	solver.printSystem("system");
+	typedef typename FlowSolver::SolutionType FlowSolution;
+	FlowSolution soln = solver.getSolution();
+	std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
+	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+	    std::cout << '\t' << soln.pressure(c) << '\n';
+	}
+	std::cout << "Cell (Out) Fluxes:\n";
+	std::cout << "flux = [\n";
+	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+	    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+		std::cout << soln.outflux(f) << ' ';
+	    }
+	    std::cout << "\b\n";
+	}
+	std::cout << "]\n";
+    }
+}
+
+
+
+int main(int argc , char ** argv)
+{
+    // Initialize MPI, finalize is done automatically on exit.
+    // int mpi_rank = Dune::MPIHelper::instance(argc,argv).rank();
+    //int mpi_size = Dune::MPIHelper::instance(argc,argv).size();
+    // std::cout << "Hello from rank " << mpi_rank << std::endl;
+
     Dune::CpGrid grid;
-    grid.init(param);
-    grid.setUniqueBoundaryIds(true);
+    Dune::ReservoirPropertyCapillary<3> res_prop;
+    // Get parameters.
+    Dune::parameter::ParameterGroup param(argc, argv);
+    // Make grid and reservoir properties.
+    Dune::setupGridAndProps(param, grid, res_prop);
+    assign_permeability<3>(res_prop, grid.size(0), 0.1*Dune::unit::darcy);
     // Partitioning.
     boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
 				    param.getDefault("sy", 1),
@@ -75,50 +150,7 @@ int main(int argc, char** argv)
     int num_part = 0;
     std::vector<int> partition;
     Dune::partition(grid, split, num_part, partition);
-    Dune::GridInterfaceEuler<Dune::CpGrid> g(grid);
-    typedef Dune::FlowBC FBC;
-    boost::array<FBC, 6> cond = {{ FBC(FBC::Periodic,  1.0*Dune::unit::barsa),
-                                   FBC(FBC::Periodic, -1.0*Dune::unit::barsa),
-                                   FBC(FBC::Periodic,  0.0),
-                                   FBC(FBC::Periodic,  0.0),
-                                   FBC(FBC::Neumann,   0.0),
-                                   FBC(FBC::Neumann,   0.0) }};
-    BCs fbc;
-    Dune::createPeriodic(fbc, g, cond);
+    test_flowsolver<3>(grid, res_prop, partition);
 
-    RI r;
-    r.init(g.numberOfCells());
-
-    FlowSolver solver;
-    solver.init(g, r, fbc, partition);
-
-    std::vector<double> src(g.numberOfCells(), 0.0);
-    std::vector<double> sat(g.numberOfCells(), 0.0);
-
-    CI::Vector gravity;
-    gravity[0] = gravity[1] = gravity[2] = 0.0;
-#if 0
-    gravity[2] = Dune::unit::gravity;
-#endif
-    solver.solve(r, sat, fbc, src, gravity);
-
-#if 1
-    FlowSolver::SolutionType soln = solver.getSolution();
-    std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-        std::cout << '\t' << soln.pressure(c) << '\n';
-    }
-
-    std::cout << "Cell (Out) Fluxes:\n";
-    std::cout << "flux = [\n";
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-        for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-            std::cout << soln.outflux(f) << ' ';
-        }
-        std::cout << "\b\n";
-    }
-    std::cout << "]\n";
-#endif
-    return 0;
+    return EXIT_SUCCESS;
 }
-
