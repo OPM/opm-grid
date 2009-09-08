@@ -41,7 +41,8 @@
 #include <functional>
 #include <map>
 #include <numeric>
-#include <ostream>
+#include <iostream>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -52,6 +53,7 @@
 #include <dune/common/fmatrix.hh>
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/common/SparseTable.hpp>
+#include <dune/common/StopWatch.hpp>
 
 #include <dune/istl/bvector.hh>
 #include <dune/istl/bcrsmatrix.hh>
@@ -461,11 +463,13 @@ namespace Dune {
                   const BCInterface&        bc,
 		  const std::vector<int>&   partition)
         {
+	    clock_.start();
             clear();
 
             if (g.numberOfCells() > 0) {
                 initSystemStructure(g, bc, partition);
                 computeInnerProducts(r);
+		printElapsedTime("computeInnerProducts()");
             }
         }
 
@@ -488,6 +492,7 @@ namespace Dune {
             do_regularization_      = true; // Assume pure Neumann by default.
 
             bdry_id_map_.clear();
+	    ppartner_dof_.clear();
 
             std::vector<Scalar>().swap(L_);
             std::vector<Scalar>().swap(g_);
@@ -524,8 +529,11 @@ namespace Dune {
             ASSERT  (topologyIsSane(g));
 
             enumerateDof(g, bc, partition);
+	    printElapsedTime("enumerateDof()");
             allocateConnections(bc);
+	    printElapsedTime("allocateConnections()");
             setConnections(bc);
+	    printElapsedTime("setConnections()");
         }
 
 
@@ -631,13 +639,17 @@ namespace Dune {
                    int linsolver_verbosity = 1)
         {
             assembleDynamic(r, sat, bc, src, grav);
+	    printElapsedTime("assembleDynamic()");
+
             // printSystem("linsys_mimetic");
 #if 0
             solveLinearSystem(residual_tolerance, linsolver_verbosity);
 #else
             solveLinearSystemAMG(residual_tolerance, linsolver_verbosity);
 #endif
+	    printElapsedTime("linear solver");
             computePressureAndFluxes(r, sat);
+	    printElapsedTime("computePressureAndFluxes()");
         }
 
 
@@ -704,6 +716,13 @@ namespace Dune {
             }
         }
 
+
+        //template<typename charT, class traits>
+	void printElapsedTime(const std::string& postfix = "")//, std::basic_ostream<charT,traits>& os = std::cout)
+	{
+	    //os << prefix << "   Time elapsed: " << clock_.secsSinceLast() << std::endl;
+	    std::cout << "Time elapsed: " << clock_.secsSinceLast() << "  [in " << postfix << "]" << std::endl;
+	}
 
         /// @brief
         ///    Output the current (static) inner products.  This is
@@ -775,6 +794,8 @@ namespace Dune {
 	const std::vector<int>* ppartition_;
         BdryIdMapType        bdry_id_map_;
         std::vector<int>     ppartner_dof_;
+
+	time::StopWatch clock_;
 
         // ----------------------------------------------------------------
         bool cleared_state_;
