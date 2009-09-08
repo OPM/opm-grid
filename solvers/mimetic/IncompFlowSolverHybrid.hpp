@@ -69,6 +69,7 @@
 #include <dune/istl/paamg/pinfo.hh>
 
 #include <dune/solvers/common/BoundaryConditions.hpp>
+#include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
     namespace {
