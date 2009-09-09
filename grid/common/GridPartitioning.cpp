@@ -35,6 +35,7 @@
 
 #include "GridPartitioning.hpp"
 #include <dune/grid/CpGrid.hpp>
+#include <stack>
 
 namespace Dune
 {
@@ -77,11 +78,11 @@ namespace Dune
     }
 
 
-    void colourMyComponent(const CpGrid& grid,
-			   const CpGrid::Codim<0>::EntityPointer& c,
-			   const int colour,
-			   const std::vector<int>& cell_part,
-			   std::vector<int>& cell_colour)
+    void colourMyComponentRecursive(const CpGrid& grid,
+				    const CpGrid::Codim<0>::EntityPointer& c,
+				    const int colour,
+				    const std::vector<int>& cell_part,
+				    std::vector<int>& cell_colour)
     {
 	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
 	int my_index = ix.index(*c);
@@ -91,7 +92,50 @@ namespace Dune
 	    if (it->neighbor()) {
 		int nb_index = ix.index(*(it->outside()));
 		if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
-		    colourMyComponent(grid, it->outside(), colour, cell_part, cell_colour);
+		    colourMyComponentRecursive(grid, it->outside(), colour, cell_part, cell_colour);
+		}
+	    }
+	}
+    }
+
+
+    void colourMyComponent(const CpGrid& grid,
+			   const CpGrid::Codim<0>::EntityPointer& c,
+			   const int colour,
+			   const std::vector<int>& cell_part,
+			   std::vector<int>& cell_colour)
+    {
+	typedef CpGrid::LeafIntersectionIterator NbIter;
+	typedef std::pair<int, std::pair<NbIter, NbIter> > VertexInfo;
+	std::stack<VertexInfo> v_stack;
+	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	int index = ix.index(*c);
+	cell_colour[index] = colour;
+	NbIter cur = c->ileafbegin();
+	NbIter end = c->ileafend();
+	v_stack.push(std::make_pair(index, std::make_pair(cur, end)));
+	while (!v_stack.empty()) {
+	    index = v_stack.top().first;
+	    cur = v_stack.top().second.first;
+	    end = v_stack.top().second.second;
+	    v_stack.pop();
+	    while (cur != end) {
+		bool visit_nb = false;
+		if (cur->neighbor()) {
+		    int nb_index = ix.index(*(cur->outside()));
+		    if (cell_part[index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
+			visit_nb = true;
+		    }
+		}
+		if (visit_nb) {
+		    NbIter cur_cp = cur;
+		    v_stack.push(std::make_pair(index, std::make_pair(++cur, end)));
+		    index = ix.index(*(cur_cp->outside()));
+		    cur = cur_cp->outside()->ileafbegin();
+		    end = cur_cp->outside()->ileafend();
+		    cell_colour[index] = colour;
+		} else {
+		    ++cur;
 		}
 	    }
 	}
