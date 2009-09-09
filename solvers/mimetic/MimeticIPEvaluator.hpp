@@ -244,7 +244,6 @@ namespace Dune {
                          Vector&         gterm) const
         {
             typedef typename CellIter::FaceIterator FI;
-            typedef FieldVector<double,dim> Point;
 
             ASSERT (gterm.size() <= max_nf_);
 
