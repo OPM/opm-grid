@@ -52,23 +52,23 @@ namespace Dune
 
     namespace GIE
     {
-	template <class DuneGrid, class Mapper, class EntityPointerType>
+	template <class GridInterface, class EntityPointerType>
 	class Cell;
 
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
 	/// @param
-	template <class DuneGrid, class Mapper>
-	class Intersection : public boost::iterator_facade<Intersection<DuneGrid, Mapper>,
-							   const Intersection<DuneGrid, Mapper>,
+	template <class GridInterface>
+	class Intersection : public boost::iterator_facade<Intersection<GridInterface>,
+							   const Intersection<GridInterface>,
 							   boost::forward_traversal_tag>
 	{
 	public:
 
 	    /// @brief
 	    /// @todo Doc me!
-	    typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIter;
+	    typedef typename GridInterface::DuneIntersectionIterator DuneIntersectionIter;
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
@@ -79,18 +79,19 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Intersection(const DuneGrid& grid, const Mapper& mapper,
-                         DuneIntersectionIter it, int local_index)
-		: pgrid_(&grid), pmapper_(&mapper), iter_(it), local_index_(local_index)
+	    Intersection(const GridInterface& grid,
+                         const DuneIntersectionIter& it,
+			 const int local_index)
+		: pgrid_(&grid), iter_(it), local_index_(local_index)
 	    {
 	    }
 	    /// @brief
 	    /// @todo Doc me!
-	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension> Vector;
-	    typedef FieldVector<typename DuneGrid::ctype, DuneGrid::dimension - 1> LocalVector;
-	    typedef typename DuneGrid::ctype Scalar;
+	    typedef typename GridInterface::GridType::ctype Scalar;
+	    typedef FieldVector<Scalar, GridInterface::GridType::dimension> Vector;
+	    typedef FieldVector<Scalar, GridInterface::GridType::dimension - 1> LocalVector;
 	    typedef int Index;
-	    typedef GIE::Cell<DuneGrid, Mapper, typename DuneGrid::template Codim<0>::EntityPointer> Cell;
+	    typedef GIE::Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::EntityPointer> Cell;
 	    /// @brief
 	    /// @todo Doc me!
 	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
@@ -140,7 +141,7 @@ namespace Dune
 	    /// @return
 	    Cell cell() const
 	    {
-		return Cell(*pgrid_, *pmapper_, iter_->inside());
+		return Cell(*pgrid_, iter_->inside());
 	    }
 
 	    /// @brief
@@ -148,7 +149,7 @@ namespace Dune
 	    /// @return
 	    Index cellIndex() const
 	    {
-		return pmapper_->map(*iter_->inside());
+		return pgrid_->mapper().map(*iter_->inside());
 	    }
 
 	    /// @brief
@@ -156,7 +157,7 @@ namespace Dune
 	    /// @return
 	    Cell neighbourCell() const
 	    {
-		return Cell(*pgrid_, *pmapper_, iter_->outside());
+		return Cell(*pgrid_, iter_->outside());
 	    }
 
 	    /// @brief
@@ -167,8 +168,16 @@ namespace Dune
 		if (iter_->boundary()) {
 		    return BoundaryMarkerIndex;
 		} else {
-		    return pmapper_->map(*iter_->outside());
+		    return pgrid_->mapper().map(*iter_->outside());
 		}
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @return
+	    Index index() const
+	    {
+		pgrid_->faceIndex(cellIndex(), localIndex());
 	    }
 
 	    /// @brief
@@ -215,41 +224,45 @@ namespace Dune
 		}
 	    }
 	private:
-	    const DuneGrid* pgrid_;
-	    const Mapper*   pmapper_;
+	    const GridInterface* pgrid_;
 	    DuneIntersectionIter iter_;
 	    int local_index_;
 
 	    LocalVector localCentroid() const
 	    {
-		typedef Dune::ReferenceElements<Scalar, DuneGrid::dimension-1> RefElems;
+		typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension-1> RefElems;
 		return RefElems::general(iter_->type()).position(0,0);
 	    }
 
 	};
 
 
-	template <class DuneGrid, class Mapper, class EntityPointerType>
+	template <class GridInterface, class EntityPointerType>
 	class Cell
 	{
 	public:
-	    Cell(const DuneGrid& grid, const Mapper& mapper, EntityPointerType it)
-		: grid_(grid), pmapper_(&mapper), iter_(it)
+	    Cell()
+		: pgrid_(0), iter_()
 	    {
 	    }
-	    typedef GIE::Intersection<DuneGrid, Mapper> FaceIterator;
+	    Cell(const GridInterface& grid,
+		 const EntityPointerType& it)
+		: pgrid_(&grid), iter_(it)
+	    {
+	    }
+	    typedef GIE::Intersection<GridInterface> FaceIterator;
 	    typedef typename FaceIterator::Vector Vector;
 	    typedef typename FaceIterator::Scalar Scalar;
 	    typedef typename FaceIterator::Index Index;
 
 	    FaceIterator facebegin() const
 	    {
-		return FaceIterator(grid_, *pmapper_, iter_->ileafbegin(), 0);
+		return FaceIterator(*pgrid_, iter_->ileafbegin(), 0);
 	    }
 
 	    FaceIterator faceend() const
 	    {
-		return FaceIterator(grid_, *pmapper_, iter_->ileafend(),
+		return FaceIterator(*pgrid_, iter_->ileafend(),
                                     FaceIterator::LocalEndIndex);
 	    }
 
@@ -260,7 +273,7 @@ namespace Dune
 
 	    Vector centroid() const
 	    {
-		typedef Dune::ReferenceElements<Scalar, DuneGrid::dimension> RefElems;
+		typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension> RefElems;
 		Vector localpt
 		    = RefElems::general(iter_->type()).position(0,0);
 		return iter_->geometry().global(localpt);
@@ -268,32 +281,31 @@ namespace Dune
 
 	    Index index() const
 	    {
-                return pmapper_->map(*iter_);
+                return pgrid_->mapper().map(*iter_);
 	    }
 	protected:
-	    const DuneGrid& grid_;
-	    const Mapper* pmapper_;
+	    const GridInterface* pgrid_;
 	    EntityPointerType iter_;
 	};
 
 
-	template <class DuneGrid, class Mapper>
+	template <class GridInterface>
 	class CellIterator
-	    : public boost::iterator_facade<CellIterator<DuneGrid, Mapper>,
-					    const CellIterator<DuneGrid, Mapper>,
+	    : public boost::iterator_facade<CellIterator<GridInterface>,
+					    const CellIterator<GridInterface>,
 					    boost::forward_traversal_tag>,
-	      public Cell<DuneGrid, Mapper, typename DuneGrid::template Codim<0>::LeafIterator>
+	      public Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::LeafIterator>
 	{
 	private:
-	    typedef typename DuneGrid::template Codim<0>::LeafIterator DuneCellIter;
-	    typedef Cell<DuneGrid, Mapper, DuneCellIter> CellType;
+	    typedef typename GridInterface::GridType::template Codim<0>::LeafIterator DuneCellIter;
+	    typedef Cell<GridInterface, DuneCellIter> CellType;
 	public:
 	    typedef typename CellType::Vector Vector;
 	    typedef typename CellType::Scalar Scalar;
 	    typedef typename CellType::Index Index;
 
-	    CellIterator(const DuneGrid& grid, const Mapper& mapper, DuneCellIter it)
-		: CellType(grid, mapper, it)
+	    CellIterator(const GridInterface& grid, DuneCellIter it)
+		: CellType(grid, it)
 	    {
 	    }
 	    /// Used by iterator facade.
@@ -314,9 +326,8 @@ namespace Dune
 	};
 
         template<int dim>
-        struct AllLayout {
-            template<class Arg>
-            bool contains(Arg) { return true; }
+        struct AllCellsLayout {
+            bool contains(GeometryType gt) { return gt.dim() == dim; }
         };
 
     } // namespace GIE
@@ -326,8 +337,11 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
-        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllLayout> Mapper;
-	typedef GIE::CellIterator<DuneGrid, Mapper> CellIterator;
+        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllCellsLayout> Mapper;
+	typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIterator;
+	typedef DuneGrid GridType;
+	typedef GridInterfaceEuler<DuneGrid> InterfaceType;
+	typedef GIE::CellIterator<InterfaceType> CellIterator;
 	typedef typename CellIterator::Vector Vector;
 	typedef typename CellIterator::Scalar Scalar;
 	typedef typename CellIterator::Index Index;
@@ -337,7 +351,7 @@ namespace Dune
 	    : pgrid_(0)
 	{
 	}
-	GridInterfaceEuler(const DuneGrid& grid)
+	explicit GridInterfaceEuler(const DuneGrid& grid)
 	    : pgrid_(&grid), pmapper_(new Mapper(grid))
 	{
 	}
@@ -348,11 +362,11 @@ namespace Dune
 	}
 	CellIterator cellbegin() const
 	{
-	    return CellIterator(grid(), mapper(), grid().template leafbegin<0>());
+	    return CellIterator(*this, grid().template leafbegin<0>());
 	}
 	CellIterator cellend() const
 	{
-	    return CellIterator(grid(), mapper(), grid().template leafend<0>());
+	    return CellIterator(*this, grid().template leafend<0>());
 	}
         int numberOfCells() const
         {
