@@ -177,7 +177,7 @@ namespace Dune
 	    /// @return
 	    Index index() const
 	    {
-		pgrid_->faceIndex(cellIndex(), localIndex());
+		return pgrid_->faceIndex(cellIndex(), localIndex());
 	    }
 
 	    /// @brief
