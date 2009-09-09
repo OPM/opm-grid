@@ -161,7 +161,7 @@ int main(int argc, char** argv)
 				    param.getDefault("sz", 1) }};
     int num_part = -1;
     std::vector<int> cell_partition;
-    partition(grid, split, num_part, cell_partition);
+    partition(grid, split, num_part, cell_partition, param.getDefault("recursive", false));
     std::cout << "Grid with " << cell_partition.size()
 	      << " cells was split into " << num_part
 	      << " partitions." << std::endl;
