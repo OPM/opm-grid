@@ -1523,8 +1523,33 @@ namespace Dune {
 
 
 
-        // ----------------------------------------------------------------
-        /// \param l2g local-to-global face map.
+	/// @brief
+	///    Assemble local system contributions @f$S\pi = r@f$ of
+	///    single cell into global system.
+	///
+        /// @param [in] S
+	///    Coefficient matrix contribution of single cell.
+	///
+	/// @param [in] rhs
+	///    System right hand side contribution of single cell.
+	///
+	/// @param [in] facetype
+	///    Indicator of which kind of equation to assemble for any
+	///    given interface/contact {Internal, Neumann, Dirichlet
+	///    or Periodic}.
+	///
+	/// @param [in] condval
+	///    Numeric value of any external condition (e.g.,
+	///    prescribed face pressure for Dirichlet conditions,
+	///    prescribed fluxes for Neumann conditions, or prescribed
+	///    pressure drops for periodic conditions).
+	///
+	/// @param [in] ppartner
+	///    A given DOF's periodic partner DOF.  Only examined in
+	///    the case of periodic boundary conditions.
+	///
+        /// @param [in] l2g
+	///    Local to global face map for a single cell.
         template<class L2G>
         void addCellContrib(const SharedFortranMatrix&   S       ,
                             const std::vector<Scalar>&   rhs     ,
