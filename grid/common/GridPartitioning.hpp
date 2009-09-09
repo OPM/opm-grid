@@ -52,7 +52,11 @@ namespace Dune
     ///                      because of inactive cells, or higher than expected,
     ///                      because of splits to ensure connectedness.
     /// @param[out] cell_part a vector containing, for each cell, its partition number
-    void partition(const CpGrid& grid, const boost::array<int, 3>& initial_split, int& num_part, std::vector<int>& cell_part);
+    void partition(const CpGrid& grid,
+		   const boost::array<int, 3>& initial_split,
+		   int& num_part,
+		   std::vector<int>& cell_part,
+		   bool recursive = false);
 
 } // namespace Dune
 

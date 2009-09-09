@@ -40,135 +40,152 @@
 namespace Dune
 {
 
+
     typedef boost::array<int, 3> coord_t;
 
-    struct IndexToIJK
+    namespace
     {
-	IndexToIJK(const coord_t& lc_size)
-	    : num_i(lc_size[0]),
-	      num_ij(lc_size[0]*lc_size[1])
-	{
-	}
-	coord_t operator()(int index)
-	{
-	    coord_t retval = {{ index % num_i,
-				(index % num_ij) / num_i,
-				index / num_ij }};
-	    return retval;
-	}
-    private:
-	int num_i;
-	int num_ij;
-    };
 
-
-    int initialPartition(const coord_t& c, const coord_t& lc_size, const coord_t& initial_split) 
-    {
-	coord_t p_coord;
-	for (int i = 0; i < 3; ++i) {
-	    int n = lc_size[i]/initial_split[i];
-	    int extra = lc_size[i] % initial_split[i];
-	    if (c[i] < (n+1)*extra) {
-		p_coord[i] = c[i]/(n+1);
-	    } else {
-		p_coord[i] = (c[i] - (n+1)*extra)/n + extra;
+	struct IndexToIJK
+	{
+	    IndexToIJK(const coord_t& lc_size)
+		: num_i(lc_size[0]),
+		  num_ij(lc_size[0]*lc_size[1])
+	    {
 	    }
-	}
-	return p_coord[0] + initial_split[0]*(p_coord[1] + initial_split[1]*p_coord[2]);
-    }
+	    coord_t operator()(int index)
+	    {
+		coord_t retval = {{ index % num_i,
+				    (index % num_ij) / num_i,
+				    index / num_ij }};
+		return retval;
+	    }
+	private:
+	    int num_i;
+	    int num_ij;
+	};
 
 
-    void colourMyComponentRecursive(const CpGrid& grid,
-				    const CpGrid::Codim<0>::EntityPointer& c,
-				    const int colour,
-				    const std::vector<int>& cell_part,
-				    std::vector<int>& cell_colour)
-    {
-	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-	int my_index = ix.index(*c);
-	cell_colour[my_index] = colour;
-	// For each neighbour...
-	for (CpGrid::LeafIntersectionIterator it = c->ileafbegin(); it != c->ileafend(); ++it) {
-	    if (it->neighbor()) {
-		int nb_index = ix.index(*(it->outside()));
-		if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
-		    colourMyComponentRecursive(grid, it->outside(), colour, cell_part, cell_colour);
+	int initialPartition(const coord_t& c, const coord_t& lc_size, const coord_t& initial_split) 
+	{
+	    coord_t p_coord;
+	    for (int i = 0; i < 3; ++i) {
+		int n = lc_size[i]/initial_split[i];
+		int extra = lc_size[i] % initial_split[i];
+		if (c[i] < (n+1)*extra) {
+		    p_coord[i] = c[i]/(n+1);
+		} else {
+		    p_coord[i] = (c[i] - (n+1)*extra)/n + extra;
 		}
 	    }
+	    return p_coord[0] + initial_split[0]*(p_coord[1] + initial_split[1]*p_coord[2]);
 	}
-    }
 
 
-    void colourMyComponent(const CpGrid& grid,
-			   const CpGrid::Codim<0>::EntityPointer& c,
-			   const int colour,
-			   const std::vector<int>& cell_part,
-			   std::vector<int>& cell_colour)
-    {
-	typedef CpGrid::LeafIntersectionIterator NbIter;
-	typedef std::pair<int, std::pair<NbIter, NbIter> > VertexInfo;
-	std::stack<VertexInfo> v_stack;
-	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-	int index = ix.index(*c);
-	cell_colour[index] = colour;
-	NbIter cur = c->ileafbegin();
-	NbIter end = c->ileafend();
-	v_stack.push(std::make_pair(index, std::make_pair(cur, end)));
-	while (!v_stack.empty()) {
-	    index = v_stack.top().first;
-	    cur = v_stack.top().second.first;
-	    end = v_stack.top().second.second;
-	    v_stack.pop();
-	    while (cur != end) {
-		bool visit_nb = false;
-		if (cur->neighbor()) {
-		    int nb_index = ix.index(*(cur->outside()));
-		    if (cell_part[index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
-			visit_nb = true;
+	void colourMyComponentRecursive(const CpGrid& grid,
+					const CpGrid::Codim<0>::EntityPointer& c,
+					const int colour,
+					const std::vector<int>& cell_part,
+					std::vector<int>& cell_colour)
+	{
+	    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	    int my_index = ix.index(*c);
+	    cell_colour[my_index] = colour;
+	    // For each neighbour...
+	    for (CpGrid::LeafIntersectionIterator it = c->ileafbegin(); it != c->ileafend(); ++it) {
+		if (it->neighbor()) {
+		    int nb_index = ix.index(*(it->outside()));
+		    if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
+			colourMyComponentRecursive(grid, it->outside(), colour, cell_part, cell_colour);
 		    }
 		}
-		if (visit_nb) {
-		    NbIter cur_cp = cur;
-		    v_stack.push(std::make_pair(index, std::make_pair(++cur, end)));
-		    index = ix.index(*(cur_cp->outside()));
-		    cur = cur_cp->outside()->ileafbegin();
-		    end = cur_cp->outside()->ileafend();
-		    cell_colour[index] = colour;
-		} else {
-		    ++cur;
+	    }
+	}
+
+
+	void colourMyComponent(const CpGrid& grid,
+			       const CpGrid::Codim<0>::EntityPointer& c,
+			       const int colour,
+			       const std::vector<int>& cell_part,
+			       std::vector<int>& cell_colour)
+	{
+	    typedef CpGrid::LeafIntersectionIterator NbIter;
+	    typedef std::pair<int, std::pair<NbIter, NbIter> > VertexInfo;
+	    std::stack<VertexInfo> v_stack;
+	    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	    int index = ix.index(*c);
+	    cell_colour[index] = colour;
+	    NbIter cur = c->ileafbegin();
+	    NbIter end = c->ileafend();
+	    v_stack.push(std::make_pair(index, std::make_pair(cur, end)));
+	    while (!v_stack.empty()) {
+		index = v_stack.top().first;
+		cur = v_stack.top().second.first;
+		end = v_stack.top().second.second;
+		v_stack.pop();
+		while (cur != end) {
+		    bool visit_nb = false;
+		    if (cur->neighbor()) {
+			int nb_index = ix.index(*(cur->outside()));
+			if (cell_part[index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
+			    visit_nb = true;
+			}
+		    }
+		    if (visit_nb) {
+			NbIter cur_cp = cur;
+			v_stack.push(std::make_pair(index, std::make_pair(++cur, end)));
+			index = ix.index(*(cur_cp->outside()));
+			cur = cur_cp->outside()->ileafbegin();
+			end = cur_cp->outside()->ileafend();
+			cell_colour[index] = colour;
+		    } else {
+			++cur;
+		    }
 		}
 	    }
 	}
-    }
 
 
-    void ensureConnectedPartitions(const CpGrid& grid, int& num_part, std::vector<int>& cell_part)
-    {
-	std::vector<int> cell_colour(cell_part.size(), -1);
-        std::vector<int> partition_used(num_part, 0);
-        int max_part = num_part;
-	const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-	for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
-	    int index = ix.index(*it);
-	    if (cell_colour[index] == -1) {
-		int part = cell_part[index];
-		int current_colour = part;
-                if (partition_used[part]) {
-                    current_colour = max_part++;
-                } else {
-                    partition_used[part] = true;
-                }
-		colourMyComponent(grid, it, current_colour, cell_part, cell_colour);
+	void ensureConnectedPartitions(const CpGrid& grid,
+				       int& num_part,
+				       std::vector<int>& cell_part,
+				       bool recursive = false)
+	{
+	    std::vector<int> cell_colour(cell_part.size(), -1);
+	    std::vector<int> partition_used(num_part, 0);
+	    int max_part = num_part;
+	    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+	    for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
+		int index = ix.index(*it);
+		if (cell_colour[index] == -1) {
+		    int part = cell_part[index];
+		    int current_colour = part;
+		    if (partition_used[part]) {
+			current_colour = max_part++;
+		    } else {
+			partition_used[part] = true;
+		    }
+		    if (recursive) {
+			colourMyComponentRecursive(grid, it, current_colour, cell_part, cell_colour);
+		    } else {
+			colourMyComponent(grid, it, current_colour, cell_part, cell_colour);
+		    }
+		}
+	    }
+	    if (max_part != num_part) {
+		num_part = max_part;
+		cell_part.swap(cell_colour);
 	    }
 	}
-	if (max_part != num_part) {
-	    num_part = max_part;
-	    cell_part.swap(cell_colour);
-	}
-    }
+
+    } // anon namespace
 
 
-    void partition(const CpGrid& grid, const coord_t& initial_split, int& num_part, std::vector<int>& cell_part)
+    void partition(const CpGrid& grid,
+		   const coord_t& initial_split,
+		   int& num_part,
+		   std::vector<int>& cell_part,
+		   bool recursive)
     {
 	// Checking that the initial split makes sense (that there may be at least one cell
 	// in each expected partition).
@@ -209,7 +226,7 @@ namespace Dune
 	cell_part.swap(my_part);
 
 	// Check the connectivity, split.
-	ensureConnectedPartitions(grid, num_part, cell_part);
+	ensureConnectedPartitions(grid, num_part, cell_part, recursive);
     }
 
 } // namespace Dune
