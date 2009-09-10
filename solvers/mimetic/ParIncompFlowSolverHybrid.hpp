@@ -431,11 +431,11 @@ namespace Dune {
 
     public:
 
-	/// @brief Default constructor.
-	ParIncompFlowSolverHybrid()
-	{
-	    clear();
-	}
+        /// @brief Default constructor.
+        ParIncompFlowSolverHybrid()
+        {
+            clear();
+        }
 
 
         /// @brief
@@ -461,15 +461,15 @@ namespace Dune {
         void init(const GridInterface&      g,
                   const ReservoirInterface& r,
                   const BCInterface&        bc,
-		  const std::vector<int>&   partition)
+                  const std::vector<int>&   partition)
         {
-	    clock_.start();
+            clock_.start();
             clear();
 
             if (g.numberOfCells() > 0) {
                 initSystemStructure(g, bc, partition);
                 computeInnerProducts(r);
-		printElapsedTime("computeInnerProducts()");
+                printElapsedTime("computeInnerProducts()");
             }
         }
 
@@ -484,7 +484,7 @@ namespace Dune {
         void clear()
         {
             pgrid_                  =  0;
-	    ppartition_             =  0;
+            ppartition_             =  0;
             max_ncf_                = -1;
             num_internal_faces_     =  0;
             total_num_faces_        =  0;
@@ -492,7 +492,7 @@ namespace Dune {
             do_regularization_      = true; // Assume pure Neumann by default.
 
             bdry_id_map_.clear();
-	    ppartner_dof_.clear();
+            ppartner_dof_.clear();
 
             std::vector<Scalar>().swap(L_);
             std::vector<Scalar>().swap(g_);
@@ -522,18 +522,18 @@ namespace Dune {
         ///    inspected in @code init() @endcode.
         void initSystemStructure(const GridInterface& g,
                                  const BCInterface&   bc,
-				 const std::vector<int>& partition)
+                                 const std::vector<int>& partition)
         {
             ASSERT2 (cleared_state_,
                      "You must call clear() prior to initSystemStructure()");
             ASSERT  (topologyIsSane(g));
 
             enumerateDof(g, bc, partition);
-	    printElapsedTime("enumerateDof()");
+            printElapsedTime("enumerateDof()");
             allocateConnections(bc);
-	    printElapsedTime("allocateConnections()");
+            printElapsedTime("allocateConnections()");
             setConnections(bc);
-	    printElapsedTime("setConnections()");
+            printElapsedTime("setConnections()");
         }
 
 
@@ -630,6 +630,12 @@ namespace Dune {
         ///    The iteration process is terminated when the norm of
         ///    the linear system residual is less than @code
         ///    residual_tolerance @endcode times the initial residual.
+        ///
+        /// @param [in] linsolver_verbosity
+        ///    Level of diagnostic output from linear system solver
+        ///    output.  Semantics and possible values strongly tied to
+        ///    the specifics of the currently employed linear system
+        ///    solver software.
         void solve(const ReservoirInterface&  r  ,
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
@@ -639,7 +645,7 @@ namespace Dune {
                    int linsolver_verbosity = 1)
         {
             assembleDynamic(r, sat, bc, src, grav);
-	    printElapsedTime("assembleDynamic()");
+            printElapsedTime("assembleDynamic()");
 
             // printSystem("linsys_mimetic");
 #if 0
@@ -647,9 +653,9 @@ namespace Dune {
 #else
             solveLinearSystemAMG(residual_tolerance, linsolver_verbosity);
 #endif
-	    printElapsedTime("linear solver");
+            printElapsedTime("linear solver");
             computePressureAndFluxes(r, sat);
-	    printElapsedTime("computePressureAndFluxes()");
+            printElapsedTime("computePressureAndFluxes()");
         }
 
 
@@ -718,11 +724,11 @@ namespace Dune {
 
 
         //template<typename charT, class traits>
-	void printElapsedTime(const std::string& postfix = "")//, std::basic_ostream<charT,traits>& os = std::cout)
-	{
-	    //os << prefix << "   Time elapsed: " << clock_.secsSinceLast() << std::endl;
-	    std::cout << "Time elapsed: " << clock_.secsSinceLast() << "  [in " << postfix << "]" << std::endl;
-	}
+        void printElapsedTime(const std::string& postfix = "")//, std::basic_ostream<charT,traits>& os = std::cout)
+        {
+            //os << prefix << "   Time elapsed: " << clock_.secsSinceLast() << std::endl;
+            std::cout << "Time elapsed: " << clock_.secsSinceLast() << "  [in " << postfix << "]" << std::endl;
+        }
 
         /// @brief
         ///    Output the current (static) inner products.  This is
@@ -791,11 +797,11 @@ namespace Dune {
         typedef BdryIdMapType::const_iterator      BdryIdMapIterator;
 
         const GridInterface* pgrid_;
-	const std::vector<int>* ppartition_;
+        const std::vector<int>* ppartition_;
         BdryIdMapType        bdry_id_map_;
         std::vector<int>     ppartner_dof_;
 
-	time::StopWatch clock_;
+        time::StopWatch clock_;
 
         // ----------------------------------------------------------------
         bool cleared_state_;
@@ -825,21 +831,21 @@ namespace Dune {
 
         // ----------------------------------------------------------------
         void enumerateDof(const GridInterface& g,
-			  const BCInterface& bc,
-			  const std::vector<int>& partition)
+                          const BCInterface& bc,
+                          const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
             enumerateGridDof(g, partition);
             enumerateBCDof(g, bc, partition);
 
             pgrid_ = &g;
-	    ppartition_ = &partition;
+            ppartition_ = &partition;
             cleared_state_ = false;
         }
 
         // ----------------------------------------------------------------
         void enumerateGridDof(const GridInterface& g,
-			      const std::vector<int>& partition)
+                              const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
@@ -961,8 +967,8 @@ namespace Dune {
 
         // ----------------------------------------------------------------
         void enumerateBCDof(const GridInterface& g,
-			    const BCInterface& bc,
-			    const std::vector<int>& partition)
+                            const BCInterface& bc,
+                            const std::vector<int>& partition)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
@@ -1328,9 +1334,23 @@ namespace Dune {
         }
 
 
-
-        // ----------------------------------------------------------------
-        void solveLinearSystemAMG(double residual_tolerance, int verbosity_level)
+        /// @brief
+        ///    Solve assemble system of linear equations @f$S\pi=r@f$
+        ///    to recover interface/contact pressures, @f$\pi@f$.
+        ///
+        /// @param [in] residual_tolerance
+        ///    Control parameter for iterative linear solver software.
+        ///    The iteration process is terminated when the norm of
+        ///    the linear system residual is less than @code
+        ///    residual_tolerance @endcode times the initial residual.
+        ///
+        /// @param [in] linsolver_verbosity
+        ///    Level of diagnostic output from linear system solver
+        ///    output.  Semantics and possible values strongly tied to
+        ///    the specifics of the ISTL PaAMG preconditioner and
+        ///    CGSolver software.
+        void solveLinearSystemAMG(double residual_tolerance,
+                                  int verbosity_level)
         // ----------------------------------------------------------------
         {
             // Adapted from upscaling.cc by Arne Rekdal, 2009
@@ -1389,7 +1409,18 @@ namespace Dune {
 
 
 
-        // ----------------------------------------------------------------
+        /// @brief
+        ///    Recover cell pressure and out-fluxes from
+        ///    interface/contact pressure values.
+        ///
+        /// @param [in] r
+        ///    The reservoir properties of each grid cell.
+        ///
+        /// @param [in] sat
+        ///    Saturation of primary phase.  One scalar value for each
+        ///    grid cell.  This parameter currently limits @code
+        ///    IncompFlowSolverHybrid @endcode to two-phase flow
+        ///    problems.
         void computePressureAndFluxes(const ReservoirInterface&  r  ,
                                       const std::vector<double>& sat)
         // ----------------------------------------------------------------
@@ -1523,33 +1554,33 @@ namespace Dune {
 
 
 
-	/// @brief
-	///    Assemble local system contributions @f$S\pi = r@f$ of
-	///    single cell into global system.
-	///
+        /// @brief
+        ///    Assemble local system contributions @f$S\pi = r@f$ of
+        ///    single cell into global system.
+        ///
         /// @param [in] S
-	///    Coefficient matrix contribution of single cell.
-	///
-	/// @param [in] rhs
-	///    System right hand side contribution of single cell.
-	///
-	/// @param [in] facetype
-	///    Indicator of which kind of equation to assemble for any
-	///    given interface/contact {Internal, Neumann, Dirichlet
-	///    or Periodic}.
-	///
-	/// @param [in] condval
-	///    Numeric value of any external condition (e.g.,
-	///    prescribed face pressure for Dirichlet conditions,
-	///    prescribed fluxes for Neumann conditions, or prescribed
-	///    pressure drops for periodic conditions).
-	///
-	/// @param [in] ppartner
-	///    A given DOF's periodic partner DOF.  Only examined in
-	///    the case of periodic boundary conditions.
-	///
+        ///    Coefficient matrix contribution of single cell.
+        ///
+        /// @param [in] rhs
+        ///    System right hand side contribution of single cell.
+        ///
+        /// @param [in] facetype
+        ///    Indicator of which kind of equation to assemble for any
+        ///    given interface/contact {Internal, Neumann, Dirichlet
+        ///    or Periodic}.
+        ///
+        /// @param [in] condval
+        ///    Numeric value of any external condition (e.g.,
+        ///    prescribed face pressure for Dirichlet conditions,
+        ///    prescribed fluxes for Neumann conditions, or prescribed
+        ///    pressure drops for periodic conditions).
+        ///
+        /// @param [in] ppartner
+        ///    A given DOF's periodic partner DOF.  Only examined in
+        ///    the case of periodic boundary conditions.
+        ///
         /// @param [in] l2g
-	///    Local to global face map for a single cell.
+        ///    Local to global face map for a single cell.
         template<class L2G>
         void addCellContrib(const SharedFortranMatrix&   S       ,
                             const std::vector<Scalar>&   rhs     ,
