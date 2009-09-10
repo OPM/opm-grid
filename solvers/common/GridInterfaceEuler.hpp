@@ -44,6 +44,7 @@
 
 #include <dune/common/fvector.hh>
 #include <dune/common/SparseTable.hpp>
+#include <dune/common/StopWatch.hpp>
 #include <dune/grid/common/referenceelements.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
@@ -350,11 +351,11 @@ namespace Dune
 	enum { Dimension = DuneGrid::dimension };
 
 	GridInterfaceEuler()
-	    : pgrid_(0), num_faces_(0)
+	    : pgrid_(0), num_faces_(0), max_faces_per_cell_(0)
 	{
 	}
 	explicit GridInterfaceEuler(const DuneGrid& grid, bool build_facemap = false)
-	    : pgrid_(&grid), pmapper_(new Mapper(grid)), num_faces_(0)
+	    : pgrid_(&grid), pmapper_(new Mapper(grid)), num_faces_(0), max_faces_per_cell_(0)
 	{
 	    if (build_facemap) {
 		buildFaceIndices();
@@ -385,6 +386,11 @@ namespace Dune
 	    ASSERT(num_faces_ != 0);
             return num_faces_;
         }
+	int maxFacesPerCell() const
+	{
+	    ASSERT(max_faces_per_cell_ != 0);
+	    return max_faces_per_cell_;
+	}
 	const DuneGrid& grid() const
 	{
 	    ASSERT(pgrid_);
@@ -403,42 +409,42 @@ namespace Dune
 	    ASSERT(num_faces_ != 0);
 	    return face_indices_[cell_index][local_face_index];
 	}
+	typedef SparseTable<int>::row_type Indices;
+	Indices faceIndices(int cell_index) const
+	{
+	    ASSERT(num_faces_ != 0);
+	    return face_indices_[cell_index];
+	}
     private:
 	const DuneGrid* pgrid_;
         boost::scoped_ptr<Mapper> pmapper_;
 	int num_faces_;
+	int max_faces_per_cell_;
 	SparseTable<int> face_indices_;
 
 	void buildFaceIndices()
 	{
 #ifdef VERBOSE
 	    std::cout << "Building unique face indices... " << std::flush;
+	    time::StopWatch clock;
+	    clock.start();
 #endif
             typedef CellIterator CI;
             typedef typename CI::FaceIterator FI;
-	    // First, we find the number of faces
-	    // for each cell.
-	    std::vector<int> num_faces(numberOfCells());
-	    for (CI c = cellbegin(); c != cellend(); ++c) {
-		int face_count = 0;
-		for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-		    ++face_count;
-		}
-		num_faces[c->index()] = face_count;
-	    }
-	    std::vector<int> cumul_num_faces(numberOfCells() + 1);
-	    cumul_num_faces[0] = 0;
-	    std::partial_sum(num_faces.begin(), num_faces.end(), cumul_num_faces.begin() + 1);
 
-	    // Then, we build the actual cell to face mapping in two passes.
-	    // [code mostly lifted from IncompFlowSolverHybrid::enumerateGridDof()]
+	    // We build the actual cell to face mapping in two passes.
+	    // [code mostly lifted from IncompFlowSolverHybrid::enumerateGridDof(),
+	    //  but with a twist: This code builds a mapping from cells in index
+	    //  order to unique face numbers, while the mapping built in the
+	    //  enumerateGridDof() method was ordered by cell iterator order]
+
+            // Allocate and reserve structures.
             const int nc = numberOfCells();
-            std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
-            std::vector<int> num_cf         ;   num_cf.reserve(nc);
-            std::vector<int> faces          ;
-
-            // Allocate cell structures.
             std::vector<int> cell(nc, -1);
+            std::vector<int> num_faces(nc); // In index order.
+            std::vector<int> fpos;     fpos  .reserve(nc + 1);
+            std::vector<int> num_cf;   num_cf.reserve(nc); // In iterator order.
+            std::vector<int> faces ;
 
             // First pass: enumerate internal faces.
             int cellno = 0; fpos.push_back(0);
@@ -461,12 +467,19 @@ namespace Dune
                     }
                     ++ncf;
                 }
+		num_faces[c0] = ncf;
                 fpos.push_back(int(faces.size()));
                 max_ncf  = std::max(max_ncf, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
             }
             ASSERT(cellno == nc);
+
+	    // Build cumulative face sizes enabling direct insertion of
+	    // face indices into cfdata later.
+	    std::vector<int> cumul_num_faces(numberOfCells() + 1);
+	    cumul_num_faces[0] = 0;
+	    std::partial_sum(num_faces.begin(), num_faces.end(), cumul_num_faces.begin() + 1);
 
             // Avoid (most) allocation(s) inside 'c' loop.
             std::vector<int>    l2g;
@@ -513,11 +526,14 @@ namespace Dune
 		std::copy(l2g.begin(), l2g.end(), cfdata.begin() + cumul_num_faces[c0]);
             }
 	    num_faces_ = total_num_faces;
+	    max_faces_per_cell_ = max_ncf;
             face_indices_.assign(cfdata.begin(), cfdata.end(),
 				 num_faces.begin(), num_faces.end());
 
 #ifdef VERBOSE
-	    std::cout << "done." << std::endl;
+	    clock.stop();
+	    double elapsed = clock.secsSinceStart();
+	    std::cout << "done.     Time elapsed: " << elapsed << std::endl;
 #endif
 	}
 
