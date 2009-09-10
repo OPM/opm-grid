@@ -33,6 +33,8 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#define VERBOSE
+
 #include "config.h"
 #include "../ParIncompFlowSolverHybrid.hpp"
 #include <dune/common/mpihelper.hh>
