@@ -75,6 +75,9 @@ BOOST_AUTO_TEST_CASE(construction_and_queries)
     BOOST_CHECK(st2[4].size() == rowsizes[4]);
     const SparseTable<int> st2_again(elem, elem + num_elem, rowsizes, rowsizes + num_rows);
     BOOST_CHECK(st2 == st2_again);
+    SparseTable<int> st2_byassign;
+    st2_byassign.assign(elem, elem + num_elem, rowsizes, rowsizes + num_rows);
+    BOOST_CHECK(st2 == st2_byassign);
     const int last_row_size = rowsizes[num_rows - 1];
     SparseTable<int> st2_append(elem, elem + num_elem - last_row_size, rowsizes, rowsizes + num_rows - 1);
     BOOST_CHECK_EQUAL(st2_append.dataSize(), num_elem - last_row_size);

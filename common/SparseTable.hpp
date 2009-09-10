@@ -68,24 +68,21 @@ namespace Dune
         SparseTable(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
             : data_(data_beg, data_end)
         {
-            // Since we do not store the row sizes, but cumulative row sizes,
-            // we have to create the cumulative ones.
-            int num_rows = rowsize_end - rowsize_beg;
-            if (num_rows < 1) {
-                THROW("Must have at least one row. Got " << num_rows << " rows.");
-            }
-#ifndef NDEBUG
-            if (*std::min_element(rowsize_beg, rowsize_end) < 0) {
-                THROW("All row sizes must be at least 0.");
-            }
-#endif
-            row_start_.resize(num_rows + 1);
-            row_start_[0] = 0;
-            std::partial_sum(rowsize_beg, rowsize_end, row_start_.begin() + 1);
-            // Check that data_ and row_start_ match.
-            if (int(data_.size()) != row_start_.back()) {
-                THROW("End of row start indices different from data size.");
-            }
+	    setRowStartsFromSizes(rowsize_beg, rowsize_end);
+        }
+
+
+        /// Sets the table to contain the given data, organized into
+	/// rows as indicated by the given row sizes.
+        /// \param data_beg The start of the table data.
+        /// \param data_end One-beyond-end of the table data.
+        /// \param rowsize_beg The start of the row length data.
+        /// \param rowsize_end One beyond the end of the row length data.
+        template <typename DataIter, typename IntegerIter>
+        void assign(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
+        {
+	    data_.assign(data_beg, data_end);
+	    setRowStartsFromSizes(rowsize_beg, rowsize_end);
         }
 
 
@@ -194,6 +191,30 @@ namespace Dune
         // Like in the compressed row sparse matrix format,
         // row_start_.size() is equal to the number of rows + 1.
         std::vector<int> row_start_;
+
+	template <class IntegerIter>
+	void setRowStartsFromSizes(IntegerIter rowsize_beg, IntegerIter rowsize_end)
+	{
+            // Since we do not store the row sizes, but cumulative row sizes,
+            // we have to create the cumulative ones.
+            int num_rows = rowsize_end - rowsize_beg;
+            if (num_rows < 1) {
+                THROW("Must have at least one row. Got " << num_rows << " rows.");
+            }
+#ifndef NDEBUG
+            if (*std::min_element(rowsize_beg, rowsize_end) < 0) {
+                THROW("All row sizes must be at least 0.");
+            }
+#endif
+            row_start_.resize(num_rows + 1);
+            row_start_[0] = 0;
+            std::partial_sum(rowsize_beg, rowsize_end, row_start_.begin() + 1);
+            // Check that data_ and row_start_ match.
+            if (int(data_.size()) != row_start_.back()) {
+                THROW("End of row start indices different from data size.");
+            }
+
+	}
     };
 
 } // namespace Dune
