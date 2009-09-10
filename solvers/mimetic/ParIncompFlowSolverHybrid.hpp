@@ -852,9 +852,9 @@ namespace Dune {
             typedef typename CI           ::FaceIterator FI;
 
             const int nc = g.numberOfCells();
-            std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
+            // std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
             std::vector<int> num_cf         ;   num_cf.reserve(nc);
-            std::vector<int> faces          ;
+            // std::vector<int> faces          ;
 
             // Allocate cell structures.
             std::vector<int>(nc, -1).swap(flowSolution_.cellno_);
@@ -862,7 +862,7 @@ namespace Dune {
             std::vector<int>& cell = flowSolution_.cellno_;
 
             // First pass: enumerate internal faces.
-            int cellno = 0; fpos.push_back(0);
+            int cellno = 0; // fpos.push_back(0);
             int tot_ncf = 0, tot_ncf2 = 0;
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++cellno) {
                 const int c0 = c->index();
@@ -872,28 +872,17 @@ namespace Dune {
 
                 num_cf.push_back(0);
                 int& ncf = num_cf.back();
+		ncf = g.faceIndices(c0).size();
 
-                for (FI f = c->facebegin(); f != c-> faceend(); ++f) {
-                    if (!f->boundary()) {
-                        const int c1 = f->neighbourCellIndex();
-                        ASSERT((0 <= c1) && (c1 < nc) && (c1 != c0));
-
-                        if (cell[c1] == -1) {
-                            // Previously undiscovered internal face.
-                            faces.push_back(c1);
-                        }
-                    }
-                    ++ncf;
-                }
-
-                fpos.push_back(int(faces.size()));
+                // fpos.push_back(int(faces.size()));
                 max_ncf_  = std::max(max_ncf_, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
             }
             ASSERT(cellno == nc);
 
-            total_num_faces_ = num_internal_faces_ = int(faces.size());
+            // total_num_faces_ = num_internal_faces_ = int(faces.size());
+	    total_num_faces_ = g.numberOfFaces();
 
             f_   .reserve(nc, tot_ncf );
             F_   .reserve(nc, tot_ncf );
@@ -905,7 +894,7 @@ namespace Dune {
             SparseTable<int>& cf = flowSolution_.cellFaces_;
 
             // Avoid (most) allocation(s) inside 'c' loop.
-            std::vector<int>    l2g;        l2g       .reserve(max_ncf_);
+            // std::vector<int>    l2g;        l2g       .reserve(max_ncf_);
             std::vector<Scalar> F_alloc;    F_alloc   .reserve(max_ncf_);
             std::vector<Scalar> Binv_alloc; Binv_alloc.reserve(max_ncf_ * max_ncf_);
 
@@ -918,43 +907,16 @@ namespace Dune {
                         (0 <= cell[c0]) && (cell[c0] < nc));
 
                 const int ncf = num_cf[cell[c0]];
-                l2g       .resize(ncf      ,        0   );
+                // l2g       .resize(ncf      ,        0   );
                 F_alloc   .resize(ncf      , Scalar(0.0));
                 Binv_alloc.resize(ncf * ncf, Scalar(0.0));
 
-                for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-                    if (f->boundary()) {
-                        // External, not counted before.  Add new face...
-                        l2g[f->localIndex()] = total_num_faces_++;
-                    } else {
-                        // Internal face.  Need to determine during
-                        // traversal of which cell we discovered this
-                        // face first, and extract the face number
-                        // from the 'faces' table range of that cell.
 
-                        // Note: std::find() below is potentially
-                        // *VERY* expensive (e.g., large number of
-                        // seeks in moderately sized data in case of
-                        // faulted cells).
-
-                        const int c1 = f->neighbourCellIndex();
-                        ASSERT ((0 <=      c1 ) && (     c1  < nc) &&
-                                (0 <= cell[c1]) && (cell[c1] < nc));
-
-                        int t = c0, seek = c1;
-                        if (cell[seek] < cell[t])
-                            std::swap(t, seek);
-
-                        int s = fpos[cell[t]], e = fpos[cell[t] + 1];
-
-                        VII p = std::find(faces.begin() + s, faces.begin() + e, seek);
-                        ASSERT(p != faces.begin() + e);
-
-                        l2g[f->localIndex()] = p - faces.begin();
-                    }
-                }
-
-                cf   .appendRow(l2g       .begin(), l2g       .end());
+//                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+// 		    l2g[f->localIndex()] = f->index();
+// 		}
+//                 cf   .appendRow(l2g       .begin(), l2g       .end());
+		cf.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
                 F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
                 f_   .appendRow(F_alloc   .begin(), F_alloc   .end());
                 Binv_.appendRow(Binv_alloc.begin(), Binv_alloc.end());
