@@ -486,7 +486,6 @@ namespace Dune {
             pgrid_                  =  0;
             ppartition_             =  0;
             max_ncf_                = -1;
-            num_internal_faces_     =  0;
             total_num_faces_        =  0;
             matrix_structure_valid_ = false;
             do_regularization_      = true; // Assume pure Neumann by default.
@@ -702,7 +701,6 @@ namespace Dune {
         {
             os << "IncompFlowSolverHybrid<>:\n"
                << "\tMaximum number of cell faces = " << max_ncf_ << '\n'
-               << "\tNumber of internal faces     = " << num_internal_faces_ << '\n'
                << "\tTotal number of faces        = " << total_num_faces_ << '\n';
 
             const std::vector<int>& cell = flowSolution_.cellno_;
@@ -806,7 +804,6 @@ namespace Dune {
         // ----------------------------------------------------------------
         bool cleared_state_;
         int  max_ncf_;
-        int  num_internal_faces_;
         int  total_num_faces_;
 
         // ----------------------------------------------------------------
@@ -851,78 +848,48 @@ namespace Dune {
             typedef typename GridInterface::CellIterator CI;
             typedef typename CI           ::FaceIterator FI;
 
+            // Initialize cell index -> iterator order mapping.
             const int nc = g.numberOfCells();
-            // std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
-            std::vector<int> num_cf         ;   num_cf.reserve(nc);
-            // std::vector<int> faces          ;
-
-            // Allocate cell structures.
             std::vector<int>(nc, -1).swap(flowSolution_.cellno_);
-
             std::vector<int>& cell = flowSolution_.cellno_;
 
-            // First pass: enumerate internal faces.
-            int cellno = 0; // fpos.push_back(0);
-            int tot_ncf = 0, tot_ncf2 = 0;
+            // First pass: count things.
+            int cellno = 0;
+            int tot_ncf = 0;  // Number of half-faces. Or sum of neighbourhood sizes.
+	    int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
             for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++cellno) {
                 const int c0 = c->index();
                 ASSERT((0 <= c0) && (c0 < nc) && (cell[c0] == -1));
-
                 cell[c0] = cellno;
-
-                num_cf.push_back(0);
-                int& ncf = num_cf.back();
-		ncf = g.faceIndices(c0).size();
-
-                // fpos.push_back(int(faces.size()));
+		int ncf = g.faceIndices(c0).size();
                 max_ncf_  = std::max(max_ncf_, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
             }
             ASSERT(cellno == nc);
 
-            // total_num_faces_ = num_internal_faces_ = int(faces.size());
 	    total_num_faces_ = g.numberOfFaces();
-
-            f_   .reserve(nc, tot_ncf );
-            F_   .reserve(nc, tot_ncf );
-            Binv_.reserve(nc, tot_ncf2);
 
             flowSolution_.cellFaces_.reserve(nc, tot_ncf);
             flowSolution_.outflux_  .reserve(nc, tot_ncf);
+            F_   .reserve(nc, tot_ncf );
+            f_   .reserve(nc, tot_ncf );
+            Binv_.reserve(nc, tot_ncf2);
 
-            SparseTable<int>& cf = flowSolution_.cellFaces_;
-
-            // Avoid (most) allocation(s) inside 'c' loop.
-            // std::vector<int>    l2g;        l2g       .reserve(max_ncf_);
-            std::vector<Scalar> F_alloc;    F_alloc   .reserve(max_ncf_);
-            std::vector<Scalar> Binv_alloc; Binv_alloc.reserve(max_ncf_ * max_ncf_);
-
-            // Second pass: build cell-to-face mapping, including boundary.
+            // Second pass: build cell-to-face mapping and the structures of
+	    // the Binv_, F_, f_ and outflux objects.
             typedef std::vector<int>::iterator VII;
+            std::vector<Scalar> zeroes(max_ncf_*max_ncf_, 0.0);
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-
                 ASSERT ((0 <=      c0 ) && (     c0  < nc) &&
                         (0 <= cell[c0]) && (cell[c0] < nc));
-
-                const int ncf = num_cf[cell[c0]];
-                // l2g       .resize(ncf      ,        0   );
-                F_alloc   .resize(ncf      , Scalar(0.0));
-                Binv_alloc.resize(ncf * ncf, Scalar(0.0));
-
-
-//                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-// 		    l2g[f->localIndex()] = f->index();
-// 		}
-//                 cf   .appendRow(l2g       .begin(), l2g       .end());
-		cf.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
-                F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
-                f_   .appendRow(F_alloc   .begin(), F_alloc   .end());
-                Binv_.appendRow(Binv_alloc.begin(), Binv_alloc.end());
-
-                flowSolution_.outflux_
-                    .appendRow (F_alloc   .begin(), F_alloc   .end());
+                const int ncf = g.faceIndices(c0).size();
+		flowSolution_.cellFaces_.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
+                flowSolution_.outflux_  .appendRow(zeroes.begin(), zeroes.begin() + ncf);
+                F_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
+                f_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
+                Binv_                   .appendRow(zeroes.begin(), zeroes.begin() + ncf*ncf);
             }
         }
 
