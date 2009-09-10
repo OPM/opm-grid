@@ -69,7 +69,7 @@ void test_flowsolver(const Grid& grid, const RI& r, const std::vector<int>& part
     typedef Dune::BoundaryConditions<true, false>   FBC;
     typedef Dune::ParIncompFlowSolverHybrid<GI, RI, FBC, Dune::MimeticIPEvaluator> FlowSolver;
 
-    GI g(grid);
+    GI g(grid, true);
     FlowSolver solver;
 
     typedef Dune::FlowBC BC;
