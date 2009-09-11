@@ -97,7 +97,7 @@ namespace Dune
 	    typedef GIE::Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::EntityPointer> Cell;
 	    /// @brief
 	    /// @todo Doc me!
-	    enum { BoundaryMarkerIndex = -1, LocalEndIndex = INT_MAX };
+	    enum { BoundaryMarkerIndex = -999, LocalEndIndex = INT_MAX };
 
 	    /// @brief
 	    /// @todo Doc me!

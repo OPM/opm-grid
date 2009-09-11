@@ -48,29 +48,38 @@
 
 
 template <class Interface>
-void test_interface(const Interface& g)
+void test_interface(const Interface& g, bool verbose = true)
 {
     std::cout << "Called test_interface()" << std::endl;
     typename Interface::CellIterator c = g.cellbegin();
     int count = 0;
     for (; c != g.cellend(); ++c, ++count) {
-	std::cout << "\nCell number: " << count
-		  << "\nCell index : " << c->index()
-		  << "\n    Cell volume   = " << c->volume()
-		  << "\n    Cell centroid = " << c->centroid() << '\n';
-
+	if (verbose) {
+	    std::cout << "\nCell number: " << count
+		      << "\nCell index : " << c->index()
+		      << "\n    Cell volume   = " << c->volume()
+		      << "\n    Cell centroid = " << c->centroid() << '\n';
+	} else {
+	    std::cout << "\nCell index: " << c->index()
+		      << "  Cell centroid: " << c->centroid()
+		      << "\n   Neighbour cells:";
+	}
 	typename Interface::CellIterator::FaceIterator f = c->facebegin();
         int fcount = 0;
 	for (; f != c->faceend(); ++f, ++fcount) {
-	    std::cout << "        Face number: " << fcount
-		      << "\n            Local index    = " << f->localIndex()
-		      << "\n            Boundary       = " << f->boundary()
-		      << "\n            Boundary Id    = " << f->boundaryId()
-		      << "\n            My cell        = " << f->cellIndex()
-		      << "\n            Neighbour cell = " << f->neighbourCellIndex()
-		      << "\n            Face area      = " << f->area()
-		      << "\n            Face centroid  = " << f->centroid()
-		      << "\n            Face normal    = " << f->normal() << '\n';
+	    if (verbose) {
+		std::cout << "        Face number: " << fcount
+			  << "\n            Local index    = " << f->localIndex()
+			  << "\n            Boundary       = " << f->boundary()
+			  << "\n            Boundary Id    = " << f->boundaryId()
+			  << "\n            My cell        = " << f->cellIndex()
+			  << "\n            Neighbour cell = " << f->neighbourCellIndex()
+			  << "\n            Face area      = " << f->area()
+			  << "\n            Face centroid  = " << f->centroid()
+			  << "\n            Face normal    = " << f->normal() << '\n';
+	    } else {
+		std::cout << ' ' << f->neighbourCellIndex();
+	    }
 	    typename Interface::CellIterator::FaceIterator::Cell this_c = f->cell();
 	}
 	std::cout << "    Total face count for cell: " << fcount << '\n';
@@ -85,15 +94,15 @@ void check_yasp(bool p0 = false) {
     typedef Dune::FieldVector<double,dim> fTupel;
     typedef Dune::FieldVector<bool,dim> bTupel;
 
-    std::cout << std::endl << "YaspGrid<" << dim << "," << refinement << ">";
+    std::cout << std::endl << "YaspGrid, dim = " << dim << ", refinement = " << refinement;
     if (p0) std::cout << " periodic\n";
     std::cout << std::endl << std::endl;
 
     fTupel Len; Len = 1.0;
-    iTupel s; s = 1;
+    iTupel s; s = 2;
     bTupel p; p = false;
     p[0] = p0;
-    int overlap = 1;
+    int overlap = 0;
 
 #if HAVE_MPI
     Dune::YaspGrid<dim> grid(MPI_COMM_WORLD,Len,s,p,overlap);
@@ -107,9 +116,9 @@ void check_yasp(bool p0 = false) {
     // Test the interface
     Dune::GridInterfaceEuler<Dune::YaspGrid<dim> > gie(grid);
 #if HAVE_MPI
-    if (rank == 0) {
-	test_interface(gie);
-    }
+    //    if (rank == 0) {
+    test_interface(gie, false);
+    //    }
 #else
     test_interface(gie);
 #endif
@@ -144,8 +153,8 @@ int main (int argc , char **argv) {
 	int rank;
 	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
 #endif
-	//check_yasp<1,1>();
-	check_yasp<2,1>();
+	check_yasp<1,1>();
+	//check_yasp<2,1>();
 
 	//check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
 	//check_cpgrid<0>();
