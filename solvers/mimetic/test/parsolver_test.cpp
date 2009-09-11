@@ -63,7 +63,10 @@ void assign_permeability(RI& r, int nc, double k)
 
 
 template<int dim, class Grid, class RI>
-void test_flowsolver(const Grid& grid, const RI& r, const std::vector<int>& partition, bool output_is_vtk = true)
+void test_flowsolver(const Grid& grid, const RI& r,
+		     const std::vector<int>& partition,
+		     int rank,
+		     bool output_is_vtk = true)
 {
     typedef Dune::GridInterfaceEuler<Grid>          GI;
     typedef typename GI::CellIterator               CI;
@@ -81,7 +84,7 @@ void test_flowsolver(const Grid& grid, const RI& r, const std::vector<int>& part
     flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
     flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0);
 
-    solver.init(g, r, flow_bc, partition);
+    solver.init(g, r, flow_bc, partition, rank);
     // solver.printStats(std::cout);
 
     //solver.assembleStatic(g, r);
@@ -134,9 +137,9 @@ void test_flowsolver(const Grid& grid, const RI& r, const std::vector<int>& part
 int main(int argc , char ** argv)
 {
     // Initialize MPI, finalize is done automatically on exit.
-    // int mpi_rank = Dune::MPIHelper::instance(argc,argv).rank();
-    //int mpi_size = Dune::MPIHelper::instance(argc,argv).size();
-    // std::cout << "Hello from rank " << mpi_rank << std::endl;
+    int mpi_rank = Dune::MPIHelper::instance(argc,argv).rank();
+    int mpi_size = 2;//Dune::MPIHelper::instance(argc,argv).size();
+    std::cout << "Hello from rank " << mpi_rank << std::endl;
 
     Dune::CpGrid grid;
     Dune::ReservoirPropertyCapillary<3> res_prop;
@@ -146,13 +149,19 @@ int main(int argc , char ** argv)
     Dune::setupGridAndProps(param, grid, res_prop);
     assign_permeability<3>(res_prop, grid.size(0), 0.1*Dune::unit::darcy);
     // Partitioning.
-    boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
-				    param.getDefault("sy", 1),
-				    param.getDefault("sz", 1) }};
+//     boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
+// 				    param.getDefault("sy", 1),
+// 				    param.getDefault("sz", 1) }};
+    boost::array<int, 3> split = {{ 1, 1, mpi_size }};
     int num_part = 0;
     std::vector<int> partition;
     Dune::partition(grid, split, num_part, partition);
-    test_flowsolver<3>(grid, res_prop, partition);
+    if (num_part != mpi_size) {
+	std::cerr << "Right now, parsolver_test() wants as many partitions as mpi tasks.\n"
+		  << "Number of partitions: " << num_part << "   Mpi parallells: " << mpi_size << '\n';
+	return EXIT_FAILURE;
+    }
+    test_flowsolver<3>(grid, res_prop, partition, mpi_rank);
 
     return EXIT_SUCCESS;
 }
