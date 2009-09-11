@@ -51,6 +51,7 @@
 
 #include <dune/common/fvector.hh>
 #include <dune/common/fmatrix.hh>
+#include <dune/common/mpihelper.hh>
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/common/SparseTable.hpp>
 #include <dune/common/StopWatch.hpp>
@@ -461,13 +462,14 @@ namespace Dune {
         void init(const GridInterface&      g,
                   const ReservoirInterface& r,
                   const BCInterface&        bc,
-                  const std::vector<int>&   partition)
+                  const std::vector<int>&   partition,
+		  const int my_partition)
         {
             clock_.start();
             clear();
 
             if (g.numberOfCells() > 0) {
-                initSystemStructure(g, bc, partition);
+                initSystemStructure(g, bc, partition, my_partition);
                 computeInnerProducts(r);
                 printElapsedTime("computeInnerProducts()");
             }
@@ -485,8 +487,10 @@ namespace Dune {
         {
             pgrid_                  =  0;
             ppartition_             =  0;
+	    my_partition_           = -1;
             max_ncf_                = -1;
             total_num_faces_        =  0;
+            total_num_cells_        =  0;
             matrix_structure_valid_ = false;
             do_regularization_      = true; // Assume pure Neumann by default.
 
@@ -521,12 +525,14 @@ namespace Dune {
         ///    inspected in @code init() @endcode.
         void initSystemStructure(const GridInterface& g,
                                  const BCInterface&   bc,
-                                 const std::vector<int>& partition)
+                                 const std::vector<int>& partition,
+				 const int my_partition)
         {
             ASSERT2 (cleared_state_,
                      "You must call clear() prior to initSystemStructure()");
             ASSERT  (topologyIsSane(g));
 
+	    my_partition_ = my_partition;
             enumerateDof(g, bc, partition);
             printElapsedTime("enumerateDof()");
             allocateConnections(bc);
@@ -565,12 +571,14 @@ namespace Dune {
             IP ip(max_ncf_);
             int i = 0;
             const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
-            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c, ++i) {
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+		if ((*ppartition_)[c->index()] != my_partition_) continue;
                 const int nf = cellFaces[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
 
                 ip.evaluate(c, r.permeability(c->index()), Binv);
+		++i;
             }
         }
 
@@ -804,7 +812,9 @@ namespace Dune {
         // ----------------------------------------------------------------
         bool cleared_state_;
         int  max_ncf_;
+	int  total_num_cells_;
         int  total_num_faces_;
+	int  my_partition_;
 
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
@@ -849,48 +859,72 @@ namespace Dune {
             typedef typename CI           ::FaceIterator FI;
 
             // Initialize cell index -> iterator order mapping.
-            const int nc = g.numberOfCells();
-            std::vector<int>(nc, -1).swap(flowSolution_.cellno_);
+            const int nc_all = g.numberOfCells();
+            std::vector<int>(nc_all, -1).swap(flowSolution_.cellno_);
             std::vector<int>& cell = flowSolution_.cellno_;
 
-            // First pass: count things.
+            // First pass: count things, and build dof<->faceindex maps.
+	    std::vector<int> dof_to_faceindex;
+	    std::vector<int> faceindex_to_dof(g.numberOfFaces(), -1);
             int cellno = 0;
             int tot_ncf = 0;  // Number of half-faces. Or sum of neighbourhood sizes.
 	    int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
-            for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++cellno) {
+            for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-                ASSERT((0 <= c0) && (c0 < nc) && (cell[c0] == -1));
+		if (partition[c0] != my_partition_) continue;
+                ASSERT((0 <= c0) && (c0 < nc_all) && (cell[c0] == -1));
                 cell[c0] = cellno;
-		int ncf = g.faceIndices(c0).size();
+		const typename GridInterface::Indices& cell_faces = g.faceIndices(c0);
+		int ncf = cell_faces.size();
                 max_ncf_  = std::max(max_ncf_, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
+		for (int ll = 0; ll < ncf; ++ll) {
+		    int fi = cell_faces[ll];
+		    if (faceindex_to_dof[fi] == -1) {
+			faceindex_to_dof[fi] = dof_to_faceindex.size();
+			dof_to_faceindex.push_back(fi);
+		    } else {
+			if (dof_to_faceindex[faceindex_to_dof[fi]] != fi) {
+			    THROW("Error in creating dof <-> faceindex maps.");
+			}
+		    }
+		}
+		++cellno;
             }
-            ASSERT(cellno == nc);
+            ASSERT(cellno <= nc_all);
 
-	    total_num_faces_ = g.numberOfFaces();
+	    total_num_cells_ = cellno;
 
-            flowSolution_.cellFaces_.reserve(nc, tot_ncf);
-            flowSolution_.outflux_  .reserve(nc, tot_ncf);
-            F_   .reserve(nc, tot_ncf );
-            f_   .reserve(nc, tot_ncf );
-            Binv_.reserve(nc, tot_ncf2);
+            flowSolution_.cellFaces_.reserve(cellno, tot_ncf);
+            flowSolution_.outflux_  .reserve(cellno, tot_ncf);
+            F_   .reserve(cellno, tot_ncf );
+            f_   .reserve(cellno, tot_ncf );
+            Binv_.reserve(cellno, tot_ncf2);
 
             // Second pass: build cell-to-face mapping and the structures of
 	    // the Binv_, F_, f_ and outflux objects.
             typedef std::vector<int>::iterator VII;
             std::vector<Scalar> zeroes(max_ncf_*max_ncf_, 0.0);
+            std::vector<int> cell_dofs(max_ncf_);
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-                ASSERT ((0 <=      c0 ) && (     c0  < nc) &&
-                        (0 <= cell[c0]) && (cell[c0] < nc));
+		if (partition[c0] != my_partition_) continue;
+                ASSERT ((0 <=      c0 ) && (     c0  < nc_all) &&
+                        (0 <= cell[c0]) && (cell[c0] < total_num_cells_));
                 const int ncf = g.faceIndices(c0).size();
-		flowSolution_.cellFaces_.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
+		cell_dofs.resize(ncf);
+		for (int ll = 0; ll < ncf; ++ll) {
+		    cell_dofs[ll] = faceindex_to_dof[g.faceIndices(c0)[ll]];
+		}
+// 		flowSolution_.cellFaces_.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
+		flowSolution_.cellFaces_.appendRow(cell_dofs.begin(), cell_dofs.end());
                 flowSolution_.outflux_  .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 F_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 f_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 Binv_                   .appendRow(zeroes.begin(), zeroes.begin() + ncf*ncf);
             }
+	    total_num_faces_ = dof_to_faceindex.size();
         }
 
 
@@ -908,6 +942,7 @@ namespace Dune {
 
             bdry_id_map_.clear();
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+		if (partition[c->index()] != my_partition_) continue;
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         const int bid = f->boundaryId();
@@ -923,6 +958,7 @@ namespace Dune {
             if (!bdry_id_map_.empty()) {
                 ppartner_dof_.assign(total_num_faces_, -1);
                 for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+		    if (partition[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1018,6 +1054,7 @@ namespace Dune {
                 // At least one periodic BC.  Allocate corresponding
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+		    if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1121,6 +1158,7 @@ namespace Dune {
                 // At least one periodic BC.  Assign periodic
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+		    if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1202,6 +1240,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
+		if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
@@ -1368,6 +1407,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
+		if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];
                 const int nf = cf[c0].size();
 
