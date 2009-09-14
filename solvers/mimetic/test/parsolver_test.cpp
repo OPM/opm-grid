@@ -137,7 +137,8 @@ void test_flowsolver(const Grid& grid, const RI& r,
 int main(int argc , char ** argv)
 {
     // Initialize MPI, finalize is done automatically on exit.
-    int mpi_rank = Dune::MPIHelper::instance(argc,argv).rank();
+    Dune::MPIHelper::instance(argc,argv).rank();
+    int mpi_rank = 1;//Dune::MPIHelper::instance(argc,argv).rank();
     int mpi_size = 2;//Dune::MPIHelper::instance(argc,argv).size();
     std::cout << "Hello from rank " << mpi_rank << std::endl;
 

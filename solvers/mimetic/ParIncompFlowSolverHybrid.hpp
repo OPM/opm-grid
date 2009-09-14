@@ -60,6 +60,7 @@
 #include <dune/istl/bcrsmatrix.hh>
 #include <dune/istl/operators.hh>
 #include <dune/istl/io.hh>
+#include <dune/istl/indexset.hh>
 #include <dune/istl/overlappingschwarz.hh>
 #include <dune/istl/schwarz.hh>
 #include <dune/istl/preconditioners.hh>
@@ -434,6 +435,7 @@ namespace Dune {
 
         /// @brief Default constructor.
         ParIncompFlowSolverHybrid()
+	    : comm_(MPI_COMM_WORLD)
         {
             clear();
         }
@@ -816,6 +818,11 @@ namespace Dune {
         int  total_num_faces_;
 	int  my_partition_;
 
+	typedef int LocalId;
+	typedef int GlobalId;
+	typedef Dune::OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
+	Communication comm_;
+
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
         SparseTable<Scalar> Binv_, F_, f_;
@@ -864,8 +871,9 @@ namespace Dune {
             std::vector<int>& cell = flowSolution_.cellno_;
 
             // First pass: count things, and build dof<->faceindex maps.
-	    std::vector<int> dof_to_faceindex;
 	    std::vector<int> faceindex_to_dof(g.numberOfFaces(), -1);
+	    std::vector<int> dof_to_faceindex;
+	    std::vector<int> part_bdy;
             int cellno = 0;
             int tot_ncf = 0;  // Number of half-faces. Or sum of neighbourhood sizes.
 	    int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
@@ -879,11 +887,16 @@ namespace Dune {
                 max_ncf_  = std::max(max_ncf_, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
-		for (int ll = 0; ll < ncf; ++ll) {
-		    int fi = cell_faces[ll];
+		for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+		    int fi = f->index();
 		    if (faceindex_to_dof[fi] == -1) {
 			faceindex_to_dof[fi] = dof_to_faceindex.size();
 			dof_to_faceindex.push_back(fi);
+			bool on_part_bdy = false;
+			if (!f->boundary()) {
+			    on_part_bdy = (partition[f->neighbourCellIndex()] == my_partition_);
+			}
+			part_bdy.push_back(on_part_bdy);
 		    } else {
 			if (dof_to_faceindex[faceindex_to_dof[fi]] != fi) {
 			    THROW("Error in creating dof <-> faceindex maps.");
@@ -893,17 +906,29 @@ namespace Dune {
 		++cellno;
             }
             ASSERT(cellno <= nc_all);
+	    total_num_cells_ = cellno;  // Size of my partition.
 
-	    total_num_cells_ = cellno;
+	    // Second pass: build index set.
+	    typedef Dune::OwnerOverlapCopyAttributeSet GridAttributes;
+	    typedef GridAttributes::AttributeSet GridFlag;
+	    typedef Dune::ParallelLocalIndex<GridFlag> LocalIndex;
+	    int num_dof = dof_to_faceindex.size();
+	    Communication::PIS& pis = comm_.indexSet();
+	    pis.beginResize();
+	    for (int i = 0; i < num_dof; ++i) {
+		GridFlag flag = part_bdy[i] ? GridAttributes::overlap : GridAttributes::owner;
+		bool is_public = part_bdy[i] ? true : false;
+		pis.add(dof_to_faceindex[i], LocalIndex(i, flag, is_public));
+	    }
+	    pis.endResize();
 
+            // Third pass: build cell-to-face mapping and the structures of
+	    // the Binv_, F_, f_ and outflux objects.
             flowSolution_.cellFaces_.reserve(cellno, tot_ncf);
             flowSolution_.outflux_  .reserve(cellno, tot_ncf);
             F_   .reserve(cellno, tot_ncf );
             f_   .reserve(cellno, tot_ncf );
             Binv_.reserve(cellno, tot_ncf2);
-
-            // Second pass: build cell-to-face mapping and the structures of
-	    // the Binv_, F_, f_ and outflux objects.
             typedef std::vector<int>::iterator VII;
             std::vector<Scalar> zeroes(max_ncf_*max_ncf_, 0.0);
             std::vector<int> cell_dofs(max_ncf_);
@@ -917,7 +942,6 @@ namespace Dune {
 		for (int ll = 0; ll < ncf; ++ll) {
 		    cell_dofs[ll] = faceindex_to_dof[g.faceIndices(c0)[ll]];
 		}
-// 		flowSolution_.cellFaces_.appendRow(g.faceIndices(c0).begin(), g.faceIndices(c0).end());
 		flowSolution_.cellFaces_.appendRow(cell_dofs.begin(), cell_dofs.end());
                 flowSolution_.outflux_  .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 F_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
@@ -1327,7 +1351,10 @@ namespace Dune {
             // Representation types for linear system.
             typedef BCRSMatrix <MatrixBlockType>        Matrix;
             typedef BlockVector<VectorBlockType>        Vector;
-            typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
+            // typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
+	    typedef OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
+	    typedef OverlappingSchwarzOperator<Matrix,Vector,Vector,Communication> Operator;  
+	    typedef OverlappingSchwarzScalarProduct<Vector,Communication> ScalarProduct;
 
             // AMG specific types.
 #define FIRST_DIAGONAL 1
@@ -1345,15 +1372,19 @@ namespace Dune {
             typedef Amg::UnSymmetricCriterion<Matrix,CouplingMetric> CriterionBase;
 #endif
 
-            typedef SeqILU0<Matrix,Vector,Vector>        Smoother;
+            typedef SeqILU0<Matrix, Vector, Vector>        Smoother;
+	    typedef BlockPreconditioner<Vector, Vector, Communication, Smoother> ParSmoother;
             typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
-            typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
+            typedef Amg::AMG<Operator, Vector, ParSmoother, Communication>   Precond;
+
+	    Communication comm(MPI_COMM_WORLD);
 
             // Regularize the matrix (only for pure Neumann problems...)
             if (do_regularization_) {
                 S_[0][0] *= 2;
             }
-            Operator opS(S_);
+            Operator opS(S_, comm);
+	    ScalarProduct sp(comm);
 
             // Construct preconditioner.
             double relax = 1;
@@ -1362,10 +1393,10 @@ namespace Dune {
 
             Criterion criterion;
             criterion.setDebugLevel(verbosity_level);
-            Precond precond(opS, criterion, smootherArgs);
+            Precond precond(opS, criterion, smootherArgs, 1, 2, 2, false, comm);
 
             // Construct solver for system of linear equations.
-            CGSolver<Vector> linsolve(opS, precond, residTol, S_.N(), verbosity_level);
+            CGSolver<Vector> linsolve(opS, sp, precond, residTol, S_.N(), verbosity_level /*(rank == 0) ? verbosity_level : 0*/);
 
             InverseOperatorResult result;
             soln_ = 0.0;
