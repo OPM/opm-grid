@@ -36,7 +36,7 @@
 
 #include "config.h"
 
-#ifdef HAVE_MPI // #else clause at bottom of file
+#if HAVE_MPI // #else clause at bottom of file
 
 
 #define VERBOSE
