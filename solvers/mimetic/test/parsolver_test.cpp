@@ -54,18 +54,6 @@
 #include <dune/grid/common/GridPartitioning.hpp>
 
 
-template<int dim, class RI>
-void assign_permeability(RI& r, int nc, double k)
-{
-    typedef typename RI::SharedPermTensor Tensor;
-    for (int c = 0; c < nc; ++c) {
-        Tensor K = r.permeabilityModifiable(c);
-        for (int i = 0; i < dim; ++i) {
-            K(i,i) = k;
-        }
-    }
-}
-
 
 template<int dim, class Grid, class RI>
 void test_flowsolver(const Grid& grid, const RI& r,
@@ -87,13 +75,12 @@ void test_flowsolver(const Grid& grid, const RI& r,
     //flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
     flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
-    flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0);
+    flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0);//200.0*Dune::unit::barsa);
 
     solver.init(g, r, flow_bc, partition, rank);
     // solver.printStats(std::cout);
-
-    //solver.assembleStatic(g, r);
-    //solver.printIP(std::cout);
+    // solver.assembleStatic(g, r);
+    // solver.printIP(std::cout);
 
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
@@ -108,32 +95,15 @@ void test_flowsolver(const Grid& grid, const RI& r,
     //gravity[2] = Dune::unit::gravity;
     solver.solve(r, sat, flow_bc, src, gravity);
 
-    if (output_is_vtk) {
+    if (output_is_vtk && rank == 0) {
 	std::vector<double> cell_velocity;
-	estimateCellVelocity(cell_velocity, g, solver.getSolution());
+	estimateCellVelocity(cell_velocity, g, solver.getSolution(), partition, rank);
 	std::vector<double> cell_pressure;
-	getCellPressure(cell_pressure, g, solver.getSolution());
+	getCellPressure(cell_pressure, g, solver.getSolution(), partition, rank);
 	Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
 	vtkwriter.addCellData(cell_velocity, "velocity");
 	vtkwriter.addCellData(cell_pressure, "pressure");
 	vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
-    } else {
-	solver.printSystem("system");
-	typedef typename FlowSolver::SolutionType FlowSolution;
-	FlowSolution soln = solver.getSolution();
-	std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
-	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-	    std::cout << '\t' << soln.pressure(c) << '\n';
-	}
-	std::cout << "Cell (Out) Fluxes:\n";
-	std::cout << "flux = [\n";
-	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-	    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-		std::cout << soln.outflux(f) << ' ';
-	    }
-	    std::cout << "\b\n";
-	}
-	std::cout << "]\n";
     }
 }
 
@@ -153,7 +123,6 @@ int main(int argc , char ** argv)
     Dune::parameter::ParameterGroup param(argc, argv);
     // Make grid and reservoir properties.
     Dune::setupGridAndProps(param, grid, res_prop);
-    assign_permeability<3>(res_prop, grid.size(0), 0.1*Dune::unit::darcy);
     // Partitioning.
 //     boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
 // 				    param.getDefault("sy", 1),
