@@ -33,12 +33,14 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+
+#include "config.h"
+
 #ifdef HAVE_MPI // #else clause at bottom of file
 
 
 #define VERBOSE
 
-#include "config.h"
 #include "../ParIncompFlowSolverHybrid.hpp"
 #include <dune/common/mpihelper.hh>
 #include <dune/common/param/ParameterGroup.hpp>
@@ -179,7 +181,7 @@ int main(int argc , char ** argv)
 int main()
 {
     std::cerr << "This program does nothing if HAVE_MPI is undefined.\n"
-	"To enable MPI, pass --enable-parallel to configure (or dunecontrol) when setting up dune.\n"
+	"To enable MPI, pass --enable-parallel to configure (or dunecontrol) when setting up dune.\n";
 }
 
 
