@@ -33,6 +33,9 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#ifdef HAVE_MPI // #else clause at bottom of file
+
+
 #define VERBOSE
 
 #include "config.h"
@@ -166,3 +169,18 @@ int main(int argc , char ** argv)
 
     return EXIT_SUCCESS;
 }
+
+#else
+
+// We do not have MPI
+
+#include <iostream>
+
+int main()
+{
+    std::cerr << "This program does nothing if HAVE_MPI is undefined.\n"
+	"To enable MPI, pass --enable-parallel to configure (or dunecontrol) when setting up dune.\n"
+}
+
+
+#endif
