@@ -917,10 +917,13 @@ namespace Dune {
 	    pis.beginResize();
 	    for (int i = 0; i < num_dof; ++i) {
 		GridFlag flag = part_bdy[i] ? GridAttributes::overlap : GridAttributes::owner;
+		// if (my_partition_ == 0) flag = GridAttributes::owner;
 		bool is_public = part_bdy[i] ? true : false;
 		pis.add(dof_to_faceindex[i], LocalIndex(i, flag, is_public));
 	    }
 	    pis.endResize();
+	    comm_.remoteIndices().template rebuild<false>();
+
 
             // Third pass: build cell-to-face mapping and the structures of
 	    // the Binv_, F_, f_ and outflux objects.
@@ -1377,14 +1380,12 @@ namespace Dune {
             typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
             typedef Amg::AMG<Operator, Vector, ParSmoother, Communication>   Precond;
 
-	    Communication comm(MPI_COMM_WORLD);
-
             // Regularize the matrix (only for pure Neumann problems...)
             if (do_regularization_) {
                 S_[0][0] *= 2;
             }
-            Operator opS(S_, comm);
-	    ScalarProduct sp(comm);
+            Operator opS(S_, comm_);
+	    ScalarProduct sp(comm_);
 
             // Construct preconditioner.
             double relax = 1;
@@ -1393,7 +1394,7 @@ namespace Dune {
 
             Criterion criterion;
             criterion.setDebugLevel(verbosity_level);
-            Precond precond(opS, criterion, smootherArgs, 1, 2, 2, false, comm);
+            Precond precond(opS, criterion, smootherArgs, 1, 2, 2, false, comm_);
 
             // Construct solver for system of linear equations.
             CGSolver<Vector> linsolve(opS, sp, precond, residTol, S_.N(), verbosity_level /*(rank == 0) ? verbosity_level : 0*/);
