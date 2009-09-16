@@ -37,6 +37,7 @@
 #define OPENRS_SETUPGRIDANDPROPS_HEADER
 
 #include <dune/common/param/ParameterGroup.hpp>
+#include <dune/common/Units.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 
@@ -74,8 +75,10 @@ namespace Dune
 					 param.getDefault<double>("dy", 1.0),
 					 param.getDefault<double>("dz", 1.0) }};
 	    grid.createCartesian(dims, cellsz);
-	    MESSAGE("Warning: For generated cartesian grids, we use default reservoir properties.");
-	    res_prop.init(grid.size(0));
+	    double default_poro = param.getDefault("default_poro", 0.2);
+	    double default_perm = param.getDefault("default_perm", 100.0*prefix::milli*unit::darcy);
+	    MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
+	    res_prop.init(grid.size(0), default_poro, default_perm);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
 	}
