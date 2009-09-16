@@ -59,7 +59,7 @@ template<int dim, class Grid, class RI>
 void test_flowsolver(const Grid& grid, const RI& r,
 		     const std::vector<int>& partition,
 		     int rank,
-		     bool output_is_vtk = true)
+		     bool output_vtk = true)
 {
     typedef Dune::GridInterfaceEuler<Grid>          GI;
     typedef typename GI::CellIterator               CI;
@@ -74,8 +74,8 @@ void test_flowsolver(const Grid& grid, const RI& r,
     FBC flow_bc(7);
     //flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
-    flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
-    flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0);//200.0*Dune::unit::barsa);
+    flow_bc.flowCond(5) = BC(BC::Dirichlet, 1.0);//100.0*Dune::unit::barsa);
+    flow_bc.flowCond(6) = BC(BC::Dirichlet, 2.0);//200.0*Dune::unit::barsa);
 
     solver.init(g, r, flow_bc, partition, rank);
     // solver.printStats(std::cout);
@@ -83,7 +83,7 @@ void test_flowsolver(const Grid& grid, const RI& r,
     // solver.printIP(std::cout);
 
     std::vector<double> src(g.numberOfCells(), 0.0);
-    std::vector<double> sat(g.numberOfCells(), 0.0);
+    std::vector<double> sat(g.numberOfCells(), 1.0);
 #if 0
     if (g.numberOfCells() > 1) {
         src[0]     = 1.0;
@@ -95,15 +95,17 @@ void test_flowsolver(const Grid& grid, const RI& r,
     //gravity[2] = Dune::unit::gravity;
     solver.solve(r, sat, flow_bc, src, gravity);
 
-    if (output_is_vtk && rank == 0) {
+    if (output_vtk) {
 	std::vector<double> cell_velocity;
 	estimateCellVelocity(cell_velocity, g, solver.getSolution(), partition, rank);
 	std::vector<double> cell_pressure;
 	getCellPressure(cell_pressure, g, solver.getSolution(), partition, rank);
-	Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
-	vtkwriter.addCellData(cell_velocity, "velocity");
-	vtkwriter.addCellData(cell_pressure, "pressure");
-	vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
+	if (rank == 0) {
+	    Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
+	    vtkwriter.addCellData(cell_velocity, "velocity");
+	    vtkwriter.addCellData(cell_pressure, "pressure");
+	    vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
+	}
     }
 }
 
@@ -113,8 +115,8 @@ int main(int argc , char ** argv)
 {
     // Initialize MPI, finalize is done automatically on exit.
     Dune::MPIHelper::instance(argc,argv).rank();
-    int mpi_rank = 1;//Dune::MPIHelper::instance(argc,argv).rank();
-    int mpi_size = 2;//Dune::MPIHelper::instance(argc,argv).size();
+    int mpi_rank = Dune::MPIHelper::instance(argc,argv).rank();
+    int mpi_size = Dune::MPIHelper::instance(argc,argv).size();
     std::cout << "Hello from rank " << mpi_rank << std::endl;
 
     Dune::CpGrid grid;
