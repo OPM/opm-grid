@@ -48,21 +48,21 @@ int main(int argc, char** argv)
     CpGrid grid;
     ReservoirPropertyCapillary<3> res_prop;
     setupGridAndProps(param, grid, res_prop);
-//     std::vector<double> porosity(grid.size(0));
-//     std::vector<double> perm_xx(grid.size(0));
-//     std::vector<double> perm_yy(grid.size(0));
-//     std::vector<double> perm_zz(grid.size(0));
-//     for (int i = 0; i < grid.size(0); ++i) {
-// 	porosity[i] = res_prop.porosity(i);
-// 	perm_xx[i] = res_prop.permeability(i)(0,0);
-// 	perm_yy[i] = res_prop.permeability(i)(1,1);
-// 	perm_zz[i] = res_prop.permeability(i)(2,2);
-//     }
+    std::vector<double> porosity(grid.size(0));
+    std::vector<double> perm_xx(grid.size(0));
+    std::vector<double> perm_yy(grid.size(0));
+    std::vector<double> perm_zz(grid.size(0));
+    for (int i = 0; i < grid.size(0); ++i) {
+	porosity[i] = res_prop.porosity(i);
+	perm_xx[i] = res_prop.permeability(i)(0,0);
+	perm_yy[i] = res_prop.permeability(i)(1,1);
+	perm_zz[i] = res_prop.permeability(i)(2,2);
+    }
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
-//     vtkwriter.addCellData(porosity, "porosity");
-//     vtkwriter.addCellData(perm_xx, "perm_xx");
-//     vtkwriter.addCellData(perm_yy, "perm_yy");
-//     vtkwriter.addCellData(perm_zz, "perm_zz");
+    vtkwriter.addCellData(porosity, "porosity");
+    vtkwriter.addCellData(perm_xx, "perm_xx");
+    vtkwriter.addCellData(perm_yy, "perm_yy");
+    vtkwriter.addCellData(perm_zz, "perm_zz");
     std::string fname = param.get<std::string>("filename");
     vtkwriter.write(fname.substr(0, fname.size() - 7) + "-cells", VTKOptions::ascii);
 }
