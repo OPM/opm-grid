@@ -71,6 +71,45 @@ namespace Dune
     }
 
 
+    /// @brief Estimates a scalar cell velocity from outgoing fluxes.
+    /// @tparam GridInterface a grid interface.
+    /// @tparam FlowSol a flow solution type.
+    /// @param[out] cell_velocity the estimated velocities.
+    /// @param[in] ginterf an interface to the grid.
+    /// @param[in] flow_solution the object containing the fluxes.
+    /// @param[in] partition partition numbers of the fluxes.
+    /// @param[in] my_partition partition to be used.
+    template <class GridInterface, class FlowSol>
+    void estimateCellVelocity(std::vector<double>& cell_velocity,
+			      const GridInterface& ginterf,
+			      const FlowSol& flow_solution,
+			      const std::vector<int>& partition,
+			      const int my_partition)
+    {
+	// Algorithm used is same as in halfFaceFluxToCellVelocity.hpp
+	// in the Sintef legacy c++ code.
+	cell_velocity.clear();
+	cell_velocity.resize(ginterf.numberOfCells());
+	for (typename GridInterface::CellIterator c = ginterf.cellbegin(); c != ginterf.cellend(); ++c) {
+	    if (partition[c->index()] != my_partition) {
+		cell_velocity[c->index()] = 0.0;
+	    } else {
+		int numf = 0;
+		typename GridInterface::Vector cell_v(0.0);
+		typename GridInterface::CellIterator::FaceIterator f = c->facebegin();
+		for (; f != c->faceend(); ++f, ++numf) {
+		    double flux = flow_solution.outflux(f);
+		    typename GridInterface::Vector v = f->centroid();
+		    v -= c->centroid();
+		    v *= flux/c->volume();
+		    cell_v += v;
+		}
+		cell_velocity[c->index()] = cell_v.two_norm();
+	    }
+	}
+    }
+
+
     /// @brief
     /// @todo Doc me!
     /// @tparam
@@ -84,6 +123,28 @@ namespace Dune
 	cell_pressure.resize(ginterf.numberOfCells());
 	for (typename GridInterface::CellIterator c = ginterf.cellbegin(); c != ginterf.cellend(); ++c) {
 	    cell_pressure[c->index()] = flow_solution.pressure(c);
+	}
+    }
+
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    template <class GridInterface, class FlowSol>
+    void getCellPressure(std::vector<double>& cell_pressure,
+			 const GridInterface& ginterf,
+			 const FlowSol& flow_solution,
+			 const std::vector<int>& partition,
+			 const int my_partition)
+    {
+	cell_pressure.clear();
+	cell_pressure.resize(ginterf.numberOfCells());
+	for (typename GridInterface::CellIterator c = ginterf.cellbegin(); c != ginterf.cellend(); ++c) {
+	    if (partition[c->index()] != my_partition) {
+		cell_pressure[c->index()] = 0.0;
+	    } else {
+		cell_pressure[c->index()] = flow_solution.pressure(c);
+	    }
 	}
     }
 
