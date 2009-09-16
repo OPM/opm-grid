@@ -106,7 +106,7 @@ namespace Dune
         }
 
 
-	/// @brief
+        /// @brief
         ///    Copy isotropic (scalar) permeability to other diagonal
         ///    components if the latter have not (yet) been assigned a
         ///    separate value.  Specifically, this function assigns
@@ -239,22 +239,22 @@ namespace Dune
     class ReservoirPropertyCapillary
     {
     public:
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef ImmutableCMatrix PermTensor;
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef OwnCMatrix       MutablePermTensor;
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef SharedCMatrix    SharedPermTensor;
 
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         enum { NumberOfPhases = 2 };
 
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         ReservoirPropertyCapillary()
             : density1_  (1013.9*unit::kilogram/unit::cubic(unit::meter)),
               density2_  ( 834.7*unit::kilogram/unit::cubic(unit::meter)),
@@ -263,9 +263,9 @@ namespace Dune
         {
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         void init(const EclipseGridParser& parser,
                   const std::vector<int>& global_cell,
                   const std::string* rock_list_filename = 0)
@@ -286,57 +286,58 @@ namespace Dune
             computeCflFactors();
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-        void init(const int num_cells, double uniform_poro = 0.2,
-                  double uniform_perm = 100.0*prefix::milli*unit::darcy)
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        void init(const int num_cells,
+                  const double uniform_poro = 0.2,
+                  const double uniform_perm = 100.0*prefix::milli*unit::darcy)
         {
             permfield_valid_.assign(num_cells, std::vector<unsigned char>::value_type(1));
-	    porosity_.assign(num_cells, uniform_poro);
-	    permeability_.assign(dim*dim*num_cells, 0.0);
-	    for (int i = 0; i < num_cells; ++i) {
-		SharedPermTensor K = permeabilityModifiable(i);
-		for (int dd = 0; dd < dim; ++dd) {
-		    K(dd, dd) = uniform_perm;
-		}
-	    }
-	    cell_to_rock_.assign(num_cells, 0);
+            porosity_.assign(num_cells, uniform_poro);
+            permeability_.assign(dim*dim*num_cells, 0.0);
+            for (int i = 0; i < num_cells; ++i) {
+                SharedPermTensor K = permeabilityModifiable(i);
+                for (int dd = 0; dd < dim; ++dd) {
+                    K(dd, dd) = uniform_perm;
+                }
+            }
+            cell_to_rock_.assign(num_cells, 0);
             computeCflFactors();
         }
 
-	double viscosityFirstPhase() const
-	{
-	    return viscosity1_;
-	}
+        double viscosityFirstPhase() const
+        {
+            return viscosity1_;
+        }
 
-	double viscositySecondPhase() const
-	{
-	    return viscosity2_;
-	}
+        double viscositySecondPhase() const
+        {
+            return viscosity2_;
+        }
 
-	double densityFirstPhase() const
-	{
-	    return density1_;
-	}
+        double densityFirstPhase() const
+        {
+            return density1_;
+        }
 
-	double densitySecondPhase() const
-	{
-	    return density2_;
-	}
+        double densitySecondPhase() const
+        {
+            return density2_;
+        }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double porosity(int cell_index) const
         {
             return porosity_[cell_index];
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         PermTensor permeability(int cell_index) const
         {
             ASSERT (permfield_valid_[cell_index]);
@@ -344,10 +345,10 @@ namespace Dune
             const PermTensor K(dim, dim, &permeability_[dim*dim*cell_index]);
             return K;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         SharedPermTensor permeabilityModifiable(int cell_index)
         {
             // Typically only used for assigning synthetic perm values.
@@ -358,98 +359,98 @@ namespace Dune
 
             return K;
         }
-		/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+                /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double mobilityFirstPhase(int cell_index, double saturation) const
         {
             return relPermFirstPhase(cell_index, saturation) / viscosity1_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double mobilitySecondPhase(int cell_index, double saturation) const
         {
             return relPermSecondPhase(cell_index, saturation) / viscosity2_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double totalMobility(int cell_index, double saturation) const
         {
             double l1 = mobilityFirstPhase(cell_index, saturation);
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1 + l2;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double fractionalFlow(int cell_index, double saturation) const
         {
             double l1 = mobilityFirstPhase(cell_index, saturation);
             double l2 = mobilitySecondPhase(cell_index, saturation);
             return l1/(l1 + l2);
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         void phaseDensity(int /*cell_index*/, std::vector<double>& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
             density[0] = densityFirstPhase();
             density[1] = densitySecondPhase();
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
         {
             ASSERT (mob.size() >= NumberOfPhases);
             mob[0] = mobilityFirstPhase(cell_index, sat);
             mob[1] = mobilitySecondPhase(cell_index, sat);
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         double densityDifference() const
         {
             return density1_ - density2_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         double cflFactor() const
         {
             return cfl_factor_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double cflFactorGravity() const
         {
             return cfl_factor_gravity_;
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double capillaryPressure(int cell_index, double saturation) const
         {
             if (rock_.size() > 0) {
-		// p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-		double sigma_cos_theta = 1.0; // An approximation.
-		double perm = trace(permeability(cell_index))/double(dim);
-		double poro = porosity(cell_index);
-		double sqrt_k_phi = std::sqrt(perm/poro);
-		int r = cell_to_rock_[cell_index];
-		return rock_[r].Jfunc_(saturation)
-		    *sigma_cos_theta/sqrt_k_phi;
+                // p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+                double sigma_cos_theta = 1.0; // An approximation.
+                double perm = trace(permeability(cell_index))/double(dim);
+                double poro = porosity(cell_index);
+                double sqrt_k_phi = std::sqrt(perm/poro);
+                int r = cell_to_rock_[cell_index];
+                return rock_[r].Jfunc_(saturation)
+                    *sigma_cos_theta/sqrt_k_phi;
             } else {
                 // HACK ALERT!
                 // Use zero capillary pressure if no known rock table exists.
@@ -484,22 +485,22 @@ namespace Dune
         }
         void cflMobs(int rock, double s, double& mob_first, double& mob_gravity) const
         {
-	    if (rock == -1) {
-		// No rock dependency, we might just as well use the first cell.
-		const int cell_index = 0;
-		double l1 = mobilityFirstPhase(cell_index, s);
-		double l2 = mobilitySecondPhase(cell_index, s);
-		mob_first = l1/(l1 + l2);
-		mob_gravity = l1*l2/(l1 + l2);
-	    } else {
-		double krw = rock_[rock].krw_(s);
-		double kro = rock_[rock].kro_(s);
-		double l1 = krw/viscosity1_;
-		double l2 = kro/viscosity2_;
-		mob_first = l1/(l1 + l2);
-		mob_gravity = l1*l2/(l1 + l2);
-	    }
-	    
+            if (rock == -1) {
+                // No rock dependency, we might just as well use the first cell.
+                const int cell_index = 0;
+                double l1 = mobilityFirstPhase(cell_index, s);
+                double l2 = mobilitySecondPhase(cell_index, s);
+                mob_first = l1/(l1 + l2);
+                mob_gravity = l1*l2/(l1 + l2);
+            } else {
+                double krw = rock_[rock].krw_(s);
+                double kro = rock_[rock].kro_(s);
+                double l1 = krw/viscosity1_;
+                double l2 = kro/viscosity2_;
+                mob_first = l1/(l1 + l2);
+                mob_gravity = l1*l2/(l1 + l2);
+            }
+            
             // This is a hack for now, we should make this rock-dependant,
             // for the multi-rock case.
             const int cell_index = 0;
@@ -508,42 +509,42 @@ namespace Dune
             mob_first = l1/(l1 + l2);
             mob_gravity = l1*l2/(l1 + l2);
         }
-	std::pair<double, double> computeSingleRockCflFactors(int rock) const
-	{
+        std::pair<double, double> computeSingleRockCflFactors(int rock) const
+        {
             const int N = 257;
             double delta = 1.0/double(N - 1);
-	    double last_m1, last_mg;
-	    double max_der1 = -1e100;
-	    double max_derg = -1e100;
-	    cflMobs(rock, 0.0, last_m1, last_mg);
-	    for (int i = 1; i < N; ++i) {
-		double s = double(i)*delta;
-		double m1, mg;
-		cflMobs(rock, s, m1, mg);
-		double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
-		double est_deriv_mg = std::fabs(mg - last_mg)/delta;
-		max_der1 = std::max(max_der1, est_deriv_m1);
-		max_derg = std::max(max_derg, est_deriv_mg);
-		last_m1 = m1;
-		last_mg = mg;
-	    }
-	    return std::make_pair(1.0/max_der1, 1.0/max_derg);
-	}
+            double last_m1, last_mg;
+            double max_der1 = -1e100;
+            double max_derg = -1e100;
+            cflMobs(rock, 0.0, last_m1, last_mg);
+            for (int i = 1; i < N; ++i) {
+                double s = double(i)*delta;
+                double m1, mg;
+                cflMobs(rock, s, m1, mg);
+                double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
+                double est_deriv_mg = std::fabs(mg - last_mg)/delta;
+                max_der1 = std::max(max_der1, est_deriv_m1);
+                max_derg = std::max(max_derg, est_deriv_mg);
+                last_m1 = m1;
+                last_mg = mg;
+            }
+            return std::make_pair(1.0/max_der1, 1.0/max_derg);
+        }
         void computeCflFactors()
         {
-	    if (rock_.empty()) {
-		std::pair<double, double> fac = computeSingleRockCflFactors(-1);
-		cfl_factor_ = fac.first;
-		cfl_factor_gravity_ = fac.second;
-	    } else {
-		cfl_factor_ = 1e100;
-		cfl_factor_gravity_ = 1e100;
-		for (int r = 0; r < int(rock_.size()); ++r) {
-		    std::pair<double, double> fac = computeSingleRockCflFactors(r);
-		    cfl_factor_ = std::min(cfl_factor_, fac.first);
-		    cfl_factor_gravity_ = std::min(cfl_factor_gravity_, fac.second);
-		}
-	    }
+            if (rock_.empty()) {
+                std::pair<double, double> fac = computeSingleRockCflFactors(-1);
+                cfl_factor_ = fac.first;
+                cfl_factor_gravity_ = fac.second;
+            } else {
+                cfl_factor_ = 1e100;
+                cfl_factor_gravity_ = 1e100;
+                for (int r = 0; r < int(rock_.size()); ++r) {
+                    std::pair<double, double> fac = computeSingleRockCflFactors(r);
+                    cfl_factor_ = std::min(cfl_factor_, fac.first);
+                    cfl_factor_gravity_ = std::min(cfl_factor_gravity_, fac.second);
+                }
+            }
         }
 
         void assignPorosity(const EclipseGridParser& parser,
@@ -578,7 +579,7 @@ namespace Dune
             const std::vector<double> zero(num_global_cells, 0.0);
             tensor.push_back(&zero);
 
-	    BOOST_STATIC_ASSERT(dim == 3);
+            BOOST_STATIC_ASSERT(dim == 3);
             boost::array<int,9> kmap;
             fillTensor(parser, tensor, kmap);
 
