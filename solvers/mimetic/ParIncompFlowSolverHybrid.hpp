@@ -894,7 +894,7 @@ namespace Dune {
 			dof_to_faceindex.push_back(fi);
 			bool on_part_bdy = false;
 			if (!f->boundary()) {
-			    on_part_bdy = (partition[f->neighbourCellIndex()] == my_partition_);
+			    on_part_bdy = (partition[f->neighbourCellIndex()] != my_partition_);
 			}
 			part_bdy.push_back(on_part_bdy);
 		    } else {
