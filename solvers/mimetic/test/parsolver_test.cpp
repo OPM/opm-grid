@@ -45,6 +45,7 @@
 #include <dune/common/mpihelper.hh>
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/sgrid.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/common/setupGridAndProps.hpp>
@@ -55,10 +56,13 @@
 
 
 
-template<int dim, class Grid, class RI>
-void test_flowsolver(const Grid& grid, const RI& r,
+template<class Grid, class RI>
+void test_flowsolver(const Grid& grid,
+		     const RI& r,
 		     const std::vector<int>& partition,
 		     int rank,
+		     double tol = 1e-8,
+		     int verbosity = 1,
 		     bool output_vtk = true)
 {
     typedef Dune::GridInterfaceEuler<Grid>          GI;
@@ -71,11 +75,11 @@ void test_flowsolver(const Grid& grid, const RI& r,
     FlowSolver solver;
 
     typedef Dune::FlowBC BC;
-    FBC flow_bc(7);
+    FBC flow_bc(2*Grid::dimension + 1);
     //flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
-    flow_bc.flowCond(5) = BC(BC::Dirichlet, 1.0);//100.0*Dune::unit::barsa);
-    flow_bc.flowCond(6) = BC(BC::Dirichlet, 2.0);//200.0*Dune::unit::barsa);
+    flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0);//100.0*Dune::unit::barsa);
+    flow_bc.flowCond(2) = BC(BC::Dirichlet, 2.0);//200.0*Dune::unit::barsa);
 
     solver.init(g, r, flow_bc, partition, rank);
     // solver.printStats(std::cout);
@@ -93,7 +97,7 @@ void test_flowsolver(const Grid& grid, const RI& r,
 
     typename CI::Vector gravity(0.0);
     //gravity[2] = Dune::unit::gravity;
-    solver.solve(r, sat, flow_bc, src, gravity);
+    solver.solve(r, sat, flow_bc, src, gravity, tol, verbosity);
 
     if (output_vtk) {
 	std::vector<double> cell_velocity;
@@ -101,7 +105,7 @@ void test_flowsolver(const Grid& grid, const RI& r,
 	std::vector<double> cell_pressure;
 	getCellPressure(cell_pressure, g, solver.getSolution(), partition, rank);
 	if (rank == 0) {
-	    Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
+	    Dune::VTKWriter<typename Grid::LeafGridView> vtkwriter(grid.leafView());
 	    vtkwriter.addCellData(cell_velocity, "velocity");
 	    vtkwriter.addCellData(cell_pressure, "pressure");
 	    vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
@@ -119,17 +123,22 @@ int main(int argc , char ** argv)
     int mpi_size = Dune::MPIHelper::instance(argc,argv).size();
     std::cout << "Hello from rank " << mpi_rank << std::endl;
 
-    Dune::CpGrid grid;
-    Dune::ReservoirPropertyCapillary<3> res_prop;
     // Get parameters.
     Dune::parameter::ParameterGroup param(argc, argv);
+    mpi_rank = param.getDefault("force_rank", mpi_rank);
+    mpi_size = param.getDefault("force_size", mpi_size);
+    double tol = param.getDefault("residual_tolerance", 1e-8);
+    int verbosity = param.getDefault("linsolver_verbosity", 1);
+
     // Make grid and reservoir properties.
+    Dune::CpGrid grid;
+    Dune::ReservoirPropertyCapillary<3> res_prop;
     Dune::setupGridAndProps(param, grid, res_prop);
     // Partitioning.
 //     boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
 // 				    param.getDefault("sy", 1),
 // 				    param.getDefault("sz", 1) }};
-    boost::array<int, 3> split = {{ 1, 1, mpi_size }};
+    boost::array<int, 3> split = {{ mpi_size, 1, 1 }};
     int num_part = 0;
     std::vector<int> partition;
     Dune::partition(grid, split, num_part, partition);
@@ -138,7 +147,18 @@ int main(int argc , char ** argv)
 		  << "Number of partitions: " << num_part << "   Mpi parallells: " << mpi_size << '\n';
 	return EXIT_FAILURE;
     }
-    test_flowsolver<3>(grid, res_prop, partition, mpi_rank);
+    const int sgrid_dim = 2;
+    const int n[3] = { param.getDefault("nx", 1),
+		       param.getDefault("ny", 1),
+		       param.getDefault("nz", 1) };
+    double d[3] =  { param.getDefault<double>("dx", 1.0)*n[0],
+		     param.getDefault<double>("dy", 1.0)*n[1],
+		     param.getDefault<double>("dz", 1.0)*n[2] };
+    Dune::SGrid<sgrid_dim, sgrid_dim> sgrid(n, d);
+    Dune::ReservoirPropertyCapillary<sgrid_dim> sres_prop;
+    sres_prop.init(sgrid.size(0), 0.2, 1e-3);
+    test_flowsolver(sgrid, sres_prop, partition, mpi_rank, tol, verbosity);
+    // test_flowsolver(grid, res_prop, partition, mpi_rank, tol, verbosity);
 
     return EXIT_SUCCESS;
 }
