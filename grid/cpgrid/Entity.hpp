@@ -74,6 +74,11 @@ namespace Dune
 	    };
 
 	    typedef typename GridType::template Codim<codim>::Geometry Geometry;
+	    typedef Geometry LocalGeometry;
+
+	    typedef typename GridType::Traits::LeafIntersectionIterator LeafIntersectionIterator;
+	    typedef typename GridType::Traits::LevelIntersectionIterator LevelIntersectionIterator;
+	    typedef typename GridType::Traits::HierarchicIterator HierarchicIterator;
 
 	    typedef double ctype;
 
@@ -228,6 +233,31 @@ namespace Dune
 	    typename GridType::Traits::HierarchicIterator hend(int) const
 	    {
 		return typename GridType::Traits::HierarchicIterator(*pgrid_);
+	    }
+
+	    /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
+	    bool isNew() const
+	    {
+		return false;
+	    }
+  
+	    /// \brief Returns true, if entity might disappear during the next call to adapt(). Dummy.
+	    bool mightVanish() const
+	    {
+		return false;
+	    }
+
+	    /// Dummy, returning this.
+	    EntityPointer father() const
+	    {
+		return EntityPointer(*this);
+	    }
+
+
+	    /// Dummy, returning default geometry.
+	    LocalGeometry geometryInFather() const
+	    {
+		return LocalGeometry();
 	    }
 
 	    /// Returns true if any of my intersections are on the boundary.

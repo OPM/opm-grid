@@ -67,7 +67,7 @@ namespace Dune
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
 		       const std::vector<int>& face_to_output_face,
-		       cpgrid::DefaultGeometryPolicy& gpol,
+		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners);
     } // anon namespace
@@ -550,9 +550,9 @@ namespace Dune
 	template <int dim>
 	struct MakeGeometry
 	{
-	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3>& pos, double vol = 1.0)
+	    cpgrid::Geometry<dim, 3, CpGrid> operator()(const FieldVector<double, 3>& pos, double vol = 1.0)
 	    {
-		return cpgrid::Geometry<dim, 3>(pos, vol);
+		return cpgrid::Geometry<dim, 3, CpGrid>(pos, vol);
 	    }
 	};
 
@@ -564,11 +564,11 @@ namespace Dune
 		: allcorners_(allcorners)
 	    {
 	    }
-	    cpgrid::Geometry<3, 3> operator()(const FieldVector<double, 3>& pos,
+	    cpgrid::Geometry<3, 3, CpGrid> operator()(const FieldVector<double, 3>& pos,
 					      double vol,
 					      const array<int,8>& corner_indices)
 	    {
-		return cpgrid::Geometry<3, 3>(pos, vol, allcorners_, &corner_indices[0]);
+		return cpgrid::Geometry<3, 3, CpGrid>(pos, vol, allcorners_, &corner_indices[0]);
 	    }
 	};
 
@@ -580,7 +580,7 @@ namespace Dune
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
 		       const std::vector<int>& face_to_output_face,
-		       cpgrid::DefaultGeometryPolicy& gpol,
+		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners)
 	{
@@ -676,8 +676,8 @@ namespace Dune
 	    // C) slow
 	    // D) copied from readSintefLegacyFormat.cpp
 	    // Cells
-	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
-	    std::vector<cpgrid::Geometry<3, 3> > cg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3, CpGrid>, 0> cellgeom;
+	    std::vector<cpgrid::Geometry<3, 3, CpGrid> > cg;
 	    cg.reserve(nc);
 	    MakeGeometry<3> mcellg(&allcorners[0]);
 // 	    std::transform(cell_centroids.begin(), cell_centroids.end(),
@@ -688,16 +688,16 @@ namespace Dune
 	    }
 	    cellgeom.assign(cg.begin(), cg.end());
 	    // Faces
-	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
-	    std::vector<cpgrid::Geometry<2, 3> > fg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3, CpGrid>, 1> facegeom;
+	    std::vector<cpgrid::Geometry<2, 3, CpGrid> > fg;
 	    MakeGeometry<2> mfaceg;
 	    std::transform(face_centroids.begin(), face_centroids.end(),
 			   face_areas.begin(),
 			   std::back_inserter(fg), mfaceg);
 	    facegeom.assign(fg.begin(), fg.end());
 	    // Points
-	    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pointgeom;
-	    std::vector<cpgrid::Geometry<0, 3> > pg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<0, 3, CpGrid>, 3> pointgeom;
+	    std::vector<cpgrid::Geometry<0, 3, CpGrid> > pg;
 	    MakeGeometry<0> mpointg;
 	    std::transform(points.begin(), points.end(),
 			   std::back_inserter(pg), mpointg);
@@ -707,7 +707,7 @@ namespace Dune
 #endif
 
 	    // The final, combined object (yes, a lot of copying goes on here).
-	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
+	    cpgrid::DefaultGeometryPolicy<CpGrid> gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
 #ifdef VERBOSE

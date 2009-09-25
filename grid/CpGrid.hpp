@@ -94,9 +94,11 @@ namespace Dune
 	{
 	    /// \brief The type of the geometry associated with the entity.
 	    /// IMPORTANT: Codim<codim>::Geometry == Geometry<dim-codim,dimw>
-	    typedef cpgrid::Geometry<3-cd, 3> Geometry;
+ 	    typedef cpgrid::Geometry<3-cd, 3, Grid> Geometry;
+	    //typedef Dune::Geometry<3-cd, 3, CpGrid, cpgrid::Geometry> Geometry;
 	    /// \brief The type of the local geometry associated with the entity.
-	    typedef cpgrid::Geometry<3-cd, 3> LocalGeometry;
+ 	    typedef cpgrid::Geometry<3-cd, 3, Grid> LocalGeometry;
+	    //typedef Dune::Geometry<3-cd, 3, CpGrid, cpgrid::Geometry> LocalGeometry;
 	    /// \brief The type of the entity.
 	    typedef cpgrid::Entity<cd, CpGrid> Entity;
 
@@ -582,7 +584,7 @@ namespace Dune
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
 	// Representing geometry
-	typedef cpgrid::DefaultGeometryPolicy Geom;
+	typedef cpgrid::DefaultGeometryPolicy<CpGrid> Geom;
 	Geom geometry_;
 	typedef FieldVector<ctype, 3> PointType;
 	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
@@ -595,7 +597,7 @@ namespace Dune
 
 	// Return the geometry vector corresponding to the given codim.
 	template <int codim>
-	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
+	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3, CpGrid>, codim>& geomVector() const
 	{
 	    return geometry_.geomVector<codim>();
 	}

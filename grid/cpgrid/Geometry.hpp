@@ -36,6 +36,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_GEOMETRY_HEADER
 #define OPENRS_GEOMETRY_HEADER
 
+#include <boost/static_assert.hpp>
+
 namespace Dune
 {
     namespace cpgrid
@@ -45,9 +47,10 @@ namespace Dune
 	/// For vertices and cells we use the cube type, but without providing nonsingular
 	/// global() and local() mappings. However, we do provide corner[s]().
 	/// For intersections, we use the singular type, and no corners().
-	template <int dim, int dimworld>
+	template <int dim, int dimworld, class GridImp> // GridImp arg never used
 	class Geometry
 	{
+	    BOOST_STATIC_ASSERT(dimworld == 3);
 	public:
 	    /// @brief
 	    /// @todo Doc me
@@ -62,18 +65,18 @@ namespace Dune
 
 	    /// @brief
 	    /// @todo Doc me
-	    typedef FieldVector<ctype, dimworld> WorldPointType;
+	    typedef FieldVector<ctype, 3> GlobalCoordinate;
 	    /// @brief
 	    /// @todo Doc me
-	    typedef FieldVector<ctype, dim> LocalPointType;
+	    typedef FieldVector<ctype, dim> LocalCoordinate;
 
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @tparam Doc me!
 	    /// @param
-	    Geometry(const WorldPointType& pos,
+	    Geometry(const GlobalCoordinate& pos,
 		     ctype vol,
-		     const WorldPointType* allcorners = 0,
+		     const GlobalCoordinate* allcorners = 0,
 		     const int* corner_indicies = 0)
 		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indicies)
 	    {
@@ -89,16 +92,16 @@ namespace Dune
 
 	    /// In spite of claiming to be a cube geomety, we do not
 	    /// make a 1-1 mapping from the reference cube to the cell.
-	    const WorldPointType& global(const LocalPointType&) const
+	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
 		return pos_;
 	    }
 
 	    /// In spite of claiming to be a cube geomety, we do not
 	    /// make a 1-1 mapping from the cell to the reference cube.
-	    LocalPointType local(const WorldPointType&) const
+	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		LocalPointType dummy(0.0);
+		LocalCoordinate dummy(0.0);
 		return dummy;
 	    }
 
@@ -106,7 +109,7 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-	    double integrationElement(const LocalPointType&) const
+	    double integrationElement(const LocalCoordinate&) const
 	    {
 		return vol_;
 	    }
@@ -139,7 +142,7 @@ namespace Dune
 
 	    /// The corner method requires the points, which we may not necessarily want to provide.
 	    /// We will need it for visualization purposes though. For now we throw.
-	    WorldPointType corner(int cor) const
+	    GlobalCoordinate corner(int cor) const
 	    {
 		if (dim == 3) {
 		    return allcorners_[cor_idx_[cor]];
@@ -162,7 +165,7 @@ namespace Dune
 	    /// Returns the centroid of the geometry.
 	    /// I do not think this is a Dune interface method, but we
 	    /// want it to be!
-	    WorldPointType position() const
+	    GlobalCoordinate position() const
 	    {
 		return pos_;
 	    }
@@ -170,7 +173,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
-	    jacobianTransposed(const LocalPointType& local) const
+	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
 		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
 		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
@@ -180,7 +183,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
-	    jacobianInverseTransposed(const LocalPointType& /*local*/) const
+	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
 		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
 		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
@@ -188,9 +191,9 @@ namespace Dune
 	    }
 
 	private:
-	    WorldPointType pos_;
+	    GlobalCoordinate pos_;
 	    double vol_;
-	    const WorldPointType* allcorners_; // For dimension 3 only
+	    const GlobalCoordinate* allcorners_; // For dimension 3 only
 	    const int* cor_idx_;               // For dimension 3 only
 	};
 

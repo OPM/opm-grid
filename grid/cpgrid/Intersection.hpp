@@ -73,8 +73,10 @@ namespace Dune
 	    /// @todo Doc me!
 	    typedef cpgrid::Entity<0, GridType> Entity;
 	    typedef cpgrid::EntityPointer<0, GridType> EntityPointer;
-	    typedef cpgrid::Geometry<2,3> Geometry;
-	    typedef cpgrid::Geometry<2,3> LocalGeometry;
+// 	    typedef cpgrid::Geometry<2,3, GridType> Geometry;
+// 	    typedef cpgrid::Geometry<2,3, GridType> LocalGeometry;
+	    typedef typename GridType::template Codim<1>::Geometry Geometry;
+	    typedef Geometry LocalGeometry;
 	    typedef double ctype;
 
 	    /// @brief
