@@ -179,6 +179,9 @@ namespace Dune {
 	    case singular:
 		s << "singular";
 		break;
+             default:
+                s << "invalid geometry type";
+		break;
             }
             
             return s;
