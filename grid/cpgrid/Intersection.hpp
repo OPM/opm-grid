@@ -206,7 +206,7 @@ namespace Dune
 	    /// @return
 	    bool conforming() const
 	    {
-		return true;
+		return boundary(); // I.e. we are assuming all nonconforming interior.
 	    }
 
             // Geometrical information about this intersection in
