@@ -70,6 +70,9 @@ namespace Dune
 	    /// @todo Doc me
 	    typedef FieldVector<ctype, dim> LocalCoordinate;
 
+	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @tparam Doc me!

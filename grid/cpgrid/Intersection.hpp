@@ -78,6 +78,8 @@ namespace Dune
 	    typedef typename GridType::template Codim<1>::Geometry Geometry;
 	    typedef Geometry LocalGeometry;
 	    typedef double ctype;
+	    typedef FieldVector<ctype, 2> LocalCoordinate;
+	    typedef FieldVector<ctype, 3> GlobalCoordinate;
 
 	    /// @brief
 	    /// @todo Doc me!
