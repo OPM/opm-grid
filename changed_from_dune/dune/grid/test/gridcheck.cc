@@ -1,4 +1,4 @@
-// $Id: gridcheck.cc 10865 2009-07-03 17:02:09Z bska $
+// $Id: gridcheck.cc 11223 2009-09-28 08:17:19Z bska $
 #ifndef GRIDCHECK_CC
 #define GRIDCHECK_CC
 
@@ -15,7 +15,8 @@
 #include <dune/common/helpertemplates.hh>
 #include <dune/common/exceptions.hh>
 #include <dune/common/stdstreams.hh>
-#include <dune/grid/common/referenceelements.hh>
+#include <dune/grid/common/genericreferenceelements.hh>
+#include <dune/grid/common/gridinfo.hh>
 
 #include <dune/grid/genericgeometry/conversion.hh>
 
@@ -28,46 +29,13 @@ static double factorEpsilon = 1.e8;
 
 class CheckError : public Dune::Exception {};
 
-#if 0
-// --- compile-time check of element-interface
-
-template <class Geometry, bool doCheck>
-struct JacobianInverse
-{
-  static void check(const Geometry &e) 
-    {
-      typedef typename Geometry::ctype ctype;
-      Dune::FieldVector<ctype, Geometry::mydimension> v;
-      e.jacobianInverseTransposed(v);
-    }
-  JacobianInverse() 
-    {
-      c = check;
-    };
-  void (*c)(const Geometry&);
-};
-
-template <class Geometry>
-struct JacobianInverse<Geometry, false>
-{
-  static void check(const Geometry &e) 
-    {
-    }
-  JacobianInverse() 
-    {
-      c = check;
-    };
-  void (*c)(const Geometry&);
-};
-#endif
-
-template <class Geometry, int codim, int dim>
+template< class Geometry, int codim, int dim >
 struct GeometryInterface 
 {
   static void check ( const Geometry &geo )
   {
-    IsTrue<dim-codim == Geometry::mydimension>::yes();
-    IsTrue<dim == Geometry::dimension>::yes();
+    dune_static_assert( (Geometry::mydimension == dim-codim), "" );
+    dune_static_assert( (Geometry::dimension == dim), "" );
     
     typedef typename Geometry::ctype ctype;
     
@@ -75,45 +43,22 @@ struct GeometryInterface
     geo.corners();
     geo.corner( 0 );
     
-    Dune::FieldVector<ctype, Geometry::mydimension> v;
+    typename Geometry::LocalCoordinate v;
     geo.global(v);
-    Dune::FieldVector<ctype, Geometry::coorddimension> g;
+    typename Geometry::GlobalCoordinate g;
     geo.local(g);
     geo.integrationElement(v);
     geo.jacobianTransposed( v );
     geo.jacobianInverseTransposed( v );
-#if 0
-    JacobianInverse<Geometry,
-      (int)Geometry::coorddimension == (int)Geometry::mydimension>();
-#endif
   }
 
-  GeometryInterface() 
-    {
-      c = check;
-    };
-  void (*c)(const Geometry&);
-};
+  GeometryInterface () 
+  {
+    c = check;
+  }
 
-// reduced test on vertices
-template <class Geometry, int dim>
-struct GeometryInterface <Geometry, dim, dim>
-{
-  static void check(const Geometry &e) 
-    {
-      IsTrue<0 == Geometry::mydimension>::yes();
-      IsTrue<dim == Geometry::dimension>::yes();
-      
-      // vertices have only a subset of functionality
-      e.type();
-      e.corners();
-      e[0];
-    }
-  GeometryInterface() 
-    {
-      c = check;
-    };
-  void (*c)(const Geometry&);
+private:
+  void (*c)( const Geometry & );
 };
 
 // --- compile-time check of entity-interface
@@ -131,7 +76,7 @@ void DoEntityInterfaceCheck (Entity &e)
   e.geometry();
   
   // check interface of attached element-interface
-  GeometryInterface<typename Entity::Geometry, Entity::codimension, Entity::dimension>();
+  GeometryInterface< typename Entity::Geometry, Entity::codimension, Entity::dimension >();
 }
 
 // recursive check of codim-0-entity methods count(), entity()
@@ -142,12 +87,13 @@ struct ZeroEntityMethodCheck
   static void check(Entity &e)
     {
       // check types
-      typedef typename Entity::IntersectionIterator IntersectionIterator;
+      typedef typename Entity::LeafIntersectionIterator LeafIntersectionIterator;
+      typedef typename Entity::LevelIntersectionIterator LevelIntersectionIterator;
       typedef typename Entity::HierarchicIterator HierarchicIterator;
       typedef typename Entity::EntityPointer EntityPointer;
 
       e.template count<cd>();
-      e.template entity<cd>(0);
+      e.template subEntity<cd>(0);
 
       // recursively check on
       ZeroEntityMethodCheck<Grid, cd - 1,
@@ -168,7 +114,8 @@ struct ZeroEntityMethodCheck<Grid, cd, false>
   static void check(Entity &e)
     {
       // check types
-      typedef typename Entity::IntersectionIterator IntersectionIterator;
+      typedef typename Entity::LeafIntersectionIterator LeafIntersectionIterator;
+      typedef typename Entity::LevelIntersectionIterator LevelIntersectionIterator;
       typedef typename Entity::HierarchicIterator HierarchicIterator;
       typedef typename Entity::EntityPointer EntityPointer;
       
@@ -191,12 +138,13 @@ struct ZeroEntityMethodCheck<Grid, 0, true>
   static void check(Entity &e)
     {
       // check types
-      typedef typename Entity::IntersectionIterator IntersectionIterator;
+      typedef typename Entity::LeafIntersectionIterator LeafIntersectionIterator;
+      typedef typename Entity::LevelIntersectionIterator LevelIntersectionIterator;
       typedef typename Entity::HierarchicIterator HierarchicIterator;
       typedef typename Entity::EntityPointer EntityPointer;
       
       e.template count<0>();
-      e.template entity<0>(0);
+      e.template subEntity<0>(0);
 
     }
   ZeroEntityMethodCheck () 
@@ -215,12 +163,13 @@ struct ZeroEntityMethodCheck<Grid, 0, false>
   static void check(Entity &e)
     {
       // check types
-      typedef typename Entity::IntersectionIterator IntersectionIterator;
+      typedef typename Entity::LeafIntersectionIterator LeafIntersectionIterator;
+      typedef typename Entity::LevelIntersectionIterator LevelIntersectionIterator;
       typedef typename Entity::HierarchicIterator HierarchicIterator;
       typedef typename Entity::EntityPointer EntityPointer;
       
       e.template count<0>();
-      e.template entity<0>(0);
+      e.template subEntity<0>(0);
     }
   ZeroEntityMethodCheck () 
     {
@@ -230,10 +179,9 @@ struct ZeroEntityMethodCheck<Grid, 0, false>
 };
 
 // IntersectionIterator interface check
-template <class Grid>
+template <class Grid,class IntersectionIterator>
 struct IntersectionIteratorInterface
 {
-  typedef typename Grid::template Codim<0>::IntersectionIterator IntersectionIterator;
   enum { dim = Grid::dimension };
   typedef typename Grid::ctype ct;
   
@@ -241,39 +189,43 @@ struct IntersectionIteratorInterface
     {
       // increment / equality / ...
       IntersectionIterator j = i;
-      j++;
+      ++j;
       i == j;
       i != j;
       j = i;
 
       // state
-      i.boundary();
-      i.neighbor();
+      typedef typename IntersectionIterator::Intersection Intersection;
+      Intersection inter = *i;
+      inter.boundary();
+      inter.neighbor();
 
       // id of boundary segment
-      i.boundaryId();
+      inter.boundaryId();
 
       // neighbouring elements
-      i.inside();
-      if(i.neighbor()) i.outside();
+      inter.inside();
+      if(inter.neighbor()) inter.outside();
 
       // geometry
-      i.intersectionSelfLocal();
-      if(i.neighbor()) i.intersectionNeighborLocal();
-      i.intersectionGlobal();
+      inter.geometryInInside();
+      if(inter.neighbor()) inter.geometryInOutside();
+      inter.geometry();
 
-      i.numberInSelf();
-      if(i.neighbor()) i.numberInNeighbor();
+      inter.indexInInside();
+      if(inter.neighbor()) inter.indexInOutside();
 
-      Dune::FieldVector<ct, dim-1> v(0);
-      i.outerNormal(v);
-      i.integrationOuterNormal(v);
-      i.unitOuterNormal(v);
+      typename Intersection::LocalCoordinate v(0);
+
+      inter.outerNormal(v);
+      inter.integrationOuterNormal(v);
+      inter.unitOuterNormal(v);
     }
   IntersectionIteratorInterface ()
     {
       c = check;  
     }
+private:
   void (*c)(IntersectionIterator&);    
 };
 
@@ -283,11 +235,11 @@ struct EntityInterface
 {
   typedef typename Grid::template Codim<codim>::Entity Entity;
   
-  static void check (Entity &e)
+  static void check ( const Entity &e )
     {
       // consistent?
-      IsTrue<codim == Entity::codimension>::yes();
-      IsTrue<dim == Entity::dimension>::yes();      
+      dune_static_assert( (Entity::codimension == codim), "" );
+      dune_static_assert( (Entity::dimension == dim), "" );
 
       // do the checking
       DoEntityInterfaceCheck(e);
@@ -300,7 +252,9 @@ struct EntityInterface
     {
       c = check;  
     }
-  void (*c)(Entity&);    
+
+private:
+  void (*c)( const Entity & );
 };
 
 // just the recursion if the grid does not know about this codim-entity
@@ -328,11 +282,11 @@ struct EntityInterface<Grid, 0, dim, true>
 {
   typedef typename Grid::template Codim<0>::Entity Entity;
   
-  static void check (Entity &e,bool checkLevelIter=true) 
+  static void check ( const Entity &e, bool checkLevelIter = true )
     {
       // consistent?
-      IsTrue<0 == Entity::codimension>::yes();
-      IsTrue<dim == Entity::dimension>::yes();      
+      dune_static_assert( (Entity::codimension == 0), "" );
+      dune_static_assert( (Entity::dimension == dim), "" );
 
       // do the common checking
       DoEntityInterfaceCheck(e);
@@ -350,20 +304,24 @@ struct EntityInterface<Grid, 0, dim, true>
       if (checkLevelIter) {
         e.ilevelbegin();
         e.ilevelend();
-        IntersectionIteratorInterface<Grid>(e.ilevelbegin());
+// #if 0 // WARNING must be updated to new interface
+        IntersectionIteratorInterface<Grid,typename Grid::LevelIntersectionIterator>();
+// #endif
       }
       e.ileafbegin();
       e.ileafend();
-
+// #if 0 // WARNING must be updated to new interface
       if(e.isLeaf())
-        IntersectionIteratorInterface<Grid>(e.ileafbegin());
+        IntersectionIteratorInterface<Grid,typename Grid::LevelIntersectionIterator>();
+// #endif
       
       // hierarchic iterator
       e.hbegin(0);
       e.hend(0);
 
       // adaption
-      e.state();
+      e.isNew();
+      e.mightVanish();
 
       // recursively check sub-entities
       EntityInterface<Grid, 1, dim,
@@ -373,7 +331,9 @@ struct EntityInterface<Grid, 0, dim, true>
     {
       c = check;  
     }
-  void (*c)(Entity&);    
+
+private:
+  void (*c)( const Entity &, bool );
 };
 
 // non existinng codim-0 entity
@@ -402,11 +362,11 @@ struct EntityInterface<Grid, dim, dim, true>
   typedef typename Grid::template Codim<dim>::Entity Entity;
   
   // end recursion
-  static void check (Entity &e)
+  static void check ( const Entity &e )
     {
       // consistent?
-      IsTrue<dim == Entity::codimension>::yes();
-      IsTrue<dim == Entity::dimension>::yes();
+      dune_static_assert( (Entity::codimension == dim), "" );
+      dune_static_assert( (Entity::dimension == dim), "" );
       
       // run common test
       DoEntityInterfaceCheck(e);      
@@ -416,7 +376,7 @@ struct EntityInterface<Grid, dim, dim, true>
     {
       c = check;  
     }
-  void (*c)(Entity&);    
+  void (*c)( const Entity & );
 };
 
 // end the recursion over entity-codimensions
@@ -532,14 +492,11 @@ struct GridInterface
       dune_static_assert((Dune::Capabilities::hasEntity<Grid, 0>::v),"Grid must have codim 0 entities");
       dune_static_assert((Dune::Capabilities::hasEntity<const Grid, 0>::v),"Grid must have codim 0 entities");
       
-      //EntityInterface<Grid, 0, Grid::dimension,
-      //  Dune::Capabilities::hasEntity<Grid, 0>::v >();
+      EntityInterface< Grid, 0, Grid::dimension, Dune::Capabilities::hasEntity< Grid, 0 >::v >();
 
       // !!! check for parallel grid?
-      /*
       g.template lbegin<0, Dune::Ghost_Partition>(0);
       g.template lend<0, Dune::Ghost_Partition>(0);
-      */
     }
   GridInterface()
     {
@@ -589,7 +546,7 @@ struct subIndexCheck
         assert( false );
       }
 
-#if 0
+#if 0  // should this be removed?
       typedef Dune::GenericGeometry::MapNumberingProvider< Entity::dimension > Numbering;
       const unsigned int tid = Dune::GenericGeometry::topologyId( e.type() );
       const int oldi = Numbering::template generic2dune< cd >( tid, i );
@@ -650,7 +607,7 @@ void zeroEntityConsistency (Grid &g)
 {
   typedef typename Grid::ctype ctype;
   const int dimGrid = Grid::dimension;
-  const int dimWorld = Grid::dimensionworld;
+  // const int dimWorld = Grid::dimensionworld;
 
   typedef typename Grid::template Codim<0>::LevelIterator LevelIterator;
   typedef typename Grid::template Codim<0>::Geometry Geometry;
@@ -713,8 +670,9 @@ void zeroEntityConsistency (Grid &g)
     }
     for( int c = 0; c < numCorners; ++c )
     {
-      Dune::FieldVector< ctype, dimWorld > c1( it->geometry().corner( c ) );
-      Dune::FieldVector< ctype, dimWorld > c2( it->template subEntity< dimGrid >( c )->geometry().corner( 0 ) );
+      typename Geometry::GlobalCoordinate c1( it->geometry().corner( c ) );
+      typename Geometry::GlobalCoordinate c2( it->template subEntity< dimGrid >( c )->geometry().corner( 0 ) );
+
       if( (c2-c1).two_norm() > 10*std::numeric_limits< ctype >::epsilon() )
       {
         std::cerr << "Error: | geometry.corner( c ) - subEntity< dimGrid >( c ) | = | "
@@ -728,11 +686,10 @@ void zeroEntityConsistency (Grid &g)
     const int corners= it->geometry().corners();
     for (int c=0; c<corners; ++c)
     {
-      typedef Dune::FieldVector<typename Grid::ctype, Grid::dimensionworld> CoordinateType;
       for(int d=c+1; d<corners; ++d) 
       {
-        const CoordinateType c1 = it->geometry().corner( c );
-        const CoordinateType c2 = it->geometry().corner( d );
+        const typename Geometry::GlobalCoordinate c1 = it->geometry().corner( c );
+        const typename Geometry::GlobalCoordinate c2 = it->geometry().corner( d );
         if( (c2-c1).two_norm() < 10 * std::numeric_limits<typename Grid::ctype>::epsilon() )
         {
           DUNE_THROW(CheckError, "geometry["<<c<<"] == geometry["<<d<<"]");
@@ -859,7 +816,8 @@ void assertNeighbor (Grid &g)
         it->geometry();
         
         // normal vectors
-        Dune::FieldVector<ct, dim-1> v(0);
+        typename IntersectionIterator::Intersection::LocalCoordinate v(0);
+
         it->outerNormal(v);
         it->integrationOuterNormal(v);
         it->unitOuterNormal(v);
@@ -997,8 +955,8 @@ void iterate(Grid &g)
   LevelIterator it = g.template lbegin<0>(l);
   const LevelIterator endit = g.template lend<0>(l);
 
-  Dune::FieldVector<typename Grid::ctype, Grid::dimension> origin(1);
-  Dune::FieldVector<typename Grid::ctype, Grid::dimension> result;
+  typename Geometry::LocalCoordinate origin(1);
+  typename Geometry::LocalCoordinate result;
 
   for (;it != endit; ++it)
   {
@@ -1162,6 +1120,12 @@ void gridcheck (Grid &g)
   typedef typename Grid  :: ctype ctype;
   typedef typename Grid  :: GridFamily GridFamily;
 
+  // print infos
+  Dune::gridinfo(g, "GridInfo");
+  for(int l=0; l<g.maxLevel(); l++)
+      Dune::gridlevellist(g, l, "GridLevelInfo");
+  Dune::gridleaflist(g, "GridLeafInfo");
+  
   // type of GridInterface == GridDefaultImplementation 
   typedef Dune::GridDefaultImplementation<dim,dimworld,ctype,GridFamily> GridIF;
   const GridIF & gridIF = g;
