@@ -75,7 +75,7 @@ namespace EclipseKeywords
     const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
     string ignored_fields[] =
-	{ string("MAPUNITS")
+	{ string("MAPUNITS"), string("MAPAXES")
 	};
     const int num_ignored_fields = sizeof(ignored_fields) / sizeof(ignored_fields[0]);
 
