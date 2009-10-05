@@ -41,6 +41,7 @@
 #include <algorithm>
 #include "EclipseGridInspector.hpp"
 #include "EclipseGridParser.hpp"
+#include "SpecialEclipseFields.hpp"
 
 namespace Dune
 {
@@ -57,10 +58,11 @@ EclipseGridInspector::EclipseGridInspector(const EclipseGridParser& parser)
 	throw std::runtime_error("Needed field is missing in file");
     }
 
-    const std::vector<int>& sg = parser_.getIntegerValue("SPECGRID");
-    logical_gridsize_[0] = sg[0];
-    logical_gridsize_[1] = sg[1];
-    logical_gridsize_[2] = sg[2];
+    const SPECGRID& sgr = parser.getSpecGrid();
+    logical_gridsize_[0] = sgr.dimensions[0];
+    logical_gridsize_[1] = sgr.dimensions[1];
+    logical_gridsize_[2] = sgr.dimensions[2];
+
 }
 
 double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) const

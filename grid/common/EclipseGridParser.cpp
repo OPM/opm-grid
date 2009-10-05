@@ -41,7 +41,8 @@
 #include <limits>
 #include <cfloat>
 #include "EclipseGridParser.hpp"
-
+#include "SpecialEclipseFields.hpp"
+#include <dune/common/ErrorMacros.hpp>
 
 using namespace std;
 
@@ -55,8 +56,7 @@ namespace Dune
 namespace EclipseKeywords
 {
     string integer_fields[] =
-	{ string("SPECGRID"),
-	  string("ACTNUM"),
+	{ string("ACTNUM"),
 	  string("SATNUM"),
 	  string("EQLNUM"),
 	  string("REGNUM"),
@@ -74,8 +74,13 @@ namespace EclipseKeywords
         };
     const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
+    string special_fields[] =
+        { string("SPECGRID"), string("FAULTS"), string("MULTFLT")
+        };
+    const int num_special_fields = sizeof(special_fields) / sizeof(special_fields[0]);
+
     string ignored_fields[] =
-	{ string("MAPUNITS"), string("MAPAXES")
+	{ string("MAPUNITS")
 	};
     const int num_ignored_fields = sizeof(ignored_fields) / sizeof(ignored_fields[0]);
 
@@ -134,6 +139,7 @@ namespace
     enum FieldType {
 	Integer,
 	FloatingPoint,
+	SpecialField,
 	Ignored,
 	Unknown
     };
@@ -143,12 +149,12 @@ namespace
 	using namespace EclipseKeywords;
 	bool error_if_nonnumeric = true;
 	if (count(integer_fields, integer_fields + num_integer_fields, keyword)) {
-	    if (keyword == "SPECGRID") {
-		error_if_nonnumeric = false;
-	    }
 	    return make_pair(Integer, error_if_nonnumeric);
 	} else if (count(floating_fields, floating_fields + num_floating_fields, keyword)) {
 	    return make_pair(FloatingPoint, error_if_nonnumeric);
+	} else if (count(special_fields, special_fields + num_special_fields, keyword)) {
+	    error_if_nonnumeric = false;
+	    return make_pair(SpecialField, error_if_nonnumeric);
 	} else if (count(ignored_fields, ignored_fields + num_ignored_fields, keyword)) {
 	    return make_pair(Ignored, error_if_nonnumeric);
 	} else {
@@ -272,12 +278,12 @@ void EclipseGridParser::read(istream& is)
     // member maps.
     map<string, vector<int> > intmap;
     map<string, vector<double> > floatmap;
+    map<string, boost::shared_ptr<SpecialBase> > specialmap;
 
     // Actually read the data
     is >> ignoreWhitespace;
     while (!is.eof()) {
 	string keyword = read_keyword(is);
-	//cout << "Found keyword " << keyword << endl;
 	pair<FieldType, bool> type = classify_keyword(keyword);
 	switch (type.first) {
 	case Integer:
@@ -286,11 +292,19 @@ void EclipseGridParser::read(istream& is)
 	case FloatingPoint:
 	    read_data(is, floatmap[keyword], type.second);
 	    break;
-	case Ignored:
-	    {
-		string dummy;
-		getline(is, dummy, '/');
+	case SpecialField: {
+	    boost::shared_ptr<SpecialBase> sb_ptr = createSpecialField(is, keyword);
+	    if (sb_ptr) {
+		specialmap[keyword] = sb_ptr;
+	    } else {
+		THROW("Could not create field " << keyword);
 	    }
+	    break;
+	}
+	case Ignored: {
+	    string dummy;
+	    getline(is, dummy, '/');
+	}
 	    break;
 	case Unknown:
 	default:
@@ -303,21 +317,23 @@ void EclipseGridParser::read(istream& is)
     // Swap into member maps
     integer_field_map_.swap(intmap);
     floating_field_map_.swap(floatmap);
+    special_field_map_.swap(specialmap);
 }
 
 
-/// Returns true is the given keyword corresponds to a field that
+/// Returns true if the given keyword corresponds to a field that
 /// was found in the file.
 //---------------------------------------------------------------------------
 bool EclipseGridParser::hasField(const string& keyword) const
 //---------------------------------------------------------------------------
 {
     string ukey = upcase(keyword);
-    return integer_field_map_.count(ukey) || floating_field_map_.count(ukey);
+    return integer_field_map_.count(ukey) || floating_field_map_.count(ukey) ||
+	special_field_map_.count(ukey);
 }
 
 
-/// Returns true is all the given keywords correspond to fields
+/// Returns true if all the given keywords correspond to fields
 /// that were found in the file.
 //---------------------------------------------------------------------------
 bool EclipseGridParser::hasFields(const vector<string>& keywords) const
@@ -358,6 +374,15 @@ vector<string> EclipseGridParser::fieldNames() const
 const std::vector<int>& EclipseGridParser::getIntegerValue(const std::string& keyword) const
 //---------------------------------------------------------------------------
 {
+    if (keyword == "SPECGRID") {
+	cerr << "\nERROR. Interface has changed!\n"
+	     << "const vector<int>& dim = parser.getIntegerValue(""SPECGRID"") is deprecated.\n"
+	     << "Use:\n"
+	     << "const SPECGRID& specgrid = parser.getSpecGrid();\n"
+	     << "vector<int> dim = specgrid.dimensions;\n\n";
+	throw exception();
+    }
+
     map<string, vector<int> >::const_iterator it
 	= integer_field_map_.find(keyword);
     if (it == integer_field_map_.end()) {
@@ -380,5 +405,62 @@ const std::vector<double>& EclipseGridParser::getFloatingPointValue(const std::s
     }
 }
 
+
+//---------------------------------------------------------------------------
+const boost::shared_ptr<SpecialBase> EclipseGridParser::getSpecialValue(const std::string& keyword) const
+//---------------------------------------------------------------------------
+{
+    map<string, boost::shared_ptr<SpecialBase> >::const_iterator it = special_field_map_.find(keyword);
+    if (it == special_field_map_.end()) {
+ 	return empty_special_field_;
+    } else {
+	return it->second;
+    }
+}
+
+//---------------------------------------------------------------------------
+const SPECGRID& EclipseGridParser::getSpecGrid() const
+//---------------------------------------------------------------------------
+{
+    return dynamic_cast<const SPECGRID&>(*getSpecialValue("SPECGRID"));
+}
+
+//---------------------------------------------------------------------------
+const FAULTS& EclipseGridParser::getFaults() const
+//---------------------------------------------------------------------------
+{
+    return dynamic_cast<const FAULTS&>(*getSpecialValue("FAULTS"));
+}
+
+//---------------------------------------------------------------------------
+const MULTFLT& EclipseGridParser::getMultflt() const
+//---------------------------------------------------------------------------
+{
+    return dynamic_cast<const MULTFLT&>(*getSpecialValue("MULTFLT"));
+}
+
+//---------------------------------------------------------------------------
+boost::shared_ptr<SpecialBase>
+EclipseGridParser::createSpecialField(std::istream& is,
+				      const std::string& fieldname)
+//---------------------------------------------------------------------------
+{
+    string ukey = upcase(fieldname);
+    boost::shared_ptr<SpecialBase> spec_ptr;
+    if (ukey == "SPECGRID") {
+	spec_ptr.reset(new SPECGRID);
+	spec_ptr->read(is);
+    } else if (ukey == "FAULTS") {
+	spec_ptr.reset(new FAULTS);
+	spec_ptr->read(is);
+    } else if (ukey == "MULTFLT") {
+	spec_ptr.reset(new MULTFLT);
+	spec_ptr->read(is);
+    } else {
+	cerr << "Special Keyword " << fieldname << " not recognized." << endl;
+	throw exception();
+    }
+    return spec_ptr;
+}
 
 } // namespace Dune

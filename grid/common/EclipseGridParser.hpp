@@ -39,7 +39,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <map>
-
+#include <boost/shared_ptr.hpp>
+#include "SpecialEclipseFields.hpp"
 
 namespace Dune
 {
@@ -71,10 +72,10 @@ public:
     /// Read the given stream, overwriting any previous data.
     void read(std::istream& is);
 
-    /// Returns true is the given keyword corresponds to a field that
+    /// Returns true if the given keyword corresponds to a field that
     /// was found in the file.
     bool hasField(const std::string& keyword) const;
-    /// Returns true is all the given keywords correspond to fields
+    /// Returns true if all the given keywords correspond to fields
     /// that were found in the file.
     bool hasFields(const std::vector<std::string>& keywords) const;
     /// The keywords/fields found in the file.
@@ -88,12 +89,24 @@ public:
     /// corresponding to the given floating-point keyword.
     const std::vector<double>& getFloatingPointValue(const std::string& keyword) const;
 
+    /// Returns a reference to a vector containing pointers to the values 
+    /// corresponding to the given keyword when the values are not only integers
+    /// or floats.
+    const boost::shared_ptr<SpecialBase> getSpecialValue(const std::string& keyword) const;
+
+    boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
+
+    const SPECGRID& getSpecGrid() const;
+    const FAULTS&   getFaults() const;
+    const MULTFLT&  getMultflt() const;
 
 private:
     std::map<std::string, std::vector<int> > integer_field_map_;
     std::map<std::string, std::vector<double> > floating_field_map_;
+    std::map<std::string, boost::shared_ptr<SpecialBase> >special_field_map_;
     std::vector<int> empty_integer_field_;
     std::vector<double> empty_floating_field_;
+    boost::shared_ptr<SpecialBase> empty_special_field_;
 };
 
 
