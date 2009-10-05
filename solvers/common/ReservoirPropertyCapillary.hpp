@@ -566,8 +566,9 @@ namespace Dune
         {
             int num_global_cells = -1;
             if (parser.hasField("SPECGRID")) {
-                const std::vector<int>& n = parser.getIntegerValue("SPECGRID");
-                num_global_cells = n[0] * n[1] * n[2];
+		const SPECGRID& sgr = parser.getSpecGrid();
+		num_global_cells = 
+		    sgr.dimensions[0] * sgr.dimensions[1] * sgr.dimensions[2];
             }
             ASSERT (num_global_cells > 0);
 
