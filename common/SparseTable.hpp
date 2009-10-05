@@ -65,7 +65,8 @@ namespace Dune
         /// \param rowsize_beg The start of the row length data.
         /// \param rowsize_end One beyond the end of the row length data.
         template <typename DataIter, typename IntegerIter>
-        SparseTable(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
+        SparseTable(DataIter data_beg, DataIter data_end,
+                    IntegerIter rowsize_beg, IntegerIter rowsize_end)
             : data_(data_beg, data_end)
         {
 	    setRowStartsFromSizes(rowsize_beg, rowsize_end);
@@ -79,10 +80,25 @@ namespace Dune
         /// \param rowsize_beg The start of the row length data.
         /// \param rowsize_end One beyond the end of the row length data.
         template <typename DataIter, typename IntegerIter>
-        void assign(DataIter data_beg, DataIter data_end, IntegerIter rowsize_beg, IntegerIter rowsize_end)
+        void assign(DataIter data_beg, DataIter data_end,
+                    IntegerIter rowsize_beg, IntegerIter rowsize_end)
         {
 	    data_.assign(data_beg, data_end);
 	    setRowStartsFromSizes(rowsize_beg, rowsize_end);
+        }
+
+
+        /// Request storage for table of given size.
+        /// \param rowsize_beg Start of row size data.
+        /// \param rowsize_end One beyond end of row size data.
+        template <typename IntegerIter>
+        void allocate(IntegerIter rowsize_beg, IntegerIter rowsize_end)
+        {
+            typedef typename std::vector<T>::size_type sz_t;
+
+            sz_t ndata = std::accumulate(rowsize_beg, rowsize_end, sz_t(0));
+            data_.resize(ndata);
+            setRowStartsFromSizes(rowsize_beg, rowsize_end);
         }
 
 
