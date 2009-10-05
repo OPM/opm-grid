@@ -379,7 +379,7 @@ const std::vector<int>& EclipseGridParser::getIntegerValue(const std::string& ke
 	     << "const vector<int>& dim = parser.getIntegerValue(""SPECGRID"") is deprecated.\n"
 	     << "Use:\n"
 	     << "const SPECGRID& specgrid = parser.getSpecGrid();\n"
-	     << "vector<int> dim = specgrid.dimensions;\n\n";
+	     << "const vector<int>& dim = specgrid.dimensions;\n\n";
 	throw exception();
     }
 

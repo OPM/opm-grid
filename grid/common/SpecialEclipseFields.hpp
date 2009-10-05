@@ -138,7 +138,6 @@ struct SPECGRID : public SpecialBase
 
     SPECGRID()
     {
-	//dimensions[0] = dimensions[1] = dimensions[2] = 1;
 	dimensions.resize(3,1);
 	numres = 1;
 	qrdial = 'F';
@@ -186,7 +185,7 @@ struct SPECGRID : public SpecialBase
 struct FaultSegment
 {
     std::string fault_name;          // Fault name
-    std::vector<int> ijk_coord;   // ijk-coordinates of segment cells
+    std::vector<int> ijk_coord;      // ijk-coordinates of segment cells
     std::string face;                // Fault face of cells
 };
 
