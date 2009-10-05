@@ -94,13 +94,14 @@ public:
     /// or floats.
     const boost::shared_ptr<SpecialBase> getSpecialValue(const std::string& keyword) const;
 
-    boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
 
     const SPECGRID& getSpecGrid() const;
     const FAULTS&   getFaults() const;
     const MULTFLT&  getMultflt() const;
 
 private:
+    boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
+
     std::map<std::string, std::vector<int> > integer_field_map_;
     std::map<std::string, std::vector<double> > floating_field_map_;
     std::map<std::string, boost::shared_ptr<SpecialBase> >special_field_map_;

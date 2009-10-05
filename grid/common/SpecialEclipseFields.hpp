@@ -126,7 +126,7 @@ struct SpecialBase {
     virtual ~SpecialBase() {}                       // Default destructor
     virtual std::string name() const = 0;           // Keyword name
     virtual void read(std::istream& is) = 0;        // Reads data
-    virtual void print(std::ostream& os) const = 0; // Printss data
+    virtual void write(std::ostream& os) const = 0; // Writes data
 };
 
 /// Class for keyword SPECGRID 
@@ -172,7 +172,7 @@ struct SPECGRID : public SpecialBase
 	}
     }
 	
-    virtual void print(std::ostream& os) const
+    virtual void write(std::ostream& os) const
     {
 	os << name() << std::endl;
 	os << dimensions[0] << " " << dimensions[1]  << " "
@@ -223,16 +223,13 @@ struct FAULTS : public SpecialBase
 	    if (nread != 6) {
 		THROW("Error reading fault_segment " << name);
 	    }
-	    for (int i=0; i<(int)fault_segment.ijk_coord.size(); ++i) {
-		--fault_segment.ijk_coord[i];  // Count from zero.
-	    }
 	    is >> fault_segment.face;
 	    faults.push_back(fault_segment);
 	    read_slash(is);
 	}
     }
 
-    virtual void print(std::ostream& os) const
+    virtual void write(std::ostream& os) const
     {
 	os << name() << std::endl;
 	for (int i=0; i<(int)faults.size(); ++i) {
@@ -297,7 +294,7 @@ struct MULTFLT : public SpecialBase
 	}
     }
 
-    virtual void print(std::ostream& os) const
+    virtual void write(std::ostream& os) const
     {
 	os << name() << std::endl;
 	for (int i=0; i<(int)multflts.size(); ++i) {
