@@ -367,6 +367,12 @@ vector<string> EclipseGridParser::fieldNames() const
 	    names.push_back(it->first);
 	}
     }
+    {
+	map<string, boost::shared_ptr<SpecialBase> >::const_iterator it = special_field_map_.begin();
+	for (; it != special_field_map_.end(); ++it) {
+	    names.push_back(it->first);
+	}
+    }
     return names;
 }
 
