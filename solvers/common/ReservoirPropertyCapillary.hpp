@@ -399,7 +399,8 @@ namespace Dune
         /// @todo Doc me!
         /// @param
         /// @return
-        void phaseDensity(int /*cell_index*/, std::vector<double>& density) const
+        template<class Vector>
+        void phaseDensity(int /*cell_index*/, Vector& density) const
         {
             ASSERT (density.size() >= NumberOfPhases);
             density[0] = densityFirstPhase();
@@ -408,7 +409,8 @@ namespace Dune
         /// @brief
         /// @todo Doc me!
         /// @param
-        void phaseMobility(int cell_index, double sat, std::vector<double>& mob) const
+        template<class Vector>
+        void phaseMobility(int cell_index, double sat, Vector& mob) const
         {
             ASSERT (mob.size() >= NumberOfPhases);
             mob[0] = mobilityFirstPhase(cell_index, sat);
