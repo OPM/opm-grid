@@ -126,7 +126,7 @@ namespace Dune
 	    template <int cc>
 	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
-		return index(e.subEntity<cc>(i));
+		return index(e.template subEntity<cc>(i));
 	    }
 
 	    /// @brief
@@ -193,7 +193,7 @@ namespace Dune
 	    template<int cc>
 	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i) const 
 	    {
-		return id(e.subEntity<cc>(i));
+		return id(e.template subEntity<cc>(i));
 	    }
 
 	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i, int cc) const
