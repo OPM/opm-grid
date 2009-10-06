@@ -470,6 +470,32 @@ namespace Dune {
     }
 
 
+    // A <- inv(A)
+    template<typename T, template<typename> class StoragePolicy>
+    int invert(FullMatrix<T,StoragePolicy,FortranOrdering>& A)
+    {
+        typedef typename FullMatrix<T,StoragePolicy,FortranOrdering>::value_type value_type;
+
+        ASSERT (A.numRows() == A.numCols());
+
+        std::vector<value_type>  work(A.numRows());
+        std::vector<int>        lwork(A.numRows());
+        std::vector<int>         ipiv(A.numRows());
+
+        int info = 0;
+
+        Dune::BLAS_LAPACK::GETRF(A.numRows(), A.numCols(), A.data(),
+                                 A.leadingDimension(), &ipiv[0], info);
+
+        if (info == 0) {
+            Dune::BLAS_LAPACK::GETRI(A.numRows(), A.data(), A.leadingDimension(),
+                                     &ipiv[0], &work[0], &lwork[0], info);
+        }
+
+        return info;
+    }
+
+
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
     

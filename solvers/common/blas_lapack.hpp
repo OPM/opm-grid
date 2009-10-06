@@ -115,6 +115,25 @@ extern "C" {
                       double* A   , const int* ld   , const double* tau,
                       double* work, const int* lwork,       int*    info);
 
+#ifdef DGETRF
+#undef DGETRF
+#endif
+#define  DGETRF F77_NAME(dgetrf,DGETRF)
+
+    void DGETRF(const int*    m   , const int* n ,
+                      double* A   , const int* ld,
+                      int*    ipiv,       int* info);
+
+#ifdef DGETRI
+#undef DGETRI
+#endif
+#define  DGETRI F77_NAME(dgetri,DGETRI)
+
+    void DGETRI(const int*    n   ,
+                      double* A   , const int* ld,
+                const int*    ipiv,
+                      double* work,       int* lwork, int* info);
+
 #ifdef __cplusplus
 }
 #endif
@@ -243,6 +262,33 @@ namespace Dune {
                                  double* work, const int lwork,       int&    info)
         {
             DORGQR(&m, &n, &k, A, &ld, tau, work, &lwork, &info);
+        }
+
+
+        //--------------------------------------------------------------------------
+        template<typename T>
+        void GETRF(const int m, const int n, T* A,
+                   const int ld, int* ipiv, int& info);
+
+        template<>
+        void GETRF<double>(const int m, const int n , double* A,
+                           const int ld, int* ipiv, int& info)
+        {
+            DGETRF(&m, &n, A, &ld, ipiv, &info);
+        }
+
+
+
+        //--------------------------------------------------------------------------
+        template<typename T>
+        void GETRI(const int  n   , T* A   , const int ld,
+                   const int* ipiv, T* work, int* lwork, int& info);
+
+        template<>
+        void GETRI(const int  n   , double* A   , const int ld,
+                   const int* ipiv, double* work, int* lwork, int& info)
+        {
+            DGETRI(&n, A, &ld, ipiv, work, lwork, &info);
         }
     } // namespace BLAS_LAPACK
 } // namespace Dune
