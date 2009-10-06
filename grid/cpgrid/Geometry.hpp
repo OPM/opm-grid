@@ -193,6 +193,12 @@ namespace Dune
 		return dummy;
 	    }
 
+	    /// The mapping implemented by this geometry is singular, and therefore not affine.
+	    bool affine() const
+	    {
+		return false;
+	    }
+
 	private:
 	    GlobalCoordinate pos_;
 	    double vol_;
