@@ -141,13 +141,17 @@ extern "C" {
 namespace Dune {
     namespace BLAS_LAPACK {
         //--------------------------------------------------------------------------
-        template<typename T>
+        /// @brief GEneral Matrix Vector product (Level 2 BLAS).
+        ///
+        /// @tparam T Element type of matrix/vector.
+       template<typename T>
         void GEMV(const char* transA,
                   const int   m     , const int   n,
                   const T&    a1    , const T*    A, const int ldA ,
                                       const T*    x, const int incX,
                   const T&    a2    ,       T*    y, const int incY);
 
+        /// @brief GEneral Matrix Vector product specialization for double.
         template<>
         void GEMV<double>(const char*   transA,
                           const int     m     , const int     n,
@@ -163,6 +167,9 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief GEneral Matrix Mector product (Level 3 BLAS).
+        ///
+        /// @tparam T Element type of matrix.
         template<typename T>
         void GEMM(const char* transA, const char* transB,
                   const int   m     , const int   n     , const int k  ,
@@ -170,6 +177,7 @@ namespace Dune {
                                       const T*    B     , const int ldB,
                   const T&    a2    ,       T*    C     , const int ldC);
 
+        /// @brief GEneral Matrix Mector product specialization for double.
         template<>
         void GEMM<double>(const char*   transA, const char*   transB,
                           const int     m     , const int     n     , const int k  ,
@@ -186,12 +194,16 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief SYmmetric Rank K update of symmetric matrix (Level 3 BLAS)
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void SYRK(const char* uplo, const char* trans,
                   const int   n   , const int   k    ,
                   const T&    a1  , const T*    A    , const int ldA,
                   const T&    a2  ,       T*    C    , const int ldC);
 
+        /// @brief SYmmetric Rank K update of symmetric matrix specialization for double.
         template<>
         void SYRK<double>(const char*   uplo, const char*   trans,
                           const int     n   , const int     k    ,
@@ -208,6 +220,9 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief TRiangular Matrix Matrix product (Level 2 BLAS)
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void TRMM(const char* side  , const char* uplo,
                   const char* transA, const char* diag,
@@ -215,6 +230,7 @@ namespace Dune {
                   const T*    A     , const int   ldA ,
                         T*    B     , const int   ldB);
 
+        /// @brief TRiangular Matrix Matrix product specialization for double.
         template<>
         void TRMM<double>(const char*   side  , const char* uplo,
                           const char*   transA, const char* diag,
@@ -234,12 +250,16 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief GEneral matrix QR Factorization (LAPACK)
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void GEQRF(const int m    , const int  n   ,
                          T*  A    , const int  ld  ,
                          T*  tau  ,       T*   work,
                    const int lwork,       int& info);
 
+        /// @brief GEneral matrix QR Factorization specialization for double.
         template<>
         void GEQRF<double>(const int     m    , const int     n   ,
                                  double* A    , const int     ld  ,
@@ -251,11 +271,17 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief ORthogonal matrix Generator from QR factorization (LAPACK).
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void ORGQR(const int m   , const int n    , const int  k  ,
                          T*  A   , const int ld   , const T*   tau,
                          T*  work, const int lwork,       int& info);
 
+        /// @brief
+        ///    ORthogonal matrix Generator from QR factorization
+        ///    specialization for double.
         template<>
         void ORGQR<double>(const int     m   , const int n    , const int     k  ,
                                  double* A   , const int ld   , const double* tau,
@@ -266,10 +292,15 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief GEneral matrix TRiangular Factorization (LAPACK).
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void GETRF(const int m, const int n, T* A,
                    const int ld, int* ipiv, int& info);
 
+        /// @brief
+        ///    GEneral matrix TRiangular Factorization specialization for double.
         template<>
         void GETRF<double>(const int m, const int n , double* A,
                            const int ld, int* ipiv, int& info)
@@ -280,10 +311,14 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
+        /// @brief GEneral matrix TRiangular Inversion (LAPACK).
+        ///
+        /// @tparam T Matrix element type.
         template<typename T>
         void GETRI(const int  n   , T* A   , const int ld,
                    const int* ipiv, T* work, int* lwork, int& info);
 
+        /// @brief GEneral matrix TRiangular Inversion specialization for double.
         template<>
         void GETRI(const int  n   , double* A   , const int ld,
                    const int* ipiv, double* work, int* lwork, int& info)
