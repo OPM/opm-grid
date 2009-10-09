@@ -443,7 +443,7 @@ namespace Dune
 
     template <class GI, class RP, class BC>
     template <class PressureSolution>
-    inline void EulerUpstream<GI, RP, BC>::computeSatDelta(std::vector<double>& saturation,
+    inline void EulerUpstream<GI, RP, BC>::computeSatDelta(const std::vector<double>& saturation,
 							   const double dt,
 							   const typename GI::Vector& gravity,
 							   const PressureSolution& pressure_sol,

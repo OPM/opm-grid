@@ -118,7 +118,7 @@ namespace Dune {
 			   const PressureSolution& pressure_sol) const;
 	
 	template <class PressureSolution>
-	void computeSatDelta(std::vector<double>& saturation,
+	void computeSatDelta(const std::vector<double>& saturation,
 			     const double time,
 			     const typename GridInterface::Vector& gravity,
 			     const PressureSolution& pressure_sol,
