@@ -21,6 +21,7 @@ mapper_test_SOURCES = mapper_test.cpp
 mapper_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 max_zdist_test_SOURCES = max_zdist_test.cpp
+max_zdist_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh \
                             transportproblem2.hh unitcube.hh vtkout.hh
