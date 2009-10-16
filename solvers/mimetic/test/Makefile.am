@@ -5,7 +5,8 @@ noinst_PROGRAMS = mimetic_ipeval_test \
                   mimetic_solver_test \
                   mimetic_periodic_test \
 		  parsolver_test \
-		  istl_test
+		  istl_test \
+		  spe10
 
 LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
         $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
@@ -29,6 +30,9 @@ parsolver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 istl_test_SOURCES  = istl_test.cpp
 istl_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
+spe10_SOURCES = spe10.cpp
+spe10_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 TESTS = $(check_PROGRAMS)
 
