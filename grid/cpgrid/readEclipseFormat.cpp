@@ -179,6 +179,11 @@ namespace Dune
 #endif
 	// Clean up the output struct.
 	free_processed_grid(&output);
+
+        cartDims_[0] = output.dimensions[0];
+        cartDims_[1] = output.dimensions[1];
+        cartDims_[2] = output.dimensions[2];
+        
 #ifdef VERBOSE
 	std::cout << "Done with grid processing." << std::endl;
 #endif

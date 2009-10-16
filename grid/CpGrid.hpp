@@ -252,6 +252,21 @@ namespace Dune
             return global_cell_;
         }
 
+        /// @brief
+        ///    Extract Cartesian index triplet (i,j,k) of an active cell.
+        ///
+        /// @param [in] c
+        ///    Active cell index.
+        ///
+        /// @param [out] ijk  Cartesian index triplet
+        void getIJK(const int c, boost::array<int,3>& ijk) const
+        {
+            int gc = global_cell_[c];
+            ijk[0] = gc % cartDims_[0];  gc /= cartDims_[0];
+            ijk[1] = gc % cartDims_[1];
+            ijk[2] = gc / cartDims_[1];
+        }
+
 	/// Is the grid currently using unique boundary ids?
 	/// \return true if each boundary intersection has a unique id
 	///         false if we use the (default) 1-6 ids for i- i+ j- j+ k- k+ boundaries.
@@ -583,6 +598,10 @@ namespace Dune
 	boost::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
+
+        // Size of Cartesian bounding box.
+        boost::array<int,3> cartDims_;
+        
 	// Representing geometry
 	typedef cpgrid::DefaultGeometryPolicy<CpGrid> Geom;
 	Geom geometry_;
