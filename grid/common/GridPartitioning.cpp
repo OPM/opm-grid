@@ -33,6 +33,7 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
+#include "config.h"
 #include "GridPartitioning.hpp"
 #include <dune/grid/CpGrid.hpp>
 #include <stack>

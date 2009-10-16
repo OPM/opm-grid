@@ -32,7 +32,7 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-
+#include "config.h"
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include "StopWatch.hpp"
 #include "ErrorMacros.hpp"

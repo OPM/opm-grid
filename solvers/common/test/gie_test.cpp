@@ -163,7 +163,7 @@ int main (int argc , char **argv) {
 #undef REFINE
 #endif
 
-#define REFINE 0
+#define REFINE 1
 
 #if REFINE > 0
 	check_yasp<3,1>();  // 3D, 2 x 2 x 2 cells

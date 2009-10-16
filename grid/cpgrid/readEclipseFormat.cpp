@@ -34,6 +34,7 @@
 */
 
 
+#include "config.h"
 #include <fstream>
 #include "../CpGrid.hpp"
 #include <dune/grid/common/EclipseGridParser.hpp>
