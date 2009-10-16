@@ -435,7 +435,7 @@ namespace Dune {
 
         /// @brief Default constructor.
         ParIncompFlowSolverHybrid()
-	    : comm_(MPI_COMM_WORLD)
+            : comm_(MPI_COMM_WORLD)
         {
             clear();
         }
@@ -465,7 +465,7 @@ namespace Dune {
                   const ReservoirInterface& r,
                   const BCInterface&        bc,
                   const std::vector<int>&   partition,
-		  const int my_partition)
+                  const int my_partition)
         {
             clock_.start();
             clear();
@@ -489,7 +489,7 @@ namespace Dune {
         {
             pgrid_                  =  0;
             ppartition_             =  0;
-	    my_partition_           = -1;
+            my_partition_           = -1;
             max_ncf_                = -1;
             total_num_faces_        =  0;
             total_num_cells_        =  0;
@@ -528,13 +528,13 @@ namespace Dune {
         void initSystemStructure(const GridInterface& g,
                                  const BCInterface&   bc,
                                  const std::vector<int>& partition,
-				 const int my_partition)
+                                 const int my_partition)
         {
             ASSERT2 (cleared_state_,
                      "You must call clear() prior to initSystemStructure()");
             ASSERT  (topologyIsSane(g));
 
-	    my_partition_ = my_partition;
+            my_partition_ = my_partition;
             enumerateDof(g, bc, partition);
             printElapsedTime("enumerateDof()");
             allocateConnections(bc);
@@ -574,13 +574,13 @@ namespace Dune {
             int i = 0;
             const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-		if ((*ppartition_)[c->index()] != my_partition_) continue;
+                if ((*ppartition_)[c->index()] != my_partition_) continue;
                 const int nf = cellFaces[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
 
                 ip.evaluate(c, r.permeability(c->index()), Binv);
-		++i;
+                ++i;
             }
         }
 
@@ -814,14 +814,14 @@ namespace Dune {
         // ----------------------------------------------------------------
         bool cleared_state_;
         int  max_ncf_;
-	int  total_num_cells_;
+        int  total_num_cells_;
         int  total_num_faces_;
-	int  my_partition_;
+        int  my_partition_;
 
-	typedef int LocalId;
-	typedef int GlobalId;
-	typedef Dune::OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
-	Communication comm_;
+        typedef int LocalId;
+        typedef int GlobalId;
+        typedef Dune::OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
+        Communication comm_;
 
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
@@ -871,62 +871,62 @@ namespace Dune {
             std::vector<int>& cell = flowSolution_.cellno_;
 
             // First pass: count things, and build dof<->faceindex maps.
-	    std::vector<int> faceindex_to_dof(g.numberOfFaces(), -1);
-	    std::vector<int> dof_to_faceindex;
-	    std::vector<int> part_bdy;
+            std::vector<int> faceindex_to_dof(g.numberOfFaces(), -1);
+            std::vector<int> dof_to_faceindex;
+            std::vector<int> part_bdy;
             int cellno = 0;
             int tot_ncf = 0;  // Number of half-faces. Or sum of neighbourhood sizes.
-	    int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
+            int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-		if (partition[c0] != my_partition_) continue;
+                if (partition[c0] != my_partition_) continue;
                 ASSERT((0 <= c0) && (c0 < nc_all) && (cell[c0] == -1));
                 cell[c0] = cellno;
-		const typename GridInterface::Indices& cell_faces = g.faceIndices(c0);
-		int ncf = cell_faces.size();
+                const typename GridInterface::Indices& cell_faces = g.faceIndices(c0);
+                int ncf = cell_faces.size();
                 max_ncf_  = std::max(max_ncf_, ncf);
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
-		for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-		    int fi = f->index();
-		    if (faceindex_to_dof[fi] == -1) {
-			faceindex_to_dof[fi] = dof_to_faceindex.size();
-			dof_to_faceindex.push_back(fi);
-			bool on_part_bdy = false;
-			if (!f->boundary()) {
-			    on_part_bdy = (partition[f->neighbourCellIndex()] != my_partition_);
-			}
-			part_bdy.push_back(on_part_bdy);
-		    } else {
-			if (dof_to_faceindex[faceindex_to_dof[fi]] != fi) {
-			    THROW("Error in creating dof <-> faceindex maps.");
-			}
-		    }
-		}
-		++cellno;
+                for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                    int fi = f->index();
+                    if (faceindex_to_dof[fi] == -1) {
+                        faceindex_to_dof[fi] = dof_to_faceindex.size();
+                        dof_to_faceindex.push_back(fi);
+                        bool on_part_bdy = false;
+                        if (!f->boundary()) {
+                            on_part_bdy = (partition[f->neighbourCellIndex()] != my_partition_);
+                        }
+                        part_bdy.push_back(on_part_bdy);
+                    } else {
+                        if (dof_to_faceindex[faceindex_to_dof[fi]] != fi) {
+                            THROW("Error in creating dof <-> faceindex maps.");
+                        }
+                    }
+                }
+                ++cellno;
             }
             ASSERT(cellno <= nc_all);
-	    total_num_cells_ = cellno;  // Size of my partition.
+            total_num_cells_ = cellno;  // Size of my partition.
 
-	    // Second pass: build index set.
-	    typedef Dune::OwnerOverlapCopyAttributeSet GridAttributes;
-	    typedef GridAttributes::AttributeSet GridFlag;
-	    typedef Dune::ParallelLocalIndex<GridFlag> LocalIndex;
-	    int num_dof = dof_to_faceindex.size();
-	    Communication::PIS& pis = comm_.indexSet();
-	    pis.beginResize();
-	    for (int i = 0; i < num_dof; ++i) {
-		GridFlag flag = part_bdy[i] ? GridAttributes::overlap : GridAttributes::owner;
-		// if (my_partition_ == 0) flag = GridAttributes::owner;
-		bool is_public = part_bdy[i] ? true : false;
-		pis.add(dof_to_faceindex[i], LocalIndex(i, flag, is_public));
-	    }
-	    pis.endResize();
-	    comm_.remoteIndices().template rebuild<false>();
+            // Second pass: build index set.
+            typedef Dune::OwnerOverlapCopyAttributeSet GridAttributes;
+            typedef GridAttributes::AttributeSet GridFlag;
+            typedef Dune::ParallelLocalIndex<GridFlag> LocalIndex;
+            int num_dof = dof_to_faceindex.size();
+            Communication::PIS& pis = comm_.indexSet();
+            pis.beginResize();
+            for (int i = 0; i < num_dof; ++i) {
+                GridFlag flag = part_bdy[i] ? GridAttributes::overlap : GridAttributes::owner;
+                // if (my_partition_ == 0) flag = GridAttributes::owner;
+                bool is_public = part_bdy[i] ? true : false;
+                pis.add(dof_to_faceindex[i], LocalIndex(i, flag, is_public));
+            }
+            pis.endResize();
+            comm_.remoteIndices().template rebuild<false>();
 
 
             // Third pass: build cell-to-face mapping and the structures of
-	    // the Binv_, F_, f_ and outflux objects.
+            // the Binv_, F_, f_ and outflux objects.
             flowSolution_.cellFaces_.reserve(cellno, tot_ncf);
             flowSolution_.outflux_  .reserve(cellno, tot_ncf);
             F_   .reserve(cellno, tot_ncf );
@@ -937,21 +937,21 @@ namespace Dune {
             std::vector<int> cell_dofs(max_ncf_);
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-		if (partition[c0] != my_partition_) continue;
+                if (partition[c0] != my_partition_) continue;
                 ASSERT ((0 <=      c0 ) && (     c0  < nc_all) &&
                         (0 <= cell[c0]) && (cell[c0] < total_num_cells_));
                 const int ncf = g.faceIndices(c0).size();
-		cell_dofs.resize(ncf);
-		for (int ll = 0; ll < ncf; ++ll) {
-		    cell_dofs[ll] = faceindex_to_dof[g.faceIndices(c0)[ll]];
-		}
-		flowSolution_.cellFaces_.appendRow(cell_dofs.begin(), cell_dofs.end());
+                cell_dofs.resize(ncf);
+                for (int ll = 0; ll < ncf; ++ll) {
+                    cell_dofs[ll] = faceindex_to_dof[g.faceIndices(c0)[ll]];
+                }
+                flowSolution_.cellFaces_.appendRow(cell_dofs.begin(), cell_dofs.end());
                 flowSolution_.outflux_  .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 F_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 f_                      .appendRow(zeroes.begin(), zeroes.begin() + ncf);
                 Binv_                   .appendRow(zeroes.begin(), zeroes.begin() + ncf*ncf);
             }
-	    total_num_faces_ = dof_to_faceindex.size();
+            total_num_faces_ = dof_to_faceindex.size();
         }
 
 
@@ -969,7 +969,7 @@ namespace Dune {
 
             bdry_id_map_.clear();
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-		if (partition[c->index()] != my_partition_) continue;
+                if (partition[c->index()] != my_partition_) continue;
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         const int bid = f->boundaryId();
@@ -985,7 +985,7 @@ namespace Dune {
             if (!bdry_id_map_.empty()) {
                 ppartner_dof_.assign(total_num_faces_, -1);
                 for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-		    if (partition[c->index()] != my_partition_) continue;
+                    if (partition[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1081,7 +1081,7 @@ namespace Dune {
                 // At least one periodic BC.  Allocate corresponding
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-		    if ((*ppartition_)[c->index()] != my_partition_) continue;
+                    if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1185,7 +1185,7 @@ namespace Dune {
                 // At least one periodic BC.  Assign periodic
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-		    if ((*ppartition_)[c->index()] != my_partition_) continue;
+                    if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1267,7 +1267,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
-		if ((*ppartition_)[ci] != my_partition_) continue;
+                if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
@@ -1355,9 +1355,9 @@ namespace Dune {
             typedef BCRSMatrix <MatrixBlockType>        Matrix;
             typedef BlockVector<VectorBlockType>        Vector;
             // typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
-	    typedef OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
-	    typedef OverlappingSchwarzOperator<Matrix,Vector,Vector,Communication> Operator;  
-	    typedef OverlappingSchwarzScalarProduct<Vector,Communication> ScalarProduct;
+            typedef OwnerOverlapCopyCommunication<LocalId,GlobalId> Communication;
+            typedef OverlappingSchwarzOperator<Matrix,Vector,Vector,Communication> Operator;  
+            typedef OverlappingSchwarzScalarProduct<Vector,Communication> ScalarProduct;
 
             // AMG specific types.
 #define FIRST_DIAGONAL 1
@@ -1376,7 +1376,7 @@ namespace Dune {
 #endif
 
             typedef SeqILU0<Matrix, Vector, Vector>        Smoother;
-	    typedef BlockPreconditioner<Vector, Vector, Communication, Smoother> ParSmoother;
+            typedef BlockPreconditioner<Vector, Vector, Communication, Smoother> ParSmoother;
             typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
             typedef Amg::AMG<Operator, Vector, ParSmoother, Communication>   Precond;
 
@@ -1385,7 +1385,7 @@ namespace Dune {
                 S_[0][0] *= 2;
             }
             Operator opS(S_, comm_);
-	    ScalarProduct sp(comm_);
+            ScalarProduct sp(comm_);
 
             // Construct preconditioner.
             double relax = 1;
@@ -1439,7 +1439,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
-		if ((*ppartition_)[ci] != my_partition_) continue;
+                if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];
                 const int nf = cf[c0].size();
 
