@@ -205,6 +205,25 @@ real	0m32.599s
 user	0m28.111s
 sys	0m4.231s
 
+[again, Oct. 8 2009 - changes in AMG affect solution]
+
+156.108070306758 0 0 
+0 161.812982946198 0 
+0 0 31.2464373309417 
+
+real	0m31.417s
+user	0m27.212s
+sys	0m4.058s
+
+[again, Oct. 8 2009 - this time with branch version of Incom* and Mimetic*]
+
+156.108070306758 0 0 
+0 161.812982946198 0 
+0 0 31.2464373309417 
+
+real	0m31.228s
+user	0m27.018s
+sys	0m4.067s
 
 5) residual_tolerance = 1e-5
 
