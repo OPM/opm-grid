@@ -574,7 +574,7 @@ namespace Dune {
             int i = 0;
             const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-                if ((*ppartition_)[c->index()] != my_partition_) continue;
+                // if ((*ppartition_)[c->index()] != my_partition_) continue;
                 const int nf = cellFaces[i].size();
 
                 SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
@@ -879,7 +879,7 @@ namespace Dune {
             int tot_ncf2 = 0; // Sum of squared neighbourhood sizes.
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-                if (partition[c0] != my_partition_) continue;
+                // if (partition[c0] != my_partition_) continue;
                 ASSERT((0 <= c0) && (c0 < nc_all) && (cell[c0] == -1));
                 cell[c0] = cellno;
                 const typename GridInterface::Indices& cell_faces = g.faceIndices(c0);
@@ -894,7 +894,7 @@ namespace Dune {
                         dof_to_faceindex.push_back(fi);
                         bool on_part_bdy = false;
                         if (!f->boundary()) {
-                            on_part_bdy = (partition[f->neighbourCellIndex()] != my_partition_);
+                            // on_part_bdy = (partition[f->neighbourCellIndex()] != my_partition_);
                         }
                         part_bdy.push_back(on_part_bdy);
                     } else {
@@ -937,7 +937,7 @@ namespace Dune {
             std::vector<int> cell_dofs(max_ncf_);
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 const int c0 = c->index();
-                if (partition[c0] != my_partition_) continue;
+                // if (partition[c0] != my_partition_) continue;
                 ASSERT ((0 <=      c0 ) && (     c0  < nc_all) &&
                         (0 <= cell[c0]) && (cell[c0] < total_num_cells_));
                 const int ncf = g.faceIndices(c0).size();
@@ -969,7 +969,7 @@ namespace Dune {
 
             bdry_id_map_.clear();
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-                if (partition[c->index()] != my_partition_) continue;
+                // if (partition[c->index()] != my_partition_) continue;
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         const int bid = f->boundaryId();
@@ -985,7 +985,7 @@ namespace Dune {
             if (!bdry_id_map_.empty()) {
                 ppartner_dof_.assign(total_num_faces_, -1);
                 for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-                    if (partition[c->index()] != my_partition_) continue;
+                    // if (partition[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1081,7 +1081,7 @@ namespace Dune {
                 // At least one periodic BC.  Allocate corresponding
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-                    if ((*ppartition_)[c->index()] != my_partition_) continue;
+                    // if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1185,7 +1185,7 @@ namespace Dune {
                 // At least one periodic BC.  Assign periodic
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-                    if ((*ppartition_)[c->index()] != my_partition_) continue;
+                    // if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
                             const int bid = f->boundaryId();
@@ -1267,7 +1267,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
-                if ((*ppartition_)[ci] != my_partition_) continue;
+                // if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
@@ -1439,7 +1439,7 @@ namespace Dune {
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
-                if ((*ppartition_)[ci] != my_partition_) continue;
+                // if ((*ppartition_)[ci] != my_partition_) continue;
                 const int c0 = cell[ci];
                 const int nf = cf[c0].size();
 
