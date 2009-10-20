@@ -483,7 +483,7 @@ namespace Dune {
 
             std::vector<Scalar>().swap(L_);
             std::vector<Scalar>().swap(g_);
-            Binv_.clear();   F_.clear();   f_.clear();
+            F_.clear();   f_.clear();
 
             std::vector<int>().swap(flowSolution_.cellno_);
             flowSolution_.cellFaces_.clear();
@@ -542,19 +542,12 @@ namespace Dune {
                      "You must call connectionsCompleted() prior "
                      "to computeInnerProducts()");
 
-            typedef typename GridInterface     ::CellIterator               CI;
-            typedef typename ReservoirInterface::PermTensor                 PermTensor;
-            typedef          InnerProduct<CI,GridInterface::Dimension,true> IP;
+            typedef typename GridInterface::CellIterator CI;
+            const SparseTable<int>& cf = flowSolution_.cellFaces_;
 
-            IP ip(max_ncf_);
             int i = 0;
-            const SparseTable<int>& cellFaces = flowSolution_.cellFaces_;
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c, ++i) {
-                const int nf = cellFaces[i].size();
-
-                SharedFortranMatrix Binv(nf, nf, &Binv_[i][0]);
-
-                ip.evaluate(c, r.permeability(c->index()), Binv);
+                ip_.buildMatrix(c, r, cf.rowSize(i));
             }
         }
 
@@ -697,36 +690,6 @@ namespace Dune {
 
 
         /// @brief
-        ///    Output the current (static) inner products.  This is
-        ///    only meaningfull following a call to method @code
-        ///    computeInnerProducts() @endcode and is mostly useful
-        ///    for debugging.  Only rarely should this method be used
-        ///    from client code.
-        ///
-        /// @tparam charT
-        ///    Character type of output stream.
-        ///
-        /// @tparam traits
-        ///    Character traits of @code charT @endcode.
-        ///
-        /// @param os
-        ///    Output stream into which the inner products will be
-        ///    printed.
-        template<class charT, class traits>
-        void printIP(std::basic_ostream<charT,traits>& os)
-        {
-            const SparseTable<int>& cf = flowSolution_.cellFaces_;
-            // Loop grid whilst building (and outputing) the inverse IP matrix.
-            for (int c = 0; c != cf.size(); ++c) {
-                const int nf = cf[c].size();
-                ImmutableFortranMatrix Binv(nf, nf, &Binv_[c][0]);
-
-                os << c << " -> Binv = [\n" << Binv << "]\n";
-            }
-        }
-
-
-        /// @brief
         ///    Output current system of linear equations to permanent
         ///    storage in files.  One file for the coefficient matrix
         ///    and one file for the right hand side.  This is mostly
@@ -753,6 +716,8 @@ namespace Dune {
 
             std::string rhsfile(prefix + "-rhs.dat");
             std::ofstream rhs(rhsfile.c_str());
+            rhs.precision(15);
+            rhs.setf(std::ios::scientific | std::ios::showpos);
             std::copy(rhs_.begin(), rhs_.end(),
                       std::ostream_iterator<VectorBlockType>(rhs, "\n"));
         }
@@ -766,6 +731,9 @@ namespace Dune {
         BdryIdMapType        bdry_id_map_;
         std::vector<int>     ppartner_dof_;
 
+        InnerProduct<typename GridInterface::CellIterator,
+                     GridInterface::Dimension, true> ip_;
+
         // ----------------------------------------------------------------
         bool cleared_state_;
         int  max_ncf_;
@@ -774,7 +742,7 @@ namespace Dune {
 
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
-        SparseTable<Scalar> Binv_, F_, f_;
+        SparseTable<Scalar> F_, f_;
 
         // ----------------------------------------------------------------
         // Actual, assembled system of linear equations
@@ -811,8 +779,8 @@ namespace Dune {
             typedef typename CI           ::FaceIterator FI;
 
             const int nc = g.numberOfCells();
-            std::vector<int> fpos           ;   fpos  .reserve(nc + 1);
-            std::vector<int> num_cf         ;   num_cf.reserve(nc);
+            std::vector<int> fpos           ;   fpos.reserve(nc + 1);
+            std::vector<int> num_cf(nc)     ;
             std::vector<int> faces          ;
 
             // Allocate cell structures.
@@ -829,8 +797,7 @@ namespace Dune {
 
                 cell[c0] = cellno;
 
-                num_cf.push_back(0);
-                int& ncf = num_cf.back();
+                int& ncf = num_cf[c0];
 
                 for (FI f = c->facebegin(); f != c-> faceend(); ++f) {
                     if (!f->boundary()) {
@@ -850,13 +817,13 @@ namespace Dune {
                 tot_ncf  += ncf;
                 tot_ncf2 += ncf * ncf;
             }
-            ASSERT(cellno == nc);
+            ASSERT (cellno == nc);
 
             total_num_faces_ = num_internal_faces_ = int(faces.size());
 
-            f_   .reserve(nc, tot_ncf );
-            F_   .reserve(nc, tot_ncf );
-            Binv_.reserve(nc, tot_ncf2);
+            ip_.init(max_ncf_);        ip_.reserveMatrices(num_cf);
+            f_ .reserve(nc, tot_ncf);
+            F_ .reserve(nc, tot_ncf);
 
             flowSolution_.cellFaces_.reserve(nc, tot_ncf);
             flowSolution_.outflux_  .reserve(nc, tot_ncf);
@@ -866,7 +833,6 @@ namespace Dune {
             // Avoid (most) allocation(s) inside 'c' loop.
             std::vector<int>    l2g;        l2g       .reserve(max_ncf_);
             std::vector<Scalar> F_alloc;    F_alloc   .reserve(max_ncf_);
-            std::vector<Scalar> Binv_alloc; Binv_alloc.reserve(max_ncf_ * max_ncf_);
 
             // Second pass: build cell-to-face mapping, including boundary.
             typedef std::vector<int>::iterator VII;
@@ -879,7 +845,6 @@ namespace Dune {
                 const int ncf = num_cf[cell[c0]];
                 l2g       .resize(ncf      ,        0   );
                 F_alloc   .resize(ncf      , Scalar(0.0));
-                Binv_alloc.resize(ncf * ncf, Scalar(0.0));
 
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
@@ -913,13 +878,12 @@ namespace Dune {
                     }
                 }
 
-                cf   .appendRow(l2g       .begin(), l2g       .end());
-                F_   .appendRow(F_alloc   .begin(), F_alloc   .end());
-                f_   .appendRow(F_alloc   .begin(), F_alloc   .end());
-                Binv_.appendRow(Binv_alloc.begin(), Binv_alloc.end());
+                cf.appendRow  (l2g    .begin(), l2g    .end());
+                F_.appendRow  (F_alloc.begin(), F_alloc.end());
+                f_.appendRow  (F_alloc.begin(), F_alloc.end());
 
                 flowSolution_.outflux_
-                    .appendRow (F_alloc   .begin(), F_alloc   .end());
+                    .appendRow(F_alloc.begin(), F_alloc.end());
             }
         }
 
@@ -1201,16 +1165,13 @@ namespace Dune {
             const std::vector<int>& cell = flowSolution_.cellno_;
             const SparseTable<int>& cf   = flowSolution_.cellFaces_;
 
-            std::vector<double> mob(ReservoirInterface::NumberOfPhases);
-            std::vector<double> rho(ReservoirInterface::NumberOfPhases);
+            std::vector<Scalar>   data_store(max_ncf_ * max_ncf_);
+            std::vector<Scalar>   e         (max_ncf_);
+            std::vector<Scalar>   rhs       (max_ncf_);
 
-            std::vector<Scalar> data_store(max_ncf_ * max_ncf_);
-            std::vector<Scalar> e  (max_ncf_);
-            std::vector<Scalar> rhs(max_ncf_);
-
-            std::vector<FaceType> facetype(max_ncf_);
-            std::vector<Scalar>   condval (max_ncf_);
-            std::vector<int>      ppartner(max_ncf_);
+            std::vector<FaceType> facetype  (max_ncf_);
+            std::vector<Scalar>   condval   (max_ncf_);
+            std::vector<int>      ppartner  (max_ncf_);
 
             // Clear residual data
             S_   = 0.0;
@@ -1224,33 +1185,27 @@ namespace Dune {
             // are no prescribed pressures (i.e., Dirichlet BC's).
             do_regularization_ = true;
 
-            typedef InnerProduct<CI,GridInterface::Dimension,true> IP;
-            IP ip(max_ncf_);
-
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                 const int ci = c->index();
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
-                r.phaseMobility(ci, sat[ci], mob);
-                r.phaseDensity (ci,          rho);
-
-                const double totmob = std::accumulate   (mob.begin(), mob.end(), 0.0);
-                const double omega  = std::inner_product(rho.begin(), rho.end(),
-                                                         mob.begin(), 0.0) / totmob;
-
                 SharedFortranMatrix    S  (nf, nf, &data_store[0]);
                 ImmutableFortranMatrix one(nf, 1 , &e[0]);
 
+                ip_.computeDynamicParams(c, r, sat);
+
                 typename SparseTable<double>::mutable_row_type gterm = f_[c0];
                 std::fill(gterm.begin(), gterm.end(), Scalar(0.0));
-                ip.gravityTerm(c, grav, omega, gterm);
+                ip_.gravityTerm(c, grav, gterm);
 
                 setExternalContrib(c, c0, bc, src[ci], rhs,
                                    facetype, condval, ppartner);
 
-                buildCellContrib(c0, totmob, one, S, rhs);
+                ip_.getInverseMatrix(c, S);
+
+                buildCellContrib(c0, one, S, rhs);
 
                 addCellContrib(S, rhs, facetype, condval, ppartner, cf[c0]);
             }
@@ -1305,8 +1260,12 @@ namespace Dune {
             typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
 
             // AMG specific types.
+	    // Old:   FIRST_DIAGONAL 1, SYMMETRIC 1, SMOOTHER_ILU 1, ANISOTROPIC_3D 0
+	    // SPE10: FIRST_DIAGONAL 0, SYMMETRIC 1, SMOOTHER_ILU 0, ANISOTROPIC_3D 1
 #define FIRST_DIAGONAL 1
 #define SYMMETRIC 1
+#define SMOOTHER_ILU 1
+#define ANISOTROPIC_3D 0
 
 #if FIRST_DIAGONAL
             typedef Amg::FirstDiagonal CouplingMetric;
@@ -1320,7 +1279,11 @@ namespace Dune {
             typedef Amg::UnSymmetricCriterion<Matrix,CouplingMetric> CriterionBase;
 #endif
 
+#if SMOOTHER_ILU
             typedef SeqILU0<Matrix,Vector,Vector>        Smoother;
+#else
+	    typedef SeqSSOR<Matrix,Vector,Vector>        Smoother;
+#endif
             typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
             typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
 
@@ -1337,6 +1300,9 @@ namespace Dune {
 
             Criterion criterion;
             criterion.setDebugLevel(verbosity_level);
+#if ANISOTROPIC_3D
+            criterion.setDefaultValuesAnisotropic(3, 2);
+#endif
             Precond precond(opS, criterion, smootherArgs);
 
             // Construct solver for system of linear equations.
@@ -1365,14 +1331,14 @@ namespace Dune {
             std::vector<Scalar>& p = flowSolution_.pressure_;
             SparseTable<Scalar>& v = flowSolution_.outflux_;
 
-            std::vector<double> mob(ReservoirInterface::NumberOfPhases);
+            //std::vector<double> mob(ReservoirInterface::NumberOfPhases);
             std::vector<double> pi (max_ncf_);
+            std::vector<double> Binv_storage(max_ncf_ * max_ncf_);
 
             // Assemble dynamic contributions for each cell
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
-                const int ci = c->index();
-                const int c0 = cell[ci];
-                const int nf = cf[c0].size();
+                const int c0 = cell[c->index()];
+                const int nf = cf.rowSize(c0);
 
                 // Extract contact pressures for cell 'c'.
                 for (int i = 0; i < nf; ++i) {
@@ -1395,11 +1361,11 @@ namespace Dune {
                                            _2));
 
                 // 2) Solve system Bv = r
-                r.phaseMobility(ci, sat[ci], mob);
-                const double totmob = std::accumulate(mob.begin(), mob.end(), 0.0);
+                SharedFortranMatrix Binv(nf, nf, &Binv_storage[0]);
+                ip_.computeDynamicParams(c, r, sat);
+                ip_.getInverseMatrix(c, Binv);
 
-                ImmutableFortranMatrix Binv(nf, nf, &Binv_[c0][0]);
-                vecMulAdd_N(totmob, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
+                vecMulAdd_N(1.0, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
             }
         }
 
@@ -1457,14 +1423,10 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildCellContrib(const int c, const Scalar totmob,
-                              const ImmutableFortranMatrix& one,
+        void buildCellContrib(const int c, const ImmutableFortranMatrix& one,
                               SharedFortranMatrix& S, std::vector<Scalar>& rhs)
         // ----------------------------------------------------------------
         {
-            std::transform(Binv_[c].begin(), Binv_[c].end(), S.data(),
-                           boost::bind(std::multiplies<Scalar>(), _1, totmob));
-
             // Ft <- B^{-t} * ones([size(S,2),1])
             SharedFortranMatrix Ft(S.numRows(), 1, &F_[c][0]);
             matMulAdd_TN(Scalar(1.0), S, one, Scalar(0.0), Ft);
@@ -1512,7 +1474,7 @@ namespace Dune {
                     //
                     S_  [ii][ii] = S(r,r);
                     rhs_[ii]     = S(r,r) * condval[r];
-                    break;
+                    continue;
                 case Periodic:
                     // Periodic boundary condition.  Contact pressures
                     // linked by relations of the form

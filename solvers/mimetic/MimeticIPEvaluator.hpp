@@ -36,9 +36,13 @@
 #ifndef OPENRS_MIMETICIPEVALUATOR_HEADER
 #define OPENRS_MIMETICIPEVALUATOR_HEADER
 
+#include <algorithm>
 #include <vector>
 
+#include <boost/bind.hpp>
+
 #include <dune/common/ErrorMacros.hpp>
+#include <dune/common/SparseTable.hpp>
 
 #include <dune/solvers/common/fortran.hpp>
 #include <dune/solvers/common/blas_lapack.hpp>
@@ -91,19 +95,235 @@ namespace Dune {
         typedef typename CellIter::Scalar Scalar;
 
 
+        /// @brief Default constructor.
+        MimeticIPEvaluator()
+            : max_nf_(-1),
+              fa_    (  ),
+              t1_    (  ),
+              t2_    (  ),
+              Binv_  (  )
+        {}
+
+
         /// @brief Constructor.
+        ///
         /// @param [in] max_nf
         ///    Maximum number of faces/connections of any single cell
         ///    in the model.  Used to set the size of certain internal
         ///    working arrays.  A cell with @f$n_f@f$ faces results in
         ///    an inner product matrix of size @f$n_f \times n_f@f$.
         MimeticIPEvaluator(const int max_nf)
-            : max_nf_(max_nf),
+            : max_nf_(max_nf         ),
               fa_    (max_nf * max_nf),
-              t1_    (max_nf * dim),
-              t2_    (max_nf * dim)
+              t1_    (max_nf * dim   ),
+              t2_    (max_nf * dim   ),
+              Binv_  (               )
         {}
 
+
+        /// @brief Initialization routine.
+        ///
+        /// @param [in] max_nf
+        ///    Maximum number of faces/connections of any single cell
+        ///    in the model.  Used to set the size of certain internal
+        ///    working arrays.  A cell with @f$n_f@f$ faces results in
+        ///    an inner product matrix of size @f$n_f \times n_f@f$.
+        void init(const int max_nf)
+        {
+            max_nf_ = max_nf;
+            std::vector<double>(max_nf * max_nf).swap(fa_);
+            std::vector<double>(max_nf * dim   ).swap(t1_);
+            std::vector<double>(max_nf * dim   ).swap(t2_);
+        }
+
+
+        /// @brief
+        ///    Reserve internal space for storing values of (static)
+        ///    IP contributions for given set of cells.
+        ///
+        /// @tparam Vector
+        ///    Vector type, often @code std::vector<int> @endcode,
+        ///    representing a set of sizes.
+        ///
+        /// @param [in] sz
+        ///    Set of sizes.  Assumed to contain @f$n@f$ positive
+        ///    values, each representing the number of faces of a
+        ///    specific cell.  In other words @code sz[i] @endcode is
+        ///    the number of faces of cell @code i @endcode.
+        template<class Vector>
+        void reserveMatrices(const Vector& sz)
+        {
+            typedef typename Vector::value_type vt;
+
+            Vector sz2(sz.size());
+
+            std::transform(sz.begin(), sz.end(), sz2.begin(),
+                           boost::bind(std::multiplies<vt>(), _1, _1));
+
+            Binv_.allocate(sz2.begin(), sz2.end());
+        }
+
+
+        /// @brief
+        ///    Main evaluation routine.  Computes the inverse of the
+        ///    matrix representation of the mimetic inner product in a
+        ///    single cell with kown permeability @f$K@f$.  Adds a
+        ///    regularization term in order to guarantee a positive
+        ///    definite matrix.
+        ///
+        /// @tparam RI
+        ///    Type representing reservoir properties.  Assumed to
+        ///    expose a method @code permeability(i) @endcode which
+        ///    retrieves the static permeability tensor of cell @code
+        ///    i @endcode.  The permeability tensor, @$K@$, is in
+        ///    turn, assumed to expose a method @code operator()(int
+        ///    i, int j) @endcode such that the call @code K(i,j)
+        ///    @endcode retrieves the @f$ij@f$'th component of the
+        ///    cell permeability @f$K@f$.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the inverse of the mimetic
+        ///    inner product.
+        ///
+        /// @param [in] r
+        ///    Specific reservoir properties.  Only the permeability
+        ///    is used in method @code buildMatrix() @endcode.
+        ///
+        /// @param [in] nf
+        ///    Number of faces (i.e., number of neighbours) of cell
+        ///    @code *c @endcode.
+        template<typename RI>
+        void buildMatrix(const CellIter& c, const RI& r, const int nf)
+        {
+            typedef typename CellIter::FaceIterator FI;
+            typedef typename CellIter::Vector       CV;
+            typedef typename FI      ::Vector       FV;
+
+            const int ci = c->index();
+
+            ASSERT (FV::size        == dim);
+            ASSERT (int(t1_.size()) >= nf * dim);
+            ASSERT (int(t2_.size()) >= nf * dim);
+            ASSERT (int(fa_.size()) >= nf * nf);
+
+            SharedFortranMatrix T1  (nf, dim, &t1_      [0]);
+            SharedFortranMatrix T2  (nf, dim, &t2_      [0]);
+            SharedFortranMatrix fa  (nf, nf , &fa_      [0]);
+            SharedFortranMatrix Binv(nf, nf , &Binv_[ci][0]);
+
+            // Clear matrices of any residual data.
+            zero(Binv);  zero(T1);  zero(T2);  zero(fa);
+
+            // Setup: Binv <- I, T1 <- N, T2 <- C
+            const CV cc = c->centroid();
+            int i = 0;
+            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++i) {
+                Binv(i,i) = Scalar(1.0);
+                fa(i,i)   = f->area();
+
+                FV fc = f->centroid();  fc -= cc;  fc *= fa(i,i);
+                FV fn = f->normal  ();             fn *= fa(i,i);
+
+                for (int j = 0; j < dim; ++j) {
+                    T1(i,j) = fn[j];
+                    T2(i,j) = fc[j];
+                }
+            }
+            ASSERT (i == nf);
+
+            // T2 <- orth(T2)
+            if (orthogonalizeColumns(T2) != 0) {
+                ASSERT (false);
+            }
+
+            // Binv <- Binv - T2*T2' == I - Q*Q'
+            symmetricUpdate(Scalar(-1.0), T2, Scalar(1.0), Binv);
+
+            // Binv <- diag(A) * Binv * diag(A)
+            symmetricUpdate(fa, Binv);
+
+            // T2 <- N*K
+            typename RI::PermTensor K = r.permeability(ci);
+
+            matMulAdd_NN(Scalar(1.0), T1, K, Scalar(0.0), T2);
+
+            // Binv <- (T2*N' + Binv) / vol(c)
+            //      == (N*K*N' + t*(diag(A) * (I - Q*Q') * diag(A))) / vol(c)
+            //
+            // where t = 6/d * TRACE(K) (== 2*TRACE(K) for 3D).
+            //
+            Scalar t = Scalar(6.0) * trace(K) / dim;
+            matMulAdd_NT(Scalar(1.0) / c->volume(), T2, T1,
+                         t           / c->volume(), Binv  );
+        }
+
+
+        template<class RI, class Sat>
+        void computeDynamicParams(const CellIter&         c,
+                                  const RI&               r,
+                                  const std::vector<Sat>& s)
+        {
+            const int ci = c->index();
+
+            boost::array<Scalar,RI::NumberOfPhases> mob ;
+            boost::array<Scalar,RI::NumberOfPhases> rho ;
+            r.phaseMobility(ci, s[ci],              mob);
+            r.phaseDensity (ci,                     rho);
+
+            totmob_ = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
+            omega_  = std::inner_product(rho.begin(), rho.end(), mob.begin(),
+                                         Scalar(0.0)) / totmob_;
+        }
+
+
+        /// @brief
+        ///    Retrieve the dynamic (mobility updated) inverse mimetic
+        ///    inner product matrix for specific cell.
+        ///
+        /// @tparam RI
+        ///    Type representing reservoir properties.  Assumed to
+        ///    expose a method @code phaseMobility(i,s,mob) @endcode
+        ///    which retrieves the phase mobilities of all phases
+        ///    evaluated at the saturations @code s @endcode.
+        ///
+        /// @tparam SP
+        ///    Type representing the @code FullMatrix<T,SP,OP>
+        ///    @endcode storage policy of the matrix into which the
+        ///    inverse inner product matrix entries will be stored.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the dynamic inverse mimetic
+        ///    inner product.
+        ///
+        /// @param [in] r
+        ///    Specific reservoir properties.  Only the phase
+        ///    mobilities is used in method @code getInverseMatrix()
+        ///    @endcode.
+        ///
+        /// @param [in] s
+        ///    Fluid saturations.
+        ///
+        /// @param [out] Binv
+        ///    Inverse of matrix representation of the mimetic inner
+        ///    product for cell @code *c @endcode.  A square, full
+        ///    matrix with the number of rows equal to the number of
+        ///    faces in cell @code *c @endcode.
+        template<template<typename> class SP>
+        void getInverseMatrix(const CellIter&                        c,
+                              FullMatrix<Scalar,SP,FortranOrdering>& Binv) const
+        {
+            getInverseMatrix(c, totmob_, Binv);
+        }
+
+        template<template<typename> class SP>
+        void getInverseMatrix(const CellIter&                        c,
+                              const Scalar                           totmob,
+                              FullMatrix<Scalar,SP,FortranOrdering>& Binv) const
+        {
+            const int ci = c->index();
+            std::transform(Binv_[ci].begin(), Binv_[ci].end(), Binv.data(),
+                           boost::bind(std::multiplies<Scalar>(), _1, totmob));
+        }
 
         /// @brief
         ///    Main evaluation routine.  Computes the inverse of the
@@ -256,11 +476,42 @@ namespace Dune {
             }
         }
 
+        template<class Point, class Vector>
+        void gravityTerm(const CellIter& c,
+                         const Point&    grav,
+                         Vector&         gterm) const
+        {
+            gravityTerm(c, grav, omega_, gterm);
+        }
+
+        template<class RI, class Sat, class Point, class Vector>
+        void gravityTerm(const CellIter&         c,
+                         const RI&               r,
+                         const std::vector<Sat>& s,
+                         const Point&            grav,
+                         Vector&                 gterm) const
+        {
+            const int ci = c->index();
+
+            boost::array<Scalar,RI::NumberOfPhases> mob ;
+            boost::array<Scalar,RI::NumberOfPhases> rho ;
+            r.phaseMobility(ci, s[ci],              mob);
+            r.phaseDensity (ci,                     rho);
+
+            Scalar totmob = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
+            Scalar omega  = std::inner_product(rho.begin(), rho.end(), mob.begin(),
+                                               Scalar(0.0)) / totmob;
+
+            gravityTerm(c, grav, omega, gterm);
+        }
+
     private:
         int                 max_nf_      ;
+        Scalar              totmob_      ;
+        Scalar              omega_       ;
         std::vector<Scalar> fa_, t1_, t2_;
+        SparseTable<Scalar> Binv_        ;
     };
-
 } // namespace Dune
 
 #endif // OPENRS_MIMETICIPEVALUATOR_HEADER
