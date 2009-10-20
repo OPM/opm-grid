@@ -87,8 +87,17 @@ int main(int argc, char** argv)
 
     typedef Dune::FlowBC BC;
     BCs flow_bc(7);
-    flow_bc.flowCond(5) = BC(BC::Dirichlet, 100*Dune::unit::barsa);
-    //flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.00*Dune::unit::barsa);
+#define BCDIR 3
+#if BCDIR == 1
+    flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
+    flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+#elif BCDIR == 2
+    flow_bc.flowCond(3) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
+    flow_bc.flowCond(4) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+#elif BCDIR == 3
+    flow_bc.flowCond(5) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
+    flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+#endif
 
     RI r;
     r.init(g.numberOfCells());
@@ -122,14 +131,36 @@ int main(int argc, char** argv)
 
     CI::Vector gravity;
     gravity[0] = gravity[1] = gravity[2] = 0.0;
-#if 1
+#if 0
     gravity[2] = Dune::unit::gravity;
 #endif
 
-    solver.solve(r, sat, flow_bc, src, gravity, 5.0e-6, 3);
+#if 0
+    const int nx = param.get<int>("nx");
+    const int ny = param.get<int>("ny");
+    const int nz = param.get<int>("nz");
+    const int
+        i  = 0 + nz*(nx/2   + nx*ny/2  ),
+        p1 = 0 + nz*(0      + nx*0     ),
+        p2 = 0 + nz*((nx-1) + nx*0     ),
+        p3 = 0 + nz*(0      + nx*(ny-1)),
+        p4 = 0 + nz*((nx-1) + nx*(ny-1));
+
+    const double bbl   = 0.159 * unit::cubic(unit::meter);
+    const double irate = 1.0e4 * bbl / unit::day;
+    for (int z = 0; z < nz; ++z) {
+        src[i  + z] =   irate / nz;
+        src[p1 + z] = -(irate / nz) / 4;
+        src[p2 + z] = -(irate / nz) / 4;
+        src[p3 + z] = -(irate / nz) / 4;
+        src[p4 + z] = -(irate / nz) / 4;
+    }
 #endif
 
-#if 0
+    solver.solve(r, sat, flow_bc, src, gravity, 5.0e-8, 3);
+#endif
+
+#if 1
     std::vector<double> cell_velocity;
     estimateCellVelocity(cell_velocity, g, solver.getSolution());
     std::vector<double> cell_pressure;
