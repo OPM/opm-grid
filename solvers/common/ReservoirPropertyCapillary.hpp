@@ -389,6 +389,22 @@ namespace Dune
         /// @todo Doc me!
         /// @param
         /// @return
+	template <class MatrixType>
+        void anisoTotalMobility(int cell_index, double saturation, MatrixType& total_mobility) const
+        {
+	    double scalar_totmob = totalMobility(cell_index, saturation);
+	    // For now, just make an identity tensor.
+	    for (int row = 0; row < dim; ++row) {
+		for (int col = 0; col < dim; ++col) {
+		    total_mobility(row, col) = 0.0;
+		}
+		total_mobility(row, row) = scalar_totmob;
+	    }
+        }
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         double fractionalFlow(int cell_index, double saturation) const
         {
             double l1 = mobilityFirstPhase(cell_index, saturation);
