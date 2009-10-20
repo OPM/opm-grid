@@ -1,0 +1,12 @@
+SYMMETRIC = 1 for all cases
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 0 0 1 (== SPE10 setting) : 90, 91, 61 iters, 46783 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 0 1 1 :                    26, 27, 16 iters, 46783 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 1 1 0 (== old setting) :   19, 19,  9 iters, 62497 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 1 0 0 :                    80, 89, 61 iters, 62497 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 0 1 0 :                    21, 21, 11 iters, 74787 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 0 0 0 :                    85, 84, 58 iters, 74787 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 1 0 1 :                    92, 93, 61 iters, 38486 level 1 z-system
+FIRST_DIAGONAL, SMOOTHER_ILU, ANISOTROPIC_3D = 1 1 1 :                    49, 41, 17 iters, 38486 level 1 z-system
+
+
+
