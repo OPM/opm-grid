@@ -317,6 +317,19 @@ namespace Dune {
         {
         }
 
+	template <template<typename> class OtherSP, class OtherOP>
+	FullMatrix& operator=(const FullMatrix<T, OtherSP, OtherOP>& m)
+	{
+	    ASSERT(numRows() == m.numRows());
+	    ASSERT(numCols() == m.numCols());
+	    for (int r = 0; r < numRows(); ++r) {
+		for (int c = 0; c < numCols(); ++c) {
+		    this->operator()(r, c) = m(r,c);
+		}
+	    }
+	    return *this;
+	}
+
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
@@ -427,6 +440,33 @@ namespace Dune {
             }
         }
         return res;
+    }
+
+    /// @brief Compute C = AB. C must not overlap with A or B.
+    /// @tparam Matrix1 a matrix type.
+    /// @tparam Matrix2 a matrix type.
+    /// @tparam MutableMatrix a matrix type with write access.
+    /// @param[in] A left matrix of product.
+    /// @param[in] B right matrix of product.
+    /// @param[out] C resulting product matrix, it must already have the right size.
+    template<class Matrix1, class Matrix2, class MutableMatrix>
+    void prod(const Matrix1& A, const Matrix2& B, MutableMatrix& C)
+    {
+	int result_rows = A.numRows();
+	int result_cols = B.numCols();
+	int inner_dim = A.numCols();
+        ASSERT (inner_dim == B.numRows());
+	ASSERT(C.numRows() == result_rows);
+	ASSERT(C.numCols() == result_cols);
+
+        for (int c = 0; c < result_cols; ++c) {
+            for (int r = 0; r < result_rows; ++r) {
+                C(r,c) = 0.0;
+		for (int i = 0; i < inner_dim; ++i) {
+		    C(r,c) += A(r,i)*B(i,c);
+		}
+            }
+        }
     }
 
 
