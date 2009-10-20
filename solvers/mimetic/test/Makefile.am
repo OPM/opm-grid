@@ -3,6 +3,7 @@
 check_PROGRAMS =
 noinst_PROGRAMS = mimetic_ipeval_test \
                   mimetic_solver_test \
+                  mimetic_aniso_solver_test \
                   mimetic_periodic_test \
 		  parsolver_test \
 		  istl_test \
@@ -21,6 +22,9 @@ mimetic_ipeval_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS
 
 mimetic_solver_test_SOURCES  = mimetic_solver_test.cpp
 mimetic_solver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+
+mimetic_aniso_solver_test_SOURCES  = mimetic_aniso_solver_test.cpp
+mimetic_aniso_solver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 mimetic_periodic_test_SOURCES  = mimetic_periodic_test.cpp
 mimetic_periodic_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
