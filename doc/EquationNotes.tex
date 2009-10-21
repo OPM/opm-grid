@@ -51,10 +51,21 @@ Now we use equation \eqref{eq:Vtot} to eliminate $\vb_o$:
  \Kb\nabla p_{cow}
   & = -\lambda_o^{-1}\vb + \lambda_o^{-1}\vb_w + \lambda_w^{-1}\vb_w + (\rho_o - \rho_w)\Kb\gb  \\
   (\lambda_o^{-1} + \lambda_w^{-1})\vb_w
-  & = \lambda_o^{-1}\vb + \Kb\nabla p_{cow} + (\rho_w - \rho_o)\Kb\gb \\
+  & = \lambda_o^{-1}\vb + \Kb\nabla p_{cow} + (\rho_w - \rho_o)\Kb\gb
+\end{align*}
+
+Finally, we achieve a few equivalent equations for $\vb_w$:
+\begin{align*}
   \vb_w
-  & = \underbrace{\left(I + \lambda_o\lambda_w^{-1}\right)^{-1}}_{"\fb_w"}
-  \left[\vb + \lambda_o\Kb\nabla p_{cow} + (\rho_w - \rho_o)\lambda_o\Kb\gb\right]
+  & = \underbrace{\left(I + \lambda_o\lambda_w^{-1}\right)^{-1}}_{\fb_w}
+  \left[\vb + \lambda_o\Kb\nabla p_{cow} + (\rho_w - \rho_o)\lambda_o\Kb\gb\right] \\
+  \vb_w
+  & = \underbrace{\lambda_w\left(\lambda_o + \lambda_w\right)^{-1}}_{\fb_w}
+  \left[\vb + \lambda_o\Kb\nabla p_{cow} + (\rho_w - \rho_o)\lambda_o\Kb\gb\right] \\
+  \vb_w
+  & = \fb_w \vb +
+  \underbrace{\lambda_w\left(\lambda_o + \lambda_w\right)^{-1}\lambda_o}_{= \lambda_o^{-1} + \lambda_w^{-1}}
+  \Kb\left[\nabla p_{cow} + (\rho_w - \rho_o)\gb\right] \\
 \end{align*}
 
 \end{document}
