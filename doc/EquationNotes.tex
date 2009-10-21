@@ -1,0 +1,60 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath}
+\usepackage{a4wide}
+\usepackage{pgf,pgfarrows}
+\usepackage[left=2.5cm,right=2.5cm,top=3.5cm,bottom=1.5cm,
+            headheight=18pt,headsep=18pt,footskip=24pt,asymmetric=true]{geometry}
+
+\newcommand{\cb}{{\bf c}}
+\newcommand{\db}{{\bf d}}
+\newcommand{\fb}{{\bf f}}
+\newcommand{\gb}{{\bf g}}
+\newcommand{\nb}{{\bf n}}
+\newcommand{\ub}{{\bf u}}
+\newcommand{\vb}{{\bf v}}
+\newcommand{\Db}{{\bf D}}
+\newcommand{\Kb}{{\bf K}}
+
+
+\begin{document}
+
+\title{Upscaling notes}
+\author{Atgeirr F. Rasmussen}
+
+
+\section{Notes on anisotropic relperm}
+
+\subsection{The transport equation}
+
+We start from the Darcy equations for each phase, the equation for $p_{cow}$ and the equation for total velocity:
+\begin{align}
+\vb_\alpha & = -\lambda_\alpha\Kb\nabla p_\alpha + \rho_\alpha\lambda_\alpha\Kb\gb \label{eq:Darcy} \\
+\nabla p_{cow} & = \nabla p_o - \nabla p_w \label{eq:GradPcap} \\
+\vb & = \vb_o + \vb_w \label{eq:Vtot}
+\end{align}
+
+We have 4 equations with 4 unknowns, $\vb_o, \vb_w, \nabla p_o, \nabla p_w$. First, we rewrite the Darcy equations \eqref{eq:Darcy}:
+\begin{align*}
+ \Kb\nabla p_\alpha & = -\lambda_\alpha^{-1}\vb_\alpha + \rho_\alpha\Kb\gb \\
+\end{align*}
+
+Using equation \eqref{eq:GradPcap} we eliminate the phase pressures.
+\begin{align*}
+ \Kb\nabla p_{cow} & = -\lambda_o^{-1}\vb_o + \rho_o\Kb\gb 
+  + \lambda_w^{-1}\vb_w - \rho_w\Kb\gb  \\
+  & = -\lambda_o^{-1}\vb_o 
+  + \lambda_w^{-1}\vb_w + (\rho_o - \rho_w)\Kb\gb  \\
+\end{align*}
+
+Now we use equation \eqref{eq:Vtot} to eliminate $\vb_o$:
+\begin{align*}
+ \Kb\nabla p_{cow}
+  & = -\lambda_o^{-1}\vb + \lambda_o^{-1}\vb_w + \lambda_w^{-1}\vb_w + (\rho_o - \rho_w)\Kb\gb  \\
+  (\lambda_o^{-1} + \lambda_w^{-1})\vb_w
+  & = \lambda_o^{-1}\vb + \Kb\nabla p_{cow} + (\rho_w - \rho_o)\Kb\gb \\
+  \vb_w
+  & = \underbrace{\left(I + \lambda_o\lambda_w^{-1}\right)^{-1}}_{"\fb_w"}
+  \left[\vb + \lambda_o\Kb\nabla p_{cow} + (\rho_w - \rho_o)\lambda_o\Kb\gb\right]
+\end{align*}
+
+\end{document}
