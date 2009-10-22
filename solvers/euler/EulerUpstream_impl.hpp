@@ -386,10 +386,19 @@ namespace Dune
     {
 	computeCapPressures(saturation);
 	computeSatDelta(saturation, gravity, pressure_sol);
+	double max_ok_dt = 1e100;
+	const double tol = 1e-10;
 	int num_cells = saturation.size();
 	for (int i = 0; i < num_cells; ++i) {
-	    saturation[i] += dt*sat_change_[i];
+	    const double sc = sat_change_[i];
+	    saturation[i] += dt*sc;
+	    if (sc > tol) {
+		max_ok_dt = std::min(max_ok_dt, (1.0 - saturation[i])/sc);
+	    } else if (sc < -tol) {
+		max_ok_dt = std::min(max_ok_dt, -saturation[i]/sc);
+	    }
 	}
+// 	std::cout << "Maximum nonviolating timestep is " << max_ok_dt << " seconds\n";
 	if (check_sat_ || clamp_sat_) {
 	    checkAndPossiblyClampSat(saturation);
 	}
