@@ -103,7 +103,7 @@ namespace Dune {
 	typedef typename GridInterface::CellIterator CIt;
 	typedef typename CIt::FaceIterator FIt;
 
-	void initPeriodics();
+	void initFinal();
 
 	template <class PressureSolution>
 	double computeCflTime(const std::vector<double>& saturation,
@@ -119,11 +119,10 @@ namespace Dune {
 	
 	template <class PressureSolution>
 	void computeSatDelta(const std::vector<double>& saturation,
-			     const double time,
 			     const typename GridInterface::Vector& gravity,
-			     const PressureSolution& pressure_sol,
-			     std::vector<double>& sat_change) const;
+			     const PressureSolution& pressure_sol) const;
 
+	void computeCapPressures(const std::vector<double>& sat) const;
 
 	typename GridInterface::Vector
 	estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& sat) const;
@@ -146,6 +145,15 @@ namespace Dune {
 	// Boundary id to face iterator mapping. May be mostly or completely empty.
 	// Obviously requires unique-face-per-bid grids.
 	std::vector<FIt> bid_to_face_;
+
+	// Storing sat_change_ so that we won't have to reallocate it for every step.
+	mutable std::vector<double> sat_change_;
+	// Precomputing the capillary pressures of cells saves a little time.
+	mutable std::vector<double> cap_pressures_;
+
+	mutable std::vector<double> visc_maxtimes_;
+	mutable std::vector<double> grav_maxtimes_;
+	mutable std::vector<double> cap_maxtimes_;
     };
 
 } // namespace Dune

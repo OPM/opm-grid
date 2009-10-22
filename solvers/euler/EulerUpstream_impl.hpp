@@ -81,7 +81,7 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
-	initPeriodics();
+	initFinal();
     }
 
 
@@ -113,7 +113,7 @@ namespace Dune
 	pgrid_ = &g;
 	preservoir_properties_ = &r;
 	pboundary_ = &b;
-	initPeriodics();
+	initFinal();
     }
 
 
@@ -208,8 +208,15 @@ namespace Dune
 
 
     template <class GI, class RP, class BC>
-    inline void EulerUpstream<GI, RP, BC>::initPeriodics()
+    inline void EulerUpstream<GI, RP, BC>::initFinal()
     {
+	// Resize the max timestep per face vectors.
+	int num_faces = pgrid_->numberOfFaces();
+	visc_maxtimes_.resize(num_faces);
+	grav_maxtimes_.resize(num_faces);
+	cap_maxtimes_.resize(num_faces);
+
+	// Build bid_to_face_ mapping for handling periodic conditions.
 	int maxbid = 0;
 	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
@@ -227,10 +234,6 @@ namespace Dune
 		}
 	    }
 	}
-// 	periodic_partner_.clear();
-// 	    std::pair<int, int> partners = boundary_.getPeriodicConditionFaces(i);
-// 	    periodic_partner_[partners.first] = partners.second;
-// 	    periodic_partner_[partners.second] = partners.first;
     }
 
 
@@ -321,17 +324,6 @@ namespace Dune
 	// If we are not on a periodic boundary, nbf is of course equal to f.
 	Cell c = f->cell();
 	Cell nb = f->boundary() ? (f == nbf ? c : nbf->cell()) : f->neighbourCell();
-// 	if (f->boundary()) {
-// 	    std::tr1::unordered_map<int,int>::iterator it = periodic_partner_.find(face);
-// 	    if (it == periodic_partner_.end()) {
-// 		// At (nonperiodic) boundaries, we just return a zero gradient.
-// 		Vector g(0.0);
-// 		return g;
-// 	    } else {
-// 		nbface = it->second;
-// 		nbcell = grid.template neighbours<grid::FaceType, grid::CellType>(nbface)[0];
-// 	    }
-// 	}
 
 	// Estimate the gradient like a finite difference between
 	// cell centers, except that in order to handle periodic
@@ -344,8 +336,8 @@ namespace Dune
 	double d1 = (nb_c - nbf_c).two_norm();
 	int cell = c.index();
 	int nbcell = nb.index();
-	double cp0 = preservoir_properties_->capillaryPressure(cell, sat[cell]);
-	double cp1 = preservoir_properties_->capillaryPressure(nbcell, sat[nbcell]);
+	double cp0 = cap_pressures_[cell];
+	double cp1 = cap_pressures_[nbcell];
 	double val = (cp1 - cp0)/(d0 + d1);
 	Vector res = nb_c - nbf_c + f_c - cell_c;
 	res /= res.two_norm();
@@ -354,6 +346,15 @@ namespace Dune
     }
 
 
+    template <class GI, class RP, class BC>
+    inline void EulerUpstream<GI, RP, BC>::computeCapPressures(const std::vector<double>& sat) const
+    {
+	int num_cells = sat.size();
+	cap_pressures_.resize(num_cells);
+	for (int cell = 0; cell < num_cells; ++cell) {
+	    cap_pressures_[cell] = preservoir_properties_->capillaryPressure(cell, sat[cell]);
+	}
+    }
 
 
 
@@ -383,11 +384,11 @@ namespace Dune
 							 const typename GI::Vector& gravity,
 							 const PressureSolution& pressure_sol) const
     {
-	std::vector<double> sat_change;
-	computeSatDelta(saturation, dt, gravity, pressure_sol, sat_change);
+	computeCapPressures(saturation);
+	computeSatDelta(saturation, gravity, pressure_sol);
 	int num_cells = saturation.size();
 	for (int i = 0; i < num_cells; ++i) {
-	    saturation[i] += sat_change[i];
+	    saturation[i] += dt*sat_change_[i];
 	}
 	if (check_sat_ || clamp_sat_) {
 	    checkAndPossiblyClampSat(saturation);
@@ -444,18 +445,16 @@ namespace Dune
     template <class GI, class RP, class BC>
     template <class PressureSolution>
     inline void EulerUpstream<GI, RP, BC>::computeSatDelta(const std::vector<double>& saturation,
-							   const double dt,
 							   const typename GI::Vector& gravity,
-							   const PressureSolution& pressure_sol,
-							   std::vector<double>& sat_change) const
+							   const PressureSolution& pressure_sol) const
     {
 	typedef typename GI::Vector Vector;
 	typedef typename RP::PermTensor PermTensor;
 	typedef typename RP::MutablePermTensor MutablePermTensor;
 
 	// Make sure sat_change is zero, and has the right size.
-	sat_change.clear();
-	sat_change.resize(saturation.size(), 0.0);
+	sat_change_.clear();
+	sat_change_.resize(saturation.size(), 0.0);
 
 	// For every face, we will modify sat_change for adjacent cells.
 	// We loop over every cell and intersection, and modify only if
@@ -468,10 +467,10 @@ namespace Dune
 		double dS = 0.0;
 		int cell[2];
 		double cell_sat[2];
-		double cell_vol[2];
+		double cell_pvol[2];
 		cell[0] = f->cellIndex();
 		cell_sat[0] = saturation[cell[0]];
-		cell_vol[0] = c->volume();
+		cell_pvol[0] = c->volume()*preservoir_properties_->porosity(cell[0]);
 		if (f->boundary()) {
 		    int bid = f->boundaryId();
 		    if (pboundary_->satCond(bid).isPeriodic()) {
@@ -487,12 +486,12 @@ namespace Dune
 			    continue;
 			}
 			cell_sat[1] = saturation[cell[1]];
-			cell_vol[1] = nbface->cell().volume();
+			cell_pvol[1] = nbface->cell().volume()*preservoir_properties_->porosity(cell[1]);
 		    } else {
 			ASSERT(pboundary_->satCond(bid).isDirichlet());
 			cell[1] = cell[0];
 			cell_sat[1] = pboundary_->satCond(bid).saturation();
-			cell_vol[1] = cell_vol[0];
+			cell_pvol[1] = cell_pvol[0];
 		    }
 		} else {
 		    cell[1] = f->neighbourCellIndex();
@@ -502,45 +501,46 @@ namespace Dune
 			continue;
 		    }
 		    cell_sat[1] = saturation[cell[1]];
-		    cell_vol[1] = f->neighbourCellVolume();
+		    cell_pvol[1] = f->neighbourCellVolume()*preservoir_properties_->porosity(cell[1]);
 		}
 
 		// Get some local properties, and compute averages.
 		const double loc_area = f->area();
 		const double loc_flux = pressure_sol.outflux(f);
 		const Vector loc_normal = f->normal();
+		const int face_index = f->index();
 		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		using utils::arithmeticAverage;
-		const MutablePermTensor loc_perm
+		const MutablePermTensor aver_perm
 		    = arithAver(preservoir_properties_->permeability(cell[0]),
 				preservoir_properties_->permeability(cell[1]));
-		const double average_saturation
+		const double aver_sat
 		    = arithmeticAverage<double, double>(cell_sat[0], cell_sat[1]);
-		const double aver_mob_phase1
-		    = arithmeticAverage<double, double>(preservoir_properties_->mobilityFirstPhase(cell[0], average_saturation),
-							preservoir_properties_->mobilityFirstPhase(cell[1], average_saturation));
-		const double aver_mob_phase2
-		    = arithmeticAverage<double, double>(preservoir_properties_->mobilitySecondPhase(cell[0], average_saturation), 
-							preservoir_properties_->mobilitySecondPhase(cell[1], average_saturation));
+		const double aver_lambda_one
+		    = arithmeticAverage<double, double>(preservoir_properties_->mobilityFirstPhase(cell[0], aver_sat),
+							preservoir_properties_->mobilityFirstPhase(cell[1], aver_sat));
+		const double aver_lambda_two
+		    = arithmeticAverage<double, double>(preservoir_properties_->mobilitySecondPhase(cell[0], aver_sat), 
+							preservoir_properties_->mobilitySecondPhase(cell[1], aver_sat));
 
 		// The local gravity flux is needed for finding the correct phase mobilities.
 		double loc_gravity_flux = 0.0;
 		if (method_gravity_) {
-		    double grav_comp = inner(loc_normal, prod(loc_perm, gravity));
+		    double grav_comp = inner(loc_normal, prod(aver_perm, gravity));
 		    loc_gravity_flux = loc_area*preservoir_properties_->densityDifference()*grav_comp;
 		}
 		// Find the correct phasemobilities to use
-		const double flux_phase1 = loc_flux + loc_gravity_flux*aver_mob_phase2;
-		const double flux_phase2 = loc_flux - loc_gravity_flux*aver_mob_phase1;
+		const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two;
+		const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one;
 		double lambda_one;
 		double lambda_two;
 		// total velocity term
-		if (flux_phase1 > 0){
+		if (flux_one > 0){
 		    lambda_one = preservoir_properties_->mobilityFirstPhase(cell[0], cell_sat[0]);
 		} else {
 		    lambda_one = preservoir_properties_->mobilityFirstPhase(cell[1], cell_sat[1]); 
 		}
-		if (flux_phase2 > 0){
+		if (flux_two > 0){
 		    lambda_two = preservoir_properties_->mobilitySecondPhase(cell[0], cell_sat[0] );
 		} else {
 		    lambda_two = preservoir_properties_->mobilitySecondPhase(cell[1], cell_sat[1] );
@@ -548,14 +548,17 @@ namespace Dune
 
 		// Viscous (pressure driven) term.
 		if (method_viscous_) {
-		    dS+=loc_flux*(lambda_one/(lambda_two+lambda_one));
+		    const double visc_change = loc_flux*(lambda_one/(lambda_two+lambda_one));
+		    const double satdiff = cell_sat[1] - cell_sat[0];
+		    dS += visc_change;
 		}
 
 		// Gravity term.
 		if (method_gravity_) {
 		    if (cell[0] != cell[1]) {
 			// We only add gravity flux on internal or periodic faces.
-			dS+=loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
+			const double grav_change = loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
+			dS += grav_change;
 		    }
 		}
 
@@ -563,17 +566,19 @@ namespace Dune
 		if (method_capillary_) {
 		    // J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
 		    // p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
-		    double cap_term = inner(loc_normal, prod(loc_perm, estimateCapPressureGradient(f, nbface, saturation)));
-		    dS += cap_term*loc_area*aver_mob_phase2*aver_mob_phase1/(aver_mob_phase1 + aver_mob_phase2);
+		    const double cap_vel = inner(loc_normal, prod(aver_perm, estimateCapPressureGradient(f, nbface, saturation)));
+		    const double loc_cap_flux = cap_vel*loc_area;
+		    const double cap_change = loc_cap_flux*(aver_lambda_two*aver_lambda_one/(aver_lambda_one + aver_lambda_two));
+		    dS += cap_change;
 		}
 
 		// Modify saturation.
 		if (cell[0] != cell[1]){
-		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/cell_vol[0];
-		    sat_change[cell[1]] += (dt/preservoir_properties_->porosity(cell[1]))*dS/cell_vol[1];
+		    sat_change_[cell[0]] -= dS/cell_pvol[0];
+		    sat_change_[cell[1]] += dS/cell_pvol[1];
 		} else {
 		    ASSERT(cell[0] == cell[1]);
-		    sat_change[cell[0]] -= (dt/preservoir_properties_->porosity(cell[0]))*dS/cell_vol[0];
+		    sat_change_[cell[0]] -= dS/cell_pvol[0];
 		}
 	    }
 	}
