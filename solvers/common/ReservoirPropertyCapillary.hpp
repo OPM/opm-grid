@@ -647,7 +647,7 @@ namespace Dune
         }
 
         struct Rock {
-            typedef utils::NonuniformTableLinear< std::vector<double> > TabFunc;
+            typedef utils::NonuniformTableLinear<double> TabFunc;
             TabFunc krw_;
             TabFunc kro_;
             TabFunc Jfunc_;

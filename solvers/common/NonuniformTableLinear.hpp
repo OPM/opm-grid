@@ -35,9 +35,10 @@
 #ifndef OPENRS_NONUNIFORMTABLELINEAR_HEADER
 #define OPENRS_NONUNIFORMTABLELINEAR_HEADER
 
-#include <cassert>
 #include <cmath>
 #include <exception>
+#include <vector>
+#include <utility>
 
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/solvers/common/linearInterpolation.hpp>
@@ -46,72 +47,73 @@ namespace Dune {
     namespace utils {
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	struct ValueOutOfRangeException : public std::exception {};
+	/// @brief Exception used for domain errors.
+	struct OutsideDomainException : public std::exception {};
 
-	/// \brief This class uses linear interpolation to compute the value
-	///        (and its derivative) of a function sampled at possibly
+
+	/// @brief This class uses linear interpolation to compute the value
+	///        (and its derivative) of a function f sampled at possibly
 	///         nonuniform points.
-	template<class vector_t>
-	class NonuniformTableLinear {
+	/// @tparam T the range type of the function (should be an algebraic ring type)
+	template<typename T>
+	class NonuniformTableLinear
+	{
 	public:
-
-
-	    /// @brief
-	    /// @todo Doc me!
+	    /// @brief Default constructor.
 	    NonuniformTableLinear();
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    NonuniformTableLinear(const vector_t& x_values,
-				  const vector_t& y_values);
+	    /// @brief Useful constructor.
+	    /// @param x_values vector of domain values
+	    /// @param y_values vector of corresponding range values.
+	    NonuniformTableLinear(const std::vector<double>& x_values,
+				  const std::vector<T>& y_values);
 
+	    /// @brief Get the domain.
+	    /// @return the domain as a pair of doubles.
+	    std::pair<double, double> domain();
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+	    /// @brief Rescale the domain.
+	    /// @param new_domain the new domain as a pair of doubles.
+	    void rescaleDomain(std::pair<double, double> new_domain);
+
+	    /// @brief Evaluate the derivative at x.
+	    /// @param x a domain value
+	    /// @return f(x)
 	    double operator()(const double x) const;
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+	    /// @brief Evaluate the derivative at x.
+	    /// @param x a domain value
+	    /// @return f'(x)
 	    double derivative(const double x) const;
 
-
-	    /// @brief
-	    /// @todo Doc me!
+	    /// @brief Policies for how to behave when trying to evaluate outside the domain.
 	    enum RangePolicy {Throw = 0, ClosestValue = 1, Extrapolate = 2};
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
+	    /// @brief Sets the behavioural policy for evaluation to the left of the domain.
+	    /// @param rp the policy
 	    void setLeftPolicy(RangePolicy rp);
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
+	    /// @brief Sets the behavioural policy for evaluation to the right of the domain.
+	    /// @param rp the policy
 	    void setRightPolicy(RangePolicy rp);
 
 	protected:
-	    vector_t x_values_;
-	    vector_t y_values_;
+	    std::vector<double> x_values_;
+	    std::vector<T> y_values_;
 	    RangePolicy left_;
 	    RangePolicy right_;
 	};
 
 
 	// A utility function
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-	/// @return
+	/// @brief Detect if a sequence is nondecreasing.
+	/// @tparam FI a forward iterator whose value type has operator< defined.
+	/// @param beg start of sequence
+	/// @param end one-beyond-end of sequence
+	/// @return false if there exists two consecutive values (v1, v2) in the sequence
+	///         for which v2 < v1, else returns true.
 	template <typename FI>
-	bool isNondecreasing(FI beg, FI end)
+	bool isNondecreasing(const FI beg, const FI end)
 	{
+	    if (beg == end) return true;
 	    FI it = beg;
 	    ++it;
 	    FI prev = beg;
@@ -127,28 +129,51 @@ namespace Dune {
 
 	// Member implementations.
 
-	template<class vector_t>
+	template<typename T>
 	inline
-	NonuniformTableLinear<vector_t>
+	NonuniformTableLinear<T>
 	::NonuniformTableLinear()
 	    : left_(ClosestValue), right_(ClosestValue)
 	{
 	}
 
-	template<class vector_t>
+	template<typename T>
 	inline
-	NonuniformTableLinear<vector_t>
-	::NonuniformTableLinear(const vector_t& x_values,
-				const vector_t& y_values)
+	NonuniformTableLinear<T>
+	::NonuniformTableLinear(const std::vector<double>& x_values,
+				const std::vector<T>& y_values)
 	    : x_values_(x_values), y_values_(y_values),
 	      left_(ClosestValue), right_(ClosestValue)
 	{
-	    assert(isNondecreasing(x_values.begin(), x_values.end()));
+	    ASSERT(isNondecreasing(x_values.begin(), x_values.end()));
 	}
 
-	template<class vector_t>
+	template<typename T>
+	inline std::pair<double, double>
+	NonuniformTableLinear<T>
+	::domain()
+	{
+	    return std::make_pair(x_values_[0], x_values_.back());
+	}
+
+	template<typename T>
 	inline void
-	NonuniformTableLinear<vector_t>
+	NonuniformTableLinear<T>
+	::rescaleDomain(std::pair<double, double> new_domain)
+	{
+	    const double a = x_values_[0];
+	    const double b = x_values_.back();
+	    const double c = new_domain.first;
+	    const double d = new_domain.second;
+	    // x in [a, b] -> x in [c, d]
+	    for (int i = 0; i < int(x_values_.size()); ++i) {
+		x_values_[i] = (x_values_[i] - a)*(d - c)/(b - a) + c;
+	    }
+	}
+
+	template<typename T>
+	inline void
+	NonuniformTableLinear<T>
 	::setLeftPolicy(RangePolicy rp)
 	{
 	    if (rp != ClosestValue) {
@@ -157,9 +182,9 @@ namespace Dune {
 	    left_ = rp;
 	}
 
-	template<class vector_t>
+	template<typename T>
 	inline void
-	NonuniformTableLinear<vector_t>
+	NonuniformTableLinear<T>
 	::setRightPolicy(RangePolicy rp)
 	{
 	    if (rp != ClosestValue) {
@@ -168,18 +193,18 @@ namespace Dune {
 	    right_ = rp;
 	}
 
-	template<class vector_t>
+	template<typename T>
 	inline double
-	NonuniformTableLinear<vector_t>
+	NonuniformTableLinear<T>
 	::operator()(const double x) const
 	{
 	    return linearInterpolation(x_values_, y_values_, x);
 	}
 
 
-	template<class vector_t>
+	template<typename T>
 	inline double
-	NonuniformTableLinear<vector_t>
+	NonuniformTableLinear<T>
 	::derivative(const double x) const
 	{
 	    return linearInterpolationDerivative(x_values_, y_values_, x);
