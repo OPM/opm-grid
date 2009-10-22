@@ -69,7 +69,7 @@ namespace Dune
 
 	    // Solve some steps.
 	    for (int i = 0; i < simulation_steps_; ++i) {
-		std::cout << "================    Simulation step number " << i
+		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
 		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
