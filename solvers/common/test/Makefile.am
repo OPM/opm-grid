@@ -1,4 +1,4 @@
-check_PROGRAMS = boundaryconditions_test
+check_PROGRAMS = boundaryconditions_test nonuniformtablelinear_test
 noinst_PROGRAMS = gie_test simulator_test periodic_test
 
 # Common flags
@@ -13,6 +13,8 @@ LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
 
 # Additional quirks for individual programs
 boundaryconditions_test_SOURCES = boundaryconditions_test.cpp
+
+nonuniformtablelinear_test_SOURCES = nonuniformtablelinear_test.cpp
 
 periodic_test_SOURCES = periodic_test.cpp
 
