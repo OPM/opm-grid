@@ -196,7 +196,7 @@ namespace Dune
 	// Methods
         double relPermFirstPhase(int cell_index, double saturation) const;
         double relPermSecondPhase(int cell_index, double saturation) const;
-        void cflMobs(int rock, double s, double& mob_first, double& mob_gravity) const;
+        void cflFracFlows(int rock, double s, double& ff_first, double& ff_gravity) const;
         std::pair<double, double> computeSingleRockCflFactors(int rock) const;
         void computeCflFactors();
         void assignPorosity(const EclipseGridParser& parser,

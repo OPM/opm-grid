@@ -485,31 +485,23 @@ namespace Dune
 
 
     template <int dim>
-    void ReservoirPropertyCapillary<dim>::cflMobs(int rock, double s, double& mob_first, double& mob_gravity) const
+    void ReservoirPropertyCapillary<dim>::cflFracFlows(int rock, double s, double& ff_first, double& ff_gravity) const
     {
         if (rock == -1) {
             // No rock dependency, we might just as well use the first cell.
             const int cell_index = 0;
             double l1 = mobilityFirstPhase(cell_index, s);
             double l2 = mobilitySecondPhase(cell_index, s);
-            mob_first = l1/(l1 + l2);
-            mob_gravity = l1*l2/(l1 + l2);
+            ff_first = l1/(l1 + l2);
+            ff_gravity = l1*l2/(l1 + l2);
         } else {
             double krw = rock_[rock].krw_(s);
             double kro = rock_[rock].kro_(s);
             double l1 = krw/viscosity1_;
             double l2 = kro/viscosity2_;
-            mob_first = l1/(l1 + l2);
-            mob_gravity = l1*l2/(l1 + l2);
+            ff_first = l1/(l1 + l2);
+            ff_gravity = l1*l2/(l1 + l2);
         }
-            
-        // This is a hack for now, we should make this rock-dependant,
-        // for the multi-rock case.
-        const int cell_index = 0;
-        double l1 = mobilityFirstPhase(cell_index, s);
-        double l2 = mobilitySecondPhase(cell_index, s);
-        mob_first = l1/(l1 + l2);
-        mob_gravity = l1*l2/(l1 + l2);
     }
 
 
@@ -520,20 +512,20 @@ namespace Dune
     {
         const int N = 257;
         double delta = 1.0/double(N - 1);
-        double last_m1, last_mg;
+        double last_ff1, last_ffg;
         double max_der1 = -1e100;
         double max_derg = -1e100;
-        cflMobs(rock, 0.0, last_m1, last_mg);
+        cflFracFlows(rock, 0.0, last_ff1, last_ffg);
         for (int i = 1; i < N; ++i) {
             double s = double(i)*delta;
-            double m1, mg;
-            cflMobs(rock, s, m1, mg);
-            double est_deriv_m1 = std::fabs(m1 - last_m1)/delta;
-            double est_deriv_mg = std::fabs(mg - last_mg)/delta;
-            max_der1 = std::max(max_der1, est_deriv_m1);
-            max_derg = std::max(max_derg, est_deriv_mg);
-            last_m1 = m1;
-            last_mg = mg;
+            double ff1, ffg;
+            cflFracFlows(rock, s, ff1, ffg);
+            double est_deriv_ff1 = std::fabs(ff1 - last_ff1)/delta;
+            double est_deriv_ffg = std::fabs(ffg - last_ffg)/delta;
+            max_der1 = std::max(max_der1, est_deriv_ff1);
+            max_derg = std::max(max_derg, est_deriv_ffg);
+            last_ff1 = ff1;
+            last_ffg = ffg;
         }
         return std::make_pair(1.0/max_der1, 1.0/max_derg);
     }
