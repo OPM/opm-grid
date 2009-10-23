@@ -231,10 +231,17 @@ namespace Dune
 
     template <int dim>
     ReservoirPropertyCapillary<dim>::ReservoirPropertyCapillary()
+#if 1
         : density1_  (1013.9*unit::kilogram/unit::cubic(unit::meter)),
           density2_  ( 834.7*unit::kilogram/unit::cubic(unit::meter)),
           viscosity1_(   1.0*prefix::centi*unit::Poise),
           viscosity2_(   3.0*prefix::centi*unit::Poise)
+#else
+        : density1_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
+          density2_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
+          viscosity1_(   1.0*prefix::centi*unit::Poise),
+          viscosity2_(   1.0*prefix::centi*unit::Poise)
+#endif
     {
     }
 
@@ -374,6 +381,28 @@ namespace Dune
                 total_mobility(row, col) = 0.0;
             }
             total_mobility(row, row) = scalar_totmob;
+        }
+    }
+
+
+    template <int dim>
+    template <class MatrixType>
+    void ReservoirPropertyCapillary<dim>::anisoPhaseMobility(int cell_index,
+                                                             int phase_index,
+                                                             double saturation,
+                                                             MatrixType& phase_mob) const
+    {
+        ASSERT ((0 <= phase_index) && (phase_index < NumberOfPhases));
+
+        // For now, just use scalar phase mobility.
+        boost::array<double, NumberOfPhases> mob;
+        phaseMobility(cell_index, saturation, mob);
+
+        for (int i = 0; i < dim; ++i) {
+            for (int j = 0; j < dim; ++j) {
+                phase_mob(i,j) = 0.0;
+            }
+            phase_mob(i,i) = mob[phase_index];
         }
     }
 

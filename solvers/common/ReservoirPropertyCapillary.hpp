@@ -140,6 +140,17 @@ namespace Dune
 	template <class MatrixType>
         void anisoTotalMobility(int cell_index, double saturation, MatrixType& total_mobility) const;
 
+       /// @brief Anisotropic phase mobility.
+       /// @param cell_index index of a grid cell.
+       /// @param phase_index Phase for which to compute mobility.
+       /// @param saturation a saturation value.
+       /// @param[out] phase_mob anisotropic phase mobility tensor at the given cell and saturation.
+       template <class MatrixType>
+       void anisoPhaseMobility(int cell_index,
+                               int phase_index,
+                               double saturation,
+                               MatrixType& phase_mob) const;
+
 	/// @brief Fractional flow (of the first phase).
         /// @param cell_index index of a grid cell.
 	/// @param saturation a saturation value.
