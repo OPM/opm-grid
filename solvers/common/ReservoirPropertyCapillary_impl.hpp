@@ -664,7 +664,9 @@ namespace Dune
 	std::string dir(rock_list_file.begin(), rock_list_file.begin() + rock_list_file.find_last_of('/') + 1);
         for (int i = 0; i < num_rocks; ++i) {
             std::string spec;
-	    std::getline(rl, spec);
+	    while (spec.empty()) {
+		std::getline(rl, spec);
+	    }
             rock_[i].read(dir, spec);
         }
     }
