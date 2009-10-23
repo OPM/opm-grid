@@ -86,11 +86,18 @@ namespace Dune {
 	    /// @return f'(x)
 	    double derivative(const double x) const;
 
+	    /// @brief Equality operator.
+	    /// @param other another NonuniformTableLinear.
+	    /// @return true if they are represented exactly alike.
+	    bool operator==(const NonuniformTableLinear& other) const;
+
 	    /// @brief Policies for how to behave when trying to evaluate outside the domain.
 	    enum RangePolicy {Throw = 0, ClosestValue = 1, Extrapolate = 2};
+
 	    /// @brief Sets the behavioural policy for evaluation to the left of the domain.
 	    /// @param rp the policy
 	    void setLeftPolicy(RangePolicy rp);
+
 	    /// @brief Sets the behavioural policy for evaluation to the right of the domain.
 	    /// @param rp the policy
 	    void setRightPolicy(RangePolicy rp);
@@ -172,6 +179,33 @@ namespace Dune {
 	}
 
 	template<typename T>
+	inline double
+	NonuniformTableLinear<T>
+	::operator()(const double x) const
+	{
+	    return linearInterpolation(x_values_, y_values_, x);
+	}
+
+	template<typename T>
+	inline double
+	NonuniformTableLinear<T>
+	::derivative(const double x) const
+	{
+	    return linearInterpolationDerivative(x_values_, y_values_, x);
+	}
+
+	template<typename T>
+	inline bool
+	NonuniformTableLinear<T>
+	::operator==(const NonuniformTableLinear<T>& other) const
+	{
+	    return x_values_ == other.x_values_
+		&& y_values_ == other.y_values_
+		&& left_ == other.left_
+		&& right_ == other.right_;
+	}
+
+	template<typename T>
 	inline void
 	NonuniformTableLinear<T>
 	::setLeftPolicy(RangePolicy rp)
@@ -191,23 +225,6 @@ namespace Dune {
 		THROW("Only ClosestValue RangePolicy implemented.");
 	    }
 	    right_ = rp;
-	}
-
-	template<typename T>
-	inline double
-	NonuniformTableLinear<T>
-	::operator()(const double x) const
-	{
-	    return linearInterpolation(x_values_, y_values_, x);
-	}
-
-
-	template<typename T>
-	inline double
-	NonuniformTableLinear<T>
-	::derivative(const double x) const
-	{
-	    return linearInterpolationDerivative(x_values_, y_values_, x);
 	}
 
     } // namespace utils

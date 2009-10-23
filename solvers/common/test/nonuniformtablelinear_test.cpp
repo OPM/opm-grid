@@ -68,6 +68,12 @@ BOOST_AUTO_TEST_CASE(table_operations)
     double yva[numvals] = { 1.0, 2.0, 3.0, 4.0, 2.0 };
     std::vector<double> yv(yva, yva + numvals);
     Dune::utils::NonuniformTableLinear<double> t1(xv, yv);
+    Dune::utils::NonuniformTableLinear<double> t1_copy1(xv, yv);
+    Dune::utils::NonuniformTableLinear<double> t1_copy2(t1);
+
+    // Check equality.
+    BOOST_CHECK(t1 == t1_copy1);
+    BOOST_CHECK(t1 == t1_copy2);
 
     // Check some evaluations.
     for (int i = 0; i < numvals; ++i) {
