@@ -167,7 +167,7 @@ namespace Dune {
 
 
         //--------------------------------------------------------------------------
-        /// @brief GEneral Matrix Mector product (Level 3 BLAS).
+        /// @brief GEneral Matrix Matrix product (Level 3 BLAS).
         ///
         /// @tparam T Element type of matrix.
         template<typename T>
@@ -177,7 +177,7 @@ namespace Dune {
                                       const T*    B     , const int ldB,
                   const T&    a2    ,       T*    C     , const int ldC);
 
-        /// @brief GEneral Matrix Mector product specialization for double.
+        /// @brief GEneral Matrix Matrix product specialization for double.
         template<>
         void GEMM<double>(const char*   transA, const char*   transB,
                           const int     m     , const int     n     , const int k  ,
