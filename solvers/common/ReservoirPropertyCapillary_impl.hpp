@@ -432,14 +432,11 @@ namespace Dune
     double ReservoirPropertyCapillary<dim>::capillaryPressure(int cell_index, double saturation) const
     {
         if (rock_.size() > 0) {
-            // p_c = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-            double sigma_cos_theta = 1.0; // An approximation.
+            // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
             double perm = trace(permeability(cell_index))/double(dim);
             double poro = porosity(cell_index);
-            double sqrt_k_phi = std::sqrt(perm/poro);
             int r = cell_to_rock_[cell_index];
-            return rock_[r].Jfunc_(saturation)
-                *sigma_cos_theta/sqrt_k_phi;
+            return rock_[r].capPress(perm, poro, saturation);
         } else {
             // HACK ALERT!
             // Use zero capillary pressure if no known rock table exists.
@@ -456,7 +453,9 @@ namespace Dune
         if (rock_.size() > 0) {
             const int region = cell_to_rock_[cell_index];
             ASSERT (region < int(rock_.size()));
-            return rock_[region].krw_(saturation);
+	    double res;
+	    rock_[region].krw(saturation, res);
+            return res;
         } else {
             // HACK ALERT!
             // Use quadratic rel-perm if no known rock table exists.
@@ -473,7 +472,9 @@ namespace Dune
         if (rock_.size() > 0) {
             const int region = cell_to_rock_[cell_index];
             ASSERT (region < int(rock_.size()));
-            return rock_[region].kro_(saturation);
+	    double res;
+	    rock_[region].kro(saturation, res);
+            return res;
         } else {
             // HACK ALERT!
             // Use quadratic rel-perm if no known rock table exists.
@@ -495,8 +496,9 @@ namespace Dune
             ff_first = l1/(l1 + l2);
             ff_gravity = l1*l2/(l1 + l2);
         } else {
-            double krw = rock_[rock].krw_(s);
-            double kro = rock_[rock].kro_(s);
+            double krw, kro;
+	    rock_[rock].krw(s, krw);
+            rock_[rock].kro(s, kro);
             double l1 = krw/viscosity1_;
             double l2 = kro/viscosity2_;
             ff_first = l1/(l1 + l2);
@@ -658,55 +660,15 @@ namespace Dune
         int num_rocks = -1;
         rl >> num_rocks;
         ASSERT(num_rocks >= 1);
+	rock_.resize(num_rocks);
+	std::string dir(rock_list_file.begin(), rock_list_file.begin() + rock_list_file.find_last_of('/') + 1);
         for (int i = 0; i < num_rocks; ++i) {
-            std::string rockname;
-            rl >> rockname;
-            std::string rockfilename = rock_list_file;
-            rockfilename.replace(rockfilename.begin() + rockfilename.find_last_of('/') + 1,
-                                 rockfilename.end(), rockname);
-            std::ifstream rock_stream(rockfilename.c_str());
-            if (!rock_stream) {
-                THROW("Could not open file " << rockfilename);
-            }
-            rock_.push_back(readStatoilFormat(rock_stream));
+            std::string spec;
+	    std::getline(rl, spec);
+            rock_[i].read(dir, spec);
         }
     }
 
-
-
-
-    template <int dim>
-    typename ReservoirPropertyCapillary<dim>::Rock
-    ReservoirPropertyCapillary<dim>::readStatoilFormat(std::istream& is)
-    {
-        std::string firstline;
-        std::getline(is, firstline);
-        typedef FieldVector<double, 4> Data;
-        std::istream_iterator<Data> start(is);
-        std::istream_iterator<Data> end;
-        std::vector<Data> data(start, end);
-        if (!is.eof()) {
-            THROW("Reading stopped but we're not at eof: something went wrong reading data.");
-        }
-        std::vector<double> svals, krw, kro, Jfunc;
-        for (int i = 0; i < int(data.size()); ++i) {
-            svals.push_back(data[i][0]);
-            krw.push_back(data[i][1]);
-            kro.push_back(data[i][2]);
-            Jfunc.push_back(data[i][3]);
-        }
-        typedef typename Rock::TabFunc TFun;
-        Rock r;
-        r.krw_ = TFun(svals, krw);
-        r.kro_ = TFun(svals, kro);
-        r.Jfunc_ = TFun(svals, Jfunc);
-        std::vector<double> invJfunc(Jfunc);
-        std::reverse(invJfunc.begin(), invJfunc.end());
-        std::vector<double> invsvals(svals);
-        std::reverse(invsvals.begin(), invsvals.end());
-        r.invJfunc_ = TFun(invJfunc, invsvals);
-        return r;
-    }
 
 
 

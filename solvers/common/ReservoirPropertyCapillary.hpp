@@ -39,14 +39,12 @@
 #include <fstream>
 #include <boost/static_assert.hpp>
 
-//#include <dune/common/fmatrix.hh>
 #include <dune/common/Units.hpp>
 #include <dune/grid/common/EclipseGridParser.hpp>
 #include <dune/grid/common/EclipseGridInspector.hpp>
-
 #include <dune/solvers/common/NonuniformTableLinear.hpp>
 #include <dune/solvers/common/Matrix.hpp>
-
+#include <dune/solvers/common/RockJfunc.hpp>
 
 namespace Dune
 {
@@ -184,15 +182,6 @@ namespace Dune
         double capillaryPressure(int cell_index, double saturation) const;
 
     private:
-	/// Class for encapsulating the data for a rock type.
-        struct Rock {
-            typedef utils::NonuniformTableLinear<double> TabFunc;
-            TabFunc krw_;
-            TabFunc kro_;
-            TabFunc Jfunc_;
-            TabFunc invJfunc_;
-        };
-
 	// Methods
         double relPermFirstPhase(int cell_index, double saturation) const;
         double relPermSecondPhase(int cell_index, double saturation) const;
@@ -206,7 +195,6 @@ namespace Dune
         void assignRockTable(const EclipseGridParser& parser,
                              const std::vector<int>& global_cell);
         void readRocks(const std::string& rock_list_file);
-        Rock readStatoilFormat(std::istream& is);
 
 	// Data members.
         std::vector<double>        porosity_;
@@ -218,7 +206,7 @@ namespace Dune
         double viscosity2_;
         double cfl_factor_;
         double cfl_factor_gravity_;
-        std::vector<Rock> rock_;
+        std::vector<RockJfunc> rock_;
         std::vector<int> cell_to_rock_;
     };
 
