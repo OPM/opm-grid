@@ -50,14 +50,26 @@
 namespace Dune {
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    ///    FullMatrix StoragePolicy which provides object owning
+    ///    semantics.
+    ///
+    /// @tparam T
+    ///    Element type of the FullMatrix.  Often @code T @endcode is
+    ///    an alias for @code double @endcode.
     template<typename T>
     class OwnData {
     public :
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  If non-NULL, must contain @code
+        ///    sz @endcode elements which will be assigned to a
+        ///    freshly allocated storage array.  If NULL, a @code sz
+        ///    @endcode element all-zero storage array will be
+        ///    constructed.
         OwnData(int sz, const T* data)
         {
             if (data) {
@@ -67,27 +79,26 @@ namespace Dune {
             }
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief Storage element access.
+        ///
+        /// @param [in] i
+        ///    Linear element index.
+        ///
+        /// @return
+        ///    Storage element at index @code i @endcode.
         T&       operator[](int i)       { return data_[i]; }
         const T& operator[](int i) const { return data_[i]; }
 
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief Data size query.
+        ///
+        /// @return Number of elements in storage array.
         int size() const { return data_.size(); }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief Direct access to all data.
+        ///
+        /// @return Pointer to first element of storage array.
         T*       data()       { return &data_[0]; }
-	
-	/// @brief
-	/// @todo Doc me!
-	/// @return
         const T* data() const { return &data_[0]; }
 
     private:
@@ -95,43 +106,49 @@ namespace Dune {
     };
 
     /// @brief
-    /// @todo Doc me!
-    /// @return
+    ///    FullMatrix StoragePolicy which provides object sharing
+    ///    semantics.
+    ///
+    /// @tparam T
+    ///    Element type of the FullMatrix.  Often @code T @endcode is
+    ///    an alias for @code double @endcode.
     template<typename T>
     class SharedData {
     public:
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  If non-NULL, must point to a @code
+        ///    sz @endcode-element data vector.  If NULL, @code sz
+        ///    @endcode must be zero as well.
         SharedData(int sz, T* data)
             : sz_(sz), data_(data)
         {
-            ASSERT((sz == 0) == (data == 0));
+            ASSERT ((sz == 0) == (data == 0));
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief Storage element access.
+        ///
+        /// @param [in] i
+        ///    Linear element index.
+        ///
+        /// @return
+        ///    Storage element at index @code i @endcode.
         T&       operator[](int i)       { return data_[i]; }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
         const T& operator[](int i) const { return data_[i]; }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief Data size query.
+        ///
+        /// @return Number of elements in storage array.
         int size() const { return sz_; }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief Direct access to all data.
+        ///
+        /// @return Pointer to first element of storage array.
         T*       data()       { return data_; }
-	/// @brief
-	/// @todo Doc me!
-	/// @return
         const T* data() const { return data_; }
     private:
         int sz_;
@@ -139,35 +156,46 @@ namespace Dune {
     };
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    ///    FullMatrix StoragePolicy which provides immutable object
+    ///    sharing semantics.
+    ///
+    /// @tparam T
+    ///    Element type of the FullMatrix.  Often @code T @endcode is
+    ///    an alias for @code double @endcode.
     template<typename T>
     class ImmutableSharedData {
     public:
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  Must be non-NULL and point to a
+        ///    @code sz @endcode-element data vector.
         ImmutableSharedData(int sz, const T* data)
             : sz_(sz), data_(data)
         {
-            ASSERT(data_ != 0);
+            ASSERT (data_ != 0);
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief Storage element access.
+        ///
+        /// @param [in] i
+        ///    Linear element index.
+        ///
+        /// @return
+        ///    Storage element at index @code i @endcode.
         const T& operator[](int i) const { return data_[i]; }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief Data size query.
+        ///
+        /// @return Number of elements in storage array.
         int size() const { return sz_; }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief Direct access to all data.
+        ///
+        /// @return Pointer to first element of storage array.
         const T* data() const { return data_; }
     private:
         int sz_;
@@ -178,27 +206,27 @@ namespace Dune {
     /// @todo Doc me!
     class OrderingBase {
     public:
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         OrderingBase()
             : rows_(0), cols_(0)
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         OrderingBase(int rows, int cols)
             : rows_(rows), cols_(cols)
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         int numRows() const { return rows_; }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         int numCols() const { return cols_; }
 
     private:
@@ -210,28 +238,28 @@ namespace Dune {
     /// @todo Doc me!
     class COrdering : public OrderingBase {
     public:
-	/// @brief
-	/// @todo Doc me!	
+        /// @brief
+        /// @todo Doc me!
         COrdering()
             : OrderingBase()
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         COrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         int leadingDimension() const { return numCols(); }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -246,29 +274,29 @@ namespace Dune {
     /// @todo Doc me!
     class FortranOrdering : public OrderingBase {
     public:
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         FortranOrdering()
             : OrderingBase()
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         FortranOrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         int leadingDimension() const { return numRows(); }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -289,27 +317,27 @@ namespace Dune {
                        private OrderingPolicy
     {
     public:
-	/// @brief
-	/// @todo Doc me!	
+        /// @brief
+        /// @todo Doc me!
         FullMatrix()
             : StoragePolicy<T>(0, 0),
               OrderingPolicy()
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param	
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template <typename DataPointer>
         FullMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data),
               OrderingPolicy(rows, cols)
         {}
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template <template<typename> class OtherSP>
         explicit FullMatrix(const FullMatrix<T, OtherSP, OrderingPolicy>& m)
             : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
@@ -317,23 +345,23 @@ namespace Dune {
         {
         }
 
-	template <template<typename> class OtherSP, class OtherOP>
-	FullMatrix& operator=(const FullMatrix<T, OtherSP, OtherOP>& m)
-	{
-	    ASSERT(numRows() == m.numRows());
-	    ASSERT(numCols() == m.numCols());
-	    for (int r = 0; r < numRows(); ++r) {
-		for (int c = 0; c < numCols(); ++c) {
-		    this->operator()(r, c) = m(r,c);
-		}
-	    }
-	    return *this;
-	}
+        template <template<typename> class OtherSP, class OtherOP>
+        FullMatrix& operator=(const FullMatrix<T, OtherSP, OtherOP>& m)
+        {
+            ASSERT(numRows() == m.numRows());
+            ASSERT(numCols() == m.numCols());
+            for (int r = 0; r < numRows(); ++r) {
+                for (int c = 0; c < numCols(); ++c) {
+                    this->operator()(r, c) = m(r,c);
+                }
+            }
+            return *this;
+        }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @tparam
+        /// @param
         template <template<typename> class OtherSP>
         void operator+= (const FullMatrix<T, OtherSP, OrderingPolicy>& m)
         {
@@ -342,35 +370,35 @@ namespace Dune {
                            m.data(), data(), std::plus<T>());
         }
 
-	/// @brief
-	/// @todo Doc me!
-	/// @param
+        /// @brief
+        /// @todo Doc me!
+        /// @param
         void operator*= (const T& scalar)
         {
             std::transform(data(), data() + this->size(),
                            data(), boost::bind(std::multiplies<T>(), _1, scalar));
         }
 
-	/// @brief
-	/// @todo Doc me!
+        /// @brief
+        /// @todo Doc me!
         typedef T value_type;
 
-	using StoragePolicy<T>::data;
+        using StoragePolicy<T>::data;
         using OrderingPolicy::numRows;
         using OrderingPolicy::numCols;
         using OrderingPolicy::leadingDimension;
 
-	/// @brief
-	/// @todo Doc me!
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @return
         value_type&       operator()(int row, int col)
         {
             return this->operator[](this->idx(row, col));
         }
-	/// @brief
-	/// @todo Doc me!
-	/// @param
-	/// @return
+        /// @brief
+        /// @todo Doc me!
+        /// @param
+        /// @return
         const value_type& operator()(int row, int col) const
         {
             return this->operator[](this->idx(row, col));
@@ -452,26 +480,26 @@ namespace Dune {
     template<class Matrix1, class Matrix2, class MutableMatrix>
     void prod(const Matrix1& A, const Matrix2& B, MutableMatrix& C)
     {
-	int result_rows = A.numRows();
-	int result_cols = B.numCols();
-	int inner_dim = A.numCols();
+        int result_rows = A.numRows();
+        int result_cols = B.numCols();
+        int inner_dim = A.numCols();
         ASSERT (inner_dim == B.numRows());
-	ASSERT(C.numRows() == result_rows);
-	ASSERT(C.numCols() == result_cols);
+        ASSERT(C.numRows() == result_rows);
+        ASSERT(C.numCols() == result_cols);
 
         for (int c = 0; c < result_cols; ++c) {
             for (int r = 0; r < result_rows; ++r) {
                 C(r,c) = 0.0;
-		for (int i = 0; i < inner_dim; ++i) {
-		    C(r,c) += A(r,i)*B(i,c);
-		}
+                for (int i = 0; i < inner_dim; ++i) {
+                    C(r,c) += A(r,i)*B(i,c);
+                }
             }
         }
     }
 
 
     // A <- orth(A)
-    
+
     /// @brief
     /// @todo Doc me!
     /// @tparam
@@ -538,7 +566,7 @@ namespace Dune {
 
     // C <- a1*A*A' + a2*C
     // Assumes T is an arithmetic (floating point) type, and that C==C'.
-    
+
     /// @brief
     /// @todo Doc me!
     /// @tparam
@@ -645,14 +673,75 @@ namespace Dune {
     /// @todo Doc me!
     /// @tparam
     /// @param
+    template<typename                 T ,
+             template<typename> class SP>
+    void vecMulAdd_T(const T&                                a1,
+                     const FullMatrix<T,SP,FortranOrdering>& A ,
+                     const std::vector<T>&                   x ,
+                     const T&                                a2,
+                     std::vector<T>&                         y)
+    {
+        ASSERT (A.numCols() == y.size());
+        ASSERT (A.numRows() == x.size());
+
+        Dune::BLAS_LAPACK::GEMV("Transpose",
+                                A.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                &x[0], 1, a2, &y[0], 1);
+    }
+
+
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    template<typename                 T ,
+             template<typename> class SP>
+    void vecMulAdd_T(const T&                                a1,
+                     const FullMatrix<T,SP,FortranOrdering>& A ,
+                     const T*                                x ,
+                     const T&                                a2,
+                     T*                                      y)
+    {
+        Dune::BLAS_LAPACK::GEMV("Transpose",
+                                A.numRows(), A.numCols(),
+                                a1, A.data(), A.leadingDimension(),
+                                x, 1, a2, y, 1);
+    }
+
+
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    template<typename                 T ,
+             template<typename> class SP>
+    void vecMulAdd_N(const T&                          a1,
+                     const FullMatrix<T,SP,COrdering>& A ,
+                     const T*                          x ,
+                     const T&                          a2,
+                     T*                                y)
+    {
+        typedef FullMatrix<T, ImmutableSharedData, FortranOrdering> FMAT;
+
+        const FMAT At(A.numCols(), A.numRows(), A.data());
+
+        vecMulAdd_T(a1, At, x, a2, y);
+    }
+
+
+    /// @brief C = a1*A*B + a2*C
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
              template<typename> class SP3>
-    void matMulAdd_NN(const T&                             a1,
+    void matMulAdd_NN(const T&                                 a1,
                       const FullMatrix<T,SP1,FortranOrdering>& A ,
                       const FullMatrix<T,SP2,FortranOrdering>& B ,
-                      const T&                             a2,
+                      const T&                                 a2,
                       FullMatrix<T,SP3,FortranOrdering>&       C)
     {
         ASSERT(A.numRows() == C.numRows());
@@ -662,7 +751,7 @@ namespace Dune {
         int m = A.numRows();  // Number of *rows* in A
         int n = B.numCols();  // Number of *cols* in B
         int k = A.numCols();  // Number of *cols* in A (== numer of *rows* in B)
-        
+
         Dune::BLAS_LAPACK::GEMM("No Transpose", "No Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
@@ -691,7 +780,7 @@ namespace Dune {
         int m = A.numRows();  // Number of *rows* in A
         int n = B.numRows();  // Number of *cols* in B'
         int k = A.numCols();  // Number of *cols* in A (== numer of *rows* in B')
-        
+
         Dune::BLAS_LAPACK::GEMM("No Transpose", "Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
@@ -720,7 +809,7 @@ namespace Dune {
         int m = A.numCols();  // Number of *rows* in A'
         int n = B.numCols();  // Number of *cols* in B
         int k = A.numRows();  // Number of *cols* in A' (== numer of *rows* in B)
-        
+
         Dune::BLAS_LAPACK::GEMM("Transpose", "No Transpose", m, n, k,
                                 a1, A.data(), A.leadingDimension(),
                                     B.data(), B.leadingDimension(),
