@@ -115,7 +115,8 @@ namespace Dune {
               t1_           (max_nf * dim   ),
               t2_           (max_nf * dim   ),
               second_term_  (               ),
-	      n_            (               )
+              n_            (               ),
+              Kg_           (               )
         {}
 
 
@@ -164,6 +165,9 @@ namespace Dune {
                            boost::bind(std::multiplies<vt>(), _1, dim));
 
             n_.allocate(sz2.begin(), sz2.end());
+
+            std::fill(sz2.begin(), sz2.end(), vt(dim));
+            Kg_.allocate(sz2.begin(), sz2.end());
         }
 
 
@@ -195,8 +199,11 @@ namespace Dune {
         /// @param [in] nf
         ///    Number of faces (i.e., number of neighbours) of cell
         ///    @code *c @endcode.
-        template<typename RI>
-        void buildMatrix(const CellIter& c, const RI& r, const int nf)
+        template<class RI, class Point>
+        void buildStaticContrib(const CellIter& c,
+                                const RI&       r,
+                                const Point&    grav,
+                                const int       nf)
         {
 	    // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
 	    //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -214,11 +221,10 @@ namespace Dune {
             ASSERT (int(t2_.size()) >= nf * dim);
             ASSERT (int(fa_.size()) >= nf * nf);
 
-            // SharedFortranMatrix T1  (nf, dim, &t1_      [0]);
             SharedFortranMatrix T2  (nf, dim, &t2_      [0]);
             SharedFortranMatrix fa  (nf, nf , &fa_      [0]);
-            SharedFortranMatrix second_term(nf, nf , &second_term_[ci][0]);
-            SharedFortranMatrix n(nf, nf , &n_[ci][0]);
+            SharedFortranMatrix second_term(nf, nf, &second_term_[ci][0]);
+            SharedFortranMatrix n(nf, dim, &n_[ci][0]);
 
             // Clear matrices of any residual data.
             zero(second_term);  zero(n);  zero(T2);  zero(fa);
@@ -228,13 +234,13 @@ namespace Dune {
             int i = 0;
             for (FI f = c->facebegin(); f != c->faceend(); ++f, ++i) {
                 second_term(i,i) = Scalar(1.0);
-                fa(i,i)   = f->area();
+                fa(i,i)          = f->area();
 
                 FV fc = f->centroid();  fc -= cc;  fc *= fa(i,i);
                 FV fn = f->normal  ();             fn *= fa(i,i);
 
                 for (int j = 0; j < dim; ++j) {
-                    n(i,j) = fn[j];
+                    n (i,j) = fn[j];
                     T2(i,j) = fc[j];
                 }
             }
@@ -250,6 +256,10 @@ namespace Dune {
 
             // second_term <- diag(A) * second_term * diag(A)
             symmetricUpdate(fa, second_term);
+
+            // Gravity term: Kg_ = K * grav
+            vecMulAdd_N(Scalar(1.0), r.permeability(ci), &grav[0],
+                        Scalar(0.0), &Kg_[ci][0]);
         }
 
 
@@ -260,21 +270,33 @@ namespace Dune {
         {
             const int ci = c->index();
 
-            boost::array<Scalar,RI::NumberOfPhases> mob ;
-            boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobility(ci, s[ci],              mob);
-            r.phaseDensity (ci,                     rho);
+            boost::array<Scalar, dim * dim> lambda_t;
+            boost::array<Scalar, dim * dim> pmob_data;
 
-	    // lambdaK_ -> total_mobility*K
-	    SharedFortranMatrix lambda(dim, dim, lambda_.data());
-	    r.anisoTotalMobility(ci, s[ci], lambda);
-	    typename RI::PermTensor K = r.permeability(ci);
-	    SharedFortranMatrix lambdaK(dim, dim, lambdaK_.data());
-	    prod(lambda, K, lambdaK);
+            SharedFortranMatrix pmob(dim, dim, &pmob_data[0]);
+            SharedFortranMatrix Kg  (dim, 1  , &Kg_[ci][0]);
 
-	    // omega not yet changed.
-            omega_  = std::inner_product(rho.begin(), rho.end(), mob.begin(),
-                                         Scalar(0.0)) / r.totalMobility(ci, s[ci]);
+            boost::array<Scalar, RI::NumberOfPhases> rho;
+            r.phaseDensity(ci, rho);
+
+            std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
+
+            for (int i = 0; i < RI::NumberOfPhases; ++i) {
+                r.anisoPhaseMobility(ci, i, s[ci], pmob);
+
+                // dyn_Kg_ += (\rho_i \lambda_i) Kg
+                vecMulAdd_N(rho[i], pmob, Kg.data(), Scalar(1.0), dyn_Kg_.data());
+
+                // \lambda_t += \lambda_i
+                std::transform(lambda_t.begin(), lambda_t.end(), pmob_data.begin(),
+                               lambda_t.begin(),
+                               std::plus<Scalar>());
+            }
+
+            // lambdaK_ = (\sum_i \lambda_i) K
+            SharedFortranMatrix lambdaT(dim, dim, lambda_t.data());
+            SharedFortranMatrix lambdaK(dim, dim, lambdaK_.data());
+            prod(lambdaT, r.permeability(ci), lambdaK);
         }
 
 
@@ -339,96 +361,30 @@ namespace Dune {
                          t           / c->volume(), Binv  );
         }
 
-        /// @brief
-        ///    Computes the mimetic discretization of the gravity term
-        ///    in Darcy's law.
-        ///
-        /// @tparam Point
-        ///    Type representing a geometric point or a vector between
-        ///    geometric points (e.g., a geometric direction and
-        ///    distance) in the discretized model.  Usually @code
-        ///    Point @endcode is an alias for a vector whose size is
-        ///    known at compile time, such as @code FieldVector<T,3>
-        ///    @endcode.
-        ///
-        /// @tparam Vector
-        ///    Type representing a possibly run-time sized
-        ///    one-dimensional mathematical vector.
-        ///
-        /// @param [in] c
-        ///    Cell for which to evaluate the inverse of the mimetic
-        ///    inner product.
-        ///
-        /// @param [in] grav
-        ///    Gravity vector.
-        ///
-        /// @param [in] omega
-        ///    The value of @f$\omega = \sum_i \rho_i f_i@f$ in cell
-        ///    @code *c @endcode where @f$\rho_i@f$ and @f$f_i =
-        ///    \lambda_i / \sum_j \lambda_j@f$ are, respectively, the
-        ///    @em density and the saturation dependent <em>fractional
-        ///    flow</em> of fluid @f$i@f$.
-        ///
-        /// @param [out] gterm
-        ///    Mimetic discretization of the Darcy law gravity term.
-        ///    One scalar value for each face of cell @code *c
-        ///    @endcode.
-        template<class Point, class Vector>
-        void gravityTerm(const CellIter& c,
-                         const Point&    grav,
-                         const Scalar    omega,
-                         Vector&         gterm) const
-        {
-            typedef typename CellIter::FaceIterator FI;
 
-            ASSERT (gterm.size() <= max_nf_);
-
-            const Point cc = c->centroid();
-            int i = 0;
-            for (FI f = c->facebegin(); f != c->faceend(); ++f, ++i) {
-                Point fc = f->centroid();
-                fc -= cc;
-                gterm[i] = omega * (fc * grav);
-            }
-        }
-
-        template<class Point, class Vector>
-        void gravityTerm(const CellIter& c,
-                         const Point&    grav,
-                         Vector&         gterm) const
-        {
-            gravityTerm(c, grav, omega_, gterm);
-        }
-
-        template<class RI, class Sat, class Point, class Vector>
-        void gravityTerm(const CellIter&         c,
-                         const RI&               r,
-                         const std::vector<Sat>& s,
-                         const Point&            grav,
-                         Vector&                 gterm) const
+        template<class Vector>
+        void gravityFlux(const CellIter& c,
+                         Vector&         gflux) const
         {
             const int ci = c->index();
+            const int nf = n_.rowSize(ci) / dim;
 
-            boost::array<Scalar,RI::NumberOfPhases> mob ;
-            boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobility(ci, s[ci],              mob);
-            r.phaseDensity (ci,                     rho);
+            ImmutableFortranMatrix N(nf, dim, &n_[ci][0]);
 
-            Scalar totmob = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
-            Scalar omega  = std::inner_product(rho.begin(), rho.end(), mob.begin(),
-                                               Scalar(0.0)) / totmob;
-
-            gravityTerm(c, grav, omega, gterm);
+            // gflux = N (\sum_i \rho_i \lambda_i) Kg
+            vecMulAdd_N(Scalar(1.0), N, &dyn_Kg_[0],
+                        Scalar(0.0), &gflux[0]);
         }
 
     private:
         int                 max_nf_      ;
-        Scalar              omega_       ;
         mutable std::vector<Scalar> fa_, t1_, t2_;
         SparseTable<Scalar> second_term_ ;
         SparseTable<Scalar> n_           ;
-	boost::array<double, dim*dim> lambda_;
+        SparseTable<Scalar> Kg_          ;
+        boost::array<Scalar, dim>     dyn_Kg_;
 	boost::array<double, dim*dim> lambdaK_;
+	//boost::array<double, dim*dim> lambda_;
     };
 } // namespace Dune
 

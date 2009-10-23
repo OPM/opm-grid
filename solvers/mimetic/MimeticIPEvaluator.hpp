@@ -117,7 +117,8 @@ namespace Dune {
               fa_    (max_nf * max_nf),
               t1_    (max_nf * dim   ),
               t2_    (max_nf * dim   ),
-              Binv_  (               )
+              Binv_  (               ),
+              gflux_ (               )
         {}
 
 
@@ -160,7 +161,8 @@ namespace Dune {
             std::transform(sz.begin(), sz.end(), sz2.begin(),
                            boost::bind(std::multiplies<vt>(), _1, _1));
 
-            Binv_.allocate(sz2.begin(), sz2.end());
+            Binv_ .allocate(sz2.begin(), sz2.end());
+            gflux_.allocate(sz .begin(), sz .end());
         }
 
 
@@ -192,8 +194,11 @@ namespace Dune {
         /// @param [in] nf
         ///    Number of faces (i.e., number of neighbours) of cell
         ///    @code *c @endcode.
-        template<typename RI>
-        void buildMatrix(const CellIter& c, const RI& r, const int nf)
+        template<class RI, class Point>
+        void buildStaticContrib(const CellIter& c   ,
+                                const RI&       r   ,
+                                const Point&    grav,
+                                const int       nf)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
@@ -214,7 +219,11 @@ namespace Dune {
             // Clear matrices of any residual data.
             zero(Binv);  zero(T1);  zero(T2);  zero(fa);
 
-            // Setup: Binv <- I, T1 <- N, T2 <- C
+            typename RI::PermTensor K  = r.permeability(ci);
+            const    Point          Kg = prod(K, grav);
+
+            // Setup:    Binv  <- I, T1 <- N, T2 <- C
+            // Complete: gflux <- N*K*g
             const CV cc = c->centroid();
             int i = 0;
             for (FI f = c->facebegin(); f != c->faceend(); ++f, ++i) {
@@ -223,6 +232,8 @@ namespace Dune {
 
                 FV fc = f->centroid();  fc -= cc;  fc *= fa(i,i);
                 FV fn = f->normal  ();             fn *= fa(i,i);
+
+                gflux_[ci][i] = fn * Kg;
 
                 for (int j = 0; j < dim; ++j) {
                     T1(i,j) = fn[j];
@@ -243,8 +254,6 @@ namespace Dune {
             symmetricUpdate(fa, Binv);
 
             // T2 <- N*K
-            typename RI::PermTensor K = r.permeability(ci);
-
             matMulAdd_NN(Scalar(1.0), T1, K, Scalar(0.0), T2);
 
             // Binv <- (T2*N' + Binv) / vol(c)
@@ -270,9 +279,9 @@ namespace Dune {
             r.phaseMobility(ci, s[ci],              mob);
             r.phaseDensity (ci,                     rho);
 
-            totmob_ = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
-            omega_  = std::inner_product(rho.begin(), rho.end(), mob.begin(),
-                                         Scalar(0.0)) / totmob_;
+            totmob_   = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
+            mob_dens_ = std::inner_product(rho.begin(), rho.end(), mob.begin(),
+                                           Scalar(0.0));
         }
 
 
@@ -481,7 +490,7 @@ namespace Dune {
                          const Point&    grav,
                          Vector&         gterm) const
         {
-            gravityTerm(c, grav, omega_, gterm);
+            gravityTerm(c, grav, mob_dens_ / totmob_, gterm);
         }
 
         template<class RI, class Sat, class Point, class Vector>
@@ -505,12 +514,23 @@ namespace Dune {
             gravityTerm(c, grav, omega, gterm);
         }
 
+
+        template<class Vector>
+        void gravityFlux(const CellIter& c,
+                         Vector&         gflux) const
+        {
+            std::transform(gflux_[c->index()].begin(), gflux_[c->index()].end(),
+                           gflux.begin(),
+                           boost::bind(std::multiplies<Scalar>(), _1, mob_dens_));
+        }
+
     private:
         int                 max_nf_      ;
         Scalar              totmob_      ;
-        Scalar              omega_       ;
+        Scalar              mob_dens_    ;
         std::vector<Scalar> fa_, t1_, t2_;
         SparseTable<Scalar> Binv_        ;
+        SparseTable<Scalar> gflux_       ;
     };
 } // namespace Dune
 

@@ -450,15 +450,17 @@ namespace Dune {
         ///    couplings in the case of periodic boundary conditions.
         ///    The specific values of the boundary conditions are not
         ///    inspected in @code init() @endcode.
+        template<class Point>
         void init(const GridInterface&      g,
                   const ReservoirInterface& r,
+                  const Point&              grav,
                   const BCInterface&        bc)
         {
             clear();
 
             if (g.numberOfCells() > 0) {
                 initSystemStructure(g, bc);
-                computeInnerProducts(r);
+                computeInnerProducts(r, grav);
             }
         }
 
@@ -483,7 +485,7 @@ namespace Dune {
 
             std::vector<Scalar>().swap(L_);
             std::vector<Scalar>().swap(g_);
-            F_.clear();   f_.clear();
+            F_.clear();
 
             std::vector<int>().swap(flowSolution_.cellno_);
             flowSolution_.cellFaces_.clear();
@@ -536,7 +538,9 @@ namespace Dune {
         ///    The reservoir properties of each grid cell.  In method
         ///    @code computeInnerProducts() @endcode, we only inspect
         ///    the permeability field of @code r @endcode.
-        void computeInnerProducts(const ReservoirInterface& r)
+        template<class Point>
+        void computeInnerProducts(const ReservoirInterface& r,
+                                  const Point& grav)
         {
             ASSERT2 (matrix_structure_valid_,
                      "You must call connectionsCompleted() prior "
@@ -547,7 +551,7 @@ namespace Dune {
 
             int i = 0;
             for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c, ++i) {
-                ip_.buildMatrix(c, r, cf.rowSize(i));
+                ip_.buildStaticContrib(c, r, grav, cf.rowSize(i));
             }
         }
 
@@ -610,11 +614,10 @@ namespace Dune {
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
-                   const typename GridInterface::CellIterator::Vector& grav,
                    double residual_tolerance = 1e-8,
                    int linsolver_verbosity = 1)
         {
-            assembleDynamic(r, sat, bc, src, grav);
+            assembleDynamic(r, sat, bc, src);
             // printSystem("linsys_mimetic");
 #if 0
             solveLinearSystem(residual_tolerance, linsolver_verbosity);
@@ -742,7 +745,7 @@ namespace Dune {
 
         // ----------------------------------------------------------------
         std::vector<Scalar> L_, g_;
-        SparseTable<Scalar> F_, f_;
+        SparseTable<Scalar> F_    ;
 
         // ----------------------------------------------------------------
         // Actual, assembled system of linear equations
@@ -822,7 +825,6 @@ namespace Dune {
             total_num_faces_ = num_internal_faces_ = int(faces.size());
 
             ip_.init(max_ncf_);        ip_.reserveMatrices(num_cf);
-            f_ .reserve(nc, tot_ncf);
             F_ .reserve(nc, tot_ncf);
 
             flowSolution_.cellFaces_.reserve(nc, tot_ncf);
@@ -880,7 +882,6 @@ namespace Dune {
 
                 cf.appendRow  (l2g    .begin(), l2g    .end());
                 F_.appendRow  (F_alloc.begin(), F_alloc.end());
-                f_.appendRow  (F_alloc.begin(), F_alloc.end());
 
                 flowSolution_.outflux_
                     .appendRow(F_alloc.begin(), F_alloc.end());
@@ -1156,8 +1157,7 @@ namespace Dune {
         void assembleDynamic(const ReservoirInterface&  r  ,
                              const std::vector<double>& sat,
                              const BCInterface&         bc ,
-                             const std::vector<double>& src,
-                             const typename GridInterface::CellIterator::Vector& grav)
+                             const std::vector<double>& src)
         // ----------------------------------------------------------------
         {
             typedef typename GridInterface::CellIterator CI;
@@ -1168,6 +1168,7 @@ namespace Dune {
             std::vector<Scalar>   data_store(max_ncf_ * max_ncf_);
             std::vector<Scalar>   e         (max_ncf_);
             std::vector<Scalar>   rhs       (max_ncf_);
+            std::vector<Scalar>   gflux     (max_ncf_);
 
             std::vector<FaceType> facetype  (max_ncf_);
             std::vector<Scalar>   condval   (max_ncf_);
@@ -1191,21 +1192,19 @@ namespace Dune {
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
-                SharedFortranMatrix    S  (nf, nf, &data_store[0]);
-                ImmutableFortranMatrix one(nf, 1 , &e[0]);
-
-                ip_.computeDynamicParams(c, r, sat);
-
-                typename SparseTable<double>::mutable_row_type gterm = f_[c0];
-                std::fill(gterm.begin(), gterm.end(), Scalar(0.0));
-                ip_.gravityTerm(c, grav, gterm);
-
                 setExternalContrib(c, c0, bc, src[ci], rhs,
                                    facetype, condval, ppartner);
 
+                ip_.computeDynamicParams(c, r, sat);
+
+                SharedFortranMatrix    S(nf, nf, &data_store[0]);
                 ip_.getInverseMatrix(c, S);
 
-                buildCellContrib(c0, one, S, rhs);
+                std::fill(gflux.begin(), gflux.end(), Scalar(0.0));
+                ip_.gravityFlux(c, gflux);
+
+                ImmutableFortranMatrix one(nf, 1, &e[0]);
+                buildCellContrib(c0, one, gflux, S, rhs);
 
                 addCellContrib(S, rhs, facetype, condval, ppartner, cf[c0]);
             }
@@ -1332,7 +1331,8 @@ namespace Dune {
             SparseTable<Scalar>& v = flowSolution_.outflux_;
 
             //std::vector<double> mob(ReservoirInterface::NumberOfPhases);
-            std::vector<double> pi (max_ncf_);
+            std::vector<double> pi   (max_ncf_);
+            std::vector<double> gflux(max_ncf_);
             std::vector<double> Binv_storage(max_ncf_ * max_ncf_);
 
             // Assemble dynamic contributions for each cell
@@ -1350,22 +1350,27 @@ namespace Dune {
                          std::inner_product(F_[c0].begin(), F_[c0].end(),
                                             pi.begin(), 0.0)) / L_[c0];
 
-                // Compute cell (out) fluxes for cell 'c'.
-                // 1) Form system right hand side, r = f + Cp - D\pi
-                std::transform(f_[c0].begin(), f_[c0].end(), pi.begin(),
-                               pi    .begin(), //_1 + p[c0] - _2);
-                               boost::bind(std::minus<Scalar>(),
-                                           boost::bind(std::plus<Scalar>(),
-                                                       _1,
-                                                       p[c0]),
-                                           _2));
+                std::transform(pi.begin(), pi.end(),
+                               pi.begin(),
+                               boost::bind(std::minus<Scalar>(), p[c0], _1));
 
-                // 2) Solve system Bv = r
-                SharedFortranMatrix Binv(nf, nf, &Binv_storage[0]);
+                // Recover fluxes from local system
+                //    Bv = Bv_g + Cp - D\pi
+                //
+                // 1) Solve system Bv = Cp - D\pi
+                //
                 ip_.computeDynamicParams(c, r, sat);
-                ip_.getInverseMatrix(c, Binv);
 
-                vecMulAdd_N(1.0, Binv, &pi[0], Scalar(0.0), &v[c0][0]);
+                SharedFortranMatrix Binv(nf, nf, &Binv_storage[0]);
+                ip_.getInverseMatrix(c, Binv);
+                vecMulAdd_N(Scalar(1.0), Binv, &pi[0], Scalar(0.0), &v[c0][0]);
+
+                // 2) Add gravity flux contributions (v <- v + v_g)
+                //
+                ip_.gravityFlux(c, gflux);
+                std::transform(gflux.begin(), gflux.end(), v[c0].begin(),
+                               v[c0].begin(),
+                               std::plus<Scalar>());
             }
         }
 
@@ -1423,27 +1428,32 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void buildCellContrib(const int c, const ImmutableFortranMatrix& one,
-                              SharedFortranMatrix& S, std::vector<Scalar>& rhs)
+        void buildCellContrib(const int                     c    ,
+                              const ImmutableFortranMatrix& one  ,
+                              const std::vector<Scalar>&    gflux,
+                              SharedFortranMatrix&          S    ,
+                              std::vector<Scalar>&          rhs)
         // ----------------------------------------------------------------
         {
             // Ft <- B^{-t} * ones([size(S,2),1])
             SharedFortranMatrix Ft(S.numRows(), 1, &F_[c][0]);
             matMulAdd_TN(Scalar(1.0), S, one, Scalar(0.0), Ft);
 
-            L_[c]  = std::accumulate   (Ft.data(), Ft.data() + Ft.numRows(), 0.0);
-            g_[c] -= std::inner_product(Ft.data(), Ft.data() + Ft.numRows(),
-                                        f_[c].begin(), Scalar(0.0));
+            L_[c]  = std::accumulate(Ft.data(), Ft.data() + Ft.numRows(), 0.0);
+            g_[c] -= std::accumulate(gflux.begin(), gflux.end(), Scalar(0.0));
 
-            // rhs <- B^{-1}*f - r (==B^{-1}f + E\pi - h)
-            vecMulAdd_N(Scalar(1.0), S, &f_[c][0], -Scalar(1.0), &rhs[0]);
+            // rhs <- v_g - rhs (== v_g - h)
+            std::transform(gflux.begin(), gflux.end(), rhs.begin(),
+                           rhs.begin(),
+                           std::minus<Scalar>());
 
             // rhs <- rhs + g_[c]/L_[c]*F
-            std::transform(rhs.begin(), rhs.end(), Ft.data(), rhs.begin(),
+            std::transform(rhs.begin(), rhs.end(), Ft.data(),
+                           rhs.begin(),
                            axpby<Scalar>(Scalar(1.0), Scalar(g_[c] / L_[c])));
 
             // S <- S - F'*F/L_c
-            symmetricUpdate(-1.0/L_[c], Ft, 1.0, S);
+            symmetricUpdate(-Scalar(1.0)/L_[c], Ft, Scalar(1.0), S);
         }
 
 
