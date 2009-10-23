@@ -152,6 +152,7 @@ namespace Dune
 	int simulation_steps_;
 	double stepsize_;
 	double init_saturation_;
+        FieldVector<double,3> gravity_;
 	GridType grid_;
 	GridInterface ginterf_;
 	ReservoirPropertyCapillary<3> res_prop_;
@@ -171,6 +172,10 @@ namespace Dune
 	{
 	    setupGridAndProps(param, grid_, res_prop_);
 	    ginterf_.init(grid_);
+
+            gravity_[0] = param.getDefault("gx", 0.0);
+            gravity_[1] = param.getDefault("gy", 0.0);
+            gravity_[2] = param.getDefault("gz", 0.0); //Dune::unit::gravity);
 	}
 
 	virtual void initInitialConditions(const parameter::ParameterGroup& param)
@@ -186,7 +191,7 @@ namespace Dune
 	virtual void initSolvers(const parameter::ParameterGroup& param)
 	{
 	    // Initialize flow solver.
-	    flow_solver_.init(ginterf_, res_prop_, bcond_);
+	    flow_solver_.init(ginterf_, res_prop_, gravity_, bcond_);
 	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
 	    // Initialize transport solver.
 	    transport_solver_.init(param, ginterf_, res_prop_, bcond_);

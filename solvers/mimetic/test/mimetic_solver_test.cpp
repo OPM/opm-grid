@@ -164,7 +164,11 @@ void test_flowsolver(const GI& g, const RI& r)
     //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
     flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
 
-    solver.init(g, r, flow_bc);
+    typename CI::Vector gravity;
+    gravity[0] = gravity[1] = 0.0;
+    gravity[2] = Dune::unit::gravity;
+
+    solver.init(g, r, gravity, flow_bc);
     // solver.printStats(std::cout);
 
     //solver.assembleStatic(g, r);
@@ -179,10 +183,7 @@ void test_flowsolver(const GI& g, const RI& r)
     }
 #endif
 
-    typename CI::Vector gravity;
-    gravity[0] = gravity[1] = 0.0;
-    gravity[2] = Dune::unit::gravity;
-    solver.solve(r, sat, flow_bc, src, gravity);
+    solver.solve(r, sat, flow_bc, src);
 
 #if 0
     solver.printSystem("system");

@@ -60,10 +60,10 @@ namespace Dune
 	    // Initial saturation.
 	    std::vector<double> sat(ginterf_.numberOfCells(), init_saturation_);
 	    // Gravity.
-	    FieldVector<double, 3> gravity(0.0);
+	    // FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
 	    // Compute flow field.
-	    if (gravity.two_norm() > 0.0) {
+	    if (gravity_.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
 	    }
 
@@ -72,12 +72,12 @@ namespace Dune
 		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
-		flow_solver_.solve(res_prop_, sat, bcond_, src, gravity);
+		flow_solver_.solve(res_prop_, sat, bcond_, src);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
-		transport_solver_.transportSolve(sat, stepsize_, gravity,
+		transport_solver_.transportSolve(sat, stepsize_, gravity_,
 						 flow_solver_.getSolution(),
 						 injection_rates);
 		// Output.

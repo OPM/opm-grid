@@ -80,18 +80,19 @@ int main(int argc, char** argv)
     RI r;
     r.init(g.numberOfCells());
 
-    FlowSolver solver;
-    solver.init(g, r, fbc);
-
-    std::vector<double> src(g.numberOfCells(), 0.0);
-    std::vector<double> sat(g.numberOfCells(), 0.0);
-
     CI::Vector gravity;
     gravity[0] = gravity[1] = gravity[2] = 0.0;
 #if 0
     gravity[2] = Dune::unit::gravity;
 #endif
-    solver.solve(r, sat, fbc, src, gravity);
+
+    FlowSolver solver;
+    solver.init(g, r, gravity, fbc);
+
+    std::vector<double> src(g.numberOfCells(), 0.0);
+    std::vector<double> sat(g.numberOfCells(), 0.0);
+
+    solver.solve(r, sat, fbc, src);
 
 #if 1
     FlowSolver::SolutionType soln = solver.getSolution();

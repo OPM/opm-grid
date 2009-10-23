@@ -130,11 +130,11 @@ namespace Dune
 		// Only on first iteration, since we do not change the
 		// structure of the system, the way the flow solver is
 		// implemented.
-		flow_solver_.init(ginterf_, res_prop_, bcond_);
+		flow_solver_.init(ginterf_, res_prop_, gravity, bcond_);
 	    }
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
 	    // Check and fix fluxes.
 // 	    flux_checker_.checkDivergence(grid_, wells, flux);

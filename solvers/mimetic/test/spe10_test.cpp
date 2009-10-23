@@ -87,7 +87,7 @@ int main(int argc, char** argv)
 
     typedef Dune::FlowBC BC;
     BCs flow_bc(7);
-#define BCDIR 3
+#define BCDIR 4
 #if BCDIR == 1
     flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
@@ -97,6 +97,8 @@ int main(int argc, char** argv)
 #elif BCDIR == 3
     flow_bc.flowCond(5) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     flow_bc.flowCond(6) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
+#elif BCDIR == 4
+    flow_bc.flowCond(5) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
 #endif
 
     RI r;
@@ -116,24 +118,27 @@ int main(int argc, char** argv)
         const int gc = ijk[0] + 60*(ijk[1] + 220*ijk[2]);
         
         RI::SharedPermTensor K = r.permeabilityModifiable(c);
-        K(0,0) = Perm(gc,0);
-        K(1,1) = Perm(gc,1);
-        K(2,2) = Perm(gc,2);
+        K(0,0) = 0*0.1*unit::darcy + 1*Perm(gc,0);
+        K(1,1) = 0*0.1*unit::darcy + 1*Perm(gc,1);
+        K(2,2) = 0*0.1*unit::darcy + 1*Perm(gc,2);
     }
 
 
+#if 1
+    CI::Vector gravity;
+    gravity[0] = gravity[1] = gravity[2] = 0.0;
+#if 1
+    gravity[2] = Dune::unit::gravity;
+    gravity[2] = 10; //Dune::unit::gravity;
+#endif
+#endif
+
     FlowSolver solver;
-    solver.init(g, r, flow_bc);
+    solver.init(g, r, gravity, flow_bc);
 
 #if 1
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
-
-    CI::Vector gravity;
-    gravity[0] = gravity[1] = gravity[2] = 0.0;
-#if 0
-    gravity[2] = Dune::unit::gravity;
-#endif
 
 #if 0
     const int nx = param.get<int>("nx");
@@ -157,7 +162,7 @@ int main(int argc, char** argv)
     }
 #endif
 
-    solver.solve(r, sat, flow_bc, src, gravity, 5.0e-8, 3);
+    solver.solve(r, sat, flow_bc, src, 5.0e-8, 3);
 #endif
 
 #if 1

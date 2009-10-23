@@ -101,12 +101,12 @@ namespace Dune
 
 	    // Set up solvers.
 	    if (pdd == 0) {
-		flow_solver_.init(ginterf_, res_prop_, bcond_);
+		flow_solver_.init(ginterf_, res_prop_, gravity, bcond_);
 	    }
 	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
+	    flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
 	    // Do a run till steady state. For now, we just do some pressure and transport steps...
 	    for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -118,7 +118,7 @@ namespace Dune
 		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
 		// Run pressure solver.
-		flow_solver_.solve(res_prop_, saturation, bcond_, src, gravity, residual_tolerance_, linsolver_verbosity_);
+		flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
 		// Output.
 		if (output_) {
