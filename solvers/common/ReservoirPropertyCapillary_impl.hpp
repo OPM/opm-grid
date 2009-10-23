@@ -432,11 +432,8 @@ namespace Dune
     double ReservoirPropertyCapillary<dim>::capillaryPressure(int cell_index, double saturation) const
     {
         if (rock_.size() > 0) {
-            // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-            double perm = trace(permeability(cell_index))/double(dim);
-            double poro = porosity(cell_index);
             int r = cell_to_rock_[cell_index];
-            return rock_[r].capPress(perm, poro, saturation);
+            return rock_[r].capPress(permeability(cell_index), porosity(cell_index), saturation);
         } else {
             // HACK ALERT!
             // Use zero capillary pressure if no known rock table exists.

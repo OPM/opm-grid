@@ -51,14 +51,20 @@ namespace Dune
 	{
 	    krw_value = krw_(saturation);
 	}
+
 	void kro(const double saturation, double& kro_value) const
 	{
 	    kro_value = kro_(saturation);
 	}
-	double capPress(const double perm, const double poro, const double saturation) const
+
+	template <template <class> class SP, class OP>
+	double capPress(const FullMatrix<double, SP, OP>& perm, const double poro, const double saturation) const
 	{
-            double sigma_cos_theta = 1.0; // An approximation.
-            double sqrt_k_phi = std::sqrt(perm/poro);
+            // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+	    // \sigma \cos \theta is approximated by 1.0;
+	    // k is approximated by the average of the diagonal terms.
+            double sigma_cos_theta = 1.0;
+            double sqrt_k_phi = std::sqrt(trace(perm)/(perm.numRows()*poro));
             return Jfunc_(saturation)*sigma_cos_theta/sqrt_k_phi;
 	}
 
