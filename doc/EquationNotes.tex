@@ -1,6 +1,5 @@
-\documentclass[12pt]{article}
+\documentclass[12pt,a4paper]{scrartcl}
 \usepackage{amsmath}
-\usepackage{a4wide}
 \usepackage{pgf,pgfarrows}
 \usepackage[left=2.5cm,right=2.5cm,top=3.5cm,bottom=1.5cm,
             headheight=18pt,headsep=18pt,footskip=24pt,asymmetric=true]{geometry}
@@ -26,18 +25,18 @@
 
 \subsection{The transport equation}
 
-We start from the Darcy equations for each phase, the equation for $p_{cow}$ and the equation for total velocity:
+We start from the Darcy equations for each phase, the equation for
+$p_{cow}$ and the equation for total velocity:
 \begin{align}
 \vb_\alpha & = -\lambda_\alpha\Kb\nabla p_\alpha + \rho_\alpha\lambda_\alpha\Kb\gb \label{eq:Darcy} \\
 \nabla p_{cow} & = \nabla p_o - \nabla p_w \label{eq:GradPcap} \\
 \vb & = \vb_o + \vb_w \label{eq:Vtot}
 \end{align}
-
-We have 4 equations with 4 unknowns, $\vb_o, \vb_w, \nabla p_o, \nabla p_w$. First, we rewrite the Darcy equations \eqref{eq:Darcy}:
+We have 4 equations with 4 unknowns, $\vb_o, \vb_w, \nabla p_o, \nabla
+p_w$. First, we rewrite the Darcy equations \eqref{eq:Darcy}:
 \begin{align*}
  \Kb\nabla p_\alpha & = -\lambda_\alpha^{-1}\vb_\alpha + \rho_\alpha\Kb\gb \\
 \end{align*}
-
 Using equation \eqref{eq:GradPcap} we eliminate the phase pressures.
 \begin{align*}
  \Kb\nabla p_{cow} & = -\lambda_o^{-1}\vb_o + \rho_o\Kb\gb 
@@ -45,15 +44,13 @@ Using equation \eqref{eq:GradPcap} we eliminate the phase pressures.
   & = -\lambda_o^{-1}\vb_o 
   + \lambda_w^{-1}\vb_w + (\rho_o - \rho_w)\Kb\gb  \\
 \end{align*}
-
-Now we use equation \eqref{eq:Vtot} to eliminate $\vb_o$:
+Now we use equation~\eqref{eq:Vtot} to eliminate $\vb_o$:
 \begin{align*}
  \Kb\nabla p_{cow}
   & = -\lambda_o^{-1}\vb + \lambda_o^{-1}\vb_w + \lambda_w^{-1}\vb_w + (\rho_o - \rho_w)\Kb\gb  \\
   (\lambda_o^{-1} + \lambda_w^{-1})\vb_w
   & = \lambda_o^{-1}\vb + \Kb\nabla p_{cow} + (\rho_w - \rho_o)\Kb\gb
 \end{align*}
-
 Finally, we achieve a few equivalent equations for $\vb_w$:
 \begin{align*}
   \vb_w
