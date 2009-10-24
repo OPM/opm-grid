@@ -1259,8 +1259,8 @@ namespace Dune {
             typedef MatrixAdapter<Matrix,Vector,Vector> Operator;
 
             // AMG specific types.
-	    // Old:   FIRST_DIAGONAL 1, SYMMETRIC 1, SMOOTHER_ILU 1, ANISOTROPIC_3D 0
-	    // SPE10: FIRST_DIAGONAL 0, SYMMETRIC 1, SMOOTHER_ILU 0, ANISOTROPIC_3D 1
+            // Old:   FIRST_DIAGONAL 1, SYMMETRIC 1, SMOOTHER_ILU 1, ANISOTROPIC_3D 0
+            // SPE10: FIRST_DIAGONAL 0, SYMMETRIC 1, SMOOTHER_ILU 0, ANISOTROPIC_3D 1
 #define FIRST_DIAGONAL 1
 #define SYMMETRIC 1
 #define SMOOTHER_ILU 1
@@ -1281,7 +1281,7 @@ namespace Dune {
 #if SMOOTHER_ILU
             typedef SeqILU0<Matrix,Vector,Vector>        Smoother;
 #else
-	    typedef SeqSSOR<Matrix,Vector,Vector>        Smoother;
+            typedef SeqSSOR<Matrix,Vector,Vector>        Smoother;
 #endif
             typedef Amg::CoarsenCriterion<CriterionBase> Criterion;
             typedef Amg::AMG<Operator,Vector,Smoother>   Precond;
