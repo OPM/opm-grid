@@ -267,6 +267,30 @@ namespace Dune {
         }
 
 
+        /// @brief
+        ///    Evaluate dynamic (saturation dependent) properties in
+        ///    single cell.
+        ///
+        /// @tparam RI
+        ///    Type representing reservoir properties.  Assumed to
+        ///    expose methods @code phaseDensity() @endcode and @code
+        ///    anisoPhaseMobility() @endcode for retrieving the phase
+        ///    densities and (tensorial, anisotropi) phase mobilities,
+        ///    respectively.
+        ///
+        /// @tparam Sat
+        ///    Type representing single-cell saturation values.
+        ///    Typically, @code Sat @endcode is an alias for @code
+        ///    double @endcode.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the dynamic properties.
+        ///
+        /// @param [in] r
+        ///    Specific reservoir properties.
+        ///
+        /// @param [in] s
+        ///    Vector of current fluid saturations.
         template<class RI, class Sat>
         void computeDynamicParams(const CellIter&         c,
                                   const RI&               r,
@@ -515,6 +539,19 @@ namespace Dune {
         }
 
 
+        /// @brief Compute gravity flux for all faces of single cell.
+        ///
+        /// @tparam Vector
+        ///    Type representing a vector (or a linear array) for
+        ///    which (a constant time) @code operator[] @endcode is
+        ///    defined.
+        ///
+        /// @param [in] c
+        ///    Cell for which to evaluate the gravity flux.
+        ///
+        /// @param [out] gflux
+        ///    Gravity fluxes on all faces/intersections of cell c in
+        ///    the order of the face iterator of the cell.
         template<class Vector>
         void gravityFlux(const CellIter& c,
                          Vector&         gflux) const
