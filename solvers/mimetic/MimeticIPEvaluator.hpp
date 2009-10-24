@@ -274,9 +274,8 @@ namespace Dune {
         /// @tparam RI
         ///    Type representing reservoir properties.  Assumed to
         ///    expose methods @code phaseDensity() @endcode and @code
-        ///    anisoPhaseMobility() @endcode for retrieving the phase
-        ///    densities and (tensorial, anisotropi) phase mobilities,
-        ///    respectively.
+        ///    phaseMobility() @endcode for retrieving the phase
+        ///    densities and phase mobilities, respectively.
         ///
         /// @tparam Sat
         ///    Type representing single-cell saturation values.
