@@ -38,7 +38,9 @@
 
 
 #include <dune/common/fvector.hh>
-#include <istream>
+#include <dune/solvers/common/NonuniformTableLinear.hpp>
+#include <dune/solvers/common/Matrix.hpp>
+#include <fstream>
 #include <vector>
 #include <algorithm>
 #include <limits>
@@ -50,24 +52,15 @@ namespace Dune
     {
     public:
 	template <template <class> class SP, class OP>
-	void krw(const double saturation, FullMatrix<double, SP, OP>& krw_value) const
+	void kr(const int phase_index, const double saturation, FullMatrix<double, SP, OP>& kr_value) const
 	{
-	    zero(krw_value);
-	    krw_value(0,0) = krxx_[0];
-	    krw_value(1,1) = kryy_[0];
-	    krw_value(2,2) = krzz_[0];
+	    zero(kr_value);
+	    kr_value(0,0) = krxx_[phase_index](saturation);
+	    kr_value(1,1) = kryy_[phase_index](saturation);
+	    kr_value(2,2) = krzz_[phase_index](saturation);
 	}
 
 	template <template <class> class SP, class OP>
-	void kro(const double saturation, FullMatrix<double, SP, OP>& kro_value) const
-	{
-	    zero(kro_value);
-	    kro_value(0,0) = krxx_[1];
-	    kro_value(1,1) = kryy_[1];
-	    kro_value(2,2) = krzz_[1];
-	}
-
-	template <template <class> SP, class OP>
 	double capPress(const FullMatrix<double, SP, OP>& /*perm*/, const double /*poro*/, const double saturation) const
 	{
             return cap_press_(saturation);
@@ -94,7 +87,7 @@ namespace Dune
 	{
 	    // Ignore comments.
 	    while (is.peek() == '#') {
-		strm.ignore(std::numeric_limits<int>::max(), '\n');
+		is.ignore(std::numeric_limits<int>::max(), '\n');
 	    }
 	    typedef FieldVector<double, 5> Data;
 	    std::istream_iterator<Data> start(is);

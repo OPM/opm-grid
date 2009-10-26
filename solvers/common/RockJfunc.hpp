@@ -37,7 +37,9 @@
 #define OPENRS_ROCKJFUNC_HEADER
 
 #include <dune/common/fvector.hh>
-#include <istream>
+#include <dune/solvers/common/NonuniformTableLinear.hpp>
+#include <dune/solvers/common/Matrix.hpp>
+#include <fstream>
 #include <vector>
 #include <algorithm>
 

@@ -47,12 +47,14 @@
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/grid/common/EclipseGridInspector.hpp>
 
 #include <dune/solvers/common/fortran.hpp>
 #include <dune/solvers/common/blas_lapack.hpp>
 #include <dune/solvers/common/Matrix.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
-#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
+#include <dune/solvers/common/ReservoirPropertyCapillaryAnisotropicRelperm.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
 
 #include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
@@ -226,7 +228,8 @@ int main(int argc, char** argv)
     Dune::GridInterfaceEuler<Dune::CpGrid> g(grid);
 
     // Reservoir properties.
-    ReservoirPropertyCapillary<3> res_prop;
+    typedef ReservoirPropertyCapillaryAnisotropicRelperm<3> RP;
+    RP res_prop;
     res_prop.init(parser, grid.globalCell());
 
     assign_permeability<3>(res_prop, g.numberOfCells(), 0.1*Dune::unit::darcy);
@@ -251,7 +254,7 @@ int main(int argc, char** argv)
 
     // Make a solver.
     typedef EulerUpstream<GridInterface,
-                          ReservoirPropertyCapillary<3>,
+                          RP,
                           SaturationBoundaryConditions> TransportSolver;
     TransportSolver transport_solver(g, res_prop, sat_bcond, injection_rates);
 
