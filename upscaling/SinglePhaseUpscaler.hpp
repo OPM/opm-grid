@@ -42,6 +42,7 @@
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
+//#include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 
@@ -89,6 +90,7 @@ namespace Dune
 				       ResProp,
 				       BCs,
 				       MimeticIPEvaluator> FlowSolver;
+	// MimeticIPAnisoRelpermEvaluator> FlowSolver;
 	// ------- Methods -------
 	template <class FlowSol>
 	double computeAverageVelocity(const FlowSol& flow_solution,
