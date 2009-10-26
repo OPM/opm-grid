@@ -36,14 +36,20 @@
 #ifndef OPENRS_SINGLEPHASEUPSCALER_HEADER
 #define OPENRS_SINGLEPHASEUPSCALER_HEADER
 
+#define TEST_ANISO_RELPERM 0
+
 #include "config.h"
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
-#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
-//#include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
+#if TEST_ANISO_RELPERM
+#include <dune/solvers/common/ReservoirPropertyCapillaryAnisotropicRelperm.hpp>
+#include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
+#else
+#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
+#endif
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 
 namespace Dune
@@ -59,8 +65,12 @@ namespace Dune
 	// ------- Typedefs  -------
 	typedef CpGrid GridType;
  	enum { Dimension = GridType::dimension };
- 	typedef ReservoirPropertyCapillary<Dimension> ResProp;
 	typedef GridInterfaceEuler<GridType> GridInterface;
+#if TEST_ANISO_RELPERM
+ 	typedef ReservoirPropertyCapillaryAnisotropicRelperm<Dimension> ResProp;
+#else
+ 	typedef ReservoirPropertyCapillary<Dimension> ResProp;
+#endif
 
 	/// A type for the upscaled permeability.
 	typedef ResProp::MutablePermTensor permtensor_t;
@@ -86,11 +96,18 @@ namespace Dune
 	typedef GridInterface::CellIterator                CellIter;
 	typedef CellIter::FaceIterator                     FaceIter;
 	typedef BoundaryConditions<true, true>             BCs;
+#if TEST_ANISO_RELPERM
+	typedef IncompFlowSolverHybrid<GridInterface,
+				       ResProp,
+				       BCs,
+				       MimeticIPAnisoRelpermEvaluator> FlowSolver;
+#else
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,
 				       BCs,
 				       MimeticIPEvaluator> FlowSolver;
-	// MimeticIPAnisoRelpermEvaluator> FlowSolver;
+#endif
+
 	// ------- Methods -------
 	template <class FlowSol>
 	double computeAverageVelocity(const FlowSol& flow_solution,
