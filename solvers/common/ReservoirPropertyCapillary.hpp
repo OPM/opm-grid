@@ -42,12 +42,21 @@
 namespace Dune
 {
 
+    /// @brief A wrapper for a scalar.
+    struct ScalarMobility
+    {
+	double mob;
+    };
+
     /// @brief A property class for incompressible two-phase flow.
     /// @tparam dim the dimension of the space, used for giving permeability tensors the right size.
     template <int dim>
     class ReservoirPropertyCapillary : public ReservoirPropertyCommon<dim, ReservoirPropertyCapillary<dim>, RockJfunc>
     {
     public:
+	/// @brief The (scalar) mobility type.
+	typedef ScalarMobility Mobility;
+
 	/// @brief Mobility of first (water) phase.
         /// @param cell_index index of a grid cell.
 	/// @param saturation a saturation value.
