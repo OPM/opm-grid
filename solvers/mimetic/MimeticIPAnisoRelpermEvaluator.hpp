@@ -270,8 +270,8 @@ namespace Dune {
         /// @tparam RI
         ///    Type representing reservoir properties.  Assumed to
         ///    expose methods @code phaseDensity() @endcode and @code
-        ///    anisoPhaseMobility() @endcode for retrieving the phase
-        ///    densities and (tensorial, anisotropi) phase mobilities,
+        ///    phaseMobility() @endcode for retrieving the phase
+        ///    densities and (tensorial, anisotropic) phase mobilities,
         ///    respectively.
         ///
         /// @tparam Sat
@@ -305,13 +305,13 @@ namespace Dune {
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
 
-            for (int i = 0; i < RI::NumberOfPhases; ++i) {
-                r.anisoPhaseMobility(ci, i, s[ci], pmob);
+            for (int phase = 0; phase < RI::NumberOfPhases; ++phase) {
+                r.phaseMobility(phase, ci, s[ci], pmob);
 
-                // dyn_Kg_ += (\rho_i \lambda_i) Kg
-                vecMulAdd_N(rho[i], pmob, Kg.data(), Scalar(1.0), dyn_Kg_.data());
+                // dyn_Kg_ += (\rho_phase \lambda_phase) Kg
+                vecMulAdd_N(rho[phase], pmob, Kg.data(), Scalar(1.0), dyn_Kg_.data());
 
-                // \lambda_t += \lambda_i
+                // \lambda_t += \lambda_phase
                 std::transform(lambda_t.begin(), lambda_t.end(), pmob_data.begin(),
                                lambda_t.begin(),
                                std::plus<Scalar>());
@@ -327,12 +327,6 @@ namespace Dune {
         /// @brief
         ///    Retrieve the dynamic (mobility updated) inverse mimetic
         ///    inner product matrix for specific cell.
-        ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
-        ///    expose a method @code phaseMobility(i,s,mob) @endcode
-        ///    which retrieves the phase mobilities of all phases
-        ///    evaluated at the saturations @code s @endcode.
         ///
         /// @tparam SP
         ///    Type representing the @code FullMatrix<T,SP,OP>

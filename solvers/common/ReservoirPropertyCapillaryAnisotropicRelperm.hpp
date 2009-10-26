@@ -42,6 +42,21 @@
 namespace Dune
 {
 
+
+    /// @brief A wrapper for a tensor.
+    template <int dim>
+    struct TensorMobility
+    {
+	TensorMobility()
+	    : mob(dim, dim, tensor_storage_.data())
+	{
+	}
+	FullMatrix<double, SharedData, COrdering> mob;
+    private:
+	boost::array<double, dim*dim> tensor_storage_;
+    };
+
+
     /// @brief A property class for incompressible two-phase flow.
     /// @tparam dim the dimension of the space, used for giving permeability tensors the right size.
     template <int dim>
@@ -49,16 +64,19 @@ namespace Dune
 	: public ReservoirPropertyCommon<dim, ReservoirPropertyCapillaryAnisotropicRelperm<dim>, RockAnisotropicRelperm>
     {
     public:
-       /// @brief Anisotropic phase mobility.
-       /// @param cell_index index of a grid cell.
-       /// @param phase_index Phase for which to compute mobility.
-       /// @param saturation a saturation value.
-       /// @param[out] phase_mob anisotropic phase mobility tensor at the given cell and saturation.
-       template <class MatrixType>
-       void anisoPhaseMobility(int cell_index,
-                               int phase_index,
-                               double saturation,
-                               MatrixType& phase_mob) const;
+	/// @brief The (tensorial) mobility type.
+	typedef TensorMobility<dim> Mobility;
+
+	/// @brief Anisotropic phase mobility.
+	/// @param cell_index index of a grid cell.
+	/// @param phase_index Phase for which to compute mobility.
+	/// @param saturation a saturation value.
+	/// @param[out] phase_mob anisotropic phase mobility tensor at the given cell and saturation.
+	template <class MatrixType>
+	void phaseMobility(int phase_index,
+			   int cell_index,
+			   double saturation,
+			   MatrixType& phase_mob) const;
 
 	void computeCflFactors();
 

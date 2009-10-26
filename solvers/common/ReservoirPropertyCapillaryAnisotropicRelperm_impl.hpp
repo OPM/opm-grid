@@ -43,10 +43,10 @@ namespace Dune
 
     template <int dim>
     template <class MatrixType>
-    void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::anisoPhaseMobility(int cell_index,
-								      int phase_index,
-								      double saturation,
-								      MatrixType& phase_mob) const
+    void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::phaseMobility(int phase_index,
+									  int cell_index,
+									  double saturation,
+									  MatrixType& phase_mob) const
     {
         ASSERT ((0 <= phase_index) && (Super::NumberOfPhases < 2));
 	BOOST_STATIC_ASSERT(Super::NumberOfPhases == 2);
