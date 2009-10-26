@@ -24,8 +24,13 @@
 \section{Notes on anisotropic relperm}
 
 \subsection{The transport equation}
+We want to pose the transport equation in terms of the water phase velocity:
+\begin{align*}
+\phi\frac{\partial s}{\partial t} + \nabla\cdot\vb_w  & = \frac{q_w}{\rho_w}
+\end{align*}
 
-We start from the Darcy equations for each phase, the equation for
+To find an equation for $\vb_w$,
+we start from the Darcy equations for each phase, the equation for
 $p_{cow}$ and the equation for total velocity:
 \begin{align}
 \vb_\alpha & = -\lambda_\alpha\Kb\nabla p_\alpha + \rho_\alpha\lambda_\alpha\Kb\gb \label{eq:Darcy} \\
