@@ -273,8 +273,8 @@ namespace Dune {
         ///
         /// @tparam RI
         ///    Type representing reservoir properties.  Assumed to
-        ///    expose methods @code phaseDensity() @endcode and @code
-        ///    phaseMobility() @endcode for retrieving the phase
+        ///    expose methods @code phaseDensities() @endcode and @code
+        ///    phaseMobilities() @endcode for retrieving the phase
         ///    densities and phase mobilities, respectively.
         ///
         /// @tparam Sat
@@ -299,8 +299,8 @@ namespace Dune {
 
             boost::array<Scalar,RI::NumberOfPhases> mob ;
             boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobility(ci, s[ci],              mob);
-            r.phaseDensity (ci,                     rho);
+            r.phaseMobilities(ci, s[ci],              mob);
+            r.phaseDensities (ci,                     rho);
 
             totmob_   = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
             mob_dens_ = std::inner_product(rho.begin(), rho.end(), mob.begin(),
@@ -314,7 +314,7 @@ namespace Dune {
         ///
         /// @tparam RI
         ///    Type representing reservoir properties.  Assumed to
-        ///    expose a method @code phaseMobility(i,s,mob) @endcode
+        ///    expose a method @code phaseMobilities(cell,s,mob) @endcode
         ///    which retrieves the phase mobilities of all phases
         ///    evaluated at the saturations @code s @endcode.
         ///
@@ -527,8 +527,8 @@ namespace Dune {
 
             boost::array<Scalar,RI::NumberOfPhases> mob ;
             boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobility(ci, s[ci],              mob);
-            r.phaseDensity (ci,                     rho);
+            r.phaseMobilities(ci, s[ci],              mob);
+            r.phaseDensities (ci,                     rho);
 
             Scalar totmob = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
             Scalar omega  = std::inner_product(rho.begin(), rho.end(), mob.begin(),

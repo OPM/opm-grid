@@ -269,8 +269,8 @@ namespace Dune {
         ///
         /// @tparam RI
         ///    Type representing reservoir properties.  Assumed to
-        ///    expose methods @code phaseDensity() @endcode and @code
-        ///    phaseMobility() @endcode for retrieving the phase
+        ///    expose methods @code phaseDensities() @endcode and @code
+        ///    phaseMobilities() @endcode for retrieving the phase
         ///    densities and (tensorial, anisotropic) phase mobilities,
         ///    respectively.
         ///
@@ -301,7 +301,7 @@ namespace Dune {
             SharedFortranMatrix Kg  (dim, 1  , &Kg_[ci][0]);
 
             boost::array<Scalar, RI::NumberOfPhases> rho;
-            r.phaseDensity(ci, rho);
+            r.phaseDensities(ci, rho);
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
 

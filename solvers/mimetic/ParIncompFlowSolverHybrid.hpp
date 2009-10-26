@@ -337,8 +337,8 @@ namespace Dune {
     ///    through which the assigned permeability of a single grid
     ///    cell, represented by a @code GridInterface::CellIter
     ///    @endcode, may be recovered.  The type is further expected
-    ///    to provide methods @code phaseMobility() @endcode and @code
-    ///    phaseDensity() @endcode for phase mobility and density in a
+    ///    to provide methods @code phaseMobilities() @endcode and @code
+    ///    phaseDensities() @endcode for phase mobility and density in a
     ///    single cell, respectively.
     ///
     /// @tparam BCInterface
@@ -596,9 +596,9 @@ namespace Dune {
         /// @param [in] r
         ///    The reservoir properties of each grid cell.  In method
         ///    @code solve() @endcode we query this object for the
-        ///    phase mobilities (i.e., @code r.phaseMobility()
+        ///    phase mobilities (i.e., @code r.phaseMobilities()
         ///    @endcode) and the phase densities (i.e., @code
-        ///    phaseDensity() @encode) of each phase.
+        ///    phaseDensities() @encode) of each phase.
         ///
         /// @param [in] sat
         ///    Saturation of primary phase.  One scalar value for each
@@ -1271,8 +1271,8 @@ namespace Dune {
                 const int c0 = cell[ci];            ASSERT (c0 < cf.size());
                 const int nf = cf[c0].size();
 
-                r.phaseMobility(ci, sat[ci], mob);
-                r.phaseDensity (ci,          rho);
+                r.phaseMobilities(ci, sat[ci], mob);
+                r.phaseDensities (ci,          rho);
 
                 const double totmob = std::accumulate   (mob.begin(), mob.end(), 0.0);
                 const double omega  = std::inner_product(rho.begin(), rho.end(),
@@ -1464,7 +1464,7 @@ namespace Dune {
                                            _2));
 
                 // 2) Solve system Bv = r
-                r.phaseMobility(ci, sat[ci], mob);
+                r.phaseMobilities(ci, sat[ci], mob);
                 const double totmob = std::accumulate(mob.begin(), mob.end(), 0.0);
 
                 ImmutableFortranMatrix Binv(nf, nf, &Binv_[c0][0]);

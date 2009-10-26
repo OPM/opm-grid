@@ -75,7 +75,7 @@ namespace Dune
 
     template <int dim>
     template<class Vector>
-    void ReservoirPropertyCapillary<dim>::phaseMobility(int cell_index, double saturation, Vector& mobility) const
+    void ReservoirPropertyCapillary<dim>::phaseMobilities(int cell_index, double saturation, Vector& mobility) const
     {
         ASSERT (mobility.size() >= Super::NumberOfPhases);
         mobility[0] = mobilityFirstPhase(cell_index, saturation);

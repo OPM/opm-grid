@@ -88,7 +88,7 @@ namespace Dune
         /// @param[out] mobility the phase mobilities at the given cell and saturation.
 	///                      Expected to be of size 2 before (and after) the call.
         template<class Vector>
-        void phaseMobility(int cell_index, double saturation, Vector& mobility) const;
+        void phaseMobilities(int cell_index, double saturation, Vector& mobility) const;
 
 	/// @brief Computes cfl factors. Called from ReservoirPropertyCommon::init().
         void computeCflFactors();

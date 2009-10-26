@@ -353,7 +353,7 @@ namespace Dune
 
     template <int dim, class RPImpl, class RockType>
     template<class Vector>
-    void ReservoirPropertyCommon<dim, RPImpl, RockType>::phaseDensity(int /*cell_index*/, Vector& density) const
+    void ReservoirPropertyCommon<dim, RPImpl, RockType>::phaseDensities(int /*cell_index*/, Vector& density) const
     {
         ASSERT (density.size() >= NumberOfPhases);
         density[0] = densityFirstPhase();

@@ -115,7 +115,7 @@ namespace Dune
         /// @param[out] density the phase densities.
 	///                     Expected to be of size 2 before (and after) the call.
         template<class Vector>
-        void phaseDensity(int /*cell_index*/, Vector& density) const;
+        void phaseDensities(int /*cell_index*/, Vector& density) const;
 
         /// @brief Difference of densities.
         /// @return densityFirstPhase() - densitySecondPhase()
