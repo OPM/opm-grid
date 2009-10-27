@@ -354,7 +354,7 @@ namespace Dune
 	    : pgrid_(0), num_faces_(0), max_faces_per_cell_(0)
 	{
 	}
-	explicit GridInterfaceEuler(const DuneGrid& grid, bool build_facemap = false)
+	explicit GridInterfaceEuler(const DuneGrid& grid, bool build_facemap = true)
 	    : pgrid_(&grid), pmapper_(new Mapper(grid)), num_faces_(0), max_faces_per_cell_(0)
 	{
 	    if (build_facemap) {
