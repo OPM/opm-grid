@@ -361,7 +361,7 @@ namespace Dune
 		buildFaceIndices();
 	    }
 	}
-	void init(const DuneGrid& grid, bool build_facemap = false)
+	void init(const DuneGrid& grid, bool build_facemap = true)
 	{
 	    pgrid_ = &grid;
             pmapper_.reset(new Mapper(grid));
