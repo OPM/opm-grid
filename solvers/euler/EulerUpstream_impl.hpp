@@ -563,16 +563,19 @@ namespace Dune
 		// 1) we do not have v, just loc_area*loc_normal*v,
 		// 2) we cannot define G, since the lambdas do not commute with the dot product.
 
-		// Computing G.
 		typedef typename RP::Mobility Mob;
 		using utils::arithmeticAverage;
 		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		const MutablePermTensor aver_perm
 		    = arithAver(preservoir_properties_->permeability(cell[0]),
 				preservoir_properties_->permeability(cell[1]));
-
+		// Computing the raw gravity influence vector = (rho_w - rho_o)Kg
+		Vector grav_influence = prod(aver_perm, gravity);
+		grav_influence *= delta_rho;
+		// Computing G. Note that we do not multiply with the mobility,
+		// so this G is wrong in case of anisotropic relperm.
 		const double G = method_gravity_ ?
-		    loc_area*delta_rho*inner(loc_normal, prod(aver_perm, gravity)) 
+		    loc_area*inner(loc_normal, grav_influence) 
 		    : 0.0;
 		const int triv_phase = G >= 0.0 ? 0 : 1;
 		const int ups_cell = loc_flux >= 0.0 ? 0 : 1;
@@ -581,39 +584,45 @@ namespace Dune
 		preservoir_properties_->phaseMobility(triv_phase, cell[ups_cell],
 						      cell_sat[ups_cell], m_ups[triv_phase].mob);
 		// Compute gravity flow of the nontrivial phase.
-		double sign_G[2] = { -G, G };
-		double grav_flux_nontriv = m_ups[triv_phase].mob*sign_G[triv_phase];
+		double sign_G[2] = { -1.0, 1.0 };
+		double grav_flux_nontriv = sign_G[triv_phase]*loc_area
+		    *inner(loc_normal, m_ups[triv_phase].multiply(grav_influence));
 		// Find flow direction of nontrivial phase.
 		const int ups_cell_nontriv = (loc_flux + grav_flux_nontriv >= 0.0) ? 0 : 1;
 		const int nontriv_phase = (triv_phase + 1) % 2;
 		preservoir_properties_->phaseMobility(nontriv_phase, cell[ups_cell_nontriv],
 						      cell_sat[ups_cell_nontriv], m_ups[nontriv_phase].mob);
-		// Now we have the upstream phase mobilities in m_ups[]. Convenient names for the scalar case:
- 		const double& lambda_one = m_ups[0].mob;
- 		const double& lambda_two = m_ups[1].mob;
-
+		// Now we have the upstream phase mobilities in m_ups[].
+		Mob m_tot;
+		m_tot.setToSum(m_ups[0], m_ups[1]);
+		Mob m_totinv;
+		m_totinv.setToInverse(m_tot);
 
 
 		const double aver_sat
 		    = arithmeticAverage<double, double>(cell_sat[0], cell_sat[1]);
 
+		/*
 		Mob m1c0, m1c1, m2c0, m2c1;
 		preservoir_properties_->phaseMobility(0, cell[0], aver_sat, m1c0.mob);
 		preservoir_properties_->phaseMobility(0, cell[1], aver_sat, m1c1.mob);
 		preservoir_properties_->phaseMobility(1, cell[0], aver_sat, m2c0.mob);
 		preservoir_properties_->phaseMobility(1, cell[1], aver_sat, m2c1.mob);
-		Mob aver_lambda_one, aver_lambda_two;
-		aver_lambda_one.setToAverage(m1c0, m1c1);
-		aver_lambda_two.setToAverage(m2c0, m2c1);
+		Mob m_aver[2];
+		m_aver[0].setToAverage(m1c0, m1c1);
+		m_aver[1].setToAverage(m2c0, m2c1);
+		Mob m_aver_tot;
+		m_aver_tot.setToSum(m_aver[0], m_aver[1]);
+		Mob m_aver_totinv;
+		m_aver_totinv.setToInverse(m_aver_tot);
+		*/
 
-		/*
 		const double aver_lambda_one
 		    = arithmeticAverage<double, double>(preservoir_properties_->mobilityFirstPhase(cell[0], aver_sat),
 							preservoir_properties_->mobilityFirstPhase(cell[1], aver_sat));
 		const double aver_lambda_two
 		    = arithmeticAverage<double, double>(preservoir_properties_->mobilitySecondPhase(cell[0], aver_sat), 
 							preservoir_properties_->mobilitySecondPhase(cell[1], aver_sat));
-		*/
 
 		/*
 		// The local gravity flux is needed for finding the correct phase mobilities.
@@ -644,7 +653,12 @@ namespace Dune
 
 		// Viscous (pressure driven) term.
 		if (method_viscous_) {
-		    const double visc_change = (lambda_one/(lambda_two+lambda_one))*loc_flux;
+		    // v is not correct for anisotropic relperm.
+ 		    Vector v(loc_normal);
+ 		    v *= loc_flux;
+ 		    const double visc_change_2 = inner(loc_normal, m_ups[0].multiply(m_totinv.multiply(v)));
+		    const double visc_change = (m_ups[0].mob/(m_ups[1].mob + m_ups[0].mob))*loc_flux;
+		    std::cout << "New: " << visc_change_2 << "   old: " << visc_change << '\n';
 		    dS += visc_change;
 		}
 
@@ -652,7 +666,9 @@ namespace Dune
 		if (method_gravity_) {
 		    if (cell[0] != cell[1]) {
 			// We only add gravity flux on internal or periodic faces.
-			const double grav_change = (lambda_one*lambda_two/(lambda_two+lambda_one))*G;
+			const double grav_change = loc_area
+			    *inner(loc_normal, m_ups[0].multiply(m_totinv.multiply(m_ups[1].multiply(grav_influence))));
+			// const double grav_change = (lambda_one*lambda_two/(lambda_two+lambda_one))*G;
 			// const double grav_change = (lambda_one*lambda_two/(lambda_two+lambda_one))*loc_gravity_flux;
 			dS += grav_change;
 		    }
@@ -662,12 +678,15 @@ namespace Dune
 		if (method_capillary_) {
 		    // J(s_w) = \frac{p_c(s_w)\sqrt{k/\phi}}{\sigma \cos\theta}
 		    // p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
+// 		    Vector cap_influence = prod(aver_perm, estimateCapPressureGradient(f, nbface, saturation));
+//   		    const double cap_change = loc_area
+// 			    *inner(loc_normal, m_aver[0].multiply(m_aver_totinv.multiply(m_aver[1].multiply(cap_influence))));
 		    const double cap_vel = inner(loc_normal, prod(aver_perm, estimateCapPressureGradient(f, nbface, saturation)));
 		    const double loc_cap_flux = cap_vel*loc_area;
-  		    const double cap_change = loc_cap_flux*(aver_lambda_two.mob*aver_lambda_one.mob
-  							    /(aver_lambda_one.mob + aver_lambda_two.mob));
-//  		    const double cap_change = loc_cap_flux*(aver_lambda_two*aver_lambda_one
-//  							    /(aver_lambda_one + aver_lambda_two));
+//   		    const double cap_change = loc_cap_flux*(m_aver[1].mob*m_aver[0].mob
+//   							    /(m_aver[0].mob + m_aver[1].mob));
+ 		    const double cap_change = loc_cap_flux*(aver_lambda_two*aver_lambda_one
+ 							    /(aver_lambda_one + aver_lambda_two));
 		    dS += cap_change;
 		}
 
