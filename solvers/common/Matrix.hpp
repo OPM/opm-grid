@@ -539,10 +539,10 @@ namespace Dune {
 
 
     // A <- inv(A)
-    template<typename T, template<typename> class StoragePolicy>
-    int invert(FullMatrix<T,StoragePolicy,FortranOrdering>& A)
+    template<typename T, template<typename> class StoragePolicy, class OrderingPolicy>
+    int invert(FullMatrix<T,StoragePolicy,OrderingPolicy>& A)
     {
-        typedef typename FullMatrix<T,StoragePolicy,FortranOrdering>::value_type value_type;
+        typedef typename FullMatrix<T,StoragePolicy,OrderingPolicy>::value_type value_type;
 
         ASSERT (A.numRows() == A.numCols());
 
@@ -552,6 +552,7 @@ namespace Dune {
 
         int info = 0;
 
+        // Correct even when OrderingPolicy = COrdering (inv(A)' == inv(A')).
         Dune::BLAS_LAPACK::GETRF(A.numRows(), A.numCols(), A.data(),
                                  A.leadingDimension(), &ipiv[0], info);
 
