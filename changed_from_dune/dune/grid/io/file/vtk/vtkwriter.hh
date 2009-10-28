@@ -1,5 +1,5 @@
 // -*- tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
-// $Id: vtkwriter.hh 10931 2009-08-10 16:42:23Z bska $
+// $Id: vtkwriter.hh 5843 2009-10-26 10:14:31Z sander $
 
 #ifndef DUNE_VTKWRITER_HH
 #define DUNE_VTKWRITER_HH
@@ -602,7 +602,7 @@ namespace Dune
     void addCellData (const V& v, std::string name)
       {
         VTKFunction* p = new P0VectorWrapper< V >( gridView_, v, name );
-        celldata.push_back(p);
+        celldata.push_back(VTKFunctionPtr(p));
       }
 
     /**
@@ -639,7 +639,7 @@ namespace Dune
     void addVertexData (const V& v, std::string name)
       {
         VTKFunction* p = new P1VectorWrapper< V >( gridView_, v, name );
-        vertexdata.push_back(p);
+        vertexdata.push_back(VTKFunctionPtr(p));
       }
 
     //! clear list of registered functions
