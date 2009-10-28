@@ -63,6 +63,7 @@ namespace Dune
 	{
 	    Vec ret(v);
 	    ret *= mob;
+	    return ret;
 	}
     };
 
