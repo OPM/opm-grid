@@ -498,8 +498,6 @@ namespace Dune {
     }
 
 
-    // A <- orth(A)
-
     /// @brief
     /// @todo Doc me!
     /// @tparam
@@ -538,7 +536,24 @@ namespace Dune {
     }
 
 
-    // A <- inv(A)
+    /// @brief Matrix inversion, @f$A \leftarrow A^{-1} @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.
+    ///
+    /// @tparam StoragePolicy
+    ///    Matrix storage policy.
+    ///
+    /// @tparam OrderingPolicy
+    ///    Matrix ordering policy.
+    ///
+    /// @param A
+    ///    Matrix.  Contains the inverse upon return from @code
+    ///    invert() @endcode.
+    ///
+    /// @returns
+    ///    The union of the LAPACK xGETRF and xGETRI 'INFO' subroutine
+    ///    return flags.
     template<typename T, template<typename> class StoragePolicy, class OrderingPolicy>
     int invert(FullMatrix<T,StoragePolicy,OrderingPolicy>& A)
     {
