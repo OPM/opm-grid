@@ -46,9 +46,23 @@ namespace Dune
     struct ScalarMobility
     {
 	double mob;
-	void setToAverage(const ScalarMobility& s1, const ScalarMobility& s2)
+	void setToAverage(const ScalarMobility& m1, const ScalarMobility& m2)
 	{
-	    mob = 0.5*(s1.mob + s2.mob);
+	    mob = 0.5*(m1.mob + m2.mob);
+	}
+	void setToSum(const ScalarMobility& m1, const ScalarMobility& m2)
+	{
+	    mob = m1.mob + m2.mob;
+	}
+	void setToInverse(const ScalarMobility& m)
+	{
+	    mob = 1.0/m.mob;
+	}
+	template <class Vec>
+	Vec multiply(const Vec& v)
+	{
+	    Vec ret(v);
+	    ret *= mob;
 	}
     };
 

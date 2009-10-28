@@ -47,16 +47,33 @@ namespace Dune
     template <int dim>
     struct TensorMobility
     {
+	FullMatrix<double, SharedData, COrdering> mob;
+
 	TensorMobility()
 	    : mob(dim, dim, tensor_storage_.data())
 	{
 	}
-	FullMatrix<double, SharedData, COrdering> mob;
-	void setToAverage(const TensorMobility& s1, const TensorMobility& s2)
+	void setToAverage(const TensorMobility& m1, const TensorMobility& m2)
 	{
 	    for (int i = 0; i < dim*dim; ++i) {
-		tensor_storage_[i] = 0.5*(s1.tensor_storage_[i] + s2.tensor_storage_[i]);
+		tensor_storage_[i] = 0.5*(m1.tensor_storage_[i] + m2.tensor_storage_[i]);
 	    }
+	}
+	void setToSum(const TensorMobility& m1, const TensorMobility& m2)
+	{
+	    for (int i = 0; i < dim*dim; ++i) {
+		tensor_storage_[i] = m1.tensor_storage_[i] + m2.tensor_storage_[i];
+	    }
+	}
+	void setToInverse(const TensorMobility& m)
+	{
+	    tensor_storage_ = m.tensor_storage_;
+	    invert(mob);
+	}
+	template <class Vec>
+	Vec multiply(const Vec& v)
+	{
+	    return prod(mob, v);
 	}
     private:
 	// If allowing copy, remember to set mob.data() properly.
