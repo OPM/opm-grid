@@ -49,6 +49,10 @@
 
 namespace Dune {
 
+    // ----------------------------------------------------------------------
+    // FullMatrix storage policies.
+    //
+
     /// @brief
     ///    FullMatrix StoragePolicy which provides object owning
     ///    semantics.
@@ -202,31 +206,48 @@ namespace Dune {
         const T*  data_;
     };
 
+
+
+
+
+    // ----------------------------------------------------------------------
+    // FullMatrix ordering policies.
+    //
+
     /// @brief
-    /// @todo Doc me!
+    ///    FullMatrix OrderingPolicy base class.
     class OrderingBase {
     public:
         /// @brief
-        /// @todo Doc me!
+        ///    Default constructor (yields 0-by-0 matrix).
         OrderingBase()
             : rows_(0), cols_(0)
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Constructor for matrix of non-zero size.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols
+        ///    Number of matrix columns.
         OrderingBase(int rows, int cols)
             : rows_(rows), cols_(cols)
         {}
 
         /// @brief
-        /// @todo Doc me!
+        ///    Retrieve the number of matrix rows.
+        ///
         /// @return
+        ///    Number of matrix rows.
         int numRows() const { return rows_; }
 
         /// @brief
-        /// @todo Doc me!
+        ///    Retrieve the number of matrix columns.
+        ///
         /// @return
+        ///    Number of matrix columns.
         int numCols() const { return cols_; }
 
     private:
@@ -235,31 +256,49 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
+    ///    FullMatrix C-ordering policy (column index cycling the most
+    ///    rapidly).
     class COrdering : public OrderingBase {
     public:
-        /// @brief
-        /// @todo Doc me!
+        /// @brief Default constructor.
         COrdering()
             : OrderingBase()
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Constructor for C-ordered matrix of non-zero size.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols
+        ///    Number of matrix columns.
         COrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
         /// @brief
-        /// @todo Doc me!
+        ///    Retrieve the (BLAS/LAPACK) leading dimension of the
+        ///    matrix storage array.
+        ///
         /// @return
+        ///    Leading dimension (i.e., the number of columns for a
+        ///    C-ordered matrix) of the matrix storage array.
         int leadingDimension() const { return numCols(); }
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Retrieve the linear index (into storage array) of the
+        ///    element at specific row/column position of the current
+        ///    matrix.
+        ///
+        /// @param [in] row
+        ///    Row position of the required element
+        ///
+        /// @param [in] col
+        ///    Column position of the required element
+        ///
         /// @return
+        ///    Linear index of (row,col) pair.
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -271,32 +310,49 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
+    ///    FullMatrix Fortran ordering policy (row index cycling the
+    ///    most rapidly).
     class FortranOrdering : public OrderingBase {
     public:
-        /// @brief
-        /// @todo Doc me!
+        /// @brief Default constructor.
         FortranOrdering()
             : OrderingBase()
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Constructor for Fortran ordered matrix of non-zero size.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols
+        ///    Number of matrix columns.
         FortranOrdering(int rows, int cols)
             : OrderingBase(rows, cols)
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Retrieve the (BLAS/LAPACK) leading dimension of the
+        ///    matrix storage array.
+        ///
         /// @return
+        ///    Leading dimension (i.e., the number of rows for a
+        ///    Fortran ordered matrix) of the matrix storage array.
         int leadingDimension() const { return numRows(); }
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Retrieve the linear index (into storage array) of the
+        ///    element at specific row/column position of the current
+        ///    matrix.
+        ///
+        /// @param [in] row
+        ///    Row position of the required element
+        ///
+        /// @param [in] col
+        ///    Column position of the required element
+        ///
         /// @return
+        ///    Linear index of (row,col) pair.
         int idx(int row, int col) const
         {
             ASSERT ((0 <= row) && (row < numRows()));
@@ -305,6 +361,13 @@ namespace Dune {
             return row + col*numRows();
         }
     };
+
+
+
+
+    // ----------------------------------------------------------------------
+    // Class FullMatrix.
+    //
 
 
     /// @brief
@@ -405,6 +468,11 @@ namespace Dune {
         }
     };
 
+
+
+    // ----------------------------------------------------------------------
+    // FullMatrix operations.
+    //
 
     // Convenience typedefs
     /// @brief
