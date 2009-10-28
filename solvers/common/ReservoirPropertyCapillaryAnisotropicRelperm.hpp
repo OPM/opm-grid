@@ -52,7 +52,16 @@ namespace Dune
 	{
 	}
 	FullMatrix<double, SharedData, COrdering> mob;
+	void setToAverage(const TensorMobility& s1, const TensorMobility& s2)
+	{
+	    for (int i = 0; i < dim*dim; ++i) {
+		tensor_storage_[i] = 0.5*(s1.tensor_storage_[i] + s2.tensor_storage_[i]);
+	    }
+	}
     private:
+	// If allowing copy, remember to set mob.data() properly.
+	TensorMobility(const TensorMobility&);
+	TensorMobility& operator=(const TensorMobility&);
 	boost::array<double, dim*dim> tensor_storage_;
     };
 
@@ -68,8 +77,8 @@ namespace Dune
 	typedef TensorMobility<dim> Mobility;
 
 	/// @brief Anisotropic phase mobility.
+	/// @param phase_index phase for which to compute mobility.
 	/// @param cell_index index of a grid cell.
-	/// @param phase_index Phase for which to compute mobility.
 	/// @param saturation a saturation value.
 	/// @param[out] phase_mob anisotropic phase mobility tensor at the given cell and saturation.
 	template <class MatrixType>

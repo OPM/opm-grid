@@ -46,6 +46,10 @@ namespace Dune
     struct ScalarMobility
     {
 	double mob;
+	void setToAverage(const ScalarMobility& s1, const ScalarMobility& s2)
+	{
+	    mob = 0.5*(s1.mob + s2.mob);
+	}
     };
 
     /// @brief A property class for incompressible two-phase flow.
@@ -68,6 +72,13 @@ namespace Dune
 	/// @param saturation a saturation value.
         /// @return mobility value of second phase at the given cell and saturation.
         double mobilitySecondPhase(int cell_index, double saturation) const;
+
+	/// @brief Phase mobility.
+	/// @param phase_index phase for which to compute mobility.
+	/// @param cell_index index of a grid cell.
+	/// @param saturation a saturation value.
+	/// @param[out] phase_mob phase mobility at the given cell and saturation.
+        void phaseMobility(int phase_index, int cell_index, double saturation, double& phase_mob) const;
 
 	/// @brief Total mobility.
         /// @param cell_index index of a grid cell.

@@ -56,6 +56,21 @@ namespace Dune
 
 
     template <int dim>
+    void ReservoirPropertyCapillary<dim>::phaseMobility(int phase_index,
+							int cell_index,
+							double saturation,
+							double& phase_mob) const
+    {
+	if (phase_index == 0) {
+	    phase_mob = relPermFirstPhase(cell_index, saturation) / Super::viscosity1_;
+	} else {
+	    ASSERT(phase_index == 1);
+	    phase_mob = relPermSecondPhase(cell_index, saturation) / Super::viscosity2_;
+	}
+    }
+
+
+    template <int dim>
     double ReservoirPropertyCapillary<dim>::totalMobility(int cell_index, double saturation) const
     {
         double l1 = mobilityFirstPhase(cell_index, saturation);
