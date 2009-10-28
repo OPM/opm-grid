@@ -465,6 +465,9 @@ namespace Dune
 	sat_change_.clear();
 	sat_change_.resize(saturation.size(), 0.0);
 
+	// This is constant for the whole run.
+	const double delta_rho = preservoir_properties_->densityDifference();
+
 	// For every face, we will modify sat_change for adjacent cells.
 	// We loop over every cell and intersection, and modify only if
 	// this cell has lower index than the neighbour, or we are on the boundary.
@@ -513,34 +516,117 @@ namespace Dune
 		    cell_pvol[1] = f->neighbourCellVolume()*preservoir_properties_->porosity(cell[1]);
 		}
 
-		// Get some local properties, and compute averages.
+		// Get some local properties.
 		const double loc_area = f->area();
 		const double loc_flux = pressure_sol.outflux(f);
 		const Vector loc_normal = f->normal();
-		const int face_index = f->index();
-		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
+
+		// We will now try to establish the upstream directions for each
+		// phase. They may be the same, or different (due to gravity).
+		// Recall the equation for v_w (water phase velocity):
+		//   v_w  = lambda_w * (lambda_o + lambda_w)^{-1}
+		//          * (v + lambda_o * K * grad p_{cow} + lambda_o * K * (rho_w - rho_o) * g)
+		//             ^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		//     viscous term       capillary term                    gravity term
+		//
+		// For the purpose of upstream weighting, we only consider the viscous and gravity terms.
+		// The question is, in which direction does v_w and v_o point? That is, what is the sign
+		// of v_w*loc_normal and v_o*loc_normal?
+		//
+		// For the case when the mobilities are scalar, the following analysis applies:
+		// The viscous contribution to v_w is loc_area*loc_normal*f_w*v == f_w*loc_flux.
+		// Then the phase fluxes become
+		//     flux_w = f_w*(loc_flux + loc_area*loc_normal*lambda_o*K*(rho_w - rho_o)*g)
+		//                              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+		//                                           := lambda_o*G (only scalar case)
+		//     flux_o = f_o*(loc_flux - lambda_w*G)
+		// In the above, we must decide where to evaluate K, and for this purpose (deciding
+		// upstream directions) we use a K averaged between the two cells.
+		// Since all mobilities and fractional flow functions are positive, the sign
+		// of one of these cases is trivial. If G >= 0, flux_w is in the same direction as
+		// loc_flux, if G <= 0, flux_o is in the same direction as loc_flux.
+		// The phase k for which flux_k and loc_flux are of same sign, is called the trivial
+		// phase in the code below.
+		//
+		// Assuming for the moment that G >=0, we know the direction of the water flux
+		// (same as loc_flux) and evaluate lambda_w in the upstream cell. Then we may use
+		// that lambda_w to evaluate flux_o using the above formula. Knowing flux_o, we know
+		// the direction of the oil flux, and can evaluate lambda_o in the corresponding
+		// upstream cell. Finally, we can use the equation for flux_w to compute that flux.
+		// The opposite case is similar.
+		//
+		// What about tensorial mobilities? In the following code, we make the assumption
+		// that the directions of vectors are not so changed by the multiplication with
+		// mobility tensors that upstream directions change. In other words, we let all
+		// the upstream logic stand as it is. This assumption may need to be revisited.
+		// A worse problem is that
+		// 1) we do not have v, just loc_area*loc_normal*v,
+		// 2) we cannot define G, since the lambdas do not commute with the dot product.
+
+		// Computing G.
+		typedef typename RP::Mobility Mob;
 		using utils::arithmeticAverage;
+		// Doing arithmetic averages. Should we consider harmonic or geometric instead?
 		const MutablePermTensor aver_perm
 		    = arithAver(preservoir_properties_->permeability(cell[0]),
 				preservoir_properties_->permeability(cell[1]));
+
+		const double G = method_gravity_ ?
+		    loc_area*delta_rho*inner(loc_normal, prod(aver_perm, gravity)) 
+		    : 0.0;
+		const int triv_phase = G >= 0.0 ? 0 : 1;
+		const int ups_cell = loc_flux >= 0.0 ? 0 : 1;
+		// Compute mobility of the trivial phase.
+		Mob m_ups[2];
+		preservoir_properties_->phaseMobility(triv_phase, cell[ups_cell],
+						      cell_sat[ups_cell], m_ups[triv_phase].mob);
+		// Compute gravity flow of the nontrivial phase.
+		double sign_G[2] = { -G, G };
+		double grav_flux_nontriv = m_ups[triv_phase].mob*sign_G[triv_phase];
+		// Find flow direction of nontrivial phase.
+		const int ups_cell_nontriv = (loc_flux + grav_flux_nontriv >= 0.0) ? 0 : 1;
+		const int nontriv_phase = (triv_phase + 1) % 2;
+		preservoir_properties_->phaseMobility(nontriv_phase, cell[ups_cell_nontriv],
+						      cell_sat[ups_cell_nontriv], m_ups[nontriv_phase].mob);
+		// Now we have the upstream phase mobilities in m_ups[]. Convenient names for the scalar case:
+ 		const double& lambda_one = m_ups[0].mob;
+ 		const double& lambda_two = m_ups[1].mob;
+
+
+
 		const double aver_sat
 		    = arithmeticAverage<double, double>(cell_sat[0], cell_sat[1]);
+
+		Mob m1c0, m1c1, m2c0, m2c1;
+		preservoir_properties_->phaseMobility(0, cell[0], aver_sat, m1c0.mob);
+		preservoir_properties_->phaseMobility(0, cell[1], aver_sat, m1c1.mob);
+		preservoir_properties_->phaseMobility(1, cell[0], aver_sat, m2c0.mob);
+		preservoir_properties_->phaseMobility(1, cell[1], aver_sat, m2c1.mob);
+		Mob aver_lambda_one, aver_lambda_two;
+		aver_lambda_one.setToAverage(m1c0, m1c1);
+		aver_lambda_two.setToAverage(m2c0, m2c1);
+
+		/*
 		const double aver_lambda_one
 		    = arithmeticAverage<double, double>(preservoir_properties_->mobilityFirstPhase(cell[0], aver_sat),
 							preservoir_properties_->mobilityFirstPhase(cell[1], aver_sat));
 		const double aver_lambda_two
 		    = arithmeticAverage<double, double>(preservoir_properties_->mobilitySecondPhase(cell[0], aver_sat), 
 							preservoir_properties_->mobilitySecondPhase(cell[1], aver_sat));
+		*/
 
+		/*
 		// The local gravity flux is needed for finding the correct phase mobilities.
 		double loc_gravity_flux = 0.0;
 		if (method_gravity_) {
 		    double grav_comp = inner(loc_normal, prod(aver_perm, gravity));
-		    loc_gravity_flux = loc_area*preservoir_properties_->densityDifference()*grav_comp;
+		    loc_gravity_flux = loc_area*delta_rho*grav_comp;
 		}
 		// Find the correct phasemobilities to use
-		const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two;
-		const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one;
+		const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two.mob;
+		const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one.mob;
+		// const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two;
+		// const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one;
 		double lambda_one;
 		double lambda_two;
 		// total velocity term
@@ -554,11 +640,11 @@ namespace Dune
 		} else {
 		    lambda_two = preservoir_properties_->mobilitySecondPhase(cell[1], cell_sat[1] );
 		}
+		*/
 
 		// Viscous (pressure driven) term.
 		if (method_viscous_) {
-		    const double visc_change = loc_flux*(lambda_one/(lambda_two+lambda_one));
-		    const double satdiff = cell_sat[1] - cell_sat[0];
+		    const double visc_change = (lambda_one/(lambda_two+lambda_one))*loc_flux;
 		    dS += visc_change;
 		}
 
@@ -566,7 +652,8 @@ namespace Dune
 		if (method_gravity_) {
 		    if (cell[0] != cell[1]) {
 			// We only add gravity flux on internal or periodic faces.
-			const double grav_change = loc_gravity_flux*(lambda_one*lambda_two/(lambda_two+lambda_one));
+			const double grav_change = (lambda_one*lambda_two/(lambda_two+lambda_one))*G;
+			// const double grav_change = (lambda_one*lambda_two/(lambda_two+lambda_one))*loc_gravity_flux;
 			dS += grav_change;
 		    }
 		}
@@ -577,7 +664,10 @@ namespace Dune
 		    // p_c = \frac{J \sigma \cos\theta}{\sqrt{k/\phi}}
 		    const double cap_vel = inner(loc_normal, prod(aver_perm, estimateCapPressureGradient(f, nbface, saturation)));
 		    const double loc_cap_flux = cap_vel*loc_area;
-		    const double cap_change = loc_cap_flux*(aver_lambda_two*aver_lambda_one/(aver_lambda_one + aver_lambda_two));
+  		    const double cap_change = loc_cap_flux*(aver_lambda_two.mob*aver_lambda_one.mob
+  							    /(aver_lambda_one.mob + aver_lambda_two.mob));
+//  		    const double cap_change = loc_cap_flux*(aver_lambda_two*aver_lambda_one
+//  							    /(aver_lambda_one + aver_lambda_two));
 		    dS += cap_change;
 		}
 
