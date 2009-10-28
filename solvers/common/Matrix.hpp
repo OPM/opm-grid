@@ -62,27 +62,7 @@ namespace Dune {
     ///    an alias for @code double @endcode.
     template<typename T>
     class OwnData {
-    public :
-        /// @brief Constructor.
-        ///
-        /// @param [in] sz
-        ///    Number of elements in FullMatrix storage array.
-        ///
-        /// @param [in] data
-        ///    Initial data vector.  If non-NULL, must contain @code
-        ///    sz @endcode elements which will be assigned to a
-        ///    freshly allocated storage array.  If NULL, a @code sz
-        ///    @endcode element all-zero storage array will be
-        ///    constructed.
-        OwnData(int sz, const T* data)
-        {
-            if (data) {
-                data_.assign(data, data + sz);
-            } else {
-                data_.resize(sz);
-            }
-        }
-
+    public:
         /// @brief Storage element access.
         ///
         /// @param [in] i
@@ -105,6 +85,27 @@ namespace Dune {
         T*       data()       { return &data_[0]; }
         const T* data() const { return &data_[0]; }
 
+    protected:
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  If non-NULL, must contain @code
+        ///    sz @endcode elements which will be assigned to a
+        ///    freshly allocated storage array.  If NULL, a @code sz
+        ///    @endcode element all-zero storage array will be
+        ///    constructed.
+        OwnData(int sz, const T* data)
+        {
+            if (data) {
+                data_.assign(data, data + sz);
+            } else {
+                data_.resize(sz);
+            }
+        }
+
     private:
         std::vector<T> data_;
     };
@@ -119,21 +120,6 @@ namespace Dune {
     template<typename T>
     class SharedData {
     public:
-        /// @brief Constructor.
-        ///
-        /// @param [in] sz
-        ///    Number of elements in FullMatrix storage array.
-        ///
-        /// @param [in] data
-        ///    Initial data vector.  If non-NULL, must point to a @code
-        ///    sz @endcode-element data vector.  If NULL, @code sz
-        ///    @endcode must be zero as well.
-        SharedData(int sz, T* data)
-            : sz_(sz), data_(data)
-        {
-            ASSERT ((sz == 0) == (data == 0));
-        }
-
         /// @brief Storage element access.
         ///
         /// @param [in] i
@@ -154,6 +140,23 @@ namespace Dune {
         /// @return Pointer to first element of storage array.
         T*       data()       { return data_; }
         const T* data() const { return data_; }
+
+    protected:
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  If non-NULL, must point to a @code
+        ///    sz @endcode-element data vector.  If NULL, @code sz
+        ///    @endcode must be zero as well.
+        SharedData(int sz, T* data)
+            : sz_(sz), data_(data)
+        {
+            ASSERT ((sz == 0) == (data == 0));
+        }
+
     private:
         int sz_;
         T*  data_;
@@ -169,20 +172,6 @@ namespace Dune {
     template<typename T>
     class ImmutableSharedData {
     public:
-        /// @brief Constructor.
-        ///
-        /// @param [in] sz
-        ///    Number of elements in FullMatrix storage array.
-        ///
-        /// @param [in] data
-        ///    Initial data vector.  Must be non-NULL and point to a
-        ///    @code sz @endcode-element data vector.
-        ImmutableSharedData(int sz, const T* data)
-            : sz_(sz), data_(data)
-        {
-            ASSERT (data_ != 0);
-        }
-
         /// @brief Storage element access.
         ///
         /// @param [in] i
@@ -201,6 +190,22 @@ namespace Dune {
         ///
         /// @return Pointer to first element of storage array.
         const T* data() const { return data_; }
+
+    protected:
+        /// @brief Constructor.
+        ///
+        /// @param [in] sz
+        ///    Number of elements in FullMatrix storage array.
+        ///
+        /// @param [in] data
+        ///    Initial data vector.  Must be non-NULL and point to a
+        ///    @code sz @endcode-element data vector.
+        ImmutableSharedData(int sz, const T* data)
+            : sz_(sz), data_(data)
+        {
+            ASSERT (data_ != 0);
+        }
+
     private:
         int sz_;
         const T*  data_;
@@ -219,6 +224,21 @@ namespace Dune {
     class OrderingBase {
     public:
         /// @brief
+        ///    Retrieve the number of matrix rows.
+        ///
+        /// @return
+        ///    Number of matrix rows.
+        int numRows() const { return rows_; }
+
+        /// @brief
+        ///    Retrieve the number of matrix columns.
+        ///
+        /// @return
+        ///    Number of matrix columns.
+        int numCols() const { return cols_; }
+
+    protected:
+        /// @brief
         ///    Default constructor (yields 0-by-0 matrix).
         OrderingBase()
             : rows_(0), cols_(0)
@@ -236,20 +256,6 @@ namespace Dune {
             : rows_(rows), cols_(cols)
         {}
 
-        /// @brief
-        ///    Retrieve the number of matrix rows.
-        ///
-        /// @return
-        ///    Number of matrix rows.
-        int numRows() const { return rows_; }
-
-        /// @brief
-        ///    Retrieve the number of matrix columns.
-        ///
-        /// @return
-        ///    Number of matrix columns.
-        int numCols() const { return cols_; }
-
     private:
         int rows_, cols_;
     };
@@ -260,23 +266,6 @@ namespace Dune {
     ///    rapidly).
     class COrdering : public OrderingBase {
     public:
-        /// @brief Default constructor.
-        COrdering()
-            : OrderingBase()
-        {}
-
-        /// @brief
-        ///    Constructor for C-ordered matrix of non-zero size.
-        ///
-        /// @param [in] rows
-        ///    Number of matrix rows.
-        ///
-        /// @param [in] cols
-        ///    Number of matrix columns.
-        COrdering(int rows, int cols)
-            : OrderingBase(rows, cols)
-        {}
-
         /// @brief
         ///    Retrieve the (BLAS/LAPACK) leading dimension of the
         ///    matrix storage array.
@@ -306,6 +295,24 @@ namespace Dune {
 
             return row*numCols() + col;
         }
+
+    protected:
+        /// @brief Default constructor.
+        COrdering()
+            : OrderingBase()
+        {}
+
+        /// @brief
+        ///    Constructor for C-ordered matrix of non-zero size.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols
+        ///    Number of matrix columns.
+        COrdering(int rows, int cols)
+            : OrderingBase(rows, cols)
+        {}
     };
 
 
@@ -314,23 +321,6 @@ namespace Dune {
     ///    most rapidly).
     class FortranOrdering : public OrderingBase {
     public:
-        /// @brief Default constructor.
-        FortranOrdering()
-            : OrderingBase()
-        {}
-
-        /// @brief
-        ///    Constructor for Fortran ordered matrix of non-zero size.
-        ///
-        /// @param [in] rows
-        ///    Number of matrix rows.
-        ///
-        /// @param [in] cols
-        ///    Number of matrix columns.
-        FortranOrdering(int rows, int cols)
-            : OrderingBase(rows, cols)
-        {}
-
         /// @brief
         ///    Retrieve the (BLAS/LAPACK) leading dimension of the
         ///    matrix storage array.
@@ -360,6 +350,24 @@ namespace Dune {
 
             return row + col*numRows();
         }
+
+    protected:
+        /// @brief Default constructor.
+        FortranOrdering()
+            : OrderingBase()
+        {}
+
+        /// @brief
+        ///    Constructor for Fortran ordered matrix of non-zero size.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols
+        ///    Number of matrix columns.
+        FortranOrdering(int rows, int cols)
+            : OrderingBase(rows, cols)
+        {}
     };
 
 
