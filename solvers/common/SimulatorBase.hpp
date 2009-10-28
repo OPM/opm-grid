@@ -74,14 +74,10 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @tparam
+    template <template <int> class ResPropT = ReservoirPropertyCapillary>
     class SimulatorBase
     {
     public:
-
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	typedef FieldVector<double, 3> Vector;
 
 
 	/// @brief
@@ -109,34 +105,12 @@ namespace Dune
 	    param.displayUsage();
 	    std::cout << "================================================================\n";
 	}
-	/*
-	/// @brief Estimates a scalar cell velocity from outgoing fluxes.
-	/// @tparam FlowSol a flow solution type.
-	/// @param[out] cell_velocity the estimated velocities.
-	/// @param[in] flow_solution the object containing the fluxes.
-	template <class FlowSol>
-	void estimateCellVelocity(std::vector<double>& cell_velocity,
-				  const FlowSol& flow_solution)
-	{
-	    estimateCellVelocity(cell_velocity, ginterf_, flow_solution);
-	}
 
-
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-	template <class FlowSol>
-	void getCellPressure(std::vector<double>& cell_pressure,
-			     const FlowSol& flow_solution)
-	{
-	    getCellPressure(cell_pressure, ginterf_, flow_solution);
-	}
-	*/
     protected:
 	typedef CpGrid                                         GridType;
  	enum { Dimension = GridType::dimension };
- 	typedef ReservoirPropertyCapillary<Dimension>          ResProp;
+	typedef FieldVector<double, Dimension>                 Vector;
+ 	typedef ResPropT<Dimension>                            ResProp;
 	typedef GridInterfaceEuler<GridType>                   GridInterface;
 	typedef GridInterface::CellIterator                    CellIter;
 	typedef CellIter::FaceIterator                         FaceIter;
@@ -152,7 +126,7 @@ namespace Dune
 	int simulation_steps_;
 	double stepsize_;
 	double init_saturation_;
-        FieldVector<double,3> gravity_;
+        Vector gravity_;
 	GridType grid_;
 	GridInterface ginterf_;
 	ReservoirPropertyCapillary<3> res_prop_;

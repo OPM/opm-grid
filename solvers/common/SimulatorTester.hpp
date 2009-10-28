@@ -47,45 +47,47 @@ namespace Dune
 
     /// @brief
     /// @todo Doc me!
-    class SimulatorTester : public SimulatorBase
+    template <template <int> class ResPropT = ReservoirPropertyCapillary>
+    class SimulatorTester : public SimulatorBase<ResPropT>
     {
     public:
+	typedef SimulatorBase<ResPropT> Super;
 	/// @brief
 	/// @todo Doc me!
 	void run()
 	{
 	    // No injection or production.
-	    SparseVector<double> injection_rates(ginterf_.numberOfCells());
-	    std::vector<double> src(ginterf_.numberOfCells());
+	    SparseVector<double> injection_rates(Super::ginterf_.numberOfCells());
+	    std::vector<double> src(Super::ginterf_.numberOfCells());
 	    // Initial saturation.
-	    std::vector<double> sat(ginterf_.numberOfCells(), init_saturation_);
+	    std::vector<double> sat(Super::ginterf_.numberOfCells(), Super::init_saturation_);
 	    // Gravity.
 	    // FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
 	    // Compute flow field.
-	    if (gravity_.two_norm() > 0.0) {
+	    if (Super::gravity_.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
 	    }
 
 	    // Solve some steps.
-	    for (int i = 0; i < simulation_steps_; ++i) {
+	    for (int i = 0; i < Super::simulation_steps_; ++i) {
 		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
-		flow_solver_.solve(res_prop_, sat, bcond_, src);
+		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, src);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
-		transport_solver_.transportSolve(sat, stepsize_, gravity_,
-						 flow_solver_.getSolution(),
-						 injection_rates);
+		Super::transport_solver_.transportSolve(sat, Super::stepsize_, Super::gravity_,
+							Super::flow_solver_.getSolution(),
+							injection_rates);
 		// Output.
 		std::vector<double> cell_velocity;
-		estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+		estimateCellVelocity(cell_velocity, Super::ginterf_, Super::flow_solver_.getSolution());
 		std::vector<double> cell_pressure;
-		getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
-		Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
+		getCellPressure(cell_pressure, Super::ginterf_, Super::flow_solver_.getSolution());
+		Dune::VTKWriter<typename Super::GridType::LeafGridView> vtkwriter(Super::grid_.leafView());
 		vtkwriter.addCellData(cell_velocity, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
 		vtkwriter.addCellData(cell_pressure, "pressure");

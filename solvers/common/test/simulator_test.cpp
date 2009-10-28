@@ -47,7 +47,7 @@ int main(int argc, char** argv)
 {
     parameter::ParameterGroup param(argc, argv);
     MPIHelper::instance(argc,argv);
-    SimulatorTester tester;
+    SimulatorTester<> tester;
     tester.init(param);
     tester.run();
 }
