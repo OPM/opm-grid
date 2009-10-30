@@ -304,6 +304,7 @@ namespace Dune {
             r.phaseDensities(ci, rho);
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
+	    std::fill(lambda_t.begin(), lambda_t.end(), 0.0);
 
             for (int phase = 0; phase < RI::NumberOfPhases; ++phase) {
                 r.phaseMobility(phase, ci, s[ci], pmob);
