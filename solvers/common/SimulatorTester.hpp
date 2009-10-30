@@ -47,11 +47,12 @@ namespace Dune
 
     /// @brief
     /// @todo Doc me!
-    template <template <int> class ResPropT = ReservoirPropertyCapillary>
-    class SimulatorTester : public SimulatorBase<ResPropT>
+    template <template <int> class ResPropT = ReservoirPropertyCapillary,
+	      template <class, int, bool> class InnerProd = MimeticIPEvaluator>
+    class SimulatorTester : public SimulatorBase<ResPropT, InnerProd>
     {
     public:
-	typedef SimulatorBase<ResPropT> Super;
+	typedef SimulatorBase<ResPropT, InnerProd> Super;
 	/// @brief
 	/// @todo Doc me!
 	void run()

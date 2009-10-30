@@ -47,9 +47,10 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @param
+    template <template <int> class ResProp>
     inline void setupGridAndProps(const parameter::ParameterGroup& param,
 				  CpGrid& grid,
-				  ReservoirPropertyCapillary<3>& res_prop)
+				  ResProp<3>& res_prop)
     {
 	// Initialize grid and reservoir properties.
 	// Parts copied from CpGrid::init().

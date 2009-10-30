@@ -74,7 +74,8 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @tparam
-    template <template <int> class ResPropT = ReservoirPropertyCapillary>
+    template <template <int> class ResPropT = ReservoirPropertyCapillary,
+	      template <class, int, bool> class InnerProd = MimeticIPEvaluator>
     class SimulatorBase
     {
     public:
@@ -118,7 +119,7 @@ namespace Dune
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,
 				       BCs,
-				       MimeticIPEvaluator>     FlowSolver;
+				       InnerProd>     FlowSolver;
 	typedef EulerUpstream<GridInterface,
 			      ResProp,
 			      BCs>                             TransportSolver;
@@ -129,7 +130,7 @@ namespace Dune
         Vector gravity_;
 	GridType grid_;
 	GridInterface ginterf_;
-	ReservoirPropertyCapillary<3> res_prop_;
+	ResProp res_prop_;
 	BCs bcond_;
 	FlowSolver flow_solver_;
 	TransportSolver transport_solver_;
