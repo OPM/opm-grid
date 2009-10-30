@@ -637,19 +637,18 @@ namespace Dune {
 
         ASSERT (A.numRows() == A.numCols());
 
-        std::vector<int>         ipiv(A.numRows());
-        std::vector<value_type>  work(A.numRows());
-	int lwork = A.numRows();
-
+        std::vector<int> ipiv(A.numRows());
         int info = 0;
-
-        // Correct even when OrderingPolicy = COrdering (inv(A)' == inv(A')).
+ 
+        // Correct both for COrdering and FortranOrdering (inv(A)' == inv(A')).
         Dune::BLAS_LAPACK::GETRF(A.numRows(), A.numCols(), A.data(),
                                  A.leadingDimension(), &ipiv[0], info);
 
         if (info == 0) {
+            std::vector<value_type> work(A.numRows());
+
             Dune::BLAS_LAPACK::GETRI(A.numRows(), A.data(), A.leadingDimension(),
-                                     &ipiv[0], &work[0], &lwork, info);
+                                     &ipiv[0], &work[0], int(work.size()), info);
         }
 
         return info;

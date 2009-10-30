@@ -316,14 +316,14 @@ namespace Dune {
         /// @tparam T Matrix element type.
         template<typename T>
         void GETRI(const int  n   , T* A   , const int ld,
-                   const int* ipiv, T* work, int* lwork, int& info);
+                   const int* ipiv, T* work, int lwork, int& info);
 
         /// @brief GEneral matrix TRiangular Inversion specialization for double.
         template<>
         void GETRI(const int  n   , double* A   , const int ld,
-                   const int* ipiv, double* work, int* lwork, int& info)
+                   const int* ipiv, double* work, int lwork, int& info)
         {
-            DGETRI(&n, A, &ld, ipiv, work, lwork, &info);
+            DGETRI(&n, A, &ld, ipiv, work, &lwork, &info);
         }
     } // namespace BLAS_LAPACK
 } // namespace Dune
