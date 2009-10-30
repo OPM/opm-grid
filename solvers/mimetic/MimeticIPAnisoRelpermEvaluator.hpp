@@ -205,10 +205,10 @@ namespace Dune {
                                 const Point&    grav,
                                 const int       nf)
         {
-	    // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
-	    //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-	    //         precompute: n_        precompute: second_term_
-	    // t = 6/dim * trace(lambda*K)
+            // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
+            //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+            //         precompute: n_        precompute: second_term_
+            // t = 6/dim * trace(lambda*K)
 
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
@@ -304,7 +304,7 @@ namespace Dune {
             r.phaseDensities(ci, rho);
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
-	    std::fill(lambda_t.begin(), lambda_t.end(), 0.0);
+            std::fill(lambda_t.begin(), lambda_t.end(), 0.0);
 
             for (int phase = 0; phase < RI::NumberOfPhases; ++phase) {
                 r.phaseMobility(phase, ci, s[ci], pmob);
@@ -355,16 +355,16 @@ namespace Dune {
         void getInverseMatrix(const CellIter&                        c,
                               FullMatrix<Scalar,SP,FortranOrdering>& Binv) const
         {
-	    // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
-	    //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
-	    //         precomputed: n_       precomputed: second_term_
-	    // t = 6/dim * trace(lambda*K)
-	    int ci = c->index();
-	    int nf = Binv.numRows();
-	    ImmutableFortranMatrix n(nf, dim, &n_[ci][0]);
+            // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
+            //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
+            //         precomputed: n_       precomputed: second_term_
+            // t = 6/dim * trace(lambda*K)
+            int ci = c->index();
+            int nf = Binv.numRows();
+            ImmutableFortranMatrix n(nf, dim, &n_[ci][0]);
             ImmutableFortranMatrix t2(nf, nf, &second_term_[ci][0]);
-	    Binv = t2;
-	    ImmutableFortranMatrix lambdaK(dim, dim, lambdaK_.data());
+            Binv = t2;
+            ImmutableFortranMatrix lambdaK(dim, dim, lambdaK_.data());
             SharedFortranMatrix T2(nf, dim, &t2_[0]);
 
             // T2 <- N*lambda*K
@@ -416,7 +416,7 @@ namespace Dune {
         SparseTable<Scalar>           Kg_          ;
         boost::array<Scalar, dim>     dyn_Kg_      ;
         boost::array<double, dim*dim> lambdaK_     ;
-	//boost::array<double, dim*dim> lambda_;
+        //boost::array<double, dim*dim> lambda_;
     };
 } // namespace Dune
 
