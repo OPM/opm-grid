@@ -48,18 +48,29 @@ namespace Dune
 									  double saturation,
 									  MatrixType& phase_mob) const
     {
-        ASSERT ((0 <= phase_index) && (Super::NumberOfPhases < 2));
+	const int region = Super::rock_.size() > 0 ? Super::cell_to_rock_[cell_index] : -1;
+	phaseMobilityByRock(phase_index, region, saturation, phase_mob);
+    }
+
+
+    template <int dim>
+    template <class MatrixType>
+    void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::phaseMobilityByRock(int phase_index,
+										int rock_index,
+										double saturation,
+										MatrixType& phase_mob) const
+    {
+	ASSERT ((0 <= phase_index) && (Super::NumberOfPhases < 2));
 	BOOST_STATIC_ASSERT(Super::NumberOfPhases == 2);
 
 	double visc = phase_index == 0 ? Super::viscosity1_ : Super::viscosity2_;
-        if (Super::rock_.size() > 0) {
-            const int region = Super::cell_to_rock_[cell_index];
-            ASSERT (region < int(Super::rock_.size()));
-	    Super::rock_[region].kr(phase_index, saturation, phase_mob);
+	if (rock_index != -1) {
+	    ASSERT (rock_index < int(Super::rock_.size()));
+	    Super::rock_[rock_index].kr(phase_index, saturation, phase_mob);
 	    //using namespace boost::lambda;
 	    std::transform(phase_mob.data(), phase_mob.data() + dim*dim,
 			   phase_mob.data(), boost::lambda::_1/visc);
-        } else {
+	} else {
 	    // HACK: With no rocks, we use quadratic relperm functions.
 	    double kr = phase_index == 0 ? saturation*saturation : (1.0 - saturation)*(1.0 - saturation);
 	    double mob = kr/visc;
@@ -67,16 +78,77 @@ namespace Dune
             for (int j = 0; j < dim; ++j) {
                 phase_mob(j,j) = mob;
             }
-        }
+	}
     }
+
+
+    template <int dim>
+    void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::cflFracFlows(int rock, int direction,
+									 double s, double& ff_first, double& ff_gravity) const
+    {
+	// Assumes that the relperm is diagonal.
+	Mobility m;
+	phaseMobilityByRock(0, rock, s, m.mob);
+	double l1 = m.mob(direction, direction);
+	phaseMobilityByRock(1, rock, s, m.mob);
+	double l2 = m.mob(direction, direction);
+	ff_first = l1/(l1 + l2);
+	ff_gravity = l1*l2/(l1 + l2);
+    }
+
+
+
+
+    template <int dim>
+    std::pair<double, double> ReservoirPropertyCapillaryAnisotropicRelperm<dim>::computeSingleRockCflFactors(int rock) const
+    {
+        const int N = 257;
+        double delta = 1.0/double(N - 1);
+        double last_ff1, last_ffg;
+        double max_der1 = -1e100;
+        double max_derg = -1e100;
+	for (int direction = 0; direction < dim; ++direction) {
+	    cflFracFlows(rock, direction, 0.0, last_ff1, last_ffg);
+	    for (int i = 1; i < N; ++i) {
+		double s = double(i)*delta;
+		double ff1, ffg;
+		cflFracFlows(rock, direction, s, ff1, ffg);
+		double est_deriv_ff1 = std::fabs(ff1 - last_ff1)/delta;
+		double est_deriv_ffg = std::fabs(ffg - last_ffg)/delta;
+		max_der1 = std::max(max_der1, est_deriv_ff1);
+		max_derg = std::max(max_derg, est_deriv_ffg);
+		last_ff1 = ff1;
+		last_ffg = ffg;
+	    }
+        }
+        return std::make_pair(1.0/max_der1, 1.0/max_derg);
+    }
+
+
+
 
     template <int dim>
     void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::computeCflFactors()
     {
-	MESSAGE("Warning: Not currently computing cfl factors properly.");
-	Super::cfl_factor_ = 1.0;
-	Super::cfl_factor_gravity_ = 1.0;
+        if (Super::rock_.empty()) {
+            std::pair<double, double> fac = computeSingleRockCflFactors(-1);
+            Super::cfl_factor_ = fac.first;
+            Super::cfl_factor_gravity_ = fac.second;
+        } else {
+            Super::cfl_factor_ = 1e100;
+            Super::cfl_factor_gravity_ = 1e100;
+            for (int r = 0; r < int(Super::rock_.size()); ++r) {
+                std::pair<double, double> fac = computeSingleRockCflFactors(r);
+                Super::cfl_factor_ = std::min(Super::cfl_factor_, fac.first);
+                Super::cfl_factor_gravity_ = std::min(Super::cfl_factor_gravity_, fac.second);
+            }
+        }
     }
+
+
+
+
+
 
 } // namespace Dune
 

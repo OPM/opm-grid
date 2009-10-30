@@ -108,6 +108,13 @@ namespace Dune
 
     private:
 	typedef ReservoirPropertyCommon<dim, ReservoirPropertyCapillaryAnisotropicRelperm<dim>, RockAnisotropicRelperm> Super;
+	template <class MatrixType>
+	void phaseMobilityByRock(int phase_index,
+				 int rock_index,
+				 double saturation,
+				 MatrixType& phase_mob) const;
+        void cflFracFlows(int rock, int direction, double s, double& ff_first, double& ff_gravity) const;
+        std::pair<double, double> computeSingleRockCflFactors(int rock) const;
     };
 
 
