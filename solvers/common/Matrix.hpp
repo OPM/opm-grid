@@ -637,9 +637,9 @@ namespace Dune {
 
         ASSERT (A.numRows() == A.numCols());
 
-        std::vector<value_type>  work(A.numRows());
-        std::vector<int>        lwork(A.numRows());
         std::vector<int>         ipiv(A.numRows());
+        std::vector<value_type>  work(A.numRows());
+	int lwork = A.numRows();
 
         int info = 0;
 
@@ -649,7 +649,7 @@ namespace Dune {
 
         if (info == 0) {
             Dune::BLAS_LAPACK::GETRI(A.numRows(), A.data(), A.leadingDimension(),
-                                     &ipiv[0], &work[0], &lwork[0], info);
+                                     &ipiv[0], &work[0], &lwork, info);
         }
 
         return info;
