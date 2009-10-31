@@ -445,7 +445,7 @@ namespace Dune {
         }
 
         /// @brief
-        ///    Copy constructor.
+        ///    Assignment operator.
         ///
         /// @tparam OtherSP
         ///    Storage policy of other matrix.
