@@ -48,7 +48,49 @@ extern "C" {
 #endif
 #define  DGEMV F77_NAME(dgemv,DGEMV)
 
-    // y <- a1*op(A)*x + a2*y  where op(X) \in {X, X.', X'}
+    /// @brief
+    ///    Double precision general matrix-vector vector update.
+    ///    Specifically, @f$ y \leftarrow a_1 \mathrm{op}(A) x + a_2 y
+    ///    @f$.
+    ///
+    /// @param trans
+    ///    Specifcation of @f$ \mathrm{op} @f$.  @code trans = 'N'
+    ///    @endcode yields @f$ \mathrm{op}(A) = A @f$ while @code
+    ///    trans = 'T' @endcode yields @f$ \mathrm{op}(A) =
+    ///    A^{\mathsf{T}} @f$.
+    ///
+    /// @param [in] m
+    ///    Number of matrix rows (and number of rows for which new
+    ///    data will be assigned to the result vector @f$ y @f$.)
+    ///
+    /// @param [in] n
+    ///    Number of matrix columns (and number of rows for which data
+    ///    will be retrieved from the input vector @f$ x @f$).
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Pointer to first data element of matrix @f$ A @f$.
+    ///
+    /// @param [in] ldA
+    ///    Leading dimension of storage array containing the matrix
+    ///    @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Input vector @f$ x @f$.
+    ///
+    /// @param [in] incX
+    ///    Data element stride for input vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Result vector @f$ y @f$.
+    ///
+    /// @param [in] incY
+    ///    Data element stride for result vector @f$ y @f$.
     void DGEMV(F77_CHARACTER_TYPE,
                const int*    m   , const int*    n,
                const double* a1  , const double* A, const int* ldA ,
@@ -62,6 +104,61 @@ extern "C" {
 #define  DGEMM F77_NAME(dgemm,DGEMM)
 
     // C <- a1*op(A)*op(B) + a2*C  where op(X) \in {X, X.', X'}
+    /// @brief
+    ///    Double precision general matrix-matrix product matrix
+    ///    update.  Specifically, @f$ C \leftarrow a_1 \mathrm{op}(A)
+    ///    \mathrm{op}(B) + a_2 C @f$.
+    ///
+    /// @param [in] transA
+    ///    Specifcation of @f$ \mathrm{op} @f$.  @code transA = 'N'
+    ///    @endcode yields @f$ \mathrm{op}(A) = A @f$ while @code
+    ///    transA = 'T' @endcode yields @f$ \mathrm{op}(A) =
+    ///    A^{\mathsf{T}} @f$.
+    ///
+    /// @param [in] transB
+    ///    Specifcation of @f$ \mathrm{op} @f$.  @code transB = 'N'
+    ///    @endcode yields @f$ \mathrm{op}(B) = A @f$ while @code
+    ///    transB = 'T' @endcode yields @f$ \mathrm{op}(B) =
+    ///    B^{\mathsf{T}} @f$.
+    ///
+    /// @param [in] m
+    ///    Number of rows of matrix @f$ \mathrm{op}(A) @f$ and of
+    ///    matrix @f$ C @f$.
+    ///
+    /// @param [in] n
+    ///    Number of columns of matrix @f$ \mathrm{op}(B) @f$ and of
+    ///    matrix @f$ C @f$.
+    ///
+    /// @param [in] k
+    ///    Number of columns of matrix @f$ \mathrm{op}(A) @f$ and
+    ///    number of rows of matrix @f$ \mathrm{op}(B) @f$.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Pointer to first data element of matrix @f$ A @f$.
+    ///
+    /// @param [in] ldA
+    ///    Leading dimension of storage array containing the matrix
+    ///    @f$ A @f$.
+    ///
+    /// @param [in] B
+    ///    Pointer to first data element of matrix @f$ B @f$.
+    ///
+    /// @param [in] ldB
+    ///    Leading dimension of storage array containing the matrix
+    ///    @f$ B @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Pointer to first data element of matrix @f$ C @f$.
+    ///
+    /// @param [in] ldC
+    ///    Leading dimension of storage array containing the matrix
+    ///    @f$ C @f$.
     void DGEMM(F77_CHARACTER_TYPE, F77_CHARACTER_TYPE,
                const int*    m   , const int*    n   , const int* k  ,
                const double* a1  , const double* A   , const int* ldA,
