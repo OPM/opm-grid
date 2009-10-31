@@ -379,8 +379,19 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    ///    Dynamically sized m-by-n matrix with general element
+    ///    storage (in a linear array) and element ordering.
+    ///
+    /// @tparam T
+    ///    Element type.
+    ///
+    /// @tparam StoragePolicy
+    ///    How to organize/store the matrix elements.  Parametrized on
+    ///    the element type.
+    ///
+    /// @tparam OrderingPolicy
+    ///    How to order the m-by-n matrix elements.  Typically
+    ///    'COrdering' or 'FortranOrdering'.
     template<typename                 T,
              template<typename> class StoragePolicy,
              class                    OrderingPolicy>
@@ -389,16 +400,29 @@ namespace Dune {
     {
     public:
         /// @brief
-        /// @todo Doc me!
+        ///    Default constructor.
         FullMatrix()
             : StoragePolicy<T>(0, 0),
               OrderingPolicy()
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Constructor.
+        ///
+        /// @tparam DataPointer
+        ///    Type representing a pointer to data with which
+        ///    initalize the matrix elements.  Assumed to support
+        ///    ordinary dereferencing and pointer arithmetic.
+        ///
+        /// @param [in] rows
+        ///    Number of matrix rows.
+        ///
+        /// @param [in] cols.
+        ///    Number of matrix columns.
+        ///
+        /// @param [in] data.
+        ///    Initial matrix data.  Interpretation of this data is
+        ///    dependent upon the @code StoragePolicy @endcode.
         template <typename DataPointer>
         FullMatrix(int rows, int cols, DataPointer data)
             : StoragePolicy<T>(rows * cols, data),
@@ -406,9 +430,13 @@ namespace Dune {
         {}
 
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Copy constructor.
+        ///
+        /// @tparam OtherSP
+        ///    Storage policy of other matrix.
+        ///
+        /// @param [in] m
+        ///    Constructor right hand side.
         template <template<typename> class OtherSP>
         explicit FullMatrix(const FullMatrix<T, OtherSP, OrderingPolicy>& m)
             : StoragePolicy<T>(m.numRows()*m.numCols(), m.data()),
@@ -416,6 +444,17 @@ namespace Dune {
         {
         }
 
+        /// @brief
+        ///    Copy constructor.
+        ///
+        /// @tparam OtherSP
+        ///    Storage policy of other matrix.
+        ///
+        /// @tparam OtherOP
+        ///    Ordering policy of other matrix.
+        ///
+        /// @param [in] m
+        ///    Assignment right hand side.
         template <template<typename> class OtherSP, class OtherOP>
         FullMatrix& operator=(const FullMatrix<T, OtherSP, OtherOP>& m)
         {
@@ -430,9 +469,13 @@ namespace Dune {
         }
 
         /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        /// @param
+        ///    Matrix addition operator (self-modifying).
+        ///
+        /// @tparam OtherSP
+        ///    Storage policy of other matrix.
+        ///
+        /// @param [in] m
+        ///    Matrix whose data will be added to self.
         template <template<typename> class OtherSP>
         void operator+= (const FullMatrix<T, OtherSP, OrderingPolicy>& m)
         {
@@ -442,8 +485,10 @@ namespace Dune {
         }
 
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Multiply self by scalar.
+        ///
+        /// @param [in] scalar.
+        ///    Scalar by which to multiply own data.
         void operator*= (const T& scalar)
         {
             std::transform(data(), data() + this->size(),
@@ -451,7 +496,7 @@ namespace Dune {
         }
 
         /// @brief
-        /// @todo Doc me!
+        ///    Matrix value type (i.e., element type).
         typedef T value_type;
 
         using StoragePolicy<T>::data;
@@ -460,16 +505,32 @@ namespace Dune {
         using OrderingPolicy::leadingDimension;
 
         /// @brief
-        /// @todo Doc me!
+        ///    Matrix read/write element access.
+        ///
+        /// @param [in] row
+        ///    Row index of requested matrix element.
+        ///
+        /// @param [in] col
+        ///    Column index of requested matrix element.
+        ///
         /// @return
+        ///    Matrix element at position (row,col).
         value_type&       operator()(int row, int col)
         {
             return this->operator[](this->idx(row, col));
         }
+
         /// @brief
-        /// @todo Doc me!
-        /// @param
+        ///    Matrix read-only element access.
+        ///
+        /// @param [in] row
+        ///    Row index of requested matrix element.
+        ///
+        /// @param [in] col
+        ///    Column index of requested matrix element.
+        ///
         /// @return
+        ///    Matrix element at position (row,col).
         const value_type& operator()(int row, int col) const
         {
             return this->operator[](this->idx(row, col));
@@ -639,7 +700,7 @@ namespace Dune {
 
         std::vector<int> ipiv(A.numRows());
         int info = 0;
- 
+
         // Correct both for COrdering and FortranOrdering (inv(A)' == inv(A')).
         Dune::BLAS_LAPACK::GETRF(A.numRows(), A.numCols(), A.data(),
                                  A.leadingDimension(), &ipiv[0], info);
