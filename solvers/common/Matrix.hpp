@@ -543,23 +543,35 @@ namespace Dune {
     // FullMatrix operations.
     //
 
-    // Convenience typedefs
+
+    // Convenience typedefs.
+
     /// @brief
-    /// @todo Doc me!
+    ///    Convenience typedefs for C-ordered @code FullMatrix
+    ///    @endcode types with 'Owning', 'Shared' and 'Immutable
+    ///    Shared' matrix element storage semantics.
     typedef FullMatrix<double, OwnData,             COrdering>        OwnCMatrix;
     typedef FullMatrix<double, SharedData,          COrdering>        SharedCMatrix;
     typedef const FullMatrix<double, ImmutableSharedData, COrdering>  ImmutableCMatrix;
 
 
+    /// @brief
+    ///    Convenience typedefs for Fortran-ordered @code FullMatrix
+    ///    @endcode types with 'Owning', 'Shared' and 'Immutable
+    ///    Shared' matrix element storage semantics.
     typedef FullMatrix<double, OwnData,             FortranOrdering>       OwnFortranMatrix;
     typedef FullMatrix<double, SharedData,          FortranOrdering>       SharedFortranMatrix;
     typedef const FullMatrix<double, ImmutableSharedData, FortranOrdering> ImmutableFortranMatrix;
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @param
-    /// @return
+    ///    Zero-fill a @code FullMatrix @endcode.
+    ///
+    /// @tparam Matrix
+    ///    Matrix type.
+    ///
+    /// @param A
+    ///    Specific matrix which will be zero-filled upon return.
     template<class Matrix>
     void zero(Matrix& A)
     {
@@ -568,10 +580,16 @@ namespace Dune {
     }
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    Compute matrix trace (i.e., sum(diag(A))).
+    ///
+    /// @tparam Matrix
+    ///    Matrix type.
+    ///
+    /// @param [in] A
+    ///    Matrix for which to compute the trace.
+    ///
     /// @return
+    ///    Trace of matrix.
     template<class Matrix>
     typename Matrix::value_type
     trace(const Matrix& A)
@@ -586,10 +604,22 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    Matrix applied to a vector.
+    ///
+    /// @tparam Matrix
+    ///    Matrix type.
+    ///
+    /// @tparam rows.
+    ///    Number of matrix rows.
+    ///
+    /// @param [in] A
+    ///    Matrix.
+    ///
+    /// @param [in] x
+    ///    Vector
+    ///
     /// @return
+    ///    @f$ Ax @f$.
     template<class Matrix, int rows>
     FieldVector<typename Matrix::value_type, rows>
     prod(const Matrix& A, const FieldVector<typename Matrix::value_type,rows>& x)
@@ -636,10 +666,22 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    Construct orthonormal basis for matrix range (i.e., column
+    ///    space).  Based on a QR factorization of the matrix.
+    ///
+    /// @tparam T
+    ///    Matrix element type.
+    ///
+    /// @tparam StoragePolicy
+    ///    Matrix storage policy.
+    ///
+    /// @param A
+    ///    Matrix.  Will be overwritten by an orthogonal matrix, @f$ Q
+    ///    @f$ whose columns represent an orthognormal basis for
+    ///    range(A).
+    ///
     /// @return
+    ///    Zero for success, non-zero if an error occurred.
     template<typename T, template<typename> class StoragePolicy>
     int orthogonalizeColumns(FullMatrix<T,StoragePolicy,FortranOrdering>& A)
     {
@@ -716,13 +758,30 @@ namespace Dune {
     }
 
 
-    // C <- a1*A*A' + a2*C
-    // Assumes T is an arithmetic (floating point) type, and that C==C'.
-
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    Symmetric, rank @f$ k @f$ update of symmetric matrix.
+    ///    Specifically, @f$ C \leftarrow a_1 AA^{\mathsf{T}} + a_2 C
+    ///    @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.  Assumed to be an arithmetic type.
+    ///    Typically @code T @endcode is an alias for @code double
+    ///    @endcode.
+    ///
+    /// @tparam StoragePolicy.
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Matrix @f$ C @f$.
     template<typename T, template<typename> class StoragePolicy>
     void symmetricUpdate(const T&                                           a1,
                          const FullMatrix<T,StoragePolicy,FortranOrdering>& A ,
@@ -781,9 +840,31 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Vector product (GAXPY operation).
+    ///    Specifically, @f$ y \leftarrow a_1 Ax + a_2 y @f$.
+    ///
+    /// @tparam T
+    ///    Matrix (and vector) element type.  Assumed to be an
+    ///    arithmetic type and, typically, @code T @endcode is an
+    ///    alias for @code double @endcode.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Vector @f$ y @f$.
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_N(const T&                                a1,
@@ -803,9 +884,31 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Vector product (GAXPY operation).
+    ///    Specifically, @f$ y \leftarrow a_1 Ax + a_2 y @f$.
+    ///
+    /// @tparam T
+    ///    Matrix (and vector) element type.  Assumed to be an
+    ///    arithmetic type and, typically, @code T @endcode is an
+    ///    alias for @code double @endcode.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Vector @f$ y @f$.
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_N(const T&                                a1,
@@ -822,9 +925,32 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Vector product (GAXPY operation).
+    ///    Specifically, @f$ y \leftarrow a_1 A^{\mathsf{T}}x + a_2 y
+    ///    @f$.
+    ///
+    /// @tparam T
+    ///    Matrix (and vector) element type.  Assumed to be an
+    ///    arithmetic type and, typically, @code T @endcode is an
+    ///    alias for @code double @endcode.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Vector @f$ y @f$.
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_T(const T&                                a1,
@@ -844,9 +970,32 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Vector product (GAXPY operation).
+    ///    Specifically, @f$ y \leftarrow a_1 A^{\mathsf{T}}x + a_2 y
+    ///    @f$.
+    ///
+    /// @tparam T
+    ///    Matrix (and vector) element type.  Assumed to be an
+    ///    arithmetic type and, typically, @code T @endcode is an
+    ///    alias for @code double @endcode.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Vector @f$ y @f$.
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_T(const T&                                a1,
@@ -863,9 +1012,32 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Vector product (GAXPY operation).
+    ///    Specifically, @f$ y \leftarrow a_1 Ax + a_2 y @f$.
+    ///    Overload for C-ordered FullMatrix type.
+    ///
+    /// @tparam T
+    ///    Matrix (and vector) element type.  Assumed to be an
+    ///    arithmetic type and, typically, @code T @endcode is an
+    ///    alias for @code double @endcode.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] x
+    ///    Vector @f$ x @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param y
+    ///    Vector @f$ y @f$.
     template<typename                 T ,
              template<typename> class SP>
     void vecMulAdd_N(const T&                          a1,
@@ -882,10 +1054,38 @@ namespace Dune {
     }
 
 
-    /// @brief C = a1*A*B + a2*C
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    /// @brief
+    ///    GEneral Matrix-Matrix product update of other matrix.
+    ///    Specificlly, @f$ C \leftarrow a_1AB + a_2C @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.  Assumed to be an arithmetic type and,
+    ///    typically, @code T @endocde is an alias for @code double
+    ///    @endcode.
+    ///
+    /// @tparam SP1
+    ///    Storage policy of matrix @f$ A @f$.
+    ///
+    /// @tparam SP2
+    ///    Storage policy of matrix @f$ B @f$.
+    ///
+    /// @tparam SP3
+    ///    Storage policy of matrix @f$ C @f$.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] B
+    ///    Matrix @f$ B @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Matrix @f$ C @f$.
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -912,9 +1112,38 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Matrix product update of other matrix.
+    ///    Specificlly, @f$ C \leftarrow a_1AB^{\mathsf{T}} + a_2C
+    ///    @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.  Assumed to be an arithmetic type and,
+    ///    typically, @code T @endocde is an alias for @code double
+    ///    @endcode.
+    ///
+    /// @tparam SP1
+    ///    Storage policy of matrix @f$ A @f$.
+    ///
+    /// @tparam SP2
+    ///    Storage policy of matrix @f$ B @f$.
+    ///
+    /// @tparam SP3
+    ///    Storage policy of matrix @f$ C @f$.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] B
+    ///    Matrix @f$ B @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Matrix @f$ C @f$.
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -941,9 +1170,38 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Matrix product update of other matrix.
+    ///    Specificlly, @f$ C \leftarrow a_1A^{\mathsf{T}}B + a_2C
+    ///    @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.  Assumed to be an arithmetic type and,
+    ///    typically, @code T @endocde is an alias for @code double
+    ///    @endcode.
+    ///
+    /// @tparam SP1
+    ///    Storage policy of matrix @f$ A @f$.
+    ///
+    /// @tparam SP2
+    ///    Storage policy of matrix @f$ B @f$.
+    ///
+    /// @tparam SP3
+    ///    Storage policy of matrix @f$ C @f$.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] B
+    ///    Matrix @f$ B @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Matrix @f$ C @f$.
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -970,9 +1228,38 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    GEneral Matrix-Matrix product update of other matrix.
+    ///    Specificlly, @f$ C \leftarrow a_1AB + a_2C @f$.  Overload
+    ///    for C-ordered matrix @f$ B @f$.
+    ///
+    /// @tparam T
+    ///    Matrix element type.  Assumed to be an arithmetic type and,
+    ///    typically, @code T @endocde is an alias for @code double
+    ///    @endcode.
+    ///
+    /// @tparam SP1
+    ///    Storage policy of matrix @f$ A @f$.
+    ///
+    /// @tparam SP2
+    ///    Storage policy of matrix @f$ B @f$.
+    ///
+    /// @tparam SP3
+    ///    Storage policy of matrix @f$ C @f$.
+    ///
+    /// @param [in] a1
+    ///    Scalar coefficient @f$ a_1 @f$.
+    ///
+    /// @param [in] A
+    ///    Matrix @f$ A @f$.
+    ///
+    /// @param [in] B
+    ///    Matrix @f$ B @f$.
+    ///
+    /// @param [in] a2
+    ///    Scalar coefficient @f$ a_2 @f$.
+    ///
+    /// @param C
+    ///    Matrix @f$ C @f$.
     template<typename                 T  ,
              template<typename> class SP1,
              template<typename> class SP2,
@@ -993,9 +1280,31 @@ namespace Dune {
 
 
     /// @brief
-    /// @todo Doc me!
-    /// @tparam
-    /// @param
+    ///    Stream output operator for @code FullMatrix @endcode types.
+    ///
+    /// @tparam charT
+    ///    Output stream character type.
+    ///
+    /// @tparam traits
+    ///    Output stream character traits.
+    ///
+    /// @tparam T
+    ///    Matrix element type.
+    ///
+    /// @tparam SP
+    ///    Matrix storage policy.
+    ///
+    /// @tparam OP
+    ///    Matrix ordering policy.
+    ///
+    /// @param os
+    ///    Output stream.
+    ///
+    /// @param [in] A
+    ///    Matrix.
+    ///
+    /// @return
+    ///    Output stream (for output chaining).
     template<class charT, class traits,
              typename T, template<typename> class SP, class OP>
     std::basic_ostream<charT,traits>&
