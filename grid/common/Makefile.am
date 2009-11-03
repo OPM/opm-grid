@@ -1,22 +1,19 @@
-# $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Date$
+# $Revision$
 
 SUBDIRS = . test
 
 commondir = $(includedir)/dune/grid/common
-common_HEADERS = EclipseGridInspector.hpp EclipseGridParser.hpp GeometryHelpers.hpp Volumes.hpp
+common_HEADERS = EclipseGridInspector.hpp EclipseGridParser.hpp \
+                 GeometryHelpers.hpp GridPartitioning.hpp Volumes.hpp
 
+noinst_LTLIBRARIES = libgrid.la
 
-lib_LTLIBRARIES = libtemporaryhack.la
+libgrid_la_SOURCES = GeometryHelpers.cpp EclipseGridInspector.cpp \
+                     EclipseGridParser.cpp GridPartitioning.cpp
 
-libtemporaryhack_la_SOURCES = GeometryHelpers.hpp GeometryHelpers.cpp \
-                              EclipseGridInspector.hpp EclipseGridInspector.cpp \
-                              EclipseGridParser.hpp EclipseGridParser.cpp \
-                              GridPartitioning.hpp GridPartitioning.cpp
-
-libtemporaryhack_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
-libtemporaryhack_la_LIBADD   = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
-
+libgrid_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
+libgrid_la_LDFLAGS  = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
 
 
 include $(top_srcdir)/am/global-rules
-

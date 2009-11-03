@@ -1,4 +1,5 @@
-# $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Date$
+# $Revision: duneproject 5489 2009-03-25 11:19:24Z sander $
 
 check_PROGRAMS =
 noinst_PROGRAMS = mimetic_ipeval_test \
@@ -9,34 +10,28 @@ noinst_PROGRAMS = mimetic_ipeval_test \
 		  istl_test \
 		  spe10_test
 
-LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
-        $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
+AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+AM_LDFLAGS  += $(DUNE_LDFLAGS) $(BOOST_LDFLAGS)
+LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
         $(BOOST_SYSTEM_LIB)                             \
-        ../../../grid/cpgrid/libcpgrid.la               \
+        ../../../lib/libdunecornerpoint.la              \
         ../../../grid/preprocess/libpreprocess.la       \
-        ../../../grid/common/libtemporaryhack.la        \
-        ../../../common/param/libparam.la -llapack -lblas
+        -llapack -lblas
 
-mimetic_ipeval_test_SOURCES  = mimetic_ipeval_test.cpp
-mimetic_ipeval_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+# Note: Need to fill _SOURCES because default is "<base>.c"
+mimetic_ipeval_test_SOURCES = mimetic_ipeval_test.cpp
 
-mimetic_solver_test_SOURCES  = mimetic_solver_test.cpp
-mimetic_solver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+mimetic_solver_test_SOURCES = mimetic_solver_test.cpp
 
-mimetic_aniso_solver_test_SOURCES  = mimetic_aniso_solver_test.cpp
-mimetic_aniso_solver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+mimetic_aniso_solver_test_SOURCES = mimetic_aniso_solver_test.cpp
 
-mimetic_periodic_test_SOURCES  = mimetic_periodic_test.cpp
-mimetic_periodic_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+mimetic_periodic_test_SOURCES = mimetic_periodic_test.cpp
 
-parsolver_test_SOURCES  = parsolver_test.cpp
-parsolver_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+parsolver_test_SOURCES = parsolver_test.cpp
 
-istl_test_SOURCES  = istl_test.cpp
-istl_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
+istl_test_SOURCES = istl_test.cpp
 
 spe10_test_SOURCES = spe10_test.cpp
-spe10_test_CXXFLAGS = $(DUNE_CPPFLAGS) $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 
 TESTS = $(check_PROGRAMS)
 

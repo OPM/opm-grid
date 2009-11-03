@@ -1,4 +1,5 @@
-# $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Date$
+# $Revision$
 
 SUBDIRS = . param test
 
@@ -7,14 +8,12 @@ common_HEADERS = Average.hpp SparseTable.hpp StopWatch.hpp \
 
 commondir = $(includedir)/dune/common
 
+noinst_LTLIBRARIES = libcommon.la
 
-lib_LTLIBRARIES = libcommon_hack.la
-
-libcommon_hack_la_SOURCES = StopWatch.cpp
-libcommon_hack_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
-libcommon_hack_la_LIBADD   = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
-
+libcommon_la_SOURCES  = StopWatch.cpp
+libcommon_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
+libcommon_la_LDFLAGS  = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+                        $(BOOST_DATE_TIME_LIB)
 
 
 include $(top_srcdir)/am/global-rules
-

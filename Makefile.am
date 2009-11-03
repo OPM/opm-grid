@@ -1,9 +1,10 @@
-# $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Date$
+# $Revision$
 
 # we need the module file to be able to build via dunecontrol
 EXTRA_DIST=dune.module patch-dune.sh changed_from_dune
 
-SUBDIRS = m4 common grid solvers upscaling doc
+SUBDIRS = m4 common grid lib solvers upscaling doc
 
 ACLOCAL_AMFLAGS = -I m4
 
@@ -17,4 +18,3 @@ DISTCHECK_CONFIGURE_FLAGS = --with-dune-common=$(DUNE_COMMON_ROOT) \
 
 include $(top_srcdir)/am/top-rules
 include $(top_srcdir)/am/global-rules
-

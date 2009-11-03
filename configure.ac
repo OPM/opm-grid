@@ -43,18 +43,9 @@ DUNE_AUTOBUILD_FLAGS
 AC_SUBST(AM_CPPFLAGS, '$(DUNE_CPPFLAGS) -I$(top_srcdir)')
 AC_SUBST(AM_LDFLAGS, '$(DUNE_LDFLAGS) $(DUNE_LIBS)')
 
-DUNE_SUMMARY_ALL
-
-echo
-echo Note: Most of the libraries checked for above are only used for the self-test
-echo of Dune.  The library itself will build and the headers will work even if
-echo Albert, MPI, etc. cannot be found.  An exception to this are UG and AmiraMesh 
-echo which need to be found right now if you want to use them later.
-echo
-
 AC_CONFIG_FILES([
-  dune-cornerpoint.pc
   Makefile
+  lib/Makefile
   m4/Makefile
   common/Makefile
   common/param/Makefile
@@ -80,5 +71,8 @@ AC_CONFIG_FILES([
   doc/Makefile
   doc/doxygen/Makefile
   doc/doxygen/Doxyfile
+  dune-cornerpoint.pc
 ])
 AC_OUTPUT
+
+DUNE_SUMMARY_ALL
