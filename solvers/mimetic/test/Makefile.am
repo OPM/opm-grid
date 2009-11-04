@@ -11,7 +11,7 @@ noinst_PROGRAMS = mimetic_ipeval_test \
 		  spe10_test
 
 AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS  += $(DUNE_LDFLAGS) $(BOOST_LDFLAGS)
+AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
         $(BOOST_SYSTEM_LIB)                             \
         ../../../lib/libdunecornerpoint.la              \
