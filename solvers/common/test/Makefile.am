@@ -1,5 +1,5 @@
-# $Date:$
-# $Revision:$
+# $Date$
+# $Revision$
 
 check_PROGRAMS = boundaryconditions_test nonuniformtablelinear_test
 noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test
