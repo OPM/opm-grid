@@ -1,5 +1,5 @@
 # $Date$
-# $Revision: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Revision$
 
 check_PROGRAMS =
 noinst_PROGRAMS = mimetic_ipeval_test \

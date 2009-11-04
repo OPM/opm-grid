@@ -1,3 +1,6 @@
+# $Date$
+# $Revision$
+
 SUBDIRS = test
 
 commondir = $(includedir)/dune/solvers/common

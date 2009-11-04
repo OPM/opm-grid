@@ -1,4 +1,5 @@
-# $Id: duneproject 5489 2009-03-25 11:19:24Z sander $
+# $Date$
+# $Revision$
 
 check_PROGRAMS = sparsetable_test sparsevector_test
 noinst_PROGRAMS = unit_test
