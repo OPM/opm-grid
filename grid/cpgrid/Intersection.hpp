@@ -170,7 +170,7 @@ namespace Dune
 			    break;
 			case TOP:
 			    // Note: TOP at min(K) as 'z' measures *depth*.
-			    //                   BOTTOM : TOP
+			    //                   TOP  : BOTTOM
 			    ret = normal_is_in ? 5    : 6; // min(K) : max(K)
 			    break;
 			}
