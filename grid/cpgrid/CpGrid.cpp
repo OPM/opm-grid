@@ -55,7 +55,8 @@ namespace Dune
 	    std::string filename = param.get<std::string>("filename");
 	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
 	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-	    readEclipseFormat(filename, z_tolerance, periodic_extension);
+	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
+	    readEclipseFormat(filename, z_tolerance, periodic_extension, turn_normals);
 	} else if (fileformat == "cartesian") {
 	    array<int, 3> dims = {{ param.get<int>("nx"),
 				    param.get<int>("ny"),
@@ -111,7 +112,7 @@ namespace Dune
 	g.coord = &coord[0];
 	g.zcorn = &zcorn[0];
 	g.actnum = &actnum[0];
-	processEclipseFormat(g, 0.0);
+	processEclipseFormat(g, 0.0, false, false);
     }
 
 

@@ -126,12 +126,12 @@ void build_grid(const Dune::EclipseGridParser& parser,
 
     if (parser.hasField("ACTNUM")) {
         g.actnum = &parser.getIntegerValue("ACTNUM")[0];
-        grid.processEclipseFormat(g, z_tol);
+        grid.processEclipseFormat(g, z_tol, false, false);
     } else {
         std::vector<int> dflt_actnum(g.dims[0] * g.dims[1] * g.dims[2], 1);
 
         g.actnum = &dflt_actnum[0];
-        grid.processEclipseFormat(g, z_tol);
+        grid.processEclipseFormat(g, z_tol, false, false);
     }
 }
 

@@ -70,7 +70,8 @@ namespace Dune
 		       const std::vector<int>& face_to_output_face,
 		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
-		       std::vector<FieldVector<double, 3> >& allcorners);
+		       std::vector<FieldVector<double, 3> >& allcorners,
+                       bool turn_normals);
     } // anon namespace
 
 
@@ -78,14 +79,14 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension)
+    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
     {
 	// Read eclipse file data.
 #ifdef VERBOSE
 	std::cout << "Parsing " << filename << std::endl;
 #endif
 	EclipseGridParser parser(filename);
-	processEclipseFormat(parser, z_tolerance, periodic_extension);
+	processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
     }
 
 
@@ -93,7 +94,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension)
+    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals)
     {
 	EclipseGridInspector inspector(parser);
 
@@ -127,10 +128,10 @@ namespace Dune
 	    grdecl new_g;	    
 	    addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
 	    // Make the grid.
-	    processEclipseFormat(new_g, z_tolerance, true);
+	    processEclipseFormat(new_g, z_tolerance, true, turn_normals);
 	} else {
 	    // Make the grid.
-	    processEclipseFormat(g, z_tolerance);
+	    processEclipseFormat(g, z_tolerance, false, turn_normals);
 	}
     }
 
@@ -139,7 +140,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary)
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
 	// Process.
 #ifdef VERBOSE
@@ -162,7 +163,7 @@ namespace Dune
 #ifdef VERBOSE
 	std::cout << "Building geometry." << std::endl;
 #endif
-	buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_, face_normals_, allcorners_);
+	buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_, face_normals_, allcorners_, turn_normals);
 
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
@@ -588,7 +589,8 @@ namespace Dune
 		       const std::vector<int>& face_to_output_face,
 		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
-		       std::vector<FieldVector<double, 3> >& allcorners)
+		       std::vector<FieldVector<double, 3> >& allcorners,
+                       bool turn_normals)
 	{
 	    typedef FieldVector<double, 3> point_t;
 	    std::vector<point_t>& points = allcorners;
@@ -668,6 +670,13 @@ namespace Dune
 		    cell_centroid += face_contrib;
 		}
 		cell_centroid /= tot_cell_vol;
+#define HACK_CELL_CENTROIDS
+#ifdef HACK_CELL_CENTROIDS
+                int numf = cf.size();
+                cell_centroid = face_centroids[face_indices[numf - 2]];
+                cell_centroid += face_centroids[face_indices[numf - 1]];
+                cell_centroid *= 0.5;
+#endif
 		cell_centroids.push_back(cell_centroid);
 		cell_volumes.push_back(tot_cell_vol);
 	    }
@@ -713,6 +722,12 @@ namespace Dune
 #endif
 
 	    // The final, combined object (yes, a lot of copying goes on here).
+            if (turn_normals) {
+                int num_normals = face_normals.size();
+                for (int i = 0; i < num_normals; ++i) {
+                    face_normals[i] *= -1.0;
+                }
+            }
 	    cpgrid::DefaultGeometryPolicy<CpGrid> gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());

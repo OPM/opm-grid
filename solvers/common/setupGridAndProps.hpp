@@ -64,7 +64,8 @@ namespace Dune
 	    EclipseGridParser parser(param.get<std::string>("filename"));
 	    double z_tolerance = param.getDefault<double>("z_tolerance", 0.0);
 	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-	    grid.processEclipseFormat(parser, z_tolerance, periodic_extension);
+	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
+	    grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
 	    std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
 	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
 	    res_prop.init(parser, grid.globalCell(), rl_ptr);
