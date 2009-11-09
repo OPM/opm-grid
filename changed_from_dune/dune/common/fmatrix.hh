@@ -1,17 +1,19 @@
-// $Id: fmatrix.hh 5659 2009-10-15 11:50:28Z christi $
+// $Id: fmatrix.hh 5683 2009-11-04 08:47:24Z mnolte $
 #ifndef DUNE_FMATRIX_HH
 #define DUNE_FMATRIX_HH
 
 #include <cmath>
 #include <cstddef>
 #include <iostream>
-#include "exceptions.hh"
-#include "fvector.hh"
-#include "precision.hh"
-#include "static_assert.hh"
-#include "misc.hh"
 
-namespace Dune {
+#include <dune/common/misc.hh>
+#include <dune/common/exceptions.hh>
+#include <dune/common/fvector.hh>
+#include <dune/common/precision.hh>
+#include <dune/common/static_assert.hh>
+
+namespace Dune
+{
    
   template<class K, int ROWS, int COLS> class FieldMatrix;
 
@@ -509,7 +511,7 @@ namespace Dune {
  
     //! Multiplies M from the left to this matrix, this matrix is not modified
     template<int l>
-    FieldMatrix<K,l,cols> leftmultiplyany (const FieldMatrix<K,l,rows>& M)
+    FieldMatrix<K,l,cols> leftmultiplyany (const FieldMatrix<K,l,rows>& M) const
     {
       FieldMatrix<K,l,cols> C;
       
@@ -531,7 +533,7 @@ namespace Dune {
       for (size_type i=0; i<rows; i++)
         for (size_type j=0; j<cols; j++) {
           (*this)[i][j] = 0;
-          for (size_type k=0; k<rows; k++)
+          for (size_type k=0; k<cols; k++)
             (*this)[i][j] += C[i][k]*M[k][j];
         }
       return *this;
@@ -539,7 +541,7 @@ namespace Dune {
 
     //! Multiplies M from the right to this matrix, this matrix is not modified
     template<int l>
-    FieldMatrix<K,rows,l> rightmultiplyany (const FieldMatrix<K,cols,l>& M)
+    FieldMatrix<K,rows,l> rightmultiplyany (const FieldMatrix<K,cols,l>& M) const
     {
       FieldMatrix<K,rows,l> C;
       
@@ -1092,6 +1094,12 @@ namespace Dune {
     void mv (const FieldVector<K,1>& x, FieldVector<K,1>& y) const
     {
       y.p = a[0] * x.p;
+    }
+
+    //! y = A^T x
+    void mtv ( const FieldVector< K, 1 > &x, FieldVector< K, 1 > &y ) const
+    {
+      y.p = a[ 0 ] * x.p;
     }
 
     //! y += A x
