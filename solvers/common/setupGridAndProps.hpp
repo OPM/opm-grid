@@ -39,6 +39,7 @@
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/common/Units.hpp>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/sgrid.hh>
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 
 namespace Dune
@@ -86,6 +87,35 @@ namespace Dune
 	}
 	if (param.getDefault("use_unique_boundary_ids", false)) {
 	    grid.setUniqueBoundaryIds(true);
+	}
+    }
+
+    /// @brief
+    /// @todo Doc me!
+    /// @param
+    template <template <int> class ResProp>
+    inline void setupGridAndProps(const parameter::ParameterGroup& param,
+				  SGrid<3, 3>& grid,
+				  ResProp<3>& res_prop)
+    {
+	// Initialize grid and reservoir properties.
+	// Parts copied from CpGrid::init().
+	std::string fileformat = param.getDefault<std::string>("fileformat", "cartesian");
+	if (fileformat == "cartesian") {
+	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+				    param.getDefault<int>("ny", 1),
+				    param.getDefault<int>("nz", 1) }};
+	    array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+					 param.getDefault<double>("dy", 1.0),
+					 param.getDefault<double>("dz", 1.0) }};
+            grid.~SGrid<3,3>();
+            new (&grid) SGrid<3, 3>(&dims[0], &cellsz[0]);
+	    double default_poro = param.getDefault("default_poro", 0.2);
+	    double default_perm = param.getDefault("default_perm", 100.0*prefix::milli*unit::darcy);
+	    MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
+	    res_prop.init(grid.size(0), default_poro, default_perm);
+	} else {
+	    THROW("SGrid can only handle cartesian grids, unsupported file format string: " << fileformat);
 	}
     }
 
