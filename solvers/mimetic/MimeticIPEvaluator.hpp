@@ -40,6 +40,7 @@
 #include <vector>
 
 #include <boost/bind.hpp>
+#include <boost/array.hpp>
 
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/common/SparseTable.hpp>
