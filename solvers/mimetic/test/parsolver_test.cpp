@@ -68,7 +68,7 @@ void test_flowsolver(const Grid& grid,
     typedef Dune::GridInterfaceEuler<Grid>          GI;
     typedef typename GI::CellIterator               CI;
     typedef typename CI::FaceIterator               FI;
-    typedef Dune::BoundaryConditions<true, false>   FBC;
+    typedef Dune::BasicBoundaryConditions<true, false>   FBC;
     typedef Dune::ParIncompFlowSolverHybrid<GI, RI, FBC, Dune::MimeticIPEvaluator> FlowSolver;
 
     GI g(grid, true);

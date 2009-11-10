@@ -57,7 +57,7 @@ int main(int argc, char** argv)
     typedef Dune::GridInterfaceEuler<CpGrid>                       GI;
     typedef GI  ::CellIterator                                     CI;
     typedef CI  ::FaceIterator                                     FI;
-    typedef Dune::BoundaryConditions<true, false>                  BCs;
+    typedef Dune::BasicBoundaryConditions<true, false>                  BCs;
     typedef Dune::ReservoirPropertyCapillary<3>                    RI;
     typedef Dune::IncompFlowSolverHybrid<GI, RI, BCs,
                                          Dune::MimeticIPEvaluator> FlowSolver;

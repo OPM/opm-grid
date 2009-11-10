@@ -68,9 +68,9 @@ BOOST_AUTO_TEST_CASE(flowboundarycondition)
 
 BOOST_AUTO_TEST_CASE(flowboundaryconditions)
 {
-    BoundaryConditions<true> bc1;
+    BasicBoundaryConditions<true> bc1;
     BOOST_CHECK(bc1.empty());
-    BoundaryConditions<true> bc2(2);
+    BasicBoundaryConditions<true> bc2(2);
     BOOST_CHECK(bc2.flowCond(0).isNeumann());
     BOOST_CHECK(bc2.flowCond(0).outflux() == 0.0);
     BOOST_CHECK(!bc2.flowCond(0).isDirichlet());
@@ -101,9 +101,9 @@ BOOST_AUTO_TEST_CASE(saturationboundarycondition)
 
 BOOST_AUTO_TEST_CASE(saturationboundaryconditions)
 {
-    BoundaryConditions<false, true> bc1;
+    BasicBoundaryConditions<false, true> bc1;
     BOOST_CHECK(bc1.empty());
-    BoundaryConditions<false, true> bc2(2);
+    BasicBoundaryConditions<false, true> bc2(2);
     BOOST_CHECK(bc2.satCond(0).isDirichlet());
     BOOST_CHECK(bc2.satCond(0).saturation() == 1.0);
     BOOST_CHECK(bc2.satCond(1).isDirichlet());

@@ -95,7 +95,7 @@ namespace Dune
 	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2 };
 	typedef GridInterface::CellIterator                CellIter;
 	typedef CellIter::FaceIterator                     FaceIter;
-	typedef BoundaryConditions<true, true>             BCs;
+	typedef BasicBoundaryConditions<true, true>             BCs;
 #if TEST_ANISO_RELPERM
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,

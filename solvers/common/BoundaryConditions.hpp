@@ -334,7 +334,7 @@ namespace Dune
     };
 
     template <bool FC = false, bool SC = false>//, bool PC = false >
-    class BoundaryConditions : public PeriodicConditionHandler,
+    class BasicBoundaryConditions : public PeriodicConditionHandler,
 			       private boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type,
 			       private boost::mpl::if_c<SC, std::vector<SatBC>,  DummyVec<SatBC>  >::type
 	      // private boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type
@@ -372,11 +372,11 @@ namespace Dune
 // 	    return PcapConds::operator[](i);
 // 	}
 
-        BoundaryConditions()
+        BasicBoundaryConditions()
 	{
         }
 
-        BoundaryConditions(int num_different_boundary_ids)
+        BasicBoundaryConditions(int num_different_boundary_ids)
 	    : PeriodicConditionHandler(num_different_boundary_ids),
 	      FlowConds(num_different_boundary_ids),
 	      SatConds(num_different_boundary_ids)
@@ -415,7 +415,7 @@ namespace Dune
     template<typename charT, class traits, bool F, bool S> //, bool P>
     std::basic_ostream<charT,traits>&
     operator<<(std::basic_ostream<charT,traits>& os,
-               const BoundaryConditions<F,S>& bcs)
+               const BasicBoundaryConditions<F,S>& bcs)
     {
         bcs.write(os);
         return os;

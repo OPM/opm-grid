@@ -202,7 +202,7 @@ namespace Dune
     private:
 	typedef CpGrid GridType;
 	typedef GridInterfaceEuler<GridType> GridInterface;
-	typedef BoundaryConditions<false, true> BCs;
+	typedef BasicBoundaryConditions<false, true> BCs;
 	typedef EulerUpstream<GridInterface, ReservoirPropertyCapillary<3>, BCs> TransportSolver;
 	GridType grid_;
 	ReservoirPropertyCapillary<3> res_prop_;

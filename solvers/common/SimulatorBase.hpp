@@ -115,7 +115,7 @@ namespace Dune
 	typedef GridInterfaceEuler<GridType>                   GridInterface;
 	typedef GridInterface::CellIterator                    CellIter;
 	typedef CellIter::FaceIterator                         FaceIter;
-	typedef BoundaryConditions<true, true>                 BCs;
+	typedef BasicBoundaryConditions<true, true>                 BCs;
 	typedef IncompFlowSolverHybrid<GridInterface,
 				       ResProp,
 				       BCs,

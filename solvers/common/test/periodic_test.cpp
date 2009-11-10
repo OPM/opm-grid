@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 				    SBC(SBC::Periodic, 0.0),
 				    SBC(SBC::Dirichlet, 0.0),
 				    SBC(SBC::Dirichlet, 0.0) }};
-    BoundaryConditions<true, true> bcs;
+    BasicBoundaryConditions<true, true> bcs;
     createPeriodic(bcs, gi, fcond, scond);
     std::cout << bcs;
 }

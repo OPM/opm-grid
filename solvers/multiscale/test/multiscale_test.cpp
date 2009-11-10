@@ -64,7 +64,7 @@ void test_flowsolver(const Grid& grid, const RI& r, bool output_is_vtk = true)
     typedef Dune::GridInterfaceEuler<Grid>          GI;
     typedef typename GI::CellIterator               CI;
     typedef typename CI::FaceIterator               FI;
-    typedef Dune::BoundaryConditions<true, false>   FBC;
+    typedef Dune::BasicBoundaryConditions<true, false>   FBC;
     typedef Dune::MultiscaleFlowSolver<GI, RI, FBC> FlowSolver;
 
     GI g(grid);
