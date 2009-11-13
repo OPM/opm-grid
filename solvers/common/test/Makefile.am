@@ -22,7 +22,7 @@ periodic_test_SOURCES = periodic_test.cpp
 gie_test_SOURCES = gie_test.cpp
 
 simulator_test_SOURCES = simulator_test.cpp
-simulator_test_LDADD   = $(LDADD) -llapack -lblas
+simulator_test_LDADD   = $(LDADD) -llapack -lblas # -ltbb
 
 aniso_simulator_test_SOURCES = aniso_simulator_test.cpp
 aniso_simulator_test_LDADD   = $(LDADD) -llapack -lblas

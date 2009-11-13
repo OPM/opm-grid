@@ -44,6 +44,13 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Dune {
 
+    namespace {
+        // Forward declaration for friendship purposes.
+        template <class UpstreamSolver, class PressureSolution>
+        struct UpdateForCell;
+    } // anon namespace
+
+
     /// Class for doing simple transport by explicit Euler upstream method for general grid.
     /// @tparam
     template <class GridInterface, class ReservoirProperties, class BoundaryConditions>
@@ -100,8 +107,12 @@ namespace Dune {
 			    const SparseVector<double>& injection_rates) const;
 
     protected:
+        template <class S, class P>
+        friend class UpdateForCell;
 	typedef typename GridInterface::CellIterator CIt;
 	typedef typename CIt::FaceIterator FIt;
+	typedef typename FIt::Vector Vector;
+        typedef ReservoirProperties RP;
 
 	void initFinal();
 
@@ -145,6 +156,9 @@ namespace Dune {
 	// Boundary id to face iterator mapping. May be mostly or completely empty.
 	// Obviously requires unique-face-per-bid grids.
 	std::vector<FIt> bid_to_face_;
+
+        // Storing some cell iterators, so that we may use tbb for parallelizing.
+        std::vector<CIt> cell_iters_;
 
 	// Storing sat_change_ so that we won't have to reallocate it for every step.
 	mutable std::vector<double> sat_change_;
