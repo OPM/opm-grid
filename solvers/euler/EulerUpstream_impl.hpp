@@ -48,8 +48,10 @@
 #include <dune/common/Units.hpp>
 #include <dune/grid/common/Volumes.hpp>
 #include <dune/solvers/euler/CflCalculator.hpp>
-
+// #define USE_TBB
+#ifdef USE_TBB
 #include <tbb/parallel_for.h>
+#endif
 
 namespace Dune
 {
@@ -726,6 +728,7 @@ namespace Dune
             {
                 ASSERT(iters_.size() >= 2);
             }
+#ifdef USE_TBB
             IndirectRange(IndirectRange& r, tbb::split)
                 : iters_(r.iters_)
             {
@@ -734,6 +737,7 @@ namespace Dune
                 end_ = r.end_;
                 r.end_ = m;
             }
+#endif
             bool empty() const
             {
                 return beg_ == end_;
