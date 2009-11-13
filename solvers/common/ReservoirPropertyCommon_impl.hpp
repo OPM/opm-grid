@@ -39,6 +39,7 @@
 
 #include <fstream>
 #include <boost/static_assert.hpp>
+#include <boost/array.hpp>
 
 
 namespace Dune
