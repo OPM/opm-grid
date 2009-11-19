@@ -48,9 +48,10 @@
 #include <dune/common/Units.hpp>
 #include <dune/grid/common/Volumes.hpp>
 #include <dune/solvers/euler/CflCalculator.hpp>
-// #define USE_TBB
+//#define USE_TBB
 #ifdef USE_TBB
 #include <tbb/parallel_for.h>
+#include <tbb/task_scheduler_init.h>
 #endif
 
 namespace Dune
@@ -248,6 +249,9 @@ namespace Dune
             }
         }
         cell_iters_.push_back(pgrid_->cellend());
+#ifdef USE_TBB
+	std::cout << "Number of threads: " << tbb::task_scheduler_init::default_num_threads() << std::endl;
+#endif
     }
 
 
@@ -800,7 +804,6 @@ namespace Dune
         CellUpdater update_cell(*this, saturation, gravity, pressure_sol);
         UpdateLoopBody<CellUpdater> body(update_cell);
         IndirectRange<CIt> r(cell_iters_);
-        // #define USE_TBB
 #ifdef USE_TBB
         tbb::parallel_for(r, body);
 #else
