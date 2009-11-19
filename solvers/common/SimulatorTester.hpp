@@ -75,7 +75,8 @@ namespace Dune
 		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
-		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, src);
+		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, src,
+                                          Super::residual_tolerance_, Super::linsolver_verbosity_);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
