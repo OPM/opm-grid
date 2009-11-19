@@ -48,10 +48,9 @@
 #include <dune/common/Units.hpp>
 #include <dune/grid/common/Volumes.hpp>
 #include <dune/solvers/euler/CflCalculator.hpp>
-//#define USE_TBB
+
 #ifdef USE_TBB
 #include <tbb/parallel_for.h>
-#include <tbb/task_scheduler_init.h>
 #endif
 
 namespace Dune
@@ -177,6 +176,8 @@ namespace Dune
 	bool finished = false;
 	int repeats = 0;
 	const int max_repeats = 10;
+        time::StopWatch clock;
+        clock.start();
 	while (!finished) {
 	    try {
 #ifdef VERBOSE
@@ -203,6 +204,10 @@ namespace Dune
 		saturation = saturation_initial;
 	    }
 	}
+        clock.stop();
+#ifdef VERBOSE
+        std::cout << "Seconds taken by transport solver: " << clock.secsSinceStart() << std::endl;
+#endif // VERBOSE
     }
 
 
@@ -249,9 +254,6 @@ namespace Dune
             }
         }
         cell_iters_.push_back(pgrid_->cellend());
-#ifdef USE_TBB
-	std::cout << "Number of threads: " << tbb::task_scheduler_init::default_num_threads() << std::endl;
-#endif
     }
 
 
