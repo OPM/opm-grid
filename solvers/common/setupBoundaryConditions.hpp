@@ -124,7 +124,8 @@ namespace Dune
 	    }
 	case Linear:
 	    {
-		THROW("Linear boundary conditions not done yet");
+		// ASSERT(g.uniqueBoundaryIds());
+		createLinear(bcs, g, pdrop, pddir, bdy_sat, twodim_hack);
 		break;
 	    }
 	case Periodic:
