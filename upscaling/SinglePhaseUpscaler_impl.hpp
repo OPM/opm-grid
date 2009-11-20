@@ -69,21 +69,22 @@ namespace Dune
 	// others depending on it.
         int bct = param.get<int>("boundary_condition_type");
 	bctype_ = static_cast<BoundaryConditionType>(bct);
-	twodim_hack_ = param.getDefault("2d_hack", false);
+	twodim_hack_ = param.getDefault("2d_hack", twodim_hack_);
 	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
 	linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
 
 	// Faking some parameters depending on bc type.
 	parameter::ParameterGroup temp_param = param;
-	std::string true_if_periodic = bctype_ == Periodic ? "true" : "false";
-	std::tr1::shared_ptr<parameter::ParameterMapItem> use_unique(new parameter::Parameter(true_if_periodic, "bool"));
-	std::tr1::shared_ptr<parameter::ParameterMapItem> per_ext(new parameter::Parameter(true_if_periodic, "bool"));
-	if (!temp_param.has("use_unique_boundary_ids")) {
-	    temp_param.insert("use_unique_boundary_ids", use_unique);
-	}
-	if (!temp_param.has("periodic_extension")) {
-	    temp_param.insert("periodic_extension", per_ext);
-	}
+        if (bctype_ == Linear || bctype_ == Periodic) {
+            if (!temp_param.has("use_unique_boundary_ids")) {
+                temp_param.insertParameter("use_unique_boundary_ids", "true");
+            }
+        }
+        if (bctype_ == Periodic) {
+            if (!temp_param.has("periodic_extension")) {
+                temp_param.insertParameter("periodic_extension", "true");
+            }
+        }
 
 	setupGridAndProps(temp_param, grid_, res_prop_);
 	ginterf_.init(grid_);
