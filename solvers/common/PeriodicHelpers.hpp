@@ -375,6 +375,88 @@ namespace Dune
 
 
 
+    /// @brief Makes a boundary condition object representing
+    /// linear boundary conditions in any cartesian direction.
+    /// The grid interface needs to export boundary ids that are
+    /// unique for each boundary face for this to be possible.
+    /// @tparam BCs the boundary condition class
+    /// @tparam GridInterface grid interface class
+    template <class BCs, class GridInterface>
+    void createLinear(BCs& fbcs,
+                      const GridInterface& g,
+                      const double pdrop,
+                      const int pddir,
+                      const double bdy_sat,
+                      const bool twodim_hack = false,
+                      const double spatial_tolerance = 1e-6)
+    {
+        // NOTE: Section copied from createPeriodicImpl().
+	// Pick out all boundary faces, simultaneously find the
+	// bounding box of their centroids, and the max id.
+	typedef typename GridInterface::CellIterator CI;
+	typedef typename CI::FaceIterator FI;
+	typedef typename GridInterface::Vector Vector;
+        std::vector<FI> bface_iters;
+	Vector low(1e100);
+	Vector hi(-1e100);
+	int max_bid = 0;
+	for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+	    for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+		if (f->boundaryId()) {
+                    bface_iters.push_back(f);
+		    Vector fcent = f->centroid();
+		    for (int dd = 0; dd < GridInterface::Dimension; ++dd) {
+			low[dd] = std::min(low[dd], fcent[dd]);
+			hi[dd] = std::max(hi[dd], fcent[dd]);
+		    }
+		    max_bid = std::max(max_bid, f->boundaryId());
+		}
+	    }
+	}
+        int num_bdy = bface_iters.size();
+	if (max_bid != num_bdy) {
+	    THROW("createLinear() assumes that every boundary face has a unique boundary id. That seems to be violated.");
+	}
+        fbcs.resize(max_bid + 1);
+
+        // Iterate over boundary faces, setting boundary conditions for their corresponding ids.
+        double cmin = low[pddir];
+        double cmax = hi[pddir];
+        double cdelta = cmax - cmin;
+        
+        for (int i = 0; i < num_bdy; ++i) {
+            Vector fcent = bface_iters[i]->centroid();
+            int canon_pos = -1;
+	    for (int dd = 0; dd < GridInterface::Dimension; ++dd) {
+		double coord = fcent[dd];
+		if (fabs(coord - low[dd]) <= spatial_tolerance) {
+		    canon_pos = 2*dd;
+		    break;
+		} else if (fabs(coord - hi[dd]) <= spatial_tolerance) {
+		    canon_pos = 2*dd + 1;
+		    break;
+		}
+	    }
+	    if (canon_pos == -1) {
+		std::cerr << "Centroid: " << fcent << "\n";
+		std::cerr << "Bounding box min: " << low << "\n";
+		std::cerr << "Bounding box max: " << hi << "\n";
+		THROW("Boundary face centroid not on bounding box. Maybe the grid is not an axis-aligned shoe-box?");
+	    }
+            double relevant_coord = fcent[pddir];
+            double pressure = pdrop*(1.0 - (relevant_coord - cmin)/cdelta);
+            int bid = bface_iters[i]->boundaryId();
+            fbcs.setCanonicalBoundaryId(bid, canon_pos + 1);
+            fbcs.satCond(bid) = SatBC(SatBC::Dirichlet, bdy_sat);
+            fbcs.flowCond(bid) = FlowBC(FlowBC::Dirichlet, pressure);
+            if (twodim_hack && canon_pos >= 4) {
+                // Noflow for Z- and Z+ boundaries in the 3d-grid-that-is-really-2d case.
+                fbcs.flowCond(bid) = FlowBC(FlowBC::Neumann, 0.0);
+            }
+        }
+    }
+
+
 } // namespace Dune
 
 #endif // OPENRS_PERIODICHELPERS_HEADER
