@@ -254,9 +254,16 @@ namespace Dune {
 	    /// \brief Shows which parameters which are used or unused.
 	    void displayUsage(bool used_params = false) const;
 
+            /// \brief Returns the path of the parameter group.
 	    std::string path() const;
+
+            /// Insert a new item into the group.
 	    void insert(const std::string& name,
                         const std::tr1::shared_ptr<ParameterMapItem>& data);
+
+            /// Insert a new parameter item into the group.
+	    void insertParameter(const std::string& name, const std::string& value);
+
 	private:
 	    typedef std::tr1::shared_ptr<ParameterMapItem> data_type;
 	    typedef std::pair<std::string, data_type> pair_type;
@@ -272,7 +279,6 @@ namespace Dune {
 
 	    void parseCommandLineArguments(int argc, char** argv);
 	    void recursiveSetIsOutputEnabled(bool output_is_enabled);
-	    void insertParameter(const std::string& name, const std::string& value);
 	};
     } // namespace parameter
 } // namespace Dune
