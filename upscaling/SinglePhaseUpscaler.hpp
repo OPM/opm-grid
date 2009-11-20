@@ -75,6 +75,8 @@ namespace Dune
 	/// A type for the upscaled permeability.
 	typedef ResProp::MutablePermTensor permtensor_t;
 
+	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2 };
+
 	// ------- Methods -------
 
 	/// Default constructor.
@@ -86,13 +88,17 @@ namespace Dune
 	/// Access the grid.
 	const GridInterface& grid() const;
 
+        /// Set boundary condition type. This may not be used to swicth
+        /// between Periodic and the other types, since the grid is
+        /// modified for Periodic conditions.
+        void setBoundaryConditionType(BoundaryConditionType type);
+
 	/// Does a single-phase upscaling.
 	/// @return an upscaled permeability tensor.
 	permtensor_t upscaleSinglePhase();
 
     protected:
 	// ------- Typedefs and enums -------
-	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2 };
 	typedef GridInterface::CellIterator                CellIter;
 	typedef CellIter::FaceIterator                     FaceIter;
 	typedef BasicBoundaryConditions<true, true>             BCs;

@@ -111,6 +111,20 @@ namespace Dune
 
 
 
+    inline void
+    SinglePhaseUpscaler::setBoundaryConditionType(BoundaryConditionType type)
+    {
+        if ((type == Periodic && bctype_ != Periodic)
+            || (type != Periodic && bctype_ == Periodic)) {
+            THROW("Cannot switch to or from Periodic boundary condition, periodic must be set in init() params.");
+        } else {
+            bctype_ = type;
+        }
+    }
+
+
+
+
     inline SinglePhaseUpscaler::permtensor_t
     SinglePhaseUpscaler::upscaleSinglePhase()
     {
