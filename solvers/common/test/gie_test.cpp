@@ -133,8 +133,12 @@ void check_cpgrid()
     std::cout << '\n' << "CpGrid<" << refinement << ">\n" << std::endl;
 
     Dune::CpGrid grid;
-    Dune::array<int   , 3> dims;    dims   .assign(       1 << refinement );
-    Dune::array<double, 3> cell_sz; cell_sz.assign(1.0 / (1 << refinement));
+
+    Dune::array<int   , 3> dims;
+    std::fill(dims.begin(), dims.end(), 1 << refinement);
+
+    Dune::array<double, 3> cell_sz;
+    std::fill(cell_sz.begin(), cell_sz.end(), 1.0 / (1 << refinement));
 
     grid.createCartesian(dims, cell_sz);
 
