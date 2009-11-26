@@ -61,7 +61,7 @@ namespace Dune {
 		double flux_n = 0.0;
 		typename Grid::CellIterator::FaceIterator f = c->facebegin();
 		for (; f != c->faceend(); ++f) {
-		    const double loc_flux = pressure_sol.outflux(*f);
+		    const double loc_flux = pressure_sol.outflux(f);
 		    if (loc_flux > 0) {
 			flux_p += loc_flux;
 		    } else {
