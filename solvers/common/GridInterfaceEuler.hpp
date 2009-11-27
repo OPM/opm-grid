@@ -53,8 +53,8 @@ namespace Dune
 {
     namespace GIE
     {
-	template <class GridInterface, class EntityPointerType>
-	class Cell;
+        template <class GridInterface, class EntityPointerType>
+        class Cell;
 
         template <class GI>
         class Face {
@@ -82,105 +82,105 @@ namespace Dune
             {
             }
             
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Scalar area() const
-	    {
-		return iter_->geometry().volume();
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Scalar area() const
+            {
+                return iter_->geometry().volume();
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Vector centroid() const
-	    {
-		return iter_->geometry().global(localCentroid());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Vector centroid() const
+            {
+                return iter_->geometry().global(localCentroid());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Vector normal() const
-	    {
-		return iter_->unitOuterNormal(localCentroid());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Vector normal() const
+            {
+                return iter_->unitOuterNormal(localCentroid());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    bool boundary() const
-	    {
-		return iter_->boundary();
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            bool boundary() const
+            {
+                return iter_->boundary();
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    int boundaryId() const
-	    {
-		return iter_->boundaryId();
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            int boundaryId() const
+            {
+                return iter_->boundaryId();
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Cell cell() const
-	    {
-		return Cell(*pgrid_, iter_->inside());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Cell cell() const
+            {
+                return Cell(*pgrid_, iter_->inside());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Index cellIndex() const
-	    {
-		return pgrid_->mapper().map(*iter_->inside());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Index cellIndex() const
+            {
+                return pgrid_->mapper().map(*iter_->inside());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Cell neighbourCell() const
-	    {
-		return Cell(*pgrid_, iter_->outside());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Cell neighbourCell() const
+            {
+                return Cell(*pgrid_, iter_->outside());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Index neighbourCellIndex() const
-	    {
-		if (iter_->boundary()) {
-		    return BoundaryMarkerIndex;
-		} else {
-		    return pgrid_->mapper().map(*iter_->outside());
-		}
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Index neighbourCellIndex() const
+            {
+                if (iter_->boundary()) {
+                    return BoundaryMarkerIndex;
+                } else {
+                    return pgrid_->mapper().map(*iter_->outside());
+                }
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Index index() const
-	    {
-		return pgrid_->faceIndex(cellIndex(), localIndex());
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Index index() const
+            {
+                return pgrid_->faceIndex(cellIndex(), localIndex());
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Index localIndex() const
-	    {
-		return local_index_;
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Index localIndex() const
+            {
+                return local_index_;
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-	    Scalar neighbourCellVolume() const
-	    {
-		return iter_->outside()->geometry().volume();
-	    }
+            /// @brief
+            /// @todo Doc me!
+            /// @return
+            Scalar neighbourCellVolume() const
+            {
+                return iter_->outside()->geometry().volume();
+            }
 
         protected:
             const GI*            pgrid_;
@@ -189,43 +189,43 @@ namespace Dune
 
         private:
             LocalVector localCentroid() const
-	    {
-		typedef Dune::ReferenceElements<Scalar, GI::GridType::dimension-1> RefElems;
-		return RefElems::general(iter_->type()).position(0,0);
-	    }
+            {
+                typedef Dune::ReferenceElements<Scalar, GI::GridType::dimension-1> RefElems;
+                return RefElems::general(iter_->type()).position(0,0);
+            }
         };
 
 
         /// @brief
-	///    Intersection (face) iterator for solver-near grid interface.
-	///
-	/// @tparam GridInterface
-	///    Interface to a Dune grid (e.g., Dune::CpGrid).
-	template <class GridInterface>
-	class FaceIterator :
+        ///    Intersection (face) iterator for solver-near grid interface.
+        ///
+        /// @tparam GridInterface
+        ///    Interface to a Dune grid (e.g., Dune::CpGrid).
+        template <class GridInterface>
+        class FaceIterator :
             public boost::iterator_facade<FaceIterator<GridInterface>,
                                           const Face<GridInterface>,
                                           boost::forward_traversal_tag>,
             public Face<GridInterface>
-	{
+        {
         private:
             typedef Face<GridInterface> FaceType;
 
         public:
-	    /// @brief
+            /// @brief
             ///    Type of low-level intersection iterator.  Copied
             ///    from the Dune grid.
-	    typedef typename Face<GridInterface>::DuneIntersectionIter DuneIntersectionIter;
+            typedef typename Face<GridInterface>::DuneIntersectionIter DuneIntersectionIter;
 
             /// @brief Default constructor.
-	    FaceIterator()
-		: FaceType()
-	    {
-	    }
+            FaceIterator()
+                : FaceType()
+            {
+            }
 
             /// @brief Constructor.
-	    ///
-	    /// @param [in] grid
+            ///
+            /// @param [in] grid
             ///    An interface to a Dune grid.
             ///
             /// @param [in] it
@@ -234,134 +234,134 @@ namespace Dune
             /// @param [in] local_index
             ///    Local index (number) of this intersection within
             ///    the encompassing entity (cell).
-	    FaceIterator(const GridInterface&        grid,
+            FaceIterator(const GridInterface&        grid,
                          const DuneIntersectionIter& it,
                          const int                   local_index)
-		: FaceType(grid, it, local_index)
-	    {
-	    }
-
-	    /// Used by iterator facade.
-	    const FaceIterator& dereference() const
-	    {
-		return *this;
-	    }
+                : FaceType(grid, it, local_index)
+            {
+            }
 
             /// Used by iterator facade.
-	    bool equal(const FaceIterator& other) const
-	    {
-		// Note that we do not compare the local_index_ members,
-		// since they may or may not be equal for end iterators.
-		return FaceType::iter_ == other.FaceType::iter_;
-	    }
+            const FaceIterator& dereference() const
+            {
+                return *this;
+            }
 
             /// Used by iterator facade.
-	    void increment()
-	    {
-		++FaceType::iter_;
-		++FaceType::local_index_;
-	    }
+            bool equal(const FaceIterator& other) const
+            {
+                // Note that we do not compare the local_index_ members,
+                // since they may or may not be equal for end iterators.
+                return FaceType::iter_ == other.FaceType::iter_;
+            }
+
+            /// Used by iterator facade.
+            void increment()
+            {
+                ++FaceType::iter_;
+                ++FaceType::local_index_;
+            }
 
             /// Gives an ordering of intersectionIterators.
-	    bool operator<(const FaceIterator& other) const
-	    {
-		if (FaceType::cellIndex() == other.FaceType::cellIndex()) {
-		    return FaceType::localIndex() < other.FaceType::localIndex();
-		} else {
-		    return FaceType::cellIndex() < other.FaceType::cellIndex();
-		}
-	    }
-	};
+            bool operator<(const FaceIterator& other) const
+            {
+                if (FaceType::cellIndex() == other.FaceType::cellIndex()) {
+                    return FaceType::localIndex() < other.FaceType::localIndex();
+                } else {
+                    return FaceType::cellIndex() < other.FaceType::cellIndex();
+                }
+            }
+        };
 
 
-	template <class GridInterface, class EntityPointerType>
-	class Cell
-	{
-	public:
-	    Cell()
-		: pgrid_(0), iter_()
-	    {
-	    }
-	    Cell(const GridInterface& grid,
-		 const EntityPointerType& it)
-		: pgrid_(&grid), iter_(it)
-	    {
-	    }
-	    typedef          GIE::FaceIterator<GridInterface> FaceIterator;
-	    typedef typename FaceIterator::Vector             Vector;
-	    typedef typename FaceIterator::Scalar             Scalar;
-	    typedef typename FaceIterator::Index              Index;
+        template <class GridInterface, class EntityPointerType>
+        class Cell
+        {
+        public:
+            Cell()
+                : pgrid_(0), iter_()
+            {
+            }
+            Cell(const GridInterface& grid,
+                 const EntityPointerType& it)
+                : pgrid_(&grid), iter_(it)
+            {
+            }
+            typedef          GIE::FaceIterator<GridInterface> FaceIterator;
+            typedef typename FaceIterator::Vector             Vector;
+            typedef typename FaceIterator::Scalar             Scalar;
+            typedef typename FaceIterator::Index              Index;
 
-	    FaceIterator facebegin() const
-	    {
-		return FaceIterator(*pgrid_, iter_->ileafbegin(), 0);
-	    }
+            FaceIterator facebegin() const
+            {
+                return FaceIterator(*pgrid_, iter_->ileafbegin(), 0);
+            }
 
-	    FaceIterator faceend() const
-	    {
-		return FaceIterator(*pgrid_, iter_->ileafend(),
+            FaceIterator faceend() const
+            {
+                return FaceIterator(*pgrid_, iter_->ileafend(),
                                     FaceIterator::LocalEndIndex);
-	    }
+            }
 
-	    Scalar volume() const
-	    {
-		return iter_->geometry().volume();
-	    }
+            Scalar volume() const
+            {
+                return iter_->geometry().volume();
+            }
 
-	    Vector centroid() const
-	    {
-		typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension> RefElems;
-		Vector localpt
-		    = RefElems::general(iter_->type()).position(0,0);
-		return iter_->geometry().global(localpt);
-	    }
+            Vector centroid() const
+            {
+                typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension> RefElems;
+                Vector localpt
+                    = RefElems::general(iter_->type()).position(0,0);
+                return iter_->geometry().global(localpt);
+            }
 
-	    Index index() const
-	    {
+            Index index() const
+            {
                 return pgrid_->mapper().map(*iter_);
-	    }
-	protected:
-	    const GridInterface* pgrid_;
-	    EntityPointerType iter_;
-	};
+            }
+        protected:
+            const GridInterface* pgrid_;
+            EntityPointerType iter_;
+        };
 
 
-	template <class GridInterface>
-	class CellIterator
-	    : public boost::iterator_facade<CellIterator<GridInterface>,
+        template <class GridInterface>
+        class CellIterator
+            : public boost::iterator_facade<CellIterator<GridInterface>,
                                             const Cell<GridInterface,
                                                        typename GridInterface::GridType::template Codim<0>::LeafIterator>,
-					    boost::forward_traversal_tag>,
-	      public Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::LeafIterator>
-	{
-	private:
-	    typedef typename GridInterface::GridType::template Codim<0>::LeafIterator DuneCellIter;
-	    typedef Cell<GridInterface, DuneCellIter> CellType;
-	public:
-	    typedef typename CellType::Vector Vector;
-	    typedef typename CellType::Scalar Scalar;
-	    typedef typename CellType::Index Index;
+                                            boost::forward_traversal_tag>,
+              public Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::LeafIterator>
+        {
+        private:
+            typedef typename GridInterface::GridType::template Codim<0>::LeafIterator DuneCellIter;
+            typedef Cell<GridInterface, DuneCellIter> CellType;
+        public:
+            typedef typename CellType::Vector Vector;
+            typedef typename CellType::Scalar Scalar;
+            typedef typename CellType::Index Index;
 
-	    CellIterator(const GridInterface& grid, DuneCellIter it)
-		: CellType(grid, it)
-	    {
-	    }
-	    /// Used by iterator facade.
-	    const CellIterator& dereference() const
-	    {
-		return *this;
-	    }
-	    /// Used by iterator facade.
-	    bool equal(const CellIterator& other) const
-	    {
-		return CellType::iter_ == other.CellType::iter_;
-	    }
-	    /// Used by iterator facade.
-	    void increment()
-	    {
-		++CellType::iter_;
-	    }
-	};
+            CellIterator(const GridInterface& grid, DuneCellIter it)
+                : CellType(grid, it)
+            {
+            }
+            /// Used by iterator facade.
+            const CellIterator& dereference() const
+            {
+                return *this;
+            }
+            /// Used by iterator facade.
+            bool equal(const CellIterator& other) const
+            {
+                return CellType::iter_ == other.CellType::iter_;
+            }
+            /// Used by iterator facade.
+            void increment()
+            {
+                ++CellType::iter_;
+            }
+        };
 
         template<int dim>
         struct AllCellsLayout {
@@ -375,105 +375,105 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
-	typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIterator;
-	typedef          DuneGrid                           GridType;
-	typedef          GridInterfaceEuler<DuneGrid>       InterfaceType;
-	typedef          GIE::CellIterator<InterfaceType>   CellIterator;
-	typedef typename CellIterator::Vector               Vector;
-	typedef typename CellIterator::Scalar               Scalar;
-	typedef typename CellIterator::Index                Index;
+        typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIterator;
+        typedef          DuneGrid                           GridType;
+        typedef          GridInterfaceEuler<DuneGrid>       InterfaceType;
+        typedef          GIE::CellIterator<InterfaceType>   CellIterator;
+        typedef typename CellIterator::Vector               Vector;
+        typedef typename CellIterator::Scalar               Scalar;
+        typedef typename CellIterator::Index                Index;
 
         typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllCellsLayout> Mapper;
 
         enum { Dimension = DuneGrid::dimension };
 
-	GridInterfaceEuler()
-	    : pgrid_(0), num_faces_(0), max_faces_per_cell_(0)
-	{
-	}
-	explicit GridInterfaceEuler(const DuneGrid& grid, bool build_facemap = true)
-	    : pgrid_(&grid), pmapper_(new Mapper(grid)), num_faces_(0), max_faces_per_cell_(0)
-	{
-	    if (build_facemap) {
-		buildFaceIndices();
-	    }
-	}
-	void init(const DuneGrid& grid, bool build_facemap = true)
-	{
-	    pgrid_ = &grid;
+        GridInterfaceEuler()
+            : pgrid_(0), num_faces_(0), max_faces_per_cell_(0)
+        {
+        }
+        explicit GridInterfaceEuler(const DuneGrid& grid, bool build_facemap = true)
+            : pgrid_(&grid), pmapper_(new Mapper(grid)), num_faces_(0), max_faces_per_cell_(0)
+        {
+            if (build_facemap) {
+                buildFaceIndices();
+            }
+        }
+        void init(const DuneGrid& grid, bool build_facemap = true)
+        {
+            pgrid_ = &grid;
             pmapper_.reset(new Mapper(grid));
-	    if (build_facemap) {
-		buildFaceIndices();
-	    }
-	}
-	CellIterator cellbegin() const
-	{
-	    return CellIterator(*this, grid().template leafbegin<0>());
-	}
-	CellIterator cellend() const
-	{
-	    return CellIterator(*this, grid().template leafend<0>());
-	}
+            if (build_facemap) {
+                buildFaceIndices();
+            }
+        }
+        CellIterator cellbegin() const
+        {
+            return CellIterator(*this, grid().template leafbegin<0>());
+        }
+        CellIterator cellend() const
+        {
+            return CellIterator(*this, grid().template leafend<0>());
+        }
         int numberOfCells() const
         {
             return grid().size(0);
         }
         int numberOfFaces() const
         {
-	    ASSERT(num_faces_ != 0);
+            ASSERT(num_faces_ != 0);
             return num_faces_;
         }
-	int maxFacesPerCell() const
-	{
-	    ASSERT(max_faces_per_cell_ != 0);
-	    return max_faces_per_cell_;
-	}
-	const DuneGrid& grid() const
-	{
-	    ASSERT(pgrid_);
-	    return *pgrid_;
-	}
+        int maxFacesPerCell() const
+        {
+            ASSERT(max_faces_per_cell_ != 0);
+            return max_faces_per_cell_;
+        }
+        const DuneGrid& grid() const
+        {
+            ASSERT(pgrid_);
+            return *pgrid_;
+        }
 
-	// The following are primarily helpers for the implementation,
-	// perhaps they should be private?
-	const Mapper& mapper() const
-	{
-	    ASSERT (pmapper_);
-	    return *pmapper_;
-	}
-	Index faceIndex(int cell_index, int local_face_index) const
-	{
-	    ASSERT(num_faces_ != 0);
-	    return face_indices_[cell_index][local_face_index];
-	}
-	typedef SparseTable<int>::row_type Indices;
-	Indices faceIndices(int cell_index) const
-	{
-	    ASSERT(num_faces_ != 0);
-	    return face_indices_[cell_index];
-	}
+        // The following are primarily helpers for the implementation,
+        // perhaps they should be private?
+        const Mapper& mapper() const
+        {
+            ASSERT (pmapper_);
+            return *pmapper_;
+        }
+        Index faceIndex(int cell_index, int local_face_index) const
+        {
+            ASSERT(num_faces_ != 0);
+            return face_indices_[cell_index][local_face_index];
+        }
+        typedef SparseTable<int>::row_type Indices;
+        Indices faceIndices(int cell_index) const
+        {
+            ASSERT(num_faces_ != 0);
+            return face_indices_[cell_index];
+        }
     private:
-	const DuneGrid* pgrid_;
+        const DuneGrid* pgrid_;
         boost::scoped_ptr<Mapper> pmapper_;
-	int num_faces_;
-	int max_faces_per_cell_;
-	SparseTable<int> face_indices_;
+        int num_faces_;
+        int max_faces_per_cell_;
+        SparseTable<int> face_indices_;
 
-	void buildFaceIndices()
-	{
+        void buildFaceIndices()
+        {
 #ifdef VERBOSE
-	    std::cout << "Building unique face indices... " << std::flush;
-	    time::StopWatch clock;
-	    clock.start();
+            std::cout << "Building unique face indices... " << std::flush;
+            time::StopWatch clock;
+            clock.start();
 #endif
             typedef CellIterator CI;
             typedef typename CI::FaceIterator FI;
 
-	    // We build the actual cell to face mapping in two passes.
-	    // [code mostly lifted from IncompFlowSolverHybrid::enumerateGridDof(),
-	    //  but with a twist: This code builds a mapping from cells in index
-	    //  order to unique face numbers, while the mapping built in the
-	    //  enumerateGridDof() method was ordered by cell iterator order]
+            // We build the actual cell to face mapping in two passes.
+            // [code mostly lifted from IncompFlowSolverHybrid::enumerateGridDof(),
+            //  but with a twist: This code builds a mapping from cells in index
+            //  order to unique face numbers, while the mapping built in the
+            //  enumerateGridDof() method was ordered by cell iterator order]
 
             // Allocate and reserve structures.
             const int nc = numberOfCells();
@@ -504,7 +504,7 @@ namespace Dune
                     }
                     ++ncf;
                 }
-		num_faces[c0] = ncf;
+                num_faces[c0] = ncf;
                 fpos.push_back(int(faces.size()));
                 max_ncf  = std::max(max_ncf, ncf);
                 tot_ncf  += ncf;
@@ -512,16 +512,16 @@ namespace Dune
             }
             ASSERT(cellno == nc);
 
-	    // Build cumulative face sizes enabling direct insertion of
-	    // face indices into cfdata later.
-	    std::vector<int> cumul_num_faces(numberOfCells() + 1);
-	    cumul_num_faces[0] = 0;
-	    std::partial_sum(num_faces.begin(), num_faces.end(), cumul_num_faces.begin() + 1);
+            // Build cumulative face sizes enabling direct insertion of
+            // face indices into cfdata later.
+            std::vector<int> cumul_num_faces(numberOfCells() + 1);
+            cumul_num_faces[0] = 0;
+            std::partial_sum(num_faces.begin(), num_faces.end(), cumul_num_faces.begin() + 1);
 
             // Avoid (most) allocation(s) inside 'c' loop.
             std::vector<int>    l2g;
-	    l2g.reserve(max_ncf);
-	    std::vector<double> cfdata(tot_ncf);
+            l2g.reserve(max_ncf);
+            std::vector<double> cfdata(tot_ncf);
             int total_num_faces = int(faces.size());
 
             // Second pass: build cell-to-face mapping, including boundary.
@@ -559,20 +559,20 @@ namespace Dune
                         l2g[f->localIndex()] = p - faces.begin();
                     }
                 }
-		ASSERT(int(l2g.size()) == num_faces[c0]);
-		std::copy(l2g.begin(), l2g.end(), cfdata.begin() + cumul_num_faces[c0]);
+                ASSERT(int(l2g.size()) == num_faces[c0]);
+                std::copy(l2g.begin(), l2g.end(), cfdata.begin() + cumul_num_faces[c0]);
             }
-	    num_faces_ = total_num_faces;
-	    max_faces_per_cell_ = max_ncf;
+            num_faces_ = total_num_faces;
+            max_faces_per_cell_ = max_ncf;
             face_indices_.assign(cfdata.begin(), cfdata.end(),
-				 num_faces.begin(), num_faces.end());
+                                 num_faces.begin(), num_faces.end());
 
 #ifdef VERBOSE
-	    clock.stop();
-	    double elapsed = clock.secsSinceStart();
-	    std::cout << "done.     Time elapsed: " << elapsed << std::endl;
+            clock.stop();
+            double elapsed = clock.secsSinceStart();
+            std::cout << "done.     Time elapsed: " << elapsed << std::endl;
 #endif
-	}
+        }
 
     };
 
