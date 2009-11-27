@@ -51,54 +51,37 @@
 
 namespace Dune
 {
-
-
     namespace GIE
     {
 	template <class GridInterface, class EntityPointerType>
 	class Cell;
 
-	/// @brief
-	/// @todo Doc me!
-	/// @tparam
-	/// @param
-	template <class GridInterface>
-	class Intersection : public boost::iterator_facade<Intersection<GridInterface>,
-							   const Intersection<GridInterface>,
-							   boost::forward_traversal_tag>
-	{
-	public:
+        template <class GI>
+        class Face {
+        public:
+            typedef typename GI::DuneIntersectionIterator                   DuneIntersectionIter;
+            typedef typename GI::GridType::template Codim<0>::EntityPointer CellPtr;
+            typedef typename GI::GridType::ctype                            Scalar;
+            typedef          FieldVector<Scalar, GI::GridType::dimension>   Vector;
+            typedef          FieldVector<Scalar, GI::GridType::dimension-1> LocalVector;
+            typedef          int                                            Index;
+            typedef          GIE::Cell<GI, CellPtr>                         Cell;
 
-	    /// @brief
-	    /// @todo Doc me!
-	    typedef typename GridInterface::DuneIntersectionIterator DuneIntersectionIter;
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    Intersection()
-		: pgrid_(0), iter_(), local_index_(-1)
-	    {
-	    }
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    Intersection(const GridInterface& grid,
-                         const DuneIntersectionIter& it,
-			 const int local_index)
-		: pgrid_(&grid), iter_(it), local_index_(local_index)
-	    {
-	    }
-	    /// @brief
-	    /// @todo Doc me!
-	    typedef typename GridInterface::GridType::ctype Scalar;
-	    typedef FieldVector<Scalar, GridInterface::GridType::dimension> Vector;
-	    typedef FieldVector<Scalar, GridInterface::GridType::dimension - 1> LocalVector;
-	    typedef int Index;
-	    typedef GIE::Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::EntityPointer> Cell;
-	    /// @brief
-	    /// @todo Doc me!
-	    enum { BoundaryMarkerIndex = -999, LocalEndIndex = INT_MAX };
+            enum { BoundaryMarkerIndex = -999,
+                   LocalEndIndex       = INT_MAX };
 
+            Face()
+                : pgrid_(0), iter_(), local_index_(-1)
+            {
+            }
+
+            Face(const GI&                   grid,
+                 const DuneIntersectionIter& it,
+                 const Index                 loc_ind)
+                : pgrid_(&grid), iter_(it), local_index_(loc_ind)
+            {
+            }
+            
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @return
@@ -199,44 +182,95 @@ namespace Dune
 		return iter_->outside()->geometry().volume();
 	    }
 
+        protected:
+            const GI*            pgrid_;
+            DuneIntersectionIter iter_;
+            Index                local_index_;
+
+        private:
+            LocalVector localCentroid() const
+	    {
+		typedef Dune::ReferenceElements<Scalar, GI::GridType::dimension-1> RefElems;
+		return RefElems::general(iter_->type()).position(0,0);
+	    }
+        };
+
+
+        /// @brief
+	///    Intersection (face) iterator for solver-near grid interface.
+	///
+	/// @tparam GridInterface
+	///    Interface to a Dune grid (e.g., Dune::CpGrid).
+	template <class GridInterface>
+	class FaceIterator :
+            public boost::iterator_facade<FaceIterator<GridInterface>,
+                                          const Face<GridInterface>,
+                                          boost::forward_traversal_tag>,
+            public Face<GridInterface>
+	{
+        private:
+            typedef Face<GridInterface> FaceType;
+
+        public:
+	    /// @brief
+            ///    Type of low-level intersection iterator.  Copied
+            ///    from the Dune grid.
+	    typedef typename Face<GridInterface>::DuneIntersectionIter DuneIntersectionIter;
+
+            /// @brief Default constructor.
+	    FaceIterator()
+		: FaceType()
+	    {
+	    }
+
+            /// @brief Constructor.
+	    ///
+	    /// @param [in] grid
+            ///    An interface to a Dune grid.
+            ///
+            /// @param [in] it
+            ///    A dune intersection iterator.
+            ///
+            /// @param [in] local_index
+            ///    Local index (number) of this intersection within
+            ///    the encompassing entity (cell).
+	    FaceIterator(const GridInterface&        grid,
+                         const DuneIntersectionIter& it,
+                         const int                   local_index)
+		: FaceType(grid, it, local_index)
+	    {
+	    }
+
 	    /// Used by iterator facade.
-	    const Intersection& dereference() const
+	    const FaceIterator& dereference() const
 	    {
 		return *this;
 	    }
-	    /// Used by iterator facade.
-	    bool equal(const Intersection& other) const
+
+            /// Used by iterator facade.
+	    bool equal(const FaceIterator& other) const
 	    {
 		// Note that we do not compare the local_index_ members,
 		// since they may or may not be equal for end iterators.
-		return iter_ == other.iter_;
+		return FaceType::iter_ == other.FaceType::iter_;
 	    }
-	    /// Used by iterator facade.
+
+            /// Used by iterator facade.
 	    void increment()
 	    {
-		++iter_;
-		++local_index_;
+		++FaceType::iter_;
+		++FaceType::local_index_;
 	    }
-	    /// Gives an ordering of intersections.
-	    bool operator<(const Intersection& other) const
+
+            /// Gives an ordering of intersectionIterators.
+	    bool operator<(const FaceIterator& other) const
 	    {
-		if (cellIndex() == other.cellIndex()) {
-		    return localIndex() < other.localIndex();
+		if (FaceType::cellIndex() == other.FaceType::cellIndex()) {
+		    return FaceType::localIndex() < other.FaceType::localIndex();
 		} else {
-		    return cellIndex() < other.cellIndex();
+		    return FaceType::cellIndex() < other.FaceType::cellIndex();
 		}
 	    }
-	private:
-	    const GridInterface* pgrid_;
-	    DuneIntersectionIter iter_;
-	    int local_index_;
-
-	    LocalVector localCentroid() const
-	    {
-		typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension-1> RefElems;
-		return RefElems::general(iter_->type()).position(0,0);
-	    }
-
 	};
 
 
@@ -253,10 +287,10 @@ namespace Dune
 		: pgrid_(&grid), iter_(it)
 	    {
 	    }
-	    typedef GIE::Intersection<GridInterface> FaceIterator;
-	    typedef typename FaceIterator::Vector Vector;
-	    typedef typename FaceIterator::Scalar Scalar;
-	    typedef typename FaceIterator::Index Index;
+	    typedef          GIE::FaceIterator<GridInterface> FaceIterator;
+	    typedef typename FaceIterator::Vector             Vector;
+	    typedef typename FaceIterator::Scalar             Scalar;
+	    typedef typename FaceIterator::Index              Index;
 
 	    FaceIterator facebegin() const
 	    {
@@ -295,7 +329,8 @@ namespace Dune
 	template <class GridInterface>
 	class CellIterator
 	    : public boost::iterator_facade<CellIterator<GridInterface>,
-					    const CellIterator<GridInterface>,
+                                            const Cell<GridInterface,
+                                                       typename GridInterface::GridType::template Codim<0>::LeafIterator>,
 					    boost::forward_traversal_tag>,
 	      public Cell<GridInterface, typename GridInterface::GridType::template Codim<0>::LeafIterator>
 	{
@@ -340,15 +375,17 @@ namespace Dune
     class GridInterfaceEuler
     {
     public:
-        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllCellsLayout> Mapper;
 	typedef typename DuneGrid::LeafIntersectionIterator DuneIntersectionIterator;
-	typedef DuneGrid GridType;
-	typedef GridInterfaceEuler<DuneGrid> InterfaceType;
-	typedef GIE::CellIterator<InterfaceType> CellIterator;
-	typedef typename CellIterator::Vector Vector;
-	typedef typename CellIterator::Scalar Scalar;
-	typedef typename CellIterator::Index Index;
-	enum { Dimension = DuneGrid::dimension };
+	typedef          DuneGrid                           GridType;
+	typedef          GridInterfaceEuler<DuneGrid>       InterfaceType;
+	typedef          GIE::CellIterator<InterfaceType>   CellIterator;
+	typedef typename CellIterator::Vector               Vector;
+	typedef typename CellIterator::Scalar               Scalar;
+	typedef typename CellIterator::Index                Index;
+
+        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllCellsLayout> Mapper;
+
+        enum { Dimension = DuneGrid::dimension };
 
 	GridInterfaceEuler()
 	    : pgrid_(0), num_faces_(0), max_faces_per_cell_(0)
