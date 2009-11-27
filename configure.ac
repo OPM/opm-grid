@@ -5,14 +5,6 @@ AC_PREREQ([2.50])
 DUNE_AC_INIT # gets module version from dune.module file
 AM_INIT_AUTOMAKE([foreign])
 
-#LT_INIT
-#LT_LANG([C++])
-#LT_OUTPUT
-
-#AC_PROG_SED
-PKG_PROG_PKG_CONFIG([0.21])
-PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.0])
-
 AC_CONFIG_MACRO_DIR([m4])
 AC_CONFIG_SRCDIR([grid/CpGrid.hpp])
 AM_CONFIG_HEADER([config.h])
@@ -20,28 +12,15 @@ AM_CONFIG_HEADER([config.h])
 # Make dune -> . symlink
 DUNE_SYMLINK
 
-# we need no more than the standard DE-stuff
-# this module depends on dune-common dune-grid
-# this implies checking for [dune-common], [dune-grid]
+# Check all dune-module stuff
 DUNE_CHECK_ALL
-
-# Boost support.
-# NOTE: AX_BOOST_* macros for compiled Boost libraries such as
-#       Boost.Filesystem *MUST* be called before LIBS="$DUNE_LIBS"
-#       below.  This is due to the macros' explicit use of the $LIBS
-#       variable.
-AX_BOOST_BASE([[1.37]])
-AX_BOOST_DATE_TIME
-AX_BOOST_FILESYSTEM
-AX_BOOST_SYSTEM
-AX_BOOST_UNIT_TEST_FRAMEWORK
 
 # Set up flags for automated build system
 DUNE_AUTOBUILD_FLAGS
 
 # implicitly set the Dune-flags everywhere
-AC_SUBST(AM_CPPFLAGS, '$(DUNE_CPPFLAGS) -I$(top_srcdir)')
-AC_SUBST(AM_LDFLAGS, '$(DUNE_LDFLAGS) $(DUNE_LIBS)')
+AC_SUBST([AM_CPPFLAGS], '$(DUNE_CPPFLAGS) -I$(top_srcdir)')
+AC_SUBST([AM_LDFLAGS], '$(DUNE_LDFLAGS) $(DUNE_LIBS)')
 
 AC_CONFIG_FILES([
   Makefile

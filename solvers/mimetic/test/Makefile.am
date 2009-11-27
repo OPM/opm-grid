@@ -16,7 +16,7 @@ LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
         $(BOOST_SYSTEM_LIB)                             \
         ../../../lib/libdunecornerpoint.la              \
         ../../../grid/preprocess/libpreprocess.la       \
-        -llapack -lblas
+        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) 
 
 # Note: Need to fill _SOURCES because default is "<base>.c"
 mimetic_ipeval_test_SOURCES = mimetic_ipeval_test.cpp

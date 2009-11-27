@@ -10,7 +10,7 @@ LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
         $(BOOST_FILESYSTEM_LIB) $(BOOST_SYSTEM_LIB)   \
         ../../../lib/libdunecornerpoint.la            \
         ../../../grid/preprocess/libpreprocess.la     \
-        -llapack -lblas
+        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) 
 
 euler_upstream_test_SOURCES = euler_upstream_test.cpp
 

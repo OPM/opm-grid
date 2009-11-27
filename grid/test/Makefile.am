@@ -21,11 +21,13 @@ mapper_test_SOURCES = mapper_test.cpp
 #                            transportproblem2.hh unitcube.hh vtkout.hh
 
 #make_vtk_test_SOURCES = make_vtk_test.cpp
+#make_vtk_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 #make_vtk_test_LDADD = $(LDADD) -llapack -lblas
 
 
 partition_test_SOURCES = partition_test.cpp
-partition_test_LDADD = $(LDADD) -llapack -lblas
+partition_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+#partition_test_LDADD = $(LDADD) -llapack -lblas
 
 
 TESTS = $(check_PROGRAMS)
