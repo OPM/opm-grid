@@ -76,7 +76,7 @@ namespace Dune
     inline T determinantOf(const Point<T, 2>* a) 
     {
 	return a[0][0] * a[1][1] - a[1][0] * a[0][1];
-    };
+    }
 
 
     /// Calculates the determinant of a 3 x 3 matrix, represented in memory as an
@@ -89,7 +89,7 @@ namespace Dune
 	    a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2]) -
 	    a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2]) +
 	    a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
-    };
+    }
 
 
     /// Computes the volume of a simplex consisting of (Dim+1) vertices embedded
