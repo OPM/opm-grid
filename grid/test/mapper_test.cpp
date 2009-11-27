@@ -14,6 +14,8 @@
  *   This program is distributed WITHOUT ANY WARRANTY.                       *
  *****************************************************************************/
 #include "config.h"
+
+#include <algorithm>
 #include <iostream>
 #include <iomanip>
 #include <dune/grid/common/mcmgmapper.hh>
@@ -37,8 +39,10 @@ int main(int /*argc*/, char** /*argv*/)
 
         int refinement = 1;
         Grid grid;
-        Dune::array<int   , 3> dims;    dims   .assign(       1 << refinement );
-        Dune::array<double, 3> cell_sz; cell_sz.assign(1.0 / (1 << refinement));
+        Dune::array<int   , 3> dims;
+        std::fill(dims.begin(), dims.end(), 1 << refinement);
+        Dune::array<double, 3> cell_sz;
+        std::fill(cell_sz.begin(), cell_sz.end(), 1.0 / (1 << refinement));
         grid.createCartesian(dims, cell_sz);
         
         typedef Grid::LeafGridView GridView;
