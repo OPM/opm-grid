@@ -36,27 +36,30 @@
 #ifndef OPENRS_FORTRAN_HEADER
 #define OPENRS_FORTRAN_HEADER
 
-// Fortran name mangling
-#ifdef F77_MANGLE
-#undef F77_MANGLE
-#endif
-#define F77_MANGLE(NAME)   NAME ## _
+// This file relies on autoconf correctly detecting the Fortran name
+// mangling scheme and subsequently defining the macros 'F77_FUNC' and
+// 'F77_FUNC_'.
+
+#include <config.h>
 
 #ifdef F77_NAME
 #undef F77_NAME
 #endif
-#define F77_NAME(lcase,UCASE) F77_MANGLE(lcase)
+#define F77_NAME(lcase,UCASE) F77_FUNC(lcase,UCASE)
+
+#ifdef F77_NAME_
+#undef F77_NAME_
+#endif
+#define F77_NAME_(lcase,UCASE) F77_FUNC_(lcase,UCASE)
 
 #ifdef F77_CHARACTER_TYPE
 #undef F77_CHARACTER_TYPE
 #endif
-//#define F77_CHARACTER_TYPE const char*, int
 #define F77_CHARACTER_TYPE const char*
 
 #ifdef F77_CHARACTER
 #undef F77_CHARACTER
 #endif
-//#define F77_CHARACTER(c) &c, 1
 #define F77_CHARACTER(c) &c
 
 #endif // OPENRS_FORTRAN_HEADER
