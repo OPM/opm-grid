@@ -103,6 +103,33 @@ namespace Dune
 
 
 
+    inline void SinglePhaseUpscaler::init(const EclipseGridParser& parser,
+                                          BoundaryConditionType bctype,
+                                          double perm_threshold,
+                                          double z_tolerance,
+                                          double residual_tolerance,
+                                          int linsolver_verbosity,
+                                          bool twodim_hack)
+    {
+	bctype_ = bctype;
+	residual_tolerance_ = residual_tolerance;
+	linsolver_verbosity_ = linsolver_verbosity;
+	twodim_hack_ = twodim_hack;
+
+	// Faking some parameters depending on bc type.
+        bool periodic_ext = (bctype_ == Periodic);
+        bool turn_normals = false;
+        bool unique_bids = (bctype_ == Linear || bctype_ == Periodic);
+        std::string rock_list("no_list");
+	setupGridAndPropsEclipse(parser, z_tolerance,
+                                 periodic_ext, turn_normals, unique_bids,
+                                 perm_threshold, rock_list,
+                                 grid_, res_prop_);
+	ginterf_.init(grid_);
+    }
+
+
+
     inline const SinglePhaseUpscaler::GridInterface&
     SinglePhaseUpscaler::grid() const
     {
@@ -120,6 +147,11 @@ namespace Dune
             THROW("Cannot switch to or from Periodic boundary condition, periodic must be set in init() params.");
         } else {
             bctype_ = type;
+            if (type == Periodic && type == Linear) {
+                grid_.setUniqueBoundaryIds(true);
+            } else {
+                grid_.setUniqueBoundaryIds(false);
+            }
         }
     }
 
@@ -269,6 +301,23 @@ namespace Dune
 	// delta is the average length.
 	return  side2_pos/side2_area - side1_pos/side1_area;
     }
+
+
+
+
+    double SinglePhaseUpscaler::upscalePorosity() const
+    {
+        double total_vol = 0.0;
+        double total_pore_vol = 0.0;
+	for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+            total_vol += c->volume();
+            total_pore_vol += c->volume()*res_prop_.porosity(c->index());
+        }
+        return total_pore_vol/total_vol;
+    }
+
+
+
 
 } // namespace Dune
 

@@ -41,6 +41,7 @@
 #include "config.h"
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/common/EclipseGridParser.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
 #if TEST_ANISO_RELPERM
@@ -82,8 +83,17 @@ namespace Dune
 	/// Default constructor.
 	SinglePhaseUpscaler();
 
-	/// Initializes the upscaler.
+	/// Initializes the upscaler from parameters.
 	void init(const parameter::ParameterGroup& param);
+
+	/// Initializes the upscaler from given arguments.
+	void init(const EclipseGridParser& parser,
+                  BoundaryConditionType bctype,
+                  double perm_threshold,
+                  double z_tolerance = 0.0,
+                  double residual_tolerance = 1e-8,
+                  int linsolver_verbosity = 0,
+                  bool twodim_hack = false);
 
 	/// Access the grid.
 	const GridInterface& grid() const;
@@ -96,6 +106,10 @@ namespace Dune
 	/// Does a single-phase upscaling.
 	/// @return an upscaled permeability tensor.
 	permtensor_t upscaleSinglePhase();
+
+        /// Compute upscaled porosity.
+        /// @return total pore volume of all cells divided by total volume.
+        double upscalePorosity() const;
 
     protected:
 	// ------- Typedefs and enums -------
