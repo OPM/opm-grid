@@ -67,9 +67,11 @@ namespace Dune
 	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
 	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
 	    grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
+            double perm_threshold_md = param.getDefault("perm_threshold_md", 0.0);
+	    double perm_threshold = unit::convert::from(perm_threshold_md, prefix::milli*unit::darcy);
 	    std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
 	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
-	    res_prop.init(parser, grid.globalCell(), rl_ptr);
+	    res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr);
 	} else if (fileformat == "cartesian") {
 	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
 				    param.getDefault<int>("ny", 1),
@@ -79,13 +81,36 @@ namespace Dune
 					 param.getDefault<double>("dz", 1.0) }};
 	    grid.createCartesian(dims, cellsz);
 	    double default_poro = param.getDefault("default_poro", 0.2);
-	    double default_perm = param.getDefault("default_perm", 100.0*prefix::milli*unit::darcy);
+	    double default_perm_md = param.getDefault("default_perm_md", 100.0);
+	    double default_perm = unit::convert::from(default_perm_md, prefix::milli*unit::darcy);
 	    MESSAGE("Warning: For generated cartesian grids, we use uniform reservoir properties.");
 	    res_prop.init(grid.size(0), default_poro, default_perm);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
 	}
 	if (param.getDefault("use_unique_boundary_ids", false)) {
+	    grid.setUniqueBoundaryIds(true);
+	}
+    }
+
+    /// @brief
+    /// @todo Doc me!
+    /// @param
+    template <template <int> class ResProp>
+    inline void setupGridAndPropsEclipse(const EclipseGridParser& parser,
+                                         double z_tolerance,
+                                         bool periodic_extension,
+                                         bool turn_normals,
+                                         bool unique_bids,
+                                         double perm_threshold,
+                                         const std::string& rock_list,
+                                         CpGrid& grid,
+                                         ResProp<3>& res_prop)
+    {
+        grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
+        const std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
+        res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr);
+	if (unique_bids) {
 	    grid.setUniqueBoundaryIds(true);
 	}
     }
