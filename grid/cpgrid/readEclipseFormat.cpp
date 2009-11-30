@@ -94,7 +94,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals)
+    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
     {
 	EclipseGridInspector inspector(parser);
 
@@ -119,6 +119,32 @@ namespace Dune
 	    default_actnum.resize(num_cells, 1);
 	    g.actnum = &default_actnum[0]; // default_actnum dies at the end of this function
 	}
+
+        // Handle zcorn clipping.
+        std::vector<double> clipped_zcorn;
+        if (clip_z) {
+            double minz_top = 1e100;
+            double maxz_bot = -1e100;
+            for (int i = 0; i < g.dims[0]; ++i) {
+                for (int j = 0; j < g.dims[1]; ++j) {
+                    boost::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
+                    boost::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
+                    for (int dd = 0; dd < 4; ++dd) {
+                        minz_top = std::min(cellz_top[dd+4], minz_top);
+                        maxz_bot = std::max(cellz_bot[dd], maxz_bot);
+                    }
+                }
+            }
+            if (minz_top <= maxz_bot) {
+                THROW("Grid cannot be clipped to a shoe-box (in z): Would be empty afterwards.");
+            }
+            int num_zcorn = parser.getFloatingPointValue("ZCORN").size();
+            clipped_zcorn.resize(num_zcorn);
+            for (int i = 0; i < num_zcorn; ++i) {
+                clipped_zcorn[i] = std::max(maxz_bot, std::min(minz_top, g.zcorn[i]));
+            }
+            g.zcorn = &clipped_zcorn[0];
+        }
 
 	if (periodic_extension) {
 	    // Extend grid periodically with one layer of cells in the (i, j) directions.

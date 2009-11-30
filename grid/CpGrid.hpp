@@ -219,7 +219,9 @@ namespace Dune
 	/// \param periodic_extension if true, the grid will be (possibly) refined, so that
 	///        intersections/faces along i and j boundaries will match those on the other
 	///        side. That is, i- faces will match i+ faces etc.
-	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false);
+	/// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
+	/// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
+	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param input_data the data in grdecl format, declared in preprocess.h.
