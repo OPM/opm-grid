@@ -119,10 +119,11 @@ namespace Dune
 	// Faking some parameters depending on bc type.
         bool periodic_ext = (bctype_ == Periodic);
         bool turn_normals = false;
+        bool clip_z = (bctype_ == Periodic);
         bool unique_bids = (bctype_ == Linear || bctype_ == Periodic);
         std::string rock_list("no_list");
 	setupGridAndPropsEclipse(parser, z_tolerance,
-                                 periodic_ext, turn_normals, unique_bids,
+                                 periodic_ext, turn_normals, clip_z, unique_bids,
                                  perm_threshold, rock_list,
                                  grid_, res_prop_);
 	ginterf_.init(grid_);
@@ -147,7 +148,7 @@ namespace Dune
             THROW("Cannot switch to or from Periodic boundary condition, periodic must be set in init() params.");
         } else {
             bctype_ = type;
-            if (type == Periodic && type == Linear) {
+            if (type == Periodic || type == Linear) {
                 grid_.setUniqueBoundaryIds(true);
             } else {
                 grid_.setUniqueBoundaryIds(false);
