@@ -111,17 +111,17 @@ namespace Dune
         // mPa·s) under a pressure gradient of 1 atm/cm acting across
         // an area of 1 cm².
         //
-        namespace {
+        namespace perm_details {
             const double p_grad   = atm / (prefix::centi*meter);
             const double area     = square(prefix::centi*meter);
             const double flux     = cubic (prefix::centi*meter) / second;
             const double velocity = flux / area;
             const double visc     = prefix::centi*Poise;
+            const double darcy    = (velocity * visc) / p_grad;
+            //                    == 1e-7 [m^2] / 101325
+            //                    == 9.869232667160130e-13 [m^2]
         }
-
-        const double darcy = (velocity * visc) / p_grad;
-        //                 == 1e-7 [m^2] / 101325
-        //                 == 9.869232667160130e-13 [m^2]
+        const double darcy = perm_details::darcy;
 
         // Unit conversion support.
         //
