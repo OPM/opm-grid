@@ -8,8 +8,7 @@ check_PROGRAMS = cpgrid_test mapper_test partition_test
 AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
 LDADD =  $(DUNE_LIBS) $(BOOST_SYSTEM_LIB) \
-         ../../lib/libdunecornerpoint.la  \
-	 ../preprocess/libpreprocess.la
+         ../../lib/libdunecornerpoint.la
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
 

@@ -9,8 +9,7 @@ AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
 	$(BOOST_FILESYSTEM_LIB) $(BOOST_SYSTEM_LIB)     \
-	../../../lib/libdunecornerpoint.la              \
-	../../../grid/preprocess/libpreprocess.la
+	../../../lib/libdunecornerpoint.la
 
 # Additional quirks for individual programs
 boundaryconditions_test_SOURCES = boundaryconditions_test.cpp

@@ -9,7 +9,6 @@ AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
         $(BOOST_SYSTEM_LIB)                           \
         ../../../lib/libdunecornerpoint.la            \
-        ../../../grid/preprocess/libpreprocess.la     \
         $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) 
 
 multiscale_test_SOURCES  = multiscale_test.cpp

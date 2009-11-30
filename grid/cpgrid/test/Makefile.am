@@ -18,7 +18,6 @@ orientedentitytable_test_LDADD   = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 #buildcpgrid_test_SOURCES  = BuildCpGrid.hpp buildcpgrid_test.cpp
 #buildcpgrid_test_LDADD    = $(DUNE_LIBS) $(BOOST_SYSTEM_LIB) \
-#                            ../../preprocess/libpreprocess.la \
 #                            ../../lib/libdunecornerpoint.la
 
 TESTS = $(check_PROGRAMS)
