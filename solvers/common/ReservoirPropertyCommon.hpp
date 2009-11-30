@@ -68,6 +68,7 @@ namespace Dune
 	///                    cartesian indices of the grdecl file.
         void init(const EclipseGridParser& parser,
                   const std::vector<int>& global_cell,
+                  const double perm_threshold = 0.0,
                   const std::string* rock_list_filename = 0);
 
         /// @brief Initialize a uniform reservoir.
@@ -140,7 +141,8 @@ namespace Dune
         void assignPorosity(const EclipseGridParser& parser,
                             const std::vector<int>& global_cell);
         void assignPermeability(const EclipseGridParser& parser,
-                                const std::vector<int>& global_cell);
+                                const std::vector<int>& global_cell,
+                                const double perm_threshold);
         void assignRockTable(const EclipseGridParser& parser,
                              const std::vector<int>& global_cell);
         void readRocks(const std::string& rock_list_file);

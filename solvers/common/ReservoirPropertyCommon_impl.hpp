@@ -253,8 +253,9 @@ namespace Dune
 
     template <int dim, class RPImpl, class RockType>
     void ReservoirPropertyCommon<dim, RPImpl, RockType>::init(const EclipseGridParser& parser,
-                                               const std::vector<int>& global_cell,
-                                               const std::string* rock_list_filename)
+                                                              const std::vector<int>& global_cell,
+                                                              const double perm_threshold,
+                                                              const std::string* rock_list_filename)
     {
         BOOST_STATIC_ASSERT(dim == 3);
 
@@ -262,7 +263,7 @@ namespace Dune
                                 std::vector<unsigned char>::value_type(0));
 
         assignPorosity    (parser, global_cell);
-        assignPermeability(parser, global_cell);
+        assignPermeability(parser, global_cell, perm_threshold);
         assignRockTable   (parser, global_cell);
 
         if (rock_list_filename) {
@@ -429,7 +430,8 @@ namespace Dune
 
     template <int dim, class RPImpl, class RockType>
     void ReservoirPropertyCommon<dim, RPImpl, RockType>::assignPermeability(const EclipseGridParser& parser,
-                                                             const std::vector<int>& global_cell)
+                                                                            const std::vector<int>& global_cell,
+                                                                            double perm_threshold)
     {
         int num_global_cells = -1;
         if (parser.hasField("SPECGRID")) {
@@ -472,6 +474,7 @@ namespace Dune
                         K(i,j) = unit::convert::from((*tensor[kmap[kix]])[glob],
                                                      prefix::milli*unit::darcy);
                     }
+                    K(i,i) = std::max(K(i,i), perm_threshold);
                 }
 
                 permfield_valid_[c] = std::vector<unsigned char>::value_type(1);
