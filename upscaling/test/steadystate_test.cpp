@@ -36,14 +36,12 @@
 
 //#define VERBOSE
 
-
 #include <dune/upscaling/SteadyStateUpscaler.hpp>
 #include <dune/common/Units.hpp>
 
 using namespace Dune;
 using namespace Dune::prefix;
 using namespace Dune::unit;
-
 
 int main(int argc, char** argv)
 {
@@ -61,7 +59,7 @@ int main(int argc, char** argv)
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K_copy << std::endl;
 
     // Then, compute some upscaled relative permeabilities.
-    int num_cells = upscaler.grid().numberOfCells();
+    int num_cells = upscaler.grid().size(0);
 //     const int num_sats = 1;
 //     double saturations[num_sats] = { 0.3 };
     const int num_sats = 7;

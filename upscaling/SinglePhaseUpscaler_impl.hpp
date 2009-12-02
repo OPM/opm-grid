@@ -131,10 +131,10 @@ namespace Dune
 
 
 
-    inline const SinglePhaseUpscaler::GridInterface&
+    inline const SinglePhaseUpscaler::GridType&
     SinglePhaseUpscaler::grid() const
     {
-	return ginterf_;
+	return grid_;
     }
 
 
@@ -154,6 +154,14 @@ namespace Dune
                 grid_.setUniqueBoundaryIds(false);
             }
         }
+    }
+
+
+
+    inline void
+    SinglePhaseUpscaler::setPermeability(const int cell_index, const permtensor_t& k)
+    {
+        res_prop_.permeabilityModifiable(cell_index) = k;
     }
 
 

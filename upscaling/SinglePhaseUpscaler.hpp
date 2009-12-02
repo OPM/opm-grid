@@ -96,12 +96,16 @@ namespace Dune
                   bool twodim_hack = false);
 
 	/// Access the grid.
-	const GridInterface& grid() const;
+	const GridType& grid() const;
 
         /// Set boundary condition type. This may not be used to swicth
         /// between Periodic and the other types, since the grid is
         /// modified for Periodic conditions.
         void setBoundaryConditionType(BoundaryConditionType type);
+
+        /// Set the permeability of a cell directly. This will override
+        /// the permeability that was read from the eclipse file.
+        void setPermeability(const int cell_index, const permtensor_t& k);
 
 	/// Does a single-phase upscaling.
 	/// @return an upscaled permeability tensor.
