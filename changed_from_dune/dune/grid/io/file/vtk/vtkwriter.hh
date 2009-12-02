@@ -1,5 +1,5 @@
 // -*- tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 2 -*-
-// $Id: vtkwriter.hh 5843 2009-10-26 10:14:31Z sander $
+// $Id: vtkwriter.hh 5995 2009-12-01 14:43:41Z dedner $
 
 #ifndef DUNE_VTKWRITER_HH
 #define DUNE_VTKWRITER_HH
@@ -456,7 +456,7 @@ namespace Dune
       //! evaluate
       virtual double evaluate (int comp, const Entity& e, const Dune::FieldVector<DT,n>& xi) const
         {
-          return v[mapper.map(e)];
+          return v[mapper.map(e)*ncomps_+mycomp_];
         }
       
       //! get name
@@ -466,24 +466,27 @@ namespace Dune
         }
 
       //! construct from a vector and a name
-      P0VectorWrapper ( const GridView &gridView, const V &v_, std::string s_ )
-      : g( gridView.grid() ),
-        is( gridView.indexSet() ),
+      P0VectorWrapper ( const GridView &gridView, const V &v_, const std::string &s_, int ncomps=1, int mycomp=0 )
+      : // g( gridView.grid() ),
+        // is( gridView.indexSet() ),
         v( v_ ),
         s( s_ ),
+        ncomps_(ncomps),
+        mycomp_(mycomp),
         mapper( gridView )
       {
-        if (v.size()!=(unsigned int)mapper.size())
+        if (v.size()!=(unsigned int)(mapper.size()*ncomps_))
           DUNE_THROW(IOError,"VTKWriter::P0VectorWrapper: size mismatch");
       }
 
       virtual ~P0VectorWrapper() {}
       
     private:
-      const Grid& g;
-      const IndexSet &is;
+      // const Grid& g;
+      // const IndexSet &is;
       const V& v;
       std::string s;
+      int ncomps_,mycomp_;
       VM0 mapper;
     };
 
@@ -520,7 +523,7 @@ namespace Dune
               imin = i;
             }
           }
-          return v[mapper.template map(e,imin,n)];
+          return v[mapper.template map(e,imin,n)*ncomps_+mycomp_];
         }
       
       //! get name
@@ -530,14 +533,16 @@ namespace Dune
         }
 
       //! construct from a vector and a name
-      P1VectorWrapper ( const GridView &gridView, const V &v_, std::string s_ )
+      P1VectorWrapper ( const GridView &gridView, const V &v_, const std::string &s_, int ncomps=1, int mycomp=0 )
       : g( gridView.grid() ),
         is( gridView.indexSet() ),
         v( v_ ),
         s( s_ ),
+        ncomps_(ncomps),
+        mycomp_(mycomp),
         mapper( gridView )
       {
-        if (v.size()!=(unsigned int)mapper.size())
+        if (v.size()!=(unsigned int)(mapper.size()*ncomps_))
           DUNE_THROW(IOError,"VTKWriter::P1VectorWrapper: size mismatch");
       }
 
@@ -548,6 +553,7 @@ namespace Dune
       const IndexSet &is;
       const V& v;
       std::string s;
+      int ncomps_,mycomp_;
       VM1 mapper;
     };
 
@@ -593,17 +599,27 @@ namespace Dune
      *
      * The container has to have random access via operator[] (e. g. std::vector). The 
      * value of the grid function for an arbitrary element
-     * will be accessed by calling operator[] with the id of the element.
+     * will be accessed by calling operator[] with the index (corresponding
+     * with the grid view) of the element. 
+     * For vector valued data all components for an element are assumed to
+     * be consecutive.
      *
      * @param v The container with the values of the grid function for each cell.
      * @param name A name to identify the grid function.
+     * @param ncomps Number of components (default is 1).
      */
     template<class V>
-    void addCellData (const V& v, std::string name)
-      {
-        VTKFunction* p = new P0VectorWrapper< V >( gridView_, v, name );
+    void addCellData (const V& v, const std::string &name, int ncomps = 1)
+    {
+      for (int c=0;c<ncomps;++c) {
+        std::stringstream compName;
+        compName << name;
+        if (ncomps>1)
+          compName << "[" << c << "]";
+        VTKFunction* p = new P0VectorWrapper< V >( gridView_, v, compName.str(), ncomps, c );
         celldata.push_back(VTKFunctionPtr(p));
       }
+    }
 
     /**
      * @brief Add a grid function that lives on the vertices of the grid to the visualization.
@@ -630,17 +646,27 @@ namespace Dune
      *
      * The container has to have random access via operator[] (e. g. std::vector). The value 
      * of the grid function for an arbitrary element
-     * will be accessed by calling operator[] with the id of the element.
+     * will be accessed by calling operator[] with the index (corresponding
+     * to the grid view) of the vertex.
+     * For vector valued data all components for a vertex are assumed to
+     * be consecutive.
      *
      * @param v The container with the values of the grid function for each cell.
      * @param name A name to identify the grid function.
+     * @param ncomps Number of components (default is 1).
      */
     template<class V>
-    void addVertexData (const V& v, std::string name)
-      {
-        VTKFunction* p = new P1VectorWrapper< V >( gridView_, v, name );
+    void addVertexData (const V& v, const std::string &name, int ncomps=1)
+    {
+      for (int c=0;c<ncomps;++c) {
+        std::stringstream compName;
+        compName << name;
+        if (ncomps>1)
+          compName << "[" << c << "]";
+        VTKFunction* p = new P1VectorWrapper< V >( gridView_, v, compName.str(), ncomps, c);
         vertexdata.push_back(VTKFunctionPtr(p));
       }
+    }
 
     //! clear list of registered functions
     void clear ()

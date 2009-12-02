@@ -1,3 +1,4 @@
+// vi: set et ts=4 sw=2 sts=2:
 #ifndef DUNE_QUADRATURERULES_HH
 #define DUNE_QUADRATURERULES_HH
 
