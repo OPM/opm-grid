@@ -462,7 +462,7 @@ class MonotCubicInterpolator {
     */
     void chopFlatEndpoints() {
         chopFlatEndpoints(1e-14);
-    };
+    }
 
 private:
    

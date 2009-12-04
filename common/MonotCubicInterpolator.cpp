@@ -485,7 +485,7 @@ computeInternalFunctionData() const {
   
   strictlyMonotoneCached = true;
   monotoneCached = true;
-} ;
+}
 
 //       Checks if the function curve is flat (zero derivative) at the
 //       endpoints, chop off endpoint data points if that is the case.
@@ -544,7 +544,7 @@ chopFlatEndpoints(const double epsilon) {
     
     // Finished chopping, so recompute function data:
     computeInternalFunctionData();
-};
+}
 
 
 
@@ -600,7 +600,7 @@ computeSimpleDerivatives() const {
       ddata[intpoint->first] = diff ;      
     }
   }
-} ;
+}
 
 
 
@@ -640,7 +640,7 @@ adjustDerivativesForMonotoneness() const {
   }
   
   
-} ;
+}
 
 
 
@@ -660,5 +660,3 @@ scaleData(double factor) {
     } 
   } 
 }
-
-
