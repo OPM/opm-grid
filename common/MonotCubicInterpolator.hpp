@@ -45,7 +45,7 @@
    from Fritsch and Carlson, "Monotone piecewise cubic interpolation", 
    SIAM J. Numer. Anal. 17, 238--246, no. 2, 
 
-   $Id: MonotCubicInterpolator.h 100 2009-05-07 11:42:13Z havb $
+   $Id$
 
    Algorithm also described here:
    http://en.wikipedia.org/wiki/Monotone_cubic_interpolation
