@@ -125,6 +125,7 @@ namespace Dune
 	setupGridAndPropsEclipse(parser, z_tolerance,
                                  periodic_ext, turn_normals, clip_z, unique_bids,
                                  perm_threshold, rock_list,
+                                 useJ<ResProp>(), 1.0, 0.0,
                                  grid_, res_prop_);
 	ginterf_.init(grid_);
     }
