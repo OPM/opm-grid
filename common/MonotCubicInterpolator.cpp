@@ -200,13 +200,8 @@ evaluate(double x) const throw(const char*){
     }
   }
   if (xf_iterator == data.end()) {
-    if (data.end()->first == x) { // Just on the interval limit
-      return data.rbegin()->second;
-    }
-    else { 
       // Constant extrapolation (!!)
       return data.rbegin()->second;
-    }
   }
   
   
