@@ -15,6 +15,5 @@ libcpgrid_la_SOURCES = CpGrid.cpp readSintefLegacyFormat.cpp \
                        readEclipseFormat.cpp
 
 libcpgrid_la_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-libcpgrid_la_LDFLAGS = ../../common/libcommon.la
 
 include $(top_srcdir)/am/global-rules
