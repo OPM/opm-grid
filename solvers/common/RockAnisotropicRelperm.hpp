@@ -51,6 +51,20 @@ namespace Dune
     class RockAnisotropicRelperm
     {
     public:
+
+        void setUseJfunctionScaling(const bool use_j)
+        {
+            if (use_j) {
+                THROW("RockAnisotropicRelperm cannot use J-scaling.");
+            }
+        }
+
+        void setSigmaAndTheta(const double, const double)
+        {
+            THROW("RockAnisotropicRelperm cannot accept sigma and theta arguments.");
+        }
+
+
 	template <template <class> class SP, class OP>
 	void kr(const int phase_index, const double saturation, FullMatrix<double, SP, OP>& kr_value) const
 	{

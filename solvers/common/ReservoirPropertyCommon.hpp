@@ -66,10 +66,20 @@ namespace Dune
         /// @param parser the parser holding the grdecl data.
 	/// @param global_cell the mapping from cell indices to the logical
 	///                    cartesian indices of the grdecl file.
+ 	/// @param perm_threshold lower threshold for permeability.
+ 	/// @param rock_list_filename if non-null, the referred string gives
+        ///                           the filename for the rock list.
+        /// @param use_jfunction_scaling if true, use j-function scaling of capillary
+        ///                              pressure, if applicable.
+        /// @param sigma interface tension for j-scaling, if applicable.
+        /// @param theta angle for j-scaling, if applicable.
         void init(const EclipseGridParser& parser,
                   const std::vector<int>& global_cell,
                   const double perm_threshold = 0.0,
-                  const std::string* rock_list_filename = 0);
+                  const std::string* rock_list_filename = 0,
+                  const bool use_jfunction_scaling = true,
+                  const double sigma = 1.0,
+                  const double theta = 0.0);
 
         /// @brief Initialize a uniform reservoir.
         /// @param num_cells number of cells in the grid.

@@ -42,6 +42,7 @@
 #include <fstream>
 #include <vector>
 #include <algorithm>
+#include <cmath>
 
 namespace Dune
 {
@@ -49,6 +50,21 @@ namespace Dune
     class RockJfunc
     {
     public:
+        RockJfunc()
+            : use_jfunction_scaling_(true), sigma_cos_theta_(1.0)
+        {
+        }
+
+        void setUseJfunctionScaling(const bool use_j)
+        {
+            use_jfunction_scaling_ = use_j;
+        }
+
+        void setSigmaAndTheta(const double sigma, const double theta)
+        {
+            sigma_cos_theta_ = sigma*std::cos(theta);
+        }
+
 	void krw(const double saturation, double& krw_value) const
 	{
 	    krw_value = krw_(saturation);
@@ -62,12 +78,16 @@ namespace Dune
 	template <template <class> class SP, class OP>
 	double capPress(const FullMatrix<double, SP, OP>& perm, const double poro, const double saturation) const
 	{
-            // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
-	    // \sigma \cos \theta is approximated by 1.0;
-	    // k is approximated by the average of the diagonal terms.
-            double sigma_cos_theta = 1.0;
-            double sqrt_k_phi = std::sqrt(trace(perm)/(perm.numRows()*poro));
-            return Jfunc_(saturation)*sigma_cos_theta/sqrt_k_phi;
+            if (use_jfunction_scaling_) {
+                // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+                // \sigma \cos \theta is by default approximated by 1.0;
+                // k is approximated by the average of the diagonal terms.
+                double sqrt_k_phi = std::sqrt(trace(perm)/(perm.numRows()*poro));
+                return Jfunc_(saturation)*sigma_cos_theta_/sqrt_k_phi;
+            } else {
+                // The Jfunc_ table actually contains the pressure directly.
+                return Jfunc_(saturation);
+            }
 	}
 
 	void read(const std::string& directory, const std::string& specification)
@@ -118,6 +138,8 @@ namespace Dune
 	TabFunc kro_;
 	TabFunc Jfunc_;
 	TabFunc invJfunc_;
+        bool use_jfunction_scaling_;
+        double sigma_cos_theta_;
     };
 
 } // namespace Dune

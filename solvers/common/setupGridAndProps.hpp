@@ -45,6 +45,19 @@
 namespace Dune
 {
 
+    /// Helper for determining whether we should
+    template <class RP>
+    bool useJ()
+    {
+        return false;
+    }
+
+    template<>
+    bool useJ< ReservoirPropertyCapillary<3> >()
+    {
+        return true;
+    }
+
     /// @brief
     /// @todo Doc me!
     /// @param
@@ -71,7 +84,15 @@ namespace Dune
 	    double perm_threshold = unit::convert::from(perm_threshold_md, prefix::milli*unit::darcy);
 	    std::string rock_list = param.getDefault<std::string>("rock_list", "no_list");
 	    std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
-	    res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr);
+            bool use_j = param.getDefault("use_jfunction_scaling", useJ<ResProp<3> >());
+            double sigma = 1.0;
+            double theta = 0.0;
+            if (use_j) {
+                sigma = param.getDefault("sigma", sigma);
+                theta = param.getDefault("theta", theta);
+            }
+	    res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr,
+                          use_j, sigma, theta);
 	} else if (fileformat == "cartesian") {
 	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
 				    param.getDefault<int>("ny", 1),
@@ -105,12 +126,15 @@ namespace Dune
                                          bool unique_bids,
                                          double perm_threshold,
                                          const std::string& rock_list,
+                                         bool use_jfunction_scaling,
+                                         double sigma,
+                                         double theta,
                                          CpGrid& grid,
                                          ResProp<3>& res_prop)
     {
         grid.processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals, clip_z);
         const std::string* rl_ptr = (rock_list == "no_list") ? 0 : &rock_list;
-        res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr);
+        res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr, use_jfunction_scaling, sigma, theta);
 	if (unique_bids) {
 	    grid.setUniqueBoundaryIds(true);
 	}

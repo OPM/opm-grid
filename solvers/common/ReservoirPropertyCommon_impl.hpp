@@ -255,8 +255,12 @@ namespace Dune
     void ReservoirPropertyCommon<dim, RPImpl, RockType>::init(const EclipseGridParser& parser,
                                                               const std::vector<int>& global_cell,
                                                               const double perm_threshold,
-                                                              const std::string* rock_list_filename)
+                                                              const std::string* rock_list_filename,
+                                                              const bool use_jfunction_scaling,
+                                                              const double sigma,
+                                                              const double theta)
     {
+        // This code is mostly copied from ReservoirPropertyCommon::init(...).
         BOOST_STATIC_ASSERT(dim == 3);
 
         permfield_valid_.assign(global_cell.size(),
@@ -270,14 +274,28 @@ namespace Dune
             readRocks(*rock_list_filename);
         }
 
+        // Added section. This is a hack, because not all rock classes
+        // may care about J-scaling. They still have to implement
+        // setUseJfunctionScaling() and setSigmaAndTheta(), though the
+        // latter may throw if called for a rock where it does not make sense.
+        int num_rocks = rock_.size();
+        for (int i = 0; i < num_rocks; ++i) {
+            rock_[i].setUseJfunctionScaling(use_jfunction_scaling);
+            if (use_jfunction_scaling) {
+                rock_[i].setSigmaAndTheta(sigma, theta);
+            }
+        }
+        // End of added section.
+
         asImpl().computeCflFactors();
     }
 
 
+
     template <int dim, class RPImpl, class RockType>
     void ReservoirPropertyCommon<dim, RPImpl, RockType>::init(const int num_cells,
-                                               const double uniform_poro,
-                                               const double uniform_perm)
+                                                              const double uniform_poro,
+                                                              const double uniform_perm)
     {
         permfield_valid_.assign(num_cells, std::vector<unsigned char>::value_type(1));
         porosity_.assign(num_cells, uniform_poro);
