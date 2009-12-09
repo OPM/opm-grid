@@ -178,10 +178,19 @@ sys	0m7.027s
 0 161.812984342818 0 
 0 0 31.2464597239113 
 
-
 real	0m47.023s
 user	0m42.571s
 sys	0m4.231s
+
+[again, Dec. 9 2009 - changes in AMG affect solution, I guess I should have run this case in October, too]
+
+156.108072515843 0 0 
+0 161.812984342796 0 
+0 0 31.2464597239132 
+
+real	0m42.342s
+user	0m41.632s
+sys	0m0.638s
 
 
 3) residual_tolerance = 1e-10
@@ -225,6 +234,17 @@ real	0m31.228s
 user	0m27.018s
 sys	0m4.067s
 
+[again, Dec. 9 2009 - AMG changes again]
+
+156.108068958263 0 0 
+0 161.812985066158 0 
+0 0 31.2464395640301 
+
+real	0m29.376s
+user	0m28.700s
+sys	0m0.617s
+
+
 5) residual_tolerance = 1e-5
 
 156.105632072812 0 0 
@@ -245,6 +265,16 @@ sys	0m4.110s
 real	0m21.946s
 user	0m17.519s
 sys	0m4.194s
+
+[again, Dec. 9 2009 - AMG changes modify solution a lot]
+
+152.545493422819 0 0 
+0 158.642855651543 0 
+0 0 27.2903819981729 
+
+real	0m20.066s
+user	0m19.440s
+sys	0m0.603s
 
 
 7) residual_tolerance = 1e-2
@@ -269,7 +299,7 @@ user	0m7.507s
 sys	0m3.710s
 
 
-9) After a little optimization in flow solver initialization.
+[again - after a little optimization in flow solver initialization]
 
 real	0m10.426s
 user	0m7.031s
@@ -280,3 +310,7 @@ user	0m7.065s
 sys	0m3.428s
 
 
+[again Dec. 9 2009 - maybe Snow Leopard has some of the credit?]
+real	0m5.828s
+user	0m5.482s
+sys	0m0.334s
