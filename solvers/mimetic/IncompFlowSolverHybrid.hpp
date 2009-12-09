@@ -1246,6 +1246,10 @@ namespace Dune {
             // Solve system of linear equations to recover
             // face/contact pressure values (soln_).
             linsolve.apply(soln_, rhs_, result);
+            if (!result.converged) {
+                THROW("Linear solver failed to converge in " << result.iterations << " iterations.\n"
+                      << "Residual reduction achieved is " << result.reduction << '\n');
+            }
         }
 
 
@@ -1317,6 +1321,11 @@ namespace Dune {
             // Solve system of linear equations to recover
             // face/contact pressure values (soln_).
             linsolve.apply(soln_, rhs_, result);
+            if (!result.converged) {
+                THROW("Linear solver failed to converge in " << result.iterations << " iterations.\n"
+                      << "Residual reduction achieved is " << result.reduction << '\n');
+            }
+
         }
 
 
