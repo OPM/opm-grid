@@ -95,7 +95,8 @@ namespace Dune
             /// @return
             Vector centroid() const
             {
-                return iter_->geometry().global(localCentroid());
+                //return iter_->geometry().global(localCentroid());
+                return iter_->geometry().center();
             }
 
             /// @brief
@@ -103,7 +104,8 @@ namespace Dune
             /// @return
             Vector normal() const
             {
-                return iter_->unitOuterNormal(localCentroid());
+                //return iter_->unitOuterNormal(localCentroid());
+                return iter_->centerUnitOuterNormal();
             }
 
             /// @brief
@@ -188,11 +190,11 @@ namespace Dune
             Index                local_index_;
 
         private:
-            LocalVector localCentroid() const
-            {
-                typedef Dune::ReferenceElements<Scalar, GI::GridType::dimension-1> RefElems;
-                return RefElems::general(iter_->type()).position(0,0);
-            }
+//             LocalVector localCentroid() const
+//             {
+//                 typedef Dune::ReferenceElements<Scalar, GI::GridType::dimension-1> RefElems;
+//                 return RefElems::general(iter_->type()).position(0,0);
+//             }
         };
 
 
@@ -310,10 +312,11 @@ namespace Dune
 
             Vector centroid() const
             {
-                typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension> RefElems;
-                Vector localpt
-                    = RefElems::general(iter_->type()).position(0,0);
-                return iter_->geometry().global(localpt);
+//                 typedef Dune::ReferenceElements<Scalar, GridInterface::GridType::dimension> RefElems;
+//                 Vector localpt
+//                     = RefElems::general(iter_->type()).position(0,0);
+//                 return iter_->geometry().global(localpt);
+                return iter_->geometry().center();
             }
 
             Index index() const

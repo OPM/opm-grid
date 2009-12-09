@@ -26,7 +26,7 @@ namespace Dune {
 		  cube,      //!< Cube element in any nonnegative dimension
 		  pyramid,   //!< Four sided pyramid in three dimensions
 		  prism,     //!< Prism element in three dimensions
-		  singular   //!< Singular element, i.e. element with only one point represented (centroid)
+		  none       //!< Generic element in any nonnegative dimension
 		};
 
     private:
@@ -88,7 +88,7 @@ namespace Dune {
         void makeCube(unsigned int dim) {basicType_ = cube; dim_ = dim;}
         
         /** \brief Make a singular of given dimension */
-        void makeSingular(unsigned int dim) {basicType_ = singular; dim_ = dim;}
+        void makeNone(unsigned int dim) {basicType_ = none; dim_ = dim;}
         
         /*@}*/
 
@@ -126,7 +126,7 @@ namespace Dune {
         bool isCube() const {return basicType_==cube || dim_ < 2;}
         
         /** \brief Return true if entity is a singular of any dimension */
-        bool isSingular() const {return basicType_==singular;}
+        bool isNone() const {return basicType_==none;}
         
         /** \brief Return dimension of the entity */
         unsigned int dim() const {return dim_;}
@@ -176,8 +176,8 @@ namespace Dune {
             case prism:
                 s << "prism";
 		break;
-	    case singular:
-		s << "singular";
+	    case none:
+		s << "(none, " << a.dim_ << ")";
 		break;
              default:
                 s << "invalid geometry type";
@@ -197,6 +197,7 @@ namespace Dune {
       case GeometryType::cube:    s << "cube";    break;
       case GeometryType::pyramid: s << "pyramid"; break;
       case GeometryType::prism:   s << "prism";   break;
+      case GeometryType::none:    s << "none";    break;
       default: s << "[unknown GeometryType::BasicType: " << int(type) << "]";
       }
       return s;

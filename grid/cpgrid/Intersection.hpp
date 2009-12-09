@@ -104,8 +104,8 @@ namespace Dune
 		  subindex_(subindex),
 		  faces_of_cell_(grid.cell_to_face_[cell]),
 		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
-		  in_inside_geom_(global_geom_.position()
-				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().position(),
+		  in_inside_geom_(global_geom_.center()
+				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().center(),
 				  global_geom_.volume()),
 		  nbcell_(cell.index()), // Init to self, which is invalid.
 		  is_on_boundary_(false)
@@ -348,6 +348,15 @@ namespace Dune
                 return pgrid_->face_normals_[faces_of_cell_[subindex_]];
             }
 
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
+            FieldVector<ctype, 3> centerUnitOuterNormal() const
+            {
+                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+            }
+
         protected:
             const GridType* pgrid_;
             int index_;
@@ -382,8 +391,8 @@ namespace Dune
                     } else {
                         nbcell_ = cells_of_face[0].index();
                     }
-		    in_outside_geom_ = LocalGeometry(global_geom_.position()
-						     - outside().geometry().position(),
+		    in_outside_geom_ = LocalGeometry(global_geom_.center()
+						     - outside().geometry().center(),
 						     global_geom_.volume());
 		}
 	    }

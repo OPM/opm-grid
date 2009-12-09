@@ -41,6 +41,7 @@
 
 #include <dune/common/array.hh>
 #include <dune/grid/yaspgrid.hh>
+#include <dune/grid/sgrid.hh>
 #include <dune/grid/CpGrid.hpp>
 
 
@@ -124,6 +125,27 @@ void check_yasp(bool p0 = false) {
 #endif
 }
 
+template <int dim, int refinement>
+void check_sgrid()
+{
+    typedef Dune::FieldVector<int,dim> iTupel;
+    typedef Dune::FieldVector<double,dim> fTupel;
+
+    std::cout << std::endl << "SGrid, dim = " << dim << ", refinement = " << refinement;
+    std::cout << std::endl << std::endl;
+
+    fTupel len(1.0);
+    iTupel num(1);
+    fTupel pos(0.0);
+
+    Dune::SGrid<dim, dim, double> grid(num, pos, len);
+    grid.globalRefine(refinement);
+
+    // Test the interface
+    Dune::GridInterfaceEuler<Dune::SGrid<dim, dim, double> > gie(grid);
+    test_interface(gie);
+}
+
 
 //-----------------------------------------------------------------------------
 template <int refinement>
@@ -171,16 +193,19 @@ int main (int argc , char **argv) {
 
 #if REFINE > 0
 	check_yasp<3,1>();  // 3D, 2 x 2 x 2 cells
+	check_sgrid<3,1>();  // 3D, 2 x 2 x 2 cells
 	check_cpgrid<1>();
 #endif
 
 #if REFINE > 1
 	check_yasp<3,2>();  // 3D, 4 x 4 x 4 cells
+	check_sgrid<3,2>();  // 3D, 4 x 4 x 4 cells
 	check_cpgrid<2>();
 #endif
 
 #if REFINE > 2
 	check_yasp<3,3>();  // 3D, 8 x 8 x 8 cells
+	check_sgrid<3,3>();  // 3D, 8 x 8 x 8 cells
 	check_cpgrid<3>();
 #endif
 

@@ -335,8 +335,8 @@ representing a field and a compile-time given size.
 	//! export the type representing the components
 	typedef K block_type;
 
-	//! export the type representing the components, STL style
-	typedef K value_type;
+        //! export the type representing the components, STL style
+        typedef K value_type;
 
         //! The type used for the index access and size operation
         typedef std::size_t size_type;

@@ -123,7 +123,7 @@ namespace Dune
 	    {
 		GeometryType t;
 		if (dim == 2) {
-		    t.makeSingular(dim);
+		    t.makeNone(dim);
 		} else {
 		    t.makeCube(dim);
 		}
@@ -168,7 +168,7 @@ namespace Dune
 	    /// Returns the centroid of the geometry.
 	    /// I do not think this is a Dune interface method, but we
 	    /// want it to be!
-	    GlobalCoordinate position() const
+	    GlobalCoordinate center() const
 	    {
 		return pos_;
 	    }
