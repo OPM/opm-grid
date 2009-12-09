@@ -107,14 +107,26 @@ namespace Dune
     private:
 	void readStatoilFormat(std::istream& is)
 	{
-	    std::string firstline;
-	    std::getline(is, firstline);
+            char c = is.peek();
+            while (c == '-' && is) {
+                is.get(c);
+                if (c == '-') {
+                    std::string commentline;
+                    std::getline(is, commentline);
+                    c = is.peek();
+                } else {
+                    is.putback(c);
+                }
+            }
+            if (!is) {
+                THROW("Something went wrong while skipping optional comment header of rock file.");
+            }
 	    typedef FieldVector<double, 4> Data;
 	    std::istream_iterator<Data> start(is);
 	    std::istream_iterator<Data> end;
 	    std::vector<Data> data(start, end);
 	    if (!is.eof()) {
-		THROW("Reading stopped but we're not at eof: something went wrong reading data.");
+		THROW("Reading stopped but we're not at eof: something went wrong reading data of rock file.");
 	    }
 	    std::vector<double> svals, krw, kro, Jfunc;
 	    for (int i = 0; i < int(data.size()); ++i) {
