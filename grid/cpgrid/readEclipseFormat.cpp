@@ -696,7 +696,7 @@ namespace Dune
 		    cell_centroid += face_contrib;
 		}
 		cell_centroid /= tot_cell_vol;
-#define HACK_CELL_CENTROIDS
+// #define HACK_CELL_CENTROIDS     // when this is defined, you get the average of top and bottom face centroids.
 #ifdef HACK_CELL_CENTROIDS
                 int numf = cf.size();
                 cell_centroid = face_centroids[face_indices[numf - 2]];
