@@ -93,6 +93,7 @@ namespace Dune
                   double z_tolerance = 0.0,
                   double residual_tolerance = 1e-8,
                   int linsolver_verbosity = 0,
+                  int linsolver_type = 1,
                   bool twodim_hack = false);
 
 	/// Access the grid.
@@ -148,6 +149,7 @@ namespace Dune
 	bool twodim_hack_;
 	double residual_tolerance_;
 	int linsolver_verbosity_;
+        int linsolver_type_;
 
 	GridType grid_;
 	GridInterface ginterf_;

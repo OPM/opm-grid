@@ -615,15 +615,19 @@ namespace Dune {
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
                    double residual_tolerance = 1e-8,
-                   int linsolver_verbosity = 1)
+                   int linsolver_verbosity = 1,
+                   int linsolver_type = 1)
         {
             assembleDynamic(r, sat, bc, src);
             // printSystem("linsys_mimetic");
-#if 0
-            solveLinearSystem(residual_tolerance, linsolver_verbosity);
-#else
-            solveLinearSystemAMG(residual_tolerance, linsolver_verbosity);
-#endif
+            switch (linsolver_type) {
+            case 0: // ILU0 preconditioned BiCGStab
+                solveLinearSystem(residual_tolerance, linsolver_verbosity);
+                break;
+            case 1: // AMG
+                solveLinearSystemAMG(residual_tolerance, linsolver_verbosity);
+                break;
+            }
             computePressureAndFluxes(r, sat);
         }
 

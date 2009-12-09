@@ -48,7 +48,8 @@ namespace Dune
 	: bctype_(Fixed),
 	  twodim_hack_(false),
 	  residual_tolerance_(1e-8),
-	  linsolver_verbosity_(0)
+	  linsolver_verbosity_(0),
+          linsolver_type_(1)
     {
     }
 
@@ -72,6 +73,7 @@ namespace Dune
 	twodim_hack_ = param.getDefault("2d_hack", twodim_hack_);
 	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
 	linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
+        linsolver_type_ = param.getDefault("linsolver_type", linsolver_type_);
 
 	// Faking some parameters depending on bc type.
 	parameter::ParameterGroup temp_param = param;
@@ -109,11 +111,13 @@ namespace Dune
                                           double z_tolerance,
                                           double residual_tolerance,
                                           int linsolver_verbosity,
+                                          int linsolver_type,
                                           bool twodim_hack)
     {
 	bctype_ = bctype;
 	residual_tolerance_ = residual_tolerance;
 	linsolver_verbosity_ = linsolver_verbosity;
+        linsolver_type_ = linsolver_type;
 	twodim_hack_ = twodim_hack;
 
 	// Faking some parameters depending on bc type.
@@ -191,7 +195,7 @@ namespace Dune
 	    }
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_);
+	    flow_solver_.solve(res_prop_, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
 
 	    // Check and fix fluxes.
 // 	    flux_checker_.checkDivergence(grid_, wells, flux);
