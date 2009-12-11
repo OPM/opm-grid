@@ -15,7 +15,7 @@ AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
         $(BOOST_SYSTEM_LIB)                             \
         ../../../lib/libdunecornerpoint.la              \
-        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) 
+        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
 
 # Note: Need to fill _SOURCES because default is "<base>.c"
 mimetic_ipeval_test_SOURCES = mimetic_ipeval_test.cpp

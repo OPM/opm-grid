@@ -21,12 +21,10 @@ periodic_test_SOURCES = periodic_test.cpp
 gie_test_SOURCES = gie_test.cpp
 
 simulator_test_SOURCES = simulator_test.cpp
-simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) # -ltbb
-#simulator_test_LDADD   = $(LDADD) -llapack -lblas # -ltbb
+simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)# -ltbb
 
 aniso_simulator_test_SOURCES = aniso_simulator_test.cpp
-aniso_simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) 
-#aniso_simulator_test_LDADD   = $(LDADD) -llapack -lblas
+aniso_simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
 
 TESTS = $(check_PROGRAMS)
 
