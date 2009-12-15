@@ -77,6 +77,11 @@ namespace Dune
 	/// contain the last computed (steady) saturation states (one for each cardinal direction).
 	const boost::array<std::vector<double>, Dimension>& lastSaturations() const;
 
+        /// Computes the upscaled saturations corresponding to the saturation fields
+        /// returned by lastSaturations(). Does this by computing total saturated
+        /// volume divided by total pore volume.
+        boost::array<double, Dimension> lastSaturationsUpscaled() const;
+
     protected:
 	// ------- Typedefs -------
 	typedef EulerUpstream<GridInterface, ResProp, BCs> TransportSolver;

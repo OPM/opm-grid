@@ -78,8 +78,10 @@ int main(int argc, char** argv)
 	    double pdrop = pdrops[j];
 	    SteadyStateUpscaler::permtensor_t upscaled_relperm
 		= upscaler.upscaleSteadyState(init_sats, saturations[i], pdrop, upscaled_K);
-	    std::cout << "\n\nTensor of upscaled relperms for saturation " << saturations[i]
-		      << " and pressure drop " << pdrop << ":\n" << upscaled_relperm << "\n" << std::endl;
+            boost::array<double, 3> usats = upscaler.lastSaturationsUpscaled();
+	    std::cout << "\n\nTensor of upscaled relperms for initial saturation " << saturations[i]
+                      << ", real steady-state saturations " << usats[0] << ' ' << usats[1] << ' ' << usats[2]
+                      << " and pressure drop " << pdrop << ":\n" << upscaled_relperm << "\n" << std::endl;
 	    // Changing initial saturations for next pressure drop to equal the steady state of the last
 	    init_sats = upscaler.lastSaturations();
 	}

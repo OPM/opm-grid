@@ -183,6 +183,26 @@ namespace Dune
     }
 
 
+    boost::array<double, SteadyStateUpscaler::Dimension>
+    SteadyStateUpscaler::lastSaturationsUpscaled() const
+    {
+        double pore_vol = 0.0;
+        boost::array<double, Dimension> sat_vol;
+        std::fill(sat_vol.begin(), sat_vol.end(), 0.0);
+        for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+            pore_vol += c->volume()*res_prop_.porosity(c->index());
+            for (int dim = 0; dim < Dimension; ++dim) {
+                sat_vol[dim] += pore_vol*last_saturations_[dim][c->index()];
+            }
+        }
+        // Dividing by pore volume gives average saturations.
+        for (int dim = 0; dim < Dimension; ++dim) {
+            sat_vol[dim] /= pore_vol;
+        }
+        return sat_vol;
+    }
+
+
 
     template <class FlowSol>
     inline double SteadyStateUpscaler::computeAveragePhaseVelocity(const FlowSol& flow_solution,
