@@ -1,5 +1,7 @@
-# $Date:$
-# $Revision:$
+# $Date$
+# $Revision$
+
+SUBDIRS = . test
 
 paramdir = $(includedir)/dune/common/param
 
