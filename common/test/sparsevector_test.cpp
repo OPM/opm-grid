@@ -51,14 +51,6 @@ BOOST_AUTO_TEST_CASE(construction_and_queries)
     BOOST_CHECK_EQUAL(sv1.size(), 0);
     BOOST_CHECK_EQUAL(sv1.nonzeroSize(), 0);
 
-    // This should be getting us a table like this:
-    // ----------------
-    // 0
-    // <empty row>
-    // 1 2
-    // 3 4 5 6
-    // 7 8 9
-    // ----------------
     const int size = 100;
     const int num_elem = 9;
     const int elem[num_elem] = { 9, 8, 7, 6, 5, 4, 3, 2, 1 };
