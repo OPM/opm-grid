@@ -90,7 +90,7 @@ namespace Dune
 		  subindex_(-1),
 		  faces_of_cell_(),
 		  global_geom_(),
-		  in_inside_geom_(),
+// 		  in_inside_geom_(),
 		  nbcell_(-1), // Init to self, which is invalid.
 		  is_on_boundary_(false)
             {
@@ -104,9 +104,9 @@ namespace Dune
 		  subindex_(subindex),
 		  faces_of_cell_(grid.cell_to_face_[cell]),
 		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
-		  in_inside_geom_(global_geom_.center()
-				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().center(),
-				  global_geom_.volume()),
+// 		  in_inside_geom_(global_geom_.center()
+// 				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().center(),
+// 				  global_geom_.volume()),
 		  nbcell_(cell.index()), // Init to self, which is invalid.
 		  is_on_boundary_(false)
             {
@@ -218,7 +218,8 @@ namespace Dune
 	    /// @return
             const LocalGeometry& geometryInInside() const
 	    {
-		return in_inside_geom_;
+                THROW("This intersection class does not support geometryInInside().");
+// 		return in_inside_geom_;
 	    }
 
 	    /// @brief
@@ -239,7 +240,8 @@ namespace Dune
 		if (boundary()) {
 		    THROW("Cannot access geometryInOutside(), intersection is at a boundary.");
 		}
-		return in_outside_geom_;
+                THROW("This intersection class does not support geometryInOutside().");
+// 		return in_outside_geom_;
 	    }
 
 	    /// @brief
@@ -363,8 +365,8 @@ namespace Dune
             int subindex_;
             OrientedEntityTable<0,1>::row_type faces_of_cell_;
 	    Geometry global_geom_;
-	    LocalGeometry in_inside_geom_;
-	    LocalGeometry in_outside_geom_;
+// 	    LocalGeometry in_inside_geom_;
+// 	    LocalGeometry in_outside_geom_;
 	    int nbcell_;
 	    bool is_on_boundary_;
 
@@ -379,7 +381,8 @@ namespace Dune
 	    void update()
 	    {
                 EntityRep<1> face = faces_of_cell_[subindex_];
-		global_geom_ = cpgrid::Entity<1, GridType>(*pgrid_, face).geometry();
+		//global_geom_ = cpgrid::Entity<1, GridType>(*pgrid_, face).geometry();
+                global_geom_ = pgrid_->geometry_.template geomVector<1>()[face];
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		is_on_boundary_ = (cells_of_face.size() == 1);
 		if (is_on_boundary_) {
@@ -391,9 +394,9 @@ namespace Dune
                     } else {
                         nbcell_ = cells_of_face[0].index();
                     }
-		    in_outside_geom_ = LocalGeometry(global_geom_.center()
-						     - outside().geometry().center(),
-						     global_geom_.volume());
+// 		    in_outside_geom_ = LocalGeometry(global_geom_.center()
+// 						     - outside().geometry().center(),
+// 						     global_geom_.volume());
 		}
 	    }
 
