@@ -62,6 +62,7 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
+		       SparseTable<int>& f2p,
 		       std::vector<array<int,8> >& c2p,
 		       std::vector<int>& face_to_output_face);
 	void buildGeom(const processed_grid& output,
@@ -183,7 +184,7 @@ namespace Dune
 	std::cout << "Building topology." << std::endl;
 #endif
 	std::vector<int> face_to_output_face;
-	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, cell_to_point_, face_to_output_face);
+	buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, face_to_output_face);
 	std::copy(output.dimensions, output.dimensions + 3, logical_cartesian_size_.begin());
 
 #ifdef VERBOSE
@@ -477,6 +478,7 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
+		       SparseTable<int>& f2p,
 		       std::vector<array<int,8> >& c2p,
 		       std::vector<int>& face_to_output_face)
 	{
@@ -508,18 +510,24 @@ namespace Dune
 		    face_to_output_face.push_back(i);
 		}
 	    }
+	    int num_faces = f2c.size();
 
 	    // Build cell to face.
 	    f2c.makeInverseRelation(c2f);
+            int num_cells = c2f.size();
+
+            // Build face to point
+	    const int* fn = output.face_nodes;
+	    const int* fp = output.face_ptr;
+	    for (int face = 0; face < num_faces; ++face) {
+		int output_face = face_to_output_face[face];
+                f2p.appendRow(fn + fp[output_face], fn + fp[output_face+1]);
+            }
 
 	    // Build cell to point
-// 	    const cpgrid::EntityRep<3>* dummy = 0;
-// 	    for (int i = 0; i < c2f.size(); ++i) {
-// 		c2p.appendRow(dummy, dummy);
-// 	    }
 	    c2p.clear();
-	    c2p.reserve(c2f.size());
-	    for (int i = 0; i < c2f.size(); ++i) {
+	    c2p.reserve(num_cells);
+	    for (int i = 0; i < num_cells; ++i) {
 		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i)];
 		// We know that the bottom and top faces come last.
 		int numf = cf.size();

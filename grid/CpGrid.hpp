@@ -202,6 +202,10 @@ namespace Dune
 	/// found in <grid_prefix>-topo.dat etc.
 	void readSintefLegacyFormat(const std::string& grid_prefix);
 
+	/// Write the Sintef legacy grid format ('topogeom').
+	/// \param grid_prefix the grid name, such that topology will be
+	/// found in <grid_prefix>-topo.dat etc.
+        void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
@@ -593,14 +597,15 @@ namespace Dune
         CollectiveCommunication ccobj_;
 	cpgrid::IndexSet<CpGrid> index_set_;
 	cpgrid::IdSet<CpGrid> id_set_;
+
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
+	SparseTable<int> face_to_point_;
 	std::vector< array<int,8> > cell_to_point_;
 	boost::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
-
         // Size of Cartesian bounding box.
         boost::array<int,3> cartDims_;
         

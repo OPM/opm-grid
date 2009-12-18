@@ -11,7 +11,8 @@ cpgrid_HEADERS = DefaultGeometryPolicy.hpp Entity.hpp EntityRep.hpp \
 
 noinst_LTLIBRARIES = libcpgrid.la
 
-libcpgrid_la_SOURCES = CpGrid.cpp readSintefLegacyFormat.cpp \
+libcpgrid_la_SOURCES = CpGrid.cpp \
+		       readSintefLegacyFormat.cpp writeSintefLegacyFormat.cpp \
                        readEclipseFormat.cpp
 
 libcpgrid_la_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
