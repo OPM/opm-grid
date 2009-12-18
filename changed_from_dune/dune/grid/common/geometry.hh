@@ -8,7 +8,6 @@
 #include <cassert>
 
 #include <dune/common/fmatrix.hh>
-#include <dune/common/helpertemplates.hh>
 #include <dune/common/exceptions.hh>
 
 #include <dune/grid/common/genericreferenceelements.hh>
