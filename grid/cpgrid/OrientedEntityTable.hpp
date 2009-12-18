@@ -131,6 +131,7 @@ namespace Dune
 
 	    using super_t::empty;
 	    using super_t::size;
+	    using super_t::dataSize;
 	    using super_t::clear;
 	    using super_t::appendRow;
 
