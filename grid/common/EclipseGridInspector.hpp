@@ -73,7 +73,7 @@ public:
     /// Returns a vector with the outer limits of grid (in the grid's unit).
     /// The vector contains [xmin, xmax, ymin, ymax, zmin, zmax], as 
     /// read from COORDS and ZCORN
-    std::vector<double> getGridLimits() const;
+    boost::array<double, 6> getGridLimits() const;
 
     /// Returns the extent of the logical cartesian grid
     /// as number of cells in the (i, j, k) directions.

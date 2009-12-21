@@ -47,7 +47,7 @@
 
 using namespace std;
 
-
+//#define VERBOSE
 
 namespace Dune
 {
@@ -296,7 +296,9 @@ void EclipseGridParser::read(istream& is)
     is >> ignoreWhitespace;
     while (!is.eof()) {
 	string keyword = read_keyword(is);
-	cout << "Keyword: " << keyword << " " << keyword.size() << endl;
+#ifdef VERBOSE
+	cout << "Keyword found: " << keyword << endl;
+#endif
 	pair<FieldType, bool> type = classify_keyword(keyword);
 	switch (type.first) {
 	case Integer:
@@ -316,10 +318,16 @@ void EclipseGridParser::read(istream& is)
 	}
 	case IgnoreWithData: {
             is.ignore(numeric_limits<int>::max(), '/');
+#ifdef VERBOSE
+            cout << "(ignored)" << endl;
+#endif
 	    break;
 	}
 	case IgnoreNoData: {
 	    is >> ignoreLine;
+#ifdef VERBOSE
+            cout << "(ignored)" << endl;
+#endif
 	    break;
 	}
         case Include: {
@@ -450,57 +458,15 @@ const boost::shared_ptr<SpecialBase> EclipseGridParser::getSpecialValue(const st
 }
 
 //---------------------------------------------------------------------------
-const SPECGRID& EclipseGridParser::getSpecGrid() const
-//---------------------------------------------------------------------------
-{
-    return dynamic_cast<const SPECGRID&>(*getSpecialValue("SPECGRID"));
-}
-
-//---------------------------------------------------------------------------
-const FAULTS& EclipseGridParser::getFaults() const
-//---------------------------------------------------------------------------
-{
-    return dynamic_cast<const FAULTS&>(*getSpecialValue("FAULTS"));
-}
-
-//---------------------------------------------------------------------------
-const MULTFLT& EclipseGridParser::getMultflt() const
-//---------------------------------------------------------------------------
-{
-    return dynamic_cast<const MULTFLT&>(*getSpecialValue("MULTFLT"));
-}
-
-//---------------------------------------------------------------------------
-const TITLE& EclipseGridParser::getTitle() const
-//---------------------------------------------------------------------------
-{
-    return dynamic_cast<const TITLE&>(*getSpecialValue("TITLE"));
-}
-
-//---------------------------------------------------------------------------
 boost::shared_ptr<SpecialBase>
 EclipseGridParser::createSpecialField(std::istream& is,
 				      const std::string& fieldname)
 //---------------------------------------------------------------------------
 {
     string ukey = upcase(fieldname);
-    boost::shared_ptr<SpecialBase> spec_ptr;
-    if (ukey == "SPECGRID") {
-	spec_ptr.reset(new SPECGRID);
-	spec_ptr->read(is);
-    } else if (ukey == "FAULTS") {
-	spec_ptr.reset(new FAULTS);
-	spec_ptr->read(is);
-    } else if (ukey == "MULTFLT") {
-	spec_ptr.reset(new MULTFLT);
-	spec_ptr->read(is);
-    } else if (ukey == "TITLE") {
-	spec_ptr.reset(new TITLE);
-	spec_ptr->read(is);
-    } else {
-	cerr << "Special Keyword " << fieldname << " not recognized." << endl;
-	throw exception();
-    }
+    boost::shared_ptr<SpecialBase> spec_ptr
+        = Factory<SpecialBase>::createObject(fieldname);
+    spec_ptr->read(is);
     return spec_ptr;
 }
 

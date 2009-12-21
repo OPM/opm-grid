@@ -40,7 +40,7 @@
 #include <fstream>
 #include <boost/static_assert.hpp>
 #include <boost/array.hpp>
-
+#include <dune/grid/common/EclipseGridInspector.hpp>
 
 namespace Dune
 {
@@ -451,12 +451,9 @@ namespace Dune
                                                                             const std::vector<int>& global_cell,
                                                                             double perm_threshold)
     {
-        int num_global_cells = -1;
-        if (parser.hasField("SPECGRID")) {
-            const SPECGRID& sgr = parser.getSpecGrid();
-            num_global_cells = 
-                sgr.dimensions[0] * sgr.dimensions[1] * sgr.dimensions[2];
-        }
+        EclipseGridInspector insp(parser);
+        boost::array<int, 3> dims = insp.gridSize();
+        int num_global_cells = dims[0]*dims[1]*dims[2];
         ASSERT (num_global_cells > 0);
 
         permeability_.assign(dim * dim * global_cell.size(), 0.0);

@@ -51,18 +51,26 @@ EclipseGridInspector::EclipseGridInspector(const EclipseGridParser& parser)
     : parser_(parser)
 {
     std::vector<std::string> keywords;
-    keywords.push_back("SPECGRID");
     keywords.push_back("COORD");
     keywords.push_back("ZCORN");
 
     if (!parser_.hasFields(keywords)) {
-	throw std::runtime_error("Needed field is missing in file");
+	THROW("Needed field is missing in file");
     }
 
-    const SPECGRID& sgr = parser.getSpecGrid();
-    logical_gridsize_[0] = sgr.dimensions[0];
-    logical_gridsize_[1] = sgr.dimensions[1];
-    logical_gridsize_[2] = sgr.dimensions[2];
+    if (parser_.hasField("SPECGRID")) {
+        const SPECGRID& sgr = parser.getSPECGRID();
+        logical_gridsize_[0] = sgr.dimensions[0];
+        logical_gridsize_[1] = sgr.dimensions[1];
+        logical_gridsize_[2] = sgr.dimensions[2];
+    } else if (parser_.hasField("DIMENS")) {
+        const std::vector<int>& dim = parser.getIntegerValue("DIMENS");
+        logical_gridsize_[0] = dim[0];
+        logical_gridsize_[1] = dim[1];
+        logical_gridsize_[2] = dim[2];
+    } else {
+        THROW("Found neither SPECGRID nor DIMENS in file. At least one is needed.");
+    }
 
 }
 
@@ -144,7 +152,7 @@ void EclipseGridInspector::checkLogicalCoords(int i, int j, int k) const
 }
 
 
-std::vector<double> EclipseGridInspector::getGridLimits() const
+boost::array<double, 6> EclipseGridInspector::getGridLimits() const
 {
     if (! (parser_.hasField("COORD") && parser_.hasField("ZCORN") && parser_.hasField("SPECGRID")) ) {
         throw std::runtime_error("EclipseGridInspector: Grid does not have SPECGRID, COORD, and ZCORN, can't find dimensions.");
@@ -181,14 +189,9 @@ std::vector<double> EclipseGridInspector::getGridLimits() const
             ymin = coord[pillarindex * 6 + 4];
     }
 
-    std::vector<double> gridlimits;
-    gridlimits.push_back(xmin);
-    gridlimits.push_back(xmax);
-    gridlimits.push_back(ymin);
-    gridlimits.push_back(ymax);
-    gridlimits.push_back(*min_element(zcorn.begin(), zcorn.end()));
-    gridlimits.push_back(*max_element(zcorn.begin(), zcorn.end()));
-
+    boost::array<double, 6> gridlimits = {{ xmin, xmax, ymin, ymax,
+                                            *min_element(zcorn.begin(), zcorn.end()),
+                                            *max_element(zcorn.begin(), zcorn.end()) }};
     return gridlimits;
 }
 

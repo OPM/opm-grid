@@ -41,6 +41,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <map>
 #include <boost/shared_ptr.hpp>
 #include "SpecialEclipseFields.hpp"
+#include <dune/common/Factory.hpp>
 
 namespace Dune
 {
@@ -98,11 +99,22 @@ public:
     /// or floats.
     const boost::shared_ptr<SpecialBase> getSpecialValue(const std::string& keyword) const;
 
+    // This macro implements support for a special field keyword. It requires that a subclass
+    // of SpecialBase exists, that has the same name as the keyword.
+    // After using SPECIAL_FIELD(KEYWORD), the public member getKEYWORD will be available.
+#define SPECIAL_FIELD(keyword)                                                                   \
+private:                                                                                         \
+    struct X##keyword { X##keyword() { Factory<SpecialBase>::addCreator<keyword>(#keyword); } }; \
+    X##keyword x##keyword;                                                                       \
+public:                                                                                          \
+    const keyword& get##keyword() const                                                          \
+    { return dynamic_cast<const keyword&>(*getSpecialValue(#keyword)); }
 
-    const SPECGRID& getSpecGrid() const;
-    const FAULTS&   getFaults() const;
-    const MULTFLT&  getMultflt() const;
-    const TITLE&    getTitle() const;
+    // Support for special fields.
+    SPECIAL_FIELD(SPECGRID);
+    SPECIAL_FIELD(FAULTS);
+    SPECIAL_FIELD(MULTFLT);
+    SPECIAL_FIELD(TITLE);
 
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
