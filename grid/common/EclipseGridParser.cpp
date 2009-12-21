@@ -62,6 +62,10 @@ namespace EclipseKeywords
 	  string("EQLNUM"),
 	  string("REGNUM"),
 	  string("ROCKTYPE"),
+	  string("DIMENS"),
+	  string("REGDIMS"),
+	  string("WELLDIMS"),
+	  string("TABDIMS"),
           string("FIPNUM"),
           string("GRIDFILE")
 	};
@@ -212,6 +216,9 @@ namespace
 		is >> dummy;
 		if (dummy == "/") {
 		    break;
+		} else if (dummy.find("--") == 0) {
+		    is >> ignoreLine >> dummy; // This line is a comment
+		    continue;
 		} else if (error_on_nonnumerics) {
 		    cerr << "Encountered format error while reading data values." << endl;
 		    throw exception();
