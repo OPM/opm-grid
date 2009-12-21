@@ -33,7 +33,6 @@
   You should have received a copy of the GNU General Public License
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
-
 #include "config.h"
 #include <iostream>
 #include <fstream>
@@ -80,10 +79,33 @@ namespace EclipseKeywords
         };
     const int num_special_fields = sizeof(special_fields) / sizeof(special_fields[0]);
 
-    string ignored_fields[] =
-	{ string("MAPUNITS"), string("MAPAXES"), string("GRIDUNIT")
+    string ignore_with_data[] =
+	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
+	  string("INCLUDE"),  string("DIMENS"),   string("START"),
+	  string("REGDIMS"),  string("WELLDIMS"), string("TABDIMS"),
+	  string("NSTACK"),   string("SWFN"),     string("SOF2"),
+	  string("PVTW"),     string("PVTDO"),    string("ROCK"),
+	  string("DENSITY"),  string("SATNUM"),   string("EQUIL"),
+	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
+	  string("RWSAT"),    string("RPR"),      string("WBHP"),
+	  string("WOIR"),     string("WELSPECS"), string("COMPDAT"),
+	  string("WCONINJE"), string("RPTRST"),   string("TUNING"),
+	  string("TSTEP")
 	};
-    const int num_ignored_fields = sizeof(ignored_fields) / sizeof(ignored_fields[0]);
+    const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);
+
+    string ignore_no_data[] =
+	{ string("RUNSPEC"), string("WATER"),    string("OIL"),
+	  string("METRIC"),  string("FMTIN"),    string("FMTOUT"),
+	  string("GRID"),    string("INIT"),     string("NOECHO"),
+	  string("ECHO"),    string("EDIT"),     string("PROPS"),
+	  string("REGIONS"), string("SOLUTION"), string("SUMMARY"),
+	  string("FPR"),     string("FOIP"),     string("FWIP"),
+	  string("RUNSUM"),  string("EXCEL"),    string("SCHEDULE"),
+	  string("END")
+	};
+
+    const int num_ignore_no_data = sizeof(ignore_no_data) / sizeof(ignore_no_data[0]);
 
 } // namespace EclipseKeywords
 
@@ -141,7 +163,8 @@ namespace
 	Integer,
 	FloatingPoint,
 	SpecialField,
-	Ignored,
+	IgnoreWithData,
+	IgnoreNoData,
 	Unknown
     };
 
@@ -156,8 +179,10 @@ namespace
 	} else if (count(special_fields, special_fields + num_special_fields, keyword)) {
 	    error_if_nonnumeric = false;
 	    return make_pair(SpecialField, error_if_nonnumeric);
-	} else if (count(ignored_fields, ignored_fields + num_ignored_fields, keyword)) {
-	    return make_pair(Ignored, error_if_nonnumeric);
+	} else if (count(ignore_with_data, ignore_with_data + num_ignore_with_data, keyword)) {
+	    return make_pair(IgnoreWithData, error_if_nonnumeric);
+	} else if (count(ignore_no_data, ignore_no_data + num_ignore_no_data, keyword)) {
+	    return make_pair(IgnoreNoData, error_if_nonnumeric);
 	} else {
 	    return make_pair(Unknown, error_if_nonnumeric);
 	}
@@ -285,6 +310,7 @@ void EclipseGridParser::read(istream& is)
     is >> ignoreWhitespace;
     while (!is.eof()) {
 	string keyword = read_keyword(is);
+	cout << "Keyword: " << keyword << " " << keyword.size() << endl;
 	pair<FieldType, bool> type = classify_keyword(keyword);
 	switch (type.first) {
 	case Integer:
@@ -302,11 +328,22 @@ void EclipseGridParser::read(istream& is)
 	    }
 	    break;
 	}
-	case Ignored: {
+	case IgnoreWithData: {
+	    is >> ignoreLine;
 	    string dummy;
-	    getline(is, dummy, '/');
-	}
+	    getline(is, dummy);
+	    cout << "IgnoreWithData: " << dummy << " " << dummy.length()
+		 << " L: " << dummy[dummy.length()-1] << endl;
+
+	    if (dummy[dummy.length()-1] != '/') {
+		getline(is, dummy, '/');
+	    }
 	    break;
+	}
+	case IgnoreNoData: {
+	    is >> ignoreLine;
+	    break;
+	}
 	case Unknown:
 	default:
 	    cerr << "Keyword " << keyword << " not recognized." << endl;
