@@ -65,6 +65,10 @@ class EclipseGridParser
 {
 public:
     /// Constructor taking an eclipse file as a stream.
+    /// Note that since the INCLUDE keyword is relative to
+    /// the directory of the current file, you may need to use
+    /// the constructor taking a filename to process eclipse
+    /// files with INCLUDEs.
     explicit EclipseGridParser(std::istream& is);
     /// Convenience constructor taking an eclipse filename.
     explicit EclipseGridParser(const std::string& filename);
@@ -98,10 +102,12 @@ public:
     const SPECGRID& getSpecGrid() const;
     const FAULTS&   getFaults() const;
     const MULTFLT&  getMultflt() const;
+    const TITLE&    getTitle() const;
 
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
 
+    std::string directory_;
     std::map<std::string, std::vector<int> > integer_field_map_;
     std::map<std::string, std::vector<double> > floating_field_map_;
     std::map<std::string, boost::shared_ptr<SpecialBase> >special_field_map_;

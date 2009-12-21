@@ -306,6 +306,19 @@ struct MULTFLT : public SpecialBase
     }
 };
 
+
+struct TITLE : public SpecialBase
+{
+    std::string title;
+    virtual std::string name() const
+    { return std::string("TITLE"); }
+    virtual void read(std::istream& is)
+    { is >> ignore_line; std::getline(is, title); }
+    virtual void write(std::ostream& os) const
+    { os << name() << '\n' << title << '\n'; }
+
+};
+
 } // End of namespace Dune
 
 #endif // OPENRS_SPECIALECLIPSEFIELDS_HEADER

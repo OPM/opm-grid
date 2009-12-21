@@ -43,6 +43,7 @@
 #include "EclipseGridParser.hpp"
 #include "SpecialEclipseFields.hpp"
 #include <dune/common/ErrorMacros.hpp>
+#include <boost/filesystem.hpp>
 
 using namespace std;
 
@@ -60,7 +61,9 @@ namespace EclipseKeywords
 	  string("SATNUM"),
 	  string("EQLNUM"),
 	  string("REGNUM"),
-	  string("ROCKTYPE")
+	  string("ROCKTYPE"),
+          string("FIPNUM"),
+          string("GRIDFILE")
 	};
     const int num_integer_fields = sizeof(integer_fields) / sizeof(integer_fields[0]);
 
@@ -70,18 +73,20 @@ namespace EclipseKeywords
           string("PERMYY"),   string("PERMZZ"),     string("PERMXY"),
           string("PERMYZ"),   string("PERMZX"),     string("PORO"),
           string("BULKMOD"),  string("YOUNGMOD"),   string("LAMEMOD"),
-          string("SHEARMOD"), string("POISSONMOD"), string("PWAVEMOD")
+          string("SHEARMOD"), string("POISSONMOD"), string("PWAVEMOD"),
+          string("MULTPV")
         };
     const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
     string special_fields[] =
-        { string("SPECGRID"), string("FAULTS"), string("MULTFLT")
+        { string("SPECGRID"), string("FAULTS"), string("MULTFLT"),
+          string("TITLE")
         };
     const int num_special_fields = sizeof(special_fields) / sizeof(special_fields[0]);
 
     string ignore_with_data[] =
 	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
-	  string("INCLUDE"),  string("DIMENS"),   string("START"),
+	  string("DIMENS"),   string("START"),    string("NTG"),
 	  string("REGDIMS"),  string("WELLDIMS"), string("TABDIMS"),
 	  string("NSTACK"),   string("SWFN"),     string("SOF2"),
 	  string("PVTW"),     string("PVTDO"),    string("ROCK"),
@@ -89,8 +94,8 @@ namespace EclipseKeywords
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
 	  string("WOIR"),     string("WELSPECS"), string("COMPDAT"),
-	  string("WCONINJE"), string("RPTRST"),   string("TUNING"),
-	  string("TSTEP")
+	  string("WCONINJE"), string("TUNING"),   string("PVDO"),
+	  string("TSTEP"),    string("BOX")
 	};
     const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);
 
@@ -102,10 +107,13 @@ namespace EclipseKeywords
 	  string("REGIONS"), string("SOLUTION"), string("SUMMARY"),
 	  string("FPR"),     string("FOIP"),     string("FWIP"),
 	  string("RUNSUM"),  string("EXCEL"),    string("SCHEDULE"),
-	  string("END")
+	  string("END"),     string("ENDBOX")
 	};
-
     const int num_ignore_no_data = sizeof(ignore_no_data) / sizeof(ignore_no_data[0]);
+
+    string include_keywords[] = { string("INCLUDE") };
+    const int num_include_keywords = sizeof(include_keywords) / sizeof(include_keywords[0]);
+
 
 } // namespace EclipseKeywords
 
@@ -165,6 +173,7 @@ namespace
 	SpecialField,
 	IgnoreWithData,
 	IgnoreNoData,
+        Include,
 	Unknown
     };
 
@@ -183,6 +192,8 @@ namespace
 	    return make_pair(IgnoreWithData, error_if_nonnumeric);
 	} else if (count(ignore_no_data, ignore_no_data + num_ignore_no_data, keyword)) {
 	    return make_pair(IgnoreNoData, error_if_nonnumeric);
+	} else if (count(include_keywords, include_keywords + num_include_keywords, keyword)) {
+	    return make_pair(Include, error_if_nonnumeric);
 	} else {
 	    return make_pair(Unknown, error_if_nonnumeric);
 	}
@@ -220,44 +231,6 @@ namespace
 	    cerr << "Encountered error while reading data values." << endl;
 	    throw exception();
 	}
-#if 0
-	data.clear();
-	int next = is.peek();
-	while (next != int('/')) {
-	    // Read more data
-	    T candidate;
-	    is >> candidate;
-	    if (is.rdstate() & ios::failbit) {
-		if (error_on_nonnumerics) {
-		    cerr << "Encountered format error while reading data values." << endl;
-		    throw exception();
-		}
-		is.clear(is.rdstate() & ~ios::failbit);
-		string dummy;
-		is >> dummy;
-	    } else {
-		if (is.peek() == int('*')) {
-		    is.ignore(); // ignore the '*'
-		    int multiplier = int(candidate);
-		    is >> candidate;
-		    data.insert(data.end(), multiplier, candidate);
-		} else {
-		    data.push_back(candidate);
-		}
-	    }
-	    is >> ignoreWhitespace;
-	    next = is.peek();
-	    if (next == EOF) {
-		cerr << "Reached end of file before data end (/) was found." << endl;
-		throw exception();
-	    }
-	}
-	is.ignore(); // ignore the '/'
-	if (!is) {
-	    cerr << "Encountered error while reading data values." << endl;
-	    throw exception();
-	}
-#endif
     }
 
 
@@ -281,6 +254,9 @@ EclipseGridParser::EclipseGridParser(istream& is)
 EclipseGridParser::EclipseGridParser(const string& filename)
 //---------------------------------------------------------------------------
 {
+    // Store directory of filename
+    boost::filesystem::path p(filename);
+    directory_ = p.parent_path().string();
     ifstream is(filename.c_str());
     if (!is) {
 	cerr << "Unable to open file " << filename << endl;
@@ -301,10 +277,13 @@ void EclipseGridParser::read(istream& is)
     }
 
     // Make temporary maps that will at the end be swapped with the
-    // member maps.
-    map<string, vector<int> > intmap;
-    map<string, vector<double> > floatmap;
-    map<string, boost::shared_ptr<SpecialBase> > specialmap;
+    // member maps
+    // NOTE: Above is no longer true, for easier implementation of 
+    //       the INCLUDE keyword. We lose the strong exception guarantee,
+    //       though (of course retaining the basic guarantee).
+    map<string, vector<int> >& intmap = integer_field_map_;
+    map<string, vector<double> >& floatmap = floating_field_map_;
+    map<string, boost::shared_ptr<SpecialBase> >& specialmap = special_field_map_;
 
     // Actually read the data
     is >> ignoreWhitespace;
@@ -329,21 +308,27 @@ void EclipseGridParser::read(istream& is)
 	    break;
 	}
 	case IgnoreWithData: {
-	    is >> ignoreLine;
-	    string dummy;
-	    getline(is, dummy);
-	    cout << "IgnoreWithData: " << dummy << " " << dummy.length()
-		 << " L: " << dummy[dummy.length()-1] << endl;
-
-	    if (dummy[dummy.length()-1] != '/') {
-		getline(is, dummy, '/');
-	    }
+            is.ignore(numeric_limits<int>::max(), '/');
 	    break;
 	}
 	case IgnoreNoData: {
 	    is >> ignoreLine;
 	    break;
 	}
+        case Include: {
+            is >> ignoreLine;
+            is.ignore(numeric_limits<int>::max(), '\'');
+            string include_filename;
+            getline(is, include_filename, '\'');
+            include_filename = directory_ + '/' + include_filename;
+            ifstream include_is(include_filename.c_str());
+            if (!include_is) {
+                THROW("Unable to open INCLUDEd file " << include_filename);
+            }
+            read(include_is);
+            is.ignore(numeric_limits<int>::max(), '/');
+            break;
+        }
 	case Unknown:
 	default:
 	    cerr << "Keyword " << keyword << " not recognized." << endl;
@@ -351,11 +336,6 @@ void EclipseGridParser::read(istream& is)
 	}
 	is >> ignoreWhitespace;
     }
-
-    // Swap into member maps
-    integer_field_map_.swap(intmap);
-    floating_field_map_.swap(floatmap);
-    special_field_map_.swap(specialmap);
 }
 
 
@@ -484,6 +464,13 @@ const MULTFLT& EclipseGridParser::getMultflt() const
 }
 
 //---------------------------------------------------------------------------
+const TITLE& EclipseGridParser::getTitle() const
+//---------------------------------------------------------------------------
+{
+    return dynamic_cast<const TITLE&>(*getSpecialValue("TITLE"));
+}
+
+//---------------------------------------------------------------------------
 boost::shared_ptr<SpecialBase>
 EclipseGridParser::createSpecialField(std::istream& is,
 				      const std::string& fieldname)
@@ -499,6 +486,9 @@ EclipseGridParser::createSpecialField(std::istream& is,
 	spec_ptr->read(is);
     } else if (ukey == "MULTFLT") {
 	spec_ptr.reset(new MULTFLT);
+	spec_ptr->read(is);
+    } else if (ukey == "TITLE") {
+	spec_ptr.reset(new TITLE);
 	spec_ptr->read(is);
     } else {
 	cerr << "Special Keyword " << fieldname << " not recognized." << endl;
