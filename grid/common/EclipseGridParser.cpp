@@ -41,6 +41,7 @@
 #include <limits>
 #include <cfloat>
 #include "EclipseGridParser.hpp"
+#include "EclipseGridParserHelpers.hpp"
 #include "SpecialEclipseFields.hpp"
 #include <dune/common/ErrorMacros.hpp>
 #include <boost/filesystem.hpp>
@@ -121,55 +122,7 @@ namespace EclipseKeywords
 
 } // namespace EclipseKeywords
 
-
-// ---------- Helper functions for read() and hasField() ----
-
-namespace
-{
-
-    istream& ignoreLine(istream& is)
-    {
-	is.ignore(numeric_limits<int>::max(), '\n');
-	return is;
-    }
-
-    istream& ignoreWhitespace(istream& is)
-    {
-	// Getting the character type facet for is()
-	// We use the classic (i.e. C) locale.
-	const ctype<char>& ct = use_facet< ctype<char> >(locale::classic());
-	char c;
-	while (is.get(c)) {
-	    if (!ct.is(ctype_base::space, c)) {
-		is.putback(c);
-		break;
-	    }
-	}
-	return is;
-    }
-
-    string upcase(const string& s)
-    {
-	string us(s);
-	// Getting the character type facet for toupper().
-	// We use the classic (i.e. C) locale.
-	const ctype<char>& ct = use_facet< ctype<char> >(locale::classic());
-	for (int i = 0; i < int(s.size()); ++i) {
-	    us[i] = ct.toupper(s[i]);
-	}
-	return us;
-    }
-
-    string read_keyword(istream& is)
-    {
-	string keyword_candidate;
-	is >> keyword_candidate;
-	while (keyword_candidate.find("--") == 0) {
-	    // This line is a comment
-	    is >> ignoreLine >> keyword_candidate;
-	}
-	return upcase(keyword_candidate);
-    }
+namespace {
 
     enum FieldType {
 	Integer,
@@ -181,7 +134,7 @@ namespace
 	Unknown
     };
 
-    pair<FieldType, bool> classify_keyword(const string& keyword)
+    inline pair<FieldType, bool> classify_keyword(const string& keyword)
     {
 	using namespace EclipseKeywords;
 	bool error_if_nonnumeric = true;
@@ -202,44 +155,6 @@ namespace
 	    return make_pair(Unknown, error_if_nonnumeric);
 	}
     }
-
-    template<typename T>
-    void read_data(istream& is, vector<T>& data, bool error_on_nonnumerics = true)
-    {
-	data.clear();
-	while (is) {
-	    T candidate;
-	    is >> candidate;
-	    if (is.rdstate() & ios::failbit) {
-		is.clear(is.rdstate() & ~ios::failbit);
-		string dummy;
-		is >> dummy;
-		if (dummy == "/") {
-		    break;
-		} else if (dummy.find("--") == 0) {
-		    is >> ignoreLine >> dummy; // This line is a comment
-		    continue;
-		} else if (error_on_nonnumerics) {
-		    cerr << "Encountered format error while reading data values." << endl;
-		    throw exception();
-		}
-	    } else {
-		if (is.peek() == int('*')) {
-		    is.ignore(); // ignore the '*'
-		    int multiplier = int(candidate);
-		    is >> candidate;
-		    data.insert(data.end(), multiplier, candidate);
-		} else {
-		    data.push_back(candidate);
-		}
-	    }
-	}
-	if (!is) {
-	    cerr << "Encountered error while reading data values." << endl;
-	    throw exception();
-	}
-    }
-
 
 } // anon namespace
 
@@ -295,17 +210,17 @@ void EclipseGridParser::read(istream& is)
     // Actually read the data
     is >> ignoreWhitespace;
     while (!is.eof()) {
-	string keyword = read_keyword(is);
+	string keyword = readKeyword(is);
 #ifdef VERBOSE
 	cout << "Keyword found: " << keyword << endl;
 #endif
 	pair<FieldType, bool> type = classify_keyword(keyword);
 	switch (type.first) {
 	case Integer:
-	    read_data(is, intmap[keyword], type.second);
+	    readData(is, intmap[keyword], type.second);
 	    break;
 	case FloatingPoint:
-	    read_data(is, floatmap[keyword], type.second);
+	    readData(is, floatmap[keyword], type.second);
 	    break;
 	case SpecialField: {
 	    boost::shared_ptr<SpecialBase> sb_ptr = createSpecialField(is, keyword);
