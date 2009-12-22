@@ -116,6 +116,8 @@ public:                                                                         
     SPECIAL_FIELD(MULTFLT);
     SPECIAL_FIELD(TITLE);
 
+#undef SPECIAL_FIELD
+
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
 
