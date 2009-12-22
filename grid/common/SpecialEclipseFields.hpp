@@ -46,63 +46,6 @@
 namespace Dune
 {
 
-namespace
-{
-
-
-
-// Reads data items of type T. Not more than 'max_values' items.
-// Asterisks may be used to signify 'repeat counts'. 5*3.14 will
-// insert 3.14 five times. Asterisk followed by a space is used to
-// signify default values.  n* will default n consecutive quantities.
-template<typename T>
-int read_data(std::istream& is, std::vector<T>& data, int max_values)
-{
-    int num_values = 0;
-    while (is) {
-	T candidate;
-	is >> candidate;
-	if (is.rdstate() & std::ios::failbit) {
-	    is.clear(is.rdstate() & ~std::ios::failbit);
-	    std::string dummy;
-	    is >> dummy;
-	    if (dummy == "/") {
-		is >> ignoreLine;	
-		break;
-	    } else if (dummy.find("--") == 0) {
-		is >> ignoreLine;   // This line is a comment
-	    } else {
-                THROW("Encountered format error while reading data values. Value = " << dummy);
-	    }
-	} else {
-	    if (is.peek() == int('*')) {
-		is.ignore(); // ignore the '*'
-		int multiplier = (int)candidate;
- 		if (is.peek() == int(' ')) {
- 		    num_values += multiplier;  // Use default value(s)
- 		} else {
-		    is >> candidate;         // Use candidate 'multipler' times
-		    for (int i=0; i<multiplier; ++i, ++num_values) {
-			data[num_values] = candidate;
-		    }
-		}
-	    } else {
-		data[num_values] = candidate;
-		++num_values;
-	    }
-	}
-	if (num_values >= max_values) {
-	    break;
-	}
-    }
-    if (!is) {
-	THROW("Encountered error while reading data values.");
-    }
-    return num_values;
-}
-
-    
-} // anon namespace
 
 // Abstract base class for special fields. A special field is a field
 // with more than one data type.
@@ -112,6 +55,9 @@ struct SpecialBase {
     virtual void read(std::istream& is) = 0;        // Reads data
     virtual void write(std::ostream& os) const = 0; // Writes data
 };
+
+
+
 
 /// Class for keyword SPECGRID 
 struct SPECGRID : public SpecialBase
@@ -137,7 +83,7 @@ struct SPECGRID : public SpecialBase
     {
 	const int ndim = 3;
 	std::vector<int> data(ndim+1,1);
-	int nread = read_data(is , data, ndim+1);
+	int nread = readDefaultedVectorData(is , data, ndim+1);
 	int nd = std::min(nread, ndim);
 	copy(data.begin(), data.begin()+nd, &dimensions[0]);
 	numres = data[ndim];
@@ -164,6 +110,9 @@ struct SPECGRID : public SpecialBase
 	os << std::endl;
     }
 };
+
+
+
 
 /// Class holding segment data of keyword FAULTS.
 struct FaultSegment
@@ -203,7 +152,7 @@ struct FAULTS : public SpecialBase
 	    FaultSegment fault_segment;
 	    fault_segment.ijk_coord.resize(6);
 	    fault_segment.fault_name = name;
-	    int nread = read_data(is, fault_segment.ijk_coord, 6);
+	    int nread = readDefaultedVectorData(is, fault_segment.ijk_coord, 6);
 	    if (nread != 6) {
 		THROW("Error reading fault_segment " << name);
 	    }
@@ -225,6 +174,9 @@ struct FAULTS : public SpecialBase
 	os << std::endl;
     }
 };
+
+
+
 
 /// Class holding a data line of keyword MULTFLT
 struct MultfltLine
@@ -268,7 +220,7 @@ struct MULTFLT : public SpecialBase
 	    MultfltLine multflt_line;
 	    multflt_line.fault_name = name;
 	    std::vector<double> data(2,1.0);
-	    if (read_data(is, data, 2) == 2) {
+	    if (readDefaultedVectorData(is, data, 2) == 2) {
 		ignoreSlashLine(is);
 	    }
 	    multflt_line.transmis_multiplier = data[0];
@@ -290,6 +242,8 @@ struct MULTFLT : public SpecialBase
 };
 
 
+
+
 struct TITLE : public SpecialBase
 {
     std::string title;
@@ -304,6 +258,7 @@ struct TITLE : public SpecialBase
 
 
 
+
 struct START : public SpecialBase
 {
     boost::gregorian::date date;
@@ -314,6 +269,9 @@ struct START : public SpecialBase
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << date << '\n'; }
 };
+
+
+
 
 struct DATES : public SpecialBase
 {

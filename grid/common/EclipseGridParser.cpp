@@ -215,10 +215,10 @@ void EclipseGridParser::read(istream& is)
 	FieldType type = classifyKeyword(keyword);
 	switch (type) {
 	case Integer:
-	    readData(is, intmap[keyword]);
+	    readVectorData(is, intmap[keyword]);
 	    break;
 	case FloatingPoint:
-	    readData(is, floatmap[keyword]);
+	    readVectorData(is, floatmap[keyword]);
 	    break;
 	case SpecialField: {
 	    boost::shared_ptr<SpecialBase> sb_ptr = createSpecialField(is, keyword);

@@ -111,8 +111,9 @@ namespace
     }
 
 
+    // Reads data until '/' or an error is encountered.
     template<typename T>
-    inline void readData(std::istream& is, std::vector<T>& data)
+    inline void readVectorData(std::istream& is, std::vector<T>& data)
     {
 	data.clear();
 	while (is) {
@@ -144,6 +145,58 @@ namespace
 	if (!is) {
 	    THROW("Encountered error while reading data values.");
 	}
+    }
+
+
+    // Reads data items of type T. Not more than 'max_values' items.
+    // Asterisks may be used to signify 'repeat counts'. 5*3.14 will
+    // insert 3.14 five times. Asterisk followed by a space is used to
+    // signify default values.  n* will default n consecutive quantities.
+    template<class Vec>
+    inline int readDefaultedVectorData(std::istream& is, Vec& data, int max_values)
+    {
+        ASSERT(int(data.size()) >= max_values);
+        int num_values = 0;
+        while (is) {
+            typename Vec::value_type candidate;
+            is >> candidate;
+            if (is.rdstate() & std::ios::failbit) {
+                is.clear(is.rdstate() & ~std::ios::failbit);
+                std::string dummy;
+                is >> dummy;
+                if (dummy == "/") {
+                    is >> ignoreLine;	
+                    break;
+                } else if (dummy.find("--") == 0) {
+                    is >> ignoreLine;   // This line is a comment
+                } else {
+                    THROW("Encountered format error while reading data values. Value = " << dummy);
+                }
+            } else {
+                if (is.peek() == int('*')) {
+                    is.ignore(); // ignore the '*'
+                    int multiplier = (int)candidate;
+                    if (is.peek() == int(' ')) {
+                        num_values += multiplier;  // Use default value(s)
+                    } else {
+                        is >> candidate;         // Use candidate 'multipler' times
+                        for (int i=0; i<multiplier; ++i, ++num_values) {
+                            data[num_values] = candidate;
+                        }
+                    }
+                } else {
+                    data[num_values] = candidate;
+                    ++num_values;
+                }
+            }
+            if (num_values >= max_values) {
+                break;
+            }
+        }
+        if (!is) {
+            THROW("Encountered error while reading data values.");
+        }
+        return num_values;
     }
 
 
