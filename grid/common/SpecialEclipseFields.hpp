@@ -41,7 +41,7 @@
 #include <limits>
 #include <dune/common/ErrorMacros.hpp>
 #include <iterator>
-#include <boost/date_time/gregorian/gregorian.hpp>
+#include "EclipseGridParserHelpers.hpp"
 
 namespace Dune
 {
@@ -49,41 +49,7 @@ namespace Dune
 namespace
 {
 
-// Skip rest of the line.
-std::istream& ignore_line(std::istream& is)
-{
-    is.ignore(std::numeric_limits<int>::max(), '\n');
-    return is;
-}
 
-// Reads words until a slash is found.
-bool read_slash(std::istream& is)
-{
-    while (is) {
-	std::string dummy;
-	is >> dummy;
-	if (dummy == "/") {
-	    return true;
-	}
-    }
-    return false;
-}
-
-std::istream& ignore_whitespace(std::istream& is)
-{
-    using namespace std;
-    // Getting the character type facet for is()
-    // We use the classic (i.e. C) locale.
-    const ctype<char>& ct = use_facet< ctype<char> >(locale::classic());
-    char c;
-    while (is.get(c)) {
-	if (!ct.is(ctype_base::space, c)) {
-	    is.putback(c);
-	    break;
-	}
-    }
-    return is;
-}
 
 // Reads data items of type T. Not more than 'max_values' items.
 // Asterisks may be used to signify 'repeat counts'. 5*3.14 will
@@ -94,19 +60,19 @@ int read_data(std::istream& is, std::vector<T>& data, int max_values)
 {
     int num_values = 0;
     while (is) {
-	T candidate(-1);
+	T candidate;
 	is >> candidate;
 	if (is.rdstate() & std::ios::failbit) {
 	    is.clear(is.rdstate() & ~std::ios::failbit);
 	    std::string dummy;
 	    is >> dummy;
 	    if (dummy == "/") {
-		is >> ignore_line;	
+		is >> ignoreLine;	
 		break;
-	    } else if (dummy == "--") {
-		is >> ignore_line;   // This line is a comment
+	    } else if (dummy.find("--") == 0) {
+		is >> ignoreLine;   // This line is a comment
 	    } else {
-		THROW("Unexpected value reading file. Value = " << dummy);
+                THROW("Encountered format error while reading data values. Value = " << dummy);
 	    }
 	} else {
 	    if (is.peek() == int('*')) {
@@ -135,34 +101,6 @@ int read_data(std::istream& is, std::vector<T>& data, int max_values)
     return num_values;
 }
 
-// Returns month number 1-12. Returns 0 if illegal month name. 
-int getMonth(const std::string& month_name)
-{
-    std::string months [] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
-			     "JLY", "AUG", "SEP", "OCT", "NOV", "DEC"};
-    if (month_name == "JUL") {
-	return 7;    // "JUL" is an acceptable alternative to 'JLY'
-    }
-    const int num_months = 12;
-    const char encl('\'');
-    std::string name;
-    int k1 = month_name.find(encl);
-    int k2 = month_name.rfind(encl);
-    if (k1 == -1 || k2 == -1) {
-	name = month_name;
-    } else {
-	name.assign(&month_name[k1+1], k2-k1-1);
-    }
-    int m = 0;
-    for (int i=0; i<num_months; ++i) {
-	if (name == months[i]) {
-	    m = i+1;
-	    break;
-	}
-    }
-    return m;
-}
-    
     
 } // anon namespace
 
@@ -211,7 +149,7 @@ struct SPECGRID : public SpecialBase
 	    qrdial = candidate[0];
 	}
 	
-	if (read_slash(is)) {
+	if (ignoreSlashLine(is)) {
 	    return;
 	} else {
 	    THROW("End of file reading" << name());
@@ -260,7 +198,7 @@ struct FAULTS : public SpecialBase
 	    }
 	    while (name.find("--") == 0) {
 		// This line is a comment
-		is >> ignore_line >> name;
+		is >> ignoreLine >> name;
 	    }
 	    FaultSegment fault_segment;
 	    fault_segment.ijk_coord.resize(6);
@@ -271,7 +209,7 @@ struct FAULTS : public SpecialBase
 	    }
 	    is >> fault_segment.face;
 	    faults.push_back(fault_segment);
-	    read_slash(is);
+	    ignoreSlashLine(is);
 	}
     }
 
@@ -325,14 +263,13 @@ struct MULTFLT : public SpecialBase
 	    }
 	    while (name == "--") {
 		// This line is a comment
-		is >> ignore_line >> name;
+		is >> ignoreLine >> name;
 	    }
 	    MultfltLine multflt_line;
 	    multflt_line.fault_name = name;
 	    std::vector<double> data(2,1.0);
 	    if (read_data(is, data, 2) == 2) {
-		read_slash(is);
-		is >> ignore_line;	
+		ignoreSlashLine(is);
 	    }
 	    multflt_line.transmis_multiplier = data[0];
 	    multflt_line.diffusivity_multiplier = data[1];
@@ -359,81 +296,37 @@ struct TITLE : public SpecialBase
     virtual std::string name() const
     { return std::string("TITLE"); }
     virtual void read(std::istream& is)
-    { is >> ignore_line; std::getline(is, title); }
+    { is >> ignoreLine; std::getline(is, title); }
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << title << '\n'; }
 
 };
 
-struct Date
-{
-    boost::gregorian::date date_;
 
-    Date()
-    {
-	date_ = boost::gregorian::date(boost::gregorian::greg_year(1983),
-				       boost::gregorian::greg_month(1),
-				       boost::gregorian::greg_day(1));
-    }
- 
-    Date(std::istream& is)
-    {
-	read(is);
-    }
-    
-    void read(std::istream& is)
-    {
-	int day, year;
-	std::string month_name;
-
-	while(is) {
-	    if (is.peek() == int('-')) {
-		is >> ignore_line;   // This line is a comment
-	    }
-	    is >> day >> month_name >> year;
-	    read_slash(is);
-	    break;
-	}
-	int month = getMonth(month_name);
-	date_ = boost::gregorian::date(boost::gregorian::greg_year(year),
-				       boost::gregorian::greg_month(month),
-				       boost::gregorian::greg_day(day));
-    }
-};
 
 struct START : public SpecialBase
 {
-    
     boost::gregorian::date date;
-
     virtual std::string name() const
     { return std::string("START"); }
-
     virtual void read(std::istream& is)
-    { 
-	Date start_date(is);
-	date = start_date.date_;
-    }
+    { date = readDate(is); }
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << date << '\n'; }
-
 };
 
 struct DATES : public SpecialBase
 {
     std::vector<boost::gregorian::date> dates;
-
     virtual std::string name() const
     { return std::string("DATES"); }
-
     virtual void read(std::istream& is)
     {
 	while(is) {
-	    Date date(is);
-	    dates.push_back(date.date_);
-	    is >> ignore_whitespace;
+	    dates.push_back(readDate(is));
+	    is >> ignoreWhitespace;
 	    if (is.peek() == int('/')) {
-		is >> ignore_line;
+		is >> ignoreLine;
 		break;
 	    }
 	}

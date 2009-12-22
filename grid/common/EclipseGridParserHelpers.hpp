@@ -41,6 +41,7 @@
 #include <istream>
 #include <vector>
 #include <dune/common/ErrorMacros.hpp>
+#include <boost/date_time/gregorian/gregorian.hpp>
 
 namespace Dune
 {
@@ -50,6 +51,13 @@ namespace
 
     inline std::istream& ignoreLine(std::istream& is)
     {
+	is.ignore(std::numeric_limits<int>::max(), '\n');
+	return is;
+    }
+
+    inline std::istream& ignoreSlashLine(std::istream& is)
+    {
+	is.ignore(std::numeric_limits<int>::max(), '/');
 	is.ignore(std::numeric_limits<int>::max(), '\n');
 	return is;
     }
@@ -92,9 +100,19 @@ namespace
 	return upcase(keyword_candidate);
     }
 
+    inline std::string readString(std::istream& is)
+    {
+	std::string string_candidate;
+	is >> string_candidate;
+        const char quote('\'');
+        int beg = string_candidate[0] == quote ? 1 : 0;
+        int len = string_candidate[0] == quote ? string_candidate.size() - 2 : string_candidate.size();
+        return string_candidate.substr(beg, len);
+    }
+
 
     template<typename T>
-    inline void readData(std::istream& is, std::vector<T>& data, bool error_on_formatfailure = true)
+    inline void readData(std::istream& is, std::vector<T>& data)
     {
 	data.clear();
 	while (is) {
@@ -105,12 +123,12 @@ namespace
 		std::string dummy;
 		is >> dummy;
 		if (dummy == "/") {
+                    is >> ignoreLine;
 		    break;
 		} else if (dummy.find("--") == 0) {
 		    is >> ignoreLine; // This line is a comment
-		    continue;
-		} else if (error_on_formatfailure) {
-                    THROW("Encountered format error while reading data values.");
+		} else {
+                    THROW("Encountered format error while reading data values. Value = " << dummy);
 		}
 	    } else {
 		if (is.peek() == int('*')) {
@@ -128,6 +146,44 @@ namespace
 	}
     }
 
+
+
+    // Returns month number 1-12. Returns 0 if illegal month name. 
+    int getMonthNumber(const std::string& month_name)
+    {
+        const int num_months = 12;
+        std::string months[num_months] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+                                          "JLY", "AUG", "SEP", "OCT", "NOV", "DEC"};
+        if (month_name == "JUL") {
+            return 7;    // "JUL" is an acceptable alternative to 'JLY'
+        }
+        int m = 0;
+        for (int i=0; i<num_months; ++i) {
+            if (month_name == months[i]) {
+                m = i+1;
+                break;
+            }
+        }
+        return m;
+    }
+
+
+    inline boost::gregorian::date readDate(std::istream& is)
+    {
+        while (is.peek() == int('-')) {
+            is >> ignoreLine;   // This line is a comment
+        }
+        int day, year;
+        std::string month_name;
+        is >> day;
+        month_name = readString(is);
+        is >> year;
+        ignoreSlashLine(is);
+        int month = getMonthNumber(month_name);
+        return boost::gregorian::date(boost::gregorian::greg_year(year),
+                                      boost::gregorian::greg_month(month),
+                                      boost::gregorian::greg_day(day));
+    }
 
 } // anon namespace
 

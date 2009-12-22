@@ -134,25 +134,23 @@ namespace {
 	Unknown
     };
 
-    inline pair<FieldType, bool> classify_keyword(const string& keyword)
+    inline FieldType classifyKeyword(const string& keyword)
     {
 	using namespace EclipseKeywords;
-	bool error_if_nonnumeric = true;
 	if (count(integer_fields, integer_fields + num_integer_fields, keyword)) {
-	    return make_pair(Integer, error_if_nonnumeric);
+	    return Integer;
 	} else if (count(floating_fields, floating_fields + num_floating_fields, keyword)) {
-	    return make_pair(FloatingPoint, error_if_nonnumeric);
+	    return FloatingPoint;
 	} else if (count(special_fields, special_fields + num_special_fields, keyword)) {
-	    error_if_nonnumeric = false;
-	    return make_pair(SpecialField, error_if_nonnumeric);
+	    return SpecialField;
 	} else if (count(ignore_with_data, ignore_with_data + num_ignore_with_data, keyword)) {
-	    return make_pair(IgnoreWithData, error_if_nonnumeric);
+	    return IgnoreWithData;
 	} else if (count(ignore_no_data, ignore_no_data + num_ignore_no_data, keyword)) {
-	    return make_pair(IgnoreNoData, error_if_nonnumeric);
+	    return IgnoreNoData;
 	} else if (count(include_keywords, include_keywords + num_include_keywords, keyword)) {
-	    return make_pair(Include, error_if_nonnumeric);
+	    return Include;
 	} else {
-	    return make_pair(Unknown, error_if_nonnumeric);
+	    return Unknown;
 	}
     }
 
@@ -214,13 +212,13 @@ void EclipseGridParser::read(istream& is)
 #ifdef VERBOSE
 	cout << "Keyword found: " << keyword << endl;
 #endif
-	pair<FieldType, bool> type = classify_keyword(keyword);
-	switch (type.first) {
+	FieldType type = classifyKeyword(keyword);
+	switch (type) {
 	case Integer:
-	    readData(is, intmap[keyword], type.second);
+	    readData(is, intmap[keyword]);
 	    break;
 	case FloatingPoint:
-	    readData(is, floatmap[keyword], type.second);
+	    readData(is, floatmap[keyword]);
 	    break;
 	case SpecialField: {
 	    boost::shared_ptr<SpecialBase> sb_ptr = createSpecialField(is, keyword);
@@ -232,7 +230,7 @@ void EclipseGridParser::read(istream& is)
 	    break;
 	}
 	case IgnoreWithData: {
-            is.ignore(numeric_limits<int>::max(), '/');
+            is >> ignoreSlashLine;
 #ifdef VERBOSE
             cout << "(ignored)" << endl;
 #endif
@@ -256,7 +254,7 @@ void EclipseGridParser::read(istream& is)
                 THROW("Unable to open INCLUDEd file " << include_filename);
             }
             read(include_is);
-            is.ignore(numeric_limits<int>::max(), '/');
+            is >> ignoreSlashLine;
             break;
         }
 	case Unknown:
