@@ -85,21 +85,28 @@ namespace EclipseKeywords
 
     string special_fields[] =
         { string("SPECGRID"), string("FAULTS"), string("MULTFLT"),
-          string("TITLE"), string("START"), string("DATES")
+          string("TITLE"), string("START"), string("DATES"),
+          "SWFN",
+          "SOF2",
+          "EQUIL",
+          "WELSPECS",
+          "COMPDAT",
+          "WCONINJE",
+          "TUNING"
         };
+
     const int num_special_fields = sizeof(special_fields) / sizeof(special_fields[0]);
 
     string ignore_with_data[] =
 	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
-	  string("DIMENS"),   string("NTG"),
-	  string("REGDIMS"),  string("WELLDIMS"), string("TABDIMS"),
-	  string("NSTACK"),   string("SWFN"),     string("SOF2"),
+	  string("NTG"),
+	  string("REGDIMS"),  string("WELLDIMS"),
+	  string("NSTACK"),
 	  string("PVTW"),     string("PVTDO"),    string("ROCK"),
-	  string("DENSITY"),  string("SATNUM"),   string("EQUIL"),
+	  string("DENSITY"),  string("SATNUM"),
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
-	  string("WOIR"),     string("WELSPECS"), string("COMPDAT"),
-	  string("WCONINJE"), string("TUNING"),   string("PVDO"),
+	  string("WOIR"),     string("TUNING"),   string("PVDO"),
 	  string("TSTEP"),    string("BOX")
 	};
     const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);

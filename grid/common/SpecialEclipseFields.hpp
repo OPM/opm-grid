@@ -51,9 +51,9 @@ namespace Dune
 // with more than one data type.
 struct SpecialBase {
     virtual ~SpecialBase() {}                       // Default destructor
-    virtual std::string name() const = 0;           // Keyword name
+    //virtual std::string name() const = 0;           // Keyword name
     virtual void read(std::istream& is) = 0;        // Reads data
-    virtual void write(std::ostream& os) const = 0; // Writes data
+    //virtual void write(std::ostream& os) const = 0; // Writes data
 };
 
 
@@ -297,6 +297,40 @@ struct DATES : public SpecialBase
     }
 
 };
+
+
+
+
+struct MultRec : public SpecialBase
+{
+    virtual void read(std::istream& is)
+    {
+#ifdef VERBOSE
+        std::cout << "(dummy implementation)" << std::endl;
+#endif
+	const std::ctype<char>& ct = std::use_facet< std::ctype<char> >(std::locale::classic());
+        while (true) {
+            is >> ignoreSlashLine;
+            is >> ignoreWhitespace;
+            char c;
+            is.get(c);
+            is.putback(c);
+            if (ct.is(std::ctype_base::alpha, c)) {
+                break;
+            }
+        }
+    }
+};
+
+
+struct SWFN : public MultRec {};
+struct SOF2 : public MultRec {};
+struct EQUIL : public MultRec {};
+struct WELSPECS : public MultRec {};
+struct COMPDAT : public MultRec {};
+struct WCONINJE : public MultRec {};
+struct TUNING : public MultRec {};
+
 
 } // End of namespace Dune
 
