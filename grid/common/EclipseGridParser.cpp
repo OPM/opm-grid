@@ -85,13 +85,13 @@ namespace EclipseKeywords
 
     string special_fields[] =
         { string("SPECGRID"), string("FAULTS"), string("MULTFLT"),
-          string("TITLE")
+          string("TITLE"), string("START"), string("DATES")
         };
     const int num_special_fields = sizeof(special_fields) / sizeof(special_fields[0]);
 
     string ignore_with_data[] =
 	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
-	  string("DIMENS"),   string("START"),    string("NTG"),
+	  string("DIMENS"),   string("NTG"),
 	  string("REGDIMS"),  string("WELLDIMS"), string("TABDIMS"),
 	  string("NSTACK"),   string("SWFN"),     string("SOF2"),
 	  string("PVTW"),     string("PVTDO"),    string("ROCK"),

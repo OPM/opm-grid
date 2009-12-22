@@ -41,6 +41,7 @@
 #include <limits>
 #include <dune/common/ErrorMacros.hpp>
 #include <iterator>
+#include <boost/date_time/gregorian/gregorian.hpp>
 
 namespace Dune
 {
@@ -66,6 +67,22 @@ bool read_slash(std::istream& is)
 	}
     }
     return false;
+}
+
+std::istream& ignore_whitespace(std::istream& is)
+{
+    using namespace std;
+    // Getting the character type facet for is()
+    // We use the classic (i.e. C) locale.
+    const ctype<char>& ct = use_facet< ctype<char> >(locale::classic());
+    char c;
+    while (is.get(c)) {
+	if (!ct.is(ctype_base::space, c)) {
+	    is.putback(c);
+	    break;
+	}
+    }
+    return is;
 }
 
 // Reads data items of type T. Not more than 'max_values' items.
@@ -117,6 +134,35 @@ int read_data(std::istream& is, std::vector<T>& data, int max_values)
     }
     return num_values;
 }
+
+// Returns month number 1-12. Returns 0 if illegal month name. 
+int getMonth(const std::string& month_name)
+{
+    std::string months [] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
+			     "JLY", "AUG", "SEP", "OCT", "NOV", "DEC"};
+    if (month_name == "JUL") {
+	return 7;    // "JUL" is an acceptable alternative to 'JLY'
+    }
+    const int num_months = 12;
+    const char encl('\'');
+    std::string name;
+    int k1 = month_name.find(encl);
+    int k2 = month_name.rfind(encl);
+    if (k1 == -1 || k2 == -1) {
+	name = month_name;
+    } else {
+	name.assign(&month_name[k1+1], k2-k1-1);
+    }
+    int m = 0;
+    for (int i=0; i<num_months; ++i) {
+	if (name == months[i]) {
+	    m = i+1;
+	    break;
+	}
+    }
+    return m;
+}
+    
     
 } // anon namespace
 
@@ -316,6 +362,88 @@ struct TITLE : public SpecialBase
     { is >> ignore_line; std::getline(is, title); }
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << title << '\n'; }
+
+};
+
+struct Date
+{
+    boost::gregorian::date date_;
+
+    Date()
+    {
+	date_ = boost::gregorian::date(boost::gregorian::greg_year(1983),
+				       boost::gregorian::greg_month(1),
+				       boost::gregorian::greg_day(1));
+    }
+ 
+    Date(std::istream& is)
+    {
+	read(is);
+    }
+    
+    void read(std::istream& is)
+    {
+	int day, year;
+	std::string month_name;
+
+	while(is) {
+	    if (is.peek() == int('-')) {
+		is >> ignore_line;   // This line is a comment
+	    }
+	    is >> day >> month_name >> year;
+	    read_slash(is);
+	    break;
+	}
+	int month = getMonth(month_name);
+	date_ = boost::gregorian::date(boost::gregorian::greg_year(year),
+				       boost::gregorian::greg_month(month),
+				       boost::gregorian::greg_day(day));
+    }
+};
+
+struct START : public SpecialBase
+{
+    
+    boost::gregorian::date date;
+
+    virtual std::string name() const
+    { return std::string("START"); }
+
+    virtual void read(std::istream& is)
+    { 
+	Date start_date(is);
+	date = start_date.date_;
+    }
+    virtual void write(std::ostream& os) const
+    { os << name() << '\n' << date << '\n'; }
+
+};
+
+struct DATES : public SpecialBase
+{
+    std::vector<boost::gregorian::date> dates;
+
+    virtual std::string name() const
+    { return std::string("DATES"); }
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    Date date(is);
+	    dates.push_back(date.date_);
+	    is >> ignore_whitespace;
+	    if (is.peek() == int('/')) {
+		is >> ignore_line;
+		break;
+	    }
+	}
+    }
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	copy(dates.begin(), dates.end(),
+	     std::ostream_iterator<boost::gregorian::date>(os, "\n"));
+    }
 
 };
 

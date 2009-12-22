@@ -115,6 +115,8 @@ public:                                                                         
     SPECIAL_FIELD(FAULTS);
     SPECIAL_FIELD(MULTFLT);
     SPECIAL_FIELD(TITLE);
+    SPECIAL_FIELD(START);
+    SPECIAL_FIELD(DATES);
 
 #undef SPECIAL_FIELD
 
