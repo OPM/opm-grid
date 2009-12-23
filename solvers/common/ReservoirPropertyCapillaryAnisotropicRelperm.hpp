@@ -104,6 +104,13 @@ namespace Dune
 			   double saturation,
 			   MatrixType& phase_mob) const;
 
+
+	/// @brief Some approximation to a scalar fractional flow (of the first phase).
+        /// @param cell_index index of a grid cell.
+	/// @param saturation a saturation value.
+        /// @return fractional flow value at the given cell and saturation.
+        double fractionalFlow(int cell_index, double saturation) const;
+
 	void computeCflFactors();
 
     private:

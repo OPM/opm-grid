@@ -54,6 +54,25 @@ namespace Dune
 
 
     template <int dim>
+    double ReservoirPropertyCapillaryAnisotropicRelperm<dim>::fractionalFlow(int cell_index, double saturation) const
+    {
+        // This method is a hack.
+	// Assumes that the relperm is diagonal.
+	Mobility m;
+        double ff_first = 0.0;
+        for (int direction = 0; direction < dim; ++direction) {
+            phaseMobility(0, cell_index, saturation, m.mob);
+            double l1 = m.mob(direction, direction);
+            phaseMobility(1, cell_index, saturation, m.mob);
+            double l2 = m.mob(direction, direction);
+            ff_first += l1/(l1 + l2);
+        }
+        ff_first /= double(dim);
+        return ff_first;
+    }
+
+
+    template <int dim>
     template <class MatrixType>
     void ReservoirPropertyCapillaryAnisotropicRelperm<dim>::phaseMobilityByRock(int phase_index,
 										int rock_index,
