@@ -58,8 +58,13 @@ namespace Dune
 	void run()
 	{
 	    // No injection or production.
-	    SparseVector<double> injection_rates(Super::ginterf_.numberOfCells());
-	    std::vector<double> src(Super::ginterf_.numberOfCells());
+            int nc = Super::ginterf_.numberOfCells();
+	    SparseVector<double> injection_rates(nc);
+	    std::vector<double> src(nc);
+//             injection_rates.addElement(1.0, 0);
+//             injection_rates.addElement(-1.0, nc - 1);
+//             src[0] = 1.0;
+//             src[nc - 1] = -1.0;
 	    // Initial saturation.
 	    std::vector<double> sat(Super::ginterf_.numberOfCells(), Super::init_saturation_);
 	    // Gravity.
@@ -76,7 +81,7 @@ namespace Dune
                           << "    ===============" << std::endl;
 		// Flow.
 		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, src,
-                                          Super::residual_tolerance_, Super::linsolver_verbosity_);
+                                          Super::residual_tolerance_, Super::linsolver_verbosity_, Super::linsolver_type_);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}

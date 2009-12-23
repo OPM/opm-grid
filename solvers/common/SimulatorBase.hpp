@@ -89,7 +89,8 @@ namespace Dune
 	                        // from days (here) to seconds (after init()). Solution to that?
 	      init_saturation_(0.0),
               residual_tolerance_(1e-8),
-              linsolver_verbosity_(1)
+              linsolver_verbosity_(1),
+              linsolver_type_(1)
 	{
 	}
 
@@ -132,6 +133,7 @@ namespace Dune
         Vector gravity_;
 	double residual_tolerance_;
 	int linsolver_verbosity_;
+	int linsolver_type_;
 
 	GridType grid_;
 	GridInterface ginterf_;
@@ -174,6 +176,7 @@ namespace Dune
 	    flow_solver_.init(ginterf_, res_prop_, gravity_, bcond_);
             residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
             linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
+            linsolver_type_ = param.getDefault("linsolver_type", linsolver_type_);
 	    //flow_solver_.assembleStatic(ginterf_, res_prop_);
 	    // Initialize transport solver.
 	    transport_solver_.init(param, ginterf_, res_prop_, bcond_);
