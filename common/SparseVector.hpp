@@ -157,13 +157,23 @@ namespace Dune
 	}
 
 	/// O(1) element access.
-	/// \param index an index counting only nonzero elements.
-	/// \return the index'th nonzero element.
-	const T& nonzeroElement(int index) const
+	/// \param nzindex an index counting only nonzero elements.
+	/// \return the nzindex'th nonzero element.
+	const T& nonzeroElement(int nzindex) const
 	{
-	    ASSERT(index >= 0);
-	    ASSERT(index < nonzeroSize());
-	    return data_[index];
+	    ASSERT(nzindex >= 0);
+	    ASSERT(nzindex < nonzeroSize());
+	    return data_[nzindex];
+	}
+
+	/// O(1) index access.
+	/// \param nzindex an index counting only nonzero elements.
+	/// \return the index of the nzindex'th nonzero element.
+	int nonzeroIndex(int nzindex) const
+	{
+	    ASSERT(nzindex >= 0);
+	    ASSERT(nzindex < nonzeroSize());
+	    return indices_[nzindex];
 	}
 
     private:
