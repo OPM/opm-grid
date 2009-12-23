@@ -64,6 +64,6 @@ int main(int argc, char** argv)
     vtkwriter.addCellData(perm_yy, "perm_yy");
     vtkwriter.addCellData(perm_zz, "perm_zz");
     std::string fname = param.get<std::string>("filename");
-    vtkwriter.write(fname.substr(0, fname.size() - 7) + "-cells", VTKOptions::ascii);
+    vtkwriter.write(fname.substr(0, fname.find_last_of('.')) + "-cells", VTKOptions::ascii);
 }
 
