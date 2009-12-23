@@ -150,9 +150,7 @@ namespace Dune
 						   const PressureSolution& pressure_sol,
 						   const SparseVector<double>& injection_rates) const
     {
-	if (injection_rates.nonzeroSize() != 0) {
-	    MESSAGE("Warning: EulerUpstream currently ignores source terms.");
-	}
+        injection_rates_ = injection_rates;
 	// Compute the cfl time-step.
 	double cfl_dt = computeCflTime(saturation, time, gravity, pressure_sol);
 
@@ -426,37 +424,6 @@ namespace Dune
 
 
 
-    /*
-      template <class grid_t, class flowsys_t, class rock_t, class well_t>
-      inline void wellDelta(const std::vector<double>& saturation,
-      const double dt,
-      const flowsys_t& flowsys,
-      const grid_t& grid,
-      const rock_t& rock_data,
-      const well_t& well_data,
-      std::vector<double>& sat_change)
-      {
-      // Source terms from wells.
-      for (int i = 0; i < well_data.getNumberOfWells(); ++i) {
-      typename well_t::well_type well = well_data.getWell(i);
-      const std::vector<int>& cell_index = well.cellIndices();
-      for (int j = 0; j < well.numberOfCells(); ++j){
-      double dS = 0.0;
-      double source_rate = well.getRate(j);
-      if ( source_rate < 0) {
-      dS -= source_rate*(flowsys.mobilityOne(cell_index[j], saturation[cell_index[j]])
-      /flowsys.totalMobility(cell_index[j], saturation[cell_index[j]]));
-      }
-      if (source_rate > 0) {
-      dS-= source_rate; 
-      }
-      sat_change[cell_index[j]] -= (dt/rock_data.getPorosity(cell_index[j]))*dS/grid.getCellVolume(cell_index[j]);
-      }
-      }	 
-      }
-
-    */
-
     namespace
     {
 	template <typename T, template <typename> class StoragePolicy, class OrderingPolicy>
@@ -713,6 +680,15 @@ namespace Dune
                         dS += cap_change;
                     }
 
+                    // Source term.
+                    double rate = s.injection_rates_.element(cell[0]);
+                    if (rate < 0.0) {
+                        // For anisotropic relperm, fractionalFlow does not really make sense
+                        // as a scalar
+                        rate *= s.preservoir_properties_->fractionalFlow(cell[0], cell_sat[0]);
+                    }
+                    dS += rate;
+
                     // Modify saturation.
                     if (cell[0] != cell[1]){
                         s.sat_change_[cell[0]] -= dS/cell_pvol[0];
@@ -811,7 +787,6 @@ namespace Dune
 #else
         body(r);
 #endif
-	// wellDelta(saturation, dt, flowsys, grid, rock_data, well_data, sat_change);
     }
 
 } // end namespace Dune

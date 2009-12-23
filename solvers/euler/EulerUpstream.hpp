@@ -160,6 +160,7 @@ namespace Dune {
         // Storing some cell iterators, so that we may use tbb for parallelizing.
         std::vector<CIt> cell_iters_;
 
+        mutable SparseVector<double> injection_rates_;
 	// Storing sat_change_ so that we won't have to reallocate it for every step.
 	mutable std::vector<double> sat_change_;
 	// Precomputing the capillary pressures of cells saves a little time.
