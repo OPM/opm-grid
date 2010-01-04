@@ -163,6 +163,7 @@ namespace Dune
                        const cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
                        const cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
 	{
+            geom.precision(15);
 	    std::string correct_header
 		= "geometry 0:3:point 2:3:normal 2:3:centroid 2:1:area 3:3:centroid 3:1:volume\n\n";
             geom << correct_header;
