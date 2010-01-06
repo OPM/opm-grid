@@ -43,6 +43,14 @@
 namespace Dune
 {
 
+
+
+    /// @brief Enum for the kind of permeability field originally retrieved.
+    enum PermeabilityKind { ScalarPerm, DiagonalPerm, TensorPerm, None, Invalid };
+
+
+
+
     /// @brief A property class for incompressible two-phase flow.
     /// @tparam dim the dimension of the space, used for giving permeability tensors the right size.
     template <int dim, class RPImpl, class RockType>
@@ -146,6 +154,10 @@ namespace Dune
         /// @return capillary pressure at the given cell and saturation.
         double capillaryPressure(int cell_index, double saturation) const;
 
+        /// @brief Write permeability and porosity in the Sintef legacy format.
+        /// @param grid_prefix the prefix of all files output by this function.
+        void writeSintefLegacyFormat(const std::string& grid_prefix) const;
+
     protected:
 	// Methods
         void assignPorosity(const EclipseGridParser& parser,
@@ -172,6 +184,7 @@ namespace Dune
         double cfl_factor_gravity_;
         std::vector<RockType> rock_;
         std::vector<int> cell_to_rock_;
+        PermeabilityKind permeability_kind_;
     };
 
 

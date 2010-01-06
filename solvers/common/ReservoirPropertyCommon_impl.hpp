@@ -48,7 +48,7 @@ namespace Dune
     namespace {
 
         /// @brief
-        ///    Verify that a given permeability specification is sound
+        ///    Classify and verify a given permeability specification
         ///    from a structural point of view.  In particular, we
         ///    verify that there are no off-diagonal permeability
         ///    components such as @f$k_{xy}@f$ unless the
@@ -60,10 +60,13 @@ namespace Dune
         ///    deck.
         ///
         /// @return
-        ///    Whether or not the input permeability is sound from a
-        ///    structural point of view.  If no permeability is
-        ///    specified on input, we deem that the tensor is ok.
-        bool structurallyReasonableTensor(const EclipseGridParser& parser)
+        ///    An enum value with the following possible values:
+        ///        ScalarPerm     only one component was given.
+        ///        DiagonalPerm   more than one component given.
+        ///        TensorPerm     at least one cross-component given.
+        ///        None           no components given.
+        ///        Invalid        invalid set of components given.
+        PermeabilityKind classifyPermeability(const EclipseGridParser& parser)
         {
             const bool xx = parser.hasField("PERMX" );
             const bool xy = parser.hasField("PERMXY");
@@ -77,10 +80,21 @@ namespace Dune
             const bool zy = parser.hasField("PERMZY");
             const bool zz = parser.hasField("PERMZ" );
 
-            bool ret;
-            if (xx || xy || xz ||
-                yx || yy || yz ||
-                zx || zy || zz) {
+            int num_comp = xx + xy + xz + yx + yy + yz + zx + zy + zz;
+            int num_cross_comp = xy + xz + yx + yz + zx + zy;
+            PermeabilityKind retval = None;
+            if (num_cross_comp) {
+                retval = TensorPerm;
+            } else {
+                if (num_comp == 1) {
+                    retval = ScalarPerm;
+                } else if (num_comp >= 2) {
+                    retval = DiagonalPerm;
+                }
+            }
+
+            bool ok = true;
+            if (num_comp) {
                 // At least one tensor component specified on input.
                 // Verify that any remaining components are OK from a
                 // structural point of view.  In particular, there
@@ -88,15 +102,15 @@ namespace Dune
                 // unless the corresponding diagonal component (e.g.,
                 // k_{xx}) is present as well...
                 //
-                ret =         xx || !(xy || xz || yx || zx) ;
-                ret = ret && (yy || !(yx || yz || xy || zy));
-                ret = ret && (zz || !(zx || zy || xz || yz));
-            } else {
-                // No permeability components.  We deem this officially OK!
-                ret = true;
+                ok =        xx || !(xy || xz || yx || zx) ;
+                ok = ok && (yy || !(yx || yz || xy || zy));
+                ok = ok && (zz || !(zx || zy || xz || yz));
+            }
+            if (!ok) {
+                retval = Invalid;
             }
 
-            return ret;
+            return retval;
         }
 
 
@@ -156,15 +170,18 @@ namespace Dune
         ///    An Eclipse data parser capable of answering which
         ///    permeability components are present in a given input
         ///    deck as well as retrieving the numerical value of each
-        ///    permeabilty component in each grid cell.
+        ///    permeability component in each grid cell.
         ///
         /// @param [out] tensor
         /// @param [out] kmap
-        void fillTensor(const EclipseGridParser&                 parser,
-                        std::vector<const std::vector<double>*>& tensor,
-                        boost::array<int,9>&                     kmap)
+        PermeabilityKind fillTensor(const EclipseGridParser&                 parser,
+                                    std::vector<const std::vector<double>*>& tensor,
+                                    boost::array<int,9>&                     kmap)
         {
-            ASSERT (structurallyReasonableTensor(parser));
+            PermeabilityKind kind = classifyPermeability(parser);
+            if (kind == Invalid) {
+                THROW("Invalid set of permeability fields given.");
+            }
             ASSERT (tensor.size() == 1);
             for (int i = 0; i < 9; ++i) { kmap[i] = 0; }
 
@@ -222,6 +239,7 @@ namespace Dune
 
                 setScalarPermIfNeeded(kmap, zz, xx, yy);
             }
+            return kind;
         }
 
     } // anonymous namespace
@@ -240,13 +258,14 @@ namespace Dune
         : density1_  (1013.9*unit::kilogram/unit::cubic(unit::meter)),
           density2_  ( 834.7*unit::kilogram/unit::cubic(unit::meter)),
           viscosity1_(   1.0*prefix::centi*unit::Poise),
-          viscosity2_(   3.0*prefix::centi*unit::Poise)
+          viscosity2_(   3.0*prefix::centi*unit::Poise),
 #else
         : density1_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
           density2_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
           viscosity1_(   1.0*prefix::centi*unit::Poise),
-          viscosity2_(   1.0*prefix::centi*unit::Poise)
+          viscosity2_(   1.0*prefix::centi*unit::Poise),
 #endif
+          permeability_kind_(Invalid)
     {
     }
 
@@ -416,6 +435,54 @@ namespace Dune
     }
 
 
+    template <int dim, class RPImpl, class RockType>
+    void ReservoirPropertyCommon<dim, RPImpl, RockType>::writeSintefLegacyFormat(const std::string& grid_prefix) const
+    {
+        int num_cells = porosity_.size();
+        // Write porosity.
+	{
+            std::string filename = grid_prefix + "-poro.dat";
+	    std::ofstream file(filename.c_str());
+	    if (!file) {
+		THROW("Could not open file " << filename);
+	    }
+            file << num_cells << '\n';
+            std::copy(porosity_.begin(), porosity_.end(), std::ostream_iterator<double>(file, "\n"));
+	}
+        // Write permeability.
+	{
+            std::string filename = grid_prefix + "-perm.dat";
+	    std::ofstream file(filename.c_str());
+	    if (!file) {
+		THROW("Could not open file " << filename);
+	    }
+            file << num_cells << '\n';
+            switch (permeability_kind_) {
+            case TensorPerm:
+                std::copy(permeability_.begin(), permeability_.end(), std::ostream_iterator<double>(file, "\n"));
+                break;
+            case DiagonalPerm:
+                for (int c = 0; c < num_cells; ++c) {
+                    int index = c*dim*dim;
+                    for (int dd = 0; dd < dim; ++dd) {
+                        file << permeability_[index + (dim + 1)*dd] << ' ';
+                    }
+                    file << '\n';
+                }
+                break;
+            case ScalarPerm:
+            case None: // Treated like a scalar permeability.
+                for (int c = 0; c < num_cells; ++c) {
+                    file << permeability_[c*dim*dim] << '\n';
+                }
+                break;
+            default:
+                THROW("Cannot write invalid permeability.");
+            }
+	}
+    }
+
+
     // ------ Private methods ------
 
 
@@ -466,7 +533,7 @@ namespace Dune
 
         BOOST_STATIC_ASSERT(dim == 3);
         boost::array<int,9> kmap;
-        fillTensor(parser, tensor, kmap);
+        permeability_kind_ = fillTensor(parser, tensor, kmap);
 
         // Assign permeability values only if such values are
         // given in the input deck represented by 'parser'.  In
