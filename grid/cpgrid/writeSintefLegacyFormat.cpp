@@ -57,8 +57,11 @@ namespace Dune
 	void writeGeom(std::ostream& geom,
                        const cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
                        const cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
-        void writeMap (std::ostream& map,
-                       const CpGrid& global_cell);
+        void writeMap(std::ostream& map,
+                      const CpGrid& g);
+        void writeVtkVolumes(std::ostream& vtk,
+                             const std::vector<Dune::FieldVector<double, 3> > points,
+                             const std::vector<Dune::array<int, 8> >& cell_to_point);
     } // anon namespace
 
 
@@ -89,6 +92,14 @@ namespace Dune
 		THROW("Could not open file " << mapfilename);
 	    }
             writeMap(file, *this);
+        }
+        std::string vtkfilename = grid_prefix + "-volumes.vtk";
+        {
+            std::ofstream file(vtkfilename.c_str());
+	    if (!file) {
+		THROW("Could not open file " << vtkfilename);
+	    }
+            writeVtkVolumes(file, allcorners_, cell_to_point_);
         }
     }
 
@@ -159,6 +170,7 @@ namespace Dune
 
 
 
+
 	void writeGeom(std::ostream& geom,
                        const cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
                        const cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
@@ -210,6 +222,9 @@ namespace Dune
 	    }
 	}
 
+
+
+
         void writeMap(std::ostream& map, const CpGrid& g)
         {
             boost::array<int, 3> dims = g.logicalCartesianSize();
@@ -222,6 +237,49 @@ namespace Dune
                 map << ijk[0] << ' ' << ijk[1] << ' ' << ijk[2] << '\n';
             }
         }
+
+
+
+
+        void writeVtkVolumes(std::ostream& vtk,
+                             const std::vector<Dune::FieldVector<double, 3> > points,
+                             const std::vector<Dune::array<int, 8> >& cell_to_point)
+        {
+            // Header.
+            vtk <<
+                "# vtk DataFile Version 2.1\n"
+                "Unstructured Grid With_Cell_Data\n"
+                "ASCII\n"
+                "DATASET UNSTRUCTURED_GRID\n";
+
+            // Points.
+            vtk.precision(15);
+            vtk << "POINTS " << points.size() << " float\n";
+            std::copy(points.begin(), points.end(),
+                      std::ostream_iterator<Dune::FieldVector<double, 3> >(vtk, "\n"));
+
+            // Cell nodes.
+            int nc = cell_to_point.size();
+            vtk << "CELLS " << nc << ' ' << 9*nc << '\n';
+            for (int i = 0; i < nc; ++i) {
+                vtk << "8 "
+                    << cell_to_point[i][0] << ' '
+                    << cell_to_point[i][1] << ' '
+                    << cell_to_point[i][3] << ' '
+                    << cell_to_point[i][2] << ' '
+                    << cell_to_point[i][4] << ' '
+                    << cell_to_point[i][5] << ' '
+                    << cell_to_point[i][7] << ' '
+                    << cell_to_point[i][6] << '\n';
+            }
+
+            // Cell types.
+            vtk << "CELL_TYPES " << nc << '\n';
+            for (int i = 0; i < nc; ++i) {
+                vtk << "12\n";
+            }            
+        }
+
 
     } //anon namespace
 
