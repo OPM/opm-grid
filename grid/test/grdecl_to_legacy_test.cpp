@@ -49,18 +49,9 @@ int main(int argc, char** argv)
     CpGrid grid;
     ReservoirPropertyCapillary<3> res_prop;
     setupGridAndProps(param, grid, res_prop);
-    /*
-    std::vector<double> porosity(grid.size(0));
-    std::vector<double> perm_xx(grid.size(0));
-    std::vector<double> perm_yy(grid.size(0));
-    std::vector<double> perm_zz(grid.size(0));
-    for (int i = 0; i < grid.size(0); ++i) {
-	porosity[i] = res_prop.porosity(i);
-	perm_xx[i] = res_prop.permeability(i)(0,0);
-	perm_yy[i] = res_prop.permeability(i)(1,1);
-	perm_zz[i] = res_prop.permeability(i)(2,2);
-    }
-    */
-    grid.writeSintefLegacyFormat(param.get<std::string>("grid_prefix"));
+
+    std::string grid_prefix = param.get<std::string>("grid_prefix");
+    grid.writeSintefLegacyFormat(grid_prefix);
+    res_prop.writeSintefLegacyFormat(grid_prefix);
 }
 
