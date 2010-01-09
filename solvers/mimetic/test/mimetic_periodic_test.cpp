@@ -94,7 +94,7 @@ int main(int argc, char** argv)
 
     solver.solve(r, sat, fbc, src);
 
-#if 1
+#if 0
     FlowSolver::SolutionType soln = solver.getSolution();
     std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
