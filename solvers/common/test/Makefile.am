@@ -5,10 +5,11 @@ check_PROGRAMS = boundaryconditions_test nonuniformtablelinear_test
 noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test
 
 # Common flags
-AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
+AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
+AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(SUPERLU_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
 	$(BOOST_FILESYSTEM_LIB) $(BOOST_SYSTEM_LIB)     \
+	$(SUPERLU_LIBS) \
 	../../../lib/libdunecornerpoint.la
 
 # Additional quirks for individual programs

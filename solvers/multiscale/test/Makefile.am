@@ -4,8 +4,8 @@
 check_PROGRAMS =
 noinst_PROGRAMS = multiscale_test
 
-AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
+AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
+AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(SUPERLU_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
         $(BOOST_SYSTEM_LIB)                           \
         ../../../lib/libdunecornerpoint.la            \
