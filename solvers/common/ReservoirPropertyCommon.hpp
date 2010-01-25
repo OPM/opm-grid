@@ -97,6 +97,16 @@ namespace Dune
                   const double uniform_poro = 0.2,
                   const double uniform_perm = 100.0*prefix::milli*unit::darcy);
 
+        /// @brief Set viscosities of both faces.
+        /// @param v1 the viscosity of the first (water) phase.
+        /// @param v2 the viscosity of the second (oil) phase.
+        void setViscosities(double v1, double v2);
+
+        /// @brief Set densitities of both faces.
+        /// @param d1 the densitity of the first (water) phase.
+        /// @param d2 the densitity of the second (oil) phase.
+        void setDensities(double d1, double d2);
+
 	/// @brief Viscosity of first (water) phase.
 	/// @return the viscosity value.
         double viscosityFirstPhase() const;

@@ -329,6 +329,19 @@ namespace Dune
         asImpl().computeCflFactors();
     }
 
+    template <int dim, class RPImpl, class RockType>
+    void ReservoirPropertyCommon<dim, RPImpl, RockType>::setViscosities(double v1, double v2)
+    {
+        viscosity1_ = v1;
+        viscosity2_ = v2;
+    }
+
+    template <int dim, class RPImpl, class RockType>
+    void ReservoirPropertyCommon<dim, RPImpl, RockType>::setDensities(double d1, double d2)
+    {
+        density1_ = d1;
+        density2_ = d2;
+    }
 
     template <int dim, class RPImpl, class RockType>
     double ReservoirPropertyCommon<dim, RPImpl, RockType>::viscosityFirstPhase() const

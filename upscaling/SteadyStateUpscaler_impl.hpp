@@ -62,6 +62,13 @@ namespace Dune
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
 					      Dune::unit::day);
 	transport_solver_.init(param);
+        // Set viscosities and densities if given.
+        double v1_default = res_prop_.viscosityFirstPhase();
+        double v2_default = res_prop_.viscositySecondPhase();
+        res_prop_.setViscosities(param.getDefault("viscosity1", v1_default), param.getDefault("viscosity2", v2_default));
+        double d1_default = res_prop_.densityFirstPhase();
+        double d2_default = res_prop_.densitySecondPhase();
+        res_prop_.setDensities(param.getDefault("density1", d1_default), param.getDefault("density2", d2_default));
     }
 
 
