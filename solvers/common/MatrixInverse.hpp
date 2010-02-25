@@ -59,8 +59,8 @@ namespace Dune {
 	    T det = m(0,0)*m(1,1) - m(0,1)*m(1,0);
 	    M mi(2, 2, (double*)0);
 	    mi(0,0) = m(1,1);
-	    mi(1,0) = -m(0,1);
-	    mi(0,1) = -m(1,0);
+	    mi(1,0) = -m(1,0);
+	    mi(0,1) = -m(0,1);
 	    mi(1,1) = m(0,0);
 	    mi /= det;
 	    return mi;
