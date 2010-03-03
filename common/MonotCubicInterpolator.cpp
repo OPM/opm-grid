@@ -542,6 +542,71 @@ chopFlatEndpoints(const double epsilon) {
 }
 
 
+//   
+//       If function is monotone, but not strictly monotone,
+//       this function will remove datapoints from intervals 
+//       with zero derivative so that the curves become
+//       strictly monotone.
+//
+//       Example
+//         The data points
+//           (1,2), (2,3), (3,4), (4,4), (5,5), (6,6)
+//         will become
+//           (1,2), (2,3), (3,4), (5,5), (6,6)
+//       
+//       Assumes at least two datapoints, if one or zero datapoint, this is a noop.
+//   
+//
+void
+MonotCubicInterpolator::
+shrinkFlatAreas(const double epsilon) {
+    
+    if (getSize() < 2) {
+        return;
+    }
+    
+    map<double,double>::iterator xf_iterator;
+    map<double,double>::iterator xf_next_iterator;
+    
+    
+    // Nothing to do if we already are strictly monotone
+    if (isStrictlyMonotone()) {
+        return;
+    }
+    
+    // Refuse to change a curve that is not monotone.
+    if (!isMonotone()) {
+        return;
+    }
+    
+    // Clear flags, they are not to be trusted after we modify the
+    // data
+    strictlyMonotoneCached = false;
+    monotoneCached = false;
+    
+    // Iterate through data values, if two data pairs
+    // have equal values, delete one of the data pair.
+    // Do not trust the source code on which data point is being
+    // removed (x-values of equal y-points might be averaged in the future)
+    xf_iterator = data.begin();
+    xf_next_iterator = ++(data.begin());
+    
+    while (xf_next_iterator != data.end()) {
+        //cout << xf_iterator->first << "," << xf_iterator->second << " " << xf_next_iterator->first << "," << xf_next_iterator->second << "\n";
+        if (fabs(xf_iterator->second - xf_next_iterator->second) < epsilon ) {
+            //cout << "erasing data pair" << xf_next_iterator->first << " " << xf_next_iterator->second << "\n";
+            map <double,double>::iterator xf_tobedeleted_iterator = xf_next_iterator;
+            xf_next_iterator++;
+            data.erase(xf_tobedeleted_iterator);
+        }
+        else {
+            xf_iterator++;
+            xf_next_iterator++;
+        }
+    }
+    
+}
+
 
 void 
 MonotCubicInterpolator::

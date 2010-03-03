@@ -455,7 +455,6 @@ class MonotCubicInterpolator {
     */
     void chopFlatEndpoints(const double);
 
-
     /**
        Wrapper function for chopFlatEndpoints(const double)
        providing a default epsilon parameter 
@@ -463,6 +462,32 @@ class MonotCubicInterpolator {
     void chopFlatEndpoints() {
         chopFlatEndpoints(1e-14);
     }
+
+    /**
+       If function is monotone, but not strictly monotone,
+       this function will remove datapoints from intervals 
+       with zero derivative so that the curve become
+       strictly monotone.
+
+       Example
+         The data points
+           (1,2), (2,3), (3,4), (4,4), (5,5), (6,6)
+         will become
+           (1,2), (2,3), (3,4), (5,5), (6,6)
+       
+       Assumes at least two datapoints, if one or zero datapoint, this is a noop.
+    */
+    void shrinkFlatAreas(const double);
+
+    /**
+       Wrapper function for shrinkFlatAreas(const double)
+       providing a default epsilon parameter 
+    */
+    void shrinkFlatAreas() {
+        shrinkFlatAreas(1e-14);
+    };
+
+
 
 private:
    
