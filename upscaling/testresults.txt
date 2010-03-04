@@ -244,6 +244,17 @@ real	0m29.376s
 user	0m28.700s
 sys	0m0.617s
 
+[again, Mar. 4 2010 - AMG changes again I think, maybe other changes as well]
+
+156.108068958234 0 0 
+0 161.812985066163 0 
+0 0 31.24643956403 
+
+real	0m26.003s
+user	0m24.991s
+sys	0m0.597s
+
+
 
 5) residual_tolerance = 1e-5
 
@@ -254,6 +265,18 @@ sys	0m0.617s
 real	0m26.004s
 user	0m21.783s
 sys	0m4.110s
+
+
+[again, Mar. 4 2010 - see comments above]
+
+156.109771894298 0 0 
+0 161.809594220408 0 
+0 0 31.2442748077186 
+
+real	0m20.700s
+user	0m20.018s
+sys	0m0.593s
+
 
 
 6) residual_tolerance = 1e-3
