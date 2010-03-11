@@ -37,6 +37,32 @@
 #define OPENRS_ENTITYREP_HEADER
 
 
+// -------------------------------------------------------------------
+// -> Layering violation. --------------------------------------------
+//
+//    We need a unary operator-() for class Dune::FieldVector<K,n>
+//    within method Dune::SignedEntityVariable<T,codim>::operator[](),
+//    but Dune::FieldVector<K,n> does not provide such an operator.
+//
+#include <dune/common/fvector.hh>
+
+namespace Dune
+{
+    template<typename K, int n>
+    FieldVector<K,n>
+    operator- (const FieldVector<K,n>& v)
+    {
+        // Assume 'K' supports a single parameter constructor.  The
+        // assumption holds for all standard C++ built-in arithmetic
+        // types such as 'int', 'float', and 'complex<double>'.
+        //
+        return FieldVector<K,n>(K(0)) - v;
+    }
+}
+//
+// <- Layering violation. --------------------------------------------
+// -------------------------------------------------------------------
+
 
 //#include <boost/static_assert.hpp>
 //#include <dune/common/SparseTable.hpp>
