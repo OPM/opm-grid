@@ -410,7 +410,7 @@ namespace Dune {
         ///    Constructor.
         ///
         /// @tparam DataPointer
-        ///    Type representing a pointer to data with which
+        ///    Type representing a pointer to data with which to
         ///    initalize the matrix elements.  Assumed to support
         ///    ordinary dereferencing and pointer arithmetic.
         ///
@@ -677,7 +677,7 @@ namespace Dune {
     ///
     /// @param A
     ///    Matrix.  Will be overwritten by an orthogonal matrix, @f$ Q
-    ///    @f$ whose columns represent an orthognormal basis for
+    ///    @f$ whose columns represent an orthonormal basis for
     ///    range(A).
     ///
     /// @return
