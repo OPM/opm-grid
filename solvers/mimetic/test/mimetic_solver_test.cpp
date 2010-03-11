@@ -45,6 +45,14 @@
 #include <dune/common/mpihelper.hh>
 #include <dune/common/Units.hpp>
 
+#if HAVE_ALUGRID
+#include <dune/common/shared_ptr.hh>
+#include <dune/grid/io/file/gmshreader.hh>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/grid/alugrid.hh>
+#include <dune/solvers/common/SimulatorUtilities.hpp>
+#endif
+
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/EclipseGridParser.hpp>
@@ -60,54 +68,6 @@
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/common/param/ParameterGroup.hpp>
-
-
-template <int dim, class Interface>
-void test_evaluator(const Interface& g)
-{
-    typedef typename Interface::CellIterator CI;
-    typedef typename CI       ::FaceIterator FI;
-    typedef typename CI       ::Scalar       Scalar;
-
-    typedef Dune::SharedFortranMatrix FMat;
-
-    std::cout << "Called test_evaluator()" << std::endl;
-
-    std::vector<int> numf; numf.reserve(g.numberOfCells());
-    int max_nf = -1;
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
-        numf.push_back(0);
-        int& nf = numf.back();
-
-        for (FI f = c->facebegin(); f != c->faceend(); ++f)
-            ++nf;
-
-        max_nf = std::max(max_nf, nf);
-    }
-
-    Dune::MimeticIPEvaluator<CI, dim, true> ip(max_nf);
-
-    // Set dummy permeability K=diag(10,1,...,1,0.1).
-    std::vector<Scalar> perm(dim * dim, Scalar(0.0));
-    Dune::SharedCMatrix K(dim, dim, &perm[0]);
-    for (int i = 0; i < dim; ++i)
-        K(i,i) = 1.0;
-    K(0    ,0    ) *= 10.0;
-    K(dim-1,dim-1) /= 10.0;
-
-    // Storage for inverse ip.
-    std::vector<Scalar> ip_store(max_nf * max_nf, Scalar(0.0));
-
-    // Loop grid whilst building (and outputing) the inverse IP matrix.
-    int count = 0;
-    for (CI c = g.cellbegin(); c != g.cellend(); ++c, ++count) {
-        FMat Binv(numf[count], numf[count], &ip_store[0]);
-
-        ip.evaluate(c, K, Binv);
-
-        std::cout << count << " -> Binv = [\n" << Binv << "]\n";
-    }
-}
 
 
 void build_grid(const Dune::EclipseGridParser& parser,
@@ -136,6 +96,16 @@ void build_grid(const Dune::EclipseGridParser& parser,
 }
 
 
+
+template<class GType>
+Dune::shared_ptr<GType>
+make_gmsh(const std::string& msh_file)
+{
+    return Dune::shared_ptr<GType>(Dune::GmshReader<GType>::read(msh_file));
+}
+
+
+
 template<int dim, class RI>
 void assign_permeability(RI& r, int nc, double k)
 {
@@ -152,9 +122,9 @@ void assign_permeability(RI& r, int nc, double k)
 template<int dim, class GI, class RI>
 void test_flowsolver(const GI& g, const RI& r)
 {
-    typedef typename GI::CellIterator                              CI;
-    typedef typename CI::FaceIterator                              FI;
-    typedef Dune::BasicBoundaryConditions<true, false>                  FBC;
+    typedef typename GI::CellIterator                   CI;
+    typedef typename CI::FaceIterator                   FI;
+    typedef Dune::BasicBoundaryConditions<true, false>  FBC;
     typedef Dune::IncompFlowSolverHybrid<GI, RI, FBC,
                                          Dune::MimeticIPEvaluator> FlowSolver;
 
@@ -162,35 +132,49 @@ void test_flowsolver(const GI& g, const RI& r)
 
     typedef Dune::FlowBC BC;
     FBC flow_bc(7);
+
+#if !USE_ALUGRID
     //flow_bc.flowCond(1) = BC(BC::Dirichlet, 1.0*Dune::unit::barsa);
     //flow_bc.flowCond(2) = BC(BC::Dirichlet, 0.0*Dune::unit::barsa);
     flow_bc.flowCond(5) = BC(BC::Dirichlet, 100.0*Dune::unit::barsa);
+#endif
 
     typename CI::Vector gravity;
     gravity[0] = gravity[1] = 0.0;
     gravity[2] = Dune::unit::gravity;
 
     solver.init(g, r, gravity, flow_bc);
-    // solver.printStats(std::cout);
-
-    //solver.assembleStatic(g, r);
-    //solver.printIP(std::cout);
 
     std::vector<double> src(g.numberOfCells(), 0.0);
     std::vector<double> sat(g.numberOfCells(), 0.0);
-#if 0
+#if 1
     if (g.numberOfCells() > 1) {
         src[0]     = 1.0;
         src.back() = -1.0;
     }
 #endif
 
-    solver.solve(r, sat, flow_bc, src);
+    solver.solve(r, sat, flow_bc, src, 5e-9, 3, 0);
 
-#if 0
+#if 1
+    typedef typename FlowSolver::SolutionType FlowSolution;
+    FlowSolution soln = solver.getSolution();
+
+    std::vector<double> cell_velocity;
+    estimateCellVelocity(cell_velocity, g, soln);
+    std::vector<double> cell_pressure;
+    getCellPressure(cell_pressure, g, soln);
+
+    Dune::VTKWriter<typename GI::GridType::LeafGridView> vtkwriter(g.grid().leafView());
+    vtkwriter.addCellData(cell_velocity, "velocity");
+    vtkwriter.addCellData(cell_pressure, "pressure");
+    vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(0),
+                    Dune::VTKOptions::ascii);
+#else    
     solver.printSystem("system");
     typedef typename FlowSolver::SolutionType FlowSolution;
     FlowSolution soln = solver.getSolution();
+
     std::cout << "Cell Pressure:\n" << std::scientific << std::setprecision(15);
     for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
         std::cout << '\t' << soln.pressure(c) << '\n';
@@ -217,6 +201,7 @@ int main(int argc, char** argv)
     Dune::MPIHelper::instance(argc,argv);
 
     // Make a grid
+#if !USE_ALUGRID
     Dune::CpGrid grid;
 
     Dune::EclipseGridParser parser(param.get<std::string>("filename"));
@@ -230,76 +215,15 @@ int main(int argc, char** argv)
     // Reservoir properties.
     ReservoirPropertyCapillary<3> res_prop;
     res_prop.init(parser, grid.globalCell());
-
     assign_permeability<3>(res_prop, g.numberOfCells(), 0.1*Dune::unit::darcy);
+#else
+    typedef Dune::ALUSimplexGrid<3,3> GType;
+    Dune::shared_ptr<GType> pgrid = make_gmsh<GType>(param.get<std::string>("filename"));
+    Dune::GridInterfaceEuler<GType> g(*pgrid);
+
+    ReservoirPropertyCapillary<3> res_prop;
+    res_prop.init(g.numberOfCells());
+#endif
+
     test_flowsolver<3>(g, res_prop);
-
-#if 0
-    // Make flow equation boundary conditions.
-    // Pressure 1.0e5 on the left, 0.0 on the right.
-    // Recall that the boundary ids range from 1 to 6 for the cartesian edges,
-    // and that boundary id 0 means interiour face/intersection.
-    typedef FlowBoundaryCondition BC;
-    FlowBoundaryConditions flow_bcond(7);
-    flow_bcond[1] = BC(BC::Dirichlet, 1.0e5);
-    flow_bcond[2] = BC(BC::Dirichlet, 0.0);
-
-    // Make transport equation boundary conditions.
-    // The default one is fine (sat = 1.0 on inflow).
-    SaturationBoundaryConditions sat_bcond(7);
-
-    // No injection or production.
-    SparseVector<double> injection_rates(g.numberOfCells());
-
-    // Make a solver.
-    typedef EulerUpstream<GridInterface,
-                          ReservoirPropertyCapillary<3>,
-                          SaturationBoundaryConditions> TransportSolver;
-    TransportSolver transport_solver(g, res_prop, sat_bcond, injection_rates);
-
-    // Define a flow field with constant velocity
-    FieldVector<double, 3> vel(0.0);
-    vel[0] = 2.0;
-    vel[1] = 1.0;
-    TestSolution<GridInterface> flow_solution(g, vel);
-    // Solve a step.
-    double time = 1.0;
-    std::vector<double> sat(g.numberOfCells(), 0.0);
-    FieldVector<double, 3> gravity(0.0);
-    gravity[2] = -9.81;
-    transport_solver.transportSolve(sat, time, gravity, flow_solution);
-#endif
 }
-
-
-#if 0
-int main (int argc , char **argv) {
-    try {
-#if HAVE_MPI
-	// initialize MPI
-	MPI_Init(&argc,&argv);
-	// get own rank
-	int rank;
-	MPI_Comm_rank(MPI_COMM_WORLD,&rank);
-#endif
-	//check_yasp<3,0>();  // 3D, 1 x 1 x 1 cell
-	check_cpgrid<0>();
-	check_cpgrid<1>();
-	check_cpgrid<2>();
-
-    } catch (Dune::Exception &e) {
-	std::cerr << e << std::endl;
-	return 1;
-    } catch (...) {
-	std::cerr << "Generic exception!" << std::endl;
-	return 2;
-    }
-
-#if HAVE_MPI
-    // Terminate MPI
-    MPI_Finalize();
-#endif
-
-    return 0;
-}
-#endif
