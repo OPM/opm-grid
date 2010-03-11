@@ -10,12 +10,13 @@ noinst_PROGRAMS = mimetic_ipeval_test \
 		  istl_test \
 		  spe10_test
 
-AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
-AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(SUPERLU_LDFLAGS)
+AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(ALUGRID_CPPFLAGS) $(SUPERLU_CPPFLAGS)
+AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(ALUGRID_LDFLAGS) $(SUPERLU_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
         $(BOOST_SYSTEM_LIB)                             \
         ../../../lib/libdunecornerpoint.la              \
-        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
+	 $(ALUGRID_LIBS) $(SUPERLU_LIBS)                \
+        $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 
 # Note: Need to fill _SOURCES because default is "<base>.c"
 mimetic_ipeval_test_SOURCES = mimetic_ipeval_test.cpp
