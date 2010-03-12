@@ -130,11 +130,11 @@ namespace Dune
 	{
 	    /// \brief The type of the level grid view associated with this partition type.
 // 	    typedef cpgrid::GridView<pitype> LevelGridView;
-	    typedef Dune::GridView<DefaultLevelGridViewTraits<const CpGrid, pitype> > LevelGridView;
+	    typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid, pitype> > LevelGridView;
 
 	    /// \brief The type of the leaf grid view associated with this partition type.
 // 	    typedef cpgrid::GridView<pitype> LeafGridView;
-	    typedef Dune::GridView<DefaultLeafGridViewTraits<const CpGrid, pitype> > LeafGridView;
+	    typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid, pitype> > LeafGridView;
 	};
 
 	/// \brief The type of the level index set.

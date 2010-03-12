@@ -324,33 +324,48 @@ namespace Dune
 	    {
 	    }
 
-	    /// Member by pointer operator.
-	    Entity* operator->()
-	    {
-		ASSERT(Entity::valid());
-		return this;
-	    }
+// 	    /// Member by pointer operator.
+// 	    Entity* operator->()
+// 	    {
+// 		ASSERT(Entity::valid());
+// 		return this;
+// 	    }
+
+// 	    /// Const member by pointer operator.
+// 	    const Entity* operator->() const
+// 	    {
+// 		ASSERT(Entity::valid());
+// 		return this;
+// 	    }
+
+// 	    /// Dereferencing operator.
+// 	    Entity& operator*()
+// 	    {
+// 		ASSERT(Entity::valid());
+// 		return *this;
+// 	    }
+
+// 	    /// Const dereferencing operator.
+// 	    const Entity& operator*() const
+// 	    {
+// 		ASSERT(Entity::valid());
+// 		return *this;
+// 	    }
 
 	    /// Const member by pointer operator.
-	    const Entity* operator->() const
+	    Entity* operator->() const
 	    {
 		ASSERT(Entity::valid());
-		return this;
-	    }
-
-	    /// Dereferencing operator.
-	    Entity& operator*()
-	    {
-		ASSERT(Entity::valid());
-		return *this;
+		return const_cast<EntityPointer*>(this); // const_cast-hack added because of error in vtkwriter.hh
 	    }
 
 	    /// Const dereferencing operator.
-	    const Entity& operator*() const
+	    Entity& operator*() const
 	    {
 		ASSERT(Entity::valid());
-		return *this;
+		return const_cast<EntityPointer&>(*this); // const_cast-hack added because of error in vtkwriter.hh
 	    }
+
 
 	    /// Minimizes memory usage.
 	    /// Nothing to do in our case.
