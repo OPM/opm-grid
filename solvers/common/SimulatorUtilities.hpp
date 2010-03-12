@@ -36,6 +36,10 @@
 #ifndef OPENRS_SIMULATORUTILITIES_HEADER
 #define OPENRS_SIMULATORUTILITIES_HEADER
 
+
+#include <vector>
+
+
 namespace Dune
 {
 
