@@ -48,10 +48,11 @@
 #if HAVE_ALUGRID
 #include <dune/common/shared_ptr.hh>
 #include <dune/grid/io/file/gmshreader.hh>
-#include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/alugrid.hh>
-#include <dune/solvers/common/SimulatorUtilities.hpp>
 #endif
+
+#include <dune/solvers/common/SimulatorUtilities.hpp>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
@@ -96,14 +97,14 @@ void build_grid(const Dune::EclipseGridParser& parser,
 }
 
 
-
+#if USE_ALUGRID
 template<class GType>
 Dune::shared_ptr<GType>
 make_gmsh(const std::string& msh_file)
 {
     return Dune::shared_ptr<GType>(Dune::GmshReader<GType>::read(msh_file));
 }
-
+#endif
 
 
 template<int dim, class RI>
