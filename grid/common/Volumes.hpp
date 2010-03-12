@@ -64,9 +64,9 @@ namespace Dune
     /// @param
     /// @return
     template <class Vector>
-    typename Vector::value_type inner(const Vector& a, const Vector& b)
+    typename Vector::field_type inner(const Vector& a, const Vector& b)
     {
-	return std::inner_product(a.begin(), a.end(), b.begin(), typename Vector::value_type());
+	return std::inner_product(a.begin(), a.end(), b.begin(), typename Vector::field_type());
     }
 
     /// Calculates the determinant of a 2 x 2 matrix, represented in memory as an
