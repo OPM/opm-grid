@@ -92,12 +92,15 @@ namespace
     inline std::string readKeyword(std::istream& is)
     {
 	std::string keyword_candidate;
-	is >> keyword_candidate;
-	while (keyword_candidate.find("--") == 0) {
-	    // This line is a comment
-	    is >> ignoreLine >> keyword_candidate;
+	while (!is.eof()) {
+	    is >> keyword_candidate;
+	    if(keyword_candidate.find("--") == 0) {
+		is >> ignoreLine;  // This line is a comment
+	    } else {
+		return upcase(keyword_candidate);
+	    }
 	}
-	return upcase(keyword_candidate);
+	return "CONTINUE";  // Last line in included file is a comment
     }
 
     inline std::string readString(std::istream& is)
@@ -109,7 +112,6 @@ namespace
         int len = string_candidate[0] == quote ? string_candidate.size() - 2 : string_candidate.size();
         return string_candidate.substr(beg, len);
     }
-
 
     // Reads data until '/' or an error is encountered.
     template<typename T>
@@ -126,7 +128,7 @@ namespace
 		if (dummy == "/") {
                     is >> ignoreLine;
 		    break;
-		} else if (dummy.find("--") == 0) {
+		} else if (dummy[0] == '-') {  // "comment test"
 		    is >> ignoreLine; // This line is a comment
 		} else {
                     THROW("Encountered format error while reading data values. Value = " << dummy);
@@ -167,7 +169,7 @@ namespace
                 if (dummy == "/") {
                     is >> ignoreLine;	
                     break;
-                } else if (dummy.find("--") == 0) {
+		} else if (dummy[0] == '-') {  // "comment test"
                     is >> ignoreLine;   // This line is a comment
                 } else {
                     THROW("Encountered format error while reading data values. Value = " << dummy);
@@ -190,6 +192,7 @@ namespace
                 }
             }
             if (num_values >= max_values) {
+		is >> ignoreLine;
                 break;
             }
         }

@@ -143,6 +143,7 @@ struct FAULTS : public SpecialBase
 	    std::string name;
 	    is >> name;
 	    if (name[0] == '/') {
+		is >> ignoreLine;
 		break;
 	    }
 	    while (name.find("--") == 0) {
@@ -211,6 +212,7 @@ struct MULTFLT : public SpecialBase
 	    std::string name;
 	    is >> name;
 	    if (name[0] == '/') {
+		is >> ignoreLine;
 		break;
 	    }
 	    while (name == "--") {
@@ -309,7 +311,7 @@ struct MultRec : public SpecialBase
         std::cout << "(dummy implementation)" << std::endl;
 #endif
 	const std::ctype<char>& ct = std::use_facet< std::ctype<char> >(std::locale::classic());
-        while (true) {
+        while (!is.eof()) {
             is >> ignoreSlashLine;
             is >> ignoreWhitespace;
             char c;
