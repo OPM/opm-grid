@@ -119,7 +119,7 @@ namespace EclipseKeywords
 	  string("REGIONS"), string("SOLUTION"), string("SUMMARY"),
 	  string("FPR"),     string("FOIP"),     string("FWIP"),
 	  string("RUNSUM"),  string("EXCEL"),    string("SCHEDULE"),
-	  string("END"),     string("ENDBOX")
+	  string("END"),     string("ENDBOX"),   string("CONTINUE")
 	};
     const int num_ignore_no_data = sizeof(ignore_no_data) / sizeof(ignore_no_data[0]);
 
