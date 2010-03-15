@@ -453,22 +453,22 @@ namespace Dune
     {
         int num_cells = porosity_.size();
         // Write porosity.
-	{
+        {
             std::string filename = grid_prefix + "-poro.dat";
-	    std::ofstream file(filename.c_str());
-	    if (!file) {
-		THROW("Could not open file " << filename);
-	    }
+            std::ofstream file(filename.c_str());
+            if (!file) {
+                THROW("Could not open file " << filename);
+            }
             file << num_cells << '\n';
             std::copy(porosity_.begin(), porosity_.end(), std::ostream_iterator<double>(file, "\n"));
-	}
+        }
         // Write permeability.
-	{
+        {
             std::string filename = grid_prefix + "-perm.dat";
-	    std::ofstream file(filename.c_str());
-	    if (!file) {
-		THROW("Could not open file " << filename);
-	    }
+            std::ofstream file(filename.c_str());
+            if (!file) {
+                THROW("Could not open file " << filename);
+            }
             file << num_cells << '\n';
             switch (permeability_kind_) {
             case TensorPerm:
@@ -492,7 +492,7 @@ namespace Dune
             default:
                 THROW("Cannot write invalid permeability.");
             }
-	}
+        }
     }
 
 
@@ -502,7 +502,7 @@ namespace Dune
     template <int dim, class RPImpl, class RockType>
     RPImpl& ReservoirPropertyCommon<dim, RPImpl, RockType>::asImpl()
     {
-	return static_cast<RPImpl&>(*this);
+        return static_cast<RPImpl&>(*this);
     }
 
 
@@ -611,13 +611,13 @@ namespace Dune
         int num_rocks = -1;
         rl >> num_rocks;
         ASSERT(num_rocks >= 1);
-	rock_.resize(num_rocks);
-	std::string dir(rock_list_file.begin(), rock_list_file.begin() + rock_list_file.find_last_of('/') + 1);
+        rock_.resize(num_rocks);
+        std::string dir(rock_list_file.begin(), rock_list_file.begin() + rock_list_file.find_last_of('/') + 1);
         for (int i = 0; i < num_rocks; ++i) {
             std::string spec;
-	    while (spec.empty()) {
-		std::getline(rl, spec);
-	    }
+            while (spec.empty()) {
+                std::getline(rl, spec);
+            }
             rock_[i].read(dir, spec);
         }
     }
