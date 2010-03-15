@@ -80,10 +80,10 @@ namespace Dune
             const bool zy = parser.hasField("PERMZY");
             const bool zz = parser.hasField("PERMZ" );
 
-            int num_comp = xx + xy + xz + yx + yy + yz + zx + zy + zz;
             int num_cross_comp = xy + xz + yx + yz + zx + zy;
+            int num_comp       = xx + yy + zz + num_cross_comp;
             PermeabilityKind retval = None;
-            if (num_cross_comp) {
+            if (num_cross_comp > 0) {
                 retval = TensorPerm;
             } else {
                 if (num_comp == 1) {
@@ -94,7 +94,7 @@ namespace Dune
             }
 
             bool ok = true;
-            if (num_comp) {
+            if (num_comp > 0) {
                 // At least one tensor component specified on input.
                 // Verify that any remaining components are OK from a
                 // structural point of view.  In particular, there
