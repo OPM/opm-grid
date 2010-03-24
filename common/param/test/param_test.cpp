@@ -41,21 +41,22 @@
 #include <boost/test/unit_test.hpp>
 
 #include "../ParameterGroup.hpp"
+#include <cstddef>
 
 using namespace Dune;
 
 BOOST_AUTO_TEST_CASE(commandline_syntax_init)
 {
     typedef char* cp;
-    const int argc = 8;
-    cp argv[argc] = { "program_command",
-                      "topitem=somestring",
-                      "/slashtopitem=anotherstring",
-                      "/group/item=1",
-                      "/group/anotheritem=2",
-                      "/group/subgroup/item=3",
-                      "/group/subgroup/anotheritem=4",
-                      "/group/item=overridingstring" };
+    cp argv[] = { const_cast<char*>("program_command"),
+                  const_cast<char*>("topitem=somestring"),
+                  const_cast<char*>("/slashtopitem=anotherstring"),
+                  const_cast<char*>("/group/item=1"),
+                  const_cast<char*>("/group/anotheritem=2"),
+                  const_cast<char*>("/group/subgroup/item=3"),
+                  const_cast<char*>("/group/subgroup/anotheritem=4"),
+                  const_cast<char*>("/group/item=overridingstring") };
+    const std::size_t argc = sizeof(argv)/sizeof(argv[0]);
     parameter::ParameterGroup p(argc, argv);
     BOOST_CHECK(p.get<std::string>("topitem") == "somestring");
 
