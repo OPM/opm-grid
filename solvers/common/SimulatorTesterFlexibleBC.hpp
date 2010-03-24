@@ -57,10 +57,10 @@ namespace Dune
 	    this->injection_rates_ = SparseVector<double>(nc);
 	    this->injection_rates_psolver_.resize(nc, 0.0);
 
-            this->injection_rates_.addElement(1.0, 0);
-            this->injection_rates_psolver_[0] = 1.0;
-            this->injection_rates_.addElement(-1.0, nc-1);
-            this->injection_rates_psolver_[nc-1] = -1.0;
+//             this->injection_rates_.addElement(1.0, 0);
+//             this->injection_rates_psolver_[0] = 1.0;
+//             this->injection_rates_.addElement(-1.0, nc-1);
+//             this->injection_rates_psolver_[nc-1] = -1.0;
 
             // Initializing blocks.
             double total_inj = 0.0;
