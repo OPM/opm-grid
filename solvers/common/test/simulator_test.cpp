@@ -39,6 +39,7 @@
 
 #include "config.h"
 #include "../SimulatorTester.hpp"
+#include "../SimulatorTesterFlexibleBC.hpp"
 #include <dune/common/mpihelper.hh>
 
 #ifdef USE_TBB
@@ -56,7 +57,8 @@ int main(int argc, char** argv)
     int num_threads = param.getDefault("num_threads", tbb::task_scheduler_init::default_num_threads());
     tbb::task_scheduler_init init(num_threads);
 #endif
-    SimulatorTester<> tester;
+//     SimulatorTester<> tester;
+    SimulatorTesterFlexibleBC<> tester;
     tester.init(param);
     tester.run();
 }
