@@ -57,14 +57,6 @@ namespace Dune
 	/// @todo Doc me!
 	void run()
 	{
-	    // No injection or production.
-            int nc = Super::ginterf_.numberOfCells();
-	    SparseVector<double> injection_rates(nc);
-	    std::vector<double> src(nc);
-//             injection_rates.addElement(1.0, 0);
-//             injection_rates.addElement(-1.0, nc - 1);
-//             src[0] = 1.0;
-//             src[nc - 1] = -1.0;
 	    // Initial saturation.
 	    std::vector<double> sat(Super::ginterf_.numberOfCells(), Super::init_saturation_);
 	    // Gravity.
@@ -80,7 +72,7 @@ namespace Dune
 		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
-		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, src,
+		Super::flow_solver_.solve(Super::res_prop_, sat, Super::bcond_, Super::injection_rates_psolver_,
                                           Super::residual_tolerance_, Super::linsolver_verbosity_, Super::linsolver_type_);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
@@ -88,7 +80,7 @@ namespace Dune
 		// Transport.
 		Super::transport_solver_.transportSolve(sat, Super::stepsize_, Super::gravity_,
 							Super::flow_solver_.getSolution(),
-							injection_rates);
+							Super::injection_rates_);
 		// Output.
 		std::vector<double> cell_velocity;
 		estimateCellVelocity(cell_velocity, Super::ginterf_, Super::flow_solver_.getSolution());

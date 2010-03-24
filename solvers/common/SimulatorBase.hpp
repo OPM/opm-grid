@@ -102,6 +102,7 @@ namespace Dune
 	    initGridAndProps(param);
 	    initInitialConditions(param);
 	    initBoundaryConditions(param);
+            initSources(param);
 	    initSolvers(param);
 
 	    // Write any unused parameters.
@@ -139,7 +140,9 @@ namespace Dune
 	GridInterface ginterf_;
 	ResProp res_prop_;
 	BCs bcond_;
-	FlowSolver flow_solver_;
+        SparseVector<double> injection_rates_;
+        std::vector<double> injection_rates_psolver_;	// Should modify psolver to take SparseVector
+        FlowSolver flow_solver_;
 	TransportSolver transport_solver_;
 
 
@@ -169,6 +172,17 @@ namespace Dune
 	{
 	    setupBoundaryConditions(param, ginterf_, bcond_);
 	}
+
+        virtual void initSources(const parameter::ParameterGroup& param)
+        {
+            int nc = ginterf_.numberOfCells();
+	    injection_rates_ = SparseVector<double>(nc);
+	    injection_rates_psolver_.resize(nc, 0.0);
+//             injection_rates_.addElement(1.0, 0);
+//             injection_rates_.addElement(-1.0, nc - 1);
+//             injection_rates_psolver_[0] = 1.0;
+//             injection_rates_psolver_[nc - 1] = -1.0;
+        }
 
 	virtual void initSolvers(const parameter::ParameterGroup& param)
 	{
