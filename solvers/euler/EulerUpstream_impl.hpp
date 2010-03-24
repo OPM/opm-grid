@@ -461,18 +461,19 @@ namespace Dune
             {
                 // This is constant for the whole run.
                 const double delta_rho = s.preservoir_properties_->densityDifference();
+                int cell[2];
+                double cell_sat[2];
+                double cell_pvol[2];
+                cell[0] = c->index();
+                cell_sat[0] = saturation[cell[0]];
+                cell_pvol[0] = c->volume()*s.preservoir_properties_->porosity(cell[0]);
 
                 // Loop over all cell faces.
                 for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
                     // Neighbour face, will be changed if on a periodic boundary.
                     FIt nbface = f;
                     double dS = 0.0;
-                    int cell[2];
-                    double cell_sat[2];
-                    double cell_pvol[2];
-                    cell[0] = f->cellIndex();
-                    cell_sat[0] = saturation[cell[0]];
-                    cell_pvol[0] = c->volume()*s.preservoir_properties_->porosity(cell[0]);
+                    // Compute cell[1], cell_sat[1] and cell_pvol[1].
                     if (f->boundary()) {
                         int bid = f->boundaryId();
                         if (s.pboundary_->satCond(bid).isPeriodic()) {
@@ -680,15 +681,6 @@ namespace Dune
                         dS += cap_change;
                     }
 
-                    // Source term.
-                    double rate = s.injection_rates_.element(cell[0]);
-                    if (rate < 0.0) {
-                        // For anisotropic relperm, fractionalFlow does not really make sense
-                        // as a scalar
-                        rate *= s.preservoir_properties_->fractionalFlow(cell[0], cell_sat[0]);
-                    }
-                    dS += rate;
-
                     // Modify saturation.
                     if (cell[0] != cell[1]){
                         s.sat_change_[cell[0]] -= dS/cell_pvol[0];
@@ -698,6 +690,14 @@ namespace Dune
                         s.sat_change_[cell[0]] -= dS/cell_pvol[0];
                     }
                 }
+                // Source term.
+                double rate = s.injection_rates_.element(cell[0]);
+                if (rate < 0.0) {
+                    // For anisotropic relperm, fractionalFlow does not really make sense
+                    // as a scalar
+                    rate *= s.preservoir_properties_->fractionalFlow(cell[0], cell_sat[0]);
+                }
+                s.sat_change_[cell[0]] += rate/cell_pvol[0];
             }
         };
 
