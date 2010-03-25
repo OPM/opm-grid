@@ -6,6 +6,7 @@
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bjørn Spjelkavik    <bsp@sintef.no>
 //
 // $Date$
 //
@@ -46,14 +47,13 @@
 namespace Dune
 {
 
-
-// Abstract base class for special fields. A special field is a field
-// with more than one data type.
+// Abstract base class for special fields.
 struct SpecialBase {
     virtual ~SpecialBase() {}                       // Default destructor
     //virtual std::string name() const = 0;           // Keyword name
     virtual void read(std::istream& is) = 0;        // Reads data
     //virtual void write(std::ostream& os) const = 0; // Writes data
+    typedef std::vector<std::vector<std::vector<double> > > table_t;
 };
 
 
@@ -301,6 +301,238 @@ struct DATES : public SpecialBase
 };
 
 
+struct DENSITY : public SpecialBase
+{
+    std::vector<std::vector<double> > densities_;
+
+    virtual std::string name() const {return std::string("DENSITY");}
+
+    virtual void read(std::istream& is)
+    {
+	while (!is.eof()) {
+	    std::vector<double> density;
+	    readVectorData(is, density);
+	    densities_.push_back(density);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading DENSITY. Next character is "
+		      << (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int i=0; i<(int)densities_.size(); ++i) {
+	    os << densities_[i][0] << " " << densities_[i][1] << " "
+	       << densities_[i][2] << '\n';
+	}
+	os << '\n';
+    }
+};
+
+struct PVDG : public SpecialBase
+{
+    table_t pvdg_; 
+
+    virtual std::string name() const {return std::string("PVDG");}
+
+    virtual void read(std::istream& is)
+    {
+	const int ncol(3);
+	std::vector<double> record;
+	std::vector<std::vector<double> > table(ncol);	
+	while (!is.eof()) {
+	    record.clear();
+	    readVectorData(is, record);
+	    const int rec_size = record.size()/ncol;
+	    for (int k=0; k<ncol; ++k) {
+		table[k].resize(rec_size);
+	    }
+	    for (int i=0, n=-1; i<rec_size; ++i) {
+		for (int k=0; k<ncol; ++k) {
+		    table[k][i] = record[++n];
+		}
+	    }
+	    pvdg_.push_back(table);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading PVDG. Next character is "
+		      <<  (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)pvdg_.size(); ++prn) {
+	    for (int i=0; i<(int)pvdg_[prn][0].size(); ++i) {
+		os << pvdg_[prn][0][i] << " " << pvdg_[prn][1][i] << " "
+		   << pvdg_[prn][2][i] << '\n';
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
+struct PVDO : public SpecialBase
+{
+    table_t pvdo_; 
+
+    virtual std::string name() const {return std::string("PVDO");}
+
+    virtual void read(std::istream& is)
+    {
+	const int ncol(3);
+	std::vector<double> record;
+	std::vector<std::vector<double> > table(ncol);	
+	while (!is.eof()) {
+	    record.clear();
+	    readVectorData(is, record);
+	    const int rec_size = record.size()/ncol;
+	    for (int k=0; k<ncol; ++k) {
+		table[k].resize(rec_size);
+	    }
+	    for (int i=0, n=-1; i<rec_size; ++i) {
+		for (int k=0; k<ncol; ++k) {
+		    table[k][i] = record[++n];
+		}
+	    }
+	    pvdo_.push_back(table);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading PVDO. Next character is "
+		      <<  (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)pvdo_.size(); ++prn) {
+	    for (int i=0; i<(int)pvdo_[prn][0].size(); ++i) {
+		os << pvdo_[prn][0][i] << " " << pvdo_[prn][1][i] << " "
+		   << pvdo_[prn][2][i] << '\n';
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
+struct PVTG : public SpecialBase
+{
+    table_t pvtg_; 
+
+    virtual std::string name() const {return std::string("PVTG");}
+
+    virtual void read(std::istream& is)
+    {
+	readPvtTable(is, pvtg_, name());
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)pvtg_.size(); ++prn) {
+	    for (int i=0; i<(int)pvtg_[prn].size(); ++i) {
+		int nl = (pvtg_[prn][i].size()-1) / 3;
+		os << pvtg_[prn][i][0] << "   " << pvtg_[prn][i][1] << "  "
+		   << pvtg_[prn][i][2] << "  " << pvtg_[prn][i][3] <<  '\n';
+		for (int j=1, n=3; j<nl; ++j, n+=3) {
+		    os << '\t' << pvtg_[prn][i][n+1] << "  "
+		       << pvtg_[prn][i][n+2] << "  " << pvtg_[prn][i][n+3]
+		       <<  '\n';
+		}
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
+
+struct PVTO : public SpecialBase
+{
+    table_t pvto_; 
+
+    virtual std::string name() const {return std::string("PVTO");}
+
+    virtual void read(std::istream& is)
+    {
+	readPvtTable(is, pvto_, name());
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)pvto_.size(); ++prn) {
+	    for (int i=0; i<(int)pvto_[prn].size(); ++i) {
+		int nl = (pvto_[prn][i].size()-1) / 3;
+		os << pvto_[prn][i][0] << "   " << pvto_[prn][i][1] << "  "
+		   << pvto_[prn][i][2] << "  " << pvto_[prn][i][3] <<  '\n';
+		for (int j=1, n=3; j<nl; ++j, n+=3) {
+		    os << '\t' << pvto_[prn][i][n+1] << "  "
+		       << pvto_[prn][i][n+2] << "  " << pvto_[prn][i][n+3]
+		       <<  '\n';
+		}
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
+
+struct PVTW : public SpecialBase
+{
+    std::vector<std::vector<double> > pvtw_;
+
+    virtual std::string name() const {return std::string("PVTW");}
+
+    virtual void read(std::istream& is)
+    {
+	while (!is.eof()) {
+	    std::vector<double> pvtw;
+	    readVectorData(is, pvtw);
+	    if (pvtw.size() == 4) {
+		pvtw.push_back(0.0); // Not used by frontsim
+	    }
+	    pvtw_.push_back(pvtw);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading DENSITY. Next character is "
+		      <<  (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int i=0; i<(int)pvtw_.size(); ++i) {
+	    os << pvtw_[i][0] << " " << pvtw_[i][1] << " " << pvtw_[i][2]
+	       << " " << pvtw_[i][3] << " " << pvtw_[i][4] << '\n';
+	}
+	os << '\n';
+    }
+};
 
 
 struct MultRec : public SpecialBase
@@ -311,20 +543,45 @@ struct MultRec : public SpecialBase
         std::cout << "(dummy implementation)" << std::endl;
 #endif
 	const std::ctype<char>& ct = std::use_facet< std::ctype<char> >(std::locale::classic());
+	is >> ignoreSlashLine;
         while (!is.eof()) {
-            is >> ignoreSlashLine;
             is >> ignoreWhitespace;
+	    std::streampos pos = is.tellg();
             char c;
             is.get(c);
-            is.putback(c);
-            if (ct.is(std::ctype_base::alpha, c)) {
-                break;
-            }
+	    if (ct.is(std::ctype_base::alpha, c)) {
+		std::string name;     // Unquoted name or new keyword?
+		std::getline(is, name);
+		if (name.rfind('/') != std::string::npos) {
+		    continue;  // Unquoted name
+		} else {
+		    is.seekg(pos);  
+		    break;     // Read next keyword    
+		}
+	    } else if (ct.is(std::ctype_base::digit, c) || c== '.') {
+		is >> ignoreSlashLine; // Decimal digit. Ignore data.
+		continue;
+	    } else if (c== '\'') {
+		is >> ignoreSlashLine; // Quote. Ignore data.
+		continue;
+	    } else if(c == '-' && is.peek() == int('-')) {
+		is >> ignoreLine;   // This line is a comment
+		continue;
+	    } else if (c == '/' ) {
+		 is >> ignoreLine;  // This line is a null record.
+		 continue;          // (No data before slash)
+	    } else {
+		is.putback(c);
+		std::string temp;
+		is >> temp;
+		std::cout << "READ ERROR!  Next word is " << temp << std::endl;
+	    }
         }
     }
 };
 
-
+// The following fields only have a dummy implementation
+// that allows us to ignore them.
 struct SWFN : public MultRec {};
 struct SOF2 : public MultRec {};
 struct EQUIL : public MultRec {};

@@ -205,7 +205,7 @@ namespace
 
 
     // Returns month number 1-12. Returns 0 if illegal month name. 
-    int getMonthNumber(const std::string& month_name)
+    inline int getMonthNumber(const std::string& month_name)
     {
         const int num_months = 12;
         std::string months[num_months] = {"JAN", "FEB", "MAR", "APR", "MAY", "JUN",
@@ -240,6 +240,83 @@ namespace
                                       boost::gregorian::greg_month(month),
                                       boost::gregorian::greg_day(day));
     }
+
+    // Get first character after whitespace and comments, and decide
+    // next action.
+    // NB! Will fail for negative number in column one.
+    inline int next_action(std::istream& is)
+    {
+	int task(0);  // 0:continue  1:return  2:throw
+	const std::ctype<char>& ct =
+	    std::use_facet< std::ctype<char> >(std::locale::classic());
+
+	while (!is.eof()) {
+	    is >> ignoreWhitespace;
+	    char c;
+	    is.get(c);
+	    if (is.eof()) {
+		return task;
+	    }
+	    is.putback(c);
+	    if (ct.is(std::ctype_base::digit, c) || c== '.') {
+		task = 0;   // Decimal digit. Read more data.
+		break;
+	    }
+	    if (ct.is(std::ctype_base::alpha, c)) {
+		task = 1;   // Alphabetic char. Read next keyword.
+		break;
+	    }
+	    if (c == '-') {
+		is >> ignoreLine;  // This line is a comment
+	    } else {
+		task = 2;  // Read error. Unexpected character.
+		break;
+	    }
+	}
+	return task;
+    }
+
+    typedef std::vector<std::vector<std::vector<double> > > table_t;
+    inline void readPvtTable(std::istream& is, table_t& pvt_table,
+			     const std::string& field_name)
+    {
+	const std::ctype<char>& ct =
+	    std::use_facet< std::ctype<char> >(std::locale::classic());
+	std::vector<double> record;
+	std::vector<std::vector<double> > table;	
+	while (!is.eof()) {
+	    record.clear();
+	    readVectorData(is, record);
+	    table.push_back(record);
+	    while (!is.eof()) {
+		is >> ignoreWhitespace;
+		char c;
+		is.get(c);
+		is.putback(c);
+		if (ct.is(std::ctype_base::digit, c) || c== '.') {
+		    break;   // Decimal digit. Read more records.
+		}
+		if (ct.is(std::ctype_base::alpha, c)) {
+		    return;   // Alphabetic char. Read next keyword.
+		}
+		if (c == '-') {
+		    is >> ignoreLine;  // This line is a comment
+		    continue;
+		}
+		if (c == '/') {
+		    is >> ignoreLine;
+		    pvt_table.push_back(table);
+		    table.clear();
+		} else {
+		    std::ostringstream oss;
+		    oss << "Error reading " << field_name
+		       << ". Next character is " <<  (char)is.peek();
+		    THROW(oss.str());
+		}
+	    }
+	}
+    }
+
 
 } // anon namespace
 

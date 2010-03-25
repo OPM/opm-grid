@@ -85,7 +85,11 @@ namespace EclipseKeywords
 
     string special_fields[] =
         { string("SPECGRID"), string("FAULTS"), string("MULTFLT"),
-          string("TITLE"), string("START"), string("DATES"),
+          string("TITLE"),    string("START"),  string("DATES"),
+	  string("DENSITY"),  string("PVDG"),   string("PVDO"),
+	  string("PVTG"),     string("PVTO"),   string("PVTW"),
+	  // The following fields only have a dummy implementation
+	  // that allows us to ignore them.
           "SWFN",
           "SOF2",
           "EQUIL",
@@ -99,15 +103,11 @@ namespace EclipseKeywords
 
     string ignore_with_data[] =
 	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
-	  string("NTG"),
-	  string("REGDIMS"),  string("WELLDIMS"),
-	  string("NSTACK"),
-	  string("PVTW"),     string("PVTDO"),    string("ROCK"),
-	  string("DENSITY"),  string("SATNUM"),
+	  string("NTG"),      string("REGDIMS"),  string("WELLDIMS"),
+	  string("NSTACK"),   string("ROCK"), 	  string("SATNUM"),
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
-	  string("WOIR"),     string("TUNING"),   string("PVDO"),
-	  string("TSTEP"),    string("BOX")
+	  string("WOIR"),     string("TSTEP"),    string("BOX")
 	};
     const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);
 

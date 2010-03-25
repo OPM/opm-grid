@@ -117,6 +117,12 @@ public:                                                                         
     SPECIAL_FIELD(TITLE);
     SPECIAL_FIELD(START);
     SPECIAL_FIELD(DATES);
+    SPECIAL_FIELD(DENSITY);
+    SPECIAL_FIELD(PVDG);
+    SPECIAL_FIELD(PVDO);
+    SPECIAL_FIELD(PVTG);
+    SPECIAL_FIELD(PVTO);
+    SPECIAL_FIELD(PVTW);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.
