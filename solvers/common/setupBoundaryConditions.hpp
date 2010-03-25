@@ -46,9 +46,9 @@ namespace Dune
     /// @brief Setup boundary conditions for a simulation.
     /// It is assumed that the boundary ids are 1-6, similar to cartesian case/Yaspgrid,
     /// unless periodic, in which case we assume unique boundary ids.
-    template <class GridType, class BCs>
+    template <class GridInterface, class BCs>
     inline void setupBoundaryConditions(const parameter::ParameterGroup& param,
-					const GridType& g,
+					const GridInterface& g,
 					BCs& bcs)
     {
 	if (param.getDefault("upscaling", false)) {
@@ -60,6 +60,10 @@ namespace Dune
 	    setupUpscalingConditions(g, bct, pddir, pdrop, bdy_sat, twodim_hack, bcs);
 	    return;
 	}
+        if (param.getDefault("region_based_bcs", false)) {
+            setupRegionBasedConditions(param, g, bcs);
+            return;
+        }
 	// Make flow equation boundary conditions.
 	// Default is pressure 1.0e5 on the left, 0.0 on the right.
 	// Recall that the boundary ids range from 1 to 6 for the cartesian edges,
@@ -90,8 +94,8 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @param
-    template <class GridType, class BCs>
-    inline void setupUpscalingConditions(const GridType& g,
+    template <class GridInterface, class BCs>
+    inline void setupUpscalingConditions(const GridInterface& g,
 					 int bct,
 					 int pddir,
 					 double pdrop,
@@ -156,6 +160,67 @@ namespace Dune
 
 	// Default transport boundary conditions are used.
     }
+
+
+
+    namespace
+    {
+        template <class Vector>
+        bool isInside(const Vector& low, const Vector& high, const Vector& pt)
+        {
+            return low[0] < pt[0]
+                && low[1] < pt[1]
+                && low[2] < pt[2]
+                && high[0] > pt[0]
+                && high[1] > pt[1]
+                && high[2] > pt[2];
+        }
+    } // anon namespace
+
+
+    template <class GridInterface, class BCs>
+    inline void setupRegionBasedConditions(const parameter::ParameterGroup& param,
+                                           const GridInterface& g,
+                                           BCs& bcs)
+    {
+        // Extract region and pressure value for Dirichlet bcs.
+        typedef typename GridInterface::Vector Vector;
+        Vector low;
+        low[0] = param.getDefault("dir_block_low_x", 0.0);
+        low[1] = param.getDefault("dir_block_low_y", 0.0);
+        low[2] = param.getDefault("dir_block_low_z", 0.0);
+        Vector high;
+        high[0] = param.getDefault("dir_block_high_x", 1.0);
+        high[1] = param.getDefault("dir_block_high_y", 1.0);
+        high[2] = param.getDefault("dir_block_high_z", 1.0);
+        double dir_block_pressure = param.get<double>("dir_block_pressure");
+
+        // Set flow conditions for that region.
+        // For this to work correctly, unique boundary ids should be used,
+        // otherwise conditions may spread outside the given region, to all
+        // faces with the same bid as faces inside the region.
+        typedef typename GridInterface::CellIterator CI;
+        typedef typename CI::FaceIterator FI;
+        int max_bid = 0;
+        std::vector<int> dir_bids;
+        for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
+            for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                int bid = f->boundaryId();
+                max_bid = std::max(bid, max_bid);
+                if (isInside(low, high, f->centroid())) {
+                    dir_bids.push_back(bid);
+                }
+            }
+        }
+        bcs.resize(max_bid + 1);
+        for (std::vector<int>::const_iterator it = dir_bids.begin(); it != dir_bids.end(); ++it) {
+            bcs.flowCond(*it) = FlowBC(FlowBC::Dirichlet, dir_block_pressure);
+        }
+
+        // Transport BCs are defaulted.
+    }
+
+
 
 } // namespace Dune
 
