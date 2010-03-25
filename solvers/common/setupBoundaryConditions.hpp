@@ -207,7 +207,7 @@ namespace Dune
             for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                 int bid = f->boundaryId();
                 max_bid = std::max(bid, max_bid);
-                if (isInside(low, high, f->centroid())) {
+                if (bid != 0 && isInside(low, high, f->centroid())) {
                     dir_bids.push_back(bid);
                 }
             }
