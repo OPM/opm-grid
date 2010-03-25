@@ -8,7 +8,8 @@ noinst_PROGRAMS = mimetic_ipeval_test \
                   mimetic_periodic_test \
 		  parsolver_test \
 		  istl_test \
-		  spe10_test
+		  spe10_test \
+		  known_answer_test
 
 AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(ALUGRID_CPPFLAGS) $(SUPERLU_CPPFLAGS)
 AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(ALUGRID_LDFLAGS) $(SUPERLU_LDFLAGS)
@@ -32,6 +33,8 @@ parsolver_test_SOURCES = parsolver_test.cpp
 istl_test_SOURCES = istl_test.cpp
 
 spe10_test_SOURCES = spe10_test.cpp
+
+known_answer_test_SOURCES = known_answer_test.cpp
 
 TESTS = $(check_PROGRAMS)
 
