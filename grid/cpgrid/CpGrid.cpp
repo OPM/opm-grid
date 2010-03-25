@@ -58,12 +58,12 @@ namespace Dune
 	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
 	    readEclipseFormat(filename, z_tolerance, periodic_extension, turn_normals);
 	} else if (fileformat == "cartesian") {
-	    array<int, 3> dims = {{ param.get<int>("nx"),
-				    param.get<int>("ny"),
-				    param.get<int>("nz") }};
-	    array<double, 3> cellsz = {{ param.get<double>("dx"),
-					 param.get<double>("dy"),
-					 param.get<double>("dz") }};
+	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+				    param.getDefault<int>("ny", 1),
+				    param.getDefault<int>("nz", 1) }};
+	    array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+					 param.getDefault<double>("dy", 1.0),
+					 param.getDefault<double>("dz", 1.0) }};
 	    createCartesian(dims, cellsz);
 	} else {
 	    THROW("Unknown file format string: " << fileformat);
