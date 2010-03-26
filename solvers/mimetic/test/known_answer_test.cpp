@@ -74,7 +74,6 @@
 
 
 
-
 // ------------ Specifying the solution ------------
 
 typedef Dune::FieldVector<double, 3> Vec;
@@ -145,6 +144,29 @@ double Lu(const Vec& x)
 */
 
 
+namespace Dune
+{
+    template <class BoundaryFunc>
+    class FunctionBoundaryConditions : public PeriodicConditionHandler
+    {
+    public:
+        FunctionBoundaryConditions(BoundaryFunc bfunc)
+            : bfunc_(bfunc)
+        {
+        }
+
+        template <class BoundaryFace>
+        FlowBC flowCond(const BoundaryFace& bf) const
+        {
+            ASSERT(bf.boundary());
+            return FlowBC(FlowBC::Dirichlet, bfunc_(bf.centroid()));
+        }
+
+    private:
+        BoundaryFunc bfunc_;
+    };
+
+}
 
 template<class GI>
 void assign_src(const GI& g, std::vector<double>& src)
@@ -208,14 +230,18 @@ void test_flowsolver(const GI& g, const RI& r, double tol, int kind)
 {
     typedef typename GI::CellIterator                   CI;
     typedef typename CI::FaceIterator                   FI;
-    typedef Dune::BasicBoundaryConditions<true, false>  FBC;
+    typedef double (*SolutionFuncPtr)(const Vec&);
+
+    //typedef Dune::BasicBoundaryConditions<true, false>  FBC;
+    typedef Dune::FunctionBoundaryConditions<SolutionFuncPtr> FBC;
     typedef Dune::IncompFlowSolverHybrid<GI, RI, FBC,
         Dune::MimeticIPEvaluator> FlowSolver;
 
     FlowSolver solver;
 
-    FBC flow_bc;
-    assign_bc(g, flow_bc);
+    // FBC flow_bc;
+    // assign_bc(g, flow_bc);
+    FBC flow_bc(&u);
 
     typename CI::Vector gravity(0.0);
 
