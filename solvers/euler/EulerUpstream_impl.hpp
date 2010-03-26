@@ -236,9 +236,8 @@ namespace Dune
 	bid_to_face_.resize(maxbid + 1);
 	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
-		int bid = f->boundaryId();
-		if (pboundary_->satCond(bid).isPeriodic()) {
-		    bid_to_face_[bid] = f;
+		if (pboundary_->satCond(*f).isPeriodic()) {
+		    bid_to_face_[f->boundaryId()] = f;
 		}
 	    }
 	}
@@ -335,7 +334,7 @@ namespace Dune
 
 	// At nonperiodic boundaries, we return a zero gradient.
 	// That is (sort of) a trivial Neumann (noflow) condition for the capillary pressure.
-	if (f->boundary() && !pboundary_->satCond(f->boundaryId()).isPeriodic()) {
+	if (f->boundary() && !pboundary_->satCond(*f).isPeriodic()) {
 	    return Vector(0.0);
 	}
 	// Find neighbouring cell and face: nbc and nbf.
@@ -475,9 +474,8 @@ namespace Dune
                     double dS = 0.0;
                     // Compute cell[1], cell_sat[1] and cell_pvol[1].
                     if (f->boundary()) {
-                        int bid = f->boundaryId();
-                        if (s.pboundary_->satCond(bid).isPeriodic()) {
-                            nbface = s.bid_to_face_[s.pboundary_->getPeriodicPartner(bid)];
+                        if (s.pboundary_->satCond(*f).isPeriodic()) {
+                            nbface = s.bid_to_face_[s.pboundary_->getPeriodicPartner(f->boundaryId())];
                             ASSERT(nbface != f);
                             cell[1] = nbface->cellIndex();
                             ASSERT(cell[0] != cell[1]);
@@ -491,9 +489,9 @@ namespace Dune
                             cell_sat[1] = saturation[cell[1]];
                             cell_pvol[1] = nbface->cell().volume()*s.preservoir_properties_->porosity(cell[1]);
                         } else {
-                            ASSERT(s.pboundary_->satCond(bid).isDirichlet());
+                            ASSERT(s.pboundary_->satCond(*f).isDirichlet());
                             cell[1] = cell[0];
-                            cell_sat[1] = s.pboundary_->satCond(bid).saturation();
+                            cell_sat[1] = s.pboundary_->satCond(*f).saturation();
                             cell_pvol[1] = cell_pvol[0];
                         }
                     } else {

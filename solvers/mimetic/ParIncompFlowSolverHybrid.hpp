@@ -972,10 +972,9 @@ namespace Dune {
                 // if (partition[c->index()] != my_partition_) continue;
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
-                        const int bid = f->boundaryId();
-                        if (bc.flowCond(bid).isPeriodic()) {
+                        if (bc.flowCond(*f).isPeriodic()) {
                             DofID dof(cell[c->index()], f->localIndex());
-                            bdry_id_map_.insert(std::make_pair(bid, dof));
+                            bdry_id_map_.insert(std::make_pair(f->boundaryId(), dof));
                         }
                     }
                 }
@@ -988,12 +987,11 @@ namespace Dune {
                     // if (partition[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
-                            const int bid = f->boundaryId();
-                            if (bc.flowCond(bid).isPeriodic()) {
+                            if (bc.flowCond(*f).isPeriodic()) {
                                 const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
                                 BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
                                 ASSERT (j != bdry_id_map_.end());
                                 const int dof2 = cf[j->second.first][j->second.second];
 
@@ -1084,14 +1082,13 @@ namespace Dune {
                     // if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
-                            const int bid = f->boundaryId();
-                            if (bc.flowCond(bid).isPeriodic()) {
+                            if (bc.flowCond(*f).isPeriodic()) {
                                 // dof-id of self
                                 const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
                                 // dof-id of other
                                 BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
                                 ASSERT (j != bdry_id_map_.end());
                                 const int c2   = j->second.first;
                                 const int dof2 = cf[c2][j->second.second];
@@ -1188,14 +1185,13 @@ namespace Dune {
                     // if ((*ppartition_)[c->index()] != my_partition_) continue;
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
                         if (f->boundary()) {
-                            const int bid = f->boundaryId();
-                            if (bc.flowCond(bid).isPeriodic()) {
+                            if (bc.flowCond(*f).isPeriodic()) {
                                 // dof-id of self
                                 const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
                                 // dof-id of other
                                 BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
                                 ASSERT (j != bdry_id_map_.end());
                                 const int c2   = j->second.first;
                                 const int dof2 = cf[c2][j->second.second];
@@ -1499,15 +1495,14 @@ namespace Dune {
             int k = 0;
             for (FI f = c->facebegin(); f != c->faceend(); ++f, ++k) {
                 if (f->boundary()) {
-                    const int bid = f->boundaryId();
-                    const FlowBC& bcond = bc.flowCond(bid);
+                    const FlowBC& bcond = bc.flowCond(*f);
                     if (bcond.isDirichlet()) {
                         facetype[k]        = Dirichlet;
                         condval[k]         = bcond.pressure();
                         do_regularization_ = false;
                     } else if (bcond.isPeriodic()) {
                         BdryIdMapIterator j =
-                            bdry_id_map_.find(bc.getPeriodicPartner(bid));
+                            bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
                         ASSERT (j != bdry_id_map_.end());
 
                         facetype[k] = Periodic;

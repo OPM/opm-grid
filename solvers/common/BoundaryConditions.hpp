@@ -351,17 +351,21 @@ namespace Dune
 	{
 	    return FlowConds::operator[](i);
 	}
-	const FlowBC& flowCond(int i) const
+        template <class BoundaryFace>
+	const FlowBC& flowCond(const BoundaryFace& bf) const
 	{
-	    return FlowConds::operator[](i);
+            ASSERT(bf.boundary());
+	    return FlowConds::operator[](bf.boundaryId());
 	}
 	SatBC& satCond(int i)
 	{
 	    return SatConds::operator[](i);
 	}
-	const SatBC& satCond(int i) const
+        template <class BoundaryFace>
+	const SatBC& satCond(const BoundaryFace& bf) const
 	{
-	    return SatConds::operator[](i);
+            ASSERT(bf.boundary());
+	    return SatConds::operator[](bf.boundaryId());
 	}
 // 	PcapBC& pcapCond(int i)
 // 	{
