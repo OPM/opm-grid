@@ -262,8 +262,8 @@ namespace Dune
 #else
         : density1_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
           density2_  (1000.0*unit::kilogram/unit::cubic(unit::meter)),
-          viscosity1_(   1.0*prefix::centi*unit::Poise),
-          viscosity2_(   1.0*prefix::centi*unit::Poise),
+          viscosity1_(   1000.0*prefix::centi*unit::Poise),
+          viscosity2_(   1000.0*prefix::centi*unit::Poise),
 #endif
           permeability_kind_(Invalid)
     {
