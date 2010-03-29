@@ -1,0 +1,60 @@
+time ./known_answer_test $(./usq 50)
+
+
+[before changing bcs]
+     L1 error density: 0.0201286
+     L2 error density: 0.0249201
+     Linf error:       0.0560174
+real	0m15.387s
+user	0m13.408s
+sys	0m0.941s
+
+
+[after]
+     L1 error density: 0.000183583
+     L2 error density: 0.000257007
+     Linf error:       0.000857712
+real	0m15.258s
+user	0m13.327s
+sys	0m0.941s
+
+Is there an error here...? Must run again with old BCs. Of course,
+forgot unique bids, that are no longer needed.
+
+
+
+[yaspgrid, $(./usq 60)]
+
+========== Init pressure solver =============
+========== Time in seconds: 5.23672 =============
+========== Starting pressure solve =============
+
+Building Hierarchy of 6 levels took 7.20264 seconds.
+=== rate=0.177612, T=7.36365, TIT=0.669423, IT=11
+========== Time in seconds: 16.129 =============
+     L1 error density: 0.000127476
+     L2 error density: 0.000178521
+     Linf error:       0.000594968
+
+real	0m25.271s
+user	0m23.872s
+sys	0m0.810s
+
+
+
+[cpgrid,  $(./usq 60)]
+
+========== Init pressure solver =============
+========== Time in seconds: 3.91948 =============
+========== Starting pressure solve =============
+Building Hierarchy of 6 levels took 7.18106 seconds.
+
+=== rate=0.18527, T=7.34237, TIT=0.667489, IT=11
+========== Time in seconds: 15.7173 =============
+     L1 error density: 0.000127477
+     L2 error density: 0.000178521
+     Linf error:       0.00059499
+
+real	0m24.431s
+user	0m22.611s
+sys	0m1.269s
