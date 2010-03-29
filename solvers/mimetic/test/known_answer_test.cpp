@@ -71,7 +71,7 @@
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
 #include <dune/common/param/ParameterGroup.hpp>
-
+#include <dune/common/StopWatch.hpp>
 
 
 // ------------ Specifying the solution ------------
@@ -215,7 +215,7 @@ void compare_pressure(const GI& g, const std::vector<double>& p)
         l2err += diff*diff*v;
         linferr = std::max(std::fabs(diff), linferr);
         totv += v;
-        std::cout << cen[0] << ' ' << uval << ' ' << p[count] << std::endl;
+        // std::cout << cen[0] << ' ' << uval << ' ' << p[count] << std::endl;
     }
     l2err = std::sqrt(l2err);
     std::cout << "\n\n"
@@ -245,14 +245,23 @@ void test_flowsolver(const GI& g, const RI& r, double tol, int kind)
 
     typename CI::Vector gravity(0.0);
 
+    std::cout << "========== Init pressure solver =============" << std::endl;
+    Dune::time::StopWatch rolex;
+    rolex.start();
     solver.init(g, r, gravity, flow_bc);
+    rolex.stop();
+    std::cout << "========== Time in seconds: " << rolex.secsSinceStart() << " =============" << std::endl;
 
     std::vector<double> src(g.numberOfCells(), 0.0);
     assign_src(g, src);
     std::vector<double> sat(g.numberOfCells(), 0.0);
 
 
+    std::cout << "========== Starting pressure solve =============" << std::endl;
+    rolex.start();
     solver.solve(r, sat, flow_bc, src, tol, 3, kind);
+    rolex.stop();
+    std::cout << "========== Time in seconds: " << rolex.secsSinceStart() << " =============" << std::endl;
 
     typedef typename FlowSolver::SolutionType FlowSolution;
     FlowSolution soln = solver.getSolution();
@@ -279,10 +288,26 @@ int main(int argc, char** argv)
     Dune::MPIHelper::instance(argc,argv);
 
     // Make a grid
-    typedef Dune::CpGrid Grid;
-    Grid grid;
-    grid.init(param);
-    grid.setUniqueBoundaryIds(true);
+    // Either a CpGrid...
+//     typedef Dune::CpGrid Grid;
+//     Grid grid;
+//     grid.init(param);
+//     grid.setUniqueBoundaryIds(true);
+
+    // ... or a YaspGrid.
+    const int dim = 3;
+    Dune::FieldVector<int, dim> dims(1);
+    dims[0] = param.getDefault("nx", dims[0]);
+    dims[1] = param.getDefault("ny", dims[1]);
+    dims[2] = param.getDefault("nz", dims[2]);
+    Dune::FieldVector<double, dim> sz(1.0);
+    sz[0] = param.getDefault("dx", sz[0])*dims[0];
+    sz[1] = param.getDefault("dy", sz[1])*dims[1];
+    sz[2] = param.getDefault("dz", sz[2])*dims[2];
+    Dune::FieldVector<bool, dim> per(false);
+    typedef Dune::YaspGrid<dim> Grid;
+    Grid grid(sz, dims, per, 0);
+
 
     // Make the grid interface
     Dune::GridInterfaceEuler<Grid> g(grid);
