@@ -134,7 +134,8 @@ namespace Dune {
 	    ///        including the name of the executable.
 	    /// \param argv is an array of char*, each of which is a
 	    /// command line argument.
-	    ParameterGroup(int argc, char** argv);
+            template <typename StringArray>
+	    ParameterGroup(int argc, StringArray argv);
 
 	    /// \brief This method checks if there is something with name
 	    ///        \p name in the parameter gropup.
@@ -276,8 +277,8 @@ namespace Dune {
 
 	    template<typename T, class Requirement>
 	    T translate(const pair_type& data, const Requirement& chk) const;
-
-	    void parseCommandLineArguments(int argc, char** argv);
+            template <typename StringArray>
+	    void parseCommandLineArguments(int argc, StringArray argv);
 	    void recursiveSetIsOutputEnabled(bool output_is_enabled);
 	};
     } // namespace parameter

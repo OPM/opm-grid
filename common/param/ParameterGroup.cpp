@@ -53,16 +53,6 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Dune {
     namespace parameter {
-	namespace {
-	    std::pair<std::string, std::string>
-            filename_split(const std::string& filename)
-            {
-		int fpos = filename.rfind('.');
-		std::string name = filename.substr(0, fpos);
-		std::string type = filename.substr(fpos+1);
-		return std::make_pair(name, type);
-	    }
-	}
 
 	ParameterGroup::ParameterGroup()
 	: path_(ID_path_root), parent_(0), output_is_enabled_(true)
@@ -79,61 +69,6 @@ namespace Dune {
 	    return ID_xmltag__param_grp;
 	}
 
-	ParameterGroup::ParameterGroup(int argc, char** argv)
-	: path_(ID_path_root), parent_(0), output_is_enabled_(true)
-	{
-	    if (argc < 2) {
-		std::cerr << "Usage: " << argv[0] << " "
-			  << "[paramfilename1.{xml,param}] "
-			  << "[paramfilename2.{xml,param}] "
-			  << "[overridden_arg1=value1] "
-			  << "[overridden_arg2=value2] "
-			  << "[...]" << std::endl;
-		exit(EXIT_FAILURE);
-	    }
-	    this->parseCommandLineArguments(argc, argv);
-	}
-
-	void ParameterGroup::parseCommandLineArguments(int argc, char** argv)
-        {
-	    std::vector<std::string> files;
-	    std::vector<std::pair<std::string, std::string> > assignments;
-	    for (int i = 1; i < argc; ++i) {
-		std::string arg(argv[i]);
-		int fpos = arg.find(ID_delimiter_assignment);
-		if (fpos == int(std::string::npos)) {
-		    std::string filename = arg.substr(0, fpos);
-		    files.push_back(filename);
-		    continue;
-		}
-		int pos = fpos + ID_delimiter_assignment.size();
-		int spos = arg.find(ID_delimiter_assignment, pos);
-		if (spos == int(std::string::npos)) {
-		    std::string name = arg.substr(0, fpos);
-		    std::string value = arg.substr(pos, spos);
-		    assignments.push_back(std::make_pair(name, value));
-		    continue;
-		}
-		std::cout << "WARNING: Too many assignements  (' "
-                          << ID_delimiter_assignment
-                          << "') detected in argument " << i << ".\n";
-	    }
-	    for (int i = 0; i < int(files.size()); ++i) {
-		std::pair<std::string, std::string> file_type = filename_split(files[i]);
-		if (file_type.second == "xml") {
-		    this->readXML(files[i]);
-		} else if (file_type.second == "param") {
-		    this->readParam(files[i]);
-		} else {
-		    std::cout << "WARNING: Ignoring file '"
-                              << files[i] << "' with unknown extension.\n"
-			      << "Valid filename extensions are 'xml' and 'param'.\n";
-		}
-	    }
-	    for (int i = 0; i < int(assignments.size()); ++i) {
-		this->insertParameter(assignments[i].first, assignments[i].second);
-	    }
-	}
 
 	bool ParameterGroup::has(const std::string& name) const
         {
