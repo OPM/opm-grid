@@ -47,10 +47,46 @@
 #include <dune/common/StopWatch.hpp>
 #include <dune/grid/common/referenceelements.hh>
 #include <dune/grid/common/mcmgmapper.hh>
+#include <dune/grid/CpGrid.hpp> // How to avoid this? Needed for the explicit mapper specialization below.
+
 
 
 namespace Dune
 {
+
+    /// General cell layout.
+    template<int dim>
+    struct AllCellsLayout {
+        bool contains(GeometryType gt) { return gt.dim() == dim; }
+    };
+
+    /// Mapper for general grids.
+    template <class DuneGrid>
+    struct GICellMapper
+    {
+        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, AllCellsLayout> Type;
+    };
+
+    /// A mapper for CpGrid cells only.
+    struct CpGridCellMapper
+    {
+        template<class EntityType>
+        int map (const EntityType& e) const
+        {
+            return e.index();
+        }
+    };
+
+    /// Specialization of mapper selector for CpGrid for more performance.
+    /// Perhaps a case of premature optimization, it does not seem to give a
+    /// big boost.
+    template <>
+    struct GICellMapper<CpGrid>
+    {
+        typedef CpGridCellMapper Type;
+    };
+
+
     namespace GIE
     {
         template <class GridInterface, class EntityPointerType>
@@ -366,11 +402,6 @@ namespace Dune
             }
         };
 
-        template<int dim>
-        struct AllCellsLayout {
-            bool contains(GeometryType gt) { return gt.dim() == dim; }
-        };
-
     } // namespace GIE
 
 
@@ -386,7 +417,7 @@ namespace Dune
         typedef typename CellIterator::Scalar               Scalar;
         typedef typename CellIterator::Index                Index;
 
-        typedef LeafMultipleCodimMultipleGeomTypeMapper<DuneGrid, GIE::AllCellsLayout> Mapper;
+        typedef typename GICellMapper<DuneGrid>::Type Mapper;
 
         enum { Dimension = DuneGrid::dimension };
 
