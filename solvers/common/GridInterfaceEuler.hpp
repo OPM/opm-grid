@@ -70,6 +70,9 @@ namespace Dune
     /// A mapper for CpGrid cells only.
     struct CpGridCellMapper
     {
+        explicit CpGridCellMapper(const CpGrid&)
+        {
+        }
         template<class EntityType>
         int map (const EntityType& e) const
         {
