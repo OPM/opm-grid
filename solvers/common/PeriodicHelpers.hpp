@@ -87,7 +87,8 @@ namespace Dune
 	/// @return
 	double cmpval() const
 	{
-	    return centroid[(canon_pos/2 + 1)%3] + M_PI*centroid[(canon_pos/2 + 2)%3];
+            const double pi = 3.14159265358979323846264338327950288;
+	    return centroid[(canon_pos/2 + 1)%3] + pi*centroid[(canon_pos/2 + 2)%3];
 	}
     };
 
