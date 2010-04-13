@@ -66,16 +66,26 @@ namespace Dune
 
     inline void SinglePhaseUpscaler::initImpl(const parameter::ParameterGroup& param)
     {
-	// Get the bc type parameter early, since we will fake some
-	// others depending on it.
+        // Request the boundary condition type parameter early since,
+        // depending on the actual type, we may have to manufacture
+        // and insert other parameters into the ParameterGroup prior
+        // to constructing the grid and associated properties.
+        //
         int bct = param.get<int>("boundary_condition_type");
 	bctype_ = static_cast<BoundaryConditionType>(bct);
-	twodim_hack_ = param.getDefault("2d_hack", twodim_hack_);
+
+        // Import control parameters pertaining to reduced physical
+        // dimensionality ("2d_hack = true" precludes periodic
+        // boundary conditions in the Z direction), and linear solves.
+        //
+        twodim_hack_ = param.getDefault("2d_hack", twodim_hack_);
 	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
 	linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
         linsolver_type_ = param.getDefault("linsolver_type", linsolver_type_);
 
-	// Faking some parameters depending on bc type.
+        // Ensure sufficient grid support for requested boundary
+        // condition type.
+        //
 	parameter::ParameterGroup temp_param = param;
         if (bctype_ == Linear || bctype_ == Periodic) {
             if (!temp_param.has("use_unique_boundary_ids")) {
@@ -96,7 +106,7 @@ namespace Dune
 
     inline void SinglePhaseUpscaler::initFinal(const parameter::ParameterGroup& param)
     {
-	// Write any unused parameters.
+	// Report any unused parameters.
 	std::cout << "====================   Unused parameters:   ====================\n";
 	param.displayUsage();
 	std::cout << "================================================================\n";
@@ -150,7 +160,8 @@ namespace Dune
     {
         if ((type == Periodic && bctype_ != Periodic)
             || (type != Periodic && bctype_ == Periodic)) {
-            THROW("Cannot switch to or from Periodic boundary condition, periodic must be set in init() params.");
+            THROW("Cannot switch to or from Periodic boundary condition, "
+                  "periodic must be set in init() params.");
         } else {
             bctype_ = type;
             if (type == Periodic || type == Linear) {
