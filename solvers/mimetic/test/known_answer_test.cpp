@@ -80,19 +80,22 @@ typedef Dune::FieldVector<double, 3> Vec;
 
 double u(const Vec& x)
 {
-    return std::sin(2*M_PI*x[0])*std::cos(2*M_PI*x[1])*x[2];
+    const double pi = 3.14159265358979323846264338327950288;
+    return std::sin(2*pi*x[0])*std::cos(2*pi*x[1])*x[2];
 }
 Vec Du(const Vec& x)
 {
+    const double pi = 3.14159265358979323846264338327950288;
     Vec du;
-    du[0] = 2*M_PI*std::cos(2*M_PI*x[0])*std::cos(2*M_PI*x[1])*x[2];
-    du[1] = -2*M_PI*std::sin(2*M_PI*x[0])*std::sin(2*M_PI*x[1])*x[2];
-    du[2] = 2*M_PI*std::sin(2*M_PI*x[0])*std::cos(2*M_PI*x[1]);
+    du[0] = 2*pi*std::cos(2*pi*x[0])*std::cos(2*pi*x[1])*x[2];
+    du[1] = -2*pi*std::sin(2*pi*x[0])*std::sin(2*pi*x[1])*x[2];
+    du[2] = 2*pi*std::sin(2*pi*x[0])*std::cos(2*pi*x[1]);
     return du;
 }
 double Lu(const Vec& x)
 {
-    return -2*2*M_PI*2*M_PI*std::sin(2*M_PI*x[0])*std::cos(2*M_PI*x[1])*x[2];
+    const double pi = 3.14159265358979323846264338327950288;
+    return -2*2*pi*2*pi*std::sin(2*pi*x[0])*std::cos(2*pi*x[1])*x[2];
 }
 
 /*
