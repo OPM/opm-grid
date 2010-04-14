@@ -244,7 +244,7 @@ real	0m29.376s
 user	0m28.700s
 sys	0m0.617s
 
-[again, Mar. 4 2010 - AMG changes again I think, maybe other changes as well]
+[again, Mar. 4 2010 - AMG changes again I think, maybe other changes as well. Intersection iterator improvements?]
 
 156.108068958234 0 0 
 0 161.812985066163 0 
@@ -254,6 +254,23 @@ real	0m26.003s
 user	0m24.991s
 sys	0m0.597s
 
+[again, Mar. 26 2010 - After changing boundary condition object to deal with Faces instead of boundary ids. Too slow?]
+
+156.108068958234 0 0 
+0 161.812985066163 0 
+0 0 31.24643956403 
+
+real	0m27.530s
+user	0m25.903s
+sys	0m0.699s
+
+real	0m25.990s [repeating: faster now, maybe error in experiment before?]
+user	0m25.052s
+sys	0m0.631s
+
+real	0m25.536s
+user	0m24.881s
+sys	0m0.602s
 
 
 5) residual_tolerance = 1e-5
@@ -337,3 +354,13 @@ sys	0m3.428s
 real	0m5.828s
 user	0m5.482s
 sys	0m0.334s
+
+9) Mar. 26 2010, residual_tolerance = 1e-8, boundary_condition_type = 2 (periodic)
+
+155.314828184991 -0.0871907368904636 0.165154074915333 
+-0.0871902640179007 158.392114140835 0.00515244278494333 
+0.165214873343881 0.00515360711329919 29.0905335339699 
+
+real	0m36.793s
+user	0m35.756s
+sys	0m0.655s
