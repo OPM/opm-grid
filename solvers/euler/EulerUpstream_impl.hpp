@@ -236,7 +236,7 @@ namespace Dune
 	bid_to_face_.resize(maxbid + 1);
 	for (typename GI::CellIterator c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
 	    for (typename GI::CellIterator::FaceIterator f = c->facebegin(); f != c->faceend(); ++f) {
-		if (pboundary_->satCond(*f).isPeriodic()) {
+		if (f->boundary() && pboundary_->satCond(*f).isPeriodic()) {
 		    bid_to_face_[f->boundaryId()] = f;
 		}
 	    }
