@@ -138,11 +138,14 @@ namespace Dune
 	double computeAverageVelocity(const FlowSol& flow_solution,
 				      const int flow_dir,
 				      const int pdrop_dir) const;
+
 	double computeDelta(const int flow_dir) const;
+
         template <class FluidInterface>
         permtensor_t upscaleEffectivePerm(const FluidInterface& fluid);
 
 	virtual void initImpl(const parameter::ParameterGroup& param);
+
 	virtual void initFinal(const parameter::ParameterGroup& param);
 
 	// ------- Data members -------
