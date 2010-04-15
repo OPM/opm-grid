@@ -42,17 +42,17 @@ namespace Dune {
         enum { NumberOfPhases = 2 };
 
         template<class Vector>
-        void phaseMobilities(int cell_index, double saturation, Vector& mobility) const
+        void phaseMobilities(int /*cell_index*/, double saturation, Vector& mobility) const
         {
             mobility[0] = saturation;
             mobility[1] = 1 - saturation;
         }
 
         template<class Vector>
-        void phaseDensities(int cell_index, Vector& rho) const
+        void phaseDensities(int /*cell_index*/, Vector& rho) const
         {
-            rho[0] = 1;
-            rho[1] = 1;
+            rho[0] = 1.0;
+            rho[1] = 1.0;
         }
     };
 }
