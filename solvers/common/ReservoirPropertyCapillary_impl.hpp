@@ -62,10 +62,10 @@ namespace Dune
 							double& phase_mob) const
     {
 	if (phase_index == 0) {
-	    phase_mob = relPermFirstPhase(cell_index, saturation) / Super::viscosity1_;
+	    phase_mob = mobilityFirstPhase(cell_index, saturation);
 	} else {
 	    ASSERT(phase_index == 1);
-	    phase_mob = relPermSecondPhase(cell_index, saturation) / Super::viscosity2_;
+	    phase_mob = mobilitySecondPhase(cell_index, saturation);
 	}
     }
 
