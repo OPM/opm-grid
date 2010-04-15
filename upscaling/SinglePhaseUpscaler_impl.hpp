@@ -39,7 +39,7 @@
 
 #include <dune/solvers/common/setupGridAndProps.hpp>
 #include <dune/solvers/common/setupBoundaryConditions.hpp>
-
+#include <dune/solvers/common/ReservoirPropertyTracerFluid.hpp>
 
 namespace Dune
 {
@@ -206,17 +206,17 @@ namespace Dune
 	    }
 
 	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
+            ReservoirPropertyTracerFluid fluid;
+	    flow_solver_.solve(fluid, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
 
 	    // Check and fix fluxes.
 // 	    flux_checker_.checkDivergence(grid_, wells, flux);
 // 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
 	    // Compute upscaled K.
-	    double Q[Dimension];
+	    double Q[Dimension] =  { 0 };
 	    switch (bctype_) {
 	    case Fixed:
-		std::fill(Q, Q+Dimension, 0); // resetting Q
 		Q[pdd] = computeAverageVelocity(flow_solver_.getSolution(), pdd, pdd);
 		break;
 	    case Linear:
@@ -233,7 +233,6 @@ namespace Dune
 		upscaled_K(i, pdd) = Q[i] * delta;
 	    }
 	}
-	upscaled_K *= res_prop_.viscosityFirstPhase();
 	return upscaled_K;
     }
 
