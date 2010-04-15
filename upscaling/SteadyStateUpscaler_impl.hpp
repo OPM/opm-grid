@@ -92,8 +92,6 @@ namespace Dune
 	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
 	}
 
-	permtensor_t upscaled_K(3, 3, (double*)0);
-
 	// v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
 	permtensor_t relative_K(3, 3, (double*)0);
 
