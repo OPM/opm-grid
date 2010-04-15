@@ -300,8 +300,8 @@ namespace Dune {
 
             boost::array<Scalar,RI::NumberOfPhases> mob ;
             boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobilities(ci, s[ci],              mob);
-            r.phaseDensities (ci,                     rho);
+            r.phaseMobilities(ci, s[ci],            mob);
+            r.phaseDensities (ci,                   rho);
 
             totmob_   = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
             mob_dens_ = std::inner_product(rho.begin(), rho.end(), mob.begin(),
