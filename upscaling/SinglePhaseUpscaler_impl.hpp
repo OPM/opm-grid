@@ -186,6 +186,17 @@ namespace Dune
     inline SinglePhaseUpscaler::permtensor_t
     SinglePhaseUpscaler::upscaleSinglePhase()
     {
+        ReservoirPropertyTracerFluid fluid;
+        return upscaleEffectivePerm(fluid);
+    }
+
+
+
+
+    template <class FluidInterface>
+    inline SinglePhaseUpscaler::permtensor_t
+    SinglePhaseUpscaler::upscaleEffectivePerm(const FluidInterface& fluid)
+    {
 	int num_cells = ginterf_.numberOfCells();
 	// No source or sink.
 	std::vector<double> src(num_cells, 0.0);
@@ -206,7 +217,6 @@ namespace Dune
 	    }
 
 	    // Run pressure solver.
-            ReservoirPropertyTracerFluid fluid;
 	    flow_solver_.solve(fluid, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
 
 	    // Check and fix fluxes.
