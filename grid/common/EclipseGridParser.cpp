@@ -271,6 +271,24 @@ void EclipseGridParser::read(istream& is)
 	}
 	is >> ignoreWhitespace;
     }
+
+#define VERBOSE_LIST_FIELDS 0
+#if VERBOSE_LIST_FIELDS
+    std::cout << "\nInteger fields:\n";
+    for (std::map<string, std::vector<int> >::iterator
+             i = intmap.begin(); i != intmap.end(); ++i)
+        std::cout << '\t' << i->first << '\n';
+
+    std::cout << "\nFloat fields:\n";
+    for (std::map<string, std::vector<double> >::iterator
+             i = floatmap.begin(); i != floatmap.end(); ++i)
+        std::cout << '\t' << i->first << '\n';
+
+    std::cout << "\nSpecial fields:\n";
+    for (std::map<string, boost::shared_ptr<SpecialBase> >::iterator
+              i = specialmap.begin(); i != specialmap.end(); ++i)
+        std::cout << '\t' << i->first << '\n';
+#endif
 }
 
 
