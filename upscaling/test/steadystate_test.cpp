@@ -114,7 +114,7 @@ int main(int argc, char** argv)
         double max_sat = param.getDefault("max_sat", 0.8);
         saturations.resize(num_sats);
         for (int i = 0; i < num_sats; ++i) {
-            double factor = double(i)/double(num_sats - 1);
+            double factor = num_sats == 1 ? 0 : double(i)/double(num_sats - 1);
             saturations[i] = (1.0 - factor)*min_sat + factor*max_sat;
         }
         // Get a logarithmic range of pressure drops.
@@ -124,7 +124,7 @@ int main(int argc, char** argv)
         std::vector<double> pdrops;
         pdrops.resize(num_pdrops);
         for (int i = 0; i < num_pdrops; ++i) {
-            double factor = double(i)/double(num_pdrops - 1);
+            double factor = num_pdrops == 1 ? 0 : double(i)/double(num_pdrops - 1);
             pdrops[i] = std::exp((1.0 - factor)*log_min_pdrop + factor*log_max_pdrop);
         }
         // Assign the same pressure drops to all saturations.
