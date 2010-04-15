@@ -132,6 +132,7 @@ int main(int argc, char** argv)
             all_pdrops.appendRow(pdrops.begin(), pdrops.end());
         }
     }
+    int flow_direction = param.getDefault("flow_direction", 0);
 
     // Print the saturations and pressure drops.
     // writeControl(std::cout, saturations, all_pdrops);
@@ -149,35 +150,24 @@ int main(int argc, char** argv)
 
     // Then, compute some upscaled relative permeabilities.
     int num_cells = upscaler.grid().size(0);
-    /*
-//     const int num_sats = 1;
-//     double saturations[num_sats] = { 0.3 };
-    const int num_sats = 7;
-    double saturations[num_sats] = { 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8 };
-    // const int num_sats = 11;
-    // double saturations[num_sats] = { 0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0 };
-    const int num_pdrops = 5;
-    double pdrops[num_pdrops] = { 1e1, 1e2, 1e3, 1e4, 1e5};
-//     const int num_pdrops = 1;
-//     double pdrops[num_pdrops] = { 1e1 };
-*/
     int num_sats = saturations.size();
     for (int i = 0; i < num_sats; ++i) {
 	// Starting every computation with a trio of uniform profiles.
 	std::vector<double> init_sat(num_cells, saturations[i]);
-	boost::array<std::vector<double>, 3> init_sats = {{ init_sat, init_sat, init_sat }};
         const SparseTable<double>::row_type pdrops = all_pdrops[i];
         int num_pdrops = pdrops.size();
 	for (int j = 0; j < num_pdrops; ++j) {
 	    double pdrop = pdrops[j];
-	    SteadyStateUpscaler::permtensor_t upscaled_relperm
-		= upscaler.upscaleSteadyState(init_sats, saturations[i], pdrop, upscaled_K);
-            boost::array<double, 3> usats = upscaler.lastSaturationsUpscaled();
+            std::pair<SteadyStateUpscaler::permtensor_t, SteadyStateUpscaler::permtensor_t> lambda
+		= upscaler.upscaleSteadyState(flow_direction, init_sat, saturations[i], pdrop, upscaled_K);
+            double usat = upscaler.lastSaturationUpscaled(flow_direction);
 	    std::cout << "\n\nTensor of upscaled relperms for initial saturation " << saturations[i]
-                      << ", real steady-state saturations " << usats[0] << ' ' << usats[1] << ' ' << usats[2]
-                      << " and pressure drop " << pdrop << ":\n" << upscaled_relperm << "\n" << std::endl;
+                      << ", real steady-state saturation " << usat
+                      << " and pressure drop " << pdrop
+                      << ":\n\n[water]\n" << lambda.first
+                      << "\n[oil]\n" << lambda.second << std::endl;
 	    // Changing initial saturations for next pressure drop to equal the steady state of the last
-	    init_sats = upscaler.lastSaturations();
+	    init_sat = upscaler.lastSaturations()[flow_direction];
 	}
     }
 }

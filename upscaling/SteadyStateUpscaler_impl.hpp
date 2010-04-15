@@ -40,6 +40,7 @@
 #include <boost/lexical_cast.hpp>
 #include <dune/solvers/common/MatrixInverse.hpp>
 #include <dune/solvers/common/SimulatorUtilities.hpp>
+#include <dune/solvers/common/ReservoirPropertyFixedMobility.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 
@@ -72,9 +73,10 @@ namespace Dune
     }
 
 
-    inline SteadyStateUpscaler::permtensor_t
+    inline std::pair<SteadyStateUpscaler::permtensor_t, SteadyStateUpscaler::permtensor_t>
     SteadyStateUpscaler::
-    upscaleSteadyState(const boost::array<std::vector<double>, Dimension>& initial_saturations,
+    upscaleSteadyState(const int flow_direction,
+                       const std::vector<double>& initial_saturation,
 		       const double boundary_saturation,
 		       const double pressure_drop,
 		       const permtensor_t& upscaled_perm)
@@ -92,91 +94,86 @@ namespace Dune
 	    MESSAGE("Warning: Gravity not yet handled by flow solver.");
 	}
 
-	// v_w = -relative_K grad p, so relative_K = (k_rw/mu_w)K
-	permtensor_t relative_K(3, 3, (double*)0);
+        // Set up initial saturation profile.
+        std::vector<double> saturation = initial_saturation;
 
-	// Loop over the three pressure drop directions (x, y, z).
-	for (int pdd = 0; pdd < Dimension; ++pdd) {
-	    // Set up initial saturation profile.
-	    // std::vector<double> saturation = setupInitialSaturation(target_saturation);
-	    std::vector<double> saturation = initial_saturations[pdd];
+        // Set up boundary conditions.
+        setupUpscalingConditions(ginterf_, bctype_, flow_direction, pressure_drop, boundary_saturation, twodim_hack_, bcond_);
 
-	    // Set up boundary conditions.
-	    setupUpscalingConditions(ginterf_, bctype_, pdd, pressure_drop, boundary_saturation, twodim_hack_, bcond_);
+        // Set up solvers.
+        if (flow_direction == 0) {
+            flow_solver_.init(ginterf_, res_prop_, gravity, bcond_);
+        }
+        transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
-	    // Set up solvers.
-	    if (pdd == 0) {
-		flow_solver_.init(ginterf_, res_prop_, gravity, bcond_);
-	    }
-	    transport_solver_.initObj(ginterf_, res_prop_, bcond_);
+        // Run pressure solver.
+        flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
-	    // Run pressure solver.
-	    flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
+        std::vector<double> mob1(num_cells, 0.0);
+        std::vector<double> mob2(num_cells, 0.0);
 
-	    // Do a run till steady state. For now, we just do some pressure and transport steps...
-	    for (int iter = 0; iter < simulation_steps_; ++iter) {
-		// Check and fix fluxes.
-// 		flux_checker_.checkDivergence(grid_, wells, flux);
-// 		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+        // Do a run till steady state. For now, we just do some pressure and transport steps...
+        for (int iter = 0; iter < simulation_steps_; ++iter) {
+            // Check and fix fluxes.
+            // 		flux_checker_.checkDivergence(grid_, wells, flux);
+            // 		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
-		// Run transport solver.
-		transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
+            // Run transport solver.
+            transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
-		// Run pressure solver.
-		flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
+            // Run pressure solver.
+            flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
-		// Output.
-		if (output_) {
-		    std::vector<double> cell_velocity;
-		    estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
-		    std::vector<double> cell_pressure;
-		    getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
-		    Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
-		    vtkwriter.addCellData(cell_velocity, "velocity");
-		    vtkwriter.addCellData(saturation, "saturation");
-		    vtkwriter.addCellData(cell_pressure, "pressure");
-		    vtkwriter.write(std::string("output-steadystate")
-				    + '-' + boost::lexical_cast<std::string>(count)
-				    + '-' + boost::lexical_cast<std::string>(pdd)
-				    + '-' + boost::lexical_cast<std::string>(iter),
-				    Dune::VTKOptions::ascii);
-		}
-	    }
+            // Output.
+            if (output_) {
+                std::vector<double> cell_velocity;
+                estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+                std::vector<double> cell_pressure;
+                getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
+                Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
+                vtkwriter.addCellData(cell_velocity, "velocity");
+                vtkwriter.addCellData(saturation, "saturation");
+                vtkwriter.addCellData(cell_pressure, "pressure");
+                vtkwriter.write(std::string("output-steadystate")
+                                + '-' + boost::lexical_cast<std::string>(count)
+                                + '-' + boost::lexical_cast<std::string>(flow_direction)
+                                + '-' + boost::lexical_cast<std::string>(iter),
+                                Dune::VTKOptions::ascii);
+            }
+        }
 
-	    // A check on the final fluxes.
-// 	    flux_checker_.checkDivergence(grid_, wells, flux);
-// 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+        // A check on the final fluxes.
+        // 	    flux_checker_.checkDivergence(grid_, wells, flux);
+        // 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
-	    // Compute upscaled relperm.
-	    double Q[Dimension];
-	    switch (bctype_) {
-	    case Fixed:
-		std::fill(Q, Q+Dimension, 0); // resetting Q
-		Q[pdd] = computeAveragePhaseVelocity(flow_solver_.getSolution(), saturation, pdd, pdd);
-		break;
-	    case Linear:
-	    case Periodic:
-		for (int i = 0; i < Dimension; ++i) {
-		    Q[i] = computeAveragePhaseVelocity(flow_solver_.getSolution(), saturation, i, pdd);
-		}
-		break;
-	    default:
-		THROW("Unknown boundary type: " << bctype_);
-	    }
-	    double delta = computeDelta(pdd);
-	    for (int i = 0; i < Dimension; ++i) {
-		relative_K(i, pdd) = Q[i] * delta / pressure_drop;
-	    }
+        // Compute phase mobilities.
+        for (int c = 0; c < num_cells; ++c) {
+            mob1[c] = res_prop_.mobilityFirstPhase(c, saturation[c]);
+            mob2[c] = res_prop_.mobilitySecondPhase(c, saturation[c]);
+        }
 
-	    // Set the steady state saturation fields for eventual outside access.
-	    last_saturations_[pdd].swap(saturation);
-	}
+        // Compute upscaled relperm for each phase.
+        ReservoirPropertyFixedMobility fluid_first(mob1);
+        permtensor_t eff_Kw = upscaleEffectivePerm(fluid_first);
+        ReservoirPropertyFixedMobility fluid_second(mob2);
+        permtensor_t eff_Ko = upscaleEffectivePerm(fluid_second);
 
-	// Compute the relative K tensor.
-	relative_K *= res_prop_.viscosityFirstPhase();
-	permtensor_t relperm_matrix(matprod(relative_K, inverse3x3(upscaled_perm)));
-	// std::cout << relperm_matrix << std::endl;
-	return relperm_matrix;
+        // Set the steady state saturation fields for eventual outside access.
+        last_saturations_[flow_direction].swap(saturation);
+
+	// Compute the (anisotropic) upscaled mobilities.
+        // eff_Kw := lambda_w*K
+        //  =>  lambda_w = eff_Kw*inv(K); 
+	permtensor_t lambda_w(matprod(eff_Kw, inverse3x3(upscaled_perm)));
+	permtensor_t lambda_o(matprod(eff_Ko, inverse3x3(upscaled_perm)));
+
+        // Compute (anisotropic) upscaled relative permeabilities.
+        // lambda = k_r/mu
+        permtensor_t k_rw(lambda_w);
+        k_rw *= res_prop_.viscosityFirstPhase();
+        permtensor_t k_ro(lambda_o);
+        k_ro *= res_prop_.viscositySecondPhase();
+	return std::make_pair(k_rw, k_ro);
     }
 
 
@@ -188,23 +185,17 @@ namespace Dune
     }
 
 
-    boost::array<double, SteadyStateUpscaler::Dimension>
-    SteadyStateUpscaler::lastSaturationsUpscaled() const
+    double SteadyStateUpscaler::lastSaturationUpscaled(int flow_direction) const
     {
         double pore_vol = 0.0;
-        boost::array<double, Dimension> sat_vol;
-        std::fill(sat_vol.begin(), sat_vol.end(), 0.0);
+        double sat_vol = 0.0;
         for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
-            pore_vol += c->volume()*res_prop_.porosity(c->index());
-            for (int dim = 0; dim < Dimension; ++dim) {
-                sat_vol[dim] += pore_vol*last_saturations_[dim][c->index()];
-            }
+            double cell_pore_vol = c->volume()*res_prop_.porosity(c->index());
+            pore_vol += cell_pore_vol;
+            sat_vol += cell_pore_vol*last_saturations_[flow_direction][c->index()];
         }
         // Dividing by pore volume gives average saturations.
-        for (int dim = 0; dim < Dimension; ++dim) {
-            sat_vol[dim] /= pore_vol;
-        }
-        return sat_vol;
+        return sat_vol/pore_vol;
     }
 
 

@@ -67,10 +67,11 @@ namespace Dune
 	/// @return the upscaled relative permeability matrix of the first phase (usually water).
 	/// The relative permeability matrix, call it k, is such that if K_w is the phase
 	/// permeability and K the absolute permeability, K_w = k*K.
-	permtensor_t upscaleSteadyState(const boost::array<std::vector<double>, Dimension>& initial_saturations,
-					const double boundary_saturation,
-					const double pressure_drop,
-					const permtensor_t& upscaled_perm);
+        std::pair<permtensor_t, permtensor_t> upscaleSteadyState(const int flow_direction,
+                                                                 const std::vector<double>& initial_saturation,
+                                                                 const double boundary_saturation,
+                                                                 const double pressure_drop,
+                                                                 const permtensor_t& upscaled_perm);
 
 	/// Accessor for the steady state saturation fields. This is empty until
 	/// upscaleSteadyState() is called, at which point it will
@@ -80,7 +81,7 @@ namespace Dune
         /// Computes the upscaled saturations corresponding to the saturation fields
         /// returned by lastSaturations(). Does this by computing total saturated
         /// volume divided by total pore volume.
-        boost::array<double, Dimension> lastSaturationsUpscaled() const;
+        double lastSaturationUpscaled(int flow_direction) const;
 
     protected:
 	// ------- Typedefs -------
