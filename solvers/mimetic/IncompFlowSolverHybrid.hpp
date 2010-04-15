@@ -610,7 +610,8 @@ namespace Dune {
         ///    The iteration process is terminated when the norm of
         ///    the linear system residual is less than @code
         ///    residual_tolerance @endcode times the initial residual.
-        void solve(const ReservoirInterface&  r  ,
+        template<class FluidInterface>
+        void solve(const FluidInterface&      r  ,
                    const std::vector<double>& sat,
                    const BCInterface&         bc ,
                    const std::vector<double>& src,
@@ -1155,7 +1156,8 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void assembleDynamic(const ReservoirInterface&  r  ,
+        template<class FluidInterface>
+        void assembleDynamic(const FluidInterface&      r  ,
                              const std::vector<double>& sat,
                              const BCInterface&         bc ,
                              const std::vector<double>& src)
@@ -1328,7 +1330,8 @@ namespace Dune {
 
 
         // ----------------------------------------------------------------
-        void computePressureAndFluxes(const ReservoirInterface&  r  ,
+        template<class FluidInterface>
+        void computePressureAndFluxes(const FluidInterface&      r  ,
                                       const std::vector<double>& sat)
         // ----------------------------------------------------------------
         {
