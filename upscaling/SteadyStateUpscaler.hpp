@@ -101,6 +101,7 @@ namespace Dune
 	bool output_;
 	int simulation_steps_;
 	double stepsize_;
+        double relperm_threshold_;
 	TransportSolver transport_solver_;
     };
 

@@ -43,6 +43,7 @@
 #include <dune/solvers/common/ReservoirPropertyFixedMobility.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
+#include <algorithm>
 
 namespace Dune
 {
@@ -51,7 +52,8 @@ namespace Dune
 	: SinglePhaseUpscaler(),
 	  output_(false),
 	  simulation_steps_(10),
-	  stepsize_(0.1)
+	  stepsize_(0.1),
+	  relperm_threshold_(1.0e-4)
     {
     }
 
@@ -62,6 +64,8 @@ namespace Dune
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
 					      Dune::unit::day);
+	relperm_threshold_ = param.getDefault("relperm_threshold", relperm_threshold_);
+
 	transport_solver_.init(param);
         // Set viscosities and densities if given.
         double v1_default = res_prop_.viscosityFirstPhase();
@@ -109,9 +113,6 @@ namespace Dune
         // Run pressure solver.
         flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
-        std::vector<double> mob1(num_cells, 0.0);
-        std::vector<double> mob2(num_cells, 0.0);
-
         // Do a run till steady state. For now, we just do some pressure and transport steps...
         for (int iter = 0; iter < simulation_steps_; ++iter) {
             // Check and fix fluxes.
@@ -147,9 +148,13 @@ namespace Dune
         // 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
         // Compute phase mobilities.
+        std::vector<double> mob1(num_cells, 0.0);
+        std::vector<double> mob2(num_cells, 0.0);
+        const double mob1_threshold = relperm_threshold_ / res_prop_.viscosityFirstPhase();
+        const double mob2_threshold = relperm_threshold_ / res_prop_.viscositySecondPhase();
         for (int c = 0; c < num_cells; ++c) {
-            mob1[c] = res_prop_.mobilityFirstPhase(c, saturation[c]);
-            mob2[c] = res_prop_.mobilitySecondPhase(c, saturation[c]);
+            mob1[c] = std::max(res_prop_.mobilityFirstPhase(c, saturation[c]), mob1_threshold);
+            mob2[c] = std::max(res_prop_.mobilitySecondPhase(c, saturation[c]), mob2_threshold);
         }
 
         // Compute upscaled relperm for each phase.
