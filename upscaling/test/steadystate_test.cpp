@@ -40,6 +40,8 @@
 #include <dune/common/Units.hpp>
 #include <dune/common/SparseTable.hpp>
 #include <cmath>
+#include <fstream>
+#include <iostream>
 
 using namespace Dune;
 using namespace Dune::prefix;
@@ -86,6 +88,23 @@ void writeControl(Ostream& os, const std::vector<double>& saturations, const Spa
         }
         os << '\n';
     }
+}
+
+
+
+template<class Ostream, class Tensor>
+void writeRelPerm(Ostream& os, const Tensor& K, double sat, double pdrop)
+{
+    const int num_rows = K.numRows();
+    const int num_cols = K.numCols();
+
+    os << sat << ' ';
+    for (int i = 0; i < num_rows; ++i) {
+        for (int j = 0; j < num_cols; ++j) {
+            os << K(i,j) << ' ';
+        }
+    }
+    os << pdrop << '\n';
 }
 
 
@@ -148,6 +167,18 @@ int main(int argc, char** argv)
     std::cout.precision(15);
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K_copy << std::endl;
 
+#if WRITE_RELPERM_TO_FILE
+    // Create output streams for upscaled relative permeabilities
+    std::string kr_filename = param.getDefault<std::string>("kr_filename", "upscaled_relperm");
+    std::string krw_filename = kr_filename + "_wat";
+    std::string kro_filename = kr_filename + "_oil";
+    std::ofstream krw_out(krw_filename.c_str());
+    std::ofstream kro_out(kro_filename.c_str());
+
+    krw_out.precision(15);  krw_out.setf(std::ios::scientific | std::ios::showpoint);
+    kro_out.precision(15);  kro_out.setf(std::ios::scientific | std::ios::showpoint);
+#endif
+
     // Then, compute some upscaled relative permeabilities.
     int num_cells = upscaler.grid().size(0);
     int num_sats = saturations.size();
@@ -168,6 +199,11 @@ int main(int argc, char** argv)
                       << "\n[oil]\n" << lambda.second << std::endl;
 	    // Changing initial saturations for next pressure drop to equal the steady state of the last
 	    init_sat = upscaler.lastSaturations()[flow_direction];
+
+#if WRITE_RELPERM_TO_FILE
+            writeRelPerm(krw_out, lambda.first , usat, pdrop);
+            writeRelPerm(kro_out, lambda.second, usat, pdrop);
+#endif
 	}
     }
 }
