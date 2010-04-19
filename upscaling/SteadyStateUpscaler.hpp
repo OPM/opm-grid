@@ -57,14 +57,14 @@ namespace Dune
 	SteadyStateUpscaler();
 
 	/// Does a steady-state upscaling.
-	/// @param initial_saturation the initial saturation profiles for the steady-state computations.
-	/// There should be one such saturation vector for each cardinal direction, each vector having 
-	/// size equal to the number of cells in the grid.
+	/// @param flow_direction The cardinal direction in which to impose a pressure gradient for the purpose of converging to steady state.
+	/// @param initial_saturation the initial saturation profile for the steady-state computation.
+	/// The vector must have size equal to the number of cells in the grid.
 	/// @param boundary_saturation the saturation of fluid flowing in across the boundary,
 	/// only needed for nonperiodic upscaling.
 	/// @param pressure_drop the pressure drop in Pascal over the domain.
 	/// @param upscaled_perm typically the output of upscaleSinglePhase().
-	/// @return the upscaled relative permeability matrix of the first phase (usually water).
+	/// @return the upscaled relative permeability matrices of both phases.
 	/// The relative permeability matrix, call it k, is such that if K_w is the phase
 	/// permeability and K the absolute permeability, K_w = k*K.
         std::pair<permtensor_t, permtensor_t> upscaleSteadyState(const int flow_direction,

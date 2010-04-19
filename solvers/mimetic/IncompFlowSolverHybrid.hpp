@@ -564,8 +564,15 @@ namespace Dune {
         ///    @encode, you may recover the flow solution from the
         ///    @code getSolution() @endcode method.
         ///
+        /// @tparam FluidInterface
+        ///    Type presenting an interface to fluid properties such
+        ///    as density, mobility &c.  The type is expected to
+        ///    provide methods @code phaseMobilities() @endcode and
+        ///    @code phaseDensities() @endcode for phase mobility and
+        ///    density in a single cell, respectively.
+        ///
         /// @param [in] r
-        ///    The reservoir properties of each grid cell.  In method
+        ///    The fluid properties of each grid cell.  In method
         ///    @code solve() @endcode we query this object for the
         ///    phase mobilities (i.e., @code r.phaseMobilities()
         ///    @endcode) and the phase densities (i.e., @code
