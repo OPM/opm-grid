@@ -104,7 +104,7 @@ void writeRelPerm(Ostream& os, const Tensor& K, double sat, double pdrop)
             os << K(i,j) << ' ';
         }
     }
-    os << pdrop << '\n';
+    os << pdrop << std::endl;
 }
 
 
