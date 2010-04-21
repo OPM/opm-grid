@@ -98,12 +98,15 @@ void test_flowsolver(const Grid& grid, const RI& r, bool output_is_vtk = true)
     solver.solve(r, sat, flow_bc, src);
 
     if (output_is_vtk) {
-	std::vector<double> cell_velocity;
-	estimateCellVelocity(cell_velocity, g, solver.getSolution());
+        std::vector<typename GI::Vector> cell_velocity;
+        estimateCellVelocity(cell_velocity, g, solver.getSolution());
+        // Dune's vtk writer wants multi-component data to be flattened.
+        std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
+                                               &*cell_velocity.back().end());
 	std::vector<double> cell_pressure;
 	getCellPressure(cell_pressure, g, solver.getSolution());
 	Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
-	vtkwriter.addCellData(cell_velocity, "velocity");
+	vtkwriter.addCellData(cell_velocity_flat, "velocity");
 	vtkwriter.addCellData(cell_pressure, "pressure");
 	vtkwriter.write("multiscale_test_output", Dune::VTKOptions::ascii);
     } else {

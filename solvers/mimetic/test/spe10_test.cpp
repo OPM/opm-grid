@@ -168,13 +168,16 @@ int main(int argc, char** argv)
 #endif
 
 #if 1
-    std::vector<double> cell_velocity;
+    std::vector<GI::Vector> cell_velocity;
     estimateCellVelocity(cell_velocity, g, solver.getSolution());
+    // Dune's vtk writer wants multi-component data to be flattened.
+    std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
+                                           &*cell_velocity.back().end());
     std::vector<double> cell_pressure;
     getCellPressure(cell_pressure, g, solver.getSolution());
 
     Dune::VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
-    vtkwriter.addCellData(cell_velocity, "velocity");
+    vtkwriter.addCellData(cell_velocity_flat, "velocity");
     vtkwriter.addCellData(cell_pressure, "pressure");
     vtkwriter.write("spe10_test_output", Dune::VTKOptions::ascii);
 #endif

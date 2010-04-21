@@ -82,12 +82,15 @@ namespace Dune
 							Super::flow_solver_.getSolution(),
 							Super::injection_rates_);
 		// Output.
-		std::vector<double> cell_velocity;
+		std::vector<typename Super::Vector> cell_velocity;
 		estimateCellVelocity(cell_velocity, Super::ginterf_, Super::flow_solver_.getSolution());
+                // Dune's vtk writer wants multi-component data to be flattened.
+                std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
+                                                       &*cell_velocity.back().end());
 		std::vector<double> cell_pressure;
 		getCellPressure(cell_pressure, Super::ginterf_, Super::flow_solver_.getSolution());
 		Dune::VTKWriter<typename Super::GridType::LeafGridView> vtkwriter(Super::grid_.leafView());
-		vtkwriter.addCellData(cell_velocity, "velocity");
+		vtkwriter.addCellData(cell_velocity_flat, "velocity");
 		vtkwriter.addCellData(sat, "saturation");
 		vtkwriter.addCellData(cell_pressure, "pressure");
 		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),

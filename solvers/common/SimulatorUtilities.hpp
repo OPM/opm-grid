@@ -51,7 +51,7 @@ namespace Dune
     /// @param[in] ginterf an interface to the grid.
     /// @param[in] flow_solution the object containing the fluxes.
     template <class GridInterface, class FlowSol>
-    void estimateCellVelocity(std::vector<double>& cell_velocity,
+    void estimateCellVelocity(std::vector<typename GridInterface::Vector>& cell_velocity,
 			      const GridInterface& ginterf,
 			      const FlowSol& flow_solution)
     {
@@ -70,7 +70,7 @@ namespace Dune
 		v *= flux/c->volume();
 		cell_v += v;
 	    }
-	    cell_velocity[c->index()] = cell_v.two_norm();
+	    cell_velocity[c->index()] = cell_v;//.two_norm();
 	}
     }
 
@@ -84,7 +84,7 @@ namespace Dune
     /// @param[in] partition partition numbers of the fluxes.
     /// @param[in] my_partition partition to be used.
     template <class GridInterface, class FlowSol>
-    void estimateCellVelocity(std::vector<double>& cell_velocity,
+    void estimateCellVelocity(std::vector<typename GridInterface::Vector>& cell_velocity,
 			      const GridInterface& ginterf,
 			      const FlowSol& flow_solution,
 			      const std::vector<int>& partition,
@@ -108,7 +108,7 @@ namespace Dune
 		    v *= flux/c->volume();
 		    cell_v += v;
 		}
-		cell_velocity[c->index()] = cell_v.two_norm();
+		cell_velocity[c->index()] = cell_v;//.two_norm();
 	    }
 	}
     }
@@ -151,6 +151,26 @@ namespace Dune
 	    }
 	}
     }
+
+
+
+    /// @brief Computes the capillary pressure in each cell from the cell saturations.
+    /// @tparam ReservoirProperties the type of reservoir property object
+    /// @param cap_pressure [out] the capillary pressure in each cell
+    /// @param rp the reservoir property object
+    /// @param sat the cell saturations
+    template <class ReservoirProperties>
+    void computeCapPressure(std::vector<double>& cap_pressure,
+                            const ReservoirProperties& rp,
+                            const std::vector<double>& sat)
+    {
+	int num_cells = sat.size();
+	cap_pressure.resize(num_cells);
+	for (int cell = 0; cell < num_cells; ++cell) {
+	    cap_pressure[cell] = rp.capillaryPressure(cell, sat[cell]);
+	}
+    }
+
 
 
 } // namespace Dune
