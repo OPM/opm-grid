@@ -88,17 +88,18 @@ namespace Dune
 	typedef EulerUpstream<GridInterface, ResProp, BCs> TransportSolver;
 	// ------- Methods -------
 	template <class FlowSol>
-	double computeAveragePhaseVelocity(const FlowSol& flow_solution,
-					   const std::vector<double>& saturations,
-					   const int flow_dir,
-					   const int pdrop_dir) const;
+        void computeInOutFlows(std::pair<double, double>& water_inout,
+                               std::pair<double, double>& oil_inout,
+                               const FlowSol& flow_solution,
+                               const std::vector<double>& saturations) const;
 	/// Override from superclass.
 	virtual void initImpl(const parameter::ParameterGroup& param);
 
 
 	// ------- Data members -------
 	boost::array<std::vector<double>, Dimension> last_saturations_;
-	bool output_;
+	bool output_vtk_;
+        bool print_inoutflows_;
 	int simulation_steps_;
 	double stepsize_;
         double relperm_threshold_;

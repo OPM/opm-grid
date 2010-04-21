@@ -50,7 +50,8 @@ namespace Dune
 
     inline SteadyStateUpscaler::SteadyStateUpscaler()
 	: SinglePhaseUpscaler(),
-	  output_(false),
+	  output_vtk_(false),
+          print_inoutflows_(false),
 	  simulation_steps_(10),
 	  stepsize_(0.1),
 	  relperm_threshold_(1.0e-4)
@@ -60,7 +61,8 @@ namespace Dune
     inline void SteadyStateUpscaler::initImpl(const parameter::ParameterGroup& param)
     {
 	SinglePhaseUpscaler::initImpl(param);
-	output_ = param.getDefault("output", output_);
+	output_vtk_ = param.getDefault("output_vtk", output_vtk_);
+	print_inoutflows_ = param.getDefault("print_inoutflows", print_inoutflows_);
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
 					      Dune::unit::day);
@@ -125,19 +127,39 @@ namespace Dune
             // Run pressure solver.
             flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
 
+            // Print in-out flows if requested.
+            if (print_inoutflows_) {
+                std::pair<double, double> w_io, o_io;
+                computeInOutFlows(w_io, o_io, flow_solver_.getSolution(), saturation);
+                std::cout << "Pressure step " << iter
+                          << "\nWater flow [in] " << w_io.first
+                          << "  [out] " << w_io.second
+                          << "\nOil flow   [in] " << o_io.first
+                          << "  [out] " << o_io.second
+                          << std::endl;
+            }
+
             // Output.
-            if (output_) {
+            if (output_vtk_) {
                 std::vector<GridInterface::Vector> cell_velocity;
                 estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+                Dune::array<std::vector<GridInterface::Vector>, 2> phase_velocities;
+                computePhaseVelocities(phase_velocities[0], phase_velocities[1], res_prop_, saturation, cell_velocity);
                 // Dune's vtk writer wants multi-component data to be flattened.
                 std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
                                                        &*cell_velocity.back().end());
+                std::vector<double> water_velocity_flat(&*phase_velocities[0].front().begin(),
+                                                       &*phase_velocities[0].back().end());
+                std::vector<double> oil_velocity_flat(&*phase_velocities[1].front().begin(),
+                                                       &*phase_velocities[1].back().end());
                 std::vector<double> cell_pressure;
                 getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
                 std::vector<double> cap_pressure;
                 computeCapPressure(cap_pressure, res_prop_, saturation);
                 Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
                 vtkwriter.addCellData(cell_velocity_flat, "velocity", GridInterface::Vector::dimension);
+                vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", GridInterface::Vector::dimension);
+                vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", GridInterface::Vector::dimension);
                 vtkwriter.addCellData(saturation, "saturation");
                 vtkwriter.addCellData(cell_pressure, "pressure");
                 vtkwriter.addCellData(cap_pressure, "capillary pressure");
@@ -212,53 +234,58 @@ namespace Dune
 
 
     template <class FlowSol>
-    inline double SteadyStateUpscaler::computeAveragePhaseVelocity(const FlowSol& flow_solution,
-								   const std::vector<double>& saturations,
-								   const int flow_dir,
-								   const int pdrop_dir) const
+    void SteadyStateUpscaler::computeInOutFlows(std::pair<double, double>& water_inout,
+                                                std::pair<double, double>& oil_inout,
+                                                const FlowSol& flow_solution,
+                                                const std::vector<double>& saturations) const
     {
-	// Apart from the two lines defining frac_flow and flux below, this code
-	// is identical to computeAverageVelocity().
-	// \todo Unify. Also, there is something fishy about using the cell's fractional flow.
-	// Should use the periodic partner's, perhaps?
-	// Or maybe just do this for outflow?
 	double side1_flux = 0.0;
 	double side2_flux = 0.0;
-	double side1_area = 0.0;
-	double side2_area = 0.0;
+	double side1_flux_oil = 0.0;
+	double side2_flux_oil = 0.0;
+        std::map<int, double> frac_flow_by_bid;
 
-	for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
-	    for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
-		if (f->boundary()) {
-		    int canon_bid = bcond_.getCanonicalBoundaryId(f->boundaryId());
-		    if ((canon_bid - 1)/2 == flow_dir) {
-			double frac_flow = res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
-			double flux = flow_solution.outflux(f)*frac_flow;
-			double area = f->area();
-			double norm_comp = f->normal()[flow_dir];
-			if (canon_bid - 1 == 2*flow_dir) {
-			    if (flow_dir == pdrop_dir && flux > 0.0) {
-				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
-					  << " Magnitude: " << std::fabs(flux) << std::endl;
-				// THROW("Detected outflow at entry face: " << face);
-			    }
-			    side1_flux += flux*norm_comp;
-			    side1_area += area;
-			} else {
-			    if (flow_dir == pdrop_dir && flux < 0.0) {
-				std::cerr << "Flow may be in wrong direction at bid: " << f->boundaryId()
-					  << " Magnitude: " << std::fabs(flux) << std::endl;
-				// THROW("Detected inflow at exit face: " << face);
-			    }
-			    side2_flux += flux*norm_comp;
-			    side2_area += area;
-			}
-		    }		    
-		}
-	    }
-	}
-	// q is the average velocity.
-	return 0.5*(side1_flux/side1_area + side2_flux/side2_area);
+        // Two passes: First pass, deal with outflow, second pass, deal with inflow.
+        // This is for the periodic case, so that we are sure all fractional flows have
+        // been set in frac_flow_by_bid.
+        for (int pass = 0; pass < 2; ++pass) {
+            for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+                for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
+                    if (f->boundary()) {
+                        double flux = flow_solution.outflux(f);
+                        const SatBC& sc = bcond_.satCond(f);
+                        if (flux < 0.0 && pass == 1) {
+                            // This is an inflow face.
+                            double frac_flow = 0.0;
+                            if (sc.isPeriodic()) {
+                                ASSERT(sc.saturationDifference() == 0.0);
+                                int partner_bid = bcond_.getPeriodicPartner(f->boundaryId());
+                                std::map<int, double>::const_iterator it = frac_flow_by_bid.find(partner_bid);
+                                if (it == frac_flow_by_bid.end()) {
+                                    THROW("Could not find periodic partner fractional flow.");
+                                }
+                                frac_flow = it->second;
+                            } else {
+                                ASSERT(sc.isDirichlet());
+                                frac_flow = sc.saturation();
+                            }
+                            side1_flux += flux*frac_flow;
+                            side1_flux_oil += flux*(1.0 - frac_flow);
+                        } else if (flux >= 0.0 && pass == 0) {
+                            // This is an outflow face.
+                            double frac_flow = res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
+                            if (sc.isPeriodic()) {
+                                frac_flow_by_bid[f->boundaryId()] = frac_flow;
+                            }
+                            side2_flux += flux*frac_flow;
+                            side2_flux_oil += flux*(1.0 - frac_flow);
+                        }
+                    }
+                }
+            }
+        }
+	water_inout = std::make_pair(side1_flux, side2_flux);
+	oil_inout = std::make_pair(side1_flux_oil, side2_flux_oil);
     }
 
 
