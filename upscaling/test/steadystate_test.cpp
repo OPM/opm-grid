@@ -166,6 +166,7 @@ int main(int argc, char** argv)
     upscaled_K_copy *= (1.0/(milli*darcy));
     std::cout.precision(15);
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K_copy << std::endl;
+    std::cout << "Upscaled porosity: " << upscaler.upscalePorosity() << std::endl;
 
 #if WRITE_RELPERM_TO_FILE
     // Create output streams for upscaled relative permeabilities
