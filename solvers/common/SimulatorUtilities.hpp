@@ -37,8 +37,9 @@
 #define OPENRS_SIMULATORUTILITIES_HEADER
 
 
+#include <dune/common/ErrorMacros.hpp>
+#include <dune/common/fvector.hh>
 #include <vector>
-
 
 namespace Dune
 {
