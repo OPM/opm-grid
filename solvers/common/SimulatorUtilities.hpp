@@ -114,6 +114,27 @@ namespace Dune
     }
 
 
+    template <class ReservoirProperty>
+    void computePhaseVelocities(std::vector<FieldVector<double, 3> >& phase_velocity_water,
+                                std::vector<FieldVector<double, 3> >& phase_velocity_oil,
+                                const ReservoirProperty& res_prop,
+                                const std::vector<double>& saturation,
+                                const std::vector<FieldVector<double, 3> >& cell_velocity)
+    {
+        ASSERT(saturation.size() == cell_velocity.size());
+        int num_cells = saturation.size();
+        phase_velocity_water = cell_velocity;
+        phase_velocity_oil = cell_velocity;
+        for (int i = 0; i < num_cells; ++i) {
+            double f = res_prop.fractionalFlow(i, saturation[i]);
+            phase_velocity_water[i] *= f;
+            phase_velocity_oil[i] *= (1.0 - f);
+        }
+    }
+
+
+
+
     /// @brief
     /// @todo Doc me!
     /// @tparam
