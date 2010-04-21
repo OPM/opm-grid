@@ -127,14 +127,20 @@ namespace Dune
 
             // Output.
             if (output_) {
-                std::vector<double> cell_velocity;
+                std::vector<GridInterface::Vector> cell_velocity;
                 estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
+                // Dune's vtk writer wants multi-component data to be flattened.
+                std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
+                                                       &*cell_velocity.back().end());
                 std::vector<double> cell_pressure;
                 getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
+                std::vector<double> cap_pressure;
+                computeCapPressure(cap_pressure, res_prop_, saturation);
                 Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
-                vtkwriter.addCellData(cell_velocity, "velocity");
+                vtkwriter.addCellData(cell_velocity_flat, "velocity", GridInterface::Vector::dimension);
                 vtkwriter.addCellData(saturation, "saturation");
                 vtkwriter.addCellData(cell_pressure, "pressure");
+                vtkwriter.addCellData(cap_pressure, "capillary pressure");
                 vtkwriter.write(std::string("output-steadystate")
                                 + '-' + boost::lexical_cast<std::string>(count)
                                 + '-' + boost::lexical_cast<std::string>(flow_direction)
