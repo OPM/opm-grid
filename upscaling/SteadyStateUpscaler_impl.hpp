@@ -113,7 +113,7 @@ namespace Dune
         transport_solver_.initObj(ginterf_, res_prop_, bcond_);
 
         // Run pressure solver.
-        flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
+        flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
 
         // Do a run till steady state. For now, we just do some pressure and transport steps...
         for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -125,7 +125,7 @@ namespace Dune
             transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
 
             // Run pressure solver.
-            flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_);
+            flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
 
             // Print in-out flows if requested.
             if (print_inoutflows_) {
@@ -262,7 +262,8 @@ namespace Dune
                                 int partner_bid = bcond_.getPeriodicPartner(f->boundaryId());
                                 std::map<int, double>::const_iterator it = frac_flow_by_bid.find(partner_bid);
                                 if (it == frac_flow_by_bid.end()) {
-                                    THROW("Could not find periodic partner fractional flow.");
+                                    THROW("Could not find periodic partner fractional flow. Face bid = " << f->boundaryId()
+                                          << " and partner bid = " << partner_bid);
                                 }
                                 frac_flow = it->second;
                             } else {
@@ -276,6 +277,7 @@ namespace Dune
                             double frac_flow = res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
                             if (sc.isPeriodic()) {
                                 frac_flow_by_bid[f->boundaryId()] = frac_flow;
+//                                 std::cout << "Inserted bid " << f->boundaryId() << std::endl;
                             }
                             side2_flux += flux*frac_flow;
                             side2_flux_oil += flux*(1.0 - frac_flow);
