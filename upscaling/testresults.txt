@@ -192,6 +192,16 @@ real	0m42.342s
 user	0m41.632s
 sys	0m0.638s
 
+[again, Apr. 16 2010 - all the changes since last have modified the solution a little]
+
+156.108072515789 0 0 
+0 161.812984342748 0 
+0 0 31.2464597239119 
+
+real	0m38.425s
+user	0m37.649s
+sys	0m0.602s
+
 
 3) residual_tolerance = 1e-10
 
@@ -272,6 +282,21 @@ real	0m25.536s
 user	0m24.881s
 sys	0m0.602s
 
+[again, Apr. 16 2010 - after refactoring the upscaler to use ...TracerFluid. Apparently no big change.]
+
+156.108068958209 0 0 
+0 161.81298506611 0 
+0 0 31.2464395640289 
+
+real	0m25.737s
+user	0m24.583s
+sys	0m0.581s
+
+real	0m25.272s
+user	0m24.638s
+sys	0m0.584s
+
+
 
 5) residual_tolerance = 1e-5
 
@@ -294,6 +319,15 @@ real	0m20.700s
 user	0m20.018s
 sys	0m0.593s
 
+[again, Apr. 16 2010]
+
+156.109771894273 0 0 
+0 161.809594220355 0 
+0 0 31.2442748077174 
+
+real	0m20.157s
+user	0m19.561s
+sys	0m0.555s
 
 
 6) residual_tolerance = 1e-3
