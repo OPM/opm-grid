@@ -158,7 +158,7 @@ namespace Dune
 
 	GridType grid_;
 	GridInterface ginterf_;
-	ReservoirPropertyCapillary<3> res_prop_;
+	ResProp res_prop_;
 	BCs bcond_;
 	FlowSolver flow_solver_;
 
