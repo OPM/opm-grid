@@ -490,6 +490,9 @@ namespace Dune {
             std::vector<int>().swap(flowSolution_.cellno_);
             flowSolution_.cellFaces_.clear();
 
+            std::vector<Scalar>().swap(flowSolution_.pressure_);
+            flowSolution_.outflux_.clear();
+
             cleared_state_ = true;
         }
 
