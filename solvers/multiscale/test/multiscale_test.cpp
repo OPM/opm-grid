@@ -106,7 +106,7 @@ void test_flowsolver(const Grid& grid, const RI& r, bool output_is_vtk = true)
 	std::vector<double> cell_pressure;
 	getCellPressure(cell_pressure, g, solver.getSolution());
 	Dune::VTKWriter<Dune::CpGrid::LeafGridView> vtkwriter(grid.leafView());
-	vtkwriter.addCellData(cell_velocity_flat, "velocity");
+	vtkwriter.addCellData(cell_velocity_flat, "velocity", Grid::dimension);
 	vtkwriter.addCellData(cell_pressure, "pressure");
 	vtkwriter.write("multiscale_test_output", Dune::VTKOptions::ascii);
     } else {

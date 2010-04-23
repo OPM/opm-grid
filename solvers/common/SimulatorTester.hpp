@@ -90,7 +90,7 @@ namespace Dune
 		std::vector<double> cell_pressure;
 		getCellPressure(cell_pressure, Super::ginterf_, Super::flow_solver_.getSolution());
 		Dune::VTKWriter<typename Super::GridType::LeafGridView> vtkwriter(Super::grid_.leafView());
-		vtkwriter.addCellData(cell_velocity_flat, "velocity");
+		vtkwriter.addCellData(cell_velocity_flat, "velocity", 3);
 		vtkwriter.addCellData(sat, "saturation");
 		vtkwriter.addCellData(cell_pressure, "pressure");
 		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),

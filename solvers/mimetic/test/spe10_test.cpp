@@ -177,7 +177,7 @@ int main(int argc, char** argv)
     getCellPressure(cell_pressure, g, solver.getSolution());
 
     Dune::VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
-    vtkwriter.addCellData(cell_velocity_flat, "velocity");
+    vtkwriter.addCellData(cell_velocity_flat, "velocity", 3);
     vtkwriter.addCellData(cell_pressure, "pressure");
     vtkwriter.write("spe10_test_output", Dune::VTKOptions::ascii);
 #endif

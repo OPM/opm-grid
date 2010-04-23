@@ -109,7 +109,7 @@ void test_flowsolver(const Grid& grid,
 	getCellPressure(cell_pressure, g, solver.getSolution(), partition, rank);
 	if (rank == 0) {
 	    Dune::VTKWriter<typename Grid::LeafGridView> vtkwriter(grid.leafView());
-	    vtkwriter.addCellData(cell_velocity_flat, "velocity");
+	    vtkwriter.addCellData(cell_velocity_flat, "velocity", Grid::dimension);
 	    vtkwriter.addCellData(cell_pressure, "pressure");
 	    vtkwriter.write("parsolver_test_output", Dune::VTKOptions::ascii);
 	}
