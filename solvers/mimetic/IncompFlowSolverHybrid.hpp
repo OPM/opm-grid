@@ -427,6 +427,14 @@ namespace Dune {
             SparseTable< int  > cellFaces_;
             std::vector<Scalar> pressure_;
             SparseTable<Scalar> outflux_;
+
+            void clear() {
+                std::vector<int>().swap(cellno_);
+                cellFaces_.clear();
+
+                std::vector<Scalar>().swap(pressure_);
+                outflux_.clear();
+            }
         };
 
     public:
@@ -487,11 +495,7 @@ namespace Dune {
             std::vector<Scalar>().swap(g_);
             F_.clear();
 
-            std::vector<int>().swap(flowSolution_.cellno_);
-            flowSolution_.cellFaces_.clear();
-
-            std::vector<Scalar>().swap(flowSolution_.pressure_);
-            flowSolution_.outflux_.clear();
+            flowSolution_.clear();
 
             cleared_state_ = true;
         }
