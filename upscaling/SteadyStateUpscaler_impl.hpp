@@ -244,6 +244,9 @@ namespace Dune
 	double side1_flux_oil = 0.0;
 	double side2_flux_oil = 0.0;
         std::map<int, double> frac_flow_by_bid;
+        int num_cells = ginterf_.numberOfCells();
+        std::vector<double> cell_inflows_w(num_cells, 0.0);
+        std::vector<double> cell_outflows_w(num_cells, 0.0);
 
         // Two passes: First pass, deal with outflow, second pass, deal with inflow.
         // This is for the periodic case, so that we are sure all fractional flows have
@@ -268,8 +271,9 @@ namespace Dune
                                 frac_flow = it->second;
                             } else {
                                 ASSERT(sc.isDirichlet());
-                                frac_flow = sc.saturation();
+                                frac_flow = res_prop_.fractionalFlow(c->index(), sc.saturation());
                             }
+                            cell_inflows_w[c->index()] += flux*frac_flow;
                             side1_flux += flux*frac_flow;
                             side1_flux_oil += flux*(1.0 - frac_flow);
                         } else if (flux >= 0.0 && pass == 0) {
@@ -279,6 +283,7 @@ namespace Dune
                                 frac_flow_by_bid[f->boundaryId()] = frac_flow;
 //                                 std::cout << "Inserted bid " << f->boundaryId() << std::endl;
                             }
+                            cell_outflows_w[c->index()] += flux*frac_flow;
                             side2_flux += flux*frac_flow;
                             side2_flux_oil += flux*(1.0 - frac_flow);
                         }
