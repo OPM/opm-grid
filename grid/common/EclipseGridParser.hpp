@@ -123,6 +123,8 @@ public:                                                                         
     SPECIAL_FIELD(PVTG);
     SPECIAL_FIELD(PVTO);
     SPECIAL_FIELD(PVTW);
+    SPECIAL_FIELD(SGOF);
+    SPECIAL_FIELD(SWOF);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.

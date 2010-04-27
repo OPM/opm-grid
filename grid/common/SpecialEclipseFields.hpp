@@ -41,7 +41,6 @@
 #include <fstream>
 #include <limits>
 #include <dune/common/ErrorMacros.hpp>
-#include <iterator>
 #include "EclipseGridParserHelpers.hpp"
 
 namespace Dune
@@ -343,31 +342,7 @@ struct PVDG : public SpecialBase
 
     virtual void read(std::istream& is)
     {
-	const int ncol(3);
-	std::vector<double> record;
-	std::vector<std::vector<double> > table(ncol);	
-	while (!is.eof()) {
-	    record.clear();
-	    readVectorData(is, record);
-	    const int rec_size = record.size()/ncol;
-	    for (int k=0; k<ncol; ++k) {
-		table[k].resize(rec_size);
-	    }
-	    for (int i=0, n=-1; i<rec_size; ++i) {
-		for (int k=0; k<ncol; ++k) {
-		    table[k][i] = record[++n];
-		}
-	    }
-	    pvdg_.push_back(table);
-
-	    int action = next_action(is); // 0:continue  1:return  2:throw
-	    if (action == 1) {
-		return;     // Alphabetic char. Read next keyword.
-	    } else if (action == 2) {
-		THROW("Error reading PVDG. Next character is "
-		      <<  (char)is.peek());
-	    }
-	}
+	readPvdTable(is, pvdg_, name(), 3);
     }
 
     virtual void write(std::ostream& os) const
@@ -392,31 +367,7 @@ struct PVDO : public SpecialBase
 
     virtual void read(std::istream& is)
     {
-	const int ncol(3);
-	std::vector<double> record;
-	std::vector<std::vector<double> > table(ncol);	
-	while (!is.eof()) {
-	    record.clear();
-	    readVectorData(is, record);
-	    const int rec_size = record.size()/ncol;
-	    for (int k=0; k<ncol; ++k) {
-		table[k].resize(rec_size);
-	    }
-	    for (int i=0, n=-1; i<rec_size; ++i) {
-		for (int k=0; k<ncol; ++k) {
-		    table[k][i] = record[++n];
-		}
-	    }
-	    pvdo_.push_back(table);
-
-	    int action = next_action(is); // 0:continue  1:return  2:throw
-	    if (action == 1) {
-		return;     // Alphabetic char. Read next keyword.
-	    } else if (action == 2) {
-		THROW("Error reading PVDO. Next character is "
-		      <<  (char)is.peek());
-	    }
-	}
+	readPvdTable(is, pvdo_, name(), 3);
     }
 
     virtual void write(std::ostream& os) const
@@ -535,6 +486,50 @@ struct PVTW : public SpecialBase
 };
 
 
+struct SGOF : public SpecialBase
+{
+    table_t sgof_; 
+
+    virtual std::string name() const {return std::string("SGOF");}
+
+    virtual void read(std::istream& is) {readSGWOF(is, sgof_, name(), 4);}
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)sgof_.size(); ++prn) {
+	    for (int i=0; i<(int)sgof_[prn][0].size(); ++i) {
+		os << sgof_[prn][0][i] << " " << sgof_[prn][1][i] << " "
+		   << sgof_[prn][2][i] << " " << sgof_[prn][3][i] << '\n';
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
+struct SWOF : public SpecialBase
+{
+    table_t swof_; 
+
+    virtual std::string name() const {return std::string("SWOF");}
+
+    virtual void read(std::istream& is) {readSGWOF(is, swof_, name(), 4);}
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)swof_.size(); ++prn) {
+	    for (int i=0; i<(int)swof_[prn][0].size(); ++i) {
+		os << swof_[prn][0][i] << " " << swof_[prn][1][i] << " "
+		   << swof_[prn][2][i] << " " << swof_[prn][3][i] << '\n';
+	    }
+	    os << '\n';
+	}
+	os << '\n';
+    }
+};
+
 struct MultRec : public SpecialBase
 {
     virtual void read(std::istream& is)
@@ -549,6 +544,9 @@ struct MultRec : public SpecialBase
 	    std::streampos pos = is.tellg();
             char c;
             is.get(c);
+	    if (is.eof()) {
+		return;
+	    }
 	    if (ct.is(std::ctype_base::alpha, c)) {
 		std::string name;     // Unquoted name or new keyword?
 		std::getline(is, name);

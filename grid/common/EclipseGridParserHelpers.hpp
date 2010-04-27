@@ -41,6 +41,7 @@
 #include <istream>
 #include <vector>
 #include <dune/common/ErrorMacros.hpp>
+#include "linInt.hpp"
 #include <boost/date_time/gregorian/gregorian.hpp>
 
 namespace Dune
@@ -203,6 +204,44 @@ namespace
     }
 
 
+    // Keywords SGOF and SWOF. Reads data until '/' or an error is encountered.
+    // Default values represented by 1* is replaced by -1. Use linear interpolation
+    // outside this function to replace -1.
+    template<typename T>
+    inline void readRelPermTable(std::istream& is, std::vector<T>& data)
+    {
+	data.clear();
+	while (is) {
+	    T candidate;
+	    is >> candidate;
+	    if (is.rdstate() & std::ios::failbit) {
+		is.clear(is.rdstate() & ~std::ios::failbit);
+		std::string dummy;
+		is >> dummy;
+		if (dummy == "/") {
+                    is >> ignoreLine;
+		    break;
+		} else if (dummy[0] == '-') {  // "comment test"
+		    is >> ignoreLine; // This line is a comment
+		} else {
+                    THROW("Encountered format error while reading data values. Value = " << dummy);
+		}
+	    } else {
+		if (is.peek() == int('*')) {
+		    is.ignore(); // ignore the '*'
+		    int multiplier = int(candidate);
+		    ASSERT(multiplier == 1);
+		    data.push_back(-1); // Set new flag for interpolation.
+		} else {
+		    data.push_back(candidate);
+		}
+	    }
+	}
+	if (!is) {
+	    THROW("Encountered error while reading data values.");
+	}
+    }
+
 
     // Returns month number 1-12. Returns 0 if illegal month name. 
     inline int getMonthNumber(const std::string& month_name)
@@ -276,6 +315,7 @@ namespace
 	return task;
     }
 
+    // Reads keywords PVTG, PVTO
     typedef std::vector<std::vector<std::vector<double> > > table_t;
     inline void readPvtTable(std::istream& is, table_t& pvt_table,
 			     const std::string& field_name)
@@ -317,6 +357,99 @@ namespace
 	}
     }
 
+    // Reads keywords PVDG, PVDO
+    inline void readPvdTable(std::istream& is, table_t& pvd_table,
+			     const std::string& field_name, int ncol)
+    {
+	std::vector<double> record;
+	std::vector<std::vector<double> > table(ncol);	
+	while (!is.eof()) {
+	    record.clear();
+	    readVectorData(is, record);
+	    const int rec_size = record.size()/ncol;
+	    for (int k=0; k<ncol; ++k) {
+		table[k].resize(rec_size);
+	    }
+	    for (int i=0, n=-1; i<rec_size; ++i) {
+		for (int k=0; k<ncol; ++k) {
+		    table[k][i] = record[++n];
+		}
+	    }
+	    pvd_table.push_back(table);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		std::ostringstream oss;
+		oss << "Error reading " << field_name
+		    << ". Next character is " <<  (char)is.peek();
+		THROW(oss.str());
+	    }
+	}
+    }
+
+    // Replace default values -1 by linear interpolation
+    inline void insertDefaultValues(std::vector<std::vector<double> >& table, int ncol)
+    {
+	const int sz = table[0].size();
+	for (int k=1; k<ncol; ++k) {
+	    std::vector<int> indx;
+	    std::vector<double> x;
+	    for (int i=0; i<sz; ++i) {
+		if (table[k][i] == -1) {
+		    indx.push_back(i);
+		    x.push_back(table[0][i]);    
+		}
+	    }
+	    if (!indx.empty()) {
+		std::vector<double> xv, yv;
+		for (int i=0; i<sz; ++i) {
+		    if (table[k][i] != -1) {
+			xv.push_back(table[0][i]);		    
+			yv.push_back(table[k][i]);		    
+		    }
+		}
+		// Interpolate
+		for (int i=0; i<int(indx.size()); ++i) {
+		    table[k][indx[i]] = linearInterpolationExtrap(xv, yv, x[i]);
+		}
+	    }
+	}
+    }
+
+    // Reads keywords SGOF and SWOF
+    inline void readSGWOF(std::istream& is, table_t& relperm_table,
+			  const std::string& field_name, int ncol)
+    {
+	std::vector<double> record;
+	std::vector<std::vector<double> > table(ncol);	
+	while (!is.eof()) {
+	    record.clear();
+	    readRelPermTable(is, record);
+	    const int rec_size = record.size()/ncol;
+	    for (int k=0; k<ncol; ++k) {
+		table[k].resize(rec_size);
+	    }
+	    for (int i=0, n=-1; i<rec_size; ++i) {
+		for (int k=0; k<ncol; ++k) {
+		    table[k][i] = record[++n];
+		}
+	    }
+	    insertDefaultValues(table, ncol);
+	    relperm_table.push_back(table);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		std::ostringstream oss;
+		oss << "Error reading " << field_name
+		    << ". Next character is " <<  (char)is.peek();
+		THROW(oss.str());
+	    }
+	}
+    }
 
 } // anon namespace
 

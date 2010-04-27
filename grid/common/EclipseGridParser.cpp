@@ -88,6 +88,7 @@ namespace EclipseKeywords
           string("TITLE"),    string("START"),  string("DATES"),
 	  string("DENSITY"),  string("PVDG"),   string("PVDO"),
 	  string("PVTG"),     string("PVTO"),   string("PVTW"),
+	  string("SGOF"),     string("SWOF"),
 	  // The following fields only have a dummy implementation
 	  // that allows us to ignore them.
           "SWFN",
