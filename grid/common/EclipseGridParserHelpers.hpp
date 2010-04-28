@@ -357,7 +357,7 @@ namespace
 	}
     }
 
-    // Reads keywords PVDG, PVDO
+    // Reads keywords PVDG, PVDO, ROCKTAB
     inline void readPvdTable(std::istream& is, table_t& pvd_table,
 			     const std::string& field_name, int ncol)
     {

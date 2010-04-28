@@ -468,7 +468,7 @@ struct PVTW : public SpecialBase
 	    if (action == 1) {
 		return;     // Alphabetic char. Read next keyword.
 	    } else if (action == 2) {
-		THROW("Error reading DENSITY. Next character is "
+		THROW("Error reading PVTW. Next character is "
 		      <<  (char)is.peek());
 	    }
 	}
@@ -480,6 +480,67 @@ struct PVTW : public SpecialBase
 	for (int i=0; i<(int)pvtw_.size(); ++i) {
 	    os << pvtw_[i][0] << " " << pvtw_[i][1] << " " << pvtw_[i][2]
 	       << " " << pvtw_[i][3] << " " << pvtw_[i][4] << '\n';
+	}
+	os << '\n';
+    }
+};
+
+
+struct ROCK : public SpecialBase
+{
+    std::vector<std::vector<double> > rock_compressibilities_;
+
+    virtual std::string name() const {return std::string("ROCK");}
+
+    virtual void read(std::istream& is)
+    {
+	while (!is.eof()) {
+	    std::vector<double> rock;
+	    readVectorData(is, rock);
+	    rock_compressibilities_.push_back(rock);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading ROCK. Next character is "
+		      << (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int i=0; i<(int)rock_compressibilities_.size(); ++i) {
+	    os << rock_compressibilities_[i][0] << " "
+	       << rock_compressibilities_[i][1] << '\n';
+	}
+	os << '\n';
+    }
+};
+
+
+struct ROCKTAB : public SpecialBase
+{
+    table_t rocktab_; 
+
+    virtual std::string name() const {return std::string("ROCKTAB");}
+
+    virtual void read(std::istream& is)
+    {
+	readPvdTable(is, rocktab_, name(), 3);
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int prn=0; prn<(int)rocktab_.size(); ++prn) {
+	    for (int i=0; i<(int)rocktab_[prn][0].size(); ++i) {
+		os << rocktab_[prn][0][i] << " " << rocktab_[prn][1][i] << " "
+		   << rocktab_[prn][2][i] << '\n';
+	    }
+	    os << '\n';
 	}
 	os << '\n';
     }

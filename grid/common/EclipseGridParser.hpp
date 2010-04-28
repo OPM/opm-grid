@@ -125,6 +125,8 @@ public:                                                                         
     SPECIAL_FIELD(PVTW);
     SPECIAL_FIELD(SGOF);
     SPECIAL_FIELD(SWOF);
+    SPECIAL_FIELD(ROCK);
+    SPECIAL_FIELD(ROCKTAB);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.

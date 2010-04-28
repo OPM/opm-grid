@@ -88,7 +88,8 @@ namespace EclipseKeywords
           string("TITLE"),    string("START"),  string("DATES"),
 	  string("DENSITY"),  string("PVDG"),   string("PVDO"),
 	  string("PVTG"),     string("PVTO"),   string("PVTW"),
-	  string("SGOF"),     string("SWOF"),
+	  string("SGOF"),     string("SWOF"),   string("ROCKTAB"),
+	  string("ROCK"),
 	  // The following fields only have a dummy implementation
 	  // that allows us to ignore them.
           "SWFN",
@@ -105,7 +106,7 @@ namespace EclipseKeywords
     string ignore_with_data[] =
 	{ string("MAPUNITS"), string("MAPAXES"),  string("GRIDUNIT"),
 	  string("NTG"),      string("REGDIMS"),  string("WELLDIMS"),
-	  string("NSTACK"),   string("ROCK"), 	  string("SATNUM"),
+	  string("NSTACK"),   string("SATNUM"),
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
 	  string("WOIR"),     string("TSTEP"),    string("BOX")
