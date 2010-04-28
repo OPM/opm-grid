@@ -48,7 +48,7 @@ namespace Dune
        @brief A class for doing steady state upscaling.
        @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
     */
-    class SteadyStateUpscaler : public SinglePhaseUpscaler
+    class SteadyStateUpscaler : public SinglePhaseUpscaler<>
     {
     public:
 	// ------- Methods -------

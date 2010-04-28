@@ -44,7 +44,8 @@
 namespace Dune
 {
 
-    inline SinglePhaseUpscaler::SinglePhaseUpscaler()
+    template <class Traits>
+    inline SinglePhaseUpscaler<Traits>::SinglePhaseUpscaler()
 	: bctype_(Fixed),
 	  twodim_hack_(false),
 	  residual_tolerance_(1e-8),
@@ -56,7 +57,8 @@ namespace Dune
 
 
 
-    inline void SinglePhaseUpscaler::init(const parameter::ParameterGroup& param)
+    template <class Traits>
+    inline void SinglePhaseUpscaler<Traits>::init(const parameter::ParameterGroup& param)
     {
 	initImpl(param);
 	initFinal(param);
@@ -64,7 +66,9 @@ namespace Dune
 
 
 
-    inline void SinglePhaseUpscaler::initImpl(const parameter::ParameterGroup& param)
+
+    template <class Traits>
+    inline void SinglePhaseUpscaler<Traits>::initImpl(const parameter::ParameterGroup& param)
     {
         // Request the boundary condition type parameter early since,
         // depending on the actual type, we may have to manufacture
@@ -104,7 +108,9 @@ namespace Dune
 
 
 
-    inline void SinglePhaseUpscaler::initFinal(const parameter::ParameterGroup& param)
+
+    template <class Traits>
+    inline void SinglePhaseUpscaler<Traits>::initFinal(const parameter::ParameterGroup& param)
     {
 	// Report any unused parameters.
 	std::cout << "====================   Unused parameters:   ====================\n";
@@ -115,14 +121,15 @@ namespace Dune
 
 
 
-    inline void SinglePhaseUpscaler::init(const EclipseGridParser& parser,
-                                          BoundaryConditionType bctype,
-                                          double perm_threshold,
-                                          double z_tolerance,
-                                          double residual_tolerance,
-                                          int linsolver_verbosity,
-                                          int linsolver_type,
-                                          bool twodim_hack)
+    template <class Traits>
+    inline void SinglePhaseUpscaler<Traits>::init(const EclipseGridParser& parser,
+                                                  BoundaryConditionType bctype,
+                                                  double perm_threshold,
+                                                  double z_tolerance,
+                                                  double residual_tolerance,
+                                                  int linsolver_verbosity,
+                                                  int linsolver_type,
+                                                  bool twodim_hack)
     {
 	bctype_ = bctype;
 	residual_tolerance_ = residual_tolerance;
@@ -146,8 +153,10 @@ namespace Dune
 
 
 
-    inline const SinglePhaseUpscaler::GridType&
-    SinglePhaseUpscaler::grid() const
+
+    template <class Traits>
+    inline const typename SinglePhaseUpscaler<Traits>::GridType&
+    SinglePhaseUpscaler<Traits>::grid() const
     {
 	return grid_;
     }
@@ -155,8 +164,9 @@ namespace Dune
 
 
 
+    template <class Traits>
     inline void
-    SinglePhaseUpscaler::setBoundaryConditionType(BoundaryConditionType type)
+    SinglePhaseUpscaler<Traits>::setBoundaryConditionType(BoundaryConditionType type)
     {
         if ((type == Periodic && bctype_ != Periodic)
             || (type != Periodic && bctype_ == Periodic)) {
@@ -174,8 +184,10 @@ namespace Dune
 
 
 
+
+    template <class Traits>
     inline void
-    SinglePhaseUpscaler::setPermeability(const int cell_index, const permtensor_t& k)
+    SinglePhaseUpscaler<Traits>::setPermeability(const int cell_index, const permtensor_t& k)
     {
         res_prop_.permeabilityModifiable(cell_index) = k;
     }
@@ -183,8 +195,9 @@ namespace Dune
 
 
 
-    inline SinglePhaseUpscaler::permtensor_t
-    SinglePhaseUpscaler::upscaleSinglePhase()
+    template <class Traits>
+    inline typename SinglePhaseUpscaler<Traits>::permtensor_t
+    SinglePhaseUpscaler<Traits>::upscaleSinglePhase()
     {
         ReservoirPropertyTracerFluid fluid;
         return upscaleEffectivePerm(fluid);
@@ -193,9 +206,10 @@ namespace Dune
 
 
 
+    template <class Traits>
     template <class FluidInterface>
-    inline SinglePhaseUpscaler::permtensor_t
-    SinglePhaseUpscaler::upscaleEffectivePerm(const FluidInterface& fluid)
+    inline typename SinglePhaseUpscaler<Traits>::permtensor_t
+    SinglePhaseUpscaler<Traits>::upscaleEffectivePerm(const FluidInterface& fluid)
     {
 	int num_cells = ginterf_.numberOfCells();
 	// No source or sink.
@@ -249,10 +263,11 @@ namespace Dune
 
 
 
+    template <class Traits>
     template <class FlowSol>
-    double SinglePhaseUpscaler::computeAverageVelocity(const FlowSol& flow_solution,
-					    const int flow_dir,
-					    const int pdrop_dir) const
+    double SinglePhaseUpscaler<Traits>::computeAverageVelocity(const FlowSol& flow_solution,
+                                                               const int flow_dir,
+                                                               const int pdrop_dir) const
     {
 	double side1_flux = 0.0;
 	double side2_flux = 0.0;
@@ -308,7 +323,8 @@ namespace Dune
 
 
 
-    inline double SinglePhaseUpscaler::computeDelta(const int flow_dir) const
+    template <class Traits>
+    inline double SinglePhaseUpscaler<Traits>::computeDelta(const int flow_dir) const
     {
 	double side1_pos = 0.0;
 	double side2_pos = 0.0;
@@ -339,7 +355,8 @@ namespace Dune
 
 
 
-    double SinglePhaseUpscaler::upscalePorosity() const
+    template <class Traits>
+    double SinglePhaseUpscaler<Traits>::upscalePorosity() const
     {
         double total_vol = 0.0;
         double total_pore_vol = 0.0;

@@ -36,22 +36,14 @@
 #ifndef OPENRS_SINGLEPHASEUPSCALER_HEADER
 #define OPENRS_SINGLEPHASEUPSCALER_HEADER
 
-#define TEST_ANISO_RELPERM 0
-
 #include "config.h"
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/EclipseGridParser.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
-#if TEST_ANISO_RELPERM
-#include <dune/solvers/common/ReservoirPropertyCapillaryAnisotropicRelperm.hpp>
-#include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
-#else
-#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
-#include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
-#endif
-#include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/upscaling/UpscalingTraits.hpp>
+
 
 namespace Dune
 {
@@ -59,6 +51,7 @@ namespace Dune
        @brief A class for doing single phase (permeability) upscaling.
        @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
     */
+    template <class Traits = UpscalingTraitsBasic>
     class SinglePhaseUpscaler
     {
     protected:
@@ -67,14 +60,10 @@ namespace Dune
 	typedef CpGrid GridType;
  	enum { Dimension = GridType::dimension };
 	typedef GridInterfaceEuler<GridType> GridInterface;
-#if TEST_ANISO_RELPERM
- 	typedef ReservoirPropertyCapillaryAnisotropicRelperm<Dimension> ResProp;
-#else
- 	typedef ReservoirPropertyCapillary<Dimension> ResProp;
-#endif
+        typedef typename Traits::template ResProp<Dimension>::Type ResProp;
 
 	/// A type for the upscaled permeability.
-	typedef ResProp::MutablePermTensor permtensor_t;
+	typedef typename ResProp::MutablePermTensor permtensor_t;
 
 	enum BoundaryConditionType { Fixed = 0, Linear = 1, Periodic = 2 };
 
@@ -121,17 +110,7 @@ namespace Dune
 	typedef GridInterface::CellIterator                CellIter;
 	typedef CellIter::FaceIterator                     FaceIter;
 	typedef BasicBoundaryConditions<true, true>             BCs;
-#if TEST_ANISO_RELPERM
-	typedef IncompFlowSolverHybrid<GridInterface,
-				       ResProp,
-				       BCs,
-				       MimeticIPAnisoRelpermEvaluator> FlowSolver;
-#else
-	typedef IncompFlowSolverHybrid<GridInterface,
-				       ResProp,
-				       BCs,
-				       MimeticIPEvaluator> FlowSolver;
-#endif
+        typedef typename Traits::template FlowSolver<GridInterface, BCs>::Type FlowSolver;
 
 	// ------- Methods -------
 	template <class FlowSol>

@@ -49,7 +49,7 @@ namespace Dune
 {
 
     inline SteadyStateUpscaler::SteadyStateUpscaler()
-	: SinglePhaseUpscaler(),
+	: SinglePhaseUpscaler<>(),
 	  output_vtk_(false),
           print_inoutflows_(false),
 	  simulation_steps_(10),
@@ -60,7 +60,7 @@ namespace Dune
 
     inline void SteadyStateUpscaler::initImpl(const parameter::ParameterGroup& param)
     {
-	SinglePhaseUpscaler::initImpl(param);
+	SinglePhaseUpscaler<>::initImpl(param);
 	output_vtk_ = param.getDefault("output_vtk", output_vtk_);
 	print_inoutflows_ = param.getDefault("print_inoutflows", print_inoutflows_);
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
