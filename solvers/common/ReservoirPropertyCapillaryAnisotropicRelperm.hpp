@@ -47,12 +47,18 @@ namespace Dune
     template <int dim>
     struct TensorMobility
     {
-	FullMatrix<double, SharedData, COrdering> mob;
-
 	TensorMobility()
 	    : mob(dim, dim, tensor_storage_.data())
 	{
 	}
+
+	// Must be implemented to set mob.data() correctly.
+	TensorMobility(const TensorMobility& other)
+            : tensor_storage_(other.tensor_storage_),
+              mob(dim, dim, tensor_storage_.data())
+        {
+        }
+
 	void setToAverage(const TensorMobility& m1, const TensorMobility& m2)
 	{
 	    for (int i = 0; i < dim*dim; ++i) {
@@ -76,10 +82,12 @@ namespace Dune
 	    return prod(mob, v);
 	}
     private:
-	// If allowing copy, remember to set mob.data() properly.
-	TensorMobility(const TensorMobility&);
+	// If allowing assignment, remember to set mob.data() properly.
 	TensorMobility& operator=(const TensorMobility&);
 	boost::array<double, dim*dim> tensor_storage_;
+    public:
+	FullMatrix<double, SharedData, COrdering> mob;
+
     };
 
 
