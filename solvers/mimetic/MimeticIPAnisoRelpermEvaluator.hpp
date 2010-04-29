@@ -60,17 +60,18 @@ namespace Dune {
     ///    through the mimetic finite difference method of Brezzi
     ///    et. al.
     ///
-    /// @tparam CellIter
-    ///    Iterator type through which cell data such as the volume,
-    ///    centroid, and connecting faces may be accessed.  @code
-    ///    CellIter @endcode is expected to expose the method @code
-    ///    operator->() @endcode.
+    /// @tparam GridInterface
+    ///    Grid interface class expected to expose members such as
+    ///    a @code CellIterator @endcode type with @code operator->()
+    ///    @endcode exposing centroid, volume, and intersections.
     ///
-    /// @tparam dim
-    ///    Physical dimension of geometric quantities.  Usually, @code
-    ///    dim==3 @endcode in simulations on corner-point grid models.
+    /// @tparam RockInterface
+    ///    Rock interface class expected to expose a @code
+    ///    permeability() @endcode member.
     ///
     /// @tparam computeInverseIP
+    ///    NOTE: This template parameter no longer exists, but the 
+    ///          concept warrants enough attention to keep the doc.
     ///    Whether or not to compute the @em inverse of the mimetic
     ///    inner product matrix.  Specifically, if @f$B@f$ is the
     ///    matrix representation of the mimetic inner product, then
@@ -80,14 +81,16 @@ namespace Dune {
     ///    to hybrid discretization methods based on Schur complement
     ///    reduction which only need access to @f$B^{-1}@f$.  In the
     ///    mimetic case there is an explicit formula for said inverse.
-    template<class CellIter, int dim, bool computeInverseIP> class MimeticIPAnisoRelpermEvaluator;
-
-    /// @brief
-    ///    Specialization of general class template for the case of
-    ///    computing the inverse inner product.
-    template<class CellIter, int dim>
-    class MimeticIPAnisoRelpermEvaluator<CellIter,dim,true> {
+    template<class GridInterface, class RockInterface>
+    class MimeticIPAnisoRelpermEvaluator
+    {
     public:
+        /// @brief
+        ///    The number of space dimensions.
+        enum { dim = GridInterface::Dimension };
+        /// @brief
+        ///    The iterator type for iterating over grid cells.
+        typedef typename GridInterface::CellIterator CellIter;
         /// @brief
         ///    The element type of the matrix representation of the
         ///    mimetic inner product.  Assumed to be a floating point
@@ -98,7 +101,8 @@ namespace Dune {
 
         /// @brief Default constructor.
         MimeticIPAnisoRelpermEvaluator()
-            : max_nf_(-1)
+            : max_nf_(-1),
+              prock_(0)
         {}
 
 
@@ -116,7 +120,8 @@ namespace Dune {
               t2_           (max_nf * dim   ),
               second_term_  (               ),
               n_            (               ),
-              Kg_           (               )
+              Kg_           (               ),
+              prock_        (        0      )
         {}
 
 
@@ -162,7 +167,7 @@ namespace Dune {
             second_term_.allocate(sz2.begin(), sz2.end());
 
             std::transform(sz.begin(), sz.end(), sz2.begin(),
-                           boost::bind(std::multiplies<vt>(), _1, dim));
+                           boost::bind(std::multiplies<vt>(), _1, int(dim)));
 
             n_.allocate(sz2.begin(), sz2.end());
 
@@ -178,8 +183,8 @@ namespace Dune {
         ///    regularization term in order to guarantee a positive
         ///    definite matrix.
         ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
+        /// @tparam RockInterface
+        ///    Type representing rock properties.  Assumed to
         ///    expose a method @code permeability(i) @endcode which
         ///    retrieves the static permeability tensor of cell @code
         ///    i @endcode.  The permeability tensor, @$K@$, is in
@@ -199,11 +204,10 @@ namespace Dune {
         /// @param [in] nf
         ///    Number of faces (i.e., number of neighbours) of cell
         ///    @code *c @endcode.
-        template<class RI, class Point>
         void buildStaticContrib(const CellIter& c,
-                                const RI&       r,
-                                const Point&    grav,
-                                const int       nf)
+                                const RockInterface& r,
+                                const typename CellIter::Vector& grav,
+                                const int nf)
         {
             // Binv = (N*lambda*K*N'   +   t*diag(A)*(I - Q*Q')*diag(A))/vol
             //         ^                     ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -213,6 +217,10 @@ namespace Dune {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
             typedef typename FI      ::Vector       FV;
+
+            // Now we need to remember the rocks, since we will need
+            // the permeability for dynamic assembly.
+            prock_ = &r;
 
             const int ci = c->index();
 
@@ -267,8 +275,8 @@ namespace Dune {
         ///    Evaluate dynamic (saturation dependent) properties in
         ///    single cell.
         ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
+        /// @tparam FluidInterface
+        ///    Type representing fluid properties.  Assumed to
         ///    expose methods @code phaseDensities() @endcode and @code
         ///    phaseMobilities() @endcode for retrieving the phase
         ///    densities and (tensorial, anisotropic) phase mobilities,
@@ -282,14 +290,14 @@ namespace Dune {
         /// @param [in] c
         ///    Cell for which to evaluate the dynamic properties.
         ///
-        /// @param [in] r
+        /// @param [in] fl
         ///    Specific reservoir properties.
         ///
         /// @param [in] s
         ///    Vector of current fluid saturations.
-        template<class RI, class Sat>
+        template<class FluidInterface, class Sat>
         void computeDynamicParams(const CellIter&         c,
-                                  const RI&               r,
+                                  const FluidInterface&   fl,
                                   const std::vector<Sat>& s)
         {
             const int ci = c->index();
@@ -300,14 +308,14 @@ namespace Dune {
             SharedFortranMatrix pmob(dim, dim, &pmob_data[0]);
             SharedFortranMatrix Kg  (dim, 1  , &Kg_[ci][0]);
 
-            boost::array<Scalar, RI::NumberOfPhases> rho;
-            r.phaseDensities(ci, rho);
+            boost::array<Scalar, FluidInterface::NumberOfPhases> rho;
+            fl.phaseDensities(ci, rho);
 
             std::fill(dyn_Kg_.begin(), dyn_Kg_.end(), Scalar(0.0));
             std::fill(lambda_t.begin(), lambda_t.end(), 0.0);
 
-            for (int phase = 0; phase < RI::NumberOfPhases; ++phase) {
-                r.phaseMobility(phase, ci, s[ci], pmob);
+            for (int phase = 0; phase < FluidInterface::NumberOfPhases; ++phase) {
+                fl.phaseMobility(phase, ci, s[ci], pmob);
 
                 // dyn_Kg_ += (\rho_phase \lambda_phase) Kg
                 vecMulAdd_N(rho[phase], pmob, Kg.data(), Scalar(1.0), dyn_Kg_.data());
@@ -321,7 +329,7 @@ namespace Dune {
             // lambdaK_ = (\sum_i \lambda_i) K
             SharedFortranMatrix lambdaT(dim, dim, lambda_t.data());
             SharedFortranMatrix lambdaK(dim, dim, lambdaK_.data());
-            prod(lambdaT, r.permeability(ci), lambdaK);
+            prod(lambdaT, prock_->permeability(ci), lambdaK);
         }
 
 
@@ -416,7 +424,7 @@ namespace Dune {
         SparseTable<Scalar>           Kg_          ;
         boost::array<Scalar, dim>     dyn_Kg_      ;
         boost::array<double, dim*dim> lambdaK_     ;
-        //boost::array<double, dim*dim> lambda_;
+        const RockInterface*          prock_       ;
     };
 } // namespace Dune
 

@@ -50,7 +50,7 @@
 #include <dune/solvers/common/Matrix.hpp>
 
 namespace Dune {
-    /// @class MimeticIPEvaluator<CellIter,dim,computeInverseIP>
+    /// @class MimeticIPEvaluator<GridInterface, RockInterface>
     ///
     /// @brief
     ///    Defines a class template for computing a matrix
@@ -60,17 +60,18 @@ namespace Dune {
     ///    through the mimetic finite difference method of Brezzi
     ///    et. al.
     ///
-    /// @tparam CellIter
-    ///    Iterator type through which cell data such as the volume,
-    ///    centroid, and connecting faces may be accessed.  @code
-    ///    CellIter @endcode is expected to expose the method @code
-    ///    operator->() @endcode.
+    /// @tparam GridInterface
+    ///    Grid interface class expected to expose members such as
+    ///    a @code CellIterator @endcode type with @code operator->()
+    ///    @endcode exposing centroid, volume, and intersections.
     ///
-    /// @tparam dim
-    ///    Physical dimension of geometric quantities.  Usually, @code
-    ///    dim==3 @endcode in simulations on corner-point grid models.
+    /// @tparam RockInterface
+    ///    Rock interface class expected to expose a @code
+    ///    permeability() @endcode member.
     ///
     /// @tparam computeInverseIP
+    ///    NOTE: This template parameter no longer exists, but the 
+    ///          concept warrants enough attention to keep the doc.
     ///    Whether or not to compute the @em inverse of the mimetic
     ///    inner product matrix.  Specifically, if @f$B@f$ is the
     ///    matrix representation of the mimetic inner product, then
@@ -80,14 +81,16 @@ namespace Dune {
     ///    to hybrid discretization methods based on Schur complement
     ///    reduction which only need access to @f$B^{-1}@f$.  In the
     ///    mimetic case there is an explicit formula for said inverse.
-    template<class CellIter, int dim, bool computeInverseIP> class MimeticIPEvaluator;
-
-    /// @brief
-    ///    Specialization of general class template for the case of
-    ///    computing the inverse inner product.
-    template<class CellIter, int dim>
-    class MimeticIPEvaluator<CellIter,dim,true> {
+    template <class GridInterface, class RockInterface>
+    class MimeticIPEvaluator
+    {
     public:
+        /// @brief
+        ///    The number of space dimensions.
+        enum { dim = GridInterface::Dimension };
+        /// @brief
+        ///    The iterator type for iterating over grid cells.
+        typedef typename GridInterface::CellIterator CellIter;
         /// @brief
         ///    The element type of the matrix representation of the
         ///    mimetic inner product.  Assumed to be a floating point
@@ -174,8 +177,8 @@ namespace Dune {
         ///    regularization term in order to guarantee a positive
         ///    definite matrix.
         ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
+        /// @tparam RockInterface
+        ///    Type representing rock properties.  Assumed to
         ///    expose a method @code permeability(i) @endcode which
         ///    retrieves the static permeability tensor of cell @code
         ///    i @endcode.  The permeability tensor, @$K@$, is in
@@ -189,17 +192,16 @@ namespace Dune {
         ///    inner product.
         ///
         /// @param [in] r
-        ///    Specific reservoir properties.  Only the permeability
-        ///    is used in method @code buildMatrix() @endcode.
+        ///    Specific rock properties.  Only the permeability
+        ///    is used in method @code buildStaticContrib() @endcode.
         ///
         /// @param [in] nf
         ///    Number of faces (i.e., number of neighbours) of cell
         ///    @code *c @endcode.
-        template<class RI, class Point>
-        void buildStaticContrib(const CellIter& c   ,
-                                const RI&       r   ,
-                                const Point&    grav,
-                                const int       nf)
+        void buildStaticContrib(const CellIter& c,
+                                const RockInterface& r,
+                                const typename CellIter::Vector& grav,
+                                const int nf)
         {
             typedef typename CellIter::FaceIterator FI;
             typedef typename CellIter::Vector       CV;
@@ -220,8 +222,8 @@ namespace Dune {
             // Clear matrices of any residual data.
             zero(Binv);  zero(T1);  zero(T2);  zero(fa);
 
-            typename RI::PermTensor K  = r.permeability(ci);
-            const    Point          Kg = prod(K, grav);
+            typename RockInterface::PermTensor K  = r.permeability(ci);
+            const    CV          Kg = prod(K, grav);
 
             // Setup:    Binv  <- I, T1 <- N, T2 <- C
             // Complete: gflux <- N*K*g
@@ -272,8 +274,8 @@ namespace Dune {
         ///    Evaluate dynamic (saturation dependent) properties in
         ///    single cell.
         ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
+        /// @tparam FluidInterface
+        ///    Type representing fluid properties.  Assumed to
         ///    expose methods @code phaseDensities() @endcode and @code
         ///    phaseMobilities() @endcode for retrieving the phase
         ///    densities and phase mobilities, respectively.
@@ -286,22 +288,22 @@ namespace Dune {
         /// @param [in] c
         ///    Cell for which to evaluate the dynamic properties.
         ///
-        /// @param [in] r
-        ///    Specific reservoir properties.
+        /// @param [in] fl
+        ///    Specific fluid properties.
         ///
         /// @param [in] s
         ///    Vector of current fluid saturations.
-        template<class RI, class Sat>
+        template<class FluidInterface, class Sat>
         void computeDynamicParams(const CellIter&         c,
-                                  const RI&               r,
+                                  const FluidInterface&   fl,
                                   const std::vector<Sat>& s)
         {
             const int ci = c->index();
 
-            boost::array<Scalar,RI::NumberOfPhases> mob ;
-            boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobilities(ci, s[ci],            mob);
-            r.phaseDensities (ci,                   rho);
+            boost::array<Scalar, FluidInterface::NumberOfPhases> mob ;
+            boost::array<Scalar, FluidInterface::NumberOfPhases> rho ;
+            fl.phaseMobilities(ci, s[ci], mob);
+            fl.phaseDensities (ci, rho);
 
             totmob_   = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
             mob_dens_ = std::inner_product(rho.begin(), rho.end(), mob.begin(),
@@ -313,12 +315,6 @@ namespace Dune {
         ///    Retrieve the dynamic (mobility updated) inverse mimetic
         ///    inner product matrix for specific cell.
         ///
-        /// @tparam RI
-        ///    Type representing reservoir properties.  Assumed to
-        ///    expose a method @code phaseMobilities(cell,s,mob) @endcode
-        ///    which retrieves the phase mobilities of all phases
-        ///    evaluated at the saturations @code s @endcode.
-        ///
         /// @tparam SP
         ///    Type representing the @code FullMatrix<T,SP,OP>
         ///    @endcode storage policy of the matrix into which the
@@ -327,11 +323,6 @@ namespace Dune {
         /// @param [in] c
         ///    Cell for which to evaluate the dynamic inverse mimetic
         ///    inner product.
-        ///
-        /// @param [in] r
-        ///    Specific reservoir properties.  Only the phase
-        ///    mobilities is used in method @code getInverseMatrix()
-        ///    @endcode.
         ///
         /// @param [in] s
         ///    Fluid saturations.
@@ -460,14 +451,6 @@ namespace Dune {
         ///    Computes the mimetic discretization of the gravity term
         ///    in Darcy's law.
         ///
-        /// @tparam Point
-        ///    Type representing a geometric point or a vector between
-        ///    geometric points (e.g., a geometric direction and
-        ///    distance) in the discretized model.  Usually @code
-        ///    Point @endcode is an alias for a vector whose size is
-        ///    known at compile time, such as @code FieldVector<T,3>
-        ///    @endcode.
-        ///
         /// @tparam Vector
         ///    Type representing a possibly run-time sized
         ///    one-dimensional mathematical vector.
@@ -490,13 +473,14 @@ namespace Dune {
         ///    Mimetic discretization of the Darcy law gravity term.
         ///    One scalar value for each face of cell @code *c
         ///    @endcode.
-        template<class Point, class Vector>
+        template<class Vector>
         void gravityTerm(const CellIter& c,
-                         const Point&    grav,
+                         const typename CellIter::Vector& grav,
                          const Scalar    omega,
                          Vector&         gterm) const
         {
             typedef typename CellIter::FaceIterator FI;
+            typedef typename CellIter::Vector Point;
 
             ASSERT (gterm.size() <= max_nf_);
 
@@ -509,27 +493,27 @@ namespace Dune {
             }
         }
 
-        template<class Point, class Vector>
+        template<class Vector>
         void gravityTerm(const CellIter& c,
-                         const Point&    grav,
+                         const typename CellIter::Vector&    grav,
                          Vector&         gterm) const
         {
             gravityTerm(c, grav, mob_dens_ / totmob_, gterm);
         }
 
-        template<class RI, class Sat, class Point, class Vector>
+        template<class FluidInterface, class Sat, class Vector>
         void gravityTerm(const CellIter&         c,
-                         const RI&               r,
+                         const FluidInterface&   fl,
                          const std::vector<Sat>& s,
-                         const Point&            grav,
+                         const typename CellIter::Vector& grav,
                          Vector&                 gterm) const
         {
             const int ci = c->index();
 
-            boost::array<Scalar,RI::NumberOfPhases> mob ;
-            boost::array<Scalar,RI::NumberOfPhases> rho ;
-            r.phaseMobilities(ci, s[ci],              mob);
-            r.phaseDensities (ci,                     rho);
+            boost::array<Scalar, FluidInterface::NumberOfPhases> mob;
+            boost::array<Scalar, FluidInterface::NumberOfPhases> rho;
+            fl.phaseMobilities(ci, s[ci], mob);
+            fl.phaseDensities (ci, rho);
 
             Scalar totmob = std::accumulate   (mob.begin(), mob.end(), Scalar(0.0));
             Scalar omega  = std::inner_product(rho.begin(), rho.end(), mob.begin(),

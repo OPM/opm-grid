@@ -359,7 +359,7 @@ namespace Dune {
     template<class                          GridInterface,
              class                          ReservoirInterface,
              class                          BCInterface,
-             template<class,int,bool> class InnerProduct>
+             template<class,class> class    InnerProduct>
     class ParIncompFlowSolverHybrid {
         /// @brief
         ///    The element type of the matrix representation of the
@@ -568,7 +568,7 @@ namespace Dune {
 
             typedef typename GridInterface     ::CellIterator               CI;
             typedef typename ReservoirInterface::PermTensor                 PermTensor;
-            typedef          InnerProduct<CI,GridInterface::Dimension,true> IP;
+            typedef          InnerProduct<GridInterface, ReservoirInterface> IP;
 
             IP ip(max_ncf_);
             int i = 0;
@@ -1257,7 +1257,7 @@ namespace Dune {
             // are no prescribed pressures (i.e., Dirichlet BC's).
             do_regularization_ = true;
 
-            typedef InnerProduct<CI,GridInterface::Dimension,true> IP;
+            typedef InnerProduct<GridInterface, ReservoirInterface> IP;
             IP ip(max_ncf_);
 
             // Assemble dynamic contributions for each cell

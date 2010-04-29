@@ -85,7 +85,8 @@ void test_evaluator(const Interface& g)
         max_nf = std::max(max_nf, nf);
     }
 
-    Dune::MimeticIPAnisoRelpermEvaluator<CI, dim, true> ip(max_nf);
+    typedef int DummyClass;
+    Dune::MimeticIPAnisoRelpermEvaluator<Interface, DummyClass> ip(max_nf);
 
     // Set dummy permeability K=diag(10,1,...,1,0.1).
     std::vector<Scalar> perm(dim * dim, Scalar(0.0));

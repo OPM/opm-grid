@@ -327,17 +327,13 @@ namespace Dune {
     ///    delimiters @code facebegin() @endcode and @code faceend()
     ///    @endcode to traverse the faces of a cell.
     ///
-    /// @tparam ReservoirInterface
+    /// @tparam RockInterface
     ///    Type presenting an interface to reservoir properties such
-    ///    as permeability, porosity, and various fluid
-    ///    characteristics (density, mobility &c).  The type is
+    ///    as permeability and porosity.  The type is
     ///    assumed to expose a method, @code permeability() @endcode
     ///    through which the assigned permeability of a single grid
     ///    cell, represented by a @code GridInterface::CellIter
-    ///    @endcode, may be recovered.  The type is further expected
-    ///    to provide methods @code phaseMobilities() @endcode and @code
-    ///    phaseDensities() @endcode for phase mobility and density in a
-    ///    single cell, respectively.
+    ///    @endcode, may be recovered.
     ///
     /// @tparam BCInterface
     ///    Type presenting an interface to boundary conditions.  The
@@ -354,10 +350,10 @@ namespace Dune {
     /// @tparam InnerProduct
     ///    Type presenting a specific inner product defining a
     ///    discretization of the Darcy equation.
-    template<class                          GridInterface,
-             class                          ReservoirInterface,
-             class                          BCInterface,
-             template<class,int,bool> class InnerProduct>
+    template <class GridInterface,
+              class RockInterface,
+              class BCInterface,
+              template <class GridIF, class RockIF> class InnerProduct>
     class IncompFlowSolverHybrid {
         /// @brief
         ///    The element type of the matrix representation of the
@@ -460,7 +456,7 @@ namespace Dune {
         ///    inspected in @code init() @endcode.
         template<class Point>
         void init(const GridInterface&      g,
-                  const ReservoirInterface& r,
+                  const RockInterface& r,
                   const Point&              grav,
                   const BCInterface&        bc)
         {
@@ -546,7 +542,7 @@ namespace Dune {
         ///    @code computeInnerProducts() @endcode, we only inspect
         ///    the permeability field of @code r @endcode.
         template<class Point>
-        void computeInnerProducts(const ReservoirInterface& r,
+        void computeInnerProducts(const RockInterface& r,
                                   const Point& grav)
         {
             ASSERT2 (matrix_structure_valid_,
@@ -753,8 +749,7 @@ namespace Dune {
         BdryIdMapType        bdry_id_map_;
         std::vector<int>     ppartner_dof_;
 
-        InnerProduct<typename GridInterface::CellIterator,
-                     GridInterface::Dimension, true> ip_;
+        InnerProduct<GridInterface, RockInterface> ip_;
 
         // ----------------------------------------------------------------
         bool cleared_state_;
@@ -1171,7 +1166,7 @@ namespace Dune {
 
         // ----------------------------------------------------------------
         template<class FluidInterface>
-        void assembleDynamic(const FluidInterface&      r  ,
+        void assembleDynamic(const FluidInterface&      fl ,
                              const std::vector<double>& sat,
                              const BCInterface&         bc ,
                              const std::vector<double>& src)
@@ -1212,7 +1207,7 @@ namespace Dune {
                 setExternalContrib(c, c0, bc, src[ci], rhs,
                                    facetype, condval, ppartner);
 
-                ip_.computeDynamicParams(c, r, sat);
+                ip_.computeDynamicParams(c, fl, sat);
 
                 SharedFortranMatrix    S(nf, nf, &data_store[0]);
                 ip_.getInverseMatrix(c, S);
@@ -1357,7 +1352,7 @@ namespace Dune {
             std::vector<Scalar>& p = flowSolution_.pressure_;
             SparseTable<Scalar>& v = flowSolution_.outflux_;
 
-            //std::vector<double> mob(ReservoirInterface::NumberOfPhases);
+            //std::vector<double> mob(FluidInterface::NumberOfPhases);
             std::vector<double> pi   (max_ncf_);
             std::vector<double> gflux(max_ncf_);
             std::vector<double> Binv_storage(max_ncf_ * max_ncf_);

@@ -48,7 +48,7 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     template <template <int> class ResPropT = ReservoirPropertyCapillary,
-	      template <class, int, bool> class InnerProd = MimeticIPEvaluator>
+	      template <class, class> class InnerProd = MimeticIPEvaluator>
     class SimulatorTester : public SimulatorBase<ResPropT, InnerProd>
     {
     public:
