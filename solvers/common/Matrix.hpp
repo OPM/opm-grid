@@ -580,6 +580,23 @@ namespace Dune {
     }
 
     /// @brief
+    ///    Make an identity @code FullMatrix @endcode.
+    ///
+    /// @tparam Matrix
+    ///    Matrix type.
+    ///
+    /// @param A
+    ///    Specific matrix which will be zero-filled upon return.
+    template<class Matrix>
+    void eye(Matrix& A)
+    {
+        zero(A);
+        for (int i = 0; i < std::min(A.numRows(), A.numCols()); ++i) {
+            A(i, i) = 1.0;
+        }
+    }
+
+    /// @brief
     ///    Compute matrix trace (i.e., sum(diag(A))).
     ///
     /// @tparam Matrix
