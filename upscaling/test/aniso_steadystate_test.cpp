@@ -33,6 +33,19 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-int main()
+//#define VERBOSE
+
+#include <dune/upscaling/SteadyStateUpscalerManager.hpp>
+#include <dune/upscaling/UpscalingTraits.hpp>
+
+using namespace Dune;
+
+int main(int argc, char** argv)
 {
+    // Initialize.
+    parameter::ParameterGroup param(argc, argv);
+    // MPIHelper::instance(argc,argv);
+
+    SteadyStateUpscalerManager<UpscalingTraitsAnisoRelperm> mgr;
+    mgr.upscale(param);
 }

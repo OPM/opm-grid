@@ -88,6 +88,24 @@ namespace Dune
 
 
 
+    namespace {
+        void thresholdMobility(double& m, double threshold)
+        {
+            m = std::max(m, threshold);
+        }
+        // The matrix variant expects diagonal mobilities.
+        template <class SomeMatrixType>
+        void thresholdMobility(SomeMatrixType& m, double threshold)
+        {
+            for (int i = 0; i < std::min(m.numRows(), m.numCols()); ++i) {
+                m(i, i) = std::max(m(i, i), threshold);
+            }
+        }
+    } // anon namespace
+
+
+
+
     template <class Traits>
     inline std::pair<typename SteadyStateUpscaler<Traits>::permtensor_t,
                      typename SteadyStateUpscaler<Traits>::permtensor_t>
@@ -191,19 +209,22 @@ namespace Dune
         // 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
         // Compute phase mobilities.
-        std::vector<double> mob1(num_cells, 0.0);
-        std::vector<double> mob2(num_cells, 0.0);
+        typedef typename Super::ResProp::Mobility Mob;
+        std::vector<Mob> mob1(num_cells);
+        std::vector<Mob> mob2(num_cells);
         const double mob1_threshold = relperm_threshold_ / this->res_prop_.viscosityFirstPhase();
         const double mob2_threshold = relperm_threshold_ / this->res_prop_.viscositySecondPhase();
         for (int c = 0; c < num_cells; ++c) {
-            mob1[c] = std::max(this->res_prop_.mobilityFirstPhase(c, saturation[c]), mob1_threshold);
-            mob2[c] = std::max(this->res_prop_.mobilitySecondPhase(c, saturation[c]), mob2_threshold);
+            this->res_prop_.phaseMobility(0, c, saturation[c], mob1[c].mob);
+            thresholdMobility(mob1[c].mob, mob1_threshold);
+            this->res_prop_.phaseMobility(1, c, saturation[c], mob2[c].mob);
+            thresholdMobility(mob2[c].mob, mob2_threshold);
         }
 
         // Compute upscaled relperm for each phase.
-        ReservoirPropertyFixedMobility fluid_first(mob1);
+        ReservoirPropertyFixedMobility<Mob> fluid_first(mob1);
         permtensor_t eff_Kw = Super::upscaleEffectivePerm(fluid_first);
-        ReservoirPropertyFixedMobility fluid_second(mob2);
+        ReservoirPropertyFixedMobility<Mob> fluid_second(mob2);
         permtensor_t eff_Ko = Super::upscaleEffectivePerm(fluid_second);
 
         // Set the steady state saturation fields for eventual outside access.
