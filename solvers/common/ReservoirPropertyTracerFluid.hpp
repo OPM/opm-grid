@@ -45,7 +45,16 @@ namespace Dune {
         void phaseMobilities(int /*cell_index*/, double saturation, Vector& mobility) const
         {
             mobility[0] = saturation;
-            mobility[1] = 1 - saturation;
+            mobility[1] = 1.0 - saturation;
+        }
+
+        // This one is so far only used for tensorial mobs, so we cheat a little.
+        template <class ActualMobType>
+        void phaseMobility(int phase, int cell_index, double saturation, ActualMobType& mobility) const
+        {
+            double m = phase == 0 ? saturation : 1.0 - saturation;
+            eye(mobility);
+            mobility *= m;
         }
 
         template<class Vector>

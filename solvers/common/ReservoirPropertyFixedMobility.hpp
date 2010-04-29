@@ -42,9 +42,10 @@
 
 namespace Dune {
 
+    template <class Mobility>
     class ReservoirPropertyFixedMobility {
     public:
-        ReservoirPropertyFixedMobility(const std::vector<double>& mobs)
+        ReservoirPropertyFixedMobility(const std::vector<Mobility>& mobs)
             : mobs_(mobs)
         {
         }
@@ -54,8 +55,16 @@ namespace Dune {
         template<class Vector>
         void phaseMobilities(int cell_index, double /*saturation*/, Vector& mobility) const
         {
-            mobility[0] = mobs_[cell_index];
+            mobility[0] = mobs_[cell_index].mob;
             mobility[1] = 0.0;
+        }
+
+        template <class ActualMobType>
+        void phaseMobility(int phase, int cell_index, double /*saturation*/, ActualMobType& mobility) const
+        {
+            if (phase == 0) {
+                mobility = mobs_[cell_index].mob;
+            }
         }
 
         template<class Vector>
@@ -65,7 +74,7 @@ namespace Dune {
             rho[1] = 0.0;
         }
     private:
-        const std::vector<double>& mobs_;
+        const std::vector<Mobility>& mobs_;
     };
 }
 
