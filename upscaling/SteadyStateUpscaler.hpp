@@ -38,7 +38,7 @@
 
 
 #include "config.h"
-#include "SinglePhaseUpscaler.hpp"
+#include <dune/upscaling/UpscalerBase.hpp>
 #include <dune/solvers/euler/EulerUpstream.hpp>
 #include <boost/array.hpp>
 
@@ -48,9 +48,17 @@ namespace Dune
        @brief A class for doing steady state upscaling.
        @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
     */
-    class SteadyStateUpscaler : public SinglePhaseUpscaler<>
+    template <class Traits>
+    class SteadyStateUpscaler : public UpscalerBase<Traits>
     {
     public:
+	// ------- Typedefs and enums -------
+
+        typedef UpscalerBase<Traits> Super;
+        typedef typename Super::permtensor_t permtensor_t;
+        typedef typename UpscalerBase<Traits>::GridInterface GridInterface;
+        enum { Dimension = UpscalerBase<Traits>::Dimension };
+
 	// ------- Methods -------
 
 	/// Default constructor.
@@ -73,19 +81,19 @@ namespace Dune
                                                                  const double pressure_drop,
                                                                  const permtensor_t& upscaled_perm);
 
-	/// Accessor for the steady state saturation fields. This is empty until
+	/// Accessor for the steady state saturation field. This is empty until
 	/// upscaleSteadyState() is called, at which point it will
-	/// contain the last computed (steady) saturation states (one for each cardinal direction).
-	const boost::array<std::vector<double>, Dimension>& lastSaturations() const;
+	/// contain the last computed (steady) saturation state.
+	const std::vector<double>& lastSaturationState() const;
 
-        /// Computes the upscaled saturations corresponding to the saturation fields
-        /// returned by lastSaturations(). Does this by computing total saturated
+        /// Computes the upscaled saturation corresponding to the saturation field
+        /// returned by lastSaturationState(). Does this by computing total saturated
         /// volume divided by total pore volume.
-        double lastSaturationUpscaled(int flow_direction) const;
+        double lastSaturationUpscaled() const;
 
     protected:
 	// ------- Typedefs -------
-	typedef EulerUpstream<GridInterface, ResProp, BCs> TransportSolver;
+	typedef EulerUpstream<GridInterface, typename Super::ResProp, typename Super::BCs> TransportSolver;
 	// ------- Methods -------
 	template <class FlowSol>
         void computeInOutFlows(std::pair<double, double>& water_inout,
@@ -97,7 +105,7 @@ namespace Dune
 
 
 	// ------- Data members -------
-	boost::array<std::vector<double>, Dimension> last_saturations_;
+	std::vector<double> last_saturation_state_;
 	bool output_vtk_;
         bool print_inoutflows_;
 	int simulation_steps_;

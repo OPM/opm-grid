@@ -46,9 +46,9 @@ int main(int argc, char** argv)
 {
     parameter::ParameterGroup param(argc, argv);
     // MPIHelper::instance(argc,argv);
-    SinglePhaseUpscaler<> upscaler;
+    SinglePhaseUpscaler upscaler;
     upscaler.init(param);
-    SinglePhaseUpscaler<>::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
+    SinglePhaseUpscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
     upscaled_K *= (1.0/(milli*darcy));
     std::cout.precision(15);
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K << std::endl;

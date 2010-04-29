@@ -48,8 +48,11 @@
 namespace Dune
 {
 
-    inline SteadyStateUpscaler::SteadyStateUpscaler()
-	: SinglePhaseUpscaler<>(),
+
+
+    template <class Traits>
+    inline SteadyStateUpscaler<Traits>::SteadyStateUpscaler()
+	: Super(),
 	  output_vtk_(false),
           print_inoutflows_(false),
 	  simulation_steps_(10),
@@ -58,9 +61,13 @@ namespace Dune
     {
     }
 
-    inline void SteadyStateUpscaler::initImpl(const parameter::ParameterGroup& param)
+
+
+
+    template <class Traits>
+    inline void SteadyStateUpscaler<Traits>::initImpl(const parameter::ParameterGroup& param)
     {
-	SinglePhaseUpscaler<>::initImpl(param);
+	Super::initImpl(param);
 	output_vtk_ = param.getDefault("output_vtk", output_vtk_);
 	print_inoutflows_ = param.getDefault("print_inoutflows", print_inoutflows_);
 	simulation_steps_ = param.getDefault("simulation_steps", simulation_steps_);
@@ -70,17 +77,21 @@ namespace Dune
 
 	transport_solver_.init(param);
         // Set viscosities and densities if given.
-        double v1_default = res_prop_.viscosityFirstPhase();
-        double v2_default = res_prop_.viscositySecondPhase();
-        res_prop_.setViscosities(param.getDefault("viscosity1", v1_default), param.getDefault("viscosity2", v2_default));
-        double d1_default = res_prop_.densityFirstPhase();
-        double d2_default = res_prop_.densitySecondPhase();
-        res_prop_.setDensities(param.getDefault("density1", d1_default), param.getDefault("density2", d2_default));
+        double v1_default = this->res_prop_.viscosityFirstPhase();
+        double v2_default = this->res_prop_.viscositySecondPhase();
+        this->res_prop_.setViscosities(param.getDefault("viscosity1", v1_default), param.getDefault("viscosity2", v2_default));
+        double d1_default = this->res_prop_.densityFirstPhase();
+        double d2_default = this->res_prop_.densitySecondPhase();
+        this->res_prop_.setDensities(param.getDefault("density1", d1_default), param.getDefault("density2", d2_default));
     }
 
 
-    inline std::pair<SteadyStateUpscaler::permtensor_t, SteadyStateUpscaler::permtensor_t>
-    SteadyStateUpscaler::
+
+
+    template <class Traits>
+    inline std::pair<typename SteadyStateUpscaler<Traits>::permtensor_t,
+                     typename SteadyStateUpscaler<Traits>::permtensor_t>
+    SteadyStateUpscaler<Traits>::
     upscaleSteadyState(const int flow_direction,
                        const std::vector<double>& initial_saturation,
 		       const double boundary_saturation,
@@ -89,7 +100,7 @@ namespace Dune
     {
 	static int count = 0;
 	++count;
-	int num_cells = ginterf_.numberOfCells();
+	int num_cells = this->ginterf_.numberOfCells();
 	// No source or sink.
 	std::vector<double> src(num_cells, 0.0);
 	SparseVector<double> injection(num_cells);
@@ -104,16 +115,18 @@ namespace Dune
         std::vector<double> saturation = initial_saturation;
 
         // Set up boundary conditions.
-        setupUpscalingConditions(ginterf_, bctype_, flow_direction, pressure_drop, boundary_saturation, twodim_hack_, bcond_);
+        setupUpscalingConditions(this->ginterf_, this->bctype_, flow_direction,
+                                 pressure_drop, boundary_saturation, this->twodim_hack_, this->bcond_);
 
         // Set up solvers.
         if (flow_direction == 0) {
-            flow_solver_.init(ginterf_, res_prop_, gravity, bcond_);
+            this->flow_solver_.init(this->ginterf_, this->res_prop_, gravity, this->bcond_);
         }
-        transport_solver_.initObj(ginterf_, res_prop_, bcond_);
+        transport_solver_.initObj(this->ginterf_, this->res_prop_, this->bcond_);
 
         // Run pressure solver.
-        flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
+        this->flow_solver_.solve(this->res_prop_, saturation, this->bcond_, src,
+                                 this->residual_tolerance_, this->linsolver_verbosity_, this->linsolver_type_);
 
         // Do a run till steady state. For now, we just do some pressure and transport steps...
         for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -122,15 +135,16 @@ namespace Dune
             // 		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
 
             // Run transport solver.
-            transport_solver_.transportSolve(saturation, stepsize_, gravity, flow_solver_.getSolution(), injection);
+            transport_solver_.transportSolve(saturation, stepsize_, gravity, this->flow_solver_.getSolution(), injection);
 
             // Run pressure solver.
-            flow_solver_.solve(res_prop_, saturation, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
+            this->flow_solver_.solve(this->res_prop_, saturation, this->bcond_, src,
+                                     this->residual_tolerance_, this->linsolver_verbosity_, this->linsolver_type_);
 
             // Print in-out flows if requested.
             if (print_inoutflows_) {
                 std::pair<double, double> w_io, o_io;
-                computeInOutFlows(w_io, o_io, flow_solver_.getSolution(), saturation);
+                computeInOutFlows(w_io, o_io, this->flow_solver_.getSolution(), saturation);
                 std::cout << "Pressure step " << iter
                           << "\nWater flow [in] " << w_io.first
                           << "  [out] " << w_io.second
@@ -141,10 +155,11 @@ namespace Dune
 
             // Output.
             if (output_vtk_) {
-                std::vector<GridInterface::Vector> cell_velocity;
-                estimateCellVelocity(cell_velocity, ginterf_, flow_solver_.getSolution());
-                Dune::array<std::vector<GridInterface::Vector>, 2> phase_velocities;
-                computePhaseVelocities(phase_velocities[0], phase_velocities[1], res_prop_, saturation, cell_velocity);
+                typedef typename GridInterface::Vector Vec;
+                std::vector<Vec> cell_velocity;
+                estimateCellVelocity(cell_velocity, this->ginterf_, this->flow_solver_.getSolution());
+                Dune::array<std::vector<Vec>, 2> phase_velocities;
+                computePhaseVelocities(phase_velocities[0], phase_velocities[1], this->res_prop_, saturation, cell_velocity);
                 // Dune's vtk writer wants multi-component data to be flattened.
                 std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
                                                        &*cell_velocity.back().end());
@@ -153,13 +168,13 @@ namespace Dune
                 std::vector<double> oil_velocity_flat(&*phase_velocities[1].front().begin(),
                                                        &*phase_velocities[1].back().end());
                 std::vector<double> cell_pressure;
-                getCellPressure(cell_pressure, ginterf_, flow_solver_.getSolution());
+                getCellPressure(cell_pressure, this->ginterf_, this->flow_solver_.getSolution());
                 std::vector<double> cap_pressure;
-                computeCapPressure(cap_pressure, res_prop_, saturation);
-                Dune::VTKWriter<GridType::LeafGridView> vtkwriter(grid_.leafView());
-                vtkwriter.addCellData(cell_velocity_flat, "velocity", GridInterface::Vector::dimension);
-                vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", GridInterface::Vector::dimension);
-                vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", GridInterface::Vector::dimension);
+                computeCapPressure(cap_pressure, this->res_prop_, saturation);
+                Dune::VTKWriter<typename Super::GridType::LeafGridView> vtkwriter(this->grid_.leafView());
+                vtkwriter.addCellData(cell_velocity_flat, "velocity", Vec::dimension);
+                vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", Vec::dimension);
+                vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", Vec::dimension);
                 vtkwriter.addCellData(saturation, "saturation");
                 vtkwriter.addCellData(cell_pressure, "pressure");
                 vtkwriter.addCellData(cap_pressure, "capillary pressure");
@@ -178,21 +193,21 @@ namespace Dune
         // Compute phase mobilities.
         std::vector<double> mob1(num_cells, 0.0);
         std::vector<double> mob2(num_cells, 0.0);
-        const double mob1_threshold = relperm_threshold_ / res_prop_.viscosityFirstPhase();
-        const double mob2_threshold = relperm_threshold_ / res_prop_.viscositySecondPhase();
+        const double mob1_threshold = relperm_threshold_ / this->res_prop_.viscosityFirstPhase();
+        const double mob2_threshold = relperm_threshold_ / this->res_prop_.viscositySecondPhase();
         for (int c = 0; c < num_cells; ++c) {
-            mob1[c] = std::max(res_prop_.mobilityFirstPhase(c, saturation[c]), mob1_threshold);
-            mob2[c] = std::max(res_prop_.mobilitySecondPhase(c, saturation[c]), mob2_threshold);
+            mob1[c] = std::max(this->res_prop_.mobilityFirstPhase(c, saturation[c]), mob1_threshold);
+            mob2[c] = std::max(this->res_prop_.mobilitySecondPhase(c, saturation[c]), mob2_threshold);
         }
 
         // Compute upscaled relperm for each phase.
         ReservoirPropertyFixedMobility fluid_first(mob1);
-        permtensor_t eff_Kw = upscaleEffectivePerm(fluid_first);
+        permtensor_t eff_Kw = Super::upscaleEffectivePerm(fluid_first);
         ReservoirPropertyFixedMobility fluid_second(mob2);
-        permtensor_t eff_Ko = upscaleEffectivePerm(fluid_second);
+        permtensor_t eff_Ko = Super::upscaleEffectivePerm(fluid_second);
 
         // Set the steady state saturation fields for eventual outside access.
-        last_saturations_[flow_direction].swap(saturation);
+        last_saturation_state_.swap(saturation);
 
 	// Compute the (anisotropic) upscaled mobilities.
         // eff_Kw := lambda_w*K
@@ -203,29 +218,35 @@ namespace Dune
         // Compute (anisotropic) upscaled relative permeabilities.
         // lambda = k_r/mu
         permtensor_t k_rw(lambda_w);
-        k_rw *= res_prop_.viscosityFirstPhase();
+        k_rw *= this->res_prop_.viscosityFirstPhase();
         permtensor_t k_ro(lambda_o);
-        k_ro *= res_prop_.viscositySecondPhase();
+        k_ro *= this->res_prop_.viscositySecondPhase();
 	return std::make_pair(k_rw, k_ro);
     }
 
 
 
-    inline const boost::array<std::vector<double>, SteadyStateUpscaler::Dimension>&
-    SteadyStateUpscaler::lastSaturations() const
+
+    template <class Traits>
+    inline const std::vector<double>&
+    SteadyStateUpscaler<Traits>::lastSaturationState() const
     {
-	return last_saturations_;
+	return last_saturation_state_;
     }
 
 
-    double SteadyStateUpscaler::lastSaturationUpscaled(int flow_direction) const
+
+
+    template <class Traits>
+    double SteadyStateUpscaler<Traits>::lastSaturationUpscaled() const
     {
+        typedef typename GridInterface::CellIterator CellIter;
         double pore_vol = 0.0;
         double sat_vol = 0.0;
-        for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
-            double cell_pore_vol = c->volume()*res_prop_.porosity(c->index());
+        for (CellIter c = this->ginterf_.cellbegin(); c != this->ginterf_.cellend(); ++c) {
+            double cell_pore_vol = c->volume()*this->res_prop_.porosity(c->index());
             pore_vol += cell_pore_vol;
-            sat_vol += cell_pore_vol*last_saturations_[flow_direction][c->index()];
+            sat_vol += cell_pore_vol*last_saturation_state_[c->index()];
         }
         // Dividing by pore volume gives average saturations.
         return sat_vol/pore_vol;
@@ -233,18 +254,23 @@ namespace Dune
 
 
 
+
+    template <class Traits>
     template <class FlowSol>
-    void SteadyStateUpscaler::computeInOutFlows(std::pair<double, double>& water_inout,
-                                                std::pair<double, double>& oil_inout,
-                                                const FlowSol& flow_solution,
-                                                const std::vector<double>& saturations) const
+    void SteadyStateUpscaler<Traits>::computeInOutFlows(std::pair<double, double>& water_inout,
+                                                        std::pair<double, double>& oil_inout,
+                                                        const FlowSol& flow_solution,
+                                                        const std::vector<double>& saturations) const
     {
+        typedef typename GridInterface::CellIterator CellIter;
+        typedef typename CellIter::FaceIterator FaceIter;
+
 	double side1_flux = 0.0;
 	double side2_flux = 0.0;
 	double side1_flux_oil = 0.0;
 	double side2_flux_oil = 0.0;
         std::map<int, double> frac_flow_by_bid;
-        int num_cells = ginterf_.numberOfCells();
+        int num_cells = this->ginterf_.numberOfCells();
         std::vector<double> cell_inflows_w(num_cells, 0.0);
         std::vector<double> cell_outflows_w(num_cells, 0.0);
 
@@ -252,17 +278,17 @@ namespace Dune
         // This is for the periodic case, so that we are sure all fractional flows have
         // been set in frac_flow_by_bid.
         for (int pass = 0; pass < 2; ++pass) {
-            for (CellIter c = ginterf_.cellbegin(); c != ginterf_.cellend(); ++c) {
+            for (CellIter c = this->ginterf_.cellbegin(); c != this->ginterf_.cellend(); ++c) {
                 for (FaceIter f = c->facebegin(); f != c->faceend(); ++f) {
                     if (f->boundary()) {
                         double flux = flow_solution.outflux(f);
-                        const SatBC& sc = bcond_.satCond(f);
+                        const SatBC& sc = this->bcond_.satCond(f);
                         if (flux < 0.0 && pass == 1) {
                             // This is an inflow face.
                             double frac_flow = 0.0;
                             if (sc.isPeriodic()) {
                                 ASSERT(sc.saturationDifference() == 0.0);
-                                int partner_bid = bcond_.getPeriodicPartner(f->boundaryId());
+                                int partner_bid = this->bcond_.getPeriodicPartner(f->boundaryId());
                                 std::map<int, double>::const_iterator it = frac_flow_by_bid.find(partner_bid);
                                 if (it == frac_flow_by_bid.end()) {
                                     THROW("Could not find periodic partner fractional flow. Face bid = " << f->boundaryId()
@@ -271,14 +297,14 @@ namespace Dune
                                 frac_flow = it->second;
                             } else {
                                 ASSERT(sc.isDirichlet());
-                                frac_flow = res_prop_.fractionalFlow(c->index(), sc.saturation());
+                                frac_flow = this->res_prop_.fractionalFlow(c->index(), sc.saturation());
                             }
                             cell_inflows_w[c->index()] += flux*frac_flow;
                             side1_flux += flux*frac_flow;
                             side1_flux_oil += flux*(1.0 - frac_flow);
                         } else if (flux >= 0.0 && pass == 0) {
                             // This is an outflow face.
-                            double frac_flow = res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
+                            double frac_flow = this->res_prop_.fractionalFlow(c->index(), saturations[c->index()]);
                             if (sc.isPeriodic()) {
                                 frac_flow_by_bid[f->boundaryId()] = frac_flow;
 //                                 std::cout << "Inserted bid " << f->boundaryId() << std::endl;
@@ -294,6 +320,8 @@ namespace Dune
 	water_inout = std::make_pair(side1_flux, side2_flux);
 	oil_inout = std::make_pair(side1_flux_oil, side2_flux_oil);
     }
+
+
 
 
 } // namespace Dune

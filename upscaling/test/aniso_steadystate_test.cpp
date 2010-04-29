@@ -1,11 +1,11 @@
 //===========================================================================
 //
-// File: SinglePhaseUpscaler.hpp
+// File: aniso_steadystate_test.cpp
 //
-// Created: Fri Aug 28 13:38:54 2009
+// Created: Thu Apr 29 10:29:35 2010
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Jostein R Natvig    <jostein.r.natvig@sintef.no>
 //
 // $Date$
 //
@@ -14,8 +14,8 @@
 //===========================================================================
 
 /*
-  Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2010 SINTEF ICT, Applied Mathematics.
+  Copyright 2010 Statoil ASA.
 
   This file is part of The Open Reservoir Simulator Project (OpenRS).
 
@@ -33,27 +33,6 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_SINGLEPHASEUPSCALER_HEADER
-#define OPENRS_SINGLEPHASEUPSCALER_HEADER
-
-#include "config.h"
-#include <dune/upscaling/UpscalingTraits.hpp>
-#include <dune/upscaling/UpscalerBase.hpp>
-
-
-namespace Dune
+int main()
 {
-
-    /**
-       @brief A class for doing single phase (permeability) upscaling.
-       @author Atgeirr F. Rasmussen <atgeirr@sintef.no>
-    */
-    class SinglePhaseUpscaler : public UpscalerBase<UpscalingTraitsBasic>
-    {
-    };
-
-
-} // namespace Dune
-
-
-#endif // OPENRS_SINGLEPHASEUPSCALER_HEADER
+}

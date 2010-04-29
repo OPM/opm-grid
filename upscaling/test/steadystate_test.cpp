@@ -37,6 +37,7 @@
 //#define VERBOSE
 
 #include <dune/upscaling/SteadyStateUpscaler.hpp>
+#include <dune/upscaling/UpscalingTraits.hpp>
 #include <dune/common/Units.hpp>
 #include <dune/common/SparseTable.hpp>
 #include <cmath>
@@ -157,12 +158,13 @@ int main(int argc, char** argv)
     // writeControl(std::cout, saturations, all_pdrops);
 
     // Initialize upscaler.
-    SteadyStateUpscaler upscaler;
+    typedef SteadyStateUpscaler<UpscalingTraitsBasic> Upscaler;
+    Upscaler upscaler;
     upscaler.init(param);
 
     // First, compute an upscaled permeability.
-    SteadyStateUpscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
-    SteadyStateUpscaler::permtensor_t upscaled_K_copy = upscaled_K;
+    Upscaler::permtensor_t upscaled_K = upscaler.upscaleSinglePhase();
+    Upscaler::permtensor_t upscaled_K_copy = upscaled_K;
     upscaled_K_copy *= (1.0/(milli*darcy));
     std::cout.precision(15);
     std::cout << "Upscaled K in millidarcy:\n" << upscaled_K_copy << std::endl;
@@ -190,16 +192,16 @@ int main(int argc, char** argv)
         int num_pdrops = pdrops.size();
 	for (int j = 0; j < num_pdrops; ++j) {
 	    double pdrop = pdrops[j];
-            std::pair<SteadyStateUpscaler::permtensor_t, SteadyStateUpscaler::permtensor_t> lambda
+            std::pair<Upscaler::permtensor_t, Upscaler::permtensor_t> lambda
 		= upscaler.upscaleSteadyState(flow_direction, init_sat, saturations[i], pdrop, upscaled_K);
-            double usat = upscaler.lastSaturationUpscaled(flow_direction);
+            double usat = upscaler.lastSaturationUpscaled();
 	    std::cout << "\n\nTensor of upscaled relperms for initial saturation " << saturations[i]
                       << ", real steady-state saturation " << usat
                       << " and pressure drop " << pdrop
                       << ":\n\n[water]\n" << lambda.first
                       << "\n[oil]\n" << lambda.second << std::endl;
 	    // Changing initial saturations for next pressure drop to equal the steady state of the last
-	    init_sat = upscaler.lastSaturations()[flow_direction];
+	    init_sat = upscaler.lastSaturationState();
 
 #if WRITE_RELPERM_TO_FILE
             writeRelPerm(krw_out, lambda.first , usat, pdrop);

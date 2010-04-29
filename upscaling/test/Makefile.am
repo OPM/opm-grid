@@ -2,7 +2,7 @@
 # $Revision$
 
 check_PROGRAMS = 
-noinst_PROGRAMS = upscaling_test steadystate_test #upscale_perm upscale_relperm
+noinst_PROGRAMS = upscaling_test steadystate_test aniso_steadystate_test #upscale_perm upscale_relperm
 
 AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
 AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(SUPERLU_LDFLAGS)
@@ -15,6 +15,8 @@ LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) \
 upscaling_test_SOURCES = upscaling_test.cpp
 
 steadystate_test_SOURCES = steadystate_test.cpp
+
+aniso_steadystate_test_SOURCES = aniso_steadystate_test.cpp
 
 #upscale_perm_SOURCES = upscale_perm.C
 
