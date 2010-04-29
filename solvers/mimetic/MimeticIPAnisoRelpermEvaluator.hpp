@@ -224,7 +224,7 @@ namespace Dune {
 
             const int ci = c->index();
 
-            BOOST_STATIC_ASSERT (FV::size        == dim);
+            BOOST_STATIC_ASSERT (FV::dimension == int(dim));
             ASSERT (int(t1_.size()) >= nf * dim);
             ASSERT (int(t2_.size()) >= nf * dim);
             ASSERT (int(fa_.size()) >= nf * nf);
