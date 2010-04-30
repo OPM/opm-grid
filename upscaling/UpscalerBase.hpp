@@ -128,7 +128,6 @@ namespace Dune
 	virtual void initFinal(const parameter::ParameterGroup& param);
 
 	// ------- Data members -------
-	// FluxChecker flux_checker_;
 	BoundaryConditionType bctype_;
 	bool twodim_hack_;
 	double residual_tolerance_;
@@ -140,7 +139,6 @@ namespace Dune
 	ResProp res_prop_;
 	BCs bcond_;
 	FlowSolver flow_solver_;
-
     };
 
 } // namespace Dune

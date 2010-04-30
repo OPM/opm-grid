@@ -145,6 +145,8 @@ namespace Dune
         // Run pressure solver.
         this->flow_solver_.solve(this->res_prop_, saturation, this->bcond_, src,
                                  this->residual_tolerance_, this->linsolver_verbosity_, this->linsolver_type_);
+        double max_mod = this->flow_solver_.postProcessFluxes();
+        std::cout << "Max mod = " << max_mod << std::endl;
 
         // Do a run till steady state. For now, we just do some pressure and transport steps...
         for (int iter = 0; iter < simulation_steps_; ++iter) {
@@ -158,6 +160,8 @@ namespace Dune
             // Run pressure solver.
             this->flow_solver_.solve(this->res_prop_, saturation, this->bcond_, src,
                                      this->residual_tolerance_, this->linsolver_verbosity_, this->linsolver_type_);
+            max_mod = this->flow_solver_.postProcessFluxes();
+            std::cout << "Max mod = " << max_mod << std::endl;
 
             // Print in-out flows if requested.
             if (print_inoutflows_) {

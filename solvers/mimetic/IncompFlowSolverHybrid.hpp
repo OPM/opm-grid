@@ -447,6 +447,12 @@ namespace Dune {
         /// @param [in] r
         ///    The reservoir properties of each grid cell.
         ///
+        /// @param [in] grav
+        ///    Gravity vector.  Its Euclidian two-norm value
+        ///    represents the strength of the gravity field (in units
+        ///    of m/s^2) while its direction is the direction of
+        ///    gravity in the current model.
+        ///
         /// @param [in] bc
         ///    The boundary conditions describing how the current flow
         ///    problem interacts with the outside world.  This is used
@@ -456,7 +462,7 @@ namespace Dune {
         ///    inspected in @code init() @endcode.
         template<class Point>
         void init(const GridInterface&      g,
-                  const RockInterface& r,
+                  const RockInterface&      r,
                   const Point&              grav,
                   const BCInterface&        bc)
         {
@@ -607,19 +613,22 @@ namespace Dune {
         ///    being injected into (>0) or extracted from (<0) a given
         ///    grid cell.
         ///
-        /// @param [in] grav
-        ///    Gravity vector.  Its Euclidian two-norm value
-        ///    represents the strength of the gravity field (in units
-        ///    of m/s^2) while its direction is the direction of
-        ///    gravity in the current model.  The gravity may, in
-        ///    principle, be changed between calls of @code solve()
-        ///    @endcode.
-        ///
         /// @param [in] residual_tolerance
         ///    Control parameter for iterative linear solver software.
         ///    The iteration process is terminated when the norm of
         ///    the linear system residual is less than @code
         ///    residual_tolerance @endcode times the initial residual.
+        ///
+        /// @param [in] linsolver_verbosity
+        ///    Control parameter for iterative linear solver software.
+        ///    Verbosity level 0 prints nothing, level 1 prints
+        ///    summary information, level 2 prints data for each
+        ///    iteration.
+        ///
+        /// @param [in] linsolver_type
+        ///    Control parameter for iterative linear solver software.
+        ///    Type 0 selects a BiCGStab solver, type 1 selects AMG/CG.
+        ///    
         template<class FluidInterface>
         void solve(const FluidInterface&      r  ,
                    const std::vector<double>& sat,
@@ -640,6 +649,110 @@ namespace Dune {
                 break;
             }
             computePressureAndFluxes(r, sat);
+        }
+
+    private:
+        /// A helper class for postProcessFluxes.
+        class FaceFluxes
+        {
+        public:
+            FaceFluxes(int sz)
+                : fluxes_(sz, 0.0), visited_(sz, 0), max_modification_(0.0)
+            {
+            }
+            void put(double flux, int f_ix) {
+                ASSERT(visited_[f_ix] == 0 || visited_[f_ix] == 1);
+                double sign = visited_[f_ix] ? -1.0 : 1.0;
+                fluxes_[f_ix] += sign*flux;
+                ++visited_[f_ix];
+            }
+            void get(double& flux, int f_ix) {
+                ASSERT(visited_[f_ix] == 0 || visited_[f_ix] == 1);
+                double sign = visited_[f_ix] ? -1.0 : 1.0;
+                double new_flux = 0.5*sign*fluxes_[f_ix];
+                double diff = std::fabs(flux - new_flux);
+                max_modification_ = std::max(max_modification_, diff);
+                flux = new_flux;
+                ++visited_[f_ix];
+            }
+            void resetVisited()
+            {
+                std::fill(visited_.begin(), visited_.end(), 0);
+            }
+
+            double maxMod() const
+            {
+                return max_modification_;
+            }
+        private:
+            std::vector<double> fluxes_;
+            std::vector<int> visited_;
+            double max_modification_;
+
+        };
+
+    public:
+        /// @brief
+        ///    Postprocess the solution fluxes.
+        ///    This method modifies the solution object so that
+        ///    out-fluxes of twin faces (that is, the two faces on a
+        ///    cell-cell intersection) will be made antisymmetric.
+        ///
+        /// @return
+        ///    The maximum modification made to the fluxes.
+        double postProcessFluxes()
+        {
+            typedef typename GridInterface::CellIterator CI;
+            typedef typename CI           ::FaceIterator FI;
+            const std::vector<int>& cell     = flowSolution_.cellno_;
+            const SparseTable<int>& cf       = flowSolution_.cellFaces_;
+            SparseTable<double>& cflux = flowSolution_.outflux_;
+
+            FaceFluxes face_fluxes(pgrid_->numberOfFaces());
+            // First pass: compute projected fluxes.
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+                const int cell_index = cell[c->index()];
+                for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                    int f_ix = cf[cell_index][f->localIndex()];
+                    double flux = cflux[cell_index][f->localIndex()];
+                    if (f->boundary()) {
+                        if (ppartner_dof_.empty()) {
+                            continue;
+                        }
+                        int partner_f_ix = ppartner_dof_[f_ix];
+                        if (partner_f_ix != -1) {
+                            face_fluxes.put(flux, f_ix);
+                            face_fluxes.put(flux, partner_f_ix);
+                        }
+                    } else {
+                        face_fluxes.put(flux, f_ix);
+                    }
+                }
+            }
+            face_fluxes.resetVisited();
+            // Second pass: set all fluxes to the projected ones.
+            for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
+                const int cell_index = cell[c->index()];
+                for (FI f = c->facebegin(); f != c->faceend(); ++f) {
+                    int f_ix = cf[cell_index][f->localIndex()];
+                    double& flux = cflux[cell_index][f->localIndex()];
+                    if (f->boundary()) {
+                        if (ppartner_dof_.empty()) {
+                            continue;
+                        }
+                        int partner_f_ix = ppartner_dof_[f_ix];
+                        if (partner_f_ix != -1) {
+                            face_fluxes.get(flux, f_ix);
+                            double dummy = flux;
+                            face_fluxes.get(dummy, partner_f_ix);
+                            ASSERT(dummy == flux);
+                        }
+                    } else {
+                        face_fluxes.get(flux, f_ix);
+                    }
+                }
+            }
+            return face_fluxes.maxMod();
         }
 
 

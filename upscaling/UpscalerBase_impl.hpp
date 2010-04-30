@@ -230,10 +230,8 @@ namespace Dune
 
 	    // Run pressure solver.
 	    flow_solver_.solve(fluid, sat, bcond_, src, residual_tolerance_, linsolver_verbosity_, linsolver_type_);
-
-	    // Check and fix fluxes.
-// 	    flux_checker_.checkDivergence(grid_, wells, flux);
-// 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+            double max_mod = flow_solver_.postProcessFluxes();
+            std::cout << "Max mod = " << max_mod << std::endl;
 
 	    // Compute upscaled K.
 	    double Q[Dimension] =  { 0 };
