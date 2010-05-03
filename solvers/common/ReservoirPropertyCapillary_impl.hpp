@@ -165,14 +165,22 @@ namespace Dune
 
 
     template <int dim>
-    std::pair<double, double> ReservoirPropertyCapillary<dim>::computeSingleRockCflFactors(int rock) const
+    array<double, 3> ReservoirPropertyCapillary<dim>::computeSingleRockCflFactors(int rock, double min_perm, double max_poro) const
     {
+        // Make min_perm matrix.
+        OwnCMatrix min_perm_matrix(dim, dim, (double*)0);
+        eye(min_perm_matrix);
+        min_perm_matrix *= min_perm;
+
+        // Sample values at many saturation points.
         const int N = 257;
         double delta = 1.0/double(N - 1);
         double last_ff1, last_ffg;
         double max_der1 = -1e100;
         double max_derg = -1e100;
         cflFracFlows(rock, 0.0, last_ff1, last_ffg);
+        double max_ffg = last_ffg;
+        double max_derpc = rock == -1 ? 0.0 : Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, 0.0);
         for (int i = 1; i < N; ++i) {
             double s = double(i)*delta;
             double ff1, ffg;
@@ -181,10 +189,13 @@ namespace Dune
             double est_deriv_ffg = std::fabs(ffg - last_ffg)/delta;
             max_der1 = std::max(max_der1, est_deriv_ff1);
             max_derg = std::max(max_derg, est_deriv_ffg);
+            max_ffg = std::max(max_ffg, last_ffg);
+            max_derpc = rock == -1 ? 0.0 : std::max(max_derpc, Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, s));
             last_ff1 = ff1;
             last_ffg = ffg;
         }
-        return std::make_pair(1.0/max_der1, 1.0/max_derg);
+        array<double, 3> retval = {{ 1.0/max_der1, 1.0/max_derg, max_ffg*max_derpc }};
+        return retval;
     }
 
 
@@ -194,16 +205,28 @@ namespace Dune
     void ReservoirPropertyCapillary<dim>::computeCflFactors()
     {
         if (Super::rock_.empty()) {
-            std::pair<double, double> fac = computeSingleRockCflFactors(-1);
-            Super::cfl_factor_ = fac.first;
-            Super::cfl_factor_gravity_ = fac.second;
+            array<double, 3> fac = computeSingleRockCflFactors(-1, 0.0, 0.0);
+            Super::cfl_factor_ = fac[0];
+            Super::cfl_factor_gravity_ = fac[1];
+            Super::cfl_factor_capillary_ = fac[2];
         } else {
+            // Compute min perm and max poro per rock (for J-scaling cap pressure funcs).
+            std::vector<double> min_perm(Super::rock_.size(), 1e100);
+            std::vector<double> max_poro(Super::rock_.size(), 0.0);
+            int num_cells = Super::porosity_.size();
+            for (int c = 0; c < num_cells; ++c) {
+                int r = Super::cell_to_rock_[c];
+                min_perm[r] = std::min(min_perm[r], trace(Super::permeability(c)));
+                max_poro[r] = std::max(max_poro[r], Super::porosity(c));
+            }
             Super::cfl_factor_ = 1e100;
             Super::cfl_factor_gravity_ = 1e100;
+            Super::cfl_factor_capillary_ = 1e100;
             for (int r = 0; r < int(Super::rock_.size()); ++r) {
-                std::pair<double, double> fac = computeSingleRockCflFactors(r);
-                Super::cfl_factor_ = std::min(Super::cfl_factor_, fac.first);
-                Super::cfl_factor_gravity_ = std::min(Super::cfl_factor_gravity_, fac.second);
+                array<double, 3> fac = computeSingleRockCflFactors(r, min_perm[r], max_poro[r]);
+                Super::cfl_factor_ = std::min(Super::cfl_factor_, fac[0]);
+                Super::cfl_factor_gravity_ = std::min(Super::cfl_factor_gravity_, fac[1]);
+                Super::cfl_factor_capillary_ = std::max(Super::cfl_factor_capillary_, fac[2]);
             }
         }
     }

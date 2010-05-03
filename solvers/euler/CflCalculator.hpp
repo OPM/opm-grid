@@ -40,6 +40,8 @@
 #include <dune/common/Average.hpp>
 
 #include <dune/solvers/common/Matrix.hpp>
+#include <dune/solvers/common/MatrixInverse.hpp>
+
 
 namespace Dune {
     namespace cfl_calculator {
@@ -126,6 +128,49 @@ namespace Dune {
 		double loc_dt = (resprop.cflFactorGravity()*c->volume()*resprop.porosity(c->index()))/flux;
 		if (loc_dt < dt){
 		    dt = loc_dt;
+		}
+	    }
+	    return dt;
+	}
+
+
+
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+	/// @param
+	template <class Grid, class ReservoirProperties>
+	double findCFLtimeCapillary(const Grid& grid,
+                                    const ReservoirProperties& resprop,
+                                    const typename Grid::Vector& gravity)
+	{
+	    typedef typename ReservoirProperties::PermTensor PermTensor;
+	    typedef typename ReservoirProperties::MutablePermTensor MutablePermTensor;
+	    const int dimension = Grid::Vector::dimension;
+	    double dt = 1e100;
+	    typename Grid::CellIterator c = grid.cellbegin();
+	    for (; c != grid.cellend(); ++c) {
+		double flux = 0.0;
+		typename Grid::CellIterator::FaceIterator f = c->facebegin();
+		for (; f != c->faceend(); ++f) {
+		    // UGLY WARNING
+		    MutablePermTensor loc_perm_aver;
+		    const double* permdata = 0;
+		    if (!f->boundary()) {
+			PermTensor K0 = resprop.permeability(f->cellIndex());
+			PermTensor K1 = resprop.permeability(f->neighbourCellIndex());
+			loc_perm_aver = utils::arithmeticAverage<PermTensor, MutablePermTensor>(K0, K1);
+			permdata = loc_perm_aver.data();
+		    } else {
+			permdata = resprop.permeability(f->cellIndex()).data();
+		    }
+		    // PermTensor loc_perm(dimension, dimension, permdata);
+                    MutablePermTensor loc_perm(dimension, dimension, permdata);
+                    MutablePermTensor loc_perm_inv = inverse3x3(loc_perm);
+		    typename Grid::Vector loc_centroid = f->centroid() - c->centroid;
+                    double spatial_contrib = loc_centroid*prod(loc_perm_inv, loc_centroid);
+                    double loc_dt = spatial_contrib/(2.0*resprop.cflFactorCapillary());
+                    dt = std::min(dt, loc_dt);
 		}
 	    }
 	    return dt;

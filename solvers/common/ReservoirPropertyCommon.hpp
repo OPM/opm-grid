@@ -158,6 +158,10 @@ namespace Dune
         /// @return the gravity cfl factor.
         double cflFactorGravity() const;
 
+        /// @brief A factor useful in gravity cfl computations.
+        /// @return the capillary cfl factor.
+        double cflFactorCapillary() const;
+
         /// @brief Capillary pressure.
         /// @param cell_index index of a grid cell.
 	/// @param saturation a saturation value.
@@ -192,6 +196,7 @@ namespace Dune
         double viscosity2_;
         double cfl_factor_;
         double cfl_factor_gravity_;
+        double cfl_factor_capillary_;
         std::vector<RockType> rock_;
         std::vector<int> cell_to_rock_;
         PermeabilityKind permeability_kind_;

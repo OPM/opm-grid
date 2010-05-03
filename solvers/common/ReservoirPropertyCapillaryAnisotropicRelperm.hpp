@@ -38,6 +38,7 @@
 
 #include <dune/solvers/common/RockAnisotropicRelperm.hpp>
 #include <dune/solvers/common/ReservoirPropertyCommon.hpp>
+#include <dune/common/array.hh>
 
 namespace Dune
 {
@@ -129,7 +130,7 @@ namespace Dune
 				 double saturation,
 				 MatrixType& phase_mob) const;
         void cflFracFlows(int rock, int direction, double s, double& ff_first, double& ff_gravity) const;
-        std::pair<double, double> computeSingleRockCflFactors(int rock) const;
+        array<double, 3> computeSingleRockCflFactors(int rock) const;
     };
 
 

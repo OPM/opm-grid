@@ -38,6 +38,7 @@
 
 #include <dune/solvers/common/RockJfunc.hpp>
 #include <dune/solvers/common/ReservoirPropertyCommon.hpp>
+#include <dune/common/array.hh>
 
 namespace Dune
 {
@@ -124,7 +125,7 @@ namespace Dune
         double relPermFirstPhase(int cell_index, double saturation) const;
         double relPermSecondPhase(int cell_index, double saturation) const;
         void cflFracFlows(int rock, double s, double& ff_first, double& ff_gravity) const;
-        std::pair<double, double> computeSingleRockCflFactors(int rock) const;
+        array<double, 3> computeSingleRockCflFactors(int rock, double min_perm, double max_poro) const;
     };
 
 

@@ -435,6 +435,13 @@ namespace Dune
 
 
     template <int dim, class RPImpl, class RockType>
+    double ReservoirPropertyCommon<dim, RPImpl, RockType>::cflFactorCapillary() const
+    {
+        return cfl_factor_capillary_;
+    }
+
+
+    template <int dim, class RPImpl, class RockType>
     double ReservoirPropertyCommon<dim, RPImpl, RockType>::capillaryPressure(int cell_index, double saturation) const
     {
         if (rock_.size() > 0) {

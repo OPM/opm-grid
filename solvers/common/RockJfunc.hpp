@@ -90,6 +90,21 @@ namespace Dune
             }
 	}
 
+	template <template <class> class SP, class OP>
+	double capPressDeriv(const FullMatrix<double, SP, OP>& perm, const double poro, const double saturation) const
+	{
+            if (use_jfunction_scaling_) {
+                // p_{cow} = J\frac{\sigma \cos \theta}{\sqrt{k/\phi}}
+                // \sigma \cos \theta is by default approximated by 1.0;
+                // k is approximated by the average of the diagonal terms.
+                double sqrt_k_phi = std::sqrt(trace(perm)/(perm.numRows()*poro));
+                return Jfunc_.derivative(saturation)*sigma_cos_theta_/sqrt_k_phi;
+            } else {
+                // The Jfunc_ table actually contains the pressure directly.
+                return Jfunc_.derivative(saturation);
+            }
+	}
+
 	void read(const std::string& directory, const std::string& specification)
 	{
 	    // For this type of rock, the specification is simply a line with the file name.
