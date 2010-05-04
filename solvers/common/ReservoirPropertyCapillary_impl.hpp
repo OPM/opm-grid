@@ -180,7 +180,8 @@ namespace Dune
         double max_derg = -1e100;
         cflFracFlows(rock, 0.0, last_ff1, last_ffg);
         double max_ffg = last_ffg;
-        double max_derpc = rock == -1 ? 0.0 : Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, 0.0);
+        double max_derpc = rock == -1 ? 0.0 :
+            std::fabs(Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, 0.0));
         for (int i = 1; i < N; ++i) {
             double s = double(i)*delta;
             double ff1, ffg;
@@ -189,8 +190,9 @@ namespace Dune
             double est_deriv_ffg = std::fabs(ffg - last_ffg)/delta;
             max_der1 = std::max(max_der1, est_deriv_ff1);
             max_derg = std::max(max_derg, est_deriv_ffg);
-            max_ffg = std::max(max_ffg, last_ffg);
-            max_derpc = rock == -1 ? 0.0 : std::max(max_derpc, Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, s));
+            max_ffg = std::max(max_ffg, ffg);
+            max_derpc = rock == -1 ? 0.0 :
+                std::max(max_derpc, std::fabs(Super::rock_[rock].capPressDeriv(min_perm_matrix, max_poro, s)));
             last_ff1 = ff1;
             last_ffg = ffg;
         }
@@ -216,12 +218,12 @@ namespace Dune
             int num_cells = Super::porosity_.size();
             for (int c = 0; c < num_cells; ++c) {
                 int r = Super::cell_to_rock_[c];
-                min_perm[r] = std::min(min_perm[r], trace(Super::permeability(c)));
+                min_perm[r] = std::min(min_perm[r], trace(Super::permeability(c))/double(dim));
                 max_poro[r] = std::max(max_poro[r], Super::porosity(c));
             }
             Super::cfl_factor_ = 1e100;
             Super::cfl_factor_gravity_ = 1e100;
-            Super::cfl_factor_capillary_ = 1e100;
+            Super::cfl_factor_capillary_ = 0.0;
             for (int r = 0; r < int(Super::rock_.size()); ++r) {
                 array<double, 3> fac = computeSingleRockCflFactors(r, min_perm[r], max_poro[r]);
                 Super::cfl_factor_ = std::min(Super::cfl_factor_, fac[0]);
