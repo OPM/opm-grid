@@ -91,6 +91,11 @@ namespace Dune
                 sigma = param.getDefault("sigma", sigma);
                 theta = param.getDefault("theta", theta);
             }
+            if (param.has("viscosity1") || param.has("viscosity2")) {
+                double v1 = param.getDefault("viscosity1", 0.001);
+                double v2 = param.getDefault("viscosity2", 0.003);
+                res_prop.setViscosities(v1, v2);
+            }
 	    res_prop.init(parser, grid.globalCell(), perm_threshold, rl_ptr,
                           use_j, sigma, theta);
 	} else if (fileformat == "cartesian") {
