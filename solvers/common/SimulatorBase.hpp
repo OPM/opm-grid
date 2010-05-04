@@ -87,7 +87,6 @@ namespace Dune
 	    : simulation_steps_(1),
 	      stepsize_(1.0),   // init() expects units of days! Yes, but now the meaning of stepsize_ changes
 	                        // from days (here) to seconds (after init()). Solution to that?
-	      init_saturation_(0.0),
               residual_tolerance_(1e-8),
               linsolver_verbosity_(1),
               linsolver_type_(1)
@@ -130,7 +129,7 @@ namespace Dune
 
 	int simulation_steps_;
 	double stepsize_;
-	double init_saturation_;
+        std::vector<double> init_saturation_;
         Vector gravity_;
 	double residual_tolerance_;
 	int linsolver_verbosity_;
@@ -165,7 +164,30 @@ namespace Dune
 
 	virtual void initInitialConditions(const parameter::ParameterGroup& param)
 	{
-	    init_saturation_ = param.getDefault("init_saturation", init_saturation_);
+            if (param.getDefault("init_saturation_from_file", false)) {
+                std::string filename = param.get<std::string>("init_saturation_filename");
+                std::ifstream satfile(filename.c_str());
+                if (!satfile) {
+                    THROW("Could not open initial saturation file: " << filename);
+                }
+                int num_sats;
+                satfile >> num_sats;
+                if (num_sats != ginterf_.numberOfCells()) {
+                    THROW("Number of saturation values claimed different from number of grid cells: "
+                          << num_sats << " vs. " << ginterf_.numberOfCells());
+                }
+                std::istream_iterator<double> beg(satfile);
+                std::istream_iterator<double> end;
+                init_saturation_.assign(beg, end);
+                if (int(init_saturation_.size()) != num_sats) {
+                    THROW("Number of saturation values claimed different from actual file content: "
+                          << num_sats << " vs. " << init_saturation_.size());
+                }
+            } else {
+                double init_s = param.getDefault("init_saturation", 0.0);
+                init_saturation_.clear();
+                init_saturation_.resize(ginterf_.numberOfCells(), init_s);
+            }
 	}
 
 	virtual void initBoundaryConditions(const parameter::ParameterGroup& param)

@@ -58,7 +58,7 @@ namespace Dune
 	void run()
 	{
 	    // Initial saturation.
-	    std::vector<double> sat(Super::ginterf_.numberOfCells(), Super::init_saturation_);
+	    std::vector<double> sat(Super::init_saturation_);
 	    // Gravity.
 	    // FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
