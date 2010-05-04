@@ -141,8 +141,7 @@ namespace Dune {
 	/// @param
 	template <class Grid, class ReservoirProperties>
 	double findCFLtimeCapillary(const Grid& grid,
-                                    const ReservoirProperties& resprop,
-                                    const typename Grid::Vector& gravity)
+                                    const ReservoirProperties& resprop)
 	{
 	    typedef typename ReservoirProperties::PermTensor PermTensor;
 	    typedef typename ReservoirProperties::MutablePermTensor MutablePermTensor;
@@ -150,7 +149,6 @@ namespace Dune {
 	    double dt = 1e100;
 	    typename Grid::CellIterator c = grid.cellbegin();
 	    for (; c != grid.cellend(); ++c) {
-		double flux = 0.0;
 		typename Grid::CellIterator::FaceIterator f = c->facebegin();
 		for (; f != c->faceend(); ++f) {
 		    // UGLY WARNING
@@ -167,9 +165,10 @@ namespace Dune {
 		    // PermTensor loc_perm(dimension, dimension, permdata);
                     MutablePermTensor loc_perm(dimension, dimension, permdata);
                     MutablePermTensor loc_perm_inv = inverse3x3(loc_perm);
-		    typename Grid::Vector loc_centroid = f->centroid() - c->centroid;
+		    typename Grid::Vector loc_centroid = f->centroid();
+                    loc_centroid -= c->centroid();
                     double spatial_contrib = loc_centroid*prod(loc_perm_inv, loc_centroid);
-                    double loc_dt = spatial_contrib/(2.0*resprop.cflFactorCapillary());
+                    double loc_dt = spatial_contrib/resprop.cflFactorCapillary();
                     dt = std::min(dt, loc_dt);
 		}
 	    }
