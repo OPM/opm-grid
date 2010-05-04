@@ -147,9 +147,13 @@ namespace Dune {
 	bool method_viscous_;
 	bool method_gravity_;
 	bool method_capillary_;
+	bool use_cfl_viscous_;
+	bool use_cfl_gravity_;
+	bool use_cfl_capillary_;
 	// The courant_number is the multiplied with the cfl time to get the time step.
 	double courant_number_;
 	int minimum_small_steps_;
+	int maximum_small_steps_;
 	bool check_sat_;
 	bool clamp_sat_;
 

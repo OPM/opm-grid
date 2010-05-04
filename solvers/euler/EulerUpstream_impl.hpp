@@ -65,8 +65,12 @@ namespace Dune
 	  method_viscous_(true),
 	  method_gravity_(true),
 	  method_capillary_(true),
+	  use_cfl_viscous_(true),
+	  use_cfl_gravity_(true),
+	  use_cfl_capillary_(true),
 	  courant_number_(0.5),
 	  minimum_small_steps_(1),
+          maximum_small_steps_(10000),
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
@@ -80,8 +84,12 @@ namespace Dune
 	  method_viscous_(true),
 	  method_gravity_(true),
 	  method_capillary_(true),
+	  use_cfl_viscous_(true),
+	  use_cfl_gravity_(true),
+	  use_cfl_capillary_(true),
 	  courant_number_(0.5),
 	  minimum_small_steps_(1),
+          maximum_small_steps_(10000),
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
@@ -97,7 +105,11 @@ namespace Dune
 	method_viscous_ = param.getDefault("method_viscous", method_viscous_);
 	method_gravity_ = param.getDefault("method_gravity", method_gravity_);
 	method_capillary_ = param.getDefault("method_capillary", method_capillary_);
+	use_cfl_viscous_ = param.getDefault("use_cfl_viscous", use_cfl_viscous_);
+	use_cfl_gravity_ = param.getDefault("use_cfl_gravity", use_cfl_gravity_);
+	use_cfl_capillary_ = param.getDefault("use_cfl_capillary", use_cfl_capillary_);
 	minimum_small_steps_ = param.getDefault("minimum_small_steps", minimum_small_steps_);
+	maximum_small_steps_ = param.getDefault("maximum_small_steps", maximum_small_steps_);
 	check_sat_ = param.getDefault("check_sat", check_sat_);
 	clamp_sat_ = param.getDefault("clamp_sat", clamp_sat_);
     }
@@ -160,6 +172,7 @@ namespace Dune
 	    nr_transport_steps = minimum_small_steps_;
 	} else {
 	    nr_transport_steps = std::max(int(std::ceil(time/cfl_dt)), minimum_small_steps_);
+            nr_transport_steps = std::min(nr_transport_steps, maximum_small_steps_);
 	}
 	double dt_transport = time/nr_transport_steps;
 
@@ -274,46 +287,52 @@ namespace Dune
 	double cfl_dt_c = 1e99;
 
 	// Viscous cfl.
-	if (method_viscous_) {
+	if (method_viscous_ && use_cfl_viscous_) {
 	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(*pgrid_,
 							   *preservoir_properties_,
 							   pressure_sol);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for velocity is "
+	    std::cout << "CFL dt for velocity is  "
+                      << cfl_dt_v << " seconds   ("
                       << Dune::unit::convert::to(cfl_dt_v, Dune::unit::day)
-		      << " and total impes time is "
-                      << Dune::unit::convert::to(time, Dune::unit::day)
-		      << " in days." << std::endl;
+                      << " days)." << std::endl;
 #endif // VERBOSE
 	}
 
 	// Gravity cfl.
-	if (method_gravity_) {
+	if (method_gravity_ && use_cfl_gravity_) {
 	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(*pgrid_, *preservoir_properties_, gravity);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for gravity is "
+	    std::cout << "CFL dt for gravity is   "
+                      << cfl_dt_g << " seconds   ("
                       << Dune::unit::convert::to(cfl_dt_g, Dune::unit::day)
-		      << " and total impes time is "
-                      << Dune::unit::convert::to(time, Dune::unit::day)
-		      << " in days." << std::endl;
+                      << " days)." << std::endl;
 #endif // VERBOSE
 	}
 
-	// Capillary cfl. Not done yet.
-	if (method_capillary_) {
+	// Capillary cfl.
+	if (method_capillary_ && use_cfl_capillary_) {
+            cfl_dt_c = cfl_calculator::findCFLtimeCapillary(*pgrid_, *preservoir_properties_);
 #ifdef VERBOSE
-	    std::cout << "CFL dt for capillarity is not implemented yet." << std::endl;
+	    std::cout << "CFL dt for capillary term is "
+                      << cfl_dt_c << " seconds   ("
+                      << Dune::unit::convert::to(cfl_dt_c, Dune::unit::day)
+                      << " days)." << std::endl;
 #endif // VERBOSE
 	}
 
 	double cfl_dt = std::min(std::min(cfl_dt_v, cfl_dt_g), cfl_dt_c);
 	cfl_dt *= courant_number_;
 #ifdef VERBOSE
-	std::cout << "Final modified CFL dt is "
-                  << Dune::unit::convert::to(cfl_dt, Dune::unit::day)
-		  << " and total impes time is "
+        std::cout << "Total impes time is          "
+                  << time << " seconds   ("
                   << Dune::unit::convert::to(time, Dune::unit::day)
-		  << " in days." << std::endl;
+                  << " days)." << std::endl;
+
+	std::cout << "Final modified CFL dt is     "
+                  << cfl_dt << " seconds   ("
+                  << Dune::unit::convert::to(cfl_dt, Dune::unit::day)
+                  << " days)." << std::endl;
 #endif // VERBOSE
 	return cfl_dt;
     }
