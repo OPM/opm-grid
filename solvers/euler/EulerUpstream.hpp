@@ -36,6 +36,8 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_EULERUPSTREAM_HEADER
 #define OPENRS_EULERUPSTREAM_HEADER
 
+#include <dune/solvers/euler/EulerUpstreamResidual.hpp>
+
 #include <tr1/unordered_map>
 
 #include <dune/common/param/ParameterGroup.hpp>
@@ -114,7 +116,6 @@ namespace Dune {
 	typedef typename FIt::Vector Vector;
         typedef ReservoirProperties RP;
 
-	void initFinal();
 
 	template <class PressureSolution>
 	double computeCflTime(const std::vector<double>& saturation,
@@ -126,24 +127,16 @@ namespace Dune {
 	void smallTimeStep(std::vector<double>& saturation,
 			   const double time,
 			   const typename GridInterface::Vector& gravity,
-			   const PressureSolution& pressure_sol) const;
-	
-	template <class PressureSolution>
-	void computeSatDelta(const std::vector<double>& saturation,
-			     const typename GridInterface::Vector& gravity,
-			     const PressureSolution& pressure_sol) const;
-
-	void computeCapPressures(const std::vector<double>& sat) const;
-
-	typename GridInterface::Vector
-	estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& sat) const;
+			   const PressureSolution& pressure_sol,
+                           const SparseVector<double>& injection_rates) const;
 
 	void checkAndPossiblyClampSat(std::vector<double>& s) const;
 
 
-	const GridInterface* pgrid_;
-	const ReservoirProperties* preservoir_properties_;
-	const BoundaryConditions* pboundary_;
+        EulerUpstreamResidual<GridInterface,
+                              ReservoirProperties,
+                              BoundaryConditions> residual_;
+
 	bool method_viscous_;
 	bool method_gravity_;
 	bool method_capillary_;
@@ -157,22 +150,8 @@ namespace Dune {
 	bool check_sat_;
 	bool clamp_sat_;
 
-	// Boundary id to face iterator mapping. May be mostly or completely empty.
-	// Obviously requires unique-face-per-bid grids.
-	std::vector<FIt> bid_to_face_;
-
-        // Storing some cell iterators, so that we may use tbb for parallelizing.
-        std::vector<CIt> cell_iters_;
-
-        mutable SparseVector<double> injection_rates_;
 	// Storing sat_change_ so that we won't have to reallocate it for every step.
 	mutable std::vector<double> sat_change_;
-	// Precomputing the capillary pressures of cells saves a little time.
-	mutable std::vector<double> cap_pressures_;
-
-	mutable std::vector<double> visc_maxtimes_;
-	mutable std::vector<double> grav_maxtimes_;
-	mutable std::vector<double> cap_maxtimes_;
     };
 
 } // namespace Dune
