@@ -49,9 +49,6 @@
 #include <dune/grid/common/Volumes.hpp>
 #include <dune/solvers/euler/CflCalculator.hpp>
 
-#ifdef USE_TBB
-#include <tbb/parallel_for.h>
-#endif
 
 namespace Dune
 {
