@@ -76,7 +76,7 @@ namespace Dune {
 	    /// @param new_domain the new domain as a pair of doubles.
 	    void rescaleDomain(std::pair<double, double> new_domain);
 
-	    /// @brief Evaluate the derivative at x.
+	    /// @brief Evaluate the value at x.
 	    /// @param x a domain value
 	    /// @return f(x)
 	    double operator()(const double x) const;
@@ -85,6 +85,11 @@ namespace Dune {
 	    /// @param x a domain value
 	    /// @return f'(x)
 	    double derivative(const double x) const;
+
+	    /// @brief Evaluate the inverse at y. Requires T to be a double.
+	    /// @param y a range value
+	    /// @return f^{-1}(y)
+	    double inverse(const double y) const;
 
 	    /// @brief Equality operator.
 	    /// @param other another NonuniformTableLinear.
@@ -105,6 +110,7 @@ namespace Dune {
 	protected:
 	    std::vector<double> x_values_;
 	    std::vector<T> y_values_;
+	    mutable std::vector<T> y_values_reversed_;
 	    RangePolicy left_;
 	    RangePolicy right_;
 	};
@@ -192,6 +198,22 @@ namespace Dune {
 	::derivative(const double x) const
 	{
 	    return linearInterpolationDerivative(x_values_, y_values_, x);
+	}
+
+	template<typename T>
+	inline double
+	NonuniformTableLinear<T>
+	::inverse(const double y) const
+	{
+            if (y_values_.front() < y_values_.back()) {
+                return linearInterpolation(y_values_, x_values_, y);
+            } else {
+                if (y_values_reversed_.empty()) {
+                    y_values_reversed_ = y_values_;
+                    std::reverse(y_values_reversed_.begin(), y_values_reversed_.end());
+                }
+                return linearInterpolation(y_values_reversed_, x_values_, y);
+            }
 	}
 
 	template<typename T>
