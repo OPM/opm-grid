@@ -271,6 +271,11 @@ namespace Dune
 	    canonical_bid_.clear();
         }
 
+        int size() const
+        {
+            return periodic_partner_bid_.size();
+        }
+
         void setPeriodicPartners(int boundary_id_1, int boundary_id_2)
         {
             ASSERT(boundary_id_1 >= 0 && boundary_id_1 < int(periodic_partner_bid_.size()));
@@ -342,39 +347,8 @@ namespace Dune
     public:
 	typedef typename boost::mpl::if_c<FC, std::vector<FlowBC>, DummyVec<FlowBC> >::type FlowConds;
 	typedef typename boost::mpl::if_c<SC,  std::vector<SatBC>, DummyVec<SatBC>  >::type SatConds;
-	// typedef typename boost::mpl::if_c<PC, std::vector<PcapBC>, DummyVec<PcapBC> >::type PcapConds;
 	const static bool HasFlowConds = FC;
 	const static bool HasSatConds = SC;
-	// const static bool HasPcapConds = PC;
-
-	FlowBC& flowCond(int i)
-	{
-	    return FlowConds::operator[](i);
-	}
-        template <class BoundaryFace>
-	const FlowBC& flowCond(const BoundaryFace& bf) const
-	{
-            ASSERT(bf.boundary());
-	    return FlowConds::operator[](bf.boundaryId());
-	}
-	SatBC& satCond(int i)
-	{
-	    return SatConds::operator[](i);
-	}
-        template <class BoundaryFace>
-	const SatBC& satCond(const BoundaryFace& bf) const
-	{
-            ASSERT(bf.boundary());
-	    return SatConds::operator[](bf.boundaryId());
-	}
-// 	PcapBC& pcapCond(int i)
-// 	{
-// 	    return PcapConds::operator[](i);
-// 	}
-// 	const PcapBC& pcapCond(int i) const
-// 	{
-// 	    return PcapConds::operator[](i);
-// 	}
 
         BasicBoundaryConditions()
 	{
@@ -408,6 +382,35 @@ namespace Dune
 	    SatConds::clear();
 	    // PcapConds::clear();
         }
+
+        int size() const
+        {
+            return PeriodicConditionHandler::size();
+        }
+
+	FlowBC& flowCond(int i)
+	{
+	    return FlowConds::operator[](i);
+	}
+
+        template <class BoundaryFace>
+	const FlowBC& flowCond(const BoundaryFace& bf) const
+	{
+            ASSERT(bf.boundary());
+	    return FlowConds::operator[](bf.boundaryId());
+	}
+
+	SatBC& satCond(int i)
+	{
+	    return SatConds::operator[](i);
+	}
+
+        template <class BoundaryFace>
+	const SatBC& satCond(const BoundaryFace& bf) const
+	{
+            ASSERT(bf.boundary());
+	    return SatConds::operator[](bf.boundaryId());
+	}
 
         template<typename charT, class traits>
         void write(std::basic_ostream<charT,traits>& os) const
