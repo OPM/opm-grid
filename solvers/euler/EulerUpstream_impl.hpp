@@ -75,8 +75,7 @@ namespace Dune
 
     template <class GI, class RP, class BC>
     inline EulerUpstream<GI, RP, BC>::EulerUpstream(const GI& g, const RP& r, const BC& b)
-	: residual_(g, r, b),
-	  method_viscous_(true),
+	: method_viscous_(true),
 	  method_gravity_(true),
 	  method_capillary_(true),
 	  use_cfl_viscous_(true),
@@ -88,6 +87,7 @@ namespace Dune
 	  check_sat_(true),
 	  clamp_sat_(false)
     {
+        residual_computer_.initObj(g, r, b);
     }
 
 
@@ -120,7 +120,11 @@ namespace Dune
     template <class GI, class RP, class BC>
     inline void EulerUpstream<GI, RP, BC>::initObj(const GI& g, const RP& r, const BC& b)
     {
-        residual_.initObj(g, r, b);
+        residual_computer_.initObj(g, r, b);
+        porevol_.resize(g.numberOfCells());
+        for (CIt c = g.cellbegin(); c != g.cellend(); ++c) {
+            porevol_[c->index()] = c->volume()*r.porosity(c->index());
+        }
     }
 
 
@@ -273,8 +277,8 @@ namespace Dune
 
 	// Viscous cfl.
 	if (method_viscous_ && use_cfl_viscous_) {
-	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(residual_.grid(),
-							   residual_.reservoirProperties(),
+	    cfl_dt_v = cfl_calculator::findCFLtimeVelocity(residual_computer_.grid(),
+							   residual_computer_.reservoirProperties(),
 							   pressure_sol);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for velocity is  "
@@ -286,8 +290,8 @@ namespace Dune
 
 	// Gravity cfl.
 	if (method_gravity_ && use_cfl_gravity_) {
-	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(residual_.grid(),
-                                                          residual_.reservoirProperties(),
+	    cfl_dt_g = cfl_calculator::findCFLtimeGravity(residual_computer_.grid(),
+                                                          residual_computer_.reservoirProperties(),
                                                           gravity);
 #ifdef VERBOSE
 	    std::cout << "CFL dt for gravity is   "
@@ -299,8 +303,8 @@ namespace Dune
 
 	// Capillary cfl.
 	if (method_capillary_ && use_cfl_capillary_) {
-            cfl_dt_c = cfl_calculator::findCFLtimeCapillary(residual_.grid(),
-                                                            residual_.reservoirProperties());
+            cfl_dt_c = cfl_calculator::findCFLtimeCapillary(residual_computer_.grid(),
+                                                            residual_computer_.reservoirProperties());
 #ifdef VERBOSE
 	    std::cout << "CFL dt for capillary term is "
                       << cfl_dt_c << " seconds   ("
@@ -326,61 +330,6 @@ namespace Dune
     }
 
 
-
-
-
-
-    /*
-    template <class GI, class RP, class BC>
-    inline typename GI::Vector
-    EulerUpstream<GI, RP, BC>::estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& sat) const
-    {
-	typedef typename GI::CellIterator::FaceIterator Face;
-	typedef typename Face::Cell Cell;
-	typedef typename GI::Vector Vector;
-
-	// At nonperiodic boundaries, we return a zero gradient.
-	// That is (sort of) a trivial Neumann (noflow) condition for the capillary pressure.
-	if (f->boundary() && !pboundary_->satCond(*f).isPeriodic()) {
-	    return Vector(0.0);
-	}
-	// Find neighbouring cell and face: nbc and nbf.
-	// If we are not on a periodic boundary, nbf is of course equal to f.
-	Cell c = f->cell();
-	Cell nb = f->boundary() ? (f == nbf ? c : nbf->cell()) : f->neighbourCell();
-
-	// Estimate the gradient like a finite difference between
-	// cell centers, except that in order to handle periodic
-	// conditions we pass through the face centroid(s).
-	Vector cell_c = c.centroid();
-	Vector nb_c = nb.centroid();
-	Vector f_c = f->centroid();
-	Vector nbf_c = nbf->centroid();
-	double d0 = (cell_c - f_c).two_norm();
-	double d1 = (nb_c - nbf_c).two_norm();
-	int cell = c.index();
-	int nbcell = nb.index();
-	double cp0 = cap_pressures_[cell];
-	double cp1 = cap_pressures_[nbcell];
-	double val = (cp1 - cp0)/(d0 + d1);
-	Vector res = nb_c - nbf_c + f_c - cell_c;
-	res /= res.two_norm();
-	res *= val;
-	return res;
-    }
-    */
-
-    /*
-    template <class GI, class RP, class BC>
-    inline void EulerUpstream<GI, RP, BC>::computeCapPressures(const std::vector<double>& sat) const
-    {
-	int num_cells = sat.size();
-	cap_pressures_.resize(num_cells);
-	for (int cell = 0; cell < num_cells; ++cell) {
-	    cap_pressures_[cell] = preservoir_properties_->capillaryPressure(cell, sat[cell]);
-	}
-    }
-    */
 
 
     template <class GI, class RP, class BC>
@@ -410,21 +359,23 @@ namespace Dune
 							 const PressureSolution& pressure_sol,
                                                          const SparseVector<double>& injection_rates) const
     {
-	residual_.computeCapPressures(saturation);
-	residual_.computeSatDelta(saturation, gravity, pressure_sol, injection_rates,
-                                  method_viscous_, method_gravity_, method_capillary_,
-                                  sat_change_);
-	double max_ok_dt = 1e100;
-	const double tol = 1e-10;
+        if (method_capillary_) {
+            residual_computer_.computeCapPressures(saturation);
+        }
+	residual_computer_.computeResidual(saturation, gravity, pressure_sol, injection_rates,
+                                           method_viscous_, method_gravity_, method_capillary_,
+                                           residual_);
+// 	double max_ok_dt = 1e100;
+//         const double tol = 1e-10;
 	int num_cells = saturation.size();
 	for (int i = 0; i < num_cells; ++i) {
-	    const double sc = sat_change_[i];
-	    saturation[i] += dt*sc;
-	    if (sc > tol) {
-		max_ok_dt = std::min(max_ok_dt, (1.0 - saturation[i])/sc);
-	    } else if (sc < -tol) {
-		max_ok_dt = std::min(max_ok_dt, -saturation[i]/sc);
-	    }
+	    const double sat_change = dt*residual_[i]/porevol_[i];
+	    saturation[i] += sat_change;
+// 	    if (sat_change > tol) {
+// 		max_ok_dt = std::min(max_ok_dt, (1.0 - saturation[i])/sc);
+// 	    } else if (sat_change < -tol) {
+// 		max_ok_dt = std::min(max_ok_dt, -saturation[i]/sc);
+// 	    }
 	}
 // 	std::cout << "Maximum nonviolating timestep is " << max_ok_dt << " seconds\n";
 	if (check_sat_ || clamp_sat_) {

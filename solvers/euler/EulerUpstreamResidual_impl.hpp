@@ -77,14 +77,14 @@ namespace Dune
             const std::vector<double>& saturation;
             const Vector& gravity;
             const PressureSolution& pressure_sol;
-            std::vector<double>& sat_delta;
+            std::vector<double>& residual;
 
             UpdateForCell(const UpstreamSolver& solver,
                           const std::vector<double>& sat,
                           const Vector& grav,
                           const PressureSolution& psol,
-                          std::vector<double>& sat_d)
-                : s(solver), saturation(sat), gravity(grav), pressure_sol(psol), sat_delta(sat_d)
+                          std::vector<double>& res)
+                : s(solver), saturation(sat), gravity(grav), pressure_sol(psol), residual(res)
             {
             }
 
@@ -95,17 +95,15 @@ namespace Dune
                 const double delta_rho = s.preservoir_properties_->densityDifference();
                 int cell[2];
                 double cell_sat[2];
-                double cell_pvol[2];
                 cell[0] = c->index();
                 cell_sat[0] = saturation[cell[0]];
-                cell_pvol[0] = c->volume()*s.preservoir_properties_->porosity(cell[0]);
 
                 // Loop over all cell faces.
                 for (FIt f = c->facebegin(); f != c->faceend(); ++f) {
                     // Neighbour face, will be changed if on a periodic boundary.
                     FIt nbface = f;
                     double dS = 0.0;
-                    // Compute cell[1], cell_sat[1] and cell_pvol[1].
+                    // Compute cell[1], cell_sat[1]
                     if (f->boundary()) {
                         if (s.pboundary_->satCond(*f).isPeriodic()) {
                             nbface = s.bid_to_face_[s.pboundary_->getPeriodicPartner(f->boundaryId())];
@@ -120,12 +118,10 @@ namespace Dune
                                 continue;
                             }
                             cell_sat[1] = saturation[cell[1]];
-                            cell_pvol[1] = nbface->cell().volume()*s.preservoir_properties_->porosity(cell[1]);
                         } else {
                             ASSERT(s.pboundary_->satCond(*f).isDirichlet());
                             cell[1] = cell[0];
                             cell_sat[1] = s.pboundary_->satCond(*f).saturation();
-                            cell_pvol[1] = cell_pvol[0];
                         }
                     } else {
                         cell[1] = f->neighbourCellIndex();
@@ -135,7 +131,6 @@ namespace Dune
                             continue;
                         }
                         cell_sat[1] = saturation[cell[1]];
-                        cell_pvol[1] = f->neighbourCellVolume()*s.preservoir_properties_->porosity(cell[1]);
                     }
 
                     // Get some local properties.
@@ -237,42 +232,6 @@ namespace Dune
                     Mob m_aver_totinv;
                     m_aver_totinv.setToInverse(m_aver_tot);
 
-                    /*
-                      const double aver_lambda_one
-                      = arithmeticAverage<double, double>(s.preservoir_properties_->mobilityFirstPhase(cell[0], aver_sat),
-                      s.preservoir_properties_->mobilityFirstPhase(cell[1], aver_sat));
-                      const double aver_lambda_two
-                      = arithmeticAverage<double, double>(s.preservoir_properties_->mobilitySecondPhase(cell[0], aver_sat), 
-                      s.preservoir_properties_->mobilitySecondPhase(cell[1], aver_sat));
-                    */
-
-                    /*
-                    // The local gravity flux is needed for finding the correct phase mobilities.
-                    double loc_gravity_flux = 0.0;
-                    if (method_gravity_) {
-		    double grav_comp = inner(loc_normal, prod(aver_perm, gravity));
-		    loc_gravity_flux = loc_area*delta_rho*grav_comp;
-                    }
-                    // Find the correct phasemobilities to use
-                    const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two.mob;
-                    const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one.mob;
-                    // const double flux_one = loc_flux + loc_gravity_flux*aver_lambda_two;
-                    // const double flux_two = loc_flux - loc_gravity_flux*aver_lambda_one;
-                    double lambda_one;
-                    double lambda_two;
-                    // total velocity term
-                    if (flux_one > 0){
-		    lambda_one = s.preservoir_properties_->mobilityFirstPhase(cell[0], cell_sat[0]);
-                    } else {
-		    lambda_one = s.preservoir_properties_->mobilityFirstPhase(cell[1], cell_sat[1]); 
-                    }
-                    if (flux_two > 0){
-		    lambda_two = s.preservoir_properties_->mobilitySecondPhase(cell[0], cell_sat[0] );
-                    } else {
-		    lambda_two = s.preservoir_properties_->mobilitySecondPhase(cell[1], cell_sat[1] );
-                    }
-                    */
-
                     // Viscous (pressure driven) term.
                     if (s.method_viscous_) {
                         // v is not correct for anisotropic relperm.
@@ -314,11 +273,11 @@ namespace Dune
 
                     // Modify saturation.
                     if (cell[0] != cell[1]){
-                        sat_delta[cell[0]] -= dS/cell_pvol[0];
-                        sat_delta[cell[1]] += dS/cell_pvol[1];
+                        residual[cell[0]] -= dS;
+                        residual[cell[1]] += dS;
                     } else {
                         ASSERT(cell[0] == cell[1]);
-                        sat_delta[cell[0]] -= dS/cell_pvol[0];
+                        residual[cell[0]] -= dS;
                     }
                 }
                 // Source term.
@@ -328,7 +287,7 @@ namespace Dune
                     // as a scalar
                     rate *= s.preservoir_properties_->fractionalFlow(cell[0], cell_sat[0]);
                 }
-                sat_delta[cell[0]] += rate/cell_pvol[0];
+                residual[cell[0]] += rate;
             }
         };
 
@@ -480,6 +439,13 @@ namespace Dune
     }
 
 
+    template <class GI, class RP, class BC>
+    inline const BC& EulerUpstreamResidual<GI, RP, BC>::boundaryConditions() const
+    {
+        return *pboundary_;
+    }
+
+
 
     template <class GI, class RP, class BC>
     inline void EulerUpstreamResidual<GI, RP, BC>::computeCapPressures(const std::vector<double>& saturation) const
@@ -497,29 +463,29 @@ namespace Dune
     template <class GI, class RP, class BC>
     template <class PressureSolution>
     inline void EulerUpstreamResidual<GI, RP, BC>::
-    computeSatDelta(const std::vector<double>& saturation,
+    computeResidual(const std::vector<double>& saturation,
                     const typename GI::Vector& gravity,
                     const PressureSolution& pressure_sol,
                     const SparseVector<double>& injection_rates,
                     const bool method_viscous,
                     const bool method_gravity,
                     const bool method_capillary,
-                    std::vector<double>& sat_delta) const
+                    std::vector<double>& residual) const
     {
 	// Make sure sat_change is zero, and has the right size.
-	sat_delta.clear();
-	sat_delta.resize(saturation.size(), 0.0);
+	residual.clear();
+	residual.resize(saturation.size(), 0.0);
 
         pinjection_rates_ = &injection_rates;
         method_viscous_ = method_viscous;
         method_gravity_ = method_gravity;
         method_capillary_ = method_capillary;
 
-	// For every face, we will modify sat_delta for adjacent cells.
+	// For every face, we will modify residual for adjacent cells.
 	// We loop over every cell and intersection, and modify only if
 	// this cell has lower index than the neighbour, or we are on the boundary.
         typedef EulerUpstreamResidualDetails::UpdateForCell<EulerUpstreamResidual<GI,RP,BC>, PressureSolution> CellUpdater;
-        CellUpdater update_cell(*this, saturation, gravity, pressure_sol, sat_delta);
+        CellUpdater update_cell(*this, saturation, gravity, pressure_sol, residual);
         EulerUpstreamResidualDetails::UpdateLoopBody<CellUpdater> body(update_cell);
         EulerUpstreamResidualDetails::IndirectRange<CIt> r(cell_iters_);
 #ifdef USE_TBB

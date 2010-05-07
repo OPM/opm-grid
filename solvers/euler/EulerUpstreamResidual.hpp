@@ -82,7 +82,7 @@ namespace Dune {
 
 
 	template <class FlowSolution>
-	void computeSatDelta(const std::vector<double>& saturation,
+	void computeResidual(const std::vector<double>& saturation,
 			     const typename GridInterface::Vector& gravity,
 			     const FlowSolution& flow_sol,
                              const SparseVector<double>& injection_rates,
@@ -93,14 +93,15 @@ namespace Dune {
 
 	void computeCapPressures(const std::vector<double>& saturation) const;
 
-	typename GridInterface::Vector
-	estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& saturation) const;
-
         const GridInterface& grid() const;
         const ReservoirProperties& reservoirProperties() const;
+        const BoundaryConditions& boundaryConditions() const;
 
     private:
 	void initFinal();
+
+	typename GridInterface::Vector
+	estimateCapPressureGradient(const FIt& f, const FIt& nbf, const std::vector<double>& saturation) const;
 
 	const GridInterface* pgrid_;
 	const ReservoirProperties* preservoir_properties_;
