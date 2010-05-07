@@ -60,6 +60,7 @@
 #include <dune/solvers/common/SimulatorUtilities.hpp>
 
 #include <dune/solvers/euler/EulerUpstream.hpp>
+#include <dune/solvers/euler/ImplicitCapillarity.hpp>
 
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
@@ -126,6 +127,10 @@ namespace Dune
 	typedef EulerUpstream<GridInterface,
 			      ResProp,
 			      BCs>                             TransportSolver;
+// 	typedef ImplicitCapillarity<GridInterface,
+//                                     ResProp,
+//                                     BCs,
+//                                     InnerProd>        TransportSolver;
 
 	int simulation_steps_;
 	double stepsize_;
