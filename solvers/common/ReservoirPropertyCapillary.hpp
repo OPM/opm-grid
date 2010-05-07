@@ -66,6 +66,11 @@ namespace Dune
 	    ret *= mob;
 	    return ret;
 	}
+        ScalarMobility& operator *=(const ScalarMobility& other)
+        {
+            mob *= other.mob;
+            return *this;
+        }
     };
 
     /// @brief A property class for incompressible two-phase flow.

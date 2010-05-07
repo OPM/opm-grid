@@ -168,6 +168,12 @@ namespace Dune
         /// @return capillary pressure at the given cell and saturation.
         double capillaryPressure(int cell_index, double saturation) const;
 
+        /// @brief Inverse of the capillary pressure function.
+        /// @param cell_index index of a grid cell.
+	/// @param cap_press a capillary pressure value.
+        /// @return the saturation at the given cell has the given capillary pressure.
+        double saturationFromCapillaryPressure(int cell_index, double cap_press) const;
+
         /// @brief Write permeability and porosity in the Sintef legacy format.
         /// @param grid_prefix the prefix of all files output by this function.
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;

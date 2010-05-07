@@ -82,6 +82,12 @@ namespace Dune
 	{
 	    return prod(mob, v);
 	}
+        TensorMobility& operator *=(const TensorMobility& other)
+        {
+            TensorMobility duplicate(*this);
+            prod(duplicate.mob, other.mob, mob);
+            return *this;
+        }
     private:
 	// If allowing assignment, remember to set mob.data() properly.
 	TensorMobility& operator=(const TensorMobility&);

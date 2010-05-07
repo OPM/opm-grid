@@ -456,6 +456,20 @@ namespace Dune
 
 
     template <int dim, class RPImpl, class RockType>
+    double ReservoirPropertyCommon<dim, RPImpl, RockType>::saturationFromCapillaryPressure(int cell_index, double cap_press) const
+    {
+        if (rock_.size() > 0) {
+            int r = cell_to_rock_[cell_index];
+            return rock_[r].satFromCapPress(permeability(cell_index), porosity(cell_index), cap_press);
+        } else {
+            // HACK ALERT!
+            // Use a zero saturation if no known rock table exists.
+            return 0.0;
+        }
+    }
+
+
+    template <int dim, class RPImpl, class RockType>
     void ReservoirPropertyCommon<dim, RPImpl, RockType>::writeSintefLegacyFormat(const std::string& grid_prefix) const
     {
         int num_cells = porosity_.size();
