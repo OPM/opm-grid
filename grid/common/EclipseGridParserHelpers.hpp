@@ -229,8 +229,7 @@ namespace
 	    } else {
 		if (is.peek() == int('*')) {
 		    is.ignore(); // ignore the '*'
-		    int multiplier = int(candidate);
-		    ASSERT(multiplier == 1);
+		    ASSERT(int(candidate) == 1);
 		    data.push_back(-1); // Set new flag for interpolation.
 		} else {
 		    data.push_back(candidate);
