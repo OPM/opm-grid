@@ -40,6 +40,7 @@
 #include "config.h"
 #include <dune/upscaling/UpscalerBase.hpp>
 #include <dune/solvers/euler/EulerUpstream.hpp>
+#include <dune/solvers/euler/ImplicitCapillarity.hpp>
 #include <boost/array.hpp>
 
 namespace Dune
@@ -94,6 +95,7 @@ namespace Dune
     protected:
 	// ------- Typedefs -------
 	typedef EulerUpstream<GridInterface, typename Super::ResProp, typename Super::BCs> TransportSolver;
+        // typedef ImplicitCapillarity<GridInterface, typename Super::ResProp, typename Super::BCs> TransportSolver; // not aniso so far
 	// ------- Methods -------
 	template <class FlowSol>
         void computeInOutFlows(std::pair<double, double>& water_inout,
