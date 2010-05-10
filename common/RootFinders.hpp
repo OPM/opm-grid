@@ -144,7 +144,7 @@ namespace Dune
                                 double& a,
                                 double& b)
         {
-            const int max_iters = 30;
+            const int max_iters = 100;
             double f0 = f(x0);
             double cur_dx = dx;
             int i = 0;
