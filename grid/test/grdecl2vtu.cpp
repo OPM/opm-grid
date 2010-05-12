@@ -54,7 +54,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector, const std::string f
         fieldvector.resize(global_cell.size());
         //std::cout << eclVector.size() << " " << global_cell.size() << " " << fieldvector.size()                   << std::endl;
 
-        for (uint i = 0; i < global_cell.size(); ++i) {
+        for (size_t i = 0; i < global_cell.size(); ++i) {
             fieldvector[i] = eclVector[global_cell[i]];
         }
         vtkwriter.addCellData(fieldvector, fieldname);
@@ -68,7 +68,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector, const std::string 
         std::vector<int> eclVector = eclParser.getIntegerValue(fieldname);
         fieldvector.resize(global_cell.size());
 
-        for (uint i = 0; i < global_cell.size(); ++i) {
+        for (size_t i = 0; i < global_cell.size(); ++i) {
             fieldvector[i] = (double)eclVector[global_cell[i]];
         }
                 vtkwriter.addCellData(fieldvector, fieldname);
