@@ -4,7 +4,7 @@
 check_PROGRAMS = cpgrid_test mapper_test partition_test
 
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
-noinst_PROGRAMS = grdecl_to_legacy_test make_vtk_test
+noinst_PROGRAMS = grdecl_to_legacy_test make_vtk_test grdecl2vtu
 
 AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
@@ -28,6 +28,8 @@ mapper_test_SOURCES = mapper_test.cpp
 
 make_vtk_test_SOURCES = make_vtk_test.cpp
 make_vtk_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
+
+grdecl2vtu_SOURCES = grdecl2vtu.cpp
 
 
 partition_test_SOURCES = partition_test.cpp
