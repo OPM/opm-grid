@@ -45,7 +45,6 @@
 #include <dune/common/fvector.hh>
 #include <dune/common/SparseTable.hpp>
 #include <dune/common/StopWatch.hpp>
-#include <dune/grid/common/referenceelements.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/grid/CpGrid.hpp> // How to avoid this? Needed for the explicit mapper specialization below.
 
