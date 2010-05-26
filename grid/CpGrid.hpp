@@ -248,11 +248,13 @@ namespace Dune
             return logical_cartesian_size_;
         }
 
-	/// Access the vector mapping (i, j, k) based indices to
-	/// cell numbers/ordering used by the grid. This should
-	/// only be used by classes that really need it, such as
-	/// those dealing with permeability fields that come from
-	/// the same grdecl file that the grid was constructed from.
+	/// Retrieve mapping from internal ("compressed") active grid
+	/// cells to external ("uncompressed") cells.  Specifically,
+	/// @code globalCell()[i] @endcode is the linearized Cartesian
+	/// index of grid cell @code i @endcode.  This method should
+	/// only be used by classes which really need it, such as
+	/// those dealing with permeability fields from the same input
+	/// deck from whence the current CpGrid was constructed.
         const std::vector<int>& globalCell() const
         {
             return global_cell_;
