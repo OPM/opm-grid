@@ -628,7 +628,7 @@ namespace Dune {
         /// @param [in] linsolver_type
         ///    Control parameter for iterative linear solver software.
         ///    Type 0 selects a BiCGStab solver, type 1 selects AMG/CG.
-        ///    
+        ///
         template<class FluidInterface>
         void solve(const FluidInterface&      r  ,
                    const std::vector<double>& sat,
@@ -1029,12 +1029,10 @@ namespace Dune {
             bdry_id_map_.clear();
             for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                 for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-                    if (f->boundary()) {
-                        if (bc.flowCond(*f).isPeriodic()) {
-                            const int bid = f->boundaryId();
-                            DofID dof(cell[c->index()], f->localIndex());
-                            bdry_id_map_.insert(std::make_pair(bid, dof));
-                        }
+                    if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+                        const int bid = f->boundaryId();
+                        DofID dof(cell[c->index()], f->localIndex());
+                        bdry_id_map_.insert(std::make_pair(bid, dof));
                     }
                 }
             }
@@ -1044,18 +1042,16 @@ namespace Dune {
                 ppartner_dof_.assign(total_num_faces_, -1);
                 for (CI c = g.cellbegin(); c != g.cellend(); ++c) {
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-                        if (f->boundary()) {
-                            if (bc.flowCond(*f).isPeriodic()) {
-                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+                        if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+                            const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
-                                BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
-                                ASSERT (j != bdry_id_map_.end());
-                                const int dof2 = cf[j->second.first][j->second.second];
+                            BdryIdMapIterator j =
+                                bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+                            ASSERT (j != bdry_id_map_.end());
+                            const int dof2 = cf[j->second.first][j->second.second];
 
-                                ppartner_dof_[dof1] = dof2;
-                                ppartner_dof_[dof2] = dof1;
-                            }
+                            ppartner_dof_[dof1] = dof2;
+                            ppartner_dof_[dof2] = dof1;
                         }
                     }
                 }
@@ -1138,32 +1134,30 @@ namespace Dune {
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-                        if (f->boundary()) {
-                            if (bc.flowCond(*f).isPeriodic()) {
-                                // dof-id of self
-                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+                        if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+                            // dof-id of self
+                            const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
-                                // dof-id of other
-                                BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
-                                ASSERT (j != bdry_id_map_.end());
-                                const int c2   = j->second.first;
-                                const int dof2 = cf[c2][j->second.second];
+                            // dof-id of other
+                            BdryIdMapIterator j =
+                                bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+                            ASSERT (j != bdry_id_map_.end());
+                            const int c2   = j->second.first;
+                            const int dof2 = cf[c2][j->second.second];
 
-                                if (dof1 < dof2) {
-                                    // Allocate storage for the actual
-                                    // couplings.
-                                    //
-                                    const int ndof = cf.rowSize(c2);
-                                    S_.incrementrowsize(dof1, ndof); // self->other
-                                    for (int dof = 0; dof < ndof; ++dof) {
-                                        int ii = cf[c2][dof];
-                                        int pp = ppartner_dof_[ii];
-                                        if ((pp != -1) && (pp != dof1) && (pp < ii)) {
-                                            S_.incrementrowsize(pp, 1);
-                                        }
-                                        S_.incrementrowsize(ii, 1);  // other->self
+                            if (dof1 < dof2) {
+                                // Allocate storage for the actual
+                                // couplings.
+                                //
+                                const int ndof = cf.rowSize(c2);
+                                S_.incrementrowsize(dof1, ndof); // self->other
+                                for (int dof = 0; dof < ndof; ++dof) {
+                                    int ii = cf[c2][dof];
+                                    int pp = ppartner_dof_[ii];
+                                    if ((pp != -1) && (pp != dof1) && (pp < ii)) {
+                                        S_.incrementrowsize(pp, 1);
                                     }
+                                    S_.incrementrowsize(ii, 1);  // other->self
                                 }
                             }
                         }
@@ -1240,33 +1234,31 @@ namespace Dune {
                 // connections.
                 for (CI c = pgrid_->cellbegin(); c != pgrid_->cellend(); ++c) {
                     for (FI f = c->facebegin(); f != c->faceend(); ++f) {
-                        if (f->boundary()) {
-                            if (bc.flowCond(*f).isPeriodic()) {
-                                // dof-id of self
-                                const int dof1 = cf[cell[c->index()]][f->localIndex()];
+                        if (f->boundary() && bc.flowCond(*f).isPeriodic()) {
+                            // dof-id of self
+                            const int dof1 = cf[cell[c->index()]][f->localIndex()];
 
-                                // dof-id of other
-                                BdryIdMapIterator j =
-                                    bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
-                                ASSERT (j != bdry_id_map_.end());
-                                const int c2   = j->second.first;
-                                const int dof2 = cf[c2][j->second.second];
+                            // dof-id of other
+                            BdryIdMapIterator j =
+                                bdry_id_map_.find(bc.getPeriodicPartner(f->boundaryId()));
+                            ASSERT (j != bdry_id_map_.end());
+                            const int c2   = j->second.first;
+                            const int dof2 = cf[c2][j->second.second];
 
-                                if (dof1 < dof2) {
-                                    // Assign actual couplings.
-                                    //
-                                    const int ndof = cf.rowSize(c2);
-                                    for (int dof = 0; dof < ndof; ++dof) {
-                                        int ii = cf[c2][dof];
-                                        int pp = ppartner_dof_[ii];
-                                        if ((pp != -1) && (pp != dof1) && (pp < ii)) {
-                                            ii = pp;
-                                        }
-                                        S_.addindex(dof1, ii);  // self->other
-                                        S_.addindex(ii, dof1);  // other->self
-                                        S_.addindex(dof2, ii);
-                                        S_.addindex(ii, dof2);
+                            if (dof1 < dof2) {
+                                // Assign actual couplings.
+                                //
+                                const int ndof = cf.rowSize(c2);
+                                for (int dof = 0; dof < ndof; ++dof) {
+                                    int ii = cf[c2][dof];
+                                    int pp = ppartner_dof_[ii];
+                                    if ((pp != -1) && (pp != dof1) && (pp < ii)) {
+                                        ii = pp;
                                     }
+                                    S_.addindex(dof1, ii);  // self->other
+                                    S_.addindex(ii, dof1);  // other->self
+                                    S_.addindex(dof2, ii);
+                                    S_.addindex(ii, dof2);
                                 }
                             }
                         }
