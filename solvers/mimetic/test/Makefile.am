@@ -11,10 +11,10 @@ noinst_PROGRAMS = mimetic_ipeval_test \
 		  spe10_test \
 		  known_answer_test
 
-AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS) $(ALUGRID_CPPFLAGS) $(SUPERLU_CPPFLAGS)
-AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS) $(ALUGRID_LDFLAGS) $(SUPERLU_LDFLAGS)
+AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS) $(ALUGRID_CPPFLAGS) $(SUPERLU_CPPFLAGS)
+AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS) $(ALUGRID_LDFLAGS) $(SUPERLU_LDFLAGS)
 LDADD = $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)   \
-        $(BOOST_SYSTEM_LIB)                             \
+        $(BOOST_SYSTEM_LIB) $(DUNEMPILIBS)              \
         ../../../lib/libdunecornerpoint.la              \
 	 $(ALUGRID_LIBS) $(SUPERLU_LIBS)                \
         $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)

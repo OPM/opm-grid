@@ -6,13 +6,13 @@ check_PROGRAMS = cpgrid_test mapper_test partition_test
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
 noinst_PROGRAMS = grdecl_to_legacy_test make_vtk_test grdecl2vtu
 
-AM_CPPFLAGS += $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS  += $(MPI_LDFLAGS) $(BOOST_LDFLAGS)
+AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
+AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
 # Here we depend on libraries in other parts of
 # the tree that should be built before this one,
 # but if you do not run make from the top you may
 # run into trouble. Recursive make considered harmful...
-LDADD =  $(DUNE_LIBS) $(BOOST_SYSTEM_LIB) \
+LDADD =  $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_SYSTEM_LIB) \
          ../cpgrid/libcpgrid.la ../preprocess/libpreprocess.la \
          ../common/libgrid.la  ../../common/libcommon.la \
          ../../common/param/libparam.la

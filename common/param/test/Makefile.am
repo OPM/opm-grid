@@ -4,8 +4,8 @@
 check_PROGRAMS = param_test
 
 param_test_SOURCES = param_test.cpp
-param_test_CXXFLAGS = $(MPI_CPPFLAGS) $(BOOST_CPPFLAGS)
-param_test_LDADD = $(MPI_LDFLAGS) $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+param_test_CXXFLAGS = $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
+param_test_LDADD = $(DUNE_LDFLAGS) $(DUNEMPILDFLAGS) $(DUNEMPILIBS) $(BOOST_LDFLAGS) \
                          $(DUNE_LIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB) ../libparam.la
 
 TESTS = $(check_PROGRAMS)
