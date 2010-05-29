@@ -70,7 +70,7 @@ namespace Dune {
     ///    permeability() @endcode member.
     ///
     /// @tparam computeInverseIP
-    ///    NOTE: This template parameter no longer exists, but the 
+    ///    NOTE: This template parameter no longer exists, but the
     ///          concept warrants enough attention to keep the doc.
     ///    Whether or not to compute the @em inverse of the mimetic
     ///    inner product matrix.  Specifically, if @f$B@f$ is the

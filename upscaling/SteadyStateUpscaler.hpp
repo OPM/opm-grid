@@ -37,7 +37,9 @@
 #define OPENRS_STEADYSTATEUPSCALER_HEADER
 
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include <dune/upscaling/UpscalerBase.hpp>
 #include <dune/solvers/euler/EulerUpstream.hpp>
 #include <dune/solvers/euler/ImplicitCapillarity.hpp>

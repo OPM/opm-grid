@@ -36,7 +36,9 @@
 
 #define VERBOSE
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include "../SimulatorTester.hpp"
 #include <dune/common/mpihelper.hh>
 #include <dune/solvers/common/ReservoirPropertyCapillaryAnisotropicRelperm.hpp>

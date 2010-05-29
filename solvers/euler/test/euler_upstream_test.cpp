@@ -35,7 +35,9 @@
 
 #define VERBOSE
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include "../EulerSolverTester.hpp"
 #include <dune/common/mpihelper.hh>
 

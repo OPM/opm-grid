@@ -36,7 +36,9 @@
 #ifndef OPENRS_SINGLEPHASEUPSCALER_HEADER
 #define OPENRS_SINGLEPHASEUPSCALER_HEADER
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include <dune/upscaling/UpscalingTraits.hpp>
 #include <dune/upscaling/UpscalerBase.hpp>
 

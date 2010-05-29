@@ -36,7 +36,9 @@
 #ifndef OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
 #define OPENRS_INCOMPFLOWSOLVERHYBRID_HEADER
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 
 #include <algorithm>
 #include <functional>

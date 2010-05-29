@@ -36,7 +36,9 @@
 #ifndef OPENRS_PARINCOMPFLOWSOLVERHYBRID_HEADER
 #define OPENRS_PARINCOMPFLOWSOLVERHYBRID_HEADER
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include <algorithm>
 #include <functional>
 #include <map>

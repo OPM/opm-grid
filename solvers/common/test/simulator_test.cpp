@@ -37,7 +37,9 @@
 #define VERBOSE
 //#define USE_TBB
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include "../SimulatorTester.hpp"
 #include "../SimulatorTesterFlexibleBC.hpp"
 #include <dune/common/mpihelper.hh>

@@ -36,7 +36,9 @@
 #ifndef OPENRS_GRIDINTERFACEEULER_HEADER
 #define OPENRS_GRIDINTERFACEEULER_HEADER
 
+#if HAVE_CONFIG_H
 #include "config.h"
+#endif
 #include <climits>
 
 #include <boost/iterator/iterator_facade.hpp>
