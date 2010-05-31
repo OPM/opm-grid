@@ -300,7 +300,7 @@ sys	0m0.584s
 
 [Again, 2010-05-31 -- Five runs.  Different computer (Ubuntu Linux 10.04)]
 { for i in $(seq 1 5); do
-    ./test/upscaling_test $XML_DATA_FILE;
+    time ./test/upscaling_test $XML_DATA_FILE;
   done; } 2>&1 | perl -ne 'print if /^Upscaled K/ .. /^sys/'
 
 156.108069013645 0 0 
