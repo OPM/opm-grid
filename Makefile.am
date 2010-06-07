@@ -2,7 +2,7 @@
 # $Revision$
 
 # we need the module file to be able to build via dunecontrol
-EXTRA_DIST=dune.module patch-dune.sh changed_from_dune
+EXTRA_DIST=dune.module
 
 SUBDIRS = m4 common grid lib solvers upscaling doc
 
