@@ -5,7 +5,7 @@
 AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
 [
         # LibXML2 support.
-        PKG_CHECK_MODULES([libxml2], [libxml-2.0 >= 2.0])
+        AM_PATH_XML2([2.0.0])
 
         # BLAS and LAPACK support.
         #

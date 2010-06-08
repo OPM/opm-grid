@@ -14,8 +14,8 @@ noinst_LTLIBRARIES = libparam.la
 libparam_la_SOURCES = Parameter.cpp ParameterGroup.cpp ParameterTools.cpp \
                       ParameterXML.cpp
 
-libparam_la_CPPFLAGS = $(libxml2_CFLAGS) $(BOOST_CPPFLAGS)
-libparam_la_LDFLAGS  = $(libxml2_LDFLAGS) $(BOOST_LDFLAGS)
-libparam_la_LIBADD   = $(libxml2_LIBS) $(BOOST_FILESYSTEM_LIB) $(BOOST_SYSTEM_LIB)
+libparam_la_CPPFLAGS = $(XML_CPPFLAGS) $(BOOST_CPPFLAGS)
+libparam_la_LDFLAGS  = $(BOOST_LDFLAGS)
+libparam_la_LIBADD   = $(XML_LIBS) $(BOOST_FILESYSTEM_LIB) $(BOOST_SYSTEM_LIB)
 
 include $(top_srcdir)/am/global-rules
