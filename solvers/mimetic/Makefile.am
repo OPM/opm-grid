@@ -4,7 +4,6 @@
 SUBDIRS = test
 
 mimeticdir = $(includedir)/dune/solvers/mimetic
-mimetic_HEADERS = IncompFlowSolverHybrid.hpp MimeticIPEvaluator.hpp \
-		  ParIncompFlowSolverHybrid.hpp
+mimetic_HEADERS = IncompFlowSolverHybrid.hpp MimeticIPEvaluator.hpp
 
 include $(top_srcdir)/am/global-rules

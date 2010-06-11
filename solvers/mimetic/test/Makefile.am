@@ -6,7 +6,6 @@ noinst_PROGRAMS = mimetic_ipeval_test \
                   mimetic_solver_test \
                   mimetic_aniso_solver_test \
                   mimetic_periodic_test \
-		  parsolver_test \
 		  istl_test \
 		  spe10_test \
 		  known_answer_test
@@ -28,7 +27,7 @@ mimetic_aniso_solver_test_SOURCES = mimetic_aniso_solver_test.cpp
 
 mimetic_periodic_test_SOURCES = mimetic_periodic_test.cpp
 
-parsolver_test_SOURCES = parsolver_test.cpp
+#parsolver_test_SOURCES = parsolver_test.cpp
 
 istl_test_SOURCES = istl_test.cpp
 
