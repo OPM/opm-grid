@@ -111,7 +111,8 @@ namespace EclipseKeywords
 	  string("NSTACK"),   string("SATNUM"),
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
-	  string("WOIR"),     string("TSTEP"),    string("BOX")
+	  string("WOIR"),     string("TSTEP"),    string("BOX"),
+          string("COORDSYS")
 	};
     const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);
 
