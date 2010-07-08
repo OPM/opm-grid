@@ -110,6 +110,20 @@ namespace Dune
 	    if (!is.eof()) {
 		THROW("Reading stopped but we're not at eof: something went wrong reading data.");
 	    }
+            // Making sure that the tables start/end at zero relperm.
+            bool all_ok = true;
+            for (int i = 2; i < 5; ++i) {
+                if (phase == 0 && data[0][i] != 0.0) { // Water table
+                    data[0][i] = 0.0;
+                    all_ok = false;
+                } else if (phase == 1 && data.back()[i] != 0.0) { // Oil table
+                    data.back()[i] = 0.0;
+                    all_ok = false;
+                }
+            }
+            if (!all_ok) {
+                std::cout << "Warning: Relperm tables were modified to go to zero at the beginning/end." << std::endl;
+            }
 	    std::vector<double> pcow, svals, krxx, kryy, krzz;
 	    for (int i = 0; i < int(data.size()); ++i) {
 		pcow.push_back(data[i][0]);

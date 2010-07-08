@@ -165,6 +165,14 @@ namespace Dune
 		kro.push_back(data[i][2]);
 		Jfunc.push_back(data[i][3]);
 	    }
+            if (krw[0] != 0.0) {
+                krw[0] = 0.0;
+                std::cout << "Warning: krw table were modified to go to zero at the beginning." << std::endl;
+            }
+            if (kro.back() != 0.0) {
+                kro.back() = 0.0;
+                std::cout << "Warning: kro table were modified to go to zero at the end." << std::endl;
+            }
 	    krw_ = TabFunc(svals, krw);
 	    kro_ = TabFunc(svals, kro);
 	    Jfunc_ = TabFunc(svals, Jfunc);
