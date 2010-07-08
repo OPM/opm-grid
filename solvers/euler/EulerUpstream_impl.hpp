@@ -42,6 +42,7 @@
 #include <cassert>
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/common/Average.hpp>
@@ -162,7 +163,9 @@ namespace Dune
 	if (cfl_dt > time){
 	    nr_transport_steps = minimum_small_steps_;
 	} else {
-	    nr_transport_steps = std::max(int(std::ceil(time/cfl_dt)), minimum_small_steps_);
+            double steps = std::min<double>(std::ceil(time/cfl_dt), std::numeric_limits<int>::max());
+            nr_transport_steps = int(steps);
+	    nr_transport_steps = std::max(nr_transport_steps, minimum_small_steps_);
             nr_transport_steps = std::min(nr_transport_steps, maximum_small_steps_);
 	}
 	double dt_transport = time/nr_transport_steps;
