@@ -82,31 +82,11 @@ namespace Dune
 							Super::flow_solver_.getSolution(),
 							Super::injection_rates_);
 		// Output.
-                typedef typename Super::GridInterface::Vector Vec;
-                std::vector<Vec> cell_velocity;
-                estimateCellVelocity(cell_velocity, this->ginterf_, this->flow_solver_.getSolution());
-                Dune::array<std::vector<Vec>, 2> phase_velocities;
-                computePhaseVelocities(phase_velocities[0], phase_velocities[1], this->res_prop_, saturation, cell_velocity);
-                // Dune's vtk writer wants multi-component data to be flattened.
-                std::vector<double> cell_velocity_flat(&*cell_velocity.front().begin(),
-                                                       &*cell_velocity.back().end());
-                std::vector<double> water_velocity_flat(&*phase_velocities[0].front().begin(),
-                                                       &*phase_velocities[0].back().end());
-                std::vector<double> oil_velocity_flat(&*phase_velocities[1].front().begin(),
-                                                       &*phase_velocities[1].back().end());
-                std::vector<double> cell_pressure;
-                getCellPressure(cell_pressure, this->ginterf_, this->flow_solver_.getSolution());
-                std::vector<double> cap_pressure;
-                computeCapPressure(cap_pressure, this->res_prop_, saturation);
-		Dune::VTKWriter<typename Super::GridType::LeafGridView> vtkwriter(Super::grid_.leafView());
-                vtkwriter.addCellData(cell_velocity_flat, "velocity", Vec::dimension);
-                vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", Vec::dimension);
-                vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", Vec::dimension);
-                vtkwriter.addCellData(saturation, "saturation");
-                vtkwriter.addCellData(cell_pressure, "pressure");
-                vtkwriter.addCellData(cap_pressure, "capillary pressure");
-		vtkwriter.write("testsolution-" + boost::lexical_cast<std::string>(i),
-                                Dune::VTKOptions::ascii);
+                writeVtkOutput(this->ginterf_,
+                               this->res_prop_,
+                               this->flow_solver_.getSolution(),
+                               saturation,
+                               "testsolution-" + boost::lexical_cast<std::string>(i));
 	    }
 	}
 
