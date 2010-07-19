@@ -41,54 +41,96 @@
 #include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
 #include <dune/solvers/mimetic/MimeticIPEvaluator.hpp>
 #include <dune/solvers/mimetic/IncompFlowSolverHybrid.hpp>
+#include <dune/solvers/euler/EulerUpstream.hpp>
+#include <dune/solvers/euler/ImplicitCapillarity.hpp>
 
 namespace Dune
 {
 
-
-    /// Traits for upscaling with isotropic relperm (scalar) input.
-    struct UpscalingTraitsBasic
+    /// Traits policies for isotropic (scalar) relperm.
+    struct Isotropic
     {
-
-        /// The reservoir property class.
+        /// The reservoir property type.
         template <int Dimension>
         struct ResProp
         {
             typedef ReservoirPropertyCapillary<Dimension> Type;
         };
 
-        /// The pressure/flow solver class.
-        template <class GridInterface, class BoundaryConditions>
-        struct FlowSolver
+        /// The inner product template.
+        template <class GridInterface, class RockInterface>
+        struct InnerProduct : public MimeticIPEvaluator<GridInterface, RockInterface>
         {
-            typedef IncompFlowSolverHybrid<GridInterface,
-                                           typename ResProp<GridInterface::Dimension>::Type,
-                                           BoundaryConditions,
-                                           MimeticIPEvaluator> Type;
         };
     };
 
 
     /// Traits for upscaling with anisotropic relperm (tensorial) input.
-    struct UpscalingTraitsAnisoRelperm
+    struct Anisotropic
     {
-        /// The reservoir property class.
+        /// The reservoir property type.
         template <int Dimension>
         struct ResProp
         {
             typedef ReservoirPropertyCapillaryAnisotropicRelperm<Dimension> Type;
         };
 
+        /// The inner product template.
+        template <class GridInterface, class RockInterface>
+        struct InnerProduct : public MimeticIPAnisoRelpermEvaluator<GridInterface, RockInterface>
+        {
+        };
+    };
+
+
+    /// Traits for explicit transport.
+    template <class IsotropyPolicy>
+    struct Explicit
+    {
+        template <class GridInterface, class BoundaryConditions>
+        struct TransportSolver
+        {
+            enum { Dimension = GridInterface::Dimension };
+            typedef typename IsotropyPolicy::template ResProp<Dimension>::Type RP;
+            typedef EulerUpstream<GridInterface,
+                                  RP,
+                                  BoundaryConditions> Type;
+        };
+    };
+
+
+    /// Traits for implicit transport (solving for capillary pressure of steady state implicitly).
+    template <class IsotropyPolicy>
+    struct ImplicitCap
+    {
+        template <class GridInterface, class BoundaryConditions>
+        struct TransportSolver
+        {
+            enum { Dimension = GridInterface::Dimension };
+            typedef typename IsotropyPolicy::template ResProp<Dimension>::Type RP;
+            typedef ImplicitCapillarity<GridInterface, RP, BoundaryConditions, IsotropyPolicy::template InnerProduct> Type;
+        };
+    };
+
+
+
+    template <class RelpermPolicy, template <class> class TransportPolicy>
+    struct UpscalingTraits : public RelpermPolicy, TransportPolicy<RelpermPolicy>
+    {
         /// The pressure/flow solver class.
         template <class GridInterface, class BoundaryConditions>
         struct FlowSolver
         {
             typedef IncompFlowSolverHybrid<GridInterface,
-                                           typename ResProp<GridInterface::Dimension>::Type,
+                                           typename RelpermPolicy::template ResProp<GridInterface::Dimension>::Type,
                                            BoundaryConditions,
-                                           MimeticIPAnisoRelpermEvaluator> Type;
+                                           RelpermPolicy::template InnerProduct> Type;
         };
     };
+
+
+    typedef UpscalingTraits<Isotropic, Explicit> UpscalingTraitsBasic;
+    typedef UpscalingTraits<Anisotropic, Explicit> UpscalingTraitsAnisoRelperm;
 
 
 } // namespace Dune
