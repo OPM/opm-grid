@@ -41,12 +41,11 @@
 namespace Dune
 {
 
-    template <template <int> class ResPropT = ReservoirPropertyCapillary,
-	      template <class, class> class InnerProd = MimeticIPEvaluator>
-    class SimulatorTesterFlexibleBC : public SimulatorTester<ResPropT, InnerProd>
+    template <class SimTraits>
+    class SimulatorTesterFlexibleBC : public SimulatorTester<SimTraits>
     {
     protected:
-        typedef SimulatorTester<ResPropT, InnerProd> Super;
+        typedef SimulatorTester<SimTraits> Super;
         typedef typename Super::GridInterface GI;
         typedef typename Super::Vector Vector;
 

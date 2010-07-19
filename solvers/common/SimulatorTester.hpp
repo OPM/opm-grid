@@ -47,40 +47,39 @@ namespace Dune
 
     /// @brief
     /// @todo Doc me!
-    template <template <int> class ResPropT = ReservoirPropertyCapillary,
-	      template <class, class> class InnerProd = MimeticIPEvaluator>
-    class SimulatorTester : public SimulatorBase<ResPropT, InnerProd>
+    template <class SimTraits>
+    class SimulatorTester : public SimulatorBase<SimTraits>
     {
     public:
-	typedef SimulatorBase<ResPropT, InnerProd> Super;
+	typedef SimulatorBase<SimTraits> Super;
 	/// @brief
 	/// @todo Doc me!
 	void run()
 	{
 	    // Initial saturation.
-	    std::vector<double> saturation(Super::init_saturation_);
+	    std::vector<double> saturation(this->init_saturation_);
 	    // Gravity.
 	    // FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
 	    // Compute flow field.
-	    if (Super::gravity_.two_norm() > 0.0) {
+	    if (this->gravity_.two_norm() > 0.0) {
 		MESSAGE("Warning: Gravity not handled by flow solver.");
 	    }
 
 	    // Solve some steps.
-	    for (int i = 0; i < Super::simulation_steps_; ++i) {
+	    for (int i = 0; i < this->simulation_steps_; ++i) {
 		std::cout << "\n\n================    Simulation step number " << i
                           << "    ===============" << std::endl;
 		// Flow.
-		Super::flow_solver_.solve(Super::res_prop_, saturation, Super::bcond_, Super::injection_rates_psolver_,
-                                          Super::residual_tolerance_, Super::linsolver_verbosity_, Super::linsolver_type_);
+		this->flow_solver_.solve(this->res_prop_, saturation, this->bcond_, this->injection_rates_psolver_,
+                                         this->residual_tolerance_, this->linsolver_verbosity_, this->linsolver_type_);
 // 		if (i == 0) {
 // 		    flow_solver_.printSystem("linsys_dump_mimetic");
 // 		}
 		// Transport.
-		Super::transport_solver_.transportSolve(saturation, Super::stepsize_, Super::gravity_,
-							Super::flow_solver_.getSolution(),
-							Super::injection_rates_);
+		this->transport_solver_.transportSolve(saturation, this->stepsize_, this->gravity_,
+							this->flow_solver_.getSolution(),
+							this->injection_rates_);
 		// Output.
                 writeVtkOutput(this->ginterf_,
                                this->res_prop_,

@@ -75,12 +75,10 @@ namespace Dune
     /// @brief
     /// @todo Doc me!
     /// @tparam
-    template <template <int> class ResPropT = ReservoirPropertyCapillary,
-	      template <class, class> class InnerProd = MimeticIPEvaluator>
+    template <class SimTraits>
     class SimulatorBase
     {
     public:
-
 
 	/// @brief
 	/// @todo Doc me!
@@ -115,22 +113,13 @@ namespace Dune
 	typedef CpGrid                                         GridType;
  	enum { Dimension = GridType::dimension };
 	typedef FieldVector<double, Dimension>                 Vector;
- 	typedef ResPropT<Dimension>                            ResProp;
+ 	typedef typename SimTraits::template ResProp<Dimension>::Type ResProp;
 	typedef GridInterfaceEuler<GridType>                   GridInterface;
 	typedef GridInterface::CellIterator                    CellIter;
 	typedef CellIter::FaceIterator                         FaceIter;
 	typedef BasicBoundaryConditions<true, true>                 BCs;
-	typedef IncompFlowSolverHybrid<GridInterface,
-				       ResProp,
-				       BCs,
-				       InnerProd>     FlowSolver;
-	typedef EulerUpstream<GridInterface,
-			      ResProp,
-			      BCs>                             TransportSolver;
-// 	typedef ImplicitCapillarity<GridInterface,
-//                                     ResProp,
-//                                     BCs,
-//                                     InnerProd>        TransportSolver;
+	typedef typename SimTraits::template FlowSolver<GridInterface, BCs>::Type FlowSolver;
+        typedef typename SimTraits::template TransportSolver<GridInterface, BCs>::Type TransportSolver;
 
 	int simulation_steps_;
 	double stepsize_;

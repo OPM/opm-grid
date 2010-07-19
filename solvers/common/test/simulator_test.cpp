@@ -39,17 +39,21 @@
 
 #if HAVE_CONFIG_H
 #include "config.h"
-#endif
+#endif // HAVE_CONFIG_H
+
 #include "../SimulatorTester.hpp"
 #include "../SimulatorTesterFlexibleBC.hpp"
+#include <dune/solvers/common/SimulatorTraits.hpp>
 #include <dune/common/mpihelper.hh>
 
 #ifdef USE_TBB
 #include <tbb/task_scheduler_init.h>
-#endif
+#endif // USE_TBB
 
 using namespace Dune;
 
+typedef SimulatorTraits<Isotropic, Explicit> SimTraits;
+typedef SimulatorTesterFlexibleBC<SimTraits> Simulator;
 
 int main(int argc, char** argv)
 {
@@ -59,9 +63,8 @@ int main(int argc, char** argv)
     int num_threads = param.getDefault("num_threads", tbb::task_scheduler_init::default_num_threads());
     tbb::task_scheduler_init init(num_threads);
 #endif
-//     SimulatorTester<> tester;
-    SimulatorTesterFlexibleBC<> tester;
-    tester.init(param);
-    tester.run();
+    Simulator sim;
+    sim.init(param);
+    sim.run();
 }
 

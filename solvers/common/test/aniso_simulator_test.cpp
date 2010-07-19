@@ -35,24 +35,36 @@
 
 
 #define VERBOSE
+//#define USE_TBB
 
 #if HAVE_CONFIG_H
 #include "config.h"
-#endif
+#endif // HAVE_CONFIG_H
+
 #include "../SimulatorTester.hpp"
+#include "../SimulatorTesterFlexibleBC.hpp"
+#include <dune/solvers/common/SimulatorTraits.hpp>
 #include <dune/common/mpihelper.hh>
-#include <dune/solvers/common/ReservoirPropertyCapillaryAnisotropicRelperm.hpp>
-#include <dune/solvers/mimetic/MimeticIPAnisoRelpermEvaluator.hpp>
+
+#ifdef USE_TBB
+#include <tbb/task_scheduler_init.h>
+#endif // USE_TBB
+
 using namespace Dune;
 
+typedef SimulatorTraits<Anisotropic, Explicit> SimTraits;
+typedef SimulatorTesterFlexibleBC<SimTraits> Simulator;
 
 int main(int argc, char** argv)
 {
     parameter::ParameterGroup param(argc, argv);
     MPIHelper::instance(argc,argv);
-    SimulatorTester<ReservoirPropertyCapillaryAnisotropicRelperm,
-	MimeticIPAnisoRelpermEvaluator> tester;
-    tester.init(param);
-    tester.run();
+#ifdef USE_TBB
+    int num_threads = param.getDefault("num_threads", tbb::task_scheduler_init::default_num_threads());
+    tbb::task_scheduler_init init(num_threads);
+#endif
+    Simulator sim;
+    sim.init(param);
+    sim.run();
 }
 
