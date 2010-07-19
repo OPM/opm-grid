@@ -2,7 +2,7 @@
 # $Revision$
 
 check_PROGRAMS = boundaryconditions_test nonuniformtablelinear_test
-noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test
+noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test implicitcap_test
 
 # Common flags
 AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
@@ -26,6 +26,9 @@ simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU
 
 aniso_simulator_test_SOURCES = aniso_simulator_test.cpp
 aniso_simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
+
+implicitcap_test_SOURCES = implicitcap_test.cpp
+implicitcap_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
 
 TESTS = $(check_PROGRAMS)
 
