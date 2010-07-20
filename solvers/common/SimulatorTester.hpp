@@ -96,8 +96,8 @@ namespace Dune
                 }
                 std::cout << "Maximum saturation change: " << maxdiff << std::endl;
 
-                // Swap old and new buffers.
-                saturation_old.swap(saturation);
+                // Copy to old.
+                saturation_old = saturation;
 	    }
 	}
 
