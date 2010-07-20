@@ -110,6 +110,7 @@ namespace Dune {
 	protected:
 	    std::vector<double> x_values_;
 	    std::vector<T> y_values_;
+	    mutable std::vector<T> x_values_reversed_;
 	    mutable std::vector<T> y_values_reversed_;
 	    RangePolicy left_;
 	    RangePolicy right_;
@@ -211,8 +212,11 @@ namespace Dune {
                 if (y_values_reversed_.empty()) {
                     y_values_reversed_ = y_values_;
                     std::reverse(y_values_reversed_.begin(), y_values_reversed_.end());
+                    ASSERT(isNondecreasing(y_values_reversed_.begin(), y_values_reversed_.end()));
+                    x_values_reversed_ = x_values_;
+                    std::reverse(x_values_reversed_.begin(), x_values_reversed_.end());
                 }
-                return linearInterpolation(y_values_reversed_, x_values_, y);
+                return linearInterpolation(y_values_reversed_, x_values_reversed_, y);
             }
 	}
 
