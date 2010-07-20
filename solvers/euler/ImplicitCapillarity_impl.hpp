@@ -62,7 +62,8 @@ namespace Dune
 	  clamp_sat_(false),
           residual_tolerance_(1e-8),
           linsolver_verbosity_(1),
-          linsolver_type_(1)
+          linsolver_type_(1),
+          update_relaxation_(1.0)
     {
     }
 
@@ -75,7 +76,8 @@ namespace Dune
 	  clamp_sat_(false),
           residual_tolerance_(1e-8),
           linsolver_verbosity_(1),
-          linsolver_type_(1)
+          linsolver_type_(1),
+          update_relaxation_(1.0)
     {
         FieldVector<double, GI::Dimension> grav(0.0);
         psolver_.init(g, r, grav, b);
@@ -93,6 +95,7 @@ namespace Dune
 	residual_tolerance_ = param.getDefault("residual_tolerance", residual_tolerance_);
 	linsolver_verbosity_ = param.getDefault("linsolver_verbosity", linsolver_verbosity_);
 	linsolver_type_ = param.getDefault("linsolver_type", linsolver_type_);
+        update_relaxation_ = param.getDefault("update_relaxation", update_relaxation_);
     }
 
     template <class GI, class RP, class BC, template <class, class> class IP>
@@ -157,6 +160,9 @@ namespace Dune
 	residual_.computeResidual(saturation, gravity, pressure_sol, injection_rates,
                                   method_viscous_, method_gravity_, false,
                                   injection_rates_residual);
+        for (int i = 0; i < num_cells; ++i) {
+            injection_rates_residual[i] = -injection_rates_residual[i];
+        }
 
         // Compute capillary pressure.
         // Note that the saturation is just a dummy for this call, since the mobilities are fixed.
@@ -185,7 +191,11 @@ namespace Dune
         double mod_correct = modifiedRegulaFalsi(functor, mod_low, mod_high, max_iter, nonlinear_tolerance, iterations_used);
         std::cout << "Moved capillary pressure solution by " << mod_correct << " after "
                   << iterations_used << " iterations." << std::endl;
-        saturation = functor.lastSaturations();
+        // saturation = functor.lastSaturations();
+        const std::vector<double>& sat_new = functor.lastSaturations();
+        for (int i = 0; i < num_cells; ++i) {
+            saturation[i] = (1.0 - update_relaxation_)*saturation[i] + update_relaxation_*sat_new[i];
+        }
 
         // Optionally check and/or clamp results.
 	if (check_sat_ || clamp_sat_) {

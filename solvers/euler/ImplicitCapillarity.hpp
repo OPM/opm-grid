@@ -119,6 +119,7 @@ namespace Dune {
         double residual_tolerance_;
         int linsolver_verbosity_;
         int linsolver_type_;
+        double update_relaxation_;
 
     };
 
