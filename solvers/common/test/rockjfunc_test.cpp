@@ -48,8 +48,7 @@ int main(int argc, char** argv)
     RockJfunc r;
     r.read("", argv[1]);
 
-
-    OwnCMatrix perm;
+    OwnCMatrix perm(3,3,(double*)0);
     eye(perm);
     perm *= 100*prefix::milli*unit::darcy;
     double poro = 0.2;

@@ -2,7 +2,7 @@
 # $Revision$
 
 check_PROGRAMS = boundaryconditions_test nonuniformtablelinear_test
-noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test implicitcap_test
+noinst_PROGRAMS = gie_test simulator_test periodic_test aniso_simulator_test implicitcap_test rockjfunc_test
 
 # Common flags
 AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
@@ -20,6 +20,9 @@ nonuniformtablelinear_test_SOURCES = nonuniformtablelinear_test.cpp
 periodic_test_SOURCES = periodic_test.cpp
 
 gie_test_SOURCES = gie_test.cpp
+
+rockjfunc_test_SOURCES = rockjfunc_test.cpp
+rockjfunc_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)
 
 simulator_test_SOURCES = simulator_test.cpp
 simulator_test_LDADD   = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS) $(SUPERLU_LIBS)# -ltbb
