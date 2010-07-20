@@ -58,6 +58,7 @@ namespace Dune
 	{
 	    // Initial saturation.
 	    std::vector<double> saturation(this->init_saturation_);
+	    std::vector<double> saturation_old(saturation);
 	    // Gravity.
 	    // FieldVector<double, 3> gravity(0.0);
 	    // gravity[2] = -Dune::unit::gravity;
@@ -86,6 +87,17 @@ namespace Dune
                                this->flow_solver_.getSolution(),
                                saturation,
                                "testsolution-" + boost::lexical_cast<std::string>(i));
+
+                // Comparing old to new.
+                int num_cells = saturation.size();
+                double maxdiff = 0.0;
+                for (int i = 0; i < num_cells; ++i) {
+                    maxdiff = std::max(maxdiff, std::fabs(saturation[i] - saturation_old[i]));
+                }
+                std::cout << "Maximum saturation change: " << maxdiff << std::endl;
+
+                // Swap old and new buffers.
+                saturation_old.swap(saturation);
 	    }
 	}
 
