@@ -88,6 +88,8 @@ namespace Dune
                                saturation,
                                "testsolution-" + boost::lexical_cast<std::string>(i));
 
+                writeField(saturation, "saturation-" + boost::lexical_cast<std::string>(i));
+
                 // Comparing old to new.
                 int num_cells = saturation.size();
                 double maxdiff = 0.0;

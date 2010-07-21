@@ -41,6 +41,9 @@
 #include <dune/common/fvector.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <vector>
+#include <fstream>
+#include <algorithm>
+#include <iterator>
 
 namespace Dune
 {
@@ -229,6 +232,17 @@ namespace Dune
         vtkwriter.write(filename, Dune::VTKOptions::ascii);
     }
 
+
+    inline void writeField(const std::vector<double>& field,
+                           const std::string& filename)
+    {
+        std::ofstream os(filename.c_str());
+        if (!os) {
+            THROW("Could not open file " << filename);
+        }
+        os << field.size() << '\n';
+        std::copy(field.begin(), field.end(), std::ostream_iterator<double>(os, "\n"));
+    }
 
 } // namespace Dune
 

@@ -80,6 +80,12 @@ namespace Dune
             return cap_press_(saturation);
 	}
 
+	template <template <class> class SP, class OP>
+	double satFromCapPress(const FullMatrix<double, SP, OP>& /*perm*/, const double /*poro*/, const double cp) const
+	{
+            return cap_press_.inverse(cp);
+	}
+
 	void read(const std::string& directory, const std::string& specification)
 	{
 	    // For this type of rock, the specification is a line with two file names.
