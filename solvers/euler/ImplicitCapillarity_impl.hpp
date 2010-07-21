@@ -117,6 +117,24 @@ namespace Dune
     }
 
 
+
+    namespace {
+        void thresholdMobility(double& m, double threshold)
+        {
+            m = std::max(m, threshold);
+        }
+        // The matrix variant expects diagonal mobilities.
+        template <class SomeMatrixType>
+        void thresholdMobility(SomeMatrixType& m, double threshold)
+        {
+            for (int i = 0; i < std::min(m.numRows(), m.numCols()); ++i) {
+                m(i, i) = std::max(m(i, i), threshold);
+            }
+        }
+    } // anon namespace
+
+
+
     template <class GI, class RP, class BC, template <class, class> class IP>
     template <class PressureSolution>
     void ImplicitCapillarity<GI, RP, BC, IP>::transportSolve(std::vector<double>& saturation,
@@ -144,6 +162,8 @@ namespace Dune
             mob_totinv.setToInverse(mob_tot);
             m *= mob_totinv;
             m *= mob2;
+            thresholdMobility(m.mob, 1e-10); // @@TODO: User-set limit.
+            // std::cout << m.mob(0,0) << '\n';
         }
         ReservoirPropertyFixedMobility<Mob> capillary_mobilities(cap_mob);
 
