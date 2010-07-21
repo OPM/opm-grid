@@ -118,7 +118,7 @@ namespace Dune
 
 
 
-    namespace {
+    namespace ImplicitCapillarityDetails {
         void thresholdMobility(double& m, double threshold)
         {
             m = std::max(m, threshold);
@@ -162,7 +162,7 @@ namespace Dune
             mob_totinv.setToInverse(mob_tot);
             m *= mob_totinv;
             m *= mob2;
-            thresholdMobility(m.mob, 1e-10); // @@TODO: User-set limit.
+            ImplicitCapillarityDetails::thresholdMobility(m.mob, 1e-10); // @@TODO: User-set limit.
             // std::cout << m.mob(0,0) << '\n';
         }
         ReservoirPropertyFixedMobility<Mob> capillary_mobilities(cap_mob);
