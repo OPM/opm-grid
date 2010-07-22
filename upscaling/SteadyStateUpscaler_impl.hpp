@@ -56,7 +56,8 @@ namespace Dune
           print_inoutflows_(false),
 	  simulation_steps_(10),
 	  stepsize_(0.1),
-	  relperm_threshold_(1.0e-4)
+	  relperm_threshold_(1.0e-4),
+          sat_change_threshold_(0.0)
     {
     }
 
@@ -73,6 +74,7 @@ namespace Dune
 	stepsize_ = Dune::unit::convert::from(param.getDefault("stepsize", stepsize_),
 					      Dune::unit::day);
 	relperm_threshold_ = param.getDefault("relperm_threshold", relperm_threshold_);
+        sat_change_threshold_ = param.getDefault("sat_change_threshold", sat_change_threshold_);
 
 	transport_solver_.init(param);
         // Set viscosities and densities if given.
@@ -148,11 +150,8 @@ namespace Dune
         std::cout << "Max mod = " << max_mod << std::endl;
 
         // Do a run till steady state. For now, we just do some pressure and transport steps...
+        std::vector<double> saturation_old = saturation;
         for (int iter = 0; iter < simulation_steps_; ++iter) {
-            // Check and fix fluxes.
-            // 		flux_checker_.checkDivergence(grid_, wells, flux);
-            // 		flux_checker_.fixFlux(grid_, wells, boundary_, flux);
-
             // Run transport solver.
             transport_solver_.transportSolve(saturation, stepsize_, gravity, this->flow_solver_.getSolution(), injection);
 
@@ -185,11 +184,26 @@ namespace Dune
                                + '-' + boost::lexical_cast<std::string>(flow_direction)
                                + '-' + boost::lexical_cast<std::string>(iter));
             }
-        }
 
-        // A check on the final fluxes.
-        // 	    flux_checker_.checkDivergence(grid_, wells, flux);
-        // 	    flux_checker_.fixFlux(grid_, wells, boundary_, flux);
+            // Comparing old to new.
+            int num_cells = saturation.size();
+            double maxdiff = 0.0;
+            for (int i = 0; i < num_cells; ++i) {
+                maxdiff = std::max(maxdiff, std::fabs(saturation[i] - saturation_old[i]));
+            }
+#ifdef VERBOSE
+            std::cout << "Maximum saturation change: " << maxdiff << std::endl;
+#endif
+            if (maxdiff < sat_change_threshold_) {
+#ifdef VERBOSE
+                std::cout << "Maximum saturation change is under steady state threshold." << std::endl;
+#endif
+                break;
+            }
+
+            // Copy to old.
+            saturation_old = saturation;
+        }
 
         // Compute phase mobilities.
         typedef typename Super::ResProp::Mobility Mob;

@@ -2,7 +2,7 @@
 # $Revision$
 
 check_PROGRAMS = 
-noinst_PROGRAMS = upscaling_test steadystate_test aniso_steadystate_test #upscale_perm upscale_relperm
+noinst_PROGRAMS = upscaling_test steadystate_test aniso_steadystate_test implicit_steadystate_test aniso_implicit_steadystate_test #upscale_perm upscale_relperm
 
 AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS) $(SUPERLU_CPPFLAGS)
 AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS) $(SUPERLU_LDFLAGS)
@@ -17,6 +17,10 @@ upscaling_test_SOURCES = upscaling_test.cpp
 steadystate_test_SOURCES = steadystate_test.cpp
 
 aniso_steadystate_test_SOURCES = aniso_steadystate_test.cpp
+
+implicit_steadystate_test_SOURCES = implicit_steadystate_test.cpp
+
+aniso_implicit_steadystate_test_SOURCES = aniso_implicit_steadystate_test.cpp
 
 #upscale_perm_SOURCES = upscale_perm.C
 

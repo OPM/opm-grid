@@ -96,8 +96,8 @@ namespace Dune
 
     protected:
 	// ------- Typedefs -------
-	typedef EulerUpstream<GridInterface, typename Super::ResProp, typename Super::BCs> TransportSolver;
-        // typedef ImplicitCapillarity<GridInterface, typename Super::ResProp, typename Super::BCs> TransportSolver; // not aniso so far
+        typedef typename Traits::template TransportSolver<GridInterface, typename Super::BCs>::Type TransportSolver;
+
 	// ------- Methods -------
 	template <class FlowSol>
         void computeInOutFlows(std::pair<double, double>& water_inout,
@@ -115,6 +115,7 @@ namespace Dune
 	int simulation_steps_;
 	double stepsize_;
         double relperm_threshold_;
+        double sat_change_threshold_;
 	TransportSolver transport_solver_;
     };
 
