@@ -206,6 +206,7 @@ namespace Dune
                         const std::vector<double>& saturation,
                         const std::string& filename)
     {
+        // Extract data in proper format.
         typedef typename GridInterface::Vector Vec;
         std::vector<Vec> cell_velocity;
         estimateCellVelocity(cell_velocity, ginterf, flowsol);
@@ -222,13 +223,29 @@ namespace Dune
         getCellPressure(cell_pressure, ginterf, flowsol);
         std::vector<double> cap_pressure;
         computeCapPressure(cap_pressure, rp, saturation);
+        int num_cells = saturation.size();
+//         Dune::array<std::vector<double>, 2> phase_mobilities_;
+//         phase_mobilities_[0].resize(num_cells);
+//         phase_mobilities_[1].resize(num_cells);
+        std::vector<double> fractional_flow_(num_cells);
+        for (int i = 0; i < num_cells; ++i) {
+//             for (int phase = 0; phase < 2; ++phase) {
+//                 rp.phaseMobility(phase, i, saturation[i], phase_mobilities_[phase][i]);
+//             }
+            fractional_flow_[i] = rp.fractionalFlow(i, saturation[i]);
+        }
+
+        // Write data.
         Dune::VTKWriter<typename GridInterface::GridType::LeafGridView> vtkwriter(ginterf.grid().leafView());
-        vtkwriter.addCellData(cell_velocity_flat, "velocity", Vec::dimension);
-        vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", Vec::dimension);
-        vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", Vec::dimension);
         vtkwriter.addCellData(saturation, "saturation");
         vtkwriter.addCellData(cell_pressure, "pressure");
         vtkwriter.addCellData(cap_pressure, "capillary pressure");
+        vtkwriter.addCellData(fractional_flow_, "fractional flow [water]");
+//         vtkwriter.addCellData(phase_mobilities_[0], "phase mobility [water]");
+//         vtkwriter.addCellData(phase_mobilities_[1], "phase mobility [oil]");
+        vtkwriter.addCellData(cell_velocity_flat, "velocity", Vec::dimension);
+        vtkwriter.addCellData(water_velocity_flat, "phase velocity [water]", Vec::dimension);
+        vtkwriter.addCellData(oil_velocity_flat, "phase velocity [oil]", Vec::dimension);
         vtkwriter.write(filename, Dune::VTKOptions::ascii);
     }
 
