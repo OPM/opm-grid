@@ -155,7 +155,7 @@ namespace Dune
             //
             // Example: Convert a std::vector<double> p, containing
             // pressure values in the SI unit Pascal (i.e., unit::Pascal)
-	    // to the equivalent values in Psi (unit::psia).
+            // to the equivalent values in Psi (unit::psia).
             //
             //    using namespace Dune::unit;
             //    std::transform(p.begin(), p.end(), p.begin(),
