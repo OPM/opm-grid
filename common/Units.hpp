@@ -132,9 +132,9 @@ namespace Dune
             // internal units of measurements.  Note: The internal units
             // of measurements are *ALWAYS*, and exclusively, SI.
             //
-            // Example: Convert a double kx, containing a
-            // permeability value in units of milli-darcy (mD) to the
-            // equivalent value in SI units (m^2).
+            // Example: Convert a double kx, containing a permeability
+            // value in units of milli-darcy (mD) to the equivalent
+            // value in SI units (m^2).
             //
             //    using namespace Dune::unit;
             //    using namespace Dune::prefix;
