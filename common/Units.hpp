@@ -35,10 +35,6 @@
 #ifndef OPENRS_UNITS_HEADER
 #define OPENRS_UNITS_HEADER
 
-#include <algorithm>
-
-#include <boost/bind.hpp>
-
 namespace Dune
 {
     namespace prefix
