@@ -51,8 +51,8 @@ namespace Dune
     namespace unit
     {
         // Common powers
-        inline double square(const double& v) { return v * v;     }
-        inline double cubic (const double& v) { return v * v * v; }
+        inline double square(double v) { return v * v;     }
+        inline double cubic (double v) { return v * v * v; }
 
         // --------------------------------------------------------------
         // Basic (fundamental) units and conversions
