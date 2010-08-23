@@ -60,8 +60,8 @@
 
 #include <dune/grid/yaspgrid.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/grid/common/EclipseGridParser.hpp>
-#include <dune/grid/common/EclipseGridInspector.hpp>
+#include <dune/common/EclipseGridParser.hpp>
+#include <dune/common/EclipseGridInspector.hpp>
 
 #include <dune/solvers/common/fortran.hpp>
 #include <dune/solvers/common/blas_lapack.hpp>
