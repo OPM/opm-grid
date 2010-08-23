@@ -37,17 +37,6 @@ AC_CONFIG_FILES([
   grid/preprocess/Makefile
   grid/cpgrid/Makefile
   grid/cpgrid/test/Makefile
-  solvers/Makefile
-  solvers/common/Makefile
-  solvers/common/test/Makefile
-  solvers/euler/Makefile
-  solvers/euler/test/Makefile
-  solvers/mimetic/Makefile
-  solvers/mimetic/test/Makefile
-  solvers/multiscale/Makefile
-  solvers/multiscale/test/Makefile
-  upscaling/Makefile
-  upscaling/test/Makefile
   doc/Makefile
   doc/doxygen/Makefile
   doc/doxygen/Doxyfile

@@ -4,7 +4,7 @@
 # we need the module file to be able to build via dunecontrol
 EXTRA_DIST=dune.module
 
-SUBDIRS = m4 common grid lib solvers upscaling doc
+SUBDIRS = m4 common grid lib doc
 
 ACLOCAL_AMFLAGS = -I m4
 
