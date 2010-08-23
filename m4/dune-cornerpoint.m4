@@ -31,5 +31,6 @@ AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
 AC_DEFUN([DUNE_CORNERPOINT_CHECK_MODULE],
 [
         DUNE_CHECK_MODULES([dune-cornerpoint],
-                           [grid/CpGrid.hpp])
+                           [common/StopWatch.hpp],
+                           [Dune::time::StopWatch s;])
 ])
