@@ -4,7 +4,7 @@
 check_PROGRAMS = cpgrid_test mapper_test partition_test
 
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
-noinst_PROGRAMS = grdecl_to_legacy_test make_vtk_test grdecl2vtu check_grid_normals
+noinst_PROGRAMS = grdecl2vtu check_grid_normals
 
 AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
@@ -21,23 +21,12 @@ cpgrid_test_SOURCES = cpgrid_test.cpp
 
 mapper_test_SOURCES = mapper_test.cpp
 
-#max_zdist_test_SOURCES = max_zdist_test.cpp
-
-#finitevolume_test_SOURCES = finitevolume.cc evolve.hh initialize.hh \
-#                            transportproblem2.hh unitcube.hh vtkout.hh
-
-make_vtk_test_SOURCES = make_vtk_test.cpp
-make_vtk_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
-
 grdecl2vtu_SOURCES = grdecl2vtu.cpp
 
 check_grid_normals_SOURCES = check_grid_normals.cpp
 
 partition_test_SOURCES = partition_test.cpp
 partition_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
-
-grdecl_to_legacy_test_SOURCES = grdecl_to_legacy_test.cpp
-grdecl_to_legacy_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 
 TESTS = $(check_PROGRAMS)
 
