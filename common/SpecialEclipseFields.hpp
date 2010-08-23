@@ -41,7 +41,7 @@
 #include <fstream>
 #include <limits>
 #include <dune/common/ErrorMacros.hpp>
-#include "EclipseGridParserHelpers.hpp"
+#include <dune/common/EclipseGridParserHelpers.hpp>
 
 namespace Dune
 {

@@ -42,7 +42,7 @@
 #include <iostream>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/common/EclipseGridParser.hpp>
 
 using namespace Dune;
 

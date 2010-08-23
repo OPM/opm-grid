@@ -42,7 +42,7 @@
 #endif
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/grid/common/EclipseGridParser.hpp>
+#include <dune/common/EclipseGridParser.hpp>
 #include <dune/solvers/common/GridInterfaceEuler.hpp>
 #include <dune/solvers/common/BoundaryConditions.hpp>
 
