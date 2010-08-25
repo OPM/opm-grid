@@ -247,6 +247,13 @@ namespace Dune
 		return false;
 	    }
 
+	    /// No hierarchy in this grid.
+	    bool hasFather() const
+	    {
+		return false;
+	    }
+
+
 	    /// Dummy, returning this.
 	    EntityPointer father() const
 	    {

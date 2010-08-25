@@ -213,6 +213,8 @@ namespace Dune
         cartDims_[0] = output.dimensions[0];
         cartDims_[1] = output.dimensions[1];
         cartDims_[2] = output.dimensions[2];
+
+        computeUniqueBoundaryIds();
         
 #ifdef VERBOSE
 	std::cout << "Done with grid processing." << std::endl;

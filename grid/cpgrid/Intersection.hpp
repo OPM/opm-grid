@@ -179,6 +179,21 @@ namespace Dune
                 return ret;
             }
 
+            /// Returns the boundary segment index of this intersection.
+            int boundarySegmentIndex() const
+            {
+                // Since this is almost the same that we did for
+                // 'unique boundary ids' we use those numbers, although since
+                // they are 1-based and not 0-based we must be careful.
+                if (!boundary()) {
+                    THROW("Cannot call boundarySegmentIndex() on non-boundaries.");
+                }
+                ASSERT(!pgrid_->unique_boundary_ids_.empty());
+                // Use the unique boundary ids (subtract 1).
+                EntityRep<1> face = faces_of_cell_[subindex_];
+                return pgrid_->unique_boundary_ids_[face] - 1;
+            }
+
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @return

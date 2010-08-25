@@ -96,6 +96,7 @@ namespace Dune
                 }
             }
         }
+        computeUniqueBoundaryIds();
     }
 
 
