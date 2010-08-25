@@ -26,7 +26,6 @@ grdecl2vtu_SOURCES = grdecl2vtu.cpp
 check_grid_normals_SOURCES = check_grid_normals.cpp
 
 partition_test_SOURCES = partition_test.cpp
-partition_test_LDADD = $(LDADD) $(LAPACK_LIBS) $(BLAS_LIBS) $(FLIBS)
 
 TESTS = $(check_PROGRAMS)
 
