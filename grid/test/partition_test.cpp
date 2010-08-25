@@ -40,8 +40,6 @@
 #include <dune/common/param/ParameterGroup.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/solvers/common/ReservoirPropertyCapillary.hpp>
-#include <dune/solvers/common/setupGridAndProps.hpp>
 #include <cstdlib>
 #include <iterator>
 
@@ -154,8 +152,7 @@ int main(int argc, char** argv)
     // Running in normal mode. Make grid.
     parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
-    ReservoirPropertyCapillary<3> res_prop;
-    setupGridAndProps(param, grid, res_prop);
+    grid.init(param);
 
     // Partition.
     boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
