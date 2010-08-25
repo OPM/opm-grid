@@ -7,14 +7,6 @@ AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
         # LibXML2 support.
         AM_PATH_XML2([2.0.0])
 
-        # BLAS and LAPACK support.
-        #
-        # NOTE: ACX_LAPACK internally AC_REQUIRE's ACX_BLAS which,
-        # subsequently, AC_REQUIRE's AC_F77_LIBRARY_LDFLAGS which sets
-        # the $FLIBS macro.
-        AC_REQUIRE([AC_F77_WRAPPERS])
-        AC_REQUIRE([ACX_LAPACK])
-
         # Boost support.
         AX_BOOST_BASE([1.37])
         AX_BOOST_DATE_TIME
@@ -22,9 +14,14 @@ AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
         AX_BOOST_SYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
-        # Additional summary entries.
-        DUNE_ADD_SUMMARY_ENTRY([BLAS], [$acx_blas_ok])
-        DUNE_ADD_SUMMARY_ENTRY([LAPACK], [$acx_lapack_ok])
+        # Add Boost support to module dependencies
+        DUNE_ADD_MODULE_DEPS([DUNE_CORNERPOINT],dnl
+                             [DUNE_CORNERPOINT],dnl
+          [$BOOST_CPPFLAGS],dnl
+          [$BOOST_LDFLAGS],dnl
+          [[$BOOST_DATE_TIME_LIB]dnl
+           [$BOOST_FILESYSTEM_LIB]dnl
+           [$BOOST_SYSTEM_LIB]])dnl
 ])
 
 # Additional checks needed to find the module
