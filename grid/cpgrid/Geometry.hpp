@@ -166,9 +166,7 @@ namespace Dune
 	    }
 
 	    /// Returns the centroid of the geometry.
-	    /// I do not think this is a Dune interface method, but we
-	    /// want it to be!
-	    GlobalCoordinate center() const
+	    const GlobalCoordinate& center() const
 	    {
 		return pos_;
 	    }

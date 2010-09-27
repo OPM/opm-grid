@@ -206,7 +206,6 @@ namespace Dune
 	    {
 	    }
 
-	protected:
 	    const T& get(int i) const
 	    {
 		return V::operator[](i);

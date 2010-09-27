@@ -581,6 +581,89 @@ namespace Dune
             return ccobj_;
         }
 
+        // ------------ End of Dune interface, start of simplified interface --------------
+
+        // enum { dimension = 3 }; // already defined
+
+        typedef Dune::FieldVector<double, 3> Vector;
+
+        // Topology
+        int numCells() const
+        {
+            return cell_to_face_.size();
+        }
+        int numFaces() const
+        {
+            return face_to_cell_.size();
+        }
+        int numVertices() const
+        {
+            return geomVector<3>().size();
+        }
+
+        int numCellFaces(int cell) const
+        {
+            return cell_to_face_[cpgrid::EntityRep<0>(cell)].size();
+        }
+        int cellFace(int cell, int local_index) const
+        {
+            return cell_to_face_[cpgrid::EntityRep<0>(cell)][local_index].index();
+        }
+        int faceCell(int face, int local_index) const
+        {
+            cpgrid::OrientedEntityTable<1,0>::row_type r
+                = face_to_cell_[cpgrid::EntityRep<1>(face)];
+            if (r.size() == 2) {
+                if (r[local_index].orientation()) {
+                    return r[local_index].index();
+                } else {
+                    int ix = (local_index + 1) % 2;
+                    ASSERT(r[ix].orientation());
+                    return r[ix].index();
+                }
+            } else {
+                bool a = (local_index == 1);
+                bool b = r[0].orientation();
+                return (a xor b) ? -1 : r[0].index();
+            }
+        }
+        int numFaceVertices(int face) const
+        {
+            return face_to_point_[face].size();
+        }
+        int faceVertex(int face, int local_index) const
+        {
+            return face_to_point_[face][local_index];
+        }
+
+        // Geometry
+        const Vector& vertexPosition(int vertex) const
+        {
+            return geomVector<3>()[cpgrid::EntityRep<3>(vertex)].center();
+        }
+        double faceArea(int face) const
+        {
+            return geomVector<1>()[cpgrid::EntityRep<1>(face)].volume();
+        }
+        const Vector& faceCentroid(int face) const
+        {
+            return geomVector<1>()[cpgrid::EntityRep<1>(face)].center();
+        }
+        const Vector& faceNormal(int face) const
+        {
+            return face_normals_.get(face);
+        }
+        double cellVolume(int cell) const
+        {
+            return geomVector<0>()[cpgrid::EntityRep<0>(cell)].volume();
+        }
+        const Vector& cellCentroid(int cell) const
+        {
+            return geomVector<0>()[cpgrid::EntityRep<0>(cell)].center();
+        }
+
+        // ------------ End of simplified interface --------------
+
     private:
 
 	// --------- Friends ---------
