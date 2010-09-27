@@ -86,7 +86,6 @@ int main(int argc, char** argv)
     
     if (argc != 2) {
         std::cout << "Usage: grdecl2vtu filename.grdecl" << std::endl;
-        std::cout << "$Rev: 499 $" << std::endl;
         exit(1);
     }
     
