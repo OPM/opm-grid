@@ -613,18 +613,14 @@ namespace Dune
         {
             cpgrid::OrientedEntityTable<1,0>::row_type r
                 = face_to_cell_[cpgrid::EntityRep<1>(face)];
+            bool a = (local_index == 0);
+            bool b = r[0].orientation();
+            bool use_first = a ? b : !b;
             if (r.size() == 2) {
-                if (r[local_index].orientation()) {
-                    return r[local_index].index();
-                } else {
-                    int ix = (local_index + 1) % 2;
-                    ASSERT(r[ix].orientation());
-                    return r[ix].index();
-                }
+                ASSERT(r[0].orientation() != r[1].orientation());
+                return use_first ? r[0].index() : r[1].index();
             } else {
-                bool a = (local_index == 1);
-                bool b = r[0].orientation();
-                return (a xor b) ? -1 : r[0].index();
+                return use_first ? r[0].index() : -1;
             }
         }
         int numFaceVertices(int face) const
