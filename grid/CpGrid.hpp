@@ -658,6 +658,40 @@ namespace Dune
             return geomVector<0>()[cpgrid::EntityRep<0>(cell)].center();
         }
 
+        // Extra
+        int boundaryId(int face) const
+        {
+            int ret = 0;
+            cpgrid::EntityRep<1> f(face);
+            if (face_to_cell_[f].size() == 1) {
+                if (uniqueBoundaryIds()) {
+                    // Use the unique boundary ids.
+                    ret = unique_boundary_ids_[f];
+                } else {
+                    // Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
+                    const bool normal_is_in = !(face_to_cell_[f][0].orientation());
+                    enum face_tag tag = face_tag_[f];
+                    switch (tag) {
+                    case LEFT:
+                        //                   LEFT : RIGHT
+                        ret = normal_is_in ? 1    : 2; // min(I) : max(I)
+                        break;
+                    case BACK:
+                        //                   BACK : FRONT
+                        ret = normal_is_in ? 3    : 4; // min(J) : max(J)
+                        break;
+                    case TOP:
+                        // Note: TOP at min(K) as 'z' measures *depth*.
+                        //                   TOP  : BOTTOM
+                        ret = normal_is_in ? 5    : 6; // min(K) : max(K)
+                        break;
+                    }
+                }
+            }
+            return ret;
+        }
+
+
         // ------------ End of simplified interface --------------
 
     private:
