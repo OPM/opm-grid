@@ -13,7 +13,7 @@ AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
 # but if you do not run make from the top you may
 # run into trouble. Recursive make considered harmful...
 LDADD =  $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_SYSTEM_LIB) \
-         ../cpgrid/libcpgrid.la ../preprocess/libpreprocess.la \
+         ../cpgrid/libcpgrid.la ../preprocess/libcpgpreprocess.la \
          ../common/libgrid.la  ../../common/libcommon.la \
          ../../common/param/libparam.la
 

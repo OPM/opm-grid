@@ -776,38 +776,10 @@ namespace Dune
 	};
 
 	/// \todo Please doc me !
-// 	template <>
-// 	struct isLevelwiseConforming<CpGrid>
-// 	{
-// 	    static const bool v = true;
-// 	};
-
-	/// \todo Please doc me !
-// 	template <>
-// 	struct isLeafwiseConforming<CpGrid>
-// 	{
-// 	    static const bool v = true;
-// 	};
-
-	/// \todo Please doc me !
-	template <>
-	struct hasHangingNodes<CpGrid>
-	{
-	    static const bool v = true;
-	};
-
-	/// \todo Please doc me !
 	template <>
 	struct hasBackupRestoreFacilities<CpGrid>
 	{
 	    static const bool v = false;
-	};
-
-	/// \todo Please doc me !
-	template <>
-	struct IsUnstructured<CpGrid>
-	{
-	    static const bool v = true;
 	};
 
     }
