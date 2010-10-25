@@ -172,6 +172,14 @@ namespace {
 
 // ---------- Member functions ----------
 
+/// Default constructor.
+//---------------------------------------------------------------------------
+EclipseGridParser::EclipseGridParser()
+//---------------------------------------------------------------------------
+{
+}
+
+
 /// Constructor taking an eclipse file as a stream.
 //---------------------------------------------------------------------------
 EclipseGridParser::EclipseGridParser(istream& is)

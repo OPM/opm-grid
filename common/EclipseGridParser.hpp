@@ -65,6 +65,8 @@ namespace Dune
 class EclipseGridParser
 {
 public:
+    /// Default constructor.
+    EclipseGridParser();
     /// Constructor taking an eclipse file as a stream.
     /// Note that since the INCLUDE keyword is relative to
     /// the directory of the current file, you may need to use
