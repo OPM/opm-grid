@@ -140,6 +140,16 @@ public:                                                                         
 
 #undef SPECIAL_FIELD
 
+
+    /// Sets an integer field to have a particular value.
+    void setIntegerField(const std::string& keyword, const std::vector<int>& field);
+
+    /// Sets a floating point field to have a particular value.
+    void setFloatingPointField(const std::string& keyword, const std::vector<double>& field);
+
+    /// Sets a special field to have a particular value.
+    void setSpecialField(const std::string& keyword, boost::shared_ptr<SpecialBase> field);
+
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
 

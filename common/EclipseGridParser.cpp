@@ -413,4 +413,28 @@ EclipseGridParser::createSpecialField(std::istream& is,
     return spec_ptr;
 }
 
+//---------------------------------------------------------------------------
+void EclipseGridParser::setIntegerField(const std::string& keyword,
+                                        const std::vector<int>& field)
+//---------------------------------------------------------------------------
+{
+    integer_field_map_[keyword] = field;
+}
+
+//---------------------------------------------------------------------------
+void EclipseGridParser::setFloatingPointField(const std::string& keyword,
+                                              const std::vector<double>& field)
+//---------------------------------------------------------------------------
+{
+    floating_field_map_[keyword] = field;
+}
+
+//---------------------------------------------------------------------------
+void EclipseGridParser::setSpecialField(const std::string& keyword,
+                                        boost::shared_ptr<SpecialBase> field)
+//---------------------------------------------------------------------------
+{
+    special_field_map_[keyword] = field;
+}
+
 } // namespace Dune
