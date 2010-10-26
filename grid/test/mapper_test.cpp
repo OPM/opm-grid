@@ -22,6 +22,7 @@
 #include <iomanip>
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/cpgrid/dgfparser.hh>
 
 template<int dim>
 struct ElementLayout
@@ -36,9 +37,15 @@ struct ElementLayout
 
 int main(int /*argc*/, char** /*argv*/)
 {
-    try {
+//     try {
         typedef Dune::CpGrid Grid;
 
+#if 0
+        std::string dgfString( "DGF\n\nInterval\n0 0 0\n1 1 1\n2 2 2\n#\n" );
+        std::stringstream dgfStream( dgfString );
+        Dune::GridPtr< Grid > gridPtr( dgfStream );
+        Grid &grid = *gridPtr;
+#else
         int refinement = 1;
         Grid grid;
         Dune::array<int   , 3> dims;
@@ -46,7 +53,8 @@ int main(int /*argc*/, char** /*argv*/)
         Dune::array<double, 3> cell_sz;
         std::fill(cell_sz.begin(), cell_sz.end(), 1.0 / (1 << refinement));
         grid.createCartesian(dims, cell_sz);
-        
+#endif
+
         typedef Grid::LeafGridView GridView;
         GridView gridView(grid.leafView());
 
@@ -68,13 +76,13 @@ int main(int /*argc*/, char** /*argv*/)
 	    // std::cout << "mapperIdx = " << mapperIdx << ", indexSetIdx = " << indexSetIdx << std::endl;
         }
 	return EXIT_SUCCESS;
-    }
-    catch (Dune::Exception &e){
-        std::cerr << "Dune reported error: " << e << std::endl;
-    }
-    catch (...){
-        std::cerr << "Unknown exception thrown!" << std::endl;
-    }
+//     }
+//     catch (Dune::Exception &e){
+//         std::cerr << "Dune reported error: " << e << std::endl;
+//     }
+//     catch (...){
+//         std::cerr << "Unknown exception thrown!" << std::endl;
+//     }
     return EXIT_FAILURE;
 }
 
