@@ -36,10 +36,6 @@
 #ifndef OPENRS_CPGRID_HEADER
 #define OPENRS_CPGRID_HEADER
 
-#if HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <string>
 #include <map>
 
@@ -464,13 +460,13 @@ namespace Dune
 	    return LeafGridView(*this);
 	}
 
-	/*  No refinement implemented. GridDefaultImplementation's methods will be used.
-
         /// global refinement
         void globalRefine (int refCount)
         {
-            hostgrid_->globalRefine(refCount);
+            std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
         }
+
+	/*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
         /// \brief Mark entity for refinement
 	///
