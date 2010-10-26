@@ -22,6 +22,8 @@ AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
           [[$BOOST_DATE_TIME_LIB]dnl
            [$BOOST_FILESYSTEM_LIB]dnl
            [$BOOST_SYSTEM_LIB]])dnl
+
+        DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],[Dune::CpGrid],[dune/grid/CpGrid.hpp],[dune/grid/cpgrid/dgfparser.hh])
 ])
 
 # Additional checks needed to find the module
