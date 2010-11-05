@@ -161,7 +161,7 @@ namespace Dune
                                                new_ix + new_delta[2], new_ix + new_delta[2] + new_delta[0],
                                                new_ix + new_delta[2] + new_delta[1], new_ix + new_delta[2] + new_delta[1] + new_delta[0] };
                         for (int cc = 0; cc < 8; ++cc) {
-                            new_ZCORN_[new_indices[cc]] = std::min(zmax, std::max(zmin, ZCORN[old_indices[cc]]));
+                            new_ZCORN_[new_indices[cc]] = std::min(zmax, std::max(zmin, ZCORN[old_indices[cc]])) - zmin;
                         }
                     }
                 }
