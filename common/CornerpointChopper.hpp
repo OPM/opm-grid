@@ -139,6 +139,8 @@ namespace Dune
                 throw std::runtime_error("Inconsistent COORD and SPECGRID.");
             }
             int num_new_coord = 6*(new_dims_[0] + 1)*(new_dims_[1] + 1);
+	    double x_correction = COORD[6*((dims_[0] + 1)*jmin + imin)];
+	    double y_correction = COORD[6*((dims_[0] + 1)*jmin + imin) + 1];
             new_COORD_.resize(num_new_coord, 1e100);
             for (int j = jmin; j < jmax + 1; ++j) {
                 for (int i = imin; i < imax + 1; ++i) {
@@ -147,7 +149,13 @@ namespace Dune
 		    // Copy all 6 coordinates for a pillar.
                     std::copy(COORD.begin() + 6*pos, COORD.begin() + 6*(pos + 1), new_COORD_.begin() + 6*new_pos);
 		    if (resettoorigin) {
-			// Substract lowest x value from all X-coords, similarly for y, and truncate in z-direction
+		        // Substract lowest x value from all X-coords, similarly for y, and truncate in z-direction
+		      new_COORD_[6*new_pos]     -= x_correction;
+		      new_COORD_[6*new_pos + 1] -= y_correction;
+		      new_COORD_[6*new_pos + 2]  = 0;
+		      new_COORD_[6*new_pos + 3] -= x_correction;
+		      new_COORD_[6*new_pos + 4] -= y_correction;
+		      new_COORD_[6*new_pos + 5]  = zmax-zmin;
 		    }
                 }
             }
@@ -195,7 +203,7 @@ namespace Dune
 
             // Filter the ZCORN field, build mapping from new to old cells.
 	    double z_origin_correction = 0.0;
-	    if (resettoorigin == true) {
+	    if (resettoorigin) {
 		z_origin_correction = zmin;
 	    }
             new_ZCORN_.resize(8*new_dims_[0]*new_dims_[1]*new_dims_[2], 1e100);
