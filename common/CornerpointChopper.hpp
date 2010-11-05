@@ -46,6 +46,10 @@ namespace Dune
             botmax_ = *std::max_element(ZCORN.begin(), ZCORN.begin() + layersz/2);
             topmin_ = *std::min_element(ZCORN.begin() + dims_[2]*layersz - layersz/2,
                                         ZCORN.begin() + dims_[2]*layersz);
+
+            abszmax_ = *std::max_element(ZCORN.begin(), ZCORN.end());
+            abszmin_ = *std::min_element(ZCORN.begin(), ZCORN.end());
+
             std::cout << "Parsed grdecl file with dimensions ("
                       << dims_[0] << ", " << dims_[1] << ", " << dims_[2] << ")" << std::endl;
         }
@@ -74,8 +78,53 @@ namespace Dune
             return std::make_pair(botmax_, topmin_);
         }
 
+        const std::pair<double, double> abszLimits() const
+	{
+            return std::make_pair(abszmin_, abszmax_);
+        }
 
 
+	void verifyInscribedShoebox(int imin, int ilen, int imax,
+				    int jmin, int jlen, int jmax,
+				    double zmin, double zlen, double zmax) 
+	{
+	    if (imin < 0) {
+		std::cerr << "Error! imin < 0 (imin = " << imin << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (ilen > dims_[0]) {
+		std::cerr << "Error! ilen larger than grid (ilen = " << ilen <<")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (imax > dims_[0]) {
+		std::cerr << "Error! imax larger than input grid (imax = " << imax << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (jmin < 0) {
+		std::cerr << "Error! jmin < 0 (jmin = " << jmin << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (jlen > dims_[1]) {
+		std::cerr << "Error! jlen larger than grid (jlen = " << jlen <<")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (jmax > dims_[1]) {
+		std::cerr << "Error! jmax larger than input grid (jmax = " << jmax << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (zmin < abszmin_) {
+		std::cerr << "Error! zmin ("<< zmin << ") less than minimum ZCORN value ("<< abszmin_ << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (zmax > abszmax_) {
+		std::cerr << "Error! zmax ("<< zmax << ") larger than maximal ZCORN value ("<< abszmax_ << ")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	    if (zlen > (abszmax_ - abszmin_)) {
+		std::cerr << "Error! zlen ("<< zlen <<") larger than maximal ZCORN (" << abszmax_ << ") minus minimal ZCORN ("<< abszmin_ <<")\n";
+		throw std::runtime_error("Inconsistent user input.");
+	    }
+	}
 
         void chop(int imin, int imax, int jmin, int jmax, double zmin, double zmax, bool resettoorigin=true)
         {
@@ -250,6 +299,8 @@ namespace Dune
         EclipseGridParser parser_;
         double botmax_;
         double topmin_;
+        double abszmin_;
+        double abszmax_;
         std::vector<double> new_COORD_;
         std::vector<double> new_ZCORN_;
         std::vector<int> new_ACTNUM_;
