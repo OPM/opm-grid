@@ -77,7 +77,7 @@ namespace Dune
 
 
 
-        void chop(int imin, int imax, int jmin, int jmax, double zmin, double zmax)
+        void chop(int imin, int imax, int jmin, int jmax, double zmin, double zmax, bool resettoorigin=true)
         {
             new_dims_[0] = imax - imin;
             new_dims_[1] = jmax - jmin;
@@ -95,7 +95,11 @@ namespace Dune
                 for (int i = imin; i < imax + 1; ++i) {
                     int pos = (dims_[0] + 1)*j + i;
                     int new_pos = (new_dims_[0] + 1)*(j-jmin) + (i-imin);
+		    // Copy all 6 coordinates for a pillar.
                     std::copy(COORD.begin() + 6*pos, COORD.begin() + 6*(pos + 1), new_COORD_.begin() + 6*new_pos);
+		    if (resettoorigin) {
+			// Substract lowest x value from all X-coords, similarly for y, and truncate in z-direction
+		    }
                 }
             }
 
@@ -141,6 +145,10 @@ namespace Dune
             new_dims_[2] = kmax - kmin;
 
             // Filter the ZCORN field, build mapping from new to old cells.
+	    double z_origin_correction = 0.0;
+	    if (resettoorigin == true) {
+		z_origin_correction = zmin;
+	    }
             new_ZCORN_.resize(8*new_dims_[0]*new_dims_[1]*new_dims_[2], 1e100);
             new_to_old_cell_.resize(new_dims_[0]*new_dims_[1]*new_dims_[2], -1);
             int cellcount = 0;
@@ -161,7 +169,7 @@ namespace Dune
                                                new_ix + new_delta[2], new_ix + new_delta[2] + new_delta[0],
                                                new_ix + new_delta[2] + new_delta[1], new_ix + new_delta[2] + new_delta[1] + new_delta[0] };
                         for (int cc = 0; cc < 8; ++cc) {
-                            new_ZCORN_[new_indices[cc]] = std::min(zmax, std::max(zmin, ZCORN[old_indices[cc]])) - zmin;
+                            new_ZCORN_[new_indices[cc]] = std::min(zmax, std::max(zmin, ZCORN[old_indices[cc]])) - z_origin_correction;
                         }
                     }
                 }
