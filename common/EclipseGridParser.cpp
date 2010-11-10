@@ -112,7 +112,7 @@ namespace EclipseKeywords
 	  string("RPTRST"),   string("ROIP"),     string("RWIP"),
 	  string("RWSAT"),    string("RPR"),      string("WBHP"),
 	  string("WOIR"),     string("TSTEP"),    string("BOX"),
-          string("COORDSYS")
+          string("COORDSYS"), string("PBVD")
 	};
     const int num_ignore_with_data = sizeof(ignore_with_data) / sizeof(ignore_with_data[0]);
 
@@ -124,7 +124,9 @@ namespace EclipseKeywords
 	  string("REGIONS"), string("SOLUTION"), string("SUMMARY"),
 	  string("FPR"),     string("FOIP"),     string("FWIP"),
 	  string("RUNSUM"),  string("EXCEL"),    string("SCHEDULE"),
-	  string("END"),     string("ENDBOX"),   string("CONTINUE")
+	  string("END"),     string("ENDBOX"),   string("CONTINUE"),
+          string("NONNC"),   string("GAS"),      string("DISGAS"),
+          string("FIELD")
 	};
     const int num_ignore_no_data = sizeof(ignore_no_data) / sizeof(ignore_no_data[0]);
 
