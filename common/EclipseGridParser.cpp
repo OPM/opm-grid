@@ -252,6 +252,7 @@ void EclipseGridParser::read(istream& is)
 	    break;
 	}
 	case IgnoreWithData: {
+            ignored_fields_.insert(keyword);
             is >> ignoreSlashLine;
 #ifdef VERBOSE
             cout << "(ignored)" << endl;
@@ -259,6 +260,7 @@ void EclipseGridParser::read(istream& is)
 	    break;
 	}
 	case IgnoreNoData: {
+            ignored_fields_.insert(keyword);
 	    is >> ignoreLine;
 #ifdef VERBOSE
             cout << "(ignored)" << endl;
@@ -315,7 +317,7 @@ bool EclipseGridParser::hasField(const string& keyword) const
 {
     string ukey = upcase(keyword);
     return integer_field_map_.count(ukey) || floating_field_map_.count(ukey) ||
-	special_field_map_.count(ukey);
+	special_field_map_.count(ukey) || ignored_fields_.count(ukey);
 }
 
 
@@ -340,7 +342,9 @@ vector<string> EclipseGridParser::fieldNames() const
 {
     vector<string> names;
     names.reserve(integer_field_map_.size() +
-                  floating_field_map_.size());
+                  floating_field_map_.size() +
+                  special_field_map_.size() +
+                  ignored_fields_.size());
     {
 	map<string, vector<int> >::const_iterator it = integer_field_map_.begin();
 	for (; it != integer_field_map_.end(); ++it) {
@@ -357,6 +361,12 @@ vector<string> EclipseGridParser::fieldNames() const
 	map<string, boost::shared_ptr<SpecialBase> >::const_iterator it = special_field_map_.begin();
 	for (; it != special_field_map_.end(); ++it) {
 	    names.push_back(it->first);
+	}
+    }
+    {
+	set<string>::const_iterator it = ignored_fields_.begin();
+	for (; it != ignored_fields_.end(); ++it) {
+	    names.push_back(*it);
 	}
     }
     return names;
@@ -404,7 +414,7 @@ const boost::shared_ptr<SpecialBase> EclipseGridParser::getSpecialValue(const st
 {
     map<string, boost::shared_ptr<SpecialBase> >::const_iterator it = special_field_map_.find(keyword);
     if (it == special_field_map_.end()) {
- 	return empty_special_field_;
+        THROW("No such field: " << keyword);
     } else {
 	return it->second;
     }

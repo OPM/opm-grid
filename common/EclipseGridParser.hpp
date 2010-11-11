@@ -39,6 +39,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <string>
 #include <vector>
 #include <map>
+#include <set>
 #include <boost/shared_ptr.hpp>
 #include "SpecialEclipseFields.hpp"
 #include <dune/common/Factory.hpp>
@@ -158,7 +159,8 @@ private:
     std::string directory_;
     std::map<std::string, std::vector<int> > integer_field_map_;
     std::map<std::string, std::vector<double> > floating_field_map_;
-    std::map<std::string, boost::shared_ptr<SpecialBase> >special_field_map_;
+    std::map<std::string, boost::shared_ptr<SpecialBase> > special_field_map_;
+    std::set<std::string> ignored_fields_;
     std::vector<int> empty_integer_field_;
     std::vector<double> empty_floating_field_;
     boost::shared_ptr<SpecialBase> empty_special_field_;
