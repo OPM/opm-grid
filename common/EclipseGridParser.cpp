@@ -47,6 +47,7 @@
 #include "SpecialEclipseFields.hpp"
 #include <dune/common/ErrorMacros.hpp>
 #include <boost/filesystem.hpp>
+#include <dune/common/Units.hpp>
 
 using namespace std;
 
@@ -289,6 +290,8 @@ void EclipseGridParser::read(istream& is)
 	is >> ignoreWhitespace;
     }
 
+    computeUnits();
+
 #define VERBOSE_LIST_FIELDS 0
 #if VERBOSE_LIST_FIELDS
     std::cout << "\nInteger fields:\n";
@@ -455,6 +458,67 @@ void EclipseGridParser::setSpecialField(const std::string& keyword,
 //---------------------------------------------------------------------------
 {
     special_field_map_[keyword] = field;
+}
+
+//---------------------------------------------------------------------------
+const EclipseUnits& EclipseGridParser::units() const
+//---------------------------------------------------------------------------
+{
+    return units_;
+}
+
+//---------------------------------------------------------------------------
+void EclipseGridParser::computeUnits()
+//---------------------------------------------------------------------------
+{
+    // Decide unit family.
+    enum EclipseUnitFamily { Metric = 0, Field = 1, Lab = 2, Pvtm = 3 };
+    EclipseUnitFamily unit_family = Metric; // The default.
+    if (hasField("FIELD")) unit_family = Field;
+    if (hasField("LAB")) unit_family = Lab;
+    if (hasField("PVT-M")) unit_family = Pvtm;
+
+    // Set units.
+    using namespace prefix;
+    using namespace unit;
+    switch (unit_family) {
+    case Metric:
+        units_.length = meter;
+        units_.time = day;
+        units_.density = kilogram/cubic(meter);
+        units_.pressure = barsa;
+        units_.compressibility = 1.0/barsa;
+        units_.viscosity = centi*Poise;
+        units_.permeability = milli*darcy;
+        units_.liqvol_s = cubic(meter);
+        units_.liqvol_r = cubic(meter);
+        units_.gasvol_s = cubic(meter);
+        units_.gasvol_r = cubic(meter);
+        units_.tranmissibility = centi*Poise * cubic(meter) / (day * barsa);
+        break;
+    case Field:
+        units_.length = feet;
+        units_.time = day;
+        units_.density = pound/cubic(feet);
+        units_.pressure = psia;
+        units_.compressibility = 1.0/psia;
+        units_.viscosity = centi*Poise;
+        units_.permeability = milli*darcy;
+        units_.liqvol_s = stb;
+        units_.liqvol_r = stb;
+        units_.gasvol_s = mega*cubic(feet);
+        units_.gasvol_r = stb;
+        units_.tranmissibility = centi*Poise * stb / (day * psia);
+        break;
+    case Lab:
+        THROW("Unhandled unit family " << unit_family);
+        break;
+    case Pvtm:
+        THROW("Unhandled unit family " << unit_family);
+        break;
+    default:
+        THROW("Unknown unit family " << unit_family);
+    }
 }
 
 } // namespace Dune

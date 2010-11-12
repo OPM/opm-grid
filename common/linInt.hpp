@@ -4,7 +4,8 @@
 //
 // Created: Tue Feb 16 14:44:10 2010
 //
-// Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
+// Author(s): Bjørn Spjelkavik    <bsp@sintef.no>
+//            Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$

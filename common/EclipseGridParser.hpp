@@ -42,6 +42,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #include <set>
 #include <boost/shared_ptr.hpp>
 #include "SpecialEclipseFields.hpp"
+#include "EclipseUnits.hpp"
 #include <dune/common/Factory.hpp>
 
 namespace Dune
@@ -153,8 +154,12 @@ public:                                                                         
     /// Sets a special field to have a particular value.
     void setSpecialField(const std::string& keyword, boost::shared_ptr<SpecialBase> field);
 
+    /// The units used in the read input.
+    const EclipseUnits& units() const;
+
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
+    void computeUnits();
 
     std::string directory_;
     std::map<std::string, std::vector<int> > integer_field_map_;
@@ -164,6 +169,7 @@ private:
     std::vector<int> empty_integer_field_;
     std::vector<double> empty_floating_field_;
     boost::shared_ptr<SpecialBase> empty_special_field_;
+    EclipseUnits units_;
 };
 
 

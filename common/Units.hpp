@@ -70,6 +70,10 @@ namespace Dune
         const double day    =  24 * hour;
         const double year   = 365 * day;
 
+        // Volume
+        const double stb    = 0.158987294928 * cubic(meter);
+
+
         // Mass:
         const double kilogram = 1;
 
