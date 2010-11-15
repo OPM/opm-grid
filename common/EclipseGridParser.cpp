@@ -506,7 +506,7 @@ void EclipseGridParser::computeUnits()
         units_.permeability = milli*darcy;
         units_.liqvol_s = stb;
         units_.liqvol_r = stb;
-        units_.gasvol_s = mega*cubic(feet);
+        units_.gasvol_s = 1000*cubic(feet);  // Prefix 'M' is 1000
         units_.gasvol_r = stb;
         units_.tranmissibility = centi*Poise * stb / (day * psia);
         break;
