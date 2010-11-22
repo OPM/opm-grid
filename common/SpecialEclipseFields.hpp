@@ -42,6 +42,7 @@
 #include <limits>
 #include <dune/common/ErrorMacros.hpp>
 #include <dune/common/EclipseGridParserHelpers.hpp>
+#include <dune/common/EclipseUnits.hpp>
 
 namespace Dune
 {
@@ -52,6 +53,10 @@ struct SpecialBase {
     //virtual std::string name() const = 0;           // Keyword name
     virtual void read(std::istream& is) = 0;        // Reads data
     //virtual void write(std::ostream& os) const = 0; // Writes data
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+        THROW("Default conversion not defined.");
+    }
     typedef std::vector<std::vector<std::vector<double> > > table_t;
 };
 
