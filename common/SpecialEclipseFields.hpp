@@ -53,7 +53,7 @@ struct SpecialBase {
     //virtual std::string name() const = 0;           // Keyword name
     virtual void read(std::istream& is) = 0;        // Reads data
     //virtual void write(std::ostream& os) const = 0; // Writes data
-    virtual void convertToSI(const EclipseUnits& units)
+    virtual void convertToSI(const EclipseUnits&)
     {
         THROW("Default conversion not defined.");
     }
@@ -113,6 +113,9 @@ struct SPECGRID : public SpecialBase
 	   << dimensions[2] << " " << numres << " " << qrdial << std::endl;
 	os << std::endl;
     }
+
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -178,6 +181,9 @@ struct FAULTS : public SpecialBase
 	}
 	os << std::endl;
     }
+
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -191,8 +197,7 @@ struct MultfltLine
     double diffusivity_multiplier;  // Diffusivity multiplier;
     MultfltLine() :
 	fault_name(""), transmis_multiplier(1.0), diffusivity_multiplier(1.0)
-    {
-    }
+    {}
 };
 
 /// Class for keyword MULFLT
@@ -205,8 +210,7 @@ struct MULTFLT : public SpecialBase
     }
 
     virtual ~MULTFLT()
-    {
-    }
+    {}
 
     virtual std::string name() const {return std::string("MULTFLT");}
 
@@ -245,6 +249,9 @@ struct MULTFLT : public SpecialBase
 	}
 	os << std::endl;
     }
+
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -259,7 +266,8 @@ struct TITLE : public SpecialBase
     { is >> ignoreLine; std::getline(is, title); }
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << title << '\n'; }
-
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -274,6 +282,8 @@ struct START : public SpecialBase
     { date = readDate(is); }
     virtual void write(std::ostream& os) const
     { os << name() << '\n' << date << '\n'; }
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -301,7 +311,8 @@ struct DATES : public SpecialBase
 	copy(dates.begin(), dates.end(),
 	     std::ostream_iterator<boost::gregorian::date>(os, "\n"));
     }
-
+    virtual void convertToSI(const EclipseUnits&)
+    {}
 };
 
 
@@ -337,6 +348,15 @@ struct DENSITY : public SpecialBase
 	}
 	os << '\n';
     }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int i=0; i<(int)densities_.size(); ++i) {
+	    densities_[i][0] *= units.density;
+	    densities_[i][1] *= units.density;
+	    densities_[i][2] *= units.density;
+	}
+    }
 };
 
 struct PVDG : public SpecialBase
@@ -353,14 +373,26 @@ struct PVDG : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)pvdg_.size(); ++prn) {
-	    for (int i=0; i<(int)pvdg_[prn][0].size(); ++i) {
-		os << pvdg_[prn][0][i] << " " << pvdg_[prn][1][i] << " "
-		   << pvdg_[prn][2][i] << '\n';
+	for (int rn=0; rn<(int)pvdg_.size(); ++rn) {
+	    for (int i=0; i<(int)pvdg_[rn][0].size(); ++i) {
+		os << pvdg_[rn][0][i] << " " << pvdg_[rn][1][i] << " "
+		   << pvdg_[rn][2][i] << '\n';
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double volfac = units.gasvol_r/units.gasvol_s;
+	for (int rn=0; rn<(int)pvdg_.size(); ++rn) {
+	    for (int i=0; i<(int)pvdg_[rn][0].size(); ++i) {
+		pvdg_[rn][0][i] *= units.pressure;
+		pvdg_[rn][1][i] *= volfac;
+		pvdg_[rn][2][i] *= units.viscosity;
+	    }
+	}
     }
 };
 
@@ -378,14 +410,26 @@ struct PVDO : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)pvdo_.size(); ++prn) {
-	    for (int i=0; i<(int)pvdo_[prn][0].size(); ++i) {
-		os << pvdo_[prn][0][i] << " " << pvdo_[prn][1][i] << " "
-		   << pvdo_[prn][2][i] << '\n';
+	for (int rn=0; rn<(int)pvdo_.size(); ++rn) {
+	    for (int i=0; i<(int)pvdo_[rn][0].size(); ++i) {
+		os << pvdo_[rn][0][i] << " " << pvdo_[rn][1][i] << " "
+		   << pvdo_[rn][2][i] << '\n';
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double volfac = units.liqvol_r/units.liqvol_s;
+	for (int rn=0; rn<(int)pvdo_.size(); ++rn) {
+	    for (int i=0; i<(int)pvdo_[rn][0].size(); ++i) {
+		pvdo_[rn][0][i] *= units.pressure;
+		pvdo_[rn][1][i] *= volfac;
+		pvdo_[rn][2][i] *= units.viscosity;
+	    }
+	}
     }
 };
 
@@ -403,20 +447,40 @@ struct PVTG : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)pvtg_.size(); ++prn) {
-	    for (int i=0; i<(int)pvtg_[prn].size(); ++i) {
-		int nl = (pvtg_[prn][i].size()-1) / 3;
-		os << pvtg_[prn][i][0] << "   " << pvtg_[prn][i][1] << "  "
-		   << pvtg_[prn][i][2] << "  " << pvtg_[prn][i][3] <<  '\n';
+	for (int rn=0; rn<(int)pvtg_.size(); ++rn) {
+	    for (int i=0; i<(int)pvtg_[rn].size(); ++i) {
+		int nl = (pvtg_[rn][i].size()-1) / 3;
+		os << pvtg_[rn][i][0] << "   " << pvtg_[rn][i][1] << "  "
+		   << pvtg_[rn][i][2] << "  " << pvtg_[rn][i][3] <<  '\n';
 		for (int j=1, n=3; j<nl; ++j, n+=3) {
-		    os << '\t' << pvtg_[prn][i][n+1] << "  "
-		       << pvtg_[prn][i][n+2] << "  " << pvtg_[prn][i][n+3]
+		    os << '\t' << pvtg_[rn][i][n+1] << "  "
+		       << pvtg_[rn][i][n+2] << "  " << pvtg_[rn][i][n+3]
 		       <<  '\n';
 		}
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double oilgasratio = units.liqvol_s/units.gasvol_s;
+	double volfac = units.gasvol_r/units.gasvol_s;
+	for (int rn=0; rn<(int)pvtg_.size(); ++rn) {
+	    for (int i=0; i<(int)pvtg_[rn].size(); ++i) {
+		int nl = (pvtg_[rn][i].size()-1) / 3;
+		pvtg_[rn][0][i] *= units.pressure;
+		pvtg_[rn][1][i] *= oilgasratio;
+		pvtg_[rn][2][i] *= volfac;
+		pvtg_[rn][3][i] *= units.viscosity;
+		for (int j=1, n=3; j<nl; ++j, n+=3) {
+		    pvtg_[rn][i][n+1] *= oilgasratio;
+		    pvtg_[rn][i][n+2] *= volfac;
+		    pvtg_[rn][i][n+3] *= units.viscosity;
+		}
+	    }
+	}
     }
 };
 
@@ -435,20 +499,40 @@ struct PVTO : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)pvto_.size(); ++prn) {
-	    for (int i=0; i<(int)pvto_[prn].size(); ++i) {
-		int nl = (pvto_[prn][i].size()-1) / 3;
-		os << pvto_[prn][i][0] << "   " << pvto_[prn][i][1] << "  "
-		   << pvto_[prn][i][2] << "  " << pvto_[prn][i][3] <<  '\n';
+	for (int rn=0; rn<(int)pvto_.size(); ++rn) {
+	    for (int i=0; i<(int)pvto_[rn].size(); ++i) {
+		int nl = (pvto_[rn][i].size()-1) / 3;
+		os << pvto_[rn][i][0] << "   " << pvto_[rn][i][1] << "  "
+		   << pvto_[rn][i][2] << "  " << pvto_[rn][i][3] <<  '\n';
 		for (int j=1, n=3; j<nl; ++j, n+=3) {
-		    os << '\t' << pvto_[prn][i][n+1] << "  "
-		       << pvto_[prn][i][n+2] << "  " << pvto_[prn][i][n+3]
+		    os << '\t' << pvto_[rn][i][n+1] << "  "
+		       << pvto_[rn][i][n+2] << "  " << pvto_[rn][i][n+3]
 		       <<  '\n';
 		}
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double gasoilratio = units.gasvol_s/units.liqvol_s;
+	double volfac = units.liqvol_r/units.liqvol_s;
+	for (int rn=0; rn<(int)pvto_.size(); ++rn) {
+	    for (int i=0; i<(int)pvto_[rn].size(); ++i) {
+		int nl = (pvto_[rn][i].size()-1) / 3;
+		pvto_[rn][0][i] *= gasoilratio;
+		pvto_[rn][1][i] *= units.pressure;
+		pvto_[rn][2][i] *= volfac;
+		pvto_[rn][3][i] *= units.viscosity;
+		for (int j=1, n=3; j<nl; ++j, n+=3) {
+		    pvto_[rn][i][n+1] *= units.pressure;
+		    pvto_[rn][i][n+2] *= volfac;
+		    pvto_[rn][i][n+3] *= units.viscosity;
+		}
+	    }
+	}
     }
 };
 
@@ -488,6 +572,18 @@ struct PVTW : public SpecialBase
 	}
 	os << '\n';
     }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double volfac = units.liqvol_r/units.liqvol_s;
+	for (int i=0; i<(int)pvtw_.size(); ++i) {
+	    pvtw_[i][0] *= units.pressure;
+	    pvtw_[i][1] *= volfac;
+	    pvtw_[i][2] *= units.compressibility;
+	    pvtw_[i][3] *= units.viscosity;
+	    pvtw_[i][4] *= units.compressibility;
+	}
+    }
 };
 
 
@@ -523,6 +619,14 @@ struct ROCK : public SpecialBase
 	}
 	os << '\n';
     }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int i=0; i<(int)rock_compressibilities_.size(); ++i) {
+	    rock_compressibilities_[i][0] *= units.pressure;
+	    rock_compressibilities_[i][1] *= units.compressibility;
+	}
+    }
 };
 
 
@@ -540,14 +644,23 @@ struct ROCKTAB : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)rocktab_.size(); ++prn) {
-	    for (int i=0; i<(int)rocktab_[prn][0].size(); ++i) {
-		os << rocktab_[prn][0][i] << " " << rocktab_[prn][1][i] << " "
-		   << rocktab_[prn][2][i] << '\n';
+	for (int rn=0; rn<(int)rocktab_.size(); ++rn) {
+	    for (int i=0; i<(int)rocktab_[rn][0].size(); ++i) {
+		os << rocktab_[rn][0][i] << " " << rocktab_[rn][1][i] << " "
+		   << rocktab_[rn][2][i] << '\n';
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int rn=0; rn<(int)rocktab_.size(); ++rn) {
+	     for (int i=0; i<(int)rocktab_[rn][0].size(); ++i) {
+		rocktab_[rn][0][i] *= units.pressure;
+	    }
+	}
     }
 };
 
@@ -563,14 +676,23 @@ struct SGOF : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)sgof_.size(); ++prn) {
-	    for (int i=0; i<(int)sgof_[prn][0].size(); ++i) {
-		os << sgof_[prn][0][i] << " " << sgof_[prn][1][i] << " "
-		   << sgof_[prn][2][i] << " " << sgof_[prn][3][i] << '\n';
+	for (int rn=0; rn<(int)sgof_.size(); ++rn) {
+	    for (int i=0; i<(int)sgof_[rn][0].size(); ++i) {
+		os << sgof_[rn][0][i] << " " << sgof_[rn][1][i] << " "
+		   << sgof_[rn][2][i] << " " << sgof_[rn][3][i] << '\n';
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int rn=0; rn<(int)sgof_.size(); ++rn) {
+	    for (int i=0; i<(int)sgof_[rn][0].size(); ++i) {
+		sgof_[rn][3][i] *= units.pressure;
+	    }
+	}
     }
 };
 
@@ -585,14 +707,23 @@ struct SWOF : public SpecialBase
     virtual void write(std::ostream& os) const
     {
 	os << name() << '\n';
-	for (int prn=0; prn<(int)swof_.size(); ++prn) {
-	    for (int i=0; i<(int)swof_[prn][0].size(); ++i) {
-		os << swof_[prn][0][i] << " " << swof_[prn][1][i] << " "
-		   << swof_[prn][2][i] << " " << swof_[prn][3][i] << '\n';
+	for (int rn=0; rn<(int)swof_.size(); ++rn) {
+	    for (int i=0; i<(int)swof_[rn][0].size(); ++i) {
+		os << swof_[rn][0][i] << " " << swof_[rn][1][i] << " "
+		   << swof_[rn][2][i] << " " << swof_[rn][3][i] << '\n';
 	    }
 	    os << '\n';
 	}
 	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int rn=0; rn<(int)swof_.size(); ++rn) {
+	    for (int i=0; i<(int)swof_[rn][0].size(); ++i) {
+		swof_[rn][3][i] *= units.pressure;
+	    }
+	}
     }
 };
 
