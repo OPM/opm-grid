@@ -160,7 +160,6 @@ boost::array<double, 6> EclipseGridInspector::getGridLimits() const
         throw std::runtime_error("EclipseGridInspector: Grid does not have SPECGRID, COORD, and ZCORN, can't find dimensions.");
     }
 
-    std::vector<int> specgrid = parser_.getIntegerValue("SPECGRID");
     std::vector<double> coord = parser_.getFloatingPointValue("COORD");
     std::vector<double> zcorn = parser_.getFloatingPointValue("ZCORN");
 
@@ -170,7 +169,7 @@ boost::array<double, 6> EclipseGridInspector::getGridLimits() const
     double ymax = -DBL_MAX;
 
 
-    int pillars = (specgrid[0]+1) * (specgrid[1]+1);
+    int pillars = (logical_gridsize_[0]+1) * (logical_gridsize_[1]+1);
 
     for (int pillarindex = 0; pillarindex < pillars; ++pillarindex) {
         if        (coord[pillarindex * 6 + 0] > xmax)
