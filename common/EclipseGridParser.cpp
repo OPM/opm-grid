@@ -312,6 +312,42 @@ void EclipseGridParser::read(istream& is)
 }
 
 
+
+//---------------------------------------------------------------------------
+void EclipseGridParser::convertToSI()
+//---------------------------------------------------------------------------
+{
+    // Convert all special fields.
+    typedef std::map<string, boost::shared_ptr<SpecialBase> >::iterator SpecialIt;
+    for (SpecialIt i = special_field_map_.begin(); i != special_field_map_.end(); ++i) {
+        i->second->convertToSI(units_);
+    }
+
+    // Convert all floating point fields.
+    typedef std::map<string, std::vector<double> >::iterator FloatIt;
+    for (FloatIt i = floating_field_map_.begin(); i != floating_field_map_.end(); ++i) {
+        const std::string& key = i->first;
+        std::vector<double>& field = i->second;
+        // Find the right unit.
+        double unit = 1e100;
+        if (key == "COORD" || key == "ZCORN") {
+            unit = units_.length;
+        } else if (key == "PERMX") {
+            unit = units_.permeability;
+        } else if (key == "PORO") {
+            unit = 1.0;
+        } else {
+            THROW("Units for field " << key << " not specified. Cannon convert to SI.");
+        }
+        // Convert.
+        for (int i = 0; i < int(field.size()); ++i) {
+            field[i] = Dune::unit::convert::from(field[i], unit);
+        }
+    }
+}
+
+
+
 /// Returns true if the given keyword corresponds to a field that
 /// was found in the file.
 //---------------------------------------------------------------------------

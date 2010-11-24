@@ -81,6 +81,10 @@ public:
     /// Read the given stream, overwriting any previous data.
     void read(std::istream& is);
 
+    /// Convert all data to SI units, according to unit category as
+    /// specified in the eclipse file (METRIC, FIELD etc.).
+    void convertToSI();
+
     /// Returns true if the given keyword corresponds to a field that
     /// was found in the file.
     bool hasField(const std::string& keyword) const;
@@ -154,7 +158,7 @@ public:                                                                         
     /// Sets a special field to have a particular value.
     void setSpecialField(const std::string& keyword, boost::shared_ptr<SpecialBase> field);
 
-    /// The units used in the read input.
+    /// The units specified by the eclipse file read.
     const EclipseUnits& units() const;
 
 private:
