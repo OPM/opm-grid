@@ -332,9 +332,13 @@ void EclipseGridParser::convertToSI()
         double unit = 1e100;
         if (key == "COORD" || key == "ZCORN") {
             unit = units_.length;
-        } else if (key == "PERMX") {
+        } else if (key == "PERMX"  || key == "PERMY"  || key == "PERMZ"  ||
+		   key == "PERMXX" || key == "PERMYY" || key == "PERMZZ" ||
+		   key == "PERMXY" || key == "PERMYZ" || key == "PERMZX") {
             unit = units_.permeability;
-        } else if (key == "PORO") {
+        } else if (key == "PORO"     || key == "BULKMOD"  || key == "YOUNGMOD" ||
+		   key == "LAMEMOD"  || key == "SHEARMOD" || key == "POISSONMOD" ||
+		   key == "PWAVEMOD" || key == "MULTPV") {
             unit = 1.0;
         } else {
             THROW("Units for field " << key << " not specified. Cannon convert to SI.");
@@ -345,7 +349,6 @@ void EclipseGridParser::convertToSI()
         }
     }
 }
-
 
 
 /// Returns true if the given keyword corresponds to a field that
