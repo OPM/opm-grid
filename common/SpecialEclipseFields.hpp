@@ -470,10 +470,10 @@ struct PVTG : public SpecialBase
 	for (int rn=0; rn<(int)pvtg_.size(); ++rn) {
 	    for (int i=0; i<(int)pvtg_[rn].size(); ++i) {
 		int nl = (pvtg_[rn][i].size()-1) / 3;
-		pvtg_[rn][0][i] *= units.pressure;
-		pvtg_[rn][1][i] *= oilgasratio;
-		pvtg_[rn][2][i] *= volfac;
-		pvtg_[rn][3][i] *= units.viscosity;
+		pvtg_[rn][i][0] *= units.pressure;
+		pvtg_[rn][i][1] *= oilgasratio;
+		pvtg_[rn][i][2] *= volfac;
+		pvtg_[rn][i][3] *= units.viscosity;
 		for (int j=1, n=3; j<nl; ++j, n+=3) {
 		    pvtg_[rn][i][n+1] *= oilgasratio;
 		    pvtg_[rn][i][n+2] *= volfac;
@@ -522,10 +522,10 @@ struct PVTO : public SpecialBase
 	for (int rn=0; rn<(int)pvto_.size(); ++rn) {
 	    for (int i=0; i<(int)pvto_[rn].size(); ++i) {
 		int nl = (pvto_[rn][i].size()-1) / 3;
-		pvto_[rn][0][i] *= gasoilratio;
-		pvto_[rn][1][i] *= units.pressure;
-		pvto_[rn][2][i] *= volfac;
-		pvto_[rn][3][i] *= units.viscosity;
+		pvto_[rn][i][0] *= gasoilratio;
+		pvto_[rn][i][1] *= units.pressure;
+		pvto_[rn][i][2] *= volfac;
+		pvto_[rn][i][3] *= units.viscosity;
 		for (int j=1, n=3; j<nl; ++j, n+=3) {
 		    pvto_[rn][i][n+1] *= units.pressure;
 		    pvto_[rn][i][n+2] *= volfac;
