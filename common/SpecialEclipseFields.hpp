@@ -773,6 +773,10 @@ struct MultRec : public SpecialBase
 	    }
         }
     }
+
+    virtual void convertToSI(const EclipseUnits&)
+    {}
+
 };
 
 // The following fields only have a dummy implementation
