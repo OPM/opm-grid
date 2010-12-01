@@ -8,7 +8,15 @@ AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
         AM_PATH_XML2([2.0.0])
 
         # Boost support.
-        AX_BOOST_BASE([1.37])
+dnl
+dnl     ISTL already configures Boost during checking for Boost.Fusion
+dnl     support.  Admittedly, this test uses an unadorned AX_BOOST_BASE
+dnl     call so we're only guaranteed to have Boost >= 1.20.0, but in
+dnl     practice any recent Linux distro will have Boost >= 1.37.  Bank
+dnl     on that...
+dnl
+dnl     AX_BOOST_BASE([1.37])
+dnl
         AX_BOOST_DATE_TIME
         AX_BOOST_FILESYSTEM
         AX_BOOST_SYSTEM
