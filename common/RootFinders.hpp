@@ -72,16 +72,17 @@ namespace Dune
 	{
 	    using namespace std;
 	    const double macheps = numeric_limits<double>::epsilon();
-	    const double eps = tolerance + macheps*max(max(a, b), 1.0);
+	    const double eps = tolerance + macheps*max(max(fabs(a), fabs(b)), 1.0);
 
 	    double x0 = a;
 	    double x1 = b;
 	    double f0 = f(x0);
-	    double f1 = f(x1);
-	    if (fabs(f0) < eps) {
+	    const double epsF = tolerance + macheps*max(fabs(f0), 1.0);
+	    if (fabs(f0) < epsF) {
 		return x0;
 	    }
-	    if (fabs(f1) < eps) {
+	    double f1 = f(x1);
+	    if (fabs(f1) < epsF) {
 		return x1;
 	    }
 	    if (f0*f1 > 0.0) {
@@ -101,7 +102,7 @@ namespace Dune
 			  << "Current interval is [" << min(x0, x1) << ", "
 			  << max(x0, x1) << "]");
 		}
-		if (fabs(fnew) < eps) {
+		if (fabs(fnew) < epsF) {
 		    return xnew;
 		}
 		// Now we must check which point we must replace.
