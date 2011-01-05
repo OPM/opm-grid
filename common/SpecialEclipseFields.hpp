@@ -727,6 +727,106 @@ struct SWOF : public SpecialBase
     }
 };
 
+/// Class holding a data line of keyword WELSPECS
+struct WelspecsLine
+{
+    std::string name_;               // Well name
+    std::string group_;              // Group name
+    int I_;                          // I-location of well head or heel
+    int J_;                          // J-location of well head or heel
+    double datum_depth_BHP_;         // Datum depth for bottom hole pressure
+    std::string pref_phase_;         // Preferred phase for the well
+    double drain_rad_;               // Drainage radius for prod/inj index calculation
+    std::string spec_inflow_;        // Flag for special inflow equation
+    std::string shut_in_;            // Instructions for automatic shut-in
+    std::string crossflow_;          // Crossflow ability flag
+    int pressure_table_number_;      // Pressure table number for wellbore fluid properties
+    std::string density_calc_type_;  // Type of density calculation for wellbore hydrostatic head
+    int fluids_in_place_reg_numb_;   // Fluids in place region number
+
+    WelspecsLine() :
+	datum_depth_BHP_(-1.0), drain_rad_(0.0), spec_inflow_("STD"),
+	shut_in_("SHUT"), crossflow_("YES"), pressure_table_number_(0),
+	density_calc_type_("SEG"), fluids_in_place_reg_numb_(0)
+    {}
+};
+
+/// Class for keyword WELSPECS
+struct WELSPECS : public SpecialBase
+{
+    std::vector<WelspecsLine> welspecs;
+
+    WELSPECS()
+    {
+    }
+
+    virtual ~WELSPECS()
+    {}
+
+    virtual std::string name() const {return std::string("WELSPECS");}
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    std::string name = readString(is); 
+	    if (name[0] == '/') {
+		is >> ignoreLine;
+		break;
+	    }
+	    while (name.find("--") == 0) {
+		// This line is a comment
+		is >> ignoreLine;
+		name = readString(is);
+	    }
+	    WelspecsLine welspecs_line;
+	    welspecs_line.name_ = name;
+	    welspecs_line.group_ = readString(is);
+	    std::vector<int> data(2,1);
+	    readDefaultedVectorData(is, data, 2);
+	    welspecs_line.I_ = data[0];
+	    welspecs_line.J_ = data[1];
+	    data[0] = welspecs_line.datum_depth_BHP_; // Default value
+	    readDefaultedVectorData(is, data, 1);
+	    welspecs_line.datum_depth_BHP_ = data[0];
+	    welspecs_line.pref_phase_ = readString(is);
+
+	    // HACK! Ignore items 7-13.
+	    ignoreSlashLine(is);
+	    welspecs.push_back(welspecs_line);
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int)welspecs.size(); ++i) {
+	    os << welspecs[i].name_ << "  " 
+	       << welspecs[i].group_ << "  "
+	       << welspecs[i].I_ << "  "
+	       << welspecs[i].J_ << "  "
+	       << welspecs[i].datum_depth_BHP_ << "  "
+	       << welspecs[i].pref_phase_ << "  "
+	       << welspecs[i].drain_rad_ << "  "
+	       << welspecs[i].shut_in_ << "  "
+	       << welspecs[i].crossflow_ << "  "
+	       << welspecs[i].pressure_table_number_ << "  "
+	       << welspecs[i].density_calc_type_ << "  "
+	       << welspecs[i].fluids_in_place_reg_numb_ << "  "
+	       << std::endl;
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int i=0; i<(int)welspecs.size(); ++i) {
+	    welspecs[i].datum_depth_BHP_ *= units.length;
+	    welspecs[i].drain_rad_ *= units.length;
+	}
+    }
+};
+
+
 struct MultRec : public SpecialBase
 {
     virtual void read(std::istream& is)
@@ -784,7 +884,6 @@ struct MultRec : public SpecialBase
 struct SWFN : public MultRec {};
 struct SOF2 : public MultRec {};
 struct EQUIL : public MultRec {};
-struct WELSPECS : public MultRec {};
 struct COMPDAT : public MultRec {};
 struct WCONINJE : public MultRec {};
 struct TUNING : public MultRec {};

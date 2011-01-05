@@ -51,7 +51,7 @@
 
 using namespace std;
 
-//#define VERBOSE
+#define VERBOSE
 
 namespace Dune
 {
@@ -91,14 +91,13 @@ namespace EclipseKeywords
           string("TITLE"),    string("START"),  string("DATES"),
 	  string("DENSITY"),  string("PVDG"),   string("PVDO"),
 	  string("PVTG"),     string("PVTO"),   string("PVTW"),
-	  string("SGOF"),     string("SWOF"),   string("ROCKTAB"),
-	  string("ROCK"),
+	  string("SGOF"),     string("SWOF"),   string("ROCK"),
+	  string("ROCKTAB"),  string("WELSPECS"),
 	  // The following fields only have a dummy implementation
 	  // that allows us to ignore them.
           "SWFN",
           "SOF2",
           "EQUIL",
-          "WELSPECS",
           "COMPDAT",
           "WCONINJE",
           "TUNING"
