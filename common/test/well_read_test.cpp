@@ -14,5 +14,17 @@ int main()
     if (parser.hasField("WELSPECS")) {
 	parser.getWELSPECS().write(std::cout);    
     }
+    if (parser.hasField("COMPDAT")) {
+	parser.getCOMPDAT().write(std::cout);    
+    }
+    if (parser.hasField("WCONINJE")) {
+	parser.getWCONINJE().write(std::cout);    
+    }
+    if (parser.hasField("WCONPROD")) {
+	parser.getWCONPROD().write(std::cout);
+    }
+    if (parser.hasField("WELTARG")) {
+	parser.getWELTARG().write(std::cout);    
+    }
     return 0;
 }

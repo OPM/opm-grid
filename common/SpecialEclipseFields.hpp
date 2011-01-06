@@ -781,13 +781,13 @@ struct WELSPECS : public SpecialBase
 	    WelspecsLine welspecs_line;
 	    welspecs_line.name_ = name;
 	    welspecs_line.group_ = readString(is);
-	    std::vector<int> data(2,1);
-	    readDefaultedVectorData(is, data, 2);
-	    welspecs_line.I_ = data[0];
-	    welspecs_line.J_ = data[1];
-	    data[0] = welspecs_line.datum_depth_BHP_; // Default value
-	    readDefaultedVectorData(is, data, 1);
-	    welspecs_line.datum_depth_BHP_ = data[0];
+	    std::vector<int> int_data(2,1);
+	    readDefaultedVectorData(is, int_data, 2);
+	    welspecs_line.I_ = int_data[0];
+	    welspecs_line.J_ = int_data[1];
+	    std::vector<double> double_data(1,-1.0);
+	    readDefaultedVectorData(is, double_data, 1);
+	    welspecs_line.datum_depth_BHP_ = double_data[0];
 	    welspecs_line.pref_phase_ = readString(is);
 
 	    // HACK! Ignore items 7-13.
@@ -826,6 +826,387 @@ struct WELSPECS : public SpecialBase
     }
 };
 
+/// Class holding a data line of keyword COMPDAT
+struct CompdatLine
+{
+    std::string well_;               // Well name
+    std::vector<int> grid_ind_;      // Grid block location
+    std::string open_shut_flag_;     // Open/shut flag of connection
+    int sat_table_number_;           // Saturation table number
+    double connect_transmil_fac_;    // Connection transmillibilty factor
+    double diameter_;                // Well bore internal diameter
+    double Kh_;                      // Effective Kh value of the connection
+    double skin_factor_;             // Skin factor
+    double D_factor_;                // D-factor, for non-Darcy flow of free gas
+    std::string penetration_direct_; // Penetration direction
+    double r0_;                      // Pressure equivalent radius
+
+    // Default values
+    CompdatLine() :
+	open_shut_flag_("OPEN"),  Kh_(-1.0), skin_factor_(0.0),
+	penetration_direct_("Z")
+    {
+	grid_ind_.resize(4);
+    }
+};
+
+/// Class for keyword COMPDAT
+struct COMPDAT : public SpecialBase
+{
+    std::vector<CompdatLine> compdat;
+
+    COMPDAT()
+    {
+    }
+
+    virtual ~COMPDAT()
+    {}
+
+    virtual std::string name() const {return std::string("COMPDAT");}
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    std::string name = readString(is); 
+	    if (name[0] == '/') {
+		is >> ignoreLine;
+		break;
+	    }
+	    while (name.find("--") == 0) {
+		// This line is a comment
+		is >> ignoreLine;
+		name = readString(is);
+	    }
+	    CompdatLine compdat_line;
+	    compdat_line.well_ = name;
+	    readDefaultedVectorData(is, compdat_line.grid_ind_, 4);
+	    compdat_line.open_shut_flag_ = readString(is);
+	    std::vector<int> int_data(1,-1);
+	    readDefaultedVectorData(is, int_data, 1);
+	    compdat_line.sat_table_number_ = int_data[0];
+	    is >> compdat_line.connect_transmil_fac_;
+
+	    // HACK! Ignore items 9-14.
+	    ignoreSlashLine(is);
+	    compdat.push_back(compdat_line);
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int)compdat.size(); ++i) {
+	    os << compdat[i].well_ << "  " 
+	       << compdat[i].grid_ind_[0] << "  "
+	       << compdat[i].grid_ind_[1] << "  "
+	       << compdat[i].grid_ind_[2] << "  "
+	       << compdat[i].grid_ind_[3] << "  "
+	       << compdat[i].open_shut_flag_ << "  "
+	       << compdat[i].sat_table_number_ << "  "
+	       << compdat[i].connect_transmil_fac_ << "  "
+	       << compdat[i].diameter_ << "  "
+	       << compdat[i].Kh_ << "  "
+	       << compdat[i].skin_factor_ << "  "
+	       << compdat[i].D_factor_ << "  "
+	       << compdat[i].penetration_direct_ << "  "
+	       << compdat[i].r0_
+	       << std::endl;
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int i=0; i<(int)compdat.size(); ++i) {
+	    compdat[i].diameter_ *= units.length;
+	    compdat[i].r0_ *= units.length;
+	}
+    }
+};
+
+/// Class holding a data line of keyword WCONINJE
+struct WconinjeLine
+{
+    std::string well_;             // Well name or well name root
+    std::string injector_type_;    // Injector type
+    std::string open_shut_flag_;   // Open/shut flag for the well
+    std::string control_mode_;     // Control mode
+    double surface_flow_max_rate_; // Surface flow rate target or upper limit
+    double fluid_volume_max_rate_; // Reservoir fluid volume rate target or
+                                   // upper limit
+    double BHP_limit_;             // BHP target or upper limit
+    double THP_limit_;             // THP target or upper limit
+    int VFP_table_number_;         // Injection well VFP table number
+    double concentration_;         // Vaporised oil concentration in the
+                                   // injected gas, or dissolved gas
+                                   // concentration in the injected oil
+
+    // Default values
+    WconinjeLine() :
+	open_shut_flag_("OPEN"), surface_flow_max_rate_(1.0E20),
+	fluid_volume_max_rate_(1.0E20), BHP_limit_(6895), THP_limit_(1.0E20),
+	VFP_table_number_(0), concentration_(0.0)
+    {
+    }
+};
+
+/// Class for keyword WCONINJE
+struct WCONINJE : public SpecialBase
+{
+    std::vector<WconinjeLine> wconinje;
+
+    WCONINJE()
+    {
+    }
+
+    virtual ~WCONINJE()
+    {}
+
+    virtual std::string name() const {return std::string("WCONINJE");}
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    std::string name = readString(is); 
+	    if (name[0] == '/') {
+		is >> ignoreLine;
+		break;
+	    }
+	    while (name.find("--") == 0) {
+		// This line is a comment
+		is >> ignoreLine;
+		name = readString(is);
+	    }
+	    WconinjeLine wconinje_line;
+	    wconinje_line.well_ = name;
+	    wconinje_line.injector_type_ = readString(is);
+	    wconinje_line.open_shut_flag_ = readString(is);
+	    wconinje_line.control_mode_ = readString(is);
+	    std::vector<double> double_data(6, 1.0E20);
+	    double_data[2] = wconinje_line.BHP_limit_; 
+	    double_data[4] = wconinje_line.VFP_table_number_; 
+	    double_data[5] = wconinje_line.concentration_;
+	    readDefaultedVectorData(is, double_data, 6);
+	    wconinje_line.surface_flow_max_rate_ = double_data[0];
+	    wconinje_line.fluid_volume_max_rate_ = double_data[1];
+	    wconinje_line.BHP_limit_ = double_data[2];
+	    wconinje_line.THP_limit_ = double_data[3];
+	    wconinje_line.VFP_table_number_ = (int)double_data[4];
+	    wconinje_line.concentration_ = double_data[5];
+	    wconinje.push_back(wconinje_line);
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int) wconinje.size(); ++i) {
+	    os << wconinje[i].well_ << "  " 
+	       << wconinje[i].injector_type_ << "  " 
+	       << wconinje[i].open_shut_flag_ << "  " 
+	       << wconinje[i].control_mode_ << "  " 
+	       << wconinje[i].surface_flow_max_rate_ << "  " 
+	       << wconinje[i].fluid_volume_max_rate_ << "  " 
+	       << wconinje[i].BHP_limit_ << "  " 
+	       << wconinje[i].THP_limit_ << "  " 
+	       << wconinje[i].VFP_table_number_ << "  " 
+	       << wconinje[i].concentration_
+	       << std::endl; 
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& units) // @bsp
+    {
+	for (int i=0; i<(int) wconinje.size(); ++i) {
+	    wconinje[i].surface_flow_max_rate_ *= units.length;
+	    wconinje[i].fluid_volume_max_rate_ *= units.length;
+	    wconinje[i].BHP_limit_ *= units.length;  // barsa
+	    wconinje[i].THP_limit_ *= units.length;  // barsa
+	    wconinje[i].concentration_ *= units.length;
+	}
+    }
+};
+
+/// Class holding a data line of keyword WCONPROD
+struct WconprodLine
+{
+    std::string well_;             // Well name or well name root
+    std::string open_shut_flag_;   // Open/shut flag for the well
+    std::string control_mode_;     // Control mode
+    double oil_max_rate_;          // Oil rate target or upper limit
+    double water_max_rate_;        // Water rate target or upper limit
+    double gas_max_rate_;          // Gas rate target or upper limit
+    double liquid_max_rate_;       // Liquid rate target or upper limit
+    double fluid_volume_max_rate_; // Reservoir fluid volume rate target or
+                                   // upper limit
+    double BHP_limit_;             // BHP target or upper limit
+    double THP_limit_;             // THP target or upper limit
+    int VFP_table_number_;         // Injection well VFP table number
+    double artif_lift_quantity_;   // Artificial lift quantity in THP calculations
+
+    // Default values
+    WconprodLine() :
+	open_shut_flag_("OPEN"), oil_max_rate_(1.0E20), water_max_rate_(1.0E20),
+	gas_max_rate_(1.0E20), liquid_max_rate_(1.0E20),
+	fluid_volume_max_rate_(1.0E20), BHP_limit_(-1.0), THP_limit_(0.0),
+	VFP_table_number_(0), artif_lift_quantity_(0.0)
+    {
+    }
+};
+
+/// Class for keyword WCONPROD
+struct WCONPROD : public SpecialBase
+{
+    std::vector<WconprodLine> wconprod;
+
+    WCONPROD()
+    {
+    }
+
+    virtual ~WCONPROD()
+    {}
+
+    virtual std::string name() const {return std::string("WCONPROD");}
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    std::string name = readString(is); 
+	    if (name[0] == '/') {
+		is >> ignoreLine;
+		break;
+	    }
+	    while (name.find("--") == 0) {
+		// This line is a comment
+		is >> ignoreLine;
+		name = readString(is);
+	    }
+	    WconprodLine wconprod_line;
+	    wconprod_line.well_ = name;
+	    wconprod_line.open_shut_flag_ = readString(is);
+	    wconprod_line.control_mode_ = readString(is);
+	    std::vector<double> double_data(9, 1.0E20);
+	    double_data[5] = wconprod_line.BHP_limit_; 
+	    double_data[6] = wconprod_line.THP_limit_; 
+	    double_data[7] = wconprod_line.VFP_table_number_; 
+	    double_data[8] = wconprod_line.artif_lift_quantity_;
+	    readDefaultedVectorData(is, double_data, 9);
+	    wconprod_line.oil_max_rate_ = double_data[0];
+	    wconprod_line.water_max_rate_ = double_data[1];
+	    wconprod_line.gas_max_rate_ = double_data[2];
+	    wconprod_line.liquid_max_rate_ = double_data[3];
+	    wconprod_line.fluid_volume_max_rate_ = double_data[4];
+	    wconprod_line.BHP_limit_ = double_data[5];
+	    wconprod_line.THP_limit_ = double_data[6];
+	    wconprod_line.VFP_table_number_ = (int)double_data[7];
+	    wconprod_line.artif_lift_quantity_ = double_data[8];
+	    wconprod.push_back(wconprod_line);
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int) wconprod.size(); ++i) {
+	    os << wconprod[i].well_ << "  " 
+	       << wconprod[i].open_shut_flag_ << "  " 
+	       << wconprod[i].control_mode_ << "  " 
+	       << wconprod[i].oil_max_rate_ << "  " 
+	       << wconprod[i].water_max_rate_ << "  " 
+	       << wconprod[i].gas_max_rate_ << "  " 
+	       << wconprod[i].liquid_max_rate_ << "  " 
+	       << wconprod[i].fluid_volume_max_rate_ << "  " 
+	       << wconprod[i].BHP_limit_ << "  " 
+	       << wconprod[i].THP_limit_ << "  " 
+	       << wconprod[i].VFP_table_number_ << "  " 
+	       << wconprod[i].artif_lift_quantity_
+	       << std::endl; 
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)      // @bsp
+    {
+	for (int i=0; i<(int) wconprod.size(); ++i) {
+	    wconprod[i].oil_max_rate_ *= units.length;
+	    wconprod[i].water_max_rate_ *= units.length;
+	    wconprod[i].gas_max_rate_ *= units.length;
+	    wconprod[i].liquid_max_rate_ *= units.length;
+	    wconprod[i].fluid_volume_max_rate_ *= units.length;
+	    wconprod[i].BHP_limit_ *= units.length;  // barsa
+	    wconprod[i].THP_limit_ *= units.length;  // barsa
+	    wconprod[i].artif_lift_quantity_ *= units.length;
+	}
+    }
+};
+
+
+/// Class holding a data line of keyword WELTARG
+struct WeltargLine
+{
+    std::string well_;             // Well name or well name root
+    std::string control_change_;   // Definition of the control or constraint
+                                   // quantity to be changed
+    double new_value_;             // New value of this quantity
+
+    WeltargLine()
+    {
+    }
+};
+
+/// Class for keyword WELTARG
+struct WELTARG : public SpecialBase
+{
+    std::vector<WeltargLine> weltarg;
+
+    WELTARG()
+    {
+    }
+
+    virtual ~WELTARG()
+    {}
+
+    virtual std::string name() const {return std::string("WELTARG");}
+
+    virtual void read(std::istream& is)
+    {
+	while(is) {
+	    std::string name = readString(is); 
+	    if (name[0] == '/') {
+		is >> ignoreLine;
+		break;
+	    }
+	    while (name.find("--") == 0) {
+		// This line is a comment
+		is >> ignoreLine;
+		name = readString(is);
+	    }
+	    WeltargLine weltarg_line;
+	    weltarg_line.well_ = name;
+	    is >> weltarg_line.control_change_;
+	    is >> weltarg_line.new_value_;
+	    ignoreSlashLine(is);
+	    weltarg.push_back(weltarg_line);
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int)weltarg.size(); ++i) {
+	    os << weltarg[i].well_ << "  " 
+	       << weltarg[i].control_change_ << "  " 
+	       << weltarg[i].new_value_ << "  "
+	       << std::endl;
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& /*units*/)
+    {
+    }
+};
 
 struct MultRec : public SpecialBase
 {
@@ -884,8 +1265,6 @@ struct MultRec : public SpecialBase
 struct SWFN : public MultRec {};
 struct SOF2 : public MultRec {};
 struct EQUIL : public MultRec {};
-struct COMPDAT : public MultRec {};
-struct WCONINJE : public MultRec {};
 struct TUNING : public MultRec {};
 
 

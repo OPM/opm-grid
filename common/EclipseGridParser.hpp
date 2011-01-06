@@ -136,14 +136,16 @@ public:                                                                         
     SPECIAL_FIELD(ROCK);
     SPECIAL_FIELD(ROCKTAB);
     SPECIAL_FIELD(WELSPECS);
+    SPECIAL_FIELD(COMPDAT);
+    SPECIAL_FIELD(WCONINJE);
+    SPECIAL_FIELD(WCONPROD);
+    SPECIAL_FIELD(WELTARG);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.
     SPECIAL_FIELD(SWFN);
     SPECIAL_FIELD(SOF2);
     SPECIAL_FIELD(EQUIL);
-    SPECIAL_FIELD(COMPDAT);
-    SPECIAL_FIELD(WCONINJE);
     SPECIAL_FIELD(TUNING);
 
 #undef SPECIAL_FIELD
