@@ -789,9 +789,19 @@ struct WELSPECS : public SpecialBase
 	    readDefaultedVectorData(is, double_data, 1);
 	    welspecs_line.datum_depth_BHP_ = double_data[0];
 	    welspecs_line.pref_phase_ = readString(is);
-
-	    // HACK! Ignore items 7-13.
-	    ignoreSlashLine(is);
+	    double_data[0] = 0.0;
+	    readDefaultedVectorData(is, double_data, 1);
+	    welspecs_line.drain_rad_ = double_data[0];
+	    welspecs_line.spec_inflow_ = readString(is);
+	    welspecs_line.shut_in_ = readString(is);
+	    welspecs_line.crossflow_ = readString(is);
+	    int_data[0] = 0;
+	    readDefaultedVectorData(is, int_data, 1);
+	    welspecs_line.pressure_table_number_ = int_data[0];	    
+	    welspecs_line.density_calc_type_ = readString(is);
+	    int_data[0] = 0;
+	    readDefaultedVectorData(is, int_data, 1);
+	    welspecs_line.fluids_in_place_reg_numb_ = int_data[0];
 	    welspecs.push_back(welspecs_line);
 	}
     }
@@ -884,10 +894,17 @@ struct COMPDAT : public SpecialBase
 	    std::vector<int> int_data(1,-1);
 	    readDefaultedVectorData(is, int_data, 1);
 	    compdat_line.sat_table_number_ = int_data[0];
-	    is >> compdat_line.connect_transmil_fac_;
-
-	    // HACK! Ignore items 9-14.
-	    ignoreSlashLine(is);
+	    std::vector<double> double_data(5,0);
+	    readDefaultedVectorData(is, double_data, 5);
+	    compdat_line.connect_transmil_fac_ = double_data[0];
+	    compdat_line.diameter_ = double_data[1];
+	    compdat_line.Kh_ = double_data[2];
+	    compdat_line.skin_factor_ = double_data[3];
+	    compdat_line.D_factor_ = double_data[4];
+	    compdat_line.penetration_direct_ = readString(is);
+	    double_data[0] = 0.0;
+	    readDefaultedVectorData(is, double_data, 1);
+	    compdat_line.r0_ = double_data[0];
 	    compdat.push_back(compdat_line);
 	}
     }
@@ -918,7 +935,9 @@ struct COMPDAT : public SpecialBase
     virtual void convertToSI(const EclipseUnits& units)
     {
 	for (int i=0; i<(int)compdat.size(); ++i) {
+	    compdat[i].connect_transmil_fac_ *= units.transmissibility;
 	    compdat[i].diameter_ *= units.length;
+	    compdat[i].Kh_ *= units.permeability*units.length;
 	    compdat[i].r0_ *= units.length;
 	}
     }
@@ -1016,14 +1035,14 @@ struct WCONINJE : public SpecialBase
 	os << std::endl;
     }
 
-    virtual void convertToSI(const EclipseUnits& units) // @bsp
+    virtual void convertToSI(const EclipseUnits& units)
     {
 	for (int i=0; i<(int) wconinje.size(); ++i) {
-	    wconinje[i].surface_flow_max_rate_ *= units.length;
-	    wconinje[i].fluid_volume_max_rate_ *= units.length;
-	    wconinje[i].BHP_limit_ *= units.length;  // barsa
-	    wconinje[i].THP_limit_ *= units.length;  // barsa
-	    wconinje[i].concentration_ *= units.length;
+	    wconinje[i].surface_flow_max_rate_ *= units.liqvol_s/units.time; // ??? @bsp 5
+	    wconinje[i].fluid_volume_max_rate_ *= units.liqvol_r/units.time;
+	    wconinje[i].BHP_limit_ *= units.pressure;
+	    wconinje[i].THP_limit_ *= units.pressure;
+	    wconinje[i].concentration_ *= units.gasvol_s/units.liqvol_s; // ??? @bsp 10
 	}
     }
 };
@@ -1126,17 +1145,19 @@ struct WCONPROD : public SpecialBase
 	os << std::endl;
     }
 
-    virtual void convertToSI(const EclipseUnits& units)      // @bsp
+    virtual void convertToSI(const EclipseUnits& units)
     {
+	double lrat = units.liqvol_s / units.time;
+	double grat = units.gasvol_s / units.time;
+	double resv = units.liqvol_r / units.time;
 	for (int i=0; i<(int) wconprod.size(); ++i) {
-	    wconprod[i].oil_max_rate_ *= units.length;
-	    wconprod[i].water_max_rate_ *= units.length;
-	    wconprod[i].gas_max_rate_ *= units.length;
-	    wconprod[i].liquid_max_rate_ *= units.length;
-	    wconprod[i].fluid_volume_max_rate_ *= units.length;
-	    wconprod[i].BHP_limit_ *= units.length;  // barsa
-	    wconprod[i].THP_limit_ *= units.length;  // barsa
-	    wconprod[i].artif_lift_quantity_ *= units.length;
+	    wconprod[i].oil_max_rate_ *= lrat;
+	    wconprod[i].water_max_rate_ *= lrat;
+	    wconprod[i].gas_max_rate_ *= grat;
+	    wconprod[i].liquid_max_rate_ *= lrat;
+	    wconprod[i].fluid_volume_max_rate_ *= resv;
+	    wconprod[i].BHP_limit_ *= units.pressure;
+	    wconprod[i].THP_limit_ *= units.pressure;
 	}
     }
 };
