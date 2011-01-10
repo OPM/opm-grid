@@ -35,7 +35,7 @@ namespace Dune
         double liqvol_r;
         double gasvol_s;
         double gasvol_r;
-        double tranmissibility;
+        double transmissibility;
     };
 
 
