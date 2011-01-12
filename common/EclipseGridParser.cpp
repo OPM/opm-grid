@@ -531,7 +531,7 @@ void EclipseGridParser::computeUnits()
         units_.liqvol_r = cubic(meter);
         units_.gasvol_s = cubic(meter);
         units_.gasvol_r = cubic(meter);
-        units_.tranmissibility = centi*Poise * cubic(meter) / (day * barsa);
+        units_.transmissibility = centi*Poise * cubic(meter) / (day * barsa);
         break;
     case Field:
         units_.length = feet;
@@ -545,7 +545,7 @@ void EclipseGridParser::computeUnits()
         units_.liqvol_r = stb;
         units_.gasvol_s = 1000*cubic(feet);  // Prefix 'M' is 1000
         units_.gasvol_r = stb;
-        units_.tranmissibility = centi*Poise * stb / (day * psia);
+        units_.transmissibility = centi*Poise * stb / (day * psia);
         break;
     case Lab:
         THROW("Unhandled unit family " << unit_family);
