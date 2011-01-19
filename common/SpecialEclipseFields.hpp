@@ -789,20 +789,25 @@ struct WELSPECS : public SpecialBase
 	    readDefaultedVectorData(is, double_data, 1);
 	    welspecs_line.datum_depth_BHP_ = double_data[0];
 	    welspecs_line.pref_phase_ = readString(is);
-	    double_data[0] = 0.0;
-	    readDefaultedVectorData(is, double_data, 1);
-	    welspecs_line.drain_rad_ = double_data[0];
-	    welspecs_line.spec_inflow_ = readString(is);
-	    welspecs_line.shut_in_ = readString(is);
-	    welspecs_line.crossflow_ = readString(is);
-	    int_data[0] = 0;
-	    readDefaultedVectorData(is, int_data, 1);
-	    welspecs_line.pressure_table_number_ = int_data[0];	    
-	    welspecs_line.density_calc_type_ = readString(is);
-	    int_data[0] = 0;
-	    readDefaultedVectorData(is, int_data, 1);
-	    welspecs_line.fluids_in_place_reg_numb_ = int_data[0];
+
+	    // HACK! Ignore items 7-13.
+	    ignoreSlashLine(is);
 	    welspecs.push_back(welspecs_line);
+
+	    // double_data[0] = 0.0;
+	    // readDefaultedVectorData(is, double_data, 1);
+	    // welspecs_line.drain_rad_ = double_data[0];
+	    // welspecs_line.spec_inflow_ = readString(is);
+	    // welspecs_line.shut_in_ = readString(is);
+	    // welspecs_line.crossflow_ = readString(is);
+	    // int_data[0] = 0;
+	    // readDefaultedVectorData(is, int_data, 1);
+	    // welspecs_line.pressure_table_number_ = int_data[0];	    
+	    // welspecs_line.density_calc_type_ = readString(is);
+	    // int_data[0] = 0;
+	    // readDefaultedVectorData(is, int_data, 1);
+	    // welspecs_line.fluids_in_place_reg_numb_ = int_data[0];
+	    // welspecs.push_back(welspecs_line);
 	}
     }
 
@@ -894,19 +899,12 @@ struct COMPDAT : public SpecialBase
 	    std::vector<int> int_data(1,-1);
 	    readDefaultedVectorData(is, int_data, 1);
 	    compdat_line.sat_table_number_ = int_data[0];
-	    std::vector<double> double_data(5,0);
-	    readDefaultedVectorData(is, double_data, 5);
-	    compdat_line.connect_transmil_fac_ = double_data[0];
-	    compdat_line.diameter_ = double_data[1];
-	    compdat_line.Kh_ = double_data[2];
-	    compdat_line.skin_factor_ = double_data[3];
-	    compdat_line.D_factor_ = double_data[4];
-	    compdat_line.penetration_direct_ = readString(is);
-	    double_data[0] = 0.0;
-	    readDefaultedVectorData(is, double_data, 1);
-	    compdat_line.r0_ = double_data[0];
+	    is >> compdat_line.connect_transmil_fac_;
+
+	    // HACK! Ignore items 9-14.
+	    ignoreSlashLine(is);
 	    compdat.push_back(compdat_line);
-	}
+ 	}
     }
 
     virtual void write(std::ostream& os) const

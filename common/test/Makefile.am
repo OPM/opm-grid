@@ -2,7 +2,7 @@
 # $Revision$
 
 check_PROGRAMS = sparsetable_test sparsevector_test monotcubicinterpolator_test
-noinst_PROGRAMS = unit_test well_read_test
+noinst_PROGRAMS = unit_test
 
 sparsetable_test_SOURCES = sparsetable_test.cpp
 sparsetable_test_CXXFLAGS = $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
@@ -22,10 +22,6 @@ monotcubicinterpolator_test_LDADD = $(DUNE_LDFLAGS) $(DUNEMPILDFLAGS) \
 unit_test_SOURCES = unit_test.cpp
 unit_test_CXXFLAGS = $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
 unit_test_LDADD = $(DUNE_LDFLAGS) $(DUNEMPILDFLAGS) $(DUNE_LIBS) $(DUNEMPILIBS)
-
-well_read_test_SOURCES = well_read_test.cpp
-well_read_test_CXXFLAGS = $(BOOST_CPPFLAGS)
-well_read_test_LDADD = $(DUNE_LDFLAGS) $(DUNE_LIBS) ../libcommon.la
 
 TESTS = $(check_PROGRAMS)
 
