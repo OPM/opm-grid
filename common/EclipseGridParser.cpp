@@ -51,7 +51,7 @@
 
 using namespace std;
 
-#define VERBOSE
+//#define VERBOSE
 
 namespace Dune
 {
