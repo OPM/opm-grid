@@ -271,7 +271,9 @@ void EclipseGridParser::read(istream& is)
             is.ignore(numeric_limits<int>::max(), '\'');
             string include_filename;
             getline(is, include_filename, '\'');
-            include_filename = directory_ + '/' + include_filename;
+            if (!directory_.empty()) {
+                include_filename = directory_ + '/' + include_filename;
+            }
             ifstream include_is(include_filename.c_str());
             if (!include_is) {
                 THROW("Unable to open INCLUDEd file " << include_filename);
