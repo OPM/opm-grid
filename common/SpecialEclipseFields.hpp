@@ -858,7 +858,7 @@ struct CompdatLine
 
     // Default values
     CompdatLine() :
-	open_shut_flag_("OPEN"),  Kh_(-1.0), skin_factor_(0.0),
+	open_shut_flag_("OPEN"),  diameter_(0.0), Kh_(-1.0), skin_factor_(0.0),
 	penetration_direct_("Z")
     {
 	grid_ind_.resize(4);
