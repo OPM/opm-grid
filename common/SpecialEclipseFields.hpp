@@ -848,7 +848,7 @@ struct CompdatLine
     std::vector<int> grid_ind_;      // Grid block location
     std::string open_shut_flag_;     // Open/shut flag of connection
     int sat_table_number_;           // Saturation table number
-    double connect_transmil_fac_;    // Connection transmillibilty factor
+    double connect_trans_fac_;       // Connection transmillibilty factor
     double diameter_;                // Well bore internal diameter
     double Kh_;                      // Effective Kh value of the connection
     double skin_factor_;             // Skin factor
@@ -858,8 +858,15 @@ struct CompdatLine
 
     // Default values
     CompdatLine() :
-	open_shut_flag_("OPEN"),  diameter_(0.0), Kh_(-1.0), skin_factor_(0.0),
-	penetration_direct_("Z")
+	open_shut_flag_("OPEN"),
+        sat_table_number_(0),
+        connect_trans_fac_(0.0),
+        diameter_(0.0),
+        Kh_(-1.0),
+        skin_factor_(0.0),
+        D_factor_(-1e100),
+	penetration_direct_("Z"),
+        r0_(0.0)
     {
 	grid_ind_.resize(4);
     }
@@ -899,9 +906,12 @@ struct COMPDAT : public SpecialBase
 	    std::vector<int> int_data(1,-1);
 	    readDefaultedVectorData(is, int_data, 1);
 	    compdat_line.sat_table_number_ = int_data[0];
-	    is >> compdat_line.connect_transmil_fac_;
+            std::vector<double> double_data(2, 0.0);
+            readDefaultedVectorData(is, double_data, 2);
+            compdat_line.connect_trans_fac_ = double_data[0];
+            compdat_line.diameter_ = double_data[1];
 
-	    // HACK! Ignore items 9-14.
+	    // HACK! Ignore items 10-14.
 	    ignoreSlashLine(is);
 	    compdat.push_back(compdat_line);
  	}
@@ -918,7 +928,7 @@ struct COMPDAT : public SpecialBase
 	       << compdat[i].grid_ind_[3] << "  "
 	       << compdat[i].open_shut_flag_ << "  "
 	       << compdat[i].sat_table_number_ << "  "
-	       << compdat[i].connect_transmil_fac_ << "  "
+	       << compdat[i].connect_trans_fac_ << "  "
 	       << compdat[i].diameter_ << "  "
 	       << compdat[i].Kh_ << "  "
 	       << compdat[i].skin_factor_ << "  "
@@ -933,7 +943,7 @@ struct COMPDAT : public SpecialBase
     virtual void convertToSI(const EclipseUnits& units)
     {
 	for (int i=0; i<(int)compdat.size(); ++i) {
-	    compdat[i].connect_transmil_fac_ *= units.transmissibility;
+	    compdat[i].connect_trans_fac_ *= units.transmissibility;
 	    compdat[i].diameter_ *= units.length;
 	    compdat[i].Kh_ *= units.permeability*units.length;
 	    compdat[i].r0_ *= units.length;
