@@ -858,8 +858,8 @@ struct CompdatLine
 
     // Default values
     CompdatLine() :
-	open_shut_flag_("OPEN"),  diameter_(0.0), Kh_(-1.0), skin_factor_(0.0),
-	penetration_direct_("Z")
+	open_shut_flag_("OPEN"), connect_transmil_fac_(0.0), diameter_(0.0),
+	Kh_(-1.0), skin_factor_(0.0), penetration_direct_("Z")
     {
 	grid_ind_.resize(4);
     }
@@ -1203,7 +1203,7 @@ struct WELTARG : public SpecialBase
 	    }
 	    WeltargLine weltarg_line;
 	    weltarg_line.well_ = name;
-	    is >> weltarg_line.control_change_;
+	    weltarg_line.control_change_ = readString(is);
 	    is >> weltarg_line.new_value_;
 	    ignoreSlashLine(is);
 	    weltarg.push_back(weltarg_line);
