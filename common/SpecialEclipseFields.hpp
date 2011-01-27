@@ -907,12 +907,15 @@ struct COMPDAT : public SpecialBase
 	    readDefaultedVectorData(is, int_data, 1);
 	    compdat_line.sat_table_number_ = int_data[0];
             std::vector<double> double_data(2, 0.0);
-            readDefaultedVectorData(is, double_data, 2);
+            int num_to_read = 2;
+            int num_read = readDefaultedVectorData(is, double_data, num_to_read);
             compdat_line.connect_trans_fac_ = double_data[0];
             compdat_line.diameter_ = double_data[1];
 
 	    // HACK! Ignore items 10-14.
-	    ignoreSlashLine(is);
+            if (num_read == num_to_read) {
+                ignoreSlashLine(is);
+            }
 	    compdat.push_back(compdat_line);
  	}
     }
