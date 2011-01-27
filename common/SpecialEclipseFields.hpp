@@ -1216,7 +1216,7 @@ struct WELTARG : public SpecialBase
 	    }
 	    WeltargLine weltarg_line;
 	    weltarg_line.well_ = name;
-	    is >> weltarg_line.control_change_;
+	    weltarg_line.control_change_ = readString(is);
 	    is >> weltarg_line.new_value_;
 	    ignoreSlashLine(is);
 	    weltarg.push_back(weltarg_line);
