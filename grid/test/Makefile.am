@@ -4,7 +4,7 @@
 check_PROGRAMS = cpgrid_test mapper_test partition_test
 
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
-noinst_PROGRAMS = grdecl2vtu check_grid_normals well_read_test
+noinst_PROGRAMS = grdecl2vtu check_grid_normals
 
 AM_CPPFLAGS += $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
 AM_LDFLAGS  += $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
