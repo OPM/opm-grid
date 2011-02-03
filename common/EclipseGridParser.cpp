@@ -212,6 +212,19 @@ EclipseGridParser::EclipseGridParser(const string& filename)
 void EclipseGridParser::read(istream& is)
 //---------------------------------------------------------------------------
 {
+    integer_field_map_.clear();
+    floating_field_map_.clear();
+    special_field_map_.clear();
+
+    readImpl(is);
+    computeUnits();
+    convertToSI();
+}
+
+//---------------------------------------------------------------------------
+void EclipseGridParser::readImpl(istream& is)
+//---------------------------------------------------------------------------
+{
     if (!is) {
 	cerr << "Could not read given input stream." << endl;
 	throw exception();
@@ -278,7 +291,7 @@ void EclipseGridParser::read(istream& is)
             if (!include_is) {
                 THROW("Unable to open INCLUDEd file " << include_filename);
             }
-            read(include_is);
+            readImpl(include_is);
             is >> ignoreSlashLine;
             break;
         }
@@ -289,8 +302,6 @@ void EclipseGridParser::read(istream& is)
 	}
 	is >> ignoreWhitespace;
     }
-
-    computeUnits();
 
 #define VERBOSE_LIST_FIELDS 0
 #if VERBOSE_LIST_FIELDS

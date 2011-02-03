@@ -81,10 +81,6 @@ public:
     /// Read the given stream, overwriting any previous data.
     void read(std::istream& is);
 
-    /// Convert all data to SI units, according to unit category as
-    /// specified in the eclipse file (METRIC, FIELD etc.).
-    void convertToSI();
-
     /// Returns true if the given keyword corresponds to a field that
     /// was found in the file.
     bool hasField(const std::string& keyword) const;
@@ -165,7 +161,12 @@ public:                                                                         
 
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
+    void readImpl(std::istream& is);
     void computeUnits();
+    /// Convert all data to SI units, according to unit category as
+    /// specified in the eclipse file (METRIC, FIELD etc.).
+    void convertToSI();
+
 
     std::string directory_;
     std::map<std::string, std::vector<int> > integer_field_map_;
