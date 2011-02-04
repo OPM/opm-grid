@@ -35,7 +35,7 @@ namespace Dune
     {
     public:
         CornerPointChopper(const std::string& file)
-            : parser_(file)
+            : parser_(file, false)
         {
             for (int dd = 0; dd < 3; ++dd) {
                 dims_[dd] = parser_.getSPECGRID().dimensions[dd];
@@ -242,9 +242,15 @@ namespace Dune
 
 
 
-
+        /// Return a subparser with fields corresponding to the selected subset.
+        /// Note that the returned parser is NOT converted to SI, that must be done
+        /// by the user afterwards with the parser's convertToSI() method.
         EclipseGridParser subparser()
         {
+            if (parser_.hasField("FIELD") || parser_.hasField("LAB") || parser_.hasField("PVT-M")) {
+                THROW("CornerPointChopper::subparser() cannot handle any eclipse unit system other than METRIC.");
+            }
+
             EclipseGridParser sp;
             boost::shared_ptr<SPECGRID> sg(new SPECGRID);
             for (int dd = 0; dd < 3; ++dd) {
@@ -259,6 +265,7 @@ namespace Dune
             if (!new_PERMY_.empty()) sp.setFloatingPointField("PERMY", new_PERMY_);
             if (!new_PERMZ_.empty()) sp.setFloatingPointField("PERMZ", new_PERMZ_);
             if (!new_SATNUM_.empty()) sp.setIntegerField("SATNUM", new_SATNUM_);
+            sp.computeUnits(); // Always METRIC, since that is default.
             return sp;
         }
 
