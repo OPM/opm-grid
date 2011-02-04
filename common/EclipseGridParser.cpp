@@ -181,18 +181,9 @@ EclipseGridParser::EclipseGridParser()
 }
 
 
-/// Constructor taking an eclipse file as a stream.
-//---------------------------------------------------------------------------
-EclipseGridParser::EclipseGridParser(istream& is)
-//---------------------------------------------------------------------------
-{
-    read(is);
-}
-
-
 /// Constructor taking an eclipse filename.
 //---------------------------------------------------------------------------
-EclipseGridParser::EclipseGridParser(const string& filename)
+EclipseGridParser::EclipseGridParser(const string& filename, bool convert_to_SI)
 //---------------------------------------------------------------------------
 {
     // Store directory of filename
@@ -203,13 +194,13 @@ EclipseGridParser::EclipseGridParser(const string& filename)
 	cerr << "Unable to open file " << filename << endl;
 	throw exception();
     }
-    read(is);
+    read(is, convert_to_SI);
 }
 
 
 /// Read the given stream, overwriting any previous data.
 //---------------------------------------------------------------------------
-void EclipseGridParser::read(istream& is)
+void EclipseGridParser::read(istream& is, bool convert_to_SI)
 //---------------------------------------------------------------------------
 {
     integer_field_map_.clear();
@@ -218,7 +209,9 @@ void EclipseGridParser::read(istream& is)
 
     readImpl(is);
     computeUnits();
-    convertToSI();
+    if (convert_to_SI) {
+        convertToSI();
+    }
 }
 
 //---------------------------------------------------------------------------
@@ -359,6 +352,9 @@ void EclipseGridParser::convertToSI()
             field[i] = Dune::unit::convert::from(field[i], unit);
         }
     }
+
+    // Set all units to one.
+    units_.setToOne();
 }
 
 

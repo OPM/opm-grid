@@ -69,17 +69,21 @@ class EclipseGridParser
 public:
     /// Default constructor.
     EclipseGridParser();
-    /// Constructor taking an eclipse file as a stream.
-    /// Note that since the INCLUDE keyword is relative to
-    /// the directory of the current file, you may need to use
-    /// the constructor taking a filename to process eclipse
-    /// files with INCLUDEs.
-    explicit EclipseGridParser(std::istream& is);
-    /// Convenience constructor taking an eclipse filename.
-    explicit EclipseGridParser(const std::string& filename);
+    /// Constructor taking an eclipse filename. Unless the second
+    /// argument 'convert_to_SI' is false, all fields will be
+    /// converted to SI units.
+    explicit EclipseGridParser(const std::string& filename, bool convert_to_SI = true);
 
-    /// Read the given stream, overwriting any previous data.
-    void read(std::istream& is);
+    /// Read the given stream, overwriting any previous data.  Unless
+    /// the second argument 'convert_to_SI' is false, all fields will
+    /// be converted to SI units.
+    void read(std::istream& is, bool convert_to_SI = true);
+
+    /// Convert all data to SI units, according to unit category as
+    /// specified in the eclipse file (METRIC, FIELD etc.).
+    /// It is unnecessary to call this if constructed with
+    /// 'convert_to_SI' equal to true, but it is not an error.
+    void convertToSI();
 
     /// Returns true if the given keyword corresponds to a field that
     /// was found in the file.
@@ -156,16 +160,17 @@ public:                                                                         
     /// Sets a special field to have a particular value.
     void setSpecialField(const std::string& keyword, boost::shared_ptr<SpecialBase> field);
 
+    /// Compute the units used by the deck, depending on the presence
+    /// of keywords such as METRIC, FIELD etc.  It is an error to call
+    /// this after conversion to SI has taken place.
+    void computeUnits();
+
     /// The units specified by the eclipse file read.
     const EclipseUnits& units() const;
 
 private:
     boost::shared_ptr<SpecialBase> createSpecialField(std::istream& is, const std::string& fieldname);
     void readImpl(std::istream& is);
-    void computeUnits();
-    /// Convert all data to SI units, according to unit category as
-    /// specified in the eclipse file (METRIC, FIELD etc.).
-    void convertToSI();
 
 
     std::string directory_;
