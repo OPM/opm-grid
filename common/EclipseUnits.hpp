@@ -36,6 +36,22 @@ namespace Dune
         double gasvol_s;
         double gasvol_r;
         double transmissibility;
+
+        void setToOne()
+        {
+            length = 1.0;
+            time = 1.0;
+            density = 1.0;
+            pressure = 1.0;
+            compressibility = 1.0;
+            viscosity = 1.0;
+            permeability = 1.0;
+            liqvol_s = 1.0;
+            liqvol_r = 1.0;
+            gasvol_s = 1.0;
+            gasvol_r = 1.0;
+            transmissibility = 1.0;
+        }
     };
 
 
