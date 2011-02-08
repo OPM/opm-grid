@@ -325,8 +325,10 @@ struct DENSITY : public SpecialBase
     virtual void read(std::istream& is)
     {
 	while (!is.eof()) {
-	    std::vector<double> density;
-	    readVectorData(is, density);
+	    std::vector<double> density(3,-1e100);
+	    if (readDefaultedVectorData(is, density, 3) == 3) {
+		ignoreSlashLine(is);
+	    }
 	    densities_.push_back(density);
 
 	    int action = next_action(is); // 0:continue  1:return  2:throw
