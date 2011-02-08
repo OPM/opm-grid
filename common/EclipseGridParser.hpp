@@ -140,12 +140,12 @@ public:                                                                         
     SPECIAL_FIELD(WCONINJE);
     SPECIAL_FIELD(WCONPROD);
     SPECIAL_FIELD(WELTARG);
+    SPECIAL_FIELD(EQUIL);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.
     SPECIAL_FIELD(SWFN);
     SPECIAL_FIELD(SOF2);
-    SPECIAL_FIELD(EQUIL);
     SPECIAL_FIELD(TUNING);
 
 #undef SPECIAL_FIELD

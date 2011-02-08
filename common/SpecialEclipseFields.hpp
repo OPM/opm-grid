@@ -1235,8 +1235,121 @@ struct WELTARG : public SpecialBase
 	os << std::endl;
     }
 
-    virtual void convertToSI(const EclipseUnits& /*units*/)
+    virtual void convertToSI(const EclipseUnits& units)
     {
+	double lrat = units.liqvol_s / units.time;
+	double grat = units.gasvol_s / units.time;
+	double resv = units.liqvol_r / units.time;
+	for (int i=0; i<(int) weltarg.size(); ++i) {
+	    if (weltarg[i].control_change_[0] == 'O' ||
+		weltarg[i].control_change_[0] == 'W' ||
+		weltarg[i].control_change_[0] == 'L') { 
+		weltarg[i].new_value_ *= lrat;
+	    } else if (weltarg[i].control_change_[0] == 'G') {
+		weltarg[i].new_value_ *= grat;
+	    } else if (weltarg[i].control_change_[0] == 'R') {
+		weltarg[i].new_value_ *= resv;
+	    } else if (weltarg[i].control_change_[0] == 'B' ||
+		       weltarg[i].control_change_[0] == 'T') {
+		weltarg[i].new_value_ *= units.pressure;
+	    } else {
+		THROW("WELTARG. Unknown control or constraint "
+		      << weltarg[i].control_change_[0]);
+	    }
+	}
+    }
+};
+
+
+/// Class holding a data line of keyword EQUIL
+struct EquilLine
+{
+    double datum_depth_;             // Well name or well name root.
+    double datum_depth_pressure_;    // Pressure at datum depth.
+    double water_oil_contact_depth_; // Depth of water oil contact.
+    double oil_water_cap_pressure_;  // Oil-water capillary pressure at the
+                                     // water-oil contact or Gas-water capillary
+                                     // pressure at the gas-water contact contact.
+    double gas_oil_contact_depth_;   // Depth of the gas-oil contact.
+    double gas_oil_cap_pressure_;    // Gas-oil capillary pressure at the gas-oil
+                                     // contact.
+    int live_oil_table_index_;       // Rs v Depth or Pb v Depth table index for
+                                     // under-saturated live oil. 
+    int wet_gas_table_index_;        // Rv v Depth or Pd v Depth table index for
+                                     // under-saturated wet gas.
+    int N_;                          // Integer defining the accuracy of the
+                                     // initial fluids in place calculation.
+    EquilLine()
+    {
+    }
+};
+
+/// Class for keyword EQUIL
+struct EQUIL : public SpecialBase
+{
+    std::vector<EquilLine> equil;
+
+    EQUIL()
+    {
+    }
+
+    virtual ~EQUIL()
+    {}
+
+    virtual std::string name() const {return std::string("EQUIL");}
+
+    virtual void read(std::istream& is)
+    {
+	// Note. This function assumes that NTEQUL = 1, and reads only one line.
+	int num_to_read = 9;
+	std::vector<double> data(num_to_read,0);
+	int num_read = readDefaultedVectorData(is, data, num_to_read);
+	if (num_read == num_to_read) {
+	    ignoreSlashLine(is);
+	}
+
+	EquilLine equil_line;
+	equil_line.datum_depth_             = data[0];
+	equil_line.datum_depth_pressure_    = data[1];
+	equil_line.water_oil_contact_depth_ = data[2];
+	equil_line.oil_water_cap_pressure_  = data[3];
+	equil_line.gas_oil_contact_depth_   = data[4];
+	equil_line.gas_oil_cap_pressure_    = data[5];
+	equil_line.live_oil_table_index_    = data[6];
+	equil_line.wet_gas_table_index_     = data[7];
+	equil_line.N_                       = data[8];
+	equil.push_back(equil_line);
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << std::endl;
+	for (int i=0; i<(int)equil.size(); ++i) {
+	    os << equil[i].datum_depth_ << "  " 
+	       << equil[i].datum_depth_pressure_ << "  " 
+	       << equil[i].water_oil_contact_depth_ << "  "
+	       << equil[i].oil_water_cap_pressure_ << "  "
+	       << equil[i].gas_oil_contact_depth_ << "  "
+	       << equil[i].gas_oil_cap_pressure_ << "  "
+	       << equil[i].live_oil_table_index_ << "  "
+	       << equil[i].wet_gas_table_index_ << "  "
+	       << equil[i].N_ << "  "
+
+	       << std::endl;
+	}
+	os << std::endl;
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	for (int i=0; i<(int)equil.size(); ++i) {
+	    equil[i].datum_depth_ *= units.length;
+	    equil[i].datum_depth_pressure_ *= units.pressure;
+	    equil[i].water_oil_contact_depth_ *= units.length;
+	    equil[i].oil_water_cap_pressure_ *= units.pressure;
+	    equil[i].gas_oil_contact_depth_ *= units.length;
+	    equil[i].gas_oil_cap_pressure_ *= units.pressure;
+	}
     }
 };
 
@@ -1296,7 +1409,6 @@ struct MultRec : public SpecialBase
 // that allows us to ignore them.
 struct SWFN : public MultRec {};
 struct SOF2 : public MultRec {};
-struct EQUIL : public MultRec {};
 struct TUNING : public MultRec {};
 
 

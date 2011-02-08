@@ -93,12 +93,12 @@ namespace EclipseKeywords
 	  string("PVTG"),     string("PVTO"),   string("PVTW"),
 	  string("SGOF"),     string("SWOF"),   string("ROCK"),
 	  string("ROCKTAB"),  string("WELSPECS"), string("COMPDAT"),
-	  string("WCONINJE"), string("WCONPROD"), string("WELTARG"), 
+	  string("WCONINJE"), string("WCONPROD"), string("WELTARG"),
+	  string("EQUIL"),
 	  // The following fields only have a dummy implementation
 	  // that allows us to ignore them.
           "SWFN",
           "SOF2",
-          "EQUIL",
           "TUNING"
         };
 
