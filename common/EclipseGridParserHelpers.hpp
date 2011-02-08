@@ -159,6 +159,7 @@ namespace
     inline int readDefaultedVectorData(std::istream& is, Vec& data, int max_values)
     {
         ASSERT(int(data.size()) >= max_values);
+	const std::ctype<char>& ct = std::use_facet< std::ctype<char> >(std::locale::classic());
         int num_values = 0;
         while (is) {
             typename Vec::value_type candidate;
@@ -179,7 +180,7 @@ namespace
                 if (is.peek() == int('*')) {
                     is.ignore(); // ignore the '*'
                     int multiplier = (int)candidate;
-                    if (is.peek() == int(' ')) {
+                    if (ct.is(std::ctype_base::space, is.peek())) {
                         num_values += multiplier;  // Use default value(s)
                     } else {
                         is >> candidate;         // Use candidate 'multipler' times
