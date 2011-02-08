@@ -82,7 +82,8 @@ namespace EclipseKeywords
           string("PERMYZ"),   string("PERMZX"),     string("PORO"),
           string("BULKMOD"),  string("YOUNGMOD"),   string("LAMEMOD"),
           string("SHEARMOD"), string("POISSONMOD"), string("PWAVEMOD"),
-          string("MULTPV")
+          string("MULTPV"),   string("PRESSURE"),   string("SGAS"),
+	  string("SWAT")
         };
     const int num_floating_fields = sizeof(floating_fields) / sizeof(floating_fields[0]);
 
@@ -94,7 +95,7 @@ namespace EclipseKeywords
 	  string("SGOF"),     string("SWOF"),   string("ROCK"),
 	  string("ROCKTAB"),  string("WELSPECS"), string("COMPDAT"),
 	  string("WCONINJE"), string("WCONPROD"), string("WELTARG"),
-	  string("EQUIL"),
+	  string("EQUIL"),    string("PVCDO"),
 	  // The following fields only have a dummy implementation
 	  // that allows us to ignore them.
           "SWFN",
@@ -342,8 +343,11 @@ void EclipseGridParser::convertToSI()
             unit = units_.permeability;
         } else if (key == "PORO"     || key == "BULKMOD"  || key == "YOUNGMOD" ||
 		   key == "LAMEMOD"  || key == "SHEARMOD" || key == "POISSONMOD" ||
-		   key == "PWAVEMOD" || key == "MULTPV") {
+		   key == "PWAVEMOD" || key == "MULTPV"   || key == "PWAVEMOD" ||
+		   key == "SGAS"     || key == "SWAT") {
             unit = 1.0;
+	} else if (key == "PRESSURE") {
+	    unit = units_.pressure;	    
         } else {
             THROW("Units for field " << key << " not specified. Cannon convert to SI.");
         }

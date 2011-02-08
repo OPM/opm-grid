@@ -141,6 +141,7 @@ public:                                                                         
     SPECIAL_FIELD(WCONPROD);
     SPECIAL_FIELD(WELTARG);
     SPECIAL_FIELD(EQUIL);
+    SPECIAL_FIELD(PVCDO);
 
     // The following fields only have a dummy implementation
     // that allows us to ignore them.

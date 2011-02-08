@@ -1355,6 +1355,55 @@ struct EQUIL : public SpecialBase
     }
 };
 
+struct PVCDO : public SpecialBase
+{
+    std::vector<std::vector<double> > pvcdo_;
+
+    virtual std::string name() const {return std::string("PVCDO");}
+
+    virtual void read(std::istream& is)
+    {
+	while (!is.eof()) {
+	    std::vector<double> pvcdo;
+	    readVectorData(is, pvcdo);
+	    if (pvcdo.size() == 4) {
+		pvcdo.push_back(0.0);
+	    }
+	    pvcdo_.push_back(pvcdo);
+
+	    int action = next_action(is); // 0:continue  1:return  2:throw
+	    if (action == 1) {
+		return;     // Alphabetic char. Read next keyword.
+	    } else if (action == 2) {
+		THROW("Error reading PVCDO. Next character is "
+		      <<  (char)is.peek());
+	    }
+	}
+    }
+
+    virtual void write(std::ostream& os) const
+    {
+	os << name() << '\n';
+	for (int i=0; i<(int)pvcdo_.size(); ++i) {
+	    os << pvcdo_[i][0] << " " << pvcdo_[i][1] << " " << pvcdo_[i][2]
+	       << " " << pvcdo_[i][3] << " " << pvcdo_[i][4] << '\n';
+	}
+	os << '\n';
+    }
+
+    virtual void convertToSI(const EclipseUnits& units)
+    {
+	double volfac = units.liqvol_r/units.liqvol_s;
+	for (int i=0; i<(int)pvcdo_.size(); ++i) {
+	    pvcdo_[i][0] *= units.pressure;
+	    pvcdo_[i][1] *= volfac;
+	    pvcdo_[i][2] *= units.compressibility;
+	    pvcdo_[i][3] *= units.viscosity;
+	    pvcdo_[i][4] *= units.compressibility;
+	}
+    }
+};
+
 struct MultRec : public SpecialBase
 {
     virtual void read(std::istream& is)
