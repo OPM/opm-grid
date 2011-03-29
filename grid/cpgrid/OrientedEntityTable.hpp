@@ -247,15 +247,15 @@ namespace Dune
 		// Using the cumulative sizes array as indices, we populate new_data.
 		// Note that cumul_sizes[ind] is not kept constant, but incremented so that
 		// it always gives the correct index for new data corresponding to index ind.
-		std::vector<int> new_data(datacount);
+		std::vector<EntityRep<codim_from> > new_data(datacount);
 		for (int i = 0; i < size(); ++i) {
 		    EntityRep<codim_from> from_ent(i, true);
 		    row_type r = operator[](from_ent);
 		    for (int j = 0; j < r.size(); ++j) {
-			EntityRep<codim_to> to_ent = r[j];
+			EntityRep<codim_to> to_ent(r[j]);
 			int ind = to_ent.index();
 			int data_ind = cumul_sizes[ind];
-			new_data[data_ind] = to_ent.orientation() ? i : ~i;
+			new_data[data_ind] = to_ent.orientation() ? from_ent : from_ent.opposite();
 			++cumul_sizes[ind];
 		    }
 		}
