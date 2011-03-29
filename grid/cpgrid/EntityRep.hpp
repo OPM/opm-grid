@@ -100,17 +100,6 @@ namespace Dune
 		: entityrep_(0)
 	    {
 	    }
-	    /// @brief Constructor taking an integer representation directly.
-	    ///
-	    /// This is one of the few places where the private representation is exposed,
-	    /// the others being in the classes that inherit this one. These places
-	    /// need to be modified if we change the representation, then we should remove
-	    /// this constructor.
-	    /// @param erep Entity representation.
-	    explicit EntityRep(int erep)
-		: entityrep_(erep)
-	    {
-	    }
 	    /// @brief Constructor taking an entity index and an orientation.
 	    /// @param index Entity index
 	    /// @param orientation True if the entity's orientations is positive.
@@ -183,6 +172,18 @@ namespace Dune
 	    enum { InvalidIndex = INT_MAX };
 
 	protected:
+	    /// @brief Constructor taking an integer representation directly.
+	    ///
+	    /// This is one of the few places where the private representation is exposed,
+	    /// the others being in the classes that inherit this one. These places
+	    /// need to be modified if we change the representation, then we should remove
+	    /// this constructor.
+	    /// @param erep Entity representation.
+	    explicit EntityRep(int erep)
+		: entityrep_(erep)
+	    {
+	    }
+
 	    // Interior representation is documented in class main comment.
 	    int entityrep_;
 	};

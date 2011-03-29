@@ -175,7 +175,7 @@ namespace Dune
 	    }
 
 	    // Now we should be able to create c2f and f2c.
-	    std::vector<int> c2fdata;
+	    std::vector<cpgrid::EntityRep<1> > c2fdata;
 	    c2fdata.reserve(num_hfaces);
 	    std::vector<int> c2fsizes(num_cells);
 	    for (int i = 0; i < num_cells; ++i) {
@@ -184,7 +184,7 @@ namespace Dune
 		for (int j = 0; j < numc; ++j) {
 		    int hface = cell2hface[i][j];
 		    int face = hface2face[hface].first;
-		    int erep = hface2face[hface].second ?  face : ~face;
+                    cpgrid::EntityRep<1> erep(face, hface2face[hface].second);
 		    c2fdata.push_back(erep);
 		}
 	    }

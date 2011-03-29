@@ -599,16 +599,16 @@ namespace Dune
 
         int numCellFaces(int cell) const
         {
-            return cell_to_face_[cpgrid::EntityRep<0>(cell)].size();
+            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
         }
         int cellFace(int cell, int local_index) const
         {
-            return cell_to_face_[cpgrid::EntityRep<0>(cell)][local_index].index();
+            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
         }
         int faceCell(int face, int local_index) const
         {
             cpgrid::OrientedEntityTable<1,0>::row_type r
-                = face_to_cell_[cpgrid::EntityRep<1>(face)];
+                = face_to_cell_[cpgrid::EntityRep<1>(face, true)];
             bool a = (local_index == 0);
             bool b = r[0].orientation();
             bool use_first = a ? b : !b;
@@ -631,15 +631,15 @@ namespace Dune
         // Geometry
         const Vector& vertexPosition(int vertex) const
         {
-            return geomVector<3>()[cpgrid::EntityRep<3>(vertex)].center();
+            return geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
         }
         double faceArea(int face) const
         {
-            return geomVector<1>()[cpgrid::EntityRep<1>(face)].volume();
+            return geomVector<1>()[cpgrid::EntityRep<1>(face, true)].volume();
         }
         const Vector& faceCentroid(int face) const
         {
-            return geomVector<1>()[cpgrid::EntityRep<1>(face)].center();
+            return geomVector<1>()[cpgrid::EntityRep<1>(face, true)].center();
         }
         const Vector& faceNormal(int face) const
         {
@@ -647,18 +647,18 @@ namespace Dune
         }
         double cellVolume(int cell) const
         {
-            return geomVector<0>()[cpgrid::EntityRep<0>(cell)].volume();
+            return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
         }
         const Vector& cellCentroid(int cell) const
         {
-            return geomVector<0>()[cpgrid::EntityRep<0>(cell)].center();
+            return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
         }
 
         // Extra
         int boundaryId(int face) const
         {
             int ret = 0;
-            cpgrid::EntityRep<1> f(face);
+            cpgrid::EntityRep<1> f(face, true);
             if (face_to_cell_[f].size() == 1) {
                 if (uniqueBoundaryIds()) {
                     // Use the unique boundary ids.

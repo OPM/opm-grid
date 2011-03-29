@@ -532,7 +532,7 @@ namespace Dune
 	    c2p.clear();
 	    c2p.reserve(num_cells);
 	    for (int i = 0; i < num_cells; ++i) {
-		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i)];
+		cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cpgrid::EntityRep<0>(i, true)];
 		// We know that the bottom and top faces come last.
 		int numf = cf.size();
 		int bot_face = face_to_output_face[cf[numf - 2].index()];
