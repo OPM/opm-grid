@@ -48,10 +48,10 @@ using namespace Dune;
 
 BOOST_AUTO_TEST_CASE(entity_rep)
 {
-    cpgrid::EntityRep<0> e1(0);
-    cpgrid::EntityRep<0> e2(~0);
-    cpgrid::EntityRep<0> e3(1);
-    cpgrid::EntityRep<0> e4(~1);
+    cpgrid::EntityRep<0> e1(0, true);
+    cpgrid::EntityRep<0> e2(0, false);
+    cpgrid::EntityRep<0> e3(1, true);
+    cpgrid::EntityRep<0> e4(1, false);
     BOOST_CHECK(e1.orientation());
     BOOST_CHECK(!e2.orientation());
     BOOST_CHECK(e3.orientation());
@@ -84,10 +84,10 @@ BOOST_AUTO_TEST_CASE(entity_variable)
     BOOST_CHECK_EQUAL(base.size(), sz);
 
     // Needing some entityreps for the rest of the checks.
-    cpgrid::EntityRep<0> e1(0);
-    cpgrid::EntityRep<0> e2(~0);
-    cpgrid::EntityRep<0> e3(1);
-    cpgrid::EntityRep<0> e4(~1);
+    cpgrid::EntityRep<0> e1(0, true);
+    cpgrid::EntityRep<0> e2(0, false);
+    cpgrid::EntityRep<0> e3(1, true);
+    cpgrid::EntityRep<0> e4(1, false);
 
     // EntityVariable tests
     cpgrid::EntityVariable<double, 0> var;

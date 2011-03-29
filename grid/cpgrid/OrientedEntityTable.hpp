@@ -178,7 +178,7 @@ namespace Dune
 	    {
 		int columns = numberOfColumns();
 		for (int i = 0; i < size(); ++i) {
-		    FromType from_ent(i);
+		    FromType from_ent(i, true);
 		    row_type r  = operator[](from_ent);
 		    int cur_col = 0;
 		    int next_ent = 0;
@@ -270,7 +270,7 @@ namespace Dune
 	    {
 		int maxind = 0;
 		for (int i = 0; i < size(); ++i) {
-		    FromType from_ent(i);
+		    FromType from_ent(i, true);
 		    row_type r  = operator[](from_ent);
 		    for (int j = 0; j < r.size(); ++j) {
 			maxind = std::max(maxind, r[j].index());

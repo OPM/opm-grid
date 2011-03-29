@@ -63,21 +63,25 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     // A face and cell has positive mutual orientation if the normal points out of the cell.
     //
     // Cell to face data.
+    typedef cpgrid::EntityRep<0> E0;
+    typedef cpgrid::EntityRep<1> E1;
     const int num_data = 8;
-    const int data[num_data] = { ~0, 1, ~3, 4, ~1, 2, ~5, 6 };
+    const E1 data[num_data] = { E1(0, false), E1(1, true), E1(3, false), E1(4, true),
+                                E1(1, false), E1(2, true), E1(5, false), E1(6, true) };
     const int num_rows = 2;
     const int row_sizes[num_rows] = { 4, 4 };
     // Face to cell data.
     const int num_data2 = 8;
-    const int data2[num_data2] = { ~0, 0, ~1, 1, ~0, 0, ~1, 1 };
+    const E0 data2[num_data2] = { E0(0, false), E0(0, true), E0(1, false), E0(1, true),
+                                  E0(0, false), E0(0, true), E0(1, false), E0(1, true) };
     const int num_rows2 = 7;
     const int row_sizes2[num_rows2] = { 1, 2, 1, 1, 1, 1, 1 };
 
     // Needing some entityreps for the rest of the checks.
-    const cpgrid::EntityRep<0> e1(0);
-    const cpgrid::EntityRep<0> e2(~0);
-    const cpgrid::EntityRep<0> e3(1);
-    const cpgrid::EntityRep<0> e4(~1);
+    const cpgrid::EntityRep<0> e1(0, true);
+    const cpgrid::EntityRep<0> e2(0, false);
+    const cpgrid::EntityRep<0> e3(1, true);
+    const cpgrid::EntityRep<0> e4(1, false);
 
     // OrientedEntityTable tests.
     const cpgrid::OrientedEntityTable<0, 1> none;
@@ -94,10 +98,10 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     BOOST_CHECK_EQUAL(c3.size(), 4);
     BOOST_CHECK_EQUAL(c4.size(), 4);
     // BOOST_CHECK_EQUAL(c1[0], cpgrid::EntityRep<1>(~0)); // Why doesn't this compile?
-    BOOST_CHECK(c1[0] == cpgrid::EntityRep<1>(~0));
-    BOOST_CHECK(c2[0] == cpgrid::EntityRep<1>(0));
-    BOOST_CHECK(c3[0] == cpgrid::EntityRep<1>(~1));
-    BOOST_CHECK(c4[0] == cpgrid::EntityRep<1>(1));
+    BOOST_CHECK(c1[0] == cpgrid::EntityRep<1>(0, false));
+    BOOST_CHECK(c2[0] == cpgrid::EntityRep<1>(0, true));
+    BOOST_CHECK(c3[0] == cpgrid::EntityRep<1>(1, false));
+    BOOST_CHECK(c4[0] == cpgrid::EntityRep<1>(1, true));
 
     // Testing makeInverseRelation() method.
     cpgrid::OrientedEntityTable<1, 0> face2cell_byinv;
