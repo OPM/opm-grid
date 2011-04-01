@@ -149,7 +149,8 @@ boost::array<int, 3> EclipseGridInspector::cellIdxToLogicalCoords(int cell_idx) 
     }
     j = (horIdx-i)/logical_gridsize_[0] + 1;
     k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
-    return boost::array<int, 3> {{i-1, j-1, k-1}};
+    boost::array<int, 3> a = {{i-1, j-1, k-1}};
+    return a; //boost::array<int, 3> {{i-1, j-1, k-1}};
 }
 
 double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) const
