@@ -81,11 +81,12 @@ EclipseGridInspector::EclipseGridInspector(const EclipseGridParser& parser)
    Dip slope is average rise in positive x-direction over cell length in x-direction. 
    Similarly for y.
 
+   Current implementation is for vertical pillars, but is not difficult to fix.
+
    @returns a std::pair<double,double> with x-dip in first component and y-dip in second.
 */  
 std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) const
 {
-    //std::cout << "echo from cellDips!" << std::endl; flush(std::cout);
     checkLogicalCoords(i, j, k);
     const std::vector<double>& pillc = parser_.getFloatingPointValue("COORD");
     int num_pillars = (logical_gridsize_[0] + 1)*(logical_gridsize_[1] + 1);
@@ -122,7 +123,6 @@ std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) con
                  
     return std::make_pair( (xrise[0] + xrise[1] + xrise[2] + xrise[3])/4,
                           (yrise[0] + yrise[1] + yrise[2] + yrise[3])/4);
-    //return std::make_pair(cell_xlength, cell_ylength);
 }
 /**
   Wrapper for cellDips(i, j, k).
