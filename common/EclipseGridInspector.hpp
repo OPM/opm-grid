@@ -69,6 +69,11 @@ public:
     /// Assuming that the pillars are vertical, compute the
     /// volume of the cell given by the cell index
     double cellVolumeVerticalPillars(int cell_idx) const;
+
+    /// Compute the average dip in x- and y-direction of the
+    /// cell tops and bottoms relative to the xy-plane
+    std::pair<double,double> cellDips(int i, int j, int k) const;
+    std::pair<double,double> cellDips(int cell_idx) const;
     
     /// Returns a vector with the outer limits of grid (in the grid's unit).
     /// The vector contains [xmin, xmax, ymin, ymax, zmin, zmax], as 

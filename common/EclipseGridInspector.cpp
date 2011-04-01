@@ -76,6 +76,78 @@ EclipseGridInspector::EclipseGridInspector(const EclipseGridParser& parser)
 
 }
 
+/**
+   Return the dip slopes for the cell relative to xy-plane in x- and y- direction. 
+   Dip slope is average rise in positive x-direction over cell length in x-direction. 
+   Similarly for y.
+
+   @returns a std::pair<double,double> with x-dip in first component and y-dip in second.
+*/  
+std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) const
+{
+    //std::cout << "echo from cellDips!" << std::endl; flush(std::cout);
+    checkLogicalCoords(i, j, k);
+    const std::vector<double>& pillc = parser_.getFloatingPointValue("COORD");
+    int num_pillars = (logical_gridsize_[0] + 1)*(logical_gridsize_[1] + 1);
+        if (6*num_pillars != int(pillc.size())) {
+        throw std::runtime_error("Wrong size of COORD field.");
+    }
+    const std::vector<double>& z = parser_.getFloatingPointValue("ZCORN");
+    int num_cells = logical_gridsize_[0]*logical_gridsize_[1]*logical_gridsize_[2];
+    if (8*num_cells != int(z.size())) {
+        throw std::runtime_error("Wrong size of ZCORN field");
+    }
+
+    // Pick ZCORN-value for all 8 corners of the given cell
+    boost::array<double, 8> cellz = cellZvals(i, j, k);
+
+    // Compute rise in positive x-direction for all four edges (and then find mean)
+    // Current implementation is for regularly placed and vertical pillars!
+    int numxpill = logical_gridsize_[0] + 1;
+    int pix = i + j*numxpill;
+    double cell_xlength = pillc[6*(pix + 1)] - pillc[6*pix];
+    //std::cout << "cell_xlength " << cell_xlength << std::endl;
+    flush(std::cout);
+    double xrise[4] = { (cellz[1] - cellz[0])/cell_xlength,  // LLL -> HLL
+                        (cellz[3] - cellz[2])/cell_xlength,  // LHL -> HHL
+                        (cellz[5] - cellz[4])/cell_xlength,  // LLH -> HLH
+                        (cellz[7] - cellz[6])/cell_xlength}; // LHH -> HHH
+
+    double cell_ylength = pillc[6*(pix + numxpill) + 1] - pillc[6*pix + 1];
+    //std::cout << "cell_ylength " << cell_ylength << std::endl;
+    double yrise[4] = { (cellz[2] - cellz[0])/cell_ylength,  // LLL -> LHL
+                        (cellz[3] - cellz[1])/cell_ylength,  // HLL -> HHL
+                        (cellz[6] - cellz[4])/cell_ylength,  // LLH -> LHH
+                        (cellz[7] - cellz[5])/cell_ylength}; // HLH -> HHH
+                 
+    return std::make_pair( (xrise[0] + xrise[1] + xrise[2] + xrise[3])/4,
+                          (yrise[0] + yrise[1] + yrise[2] + yrise[3])/4);
+    //return std::make_pair(cell_xlength, cell_ylength);
+}
+/**
+  Wrapper for cellDips(i, j, k).
+ 
+  Code is copied from cellVolumeVerticalPillars(cell_idx). Templatize??
+*/
+std::pair<double,double> EclipseGridInspector::cellDips(int cell_idx) const
+{
+    int i, j, k;
+    int horIdx = (cell_idx+1) -
+        int(std::floor(((double)(cell_idx+1))/
+                       ((double)(logical_gridsize_[0] * logical_gridsize_[1])))) *
+        logical_gridsize_[0]*logical_gridsize_[1]; // index in the corresponding horizon
+    if (horIdx == 0) {
+        horIdx = logical_gridsize_[0] * logical_gridsize_[1];
+    }
+    i = horIdx - int(std::floor(((double)horIdx)/((double)logical_gridsize_[0]))) * logical_gridsize_[0];
+    if (i == 0) {
+        i = logical_gridsize_[1];
+    }
+    j = (horIdx-i)/logical_gridsize_[0] + 1;
+    k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
+    return cellDips(i-1, j-1, k-1);
+}
+
 double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) const
 {
     // Checking parameters and obtaining values from parser.
