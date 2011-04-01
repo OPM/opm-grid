@@ -74,6 +74,9 @@ public:
     /// cell tops and bottoms relative to the xy-plane
     std::pair<double,double> cellDips(int i, int j, int k) const;
     std::pair<double,double> cellDips(int cell_idx) const;
+
+    // Convert global cell index to logical ijk-coordinates
+    boost::array<int, 3> cellIdxToLogicalCoords(int cell_idx) const;
     
     /// Returns a vector with the outer limits of grid (in the grid's unit).
     /// The vector contains [xmin, xmax, ymin, ymax, zmin, zmax], as 

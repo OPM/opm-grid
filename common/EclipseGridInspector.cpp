@@ -126,10 +126,14 @@ std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) con
 }
 /**
   Wrapper for cellDips(i, j, k).
- 
-  Code is copied from cellVolumeVerticalPillars(cell_idx). Templatize??
 */
 std::pair<double,double> EclipseGridInspector::cellDips(int cell_idx) const
+{
+    boost::array<int, 3> idxs = cellIdxToLogicalCoords(cell_idx);
+    return cellDips(idxs[0], idxs[1], idxs[2]);
+}
+
+boost::array<int, 3> EclipseGridInspector::cellIdxToLogicalCoords(int cell_idx) const
 {
     int i, j, k;
     int horIdx = (cell_idx+1) -
@@ -145,7 +149,7 @@ std::pair<double,double> EclipseGridInspector::cellDips(int cell_idx) const
     }
     j = (horIdx-i)/logical_gridsize_[0] + 1;
     k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
-    return cellDips(i-1, j-1, k-1);
+    return boost::array<int, 3> {{i-1, j-1, k-1}};
 }
 
 double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) const
@@ -198,21 +202,8 @@ double EclipseGridInspector::cellVolumeVerticalPillars(int i, int j, int k) cons
 
 double EclipseGridInspector::cellVolumeVerticalPillars(int cell_idx) const
 {
-    int i, j, k;
-    int horIdx = (cell_idx+1) -
-        int(std::floor(((double)(cell_idx+1))/
-                       ((double)(logical_gridsize_[0] * logical_gridsize_[1])))) *
-        logical_gridsize_[0]*logical_gridsize_[1]; // index in the corresponding horizon
-    if (horIdx == 0) {
-        horIdx = logical_gridsize_[0] * logical_gridsize_[1];
-    }
-    i = horIdx - int(std::floor(((double)horIdx)/((double)logical_gridsize_[0]))) * logical_gridsize_[0];
-    if (i == 0) {
-        i = logical_gridsize_[1];
-    }
-    j = (horIdx-i)/logical_gridsize_[0] + 1;
-    k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
-    return cellVolumeVerticalPillars(i-1, j-1, k-1);
+    boost::array<int, 3> idxs = cellIdxToLogicalCoords(cell_idx);
+    return cellVolumeVerticalPillars(idxs[0], idxs[1], idxs[2]);
 }
 
 void EclipseGridInspector::checkLogicalCoords(int i, int j, int k) const
