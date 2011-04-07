@@ -125,6 +125,9 @@ int main(int argc, char** argv)
 
     std::vector<double> regnums;
     condWriteIntegerField(regnums, "REGNUM", eclParser, global_cell, vtkwriter);
+   
+    std::vector<double> swats;
+    condWriteDoubleField(swats, "SWAT", eclParser, global_cell, vtkwriter);
 
     std::string fname = ECLIPSEFILENAME; 
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
