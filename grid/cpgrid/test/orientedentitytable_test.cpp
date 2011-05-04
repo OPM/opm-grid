@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
     BOOST_CHECK_EQUAL(c2.size(), 4);
     BOOST_CHECK_EQUAL(c3.size(), 4);
     BOOST_CHECK_EQUAL(c4.size(), 4);
-    // BOOST_CHECK_EQUAL(c1[0], cpgrid::EntityRep<1>(~0)); // Why doesn't this compile?
+    // BOOST_CHECK_EQUAL(c1[0], cpgrid::EntityRep<1>(0, false)); // Why doesn't this compile?
     BOOST_CHECK(c1[0] == cpgrid::EntityRep<1>(0, false));
     BOOST_CHECK(c2[0] == cpgrid::EntityRep<1>(0, true));
     BOOST_CHECK(c3[0] == cpgrid::EntityRep<1>(1, false));
