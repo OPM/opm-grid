@@ -107,7 +107,6 @@ std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) con
     int numxpill = logical_gridsize_[0] + 1;
     int pix = i + j*numxpill;
     double cell_xlength = pillc[6*(pix + 1)] - pillc[6*pix];
-    //std::cout << "cell_xlength " << cell_xlength << std::endl;
     flush(std::cout);
     double xrise[4] = { (cellz[1] - cellz[0])/cell_xlength,  // LLL -> HLL
                         (cellz[3] - cellz[2])/cell_xlength,  // LHL -> HHL
@@ -115,14 +114,55 @@ std::pair<double,double> EclipseGridInspector::cellDips(int i, int j, int k) con
                         (cellz[7] - cellz[6])/cell_xlength}; // LHH -> HHH
 
     double cell_ylength = pillc[6*(pix + numxpill) + 1] - pillc[6*pix + 1];
-    //std::cout << "cell_ylength " << cell_ylength << std::endl;
     double yrise[4] = { (cellz[2] - cellz[0])/cell_ylength,  // LLL -> LHL
                         (cellz[3] - cellz[1])/cell_ylength,  // HLL -> HHL
                         (cellz[6] - cellz[4])/cell_ylength,  // LLH -> LHH
                         (cellz[7] - cellz[5])/cell_ylength}; // HLH -> HHH
-                 
-    return std::make_pair( (xrise[0] + xrise[1] + xrise[2] + xrise[3])/4,
-                          (yrise[0] + yrise[1] + yrise[2] + yrise[3])/4);
+
+
+    // Now ignore those edges that touch the global top or bottom surface
+    // of the entire grdecl model. This is to avoid bias, as these edges probably
+    // don't follow an overall dip for the model if it exists.
+    int x_edges = 4;
+    int y_edges = 4;
+    boost::array<double, 6> gridlimits = getGridLimits();
+    double zmin = gridlimits[4];
+    double zmax = gridlimits[5];
+    // LLL -> HLL
+    if ((cellz[1] == zmin) || (cellz[0] == zmin)) {
+	xrise[0] = 0; x_edges--;
+    }
+    // LHL -> HHL
+    if ((cellz[2] == zmin) || (cellz[3] == zmin)) {
+	xrise[1] = 0; x_edges--;
+    }
+    // LLH -> HLH
+    if ((cellz[4] == zmax) || (cellz[5] == zmax)) {
+	xrise[2] = 0; x_edges--;
+    }
+    // LHH -> HHH
+    if ((cellz[6] == zmax) || (cellz[7] == zmax)) {
+	xrise[3] = 0; x_edges--;
+    }
+    // LLL -> LHL
+    if ((cellz[0] == zmin) || (cellz[2] == zmin)) {
+	yrise[0] = 0; y_edges--;
+    }
+    // HLL -> HHL
+    if ((cellz[1] == zmin) || (cellz[3] == zmin)) {
+	yrise[1] = 0; y_edges--;
+    }
+    // LLH -> LHH
+    if ((cellz[6] == zmax) || (cellz[4] == zmax)) {
+	yrise[2] = 0; y_edges--;
+    }
+    // HLH -> HHH
+    if ((cellz[7] == zmax) || (cellz[5] == zmax)) {
+	yrise[3] = 0; y_edges--;
+    }
+
+    return std::make_pair( (xrise[0] + xrise[1] + xrise[2] + xrise[3])/x_edges,
+                          (yrise[0] + yrise[1] + yrise[2] + yrise[3])/y_edges);
 }
 /**
   Wrapper for cellDips(i, j, k).
