@@ -269,6 +269,26 @@ namespace Dune {
 	}
 #endif
 
+        bool ParameterGroup::anyUnused() const
+        {
+            if (!this->used()) {
+                return true;
+            }
+	    for (map_type::const_iterator it = map_.begin(); it != map_.end(); ++it) {
+		if (it->second->getTag() == ID_xmltag__param_grp) {
+		    ParameterGroup& pg = dynamic_cast<ParameterGroup&>(*(it->second));
+		    if (pg.anyUnused()) {
+                        return true;
+                    }
+		} else if (it->second->getTag() == ID_xmltag__param) {
+		    if (!it->second->used()) {
+			return true;
+		    }
+		}
+	    }
+            return false;
+        }
+
 	void ParameterGroup::displayUsage(bool used_params) const
 	{
 	    if (this->used() == used_params) {

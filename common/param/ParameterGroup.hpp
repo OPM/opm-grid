@@ -252,6 +252,9 @@ namespace Dune {
 		value = this->get<T>(name);
 	    }
 
+            /// \brief Return true if any parameters are unused.
+            bool anyUnused() const;
+
 	    /// \brief Shows which parameters which are used or unused.
 	    void displayUsage(bool used_params = false) const;
 
