@@ -154,7 +154,7 @@ namespace Dune
 			ret = pgrid_->unique_boundary_ids_[face];
 		    } else {
 			// Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
-			typedef OrientedEntityTable<0,1>::row_type::value_type Face;
+			typedef OrientedEntityTable<0,1>::ToType Face;
 			const Face& f = faces_of_cell_[subindex_];
 			const bool normal_is_in = !f.orientation();
 			enum face_tag tag = pgrid_->face_tag_[f];

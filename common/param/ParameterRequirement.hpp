@@ -168,7 +168,7 @@ namespace Dune {
 	struct ParameterRequirementNonEmpty {
 	    std::string operator()(const std::string& x) const {
 		if (x != "") {
-		    std::string message = "The string was empty.";
+		    return "The string was empty.";
 		} else {
 		    return "";
 		}
