@@ -27,9 +27,6 @@
    
    @see MonotCubicInterpolator.h for further documentation.
 
-   $Id$
-
-   @author Håvard Berland <havb (at) statoil.com>, December 2006
 */
 
 
@@ -81,15 +78,15 @@ using namespace std;
    - higher skills needed by programmer.
 
   
-  MONOTONE QUBIC INTERPOLATION:
+  MONOTONE CUBIC INTERPOLATION:
 
   It is a local algorithm. Adding one point only incur recomputation
   of values in a neighbourhood of the point (in the interval getting
   divided).
 
   NOTE: We do not currently make use of this local fact. Upon
-  insertion of a new data pair, everything is recomputed. Revisit this
-  only when then becomes a bottleneck.
+  insertion of a new data pair, everything is recomputed. Revisit 
+  this when needed.
 
 */
 
@@ -107,7 +104,7 @@ MonotCubicInterpolator(const vector<double> & x, const vector<double> & f) {
   for (posx = x.begin(), posf = f.begin(); posx != x.end(); ++posx, ++posf) {
     data[*posx] = *posf ;
   }
-  
+
   computeInternalFunctionData();
 }
 
@@ -474,6 +471,13 @@ computeInternalFunctionData() const {
   } 
   computeSimpleDerivatives();
   
+
+  // If our input data is monotone, we can do monotone cubic
+  // interpolation, so adjust the derivatives if so.
+  //
+  // If input data is not monotone, we should not touch 
+  // the derivatives, as this code should reduce to a
+  // standard cubic interpolation algorithm.
   if (monotone) {
     adjustDerivativesForMonotoneness();
   }
