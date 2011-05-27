@@ -1317,9 +1317,9 @@ struct EQUIL : public SpecialBase
 	equil_line.oil_water_cap_pressure_  = data[3];
 	equil_line.gas_oil_contact_depth_   = data[4];
 	equil_line.gas_oil_cap_pressure_    = data[5];
-	equil_line.live_oil_table_index_    = data[6];
-	equil_line.wet_gas_table_index_     = data[7];
-	equil_line.N_                       = data[8];
+	equil_line.live_oil_table_index_    = int(data[6]);
+	equil_line.wet_gas_table_index_     = int(data[7]);
+	equil_line.N_                       = int(data[8]);
 	equil.push_back(equil_line);
     }
 
