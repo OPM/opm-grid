@@ -133,6 +133,12 @@ namespace Dune
 		return true;
 	    }
 
+	    /// Refinement is not defined for CpGrid.
+	    bool isRegular() const
+	    {
+		return true;
+	    }
+
 	    /// For now, the grid is serial and the only partitionType() is InteriorEntity.
 	    PartitionType partitionType() const
 	    {
