@@ -58,8 +58,8 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Iterator(const GridType& grid, int index)
-		: EntityPointer<cd, GridType>(grid, index)
+	    Iterator(const GridType& grid, int index, bool orientation)
+		: EntityPointer<cd, GridType>(grid, EntityRep<cd>(index, orientation))
 	    {
 	    }
 
@@ -71,8 +71,7 @@ namespace Dune
 	    /// then this must change, too.
 	    Iterator& operator++()
 	    {
-		ASSERT((Entity<cd, GridType>::entityrep_) >= 0);
-		++Entity<cd, GridType>::entityrep_;
+		EntityRep<cd>::increment();
 		return *this;
 	    }
 	};

@@ -357,7 +357,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0);
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0, true);
         }
 
 
@@ -365,7 +365,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim));
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim), true);
         }
 
 
@@ -373,7 +373,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0);
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0, true);
         }
 
 
@@ -381,7 +381,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim));
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim), true);
         }
 
 
