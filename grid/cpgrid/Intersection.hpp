@@ -207,7 +207,7 @@ namespace Dune
 	    /// @return
             EntityPointer inside() const
             {
-                return EntityPointer(*pgrid_, index_);
+                return EntityPointer(*pgrid_, index_, true);
             }
 
 	    /// @brief
