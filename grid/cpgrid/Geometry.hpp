@@ -122,11 +122,7 @@ namespace Dune
 	    GeometryType type() const
 	    {
 		GeometryType t;
-		if (mydimension == 2) {
-		    t.makeNone(mydimension);
-		} else {
-		    t.makeCube(mydimension);
-		}
+                t.makeCube(mydimension);
 		return t;
 	    }
 
@@ -139,7 +135,8 @@ namespace Dune
 		} else if (mydimension == 0) {
 		    return 1;
 		} else {
-		    return 0;
+                    THROW("Meaningless call to cpgrid::Geometry::corner(int): "
+                          "singular geometry has no corners.");
 		}
 	    }
 
@@ -152,8 +149,8 @@ namespace Dune
 		} else if (mydimension == 0) {
 		    return pos_;
 		} else {
-		    // return pos_;
-		    THROW("Meaningless call to cpgrid::Geometry::corner(int): Geometry has no corners.");
+                    THROW("Meaningless call to cpgrid::Geometry::corner(int): "
+                          "singular geometry has no corners.");
 		}
 	    }
 
@@ -202,6 +199,149 @@ namespace Dune
 	    double vol_;
 	    const GlobalCoordinate* allcorners_; // For dimension 3 only
 	    const int* cor_idx_;               // For dimension 3 only
+	};
+
+
+
+
+
+
+
+	/// This class encapsulates geometry for both vertices, intersections and cells.
+	/// For vertices and cells we use the cube type, but without providing nonsingular
+	/// global() and local() mappings. However, we do provide corner[s]().
+	/// For intersections, we use the singular type, and no corners().
+        ///
+        /// Specialization for 2 dimensional geometries, that is
+        /// intersections (since codim 1 entities are not in CpGrid).
+	template <int cdim, class GridImp> // GridImp arg never used
+	class Geometry<2, cdim, GridImp>
+	{
+	    BOOST_STATIC_ASSERT(cdim == 3);
+	public:
+	    /// Dimension of underlying grid.
+	    enum { dimension = 3 };
+            /// Dimension of domain space of \see global().
+	    enum { mydimension = 2 };
+            /// Dimension of range space of \see global().
+	    enum { coorddimension = cdim };
+            /// World dimension of underlying grid.
+	    enum { dimensionworld = 3 };
+
+            /// Coordinate element type.
+	    typedef double ctype;
+
+            /// Domain type of \see global().
+	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            /// Range type of \see global().
+	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+
+            /// Type of Jacobian matrix.
+	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            /// Type of transposed Jacobian matrix.
+	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @tparam Doc me!
+	    /// @param
+	    Geometry(const GlobalCoordinate& pos,
+		     ctype vol)
+		: pos_(pos), vol_(vol)
+	    {
+	    }
+
+            /// Default constructor, giving a non-valid geometry.
+	    Geometry()
+		: pos_(0.0), vol_(0.0)
+	    {
+	    }
+
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the reference cube to the cell.
+	    const GlobalCoordinate& global(const LocalCoordinate&) const
+	    {
+		return pos_;
+	    }
+
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the cell to the reference cube.
+	    LocalCoordinate local(const GlobalCoordinate&) const
+	    {
+		LocalCoordinate dummy(0.0);
+		return dummy;
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
+	    double integrationElement(const LocalCoordinate&) const
+	    {
+		return vol_;
+	    }
+
+	    /// Using the cube type for all entities now (cells and vertices),
+	    /// but we use the singular type for intersections.
+	    GeometryType type() const
+	    {
+		GeometryType t;
+                t.makeNone(mydimension);
+		return t;
+	    }
+
+	    /// The number of corners of this convex polytope.
+            /// Since this geometry is singular, we have no corners as such.
+	    int corners() const
+	    {
+                return 0;
+	    }
+
+	    /// The corner method requires the points, which we may not necessarily want to provide.
+	    /// We will need it for visualization purposes though. For now we throw.
+	    GlobalCoordinate corner(int cor) const
+	    {
+                THROW("Meaningless call to cpgrid::Geometry::corner(int): "
+                      "singular geometry has no corners.");
+	    }
+
+            /// Volume (area, actually) of intersection.
+	    ctype volume() const
+	    {
+		return vol_;
+	    }
+
+	    /// Returns the centroid of the geometry.
+	    const GlobalCoordinate& center() const
+	    {
+		return pos_;
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    const FieldMatrix<ctype, mydimension, coorddimension>&
+	    jacobianTransposed(const LocalCoordinate& local) const
+	    {
+		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    const FieldMatrix<ctype, coorddimension, mydimension>&
+	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+	    {
+		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+	    }
+
+	    /// The mapping implemented by this geometry is singular, and therefore not affine.
+	    bool affine() const
+	    {
+		return false;
+	    }
+
+	private:
+	    GlobalCoordinate pos_;
+	    ctype vol_;
 	};
 
 
