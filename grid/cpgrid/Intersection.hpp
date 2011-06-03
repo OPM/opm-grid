@@ -237,14 +237,6 @@ namespace Dune
 // 		return in_inside_geom_;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-            const LocalGeometry& intersectionSelfLocal() const
-            {
-                return geometryInInside();
-            }
-
             // Geometrical information about this intersection in
             // local coordinates of the outside() entity.
 	    /// @brief
@@ -262,26 +254,9 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @return
-            const LocalGeometry& intersectionNeighborLocal() const
-            {
-                return geometryInOutside();
-            }
-
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
             const Geometry& geometry() const
             {
 		return global_geom_;
-            }
-
- 	    /// @brief
-	    /// @todo Doc me!
-	    /// @return 
-            /// Is this really just the same as geometry()?
-            const Geometry& intersectionGlobal() const
-            {
-                return geometry();
             }
 
 	    /// @brief
@@ -302,14 +277,6 @@ namespace Dune
                 // return subindex_;
             }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-            int numberInSelf() const
-            {
-                return indexInInside();
-            }
-
             /// Local index of codim 1 entity in outside() entity
             /// where intersection is contained in.
             int indexInOutside() const
@@ -327,14 +294,6 @@ namespace Dune
 //                 }
 // 		THROW("Could not find indexInOutside().");
 // 		return -1;
-            }
-
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
-            int numberInNeighbor() const
-            {
-                return indexInOutside();
             }
 
 	    /// @brief
