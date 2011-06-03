@@ -47,30 +47,31 @@ namespace Dune
 	/// For vertices and cells we use the cube type, but without providing nonsingular
 	/// global() and local() mappings. However, we do provide corner[s]().
 	/// For intersections, we use the singular type, and no corners().
-	template <int dim, int dimworld, class GridImp> // GridImp arg never used
+	template <int mydim, int cdim, class GridImp> // GridImp arg never used
 	class Geometry
 	{
-	    BOOST_STATIC_ASSERT(dimworld == 3);
+	    BOOST_STATIC_ASSERT(cdim == 3);
 	public:
-	    /// @brief
-	    /// @todo Doc me
+	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
-	    enum { mydimension = dim };
-	    enum { coorddimension = 3 };
+            /// Dimension of domain space of \see global().
+	    enum { mydimension = mydim };
+            /// Dimension of range space of \see global().
+	    enum { coorddimension = cdim };
+            /// World dimension of underlying grid.
 	    enum { dimensionworld = 3 };
 
-	    /// @brief
-	    /// @todo Doc me
+            /// Coordinate element type.
 	    typedef double ctype;
 
-	    /// @brief
-	    /// @todo Doc me
-	    typedef FieldVector<ctype, 3> GlobalCoordinate;
-	    /// @brief
-	    /// @todo Doc me
-	    typedef FieldVector<ctype, dim> LocalCoordinate;
+            /// Domain type of \see global().
+	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            /// Range type of \see global().
+	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
 
+            /// Type of Jacobian matrix.
 	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            /// Type of transposed Jacobian matrix.
 	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
 
 	    /// @brief
@@ -83,11 +84,10 @@ namespace Dune
 		     const int* corner_indicies = 0)
 		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indicies)
 	    {
-		ASSERT(dim != 3 || (allcorners && corner_indicies));
+		ASSERT(mydimension != 3 || (allcorners && corner_indicies));
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+            /// Default constructor, giving a non-valid geometry.
 	    Geometry()
 		: pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
 	    {
@@ -122,10 +122,10 @@ namespace Dune
 	    GeometryType type() const
 	    {
 		GeometryType t;
-		if (dim == 2) {
-		    t.makeNone(dim);
+		if (mydimension == 2) {
+		    t.makeNone(mydimension);
 		} else {
-		    t.makeCube(dim);
+		    t.makeCube(mydimension);
 		}
 		return t;
 	    }
@@ -134,9 +134,9 @@ namespace Dune
 	    /// Returning 8 or 1, depending on whether we are a hexahedron or not.
 	    int corners() const
 	    {
-		if (dim == 3) {
+		if (mydimension == 3) {
 		    return 8;
-		} else if (dim == 0) {
+		} else if (mydimension == 0) {
 		    return 1;
 		} else {
 		    return 0;
@@ -147,9 +147,9 @@ namespace Dune
 	    /// We will need it for visualization purposes though. For now we throw.
 	    GlobalCoordinate corner(int cor) const
 	    {
-		if (dim == 3) {
+		if (mydimension == 3) {
 		    return allcorners_[cor_idx_[cor]];
-		} else if (dim == 0) {
+		} else if (mydimension == 0) {
 		    return pos_;
 		} else {
 		    // return pos_;
