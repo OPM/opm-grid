@@ -109,6 +109,9 @@ namespace Dune
 	    /// \brief The type of the entity pointer for entities of this codim.
 	    typedef cpgrid::EntityPointer<cd, CpGrid> EntityPointer;
 
+	    /// \brief The type of the entity pointer for entities of this codim.
+	    typedef cpgrid::EntityPointer<cd, CpGrid> EntitySeed;
+
 	    /// \brief Traits associated with a specific grid partition type.
 	    /// \tparam pitype The type of the grid partition.
 	    template <PartitionIteratorType pitype>
@@ -354,7 +357,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0);
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0, true);
         }
 
 
@@ -362,7 +365,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim));
+            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim), true);
         }
 
 
@@ -370,7 +373,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0);
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0, true);
         }
 
 
@@ -378,7 +381,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim));
+            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim), true);
         }
 
 
@@ -454,16 +457,15 @@ namespace Dune
         }
 
 
-	/// \brief The leaf view
-	LeafGridView leafView() const
-	{
-	    return LeafGridView(*this);
-	}
-
         /// global refinement
         void globalRefine (int refCount)
         {
             std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
+        }
+
+        const std::vector< Dune :: GeometryType >& geomTypes( const int codim ) const 
+        {
+          return leafIndexSet().geomTypes( codim );
         }
 
 	/*  No refinement implemented. GridDefaultImplementation's methods will be used.
@@ -782,5 +784,5 @@ namespace Dune
 
 } // namespace Dune
 
-
+#include <dune/grid/cpgrid/PersistentContainer.hpp>
 #endif // OPENRS_CPGRID_HEADER

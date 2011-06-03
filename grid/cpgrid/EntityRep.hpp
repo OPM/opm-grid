@@ -139,6 +139,16 @@ namespace Dune
 		return EntityRep(~entityrep_);
 	    }
 
+	    /// @brief Increments the entityrep's index() by one.
+	    void increment()
+	    {
+                if (entityrep_ < 0) {
+                    --entityrep_;
+                } else {
+                    ++entityrep_;
+                }
+	    }
+
 	    /// @brief Ordering relation used for maps etc.
 	    ///
 	    /// Sorting on index and then orientation, with positive orientations first.
@@ -171,7 +181,7 @@ namespace Dune
 
 	    enum { InvalidIndex = INT_MAX };
 
-	protected:
+	private:
 	    /// @brief Constructor taking an integer representation directly.
 	    ///
 	    /// This is one of the few places where the private representation is exposed,

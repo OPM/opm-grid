@@ -86,10 +86,10 @@ namespace Dune
 	    /// This constructor should probably be removed, since it exposes
 	    /// details of the implementation of \see EntityRep, see comment in
 	    /// EntityRep<>::EntityRep(int).
-	    Entity(const GridType& grid, int entityrep)
-		: EntityRep<codim>(entityrep), pgrid_(&grid)
-	    {
-	    }
+// 	    Entity(const GridType& grid, int entityrep)
+// 		: EntityRep<codim>(entityrep), pgrid_(&grid)
+// 	    {
+// 	    }
 
 	    /// Constructor taking a grid and an entity representation.
 	    Entity(const GridType& grid, EntityRep<codim> entityrep)
@@ -129,6 +129,12 @@ namespace Dune
 
 	    /// The entity is always on the leaf grid, since we have no refinement.
 	    bool isLeaf() const
+	    {
+		return true;
+	    }
+
+	    /// Refinement is not defined for CpGrid.
+	    bool isRegular() const
 	    {
 		return true;
 	    }
@@ -306,12 +312,6 @@ namespace Dune
 	{
 	public:
 	    typedef cpgrid::Entity<codim, GridType> Entity;
-
-	    /// Constructor taking a grid and entity representation.
-	    EntityPointer(const GridType& grid, int entityrep)
-		: Entity(grid, entityrep)
-	    {
-	    }
 
 	    /// Construction from entity.
 	    explicit EntityPointer(const Entity& e)

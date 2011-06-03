@@ -7,7 +7,7 @@ cpgriddir = $(includedir)/dune/grid/cpgrid
 
 cpgrid_HEADERS = DefaultGeometryPolicy.hpp Entity.hpp EntityRep.hpp \
                  Geometry.hpp Intersection.hpp Iterators.hpp \
-                 Indexsets.hpp OrientedEntityTable.hpp
+                 Indexsets.hpp OrientedEntityTable.hpp PersistentContainer.hpp
 
 noinst_LTLIBRARIES = libcpgrid.la
 
