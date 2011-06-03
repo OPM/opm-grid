@@ -91,9 +91,10 @@ int main(int argc, char** argv)
     
     const char* ECLIPSEFILENAME(argv[1]);
     
+    bool convert_to_SI = false;
     Dune::EclipseGridParser * eclParser_p;
     try {
-	eclParser_p = new Dune::EclipseGridParser(ECLIPSEFILENAME);
+	eclParser_p = new Dune::EclipseGridParser(ECLIPSEFILENAME, convert_to_SI);
     }
     catch (...) {
 	std::cout << "Error: Filename " << ECLIPSEFILENAME 
