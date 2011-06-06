@@ -43,10 +43,14 @@ namespace Dune
     namespace cpgrid
     {
 
-	/// This class encapsulates geometry for both vertices, intersections and cells.
-	/// For vertices and cells we use the cube type, but without providing nonsingular
-	/// global() and local() mappings. However, we do provide corner[s]().
-	/// For intersections, we use the singular type, and no corners().
+	/// This class encapsulates geometry for both vertices,
+        /// intersections and cells.  The main template is used for
+        /// dim == 3 (cell), the dim == 2 (intersection) and dim == 0
+        /// (vertex) cases have specializations.
+	/// For vertices and cells we use the cube type, and provide
+        /// constant (vertex) or trilinear (cell) mappings.
+	/// For intersections, we use the singular geometry type
+        /// (None), and provide no mappings.
 	template <int mydim, int cdim, class GridImp> // GridImp arg never used
 	class Geometry
 	{
@@ -241,10 +245,9 @@ namespace Dune
             /// Type of transposed Jacobian matrix.
 	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam Doc me!
-	    /// @param
+	    /// @brief Construct from centroid and volume (1- and 0-moments).
+	    /// @param pos the centroid of the entity
+            /// @param vol the volume(area) of the entity
 	    Geometry(const GlobalCoordinate& pos,
 		     ctype vol)
 		: pos_(pos), vol_(vol)
@@ -257,11 +260,10 @@ namespace Dune
 	    {
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the reference cube to the cell.
+            /// Since our geometry type is None, this method should not be called.
 	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
-		return pos_;
+		THROW("Geometry::global() meaningless on singular geometry.");
 	    }
 
 	    /// In spite of claiming to be a cube geomety, we do not
@@ -343,6 +345,144 @@ namespace Dune
 	    GlobalCoordinate pos_;
 	    ctype vol_;
 	};
+
+
+
+
+
+	/// This class encapsulates geometry for both vertices, intersections and cells.
+	/// For vertices and cells we use the cube type, but without providing nonsingular
+	/// global() and local() mappings. However, we do provide corner[s]().
+	/// For intersections, we use the singular type, and no corners().
+	template <int cdim, class GridImp> // GridImp arg never used
+	class Geometry<0, cdim, GridImp>
+	{
+	    BOOST_STATIC_ASSERT(cdim == 3);
+	public:
+	    /// Dimension of underlying grid.
+	    enum { dimension = 3 };
+            /// Dimension of domain space of \see global().
+	    enum { mydimension = 0};
+            /// Dimension of range space of \see global().
+	    enum { coorddimension = cdim };
+            /// World dimension of underlying grid.
+	    enum { dimensionworld = 3 };
+
+            /// Coordinate element type.
+	    typedef double ctype;
+
+            /// Domain type of \see global().
+	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            /// Range type of \see global().
+	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+
+            /// Type of Jacobian matrix.
+	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            /// Type of transposed Jacobian matrix.
+	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+
+	    /// @brief Construct from vertex position
+	    /// @param pos the position of the vertex
+	    Geometry(const GlobalCoordinate& pos)
+		: pos_(pos)
+	    {
+	    }
+
+            /// Default constructor, giving a non-valid geometry.
+	    Geometry()
+		: pos_(0.0)
+	    {
+	    }
+
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the reference cube to the cell.
+	    const GlobalCoordinate& global(const LocalCoordinate&) const
+	    {
+		return pos_;
+	    }
+
+	    /// In spite of claiming to be a cube geomety, we do not
+	    /// make a 1-1 mapping from the cell to the reference cube.
+	    LocalCoordinate local(const GlobalCoordinate&) const
+	    {
+		LocalCoordinate dummy(0.0);
+		return dummy;
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
+	    double integrationElement(const LocalCoordinate&) const
+	    {
+		return volume();
+	    }
+
+	    /// Using the cube type for vertices.
+	    GeometryType type() const
+	    {
+		GeometryType t;
+                t.makeCube(mydimension);
+		return t;
+	    }
+
+            /// A vertex is defined by a single corner.
+	    int corners() const
+	    {
+                return 1;
+	    }
+
+            /// Returns the single corner: the vertex itself.
+	    GlobalCoordinate corner(int cor) const
+	    {
+                ASSERT(cor == 0);
+                return pos_;
+	    }
+
+            /// Volume of vertex is arbitrarily set to 1.
+	    ctype volume() const
+	    {
+		return 1.0;
+	    }
+
+	    /// Returns the centroid of the geometry.
+	    const GlobalCoordinate& center() const
+	    {
+		return pos_;
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    const FieldMatrix<ctype, mydimension, coorddimension>&
+	    jacobianTransposed(const LocalCoordinate& local) const
+	    {
+		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
+		return dummy;
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    const FieldMatrix<ctype, coorddimension, mydimension>&
+	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+	    {
+		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
+		return dummy;
+	    }
+
+	    /// The mapping implemented by this geometry is constant, therefore affine.
+	    bool affine() const
+	    {
+		return true;
+	    }
+
+	private:
+	    GlobalCoordinate pos_;
+	};
+
+
+
 
 
     } // namespace cpgrid

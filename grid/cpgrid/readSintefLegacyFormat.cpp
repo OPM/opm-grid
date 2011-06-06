@@ -206,14 +206,14 @@ namespace Dune
 	    }
 	};
 
-// 	template <>
-// 	struct MakeGeometry<0>
-// 	{
-// 	    cpgrid::Geometry<0, 3> operator()(const FieldVector<double, 3> pos)
-// 	    {
-// 		return cpgrid::Geometry<dim, 3>(pos, vo);
-// 	    }
-// 	};
+	template <>
+	struct MakeGeometry<0>
+	{
+	    cpgrid::Geometry<0, 3, CpGrid> operator()(const FieldVector<double, 3> pos)
+	    {
+		return cpgrid::Geometry<0, 3, CpGrid>(pos);
+	    }
+	};
 
 	void readGeom(std::istream& geom,
 		      cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,

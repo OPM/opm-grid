@@ -567,7 +567,7 @@ namespace Dune
 
 
 
-
+        /// Encapsulate a vector<T>, and a permutation array used for access.
 	template <typename T>
 	class IndirectArray
 	{
@@ -592,15 +592,19 @@ namespace Dune
 	    const int* end_;
 	};
 
+
+        // Helper template for making Geometry objects.
+        // The generic one is suitable for dim == 0 (vertices).
 	template <int dim>
 	struct MakeGeometry
 	{
-	    cpgrid::Geometry<dim, 3, CpGrid> operator()(const FieldVector<double, 3>& pos, double vol = 1.0)
+	    cpgrid::Geometry<dim, 3, CpGrid> operator()(const FieldVector<double, 3>& pos)
 	    {
-		return cpgrid::Geometry<dim, 3, CpGrid>(pos, vol);
+		return cpgrid::Geometry<dim, 3, CpGrid>(pos);
 	    }
 	};
 
+        // Specialization for cells.
 	template <>
 	struct MakeGeometry<3>
 	{
@@ -610,14 +614,22 @@ namespace Dune
 	    {
 	    }
 	    cpgrid::Geometry<3, 3, CpGrid> operator()(const FieldVector<double, 3>& pos,
-					      double vol,
-					      const array<int,8>& corner_indices)
+                                                      double vol,
+                                                      const array<int,8>& corner_indices)
 	    {
 		return cpgrid::Geometry<3, 3, CpGrid>(pos, vol, allcorners_, &corner_indices[0]);
 	    }
 	};
 
-
+        // Specialization for intersections.
+	template <>
+	struct MakeGeometry<2>
+	{
+	    cpgrid::Geometry<2, 3, CpGrid> operator()(const FieldVector<double, 3>& pos, double vol)
+	    {
+		return cpgrid::Geometry<2, 3, CpGrid>(pos, vol);
+	    }
+	};
 
 
 
