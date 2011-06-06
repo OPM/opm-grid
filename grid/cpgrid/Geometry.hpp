@@ -14,28 +14,30 @@
 //===========================================================================
 
 /*
-Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2011 SINTEF ICT, Applied Mathematics.
+  Copyright 2009, 2010, 2011 Statoil ASA.
 
-This file is part of The Open Reservoir Simulator Project (OpenRS).
+  This file is part of the Open Porous Media project (OPM).
 
-OpenRS is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
 
-OpenRS is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
 
-You should have received a copy of the GNU General Public License
-along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPENRS_GEOMETRY_HEADER
 #define OPENRS_GEOMETRY_HEADER
 
+#include <dune/grid/genericgeometry/geometrytraits.hh>
+#include <dune/grid/genericgeometry/matrixhelper.hh>
 #include <boost/static_assert.hpp>
 
 namespace Dune
@@ -160,11 +162,27 @@ namespace Dune
 
 	    /// Mapping from the cell to the reference domain.
             /// May be slow.
-	    LocalCoordinate local(const GlobalCoordinate&) const
+	    LocalCoordinate local(const GlobalCoordinate& y) const
 	    {
-                THROW("Not impl.");
-		LocalCoordinate dummy(0.0);
-		return dummy;
+                BOOST_STATIC_ASSERT(mydimension == 3);
+                BOOST_STATIC_ASSERT(coorddimension == 3);
+                // This code is modified from dune/grid/genericgeometry/mapping.hh
+                // \todo: Implement direct computation.
+                const ctype epsilon = 1e-12;
+                const GenericReferenceElement< ctype , 3 > & refElement =
+                    GenericReferenceElements< ctype, 3 >::general(type());
+                LocalCoordinate x = refElement.position(0,0);
+                LocalCoordinate dx;
+                do {
+                    using namespace GenericGeometry;
+                    // DF^n dx^n = F^n, x^{n+1} -= dx^n
+                    JacobianTransposed JT;
+                    jacobianTransposed( x, JT );
+                    GlobalCoordinate z = global(x);
+                    z -= y;
+                    MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<3, 3>(JT, z, dx );
+                    x -= dx;
+                } while (dx.two_norm2() > epsilon*epsilon);
 	    }
 
             /// The determinant of the Jacobian.
