@@ -185,14 +185,15 @@ namespace Dune
                 } while (dx.two_norm2() > epsilon*epsilon);
 	    }
 
-            /// The determinant of the Jacobian.
+            /// Equal to \sqrt{\det{J^T J}} where J is the Jacobian.
             /// J_{ij} = (dg_i/du_j)
             /// where g is the mapping from the reference domain,
             /// and {u_j} are the reference coordinates.
 	    double integrationElement(const LocalCoordinate& local) const
 	    {
 		FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local);
-		return Jt.determinant();
+                using namespace GenericGeometry;
+                return MatrixHelper<DuneCoordTraits<double> >::template sqrtDetAAT<3, 3>(Jt);
 	    }
 
 	    /// Using the cube type for all entities now (cells and vertices),
@@ -338,31 +339,26 @@ namespace Dune
 	    {
 	    }
 
-            /// Since our geometry type is None, this method should not be called.
+	    /// This method is meaningless for singular geometries.
 	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
 		THROW("Geometry::global() meaningless on singular geometry.");
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the cell to the reference cube.
+	    /// This method is meaningless for singular geometries.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		LocalCoordinate dummy(0.0);
-		return dummy;
+		THROW("Geometry::local() meaningless on singular geometry.");
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+            /// For the singular geometry, we return a constant
+            /// integration element equal to the volume. 
 	    double integrationElement(const LocalCoordinate&) const
 	    {
 		return vol_;
 	    }
 
-	    /// Using the cube type for all entities now (cells and vertices),
-	    /// but we use the singular type for intersections.
+	    /// We use the singular type (None) for intersections.
 	    GeometryType type() const
 	    {
 		GeometryType t;
@@ -377,8 +373,7 @@ namespace Dune
                 return 0;
 	    }
 
-	    /// The corner method requires the points, which we may not necessarily want to provide.
-	    /// We will need it for visualization purposes though. For now we throw.
+	    /// This method is meaningless for singular geometries.
 	    GlobalCoordinate corner(int cor) const
 	    {
                 THROW("Meaningless call to cpgrid::Geometry::corner(int): "
@@ -397,26 +392,24 @@ namespace Dune
 		return pos_;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
 		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
 		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
 	    }
 
-	    /// The mapping implemented by this geometry is singular, and therefore not affine.
+	    /// Since integrationElement() is constant, returns true.
 	    bool affine() const
 	    {
-		return false;
+		return true;
 	    }
 
 	private:
@@ -472,25 +465,19 @@ namespace Dune
 	    {
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the reference cube to the cell.
+	    /// Returns the position of the vertex.
 	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
 		return pos_;
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the cell to the reference cube.
+            /// Meaningless for the vertex geometry.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		LocalCoordinate dummy(0.0);
-		return dummy;
+		THROW("Meaningless to call local() on singular geometries.");
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+            /// Returns 1 for the vertex geometry.
 	    double integrationElement(const LocalCoordinate&) const
 	    {
 		return volume();
@@ -529,24 +516,18 @@ namespace Dune
 		return pos_;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
 		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
-		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
-		return dummy;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
 		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
-		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
-		return dummy;
 	    }
 
 	    /// The mapping implemented by this geometry is constant, therefore affine.
