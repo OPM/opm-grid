@@ -44,9 +44,9 @@ namespace Dune
     {
 
 	/// This class encapsulates geometry for both vertices,
-        /// intersections and cells.  The main template is used for
-        /// dim == 3 (cell), the dim == 2 (intersection) and dim == 0
-        /// (vertex) cases have specializations.
+        /// intersections and cells.  The main template is empty,
+        /// the actual dim == 3 (cell), dim == 2 (intersection)
+        /// and dim == 0 (vertex) cases have specializations.
 	/// For vertices and cells we use the cube type, and provide
         /// constant (vertex) or trilinear (cell) mappings.
 	/// For intersections, we use the singular geometry type
@@ -54,12 +54,21 @@ namespace Dune
 	template <int mydim, int cdim, class GridImp> // GridImp arg never used
 	class Geometry
 	{
+        };
+
+
+
+
+        /// Specialization for 3-dimensional geometries, i.e. cells.
+	template <int cdim, class GridImp> // GridImp arg never used
+	class Geometry<3, cdim, GridImp>
+	{
 	    BOOST_STATIC_ASSERT(cdim == 3);
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
             /// Dimension of domain space of \see global().
-	    enum { mydimension = mydim };
+	    enum { mydimension = 3 };
             /// Dimension of range space of \see global().
 	    enum { coorddimension = cdim };
             /// World dimension of underlying grid.
@@ -78,17 +87,36 @@ namespace Dune
             /// Type of transposed Jacobian matrix.
 	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam Doc me!
-	    /// @param
+	    /// @brief Construct from centroid, volume (1- and 0-moments) and
+            ///        corners.
+	    /// @param pos the centroid of the entity
+            /// @param vol the volume(area) of the entity
+	    /// @param allcorners array of all corner positions in the grid
+            /// @param corner_indices array of 8 indices into allcorners array. The
+            ///                       indices must be given in lexicographical order
+            ///                       by (kji), i.e. i running fastest.
 	    Geometry(const GlobalCoordinate& pos,
 		     ctype vol,
-		     const GlobalCoordinate* allcorners = 0,
-		     const int* corner_indicies = 0)
-		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indicies)
+		     const GlobalCoordinate* allcorners,
+		     const int* corner_indices)
+		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
 	    {
-		ASSERT(mydimension != 3 || (allcorners && corner_indicies));
+                ASSERT(allcorners && corner_indices);
+	    }
+
+	    /// @brief Construct from centroid and volume (1- and
+            ///        0-moments).  Note that since corners are not
+            ///        given, the geometry provides no mappings, and
+            ///        some calls (corner(), global() etc.) will fail.
+            ///        This possibly dangerous constructor is
+            ///        available for the benefit of
+            ///        CpGrid::readSintefLegacyFormat().
+	    /// @param pos the centroid of the entity
+            /// @param vol the volume(area) of the entity
+	    Geometry(const GlobalCoordinate& pos,
+		     ctype vol)
+		: pos_(pos), vol_(vol)
+	    {
 	    }
 
             /// Default constructor, giving a non-valid geometry.
@@ -97,27 +125,55 @@ namespace Dune
 	    {
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the reference cube to the cell.
-	    const GlobalCoordinate& global(const LocalCoordinate&) const
+	    /// Provide a trilinear mapping.
+            /// Note that this does not give a proper space-filling
+            /// embedding of the cell complex in the general (faulted)
+            /// case. We should therefore revisit this at some point.
+	    const GlobalCoordinate& global(const LocalCoordinate& lc) const
 	    {
-		return pos_;
+                BOOST_STATIC_ASSERT(mydimension == 3);
+                BOOST_STATIC_ASSERT(coorddimension == 3);
+                // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
+                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), lc };
+                uvw[0] -= lc;
+                // Access pattern for uvw matching ordering of corners.
+                const int pat[8][3] = { { 0, 0, 0 },
+                                        { 1, 0, 0 },
+                                        { 0, 1, 0 },
+                                        { 1, 1, 0 },
+                                        { 0, 0, 1 },
+                                        { 1, 0, 1 },
+                                        { 0, 1, 1 },
+                                        { 1, 1, 1 } };
+                GlobalCoordinate xyz(0.0);
+                for (int i = 0; i < 8; ++i) {
+                    GlobalCoordinate corner_contrib = corner(i);
+                    double factor = 1.0;
+                    for (int j = 0; j < 3; ++j) {
+                        factor *= uvw[pat[i][j]][j];
+                    }
+                    corner_contrib *= factor;
+                    xyz += corner_contrib;
+                }
+		return xyz;
 	    }
 
-	    /// In spite of claiming to be a cube geomety, we do not
-	    /// make a 1-1 mapping from the cell to the reference cube.
+	    /// Mapping from the cell to the reference domain.
+            /// May be slow.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
+                THROW("Not impl.");
 		LocalCoordinate dummy(0.0);
 		return dummy;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    /// @return
+            /// The determinant of the Jacobian.
+            /// J_{ij} = (dg_i/du_j)
+            /// where g is the mapping from the reference domain,
+            /// and {u_j} are the reference coordinates.
 	    double integrationElement(const LocalCoordinate&) const
 	    {
+                THROW("Not impl.");
 		return vol_;
 	    }
 
@@ -131,36 +187,20 @@ namespace Dune
 	    }
 
 	    /// The number of corners of this convex polytope.
-	    /// Returning 8 or 1, depending on whether we are a hexahedron or not.
+	    /// Returning 8, since we treat all cells as hexahedral.
 	    int corners() const
 	    {
-		if (mydimension == 3) {
-		    return 8;
-		} else if (mydimension == 0) {
-		    return 1;
-		} else {
-                    THROW("Meaningless call to cpgrid::Geometry::corner(int): "
-                          "singular geometry has no corners.");
-		}
+                return 8;
 	    }
 
-	    /// The corner method requires the points, which we may not necessarily want to provide.
-	    /// We will need it for visualization purposes though. For now we throw.
+	    /// The 8 corners of the hexahedral base cell.
 	    GlobalCoordinate corner(int cor) const
 	    {
-		if (mydimension == 3) {
-		    return allcorners_[cor_idx_[cor]];
-		} else if (mydimension == 0) {
-		    return pos_;
-		} else {
-                    THROW("Meaningless call to cpgrid::Geometry::corner(int): "
-                          "singular geometry has no corners.");
-		}
+                ASSERT(allcorners_ && cor_idx_);
+                return allcorners_[cor_idx_[cor]];
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @return
+	    /// Cell volume.
 	    ctype volume() const
 	    {
 		return vol_;
@@ -172,27 +212,28 @@ namespace Dune
 		return pos_;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// @brief Jacobian transposed.
+            /// J^T_{ij} = (dg_j/du_i)
+            /// where g is the mapping from the reference domain,
+            /// and {u_i} are the reference coordinates.
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+                THROW("Not impl.");
 		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
 		return dummy;
 	    }
 
-	    /// @brief
-	    /// @todo Doc me!
+	    /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
-		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+                THROW("Not impl.");
 		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
 		return dummy;
 	    }
 
-	    /// The mapping implemented by this geometry is singular, and therefore not affine.
+	    /// The mapping implemented by this geometry is not generally affine.
 	    bool affine() const
 	    {
 		return false;
@@ -209,13 +250,6 @@ namespace Dune
 
 
 
-
-
-	/// This class encapsulates geometry for both vertices, intersections and cells.
-	/// For vertices and cells we use the cube type, but without providing nonsingular
-	/// global() and local() mappings. However, we do provide corner[s]().
-	/// For intersections, we use the singular type, and no corners().
-        ///
         /// Specialization for 2 dimensional geometries, that is
         /// intersections (since codim 1 entities are not in CpGrid).
 	template <int cdim, class GridImp> // GridImp arg never used
