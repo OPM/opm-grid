@@ -129,13 +129,13 @@ namespace Dune
             /// Note that this does not give a proper space-filling
             /// embedding of the cell complex in the general (faulted)
             /// case. We should therefore revisit this at some point.
-	    const GlobalCoordinate& global(const LocalCoordinate& lc) const
+	    const GlobalCoordinate& global(const LocalCoordinate& local) const
 	    {
                 BOOST_STATIC_ASSERT(mydimension == 3);
                 BOOST_STATIC_ASSERT(coorddimension == 3);
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
-                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), lc };
-                uvw[0] -= lc;
+                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
+                uvw[0] -= local;
                 // Access pattern for uvw matching ordering of corners.
                 const int pat[8][3] = { { 0, 0, 0 },
                                         { 1, 0, 0 },
@@ -171,10 +171,10 @@ namespace Dune
             /// J_{ij} = (dg_i/du_j)
             /// where g is the mapping from the reference domain,
             /// and {u_j} are the reference coordinates.
-	    double integrationElement(const LocalCoordinate&) const
+	    double integrationElement(const LocalCoordinate& local) const
 	    {
-                THROW("Not impl.");
-		return vol_;
+		FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local);
+		return Jt.determinant();
 	    }
 
 	    /// Using the cube type for all entities now (cells and vertices),
@@ -219,18 +219,44 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-                THROW("Not impl.");
-		static FieldMatrix<ctype, mydimension, coorddimension> dummy;
-		return dummy;
+                BOOST_STATIC_ASSERT(mydimension == 3);
+                BOOST_STATIC_ASSERT(coorddimension == 3);
+                // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
+                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
+                uvw[0] -= local;
+                // Access pattern for uvw matching ordering of corners.
+                const int pat[8][3] = { { 0, 0, 0 },
+                                        { 1, 0, 0 },
+                                        { 0, 1, 0 },
+                                        { 1, 1, 0 },
+                                        { 0, 0, 1 },
+                                        { 1, 0, 1 },
+                                        { 0, 1, 1 },
+                                        { 1, 1, 1 } };
+		FieldMatrix<ctype, mydimension, coorddimension> Jt(0.0);
+                for (int i = 0; i < 8; ++i) {
+                    for (int deriv = 0; deriv < 3; ++deriv) {
+                        // This part contributing to dg/du_{deriv}
+                        double factor = 1.0;
+                        for (int j = 0; j < 3; ++j) {
+                            factor *= (j != deriv) ? uvw[pat[i][j]][j]
+                                : (pat[i][j] == 0 ? -1.0 : 1.0);
+                        }
+                        GlobalCoordinate corner_contrib = corner(i);
+                        corner_contrib *= factor;
+                        Jt[deriv] += corner_contrib; // using FieldMatrix row access.
+                    }
+                }
+		return Jt;
 	    }
 
 	    /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
-	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+	    jacobianInverseTransposed(const LocalCoordinate& local) const
 	    {
-                THROW("Not impl.");
-		static FieldMatrix<ctype, coorddimension, mydimension> dummy;
-		return dummy;
+		FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local);
+                Jti.invert();
+		return Jti;
 	    }
 
 	    /// The mapping implemented by this geometry is not generally affine.
