@@ -36,8 +36,10 @@
 #ifndef OPENRS_GEOMETRY_HEADER
 #define OPENRS_GEOMETRY_HEADER
 
+#include <dune/grid/common/genericreferenceelements.hh>
 #include <dune/grid/genericgeometry/geometrytraits.hh>
 #include <dune/grid/genericgeometry/matrixhelper.hh>
+#include <dune/common/ErrorMacros.hpp>
 #include <boost/static_assert.hpp>
 
 namespace Dune
@@ -131,7 +133,7 @@ namespace Dune
             /// Note that this does not give a proper space-filling
             /// embedding of the cell complex in the general (faulted)
             /// case. We should therefore revisit this at some point.
-	    const GlobalCoordinate& global(const LocalCoordinate& local) const
+	    GlobalCoordinate global(const LocalCoordinate& local) const
 	    {
                 BOOST_STATIC_ASSERT(mydimension == 3);
                 BOOST_STATIC_ASSERT(coorddimension == 3);
@@ -176,13 +178,13 @@ namespace Dune
                 do {
                     using namespace GenericGeometry;
                     // DF^n dx^n = F^n, x^{n+1} -= dx^n
-                    JacobianTransposed JT;
-                    jacobianTransposed( x, JT );
+                    JacobianTransposed JT = jacobianTransposed(x);
                     GlobalCoordinate z = global(x);
                     z -= y;
                     MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<3, 3>(JT, z, dx );
                     x -= dx;
                 } while (dx.two_norm2() > epsilon*epsilon);
+                return x;
 	    }
 
             /// Equal to \sqrt{\det{J^T J}} where J is the Jacobian.
@@ -235,7 +237,7 @@ namespace Dune
             /// J^T_{ij} = (dg_j/du_i)
             /// where g is the mapping from the reference domain,
             /// and {u_i} are the reference coordinates.
-	    const FieldMatrix<ctype, mydimension, coorddimension>&
+	    const FieldMatrix<ctype, mydimension, coorddimension>
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
                 BOOST_STATIC_ASSERT(mydimension == 3);
@@ -270,7 +272,7 @@ namespace Dune
 	    }
 
 	    /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-	    const FieldMatrix<ctype, coorddimension, mydimension>&
+	    const FieldMatrix<ctype, coorddimension, mydimension>
 	    jacobianInverseTransposed(const LocalCoordinate& local) const
 	    {
 		FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local);
@@ -420,11 +422,7 @@ namespace Dune
 
 
 
-
-	/// This class encapsulates geometry for both vertices, intersections and cells.
-	/// For vertices and cells we use the cube type, but without providing nonsingular
-	/// global() and local() mappings. However, we do provide corner[s]().
-	/// For intersections, we use the singular type, and no corners().
+        /// Specialization for 0 dimensional geometries, i.e. vertices.
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<0, cdim, GridImp>
 	{

@@ -1,7 +1,7 @@
 # $Date$
 # $Revision$
 
-check_PROGRAMS  = entityrep_test orientedentitytable_test entity_test
+check_PROGRAMS  = entity_test entityrep_test geometry_test orientedentitytable_test
 #noinst_PROGRAMS = buildcpgrid_test
 
 AM_CXXFLAGS = $(DUNE_CPPFLAGS) $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
@@ -12,6 +12,9 @@ entity_test_LDADD    = $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_UNIT_TEST_FRAMEWORK_L
 
 entityrep_test_SOURCES  = entityrep_test.cpp
 entityrep_test_LDADD    = $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
+
+geometry_test_SOURCES  = geometry_test.cpp
+geometry_test_LDADD    = $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
 
 orientedentitytable_test_SOURCES = orientedentitytable_test.cpp
 orientedentitytable_test_LDADD   = $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_UNIT_TEST_FRAMEWORK_LIB)
