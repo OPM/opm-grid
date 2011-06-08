@@ -24,6 +24,7 @@
 
 #define BOOST_TEST_MODULE GeometryTests
 #include <boost/test/unit_test.hpp>
+#include <boost/test/floating_point_comparison.hpp>
 #include <sstream>
 
 #include "config.h"
@@ -158,5 +159,73 @@ BOOST_AUTO_TEST_CASE(cellgeom)
         BOOST_CHECK_EQUAL(g.jacobianTransposed(testpts[i]), id);
         BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), id);
     }
+
+    // Next testcase: a degenerate hexahedron, wedge shaped.
+    typedef Geometry::GlobalCoordinate GC;
+    c = GC(1.0/3.0); c[2] = 0.5;
+    v = 0.5;
+    corners[5][2] = 0.0;
+    corners[7][2] = 0.0;
+    g = Geometry(c, v, corners, cor_idx);
+
+    // Verification of properties.
+    BOOST_CHECK(g.type().isCube());
+    BOOST_CHECK(!g.affine());
+    BOOST_CHECK_EQUAL(g.corners(), 8);
+    for (int i = 0; i < 8; ++i) {
+        BOOST_CHECK_EQUAL(g.corner(i), corners[i]);
+    }
+    BOOST_CHECK_EQUAL(g.volume(), v);
+    BOOST_CHECK_EQUAL(g.center(), c);
+
+    struct Wedge
+    {
+        static GC global(const LC& lc)
+        {
+            GC gc(0.0);
+            gc[0] = lc[0];
+            gc[1] = lc[1];
+            gc[2] = (1.0 - lc[0])*lc[2];
+            return gc;
+        }
+        static double integrationElement(const LC& lc)
+        {
+            return 1.0 - lc[0];
+        }
+        static Geometry::JacobianTransposed jacobianTransposed(const LC& lc)
+        {
+            Geometry::JacobianTransposed Jt(0.0);
+            Jt[0][0] = 1.0;
+            Jt[0][2] = -lc[2];
+            Jt[1][1] = 1.0;
+            Jt[2][2] = 1.0 - lc[0];
+            return Jt;
+        }
+    };
+
+    // Verification of properties that depend on the mapping.
+    const double tolerance = 1e-14;
+    for (int i = 0; i < num_pts; ++i) {
+        GC gl = g.global(testpts[i]);
+        BOOST_CHECK_EQUAL(gl, Wedge::global(testpts[i]));
+        BOOST_CHECK_EQUAL(g.integrationElement(testpts[i]), Wedge::integrationElement(testpts[i]));
+        Geometry::JacobianTransposed Jt = Wedge::jacobianTransposed(testpts[i]);
+        BOOST_CHECK_EQUAL(g.jacobianTransposed(testpts[i]), Jt);
+        if (testpts[i][0] < 1.0) {
+            // Only do this test if we are away from the degeneracy.
+            LC diff = g.local(gl);
+            diff -= testpts[i];
+            BOOST_CHECK_SMALL(diff.two_norm(), tolerance);
+            Geometry::Jacobian Jit = Jt; // This implicitly assumes that the Jacobian is square.
+            Jit.invert();
+            BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), Jit);
+        }
+    }
+
+
+
+
+
+
 }
 
