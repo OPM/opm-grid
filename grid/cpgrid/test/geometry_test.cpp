@@ -149,19 +149,14 @@ BOOST_AUTO_TEST_CASE(cellgeom)
             }
         }
     }
-    Geometry::JacobianTransposed jt;
+    Geometry::JacobianTransposed id(0.0);
+    id[0][0] = id[1][1] = id[2][2] = 1.0;
     for (int i = 0; i < num_pts; ++i) {
         BOOST_CHECK_EQUAL(g.global(testpts[i]), testpts[i]);
         BOOST_CHECK_EQUAL(g.local(g.global(testpts[i])), testpts[i]);
         BOOST_CHECK_EQUAL(g.integrationElement(testpts[i]), 1.0);
-
+        BOOST_CHECK_EQUAL(g.jacobianTransposed(testpts[i]), id);
+        BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), id);
     }
-
-    /*
-    BOOST_CHECK_THROW(g.local(c), std::exception);
-    BOOST_CHECK_EQUAL(g.integrationElement(lc), v);
-    BOOST_CHECK_THROW(g.jacobianTransposed(lc), std::exception);
-    BOOST_CHECK_THROW(g.jacobianInverseTransposed(lc), std::exception);
-    */
 }
 
