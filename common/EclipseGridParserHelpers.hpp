@@ -332,6 +332,15 @@ namespace
 		is >> ignoreWhitespace;
 		char c;
 		is.get(c);
+                if (is.eof()) {
+                    // Reached end of file, we should have pushed
+                    // the last table, and emptied it. If not,
+                    // we have an error.
+                    if (!table.empty()) {
+                        THROW("Reached EOF while still building PVT table. Missing end-of-table (slash)?");
+                    }
+                    return;
+                }
 		is.putback(c);
 		if (ct.is(std::ctype_base::digit, c) || c== '.') {
 		    break;   // Decimal digit. Read more records.
