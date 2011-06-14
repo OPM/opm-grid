@@ -1051,7 +1051,11 @@ struct WCONINJE : public SpecialBase
     virtual void convertToSI(const EclipseUnits& units)
     {
 	for (int i=0; i<(int) wconinje.size(); ++i) {
-	    wconinje[i].surface_flow_max_rate_ *= units.liqvol_s/units.time; // ??? @bsp 5
+            if (wconinje[i].injector_type_ == "GAS") {
+                wconinje[i].surface_flow_max_rate_ *= units.gasvol_s/units.time;
+            } else {
+                wconinje[i].surface_flow_max_rate_ *= units.liqvol_s/units.time;
+            }
 	    wconinje[i].fluid_volume_max_rate_ *= units.liqvol_r/units.time;
 	    wconinje[i].BHP_limit_ *= units.pressure;
 	    wconinje[i].THP_limit_ *= units.pressure;
