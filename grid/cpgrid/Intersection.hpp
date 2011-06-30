@@ -271,29 +271,31 @@ namespace Dune
             /// where intersection is contained in.
             int indexInInside() const
             {
-		THROW("Meaningless call to indexInInside() for intersection\n"
-		      "There are no subentities in the corresponding "
-                      "(singular) reference element.");
-                // return subindex_;
+                // Use the face tags to decide if an intersection is
+                // on an x, y, or z face and use orientations to decide
+                // if its (for example) an xmin or xmax face.
+                typedef OrientedEntityTable<0,1>::ToType Face;
+                const Face& f = faces_of_cell_[subindex_];
+                const bool normal_is_in = !f.orientation();
+                enum face_tag tag = pgrid_->face_tag_[f];
+                switch (tag) {
+                case LEFT:
+                    return normal_is_in ? 0 : 1; // min(I) : max(I)
+                case BACK:
+                    return normal_is_in ? 2 : 3; // min(J) : max(J)
+                case TOP:
+                    return normal_is_in ? 4 : 5; // min(K) : max(K)
+                default:
+                    THROW("Unhandled face tag: " << tag);
+                }
             }
 
             /// Local index of codim 1 entity in outside() entity
             /// where intersection is contained in.
             int indexInOutside() const
             {
-		THROW("Meaningless call to indexInOutside() for intersection.\n"
-		      "There are no subentities in the corresponding "
-                      "(singular) reference element.");
-//                 EntityRep<1> face = faces_of_cell_[subindex_];
-//                 EntityRep<0> nb(nbcell());
-//                 OrientedEntityTable<0,1>::row_type faces_of_nb = pgrid_->cell_to_face_[nb];
-//                 for (int i = 0; i < faces_of_nb.size(); ++i) {
-//                     if (faces_of_nb[i].index() == face.index()) {
-//                         return i;
-//                     }
-//                 }
-// 		THROW("Could not find indexInOutside().");
-// 		return -1;
+                int in_inside = indexInInside();
+                return in_inside + ((in_inside % 2) ? -1 : 1);
             }
 
 	    /// @brief
