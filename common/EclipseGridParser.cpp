@@ -274,10 +274,7 @@ void EclipseGridParser::readImpl(istream& is)
 	    break;
 	}
         case Include: {
-            is >> ignoreLine;
-            is.ignore(numeric_limits<int>::max(), '\'');
-            string include_filename;
-            getline(is, include_filename, '\'');
+            string include_filename = readString(is);
             if (!directory_.empty()) {
                 include_filename = directory_ + '/' + include_filename;
             }

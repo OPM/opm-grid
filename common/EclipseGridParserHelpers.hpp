@@ -124,12 +124,13 @@ namespace
 	    is >> candidate;
 	    if (is.rdstate() & std::ios::failbit) {
 		is.clear(is.rdstate() & ~std::ios::failbit);
-		std::string dummy;
+                is >> ignoreWhitespace;
+		char dummy;
 		is >> dummy;
-		if (dummy == "/") {
+		if (dummy == '/') {
                     is >> ignoreLine;
 		    break;
-		} else if (dummy[0] == '-') {  // "comment test"
+		} else if (dummy == '-') {  // "comment test"
 		    is >> ignoreLine; // This line is a comment
 		} else {
                     THROW("Encountered format error while reading data values. Value = " << dummy);
