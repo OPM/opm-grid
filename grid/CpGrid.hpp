@@ -188,7 +188,7 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid()
-	    : index_set_(*this), id_set_(*this),
+	    : index_set_(*this),
               use_unique_boundary_ids_(false)
 	{
 	}
@@ -428,16 +428,16 @@ namespace Dune
 
 
         /// \brief Access to the GlobalIdSet
-        const Traits::GlobalIdSet& globalIdSet() const
+        Traits::GlobalIdSet globalIdSet() const
 	{
-            return id_set_;
+            return Traits::GlobalIdSet(*this);
         }
 
 
         /// \brief Access to the LocalIdSet
-        const Traits::LocalIdSet& localIdSet() const
+        Traits::LocalIdSet localIdSet() const
 	{
-            return id_set_;
+            return Traits::LocalIdSet(*this);
         }
 
 
@@ -711,7 +711,6 @@ namespace Dune
 	// Dune-ish stuff
         CollectiveCommunication ccobj_;
 	cpgrid::IndexSet<CpGrid> index_set_;
-	cpgrid::IdSet<CpGrid> id_set_;
 
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
