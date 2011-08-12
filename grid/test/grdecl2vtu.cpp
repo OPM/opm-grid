@@ -43,18 +43,31 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/common/EclipseGridParser.hpp>
+#include <dune/common/EclipseGridInspector.hpp>
 
 using namespace Dune;
 
 /**
    A function to (conditionally) write a double-field from the grdecl-file to vtk-format
 */
-void condWriteDoubleField(std::vector<double> & fieldvector, const std::string fieldname, Dune::EclipseGridParser & eclParser, std::vector<int> & global_cell, VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
+void condWriteDoubleField(std::vector<double> & fieldvector,
+                          const std::string& fieldname,
+                          const Dune::EclipseGridParser & eclParser,
+                          const std::vector<int> & global_cell,
+                          VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (eclParser.hasField(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
         std::vector<double> eclVector = eclParser.getFloatingPointValue(fieldname);
         fieldvector.resize(global_cell.size());
-        //std::cout << eclVector.size() << " " << global_cell.size() << " " << fieldvector.size()                   << std::endl;
+
+        EclipseGridInspector insp(eclParser);
+        boost::array<int, 3> dims = insp.gridSize();
+        int num_global_cells = dims[0]*dims[1]*dims[2];
+        if (int(eclVector.size()) != num_global_cells) {
+            THROW(fieldname << " field must have the same size as the "
+                  "logical cartesian size of the grid: "
+                  << eclVector.size() << " != " << num_global_cells);
+        }
 
         for (size_t i = 0; i < global_cell.size(); ++i) {
             fieldvector[i] = eclVector[global_cell[i]];
@@ -64,11 +77,24 @@ void condWriteDoubleField(std::vector<double> & fieldvector, const std::string f
     
 }
 // Now repeat for Integers. I should learn C++ templating...
-void condWriteIntegerField(std::vector<double> & fieldvector, const std::string fieldname, Dune::EclipseGridParser & eclParser, std::vector<int> & global_cell, VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
+void condWriteIntegerField(std::vector<double> & fieldvector,
+                           const std::string& fieldname,
+                           const Dune::EclipseGridParser & eclParser,
+                           const std::vector<int> & global_cell,
+                           VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (eclParser.hasField(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
         std::vector<int> eclVector = eclParser.getIntegerValue(fieldname);
         fieldvector.resize(global_cell.size());
+
+        EclipseGridInspector insp(eclParser);
+        boost::array<int, 3> dims = insp.gridSize();
+        int num_global_cells = dims[0]*dims[1]*dims[2];
+        if (int(eclVector.size()) != num_global_cells) {
+            THROW(fieldname << " field must have the same size as the "
+                  "logical cartesian size of the grid: "
+                  << eclVector.size() << " != " << num_global_cells);
+        }
 
         for (size_t i = 0; i < global_cell.size(); ++i) {
             fieldvector[i] = (double)eclVector[global_cell[i]];
@@ -89,22 +115,12 @@ int main(int argc, char** argv)
         exit(1);
     }
     
-    const char* ECLIPSEFILENAME(argv[1]);
-    
+    const char* eclipsefilename = argv[1];
     bool convert_to_SI = false;
-    Dune::EclipseGridParser * eclParser_p;
-    try {
-	eclParser_p = new Dune::EclipseGridParser(ECLIPSEFILENAME, convert_to_SI);
-    }
-    catch (...) {
-	std::cout << "Error: Filename " << ECLIPSEFILENAME 
-                  << " does not look like an eclipse grid file." << std::endl;
-	exit(1);
-    }
-    Dune::EclipseGridParser& eclParser = *eclParser_p;
+    Dune::EclipseGridParser eclParser(eclipsefilename, convert_to_SI);
 
     grid.processEclipseFormat(eclParser, 0.0, false, false);
-    std::vector<int> global_cell = grid.globalCell();
+    const std::vector<int>& global_cell = grid.globalCell();
     
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
     std::vector<double> poros;
@@ -130,7 +146,7 @@ int main(int argc, char** argv)
     std::vector<double> swats;
     condWriteDoubleField(swats, "SWAT", eclParser, global_cell, vtkwriter);
 
-    std::string fname = ECLIPSEFILENAME; 
+    std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
     std::cout << "Writing to filename " << fnamebase << ".vtu" << std::endl;
     vtkwriter.write(fnamebase, VTKOptions::ascii);
