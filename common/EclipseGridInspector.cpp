@@ -175,20 +175,19 @@ std::pair<double,double> EclipseGridInspector::cellDips(int cell_idx) const
 
 boost::array<int, 3> EclipseGridInspector::cellIdxToLogicalCoords(int cell_idx) const
 {
-    int i, j, k;
-    int horIdx = (cell_idx+1) -
-        int(std::floor(((double)(cell_idx+1))/
-                       ((double)(logical_gridsize_[0] * logical_gridsize_[1])))) *
-        logical_gridsize_[0]*logical_gridsize_[1]; // index in the corresponding horizon
-    if (horIdx == 0) {
-        horIdx = logical_gridsize_[0] * logical_gridsize_[1];
+    
+    int i,j,k; // Position of cell in cell hierarchy
+    int horIdx = (cell_idx+1) - int(std::floor(((double)(cell_idx+1))/((double)(logical_gridsize_[0]*logical_gridsize_[1]))))*logical_gridsize_[0]*logical_gridsize_[1]; // index in the corresponding horizon
+    if (horIdx == 0) { 
+        horIdx = logical_gridsize_[0]*logical_gridsize_[1]; 
     }
-    i = horIdx - int(std::floor(((double)horIdx)/((double)logical_gridsize_[0]))) * logical_gridsize_[0];
-    if (i == 0) {
-        i = logical_gridsize_[1];
+    i = horIdx - int(std::floor(((double)horIdx)/((double)logical_gridsize_[0])))*logical_gridsize_[0];
+    if (i == 0) { 
+        i = logical_gridsize_[0]; 
     }
-    j = (horIdx-i)/logical_gridsize_[0] + 1;
-    k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1]) + 1;
+    j = (horIdx-i)/logical_gridsize_[0]+1;
+    k = ((cell_idx+1)-logical_gridsize_[0]*(j-1)-1)/(logical_gridsize_[0]*logical_gridsize_[1])+1;
+
     boost::array<int, 3> a = {{i-1, j-1, k-1}};
     return a; //boost::array<int, 3> {{i-1, j-1, k-1}};
 }
