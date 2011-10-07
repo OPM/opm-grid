@@ -1,0 +1,10 @@
+INPUT                  += @srcdir@/mainpage \
+                         @srcdir@/modules \
+                         @top_srcdir@/common/ \
+                         @top_srcdir@/grid/ \
+                         @top_srcdir@/solvers/
+EXCLUDE                +=
+EXAMPLE_PATH           +=
+EXAMPLE_PATTERNS       +=
+IMAGE_PATH             +=
+PREDEFINED             += DOXYGEN HAVE_MPI:=1 DUNE_DEPRECATED:="/** \deprecated */"
