@@ -11,10 +11,10 @@ nodist_EXTRA_libdunecornerpoint_la_SOURCES = dummy.cpp
 
 # Collect constituent parts into cpg support library.
 libdunecornerpoint_la_LIBADD = \
-   ../grid/cpgrid/libcpgrid.la \
-   ../grid/preprocess/libcpgpreprocess.la \
-   ../grid/common/libgrid.la \
-   ../common/param/libparam.la \
-   ../common/libcommon.la
+   ../dune/grid/cpgrid/libcpgrid.la \
+   ../dune/grid/preprocess/libcpgpreprocess_noinst.la \
+   ../dune/grid/common/libgrid.la \
+   ../dune/common/param/libparam.la \
+   ../dune/common/libcommon.la
 
 include $(top_srcdir)/am/global-rules

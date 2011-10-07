@@ -15,11 +15,11 @@ AM_INIT_AUTOMAKE([foreign])
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
 
 AC_CONFIG_MACRO_DIR([m4])
-AC_CONFIG_SRCDIR([grid/CpGrid.hpp])
+AC_CONFIG_SRCDIR([dune/grid/CpGrid.hpp])
 AM_CONFIG_HEADER([config.h])
 
-# Make dune -> . symlink
-DUNE_SYMLINK
+## Make dune -> . symlink
+#DUNE_SYMLINK
 
 # Check all dune-module stuff
 DUNE_CHECK_ALL
@@ -35,17 +35,17 @@ AC_CONFIG_FILES([
   Makefile
   lib/Makefile
   m4/Makefile
-  common/Makefile
-  common/param/Makefile
-  common/param/test/Makefile
-  common/test/Makefile
-  grid/Makefile
-  grid/test/Makefile
-  grid/common/Makefile
-  grid/common/test/Makefile
-  grid/preprocess/Makefile
-  grid/cpgrid/Makefile
-  grid/cpgrid/test/Makefile
+  dune/common/Makefile
+  dune/common/param/Makefile
+  dune/common/param/test/Makefile
+  dune/common/test/Makefile
+  dune/grid/Makefile
+  dune/grid/test/Makefile
+  dune/grid/common/Makefile
+  dune/grid/common/test/Makefile
+  dune/grid/preprocess/Makefile
+  dune/grid/cpgrid/Makefile
+  dune/grid/cpgrid/test/Makefile
   doc/Makefile
   doc/doxygen/Makefile
   doc/doxygen/Doxyfile
