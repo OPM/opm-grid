@@ -60,6 +60,7 @@ namespace Dune
 			       std::vector<int>& new_actnum,
 			       grdecl& output);
 	void removeOuterCellLayer(processed_grid& grid);
+	void removeUnusedNodes(processed_grid& grid);
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
@@ -179,6 +180,7 @@ namespace Dune
 	process_grdecl(&input_data, z_tolerance, &output);
 	if (remove_ij_boundary) {
 	    removeOuterCellLayer(output);
+            removeUnusedNodes(output);
 	}
 
 	// Move data into the grid's structures.
@@ -471,6 +473,70 @@ namespace Dune
 	    grid.dimensions[2] = grid.dimensions[2] - 2;
 	    grid.number_of_cells = new_index_to_new_lcart.size();
 	    std::copy(new_index_to_new_lcart.begin(), new_index_to_new_lcart.end(), grid.local_cell_index);
+	}
+
+
+
+
+
+
+	void removeUnusedNodes(processed_grid& grid)
+	{
+            // Nodes are considered unused if they are unreachable from a cell.
+
+            // The following data are modified by this function:
+            //    grid.face_nodes
+            //    grid.number_of_nodes
+            //    grid.node_coordinates[]
+
+            // The following caveats apply:
+            //   - grid.face_nodes will contain -1 where nodes have been removed
+            //     (this will only happen for faces not neighbouring any cells)
+            //   - grid.number_of_nodes_on_pillars is unchanged (and therefore wrong)
+
+	    // Remove unused nodes in three steps:
+            //
+	    //   1. Build the old_to_new node index array (-1 means removed).
+            //
+            //      a) Initially, all are considered unused. We first signify usage
+            //         by changing to a 0 the entries corresponding to reachable nodes.
+            std::vector<int> old_to_new(grid.number_of_nodes, -1);
+            for (int face = 0; face < grid.number_of_faces; ++face) {
+                if (grid.face_neighbors[2*face] != -1 || grid.face_neighbors[2*face + 1] != -1) {
+                    // Face is reachable
+                    for (int ii = grid.face_ptr[face]; ii < grid.face_ptr[face + 1]; ++ii) {
+                        int node = grid.face_nodes[ii];
+                        old_to_new[node] = 0;
+                    }
+                }
+            }
+            //      b) Set the new indices by simple array compression.
+            int nodecount = 0;
+            for (int node = 0; node < grid.number_of_nodes; ++node) {
+                if (old_to_new[node] != -1) {
+                    ASSERT(old_to_new[node] == 0);
+                    old_to_new[node] = nodecount;
+                    ++nodecount;
+                }
+            }
+
+            //   2. Use old_to_new to transform grid.face_nodes and grid.node_coordinates[].
+            for (int fnode = 0; fnode < grid.face_ptr[grid.number_of_faces]; ++fnode) {
+                int old = grid.face_nodes[fnode];
+                grid.face_nodes[fnode] = old_to_new[old];
+            }
+            double* nc = grid.node_coordinates;
+            for (int node = 0; node < grid.number_of_nodes; ++node) {
+                int newidx = old_to_new[node];
+                if (newidx != -1) {
+                    nc[3*newidx]     = nc[3*node];
+                    nc[3*newidx + 1] = nc[3*node + 1];
+                    nc[3*newidx + 2] = nc[3*node + 2];
+                }
+            }
+
+            //   3. Set grid.number_of_nodes.
+            grid.number_of_nodes = nodecount;
 	}
 
 
