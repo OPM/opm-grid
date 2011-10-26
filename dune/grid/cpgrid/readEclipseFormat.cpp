@@ -180,7 +180,7 @@ namespace Dune
 	process_grdecl(&input_data, z_tolerance, &output);
 	if (remove_ij_boundary) {
 	    removeOuterCellLayer(output);
-            removeUnusedNodes(output);
+            // removeUnusedNodes(output);
 	}
 
 	// Move data into the grid's structures.
