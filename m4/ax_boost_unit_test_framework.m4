@@ -73,6 +73,7 @@ AC_DEFUN([AX_BOOST_UNIT_TEST_FRAMEWORK],
 		if test "x$ax_cv_boost_unit_test_framework" = "xyes"; then
 			AC_DEFINE(HAVE_BOOST_UNIT_TEST_FRAMEWORK,,[define if the Boost::Unit_Test_Framework library is available])
             BOOSTLIBDIR=`echo $BOOST_LDFLAGS | sed -e 's/@<:@^\/@:>@*//'`
+            ax_lib="-lboost_unit_test_framework"
 
             if test "x$ax_boost_user_unit_test_framework_lib" = "x"; then
 			saved_ldflags="${LDFLAGS}"
