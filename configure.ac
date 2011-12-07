@@ -37,6 +37,7 @@ AC_CONFIG_FILES([
   m4/Makefile
   dune/common/Makefile
   dune/common/param/Makefile
+  dune/common/param/tinyxml/Makefile
   dune/common/param/test/Makefile
   dune/common/test/Makefile
   dune/grid/Makefile
