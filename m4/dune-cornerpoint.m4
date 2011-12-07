@@ -4,10 +4,10 @@
 # Additional checks needed to build the module
 AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
 [
-        # LibXML2 support. No longer needed, since we now use tinyxml.
-        # AM_PATH_XML2([2.0.0])
-
-        # Boost support.
+dnl        # LibXML2 support. No longer needed, since we now use tinyxml.
+dnl        # AM_PATH_XML2([2.0.0])
+dnl
+dnl        # Boost support.
 dnl
 dnl     ISTL already configures Boost during checking for Boost.Fusion
 dnl     support.  Admittedly, this test uses an unadorned AX_BOOST_BASE
