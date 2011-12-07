@@ -4,8 +4,8 @@
 # Additional checks needed to build the module
 AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
 [
-        # LibXML2 support.
-        AM_PATH_XML2([2.0.0])
+        # LibXML2 support. No longer needed, since we now use tinyxml.
+        # AM_PATH_XML2([2.0.0])
 
         # Boost support.
 dnl
