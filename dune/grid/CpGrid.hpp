@@ -189,7 +189,8 @@ namespace Dune
 	/// Default constructor
 	CpGrid()
 	    : index_set_(*this),
-              use_unique_boundary_ids_(false)
+        use_unique_boundary_ids_(false),
+        idSet_( *this )
 	{
 	}
 
@@ -319,7 +320,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim, All_Partition, CpGrid >(*this, 0);
+            return cpgrid::Iterator<codim, All_Partition, CpGrid >(*this, 0, true);
         }
 
 
@@ -329,7 +330,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim));
+            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim), true );
         }
 
 
@@ -339,7 +340,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0);
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0, true );
         }
 
 
@@ -349,7 +350,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim));
+            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim), true);
         }
 
 
@@ -428,16 +429,16 @@ namespace Dune
 
 
         /// \brief Access to the GlobalIdSet
-        Traits::GlobalIdSet globalIdSet() const
+        const Traits::GlobalIdSet& globalIdSet() const
 	{
-            return Traits::GlobalIdSet(*this);
+            return idSet_;
         }
 
 
         /// \brief Access to the LocalIdSet
-        Traits::LocalIdSet localIdSet() const
+        const Traits::LocalIdSet& localIdSet() const
 	{
-            return Traits::LocalIdSet(*this);
+            return idSet_;
         }
 
 
@@ -732,6 +733,8 @@ namespace Dune
 	// Boundary information (optional).
 	bool use_unique_boundary_ids_;
 	cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
+
+  const Traits :: LocalIdSet idSet_;
 
 	// --------- Methods ---------
 

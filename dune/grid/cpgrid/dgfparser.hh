@@ -76,6 +76,15 @@ namespace Dune
                   "Calling DGFGridFactory::parameter is only allowed if there are parameters." );
     }
 
+    bool haveBoundaryParameters () const { return false; }
+
+    template< class Intersection >
+    const typename DGFBoundaryParameter::type &
+    boundaryParameter ( const Intersection &intersection ) const
+    {
+      return DGFBoundaryParameter::defaultValue();
+    }
+
   private:
     void generate ( std::istream &input );
 

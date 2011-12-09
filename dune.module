@@ -7,3 +7,5 @@ Version: 0.2
 Maintainer: atgeirr@sintef.no
 #depending on 
 Depends: dune-common dune-grid dune-istl
+Suggests: parallelgrid 
+Extra-Suggests: Alu3d

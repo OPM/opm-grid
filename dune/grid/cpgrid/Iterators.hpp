@@ -88,7 +88,7 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    HierarchicIterator(const GridType& grid)
-		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex)
+		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex, true )
 	    {
 	    }
 

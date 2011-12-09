@@ -172,10 +172,6 @@ namespace Dune
 	    IdSet(const GridType& grid)
 		: grid_(grid)
 	    {
-		cumul_sizes[0] = 0;
-		cumul_sizes[1] = cumul_sizes[0] + grid.size(0);
-		cumul_sizes[2] = cumul_sizes[1] + grid.size(1);
-		cumul_sizes[3] = cumul_sizes[2] + grid.size(2);
 	    }
 
 	    template<int cc>
@@ -187,7 +183,10 @@ namespace Dune
 	    template<class EntityType>
 	    IdType id(const EntityType& e) const 
 	    {
-		return cumul_sizes[EntityType::codimension] + e.index();
+        IdType myId = 0;
+        for( int c=0; c<EntityType::codimension; ++c ) 
+          myId += grid_.leafIndexSet().size( c );
+        return  myId + e.index();
 	    }
 
 	    template<int cc>
@@ -209,7 +208,6 @@ namespace Dune
 	    }
 	private:
 	    const GridType& grid_;
-	    int cumul_sizes[4];
 	};
 
 
