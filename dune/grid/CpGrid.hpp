@@ -52,7 +52,7 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
-#include "preprocess/preprocess.h"
+#include <opm/core/utility/cpgpreprocess/preprocess.h>
 
 
 namespace Dune

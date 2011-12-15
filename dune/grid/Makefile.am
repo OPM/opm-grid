@@ -1,7 +1,7 @@
 # $Date$
 # $Revision$
 
-SUBDIRS = common preprocess cpgrid test
+SUBDIRS = common cpgrid test
 
 griddir = $(includedir)/dune/grid
 grid_HEADERS = CpGrid.hpp

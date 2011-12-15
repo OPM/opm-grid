@@ -41,7 +41,7 @@
 #include "../CpGrid.hpp"
 #include <dune/common/EclipseGridParser.hpp>
 #include <dune/common/EclipseGridInspector.hpp>
-#include <dune/grid/preprocess/preprocess.h>
+#include <opm/core/utility/cpgpreprocess/preprocess.h>
 #include <dune/grid/common/GeometryHelpers.hpp>
 #include <dune/common/StopWatch.hpp>
 

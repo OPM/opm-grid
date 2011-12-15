@@ -44,7 +44,6 @@ AC_CONFIG_FILES([
   dune/grid/test/Makefile
   dune/grid/common/Makefile
   dune/grid/common/test/Makefile
-  dune/grid/preprocess/Makefile
   dune/grid/cpgrid/Makefile
   dune/grid/cpgrid/test/Makefile
   doc/Makefile

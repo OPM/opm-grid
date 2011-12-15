@@ -22,6 +22,14 @@ dnl
         AX_BOOST_SYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
+        dnl Check for opm-core.
+        AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h], [opmcore_header=yes], [opmcore_header=no])
+        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no])
+
+        AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
+              [AC_MSG_ERROR([No suitable opm-core library found!])],dnl
+              [:])
+
         # Add Boost support to module dependencies
         DUNE_ADD_MODULE_DEPS([DUNE_CORNERPOINT],dnl
                              [DUNE_CORNERPOINT],dnl
@@ -32,7 +40,12 @@ dnl
            [$BOOST_SYSTEM_LIB]])dnl
 
         DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],[Dune::CpGrid],[dune/grid/CpGrid.hpp],[dune/grid/cpgrid/dgfparser.hh])
+
+        DUNE_ADD_SUMMARY_ENTRY([opm-core], [$opmcore_lib])
+
 ])
+
+
 
 # Additional checks needed to find the module
 AC_DEFUN([DUNE_CORNERPOINT_CHECK_MODULE],
