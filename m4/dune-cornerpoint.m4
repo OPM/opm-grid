@@ -17,14 +17,16 @@ dnl     on that...
 dnl
 dnl     AX_BOOST_BASE([1.37])
 dnl
+        AX_BOOST_SYSTEM
         AX_BOOST_DATE_TIME
         AX_BOOST_FILESYSTEM
-        AX_BOOST_SYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
+
+	AX_LAPACK
 
         dnl Check for opm-core.
         AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h], [opmcore_header=yes], [opmcore_header=no])
-        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no])
+        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no], [-lblas -llapack -lboost_system])
 
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
               [AC_MSG_ERROR([No suitable opm-core library found!])],dnl
