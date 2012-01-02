@@ -26,7 +26,7 @@ dnl
 
         dnl Check for opm-core.
         AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h], [opmcore_header=yes], [opmcore_header=no])
-        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no], [$LAPACK_LIBS $BLAS_LIBS $LIBS $FLIBS])
+        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no], [$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $LAPACK_LIBS $BLAS_LIBS $LIBS $FLIBS])
 
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
               [AC_MSG_ERROR([No suitable opm-core library found!])],dnl
