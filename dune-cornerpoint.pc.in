@@ -8,8 +8,8 @@ DEPENDENCIES=@REQUIRES@
 
 Name: @PACKAGE_NAME@
 Version: @VERSION@
-Description: A module supporting grids in a corner-point format.
+Description: A Dune module supporting grids in a corner-point format.
 URL: http://public.ict.sintef.no/openrs
-Requires: dune-common dune-grid
-Libs: -L
-Cflags: -I
+Requires: ${DEPENDENCIES}
+Libs: -L${libdir} -ldunecornerpoint
+Cflags: -I${includedir}
