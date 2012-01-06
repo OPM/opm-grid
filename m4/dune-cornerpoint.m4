@@ -4,9 +4,6 @@
 # Additional checks needed to build the module
 AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
 [
-dnl        # LibXML2 support. No longer needed, since we now use tinyxml.
-dnl        # AM_PATH_XML2([2.0.0])
-dnl
 dnl        # Boost support.
 dnl
 dnl     ISTL already configures Boost during checking for Boost.Fusion
@@ -22,11 +19,9 @@ dnl
         AX_BOOST_FILESYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
-	AX_LAPACK
-
         dnl Check for opm-core.
         AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h], [opmcore_header=yes], [opmcore_header=no])
-        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no], [$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $LAPACK_LIBS $BLAS_LIBS $LIBS $FLIBS])
+        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no])
 
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
               [AC_MSG_ERROR([No suitable opm-core library found!])],dnl
