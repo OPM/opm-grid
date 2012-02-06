@@ -150,7 +150,7 @@ int main(int argc, char** argv)
     }
 
     // Running in normal mode. Make grid.
-    parameter::ParameterGroup param(argc, argv);
+    Opm::parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);
 

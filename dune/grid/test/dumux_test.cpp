@@ -127,7 +127,7 @@ using namespace Dune;
 int main(int argc, char** argv)
 {
     // Create a grid.
-    parameter::ParameterGroup param(argc, argv);
+    Opm::parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);
 }
