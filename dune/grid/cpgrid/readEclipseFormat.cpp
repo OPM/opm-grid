@@ -39,11 +39,11 @@
 #endif
 #include <fstream>
 #include "../CpGrid.hpp"
-#include <dune/common/EclipseGridParser.hpp>
-#include <dune/common/EclipseGridInspector.hpp>
+#include <opm/core/eclipse/EclipseGridParser.hpp>
+#include <opm/core/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/utility/cpgpreprocess/preprocess.h>
 #include <dune/grid/common/GeometryHelpers.hpp>
-#include <dune/common/StopWatch.hpp>
+#include <opm/core/utility/StopWatch.hpp>
 
 #define VERBOSE
 
@@ -65,7 +65,7 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       SparseTable<int>& f2p,
+		       Opm::SparseTable<int>& f2p,
 		       std::vector<array<int,8> >& c2p,
 		       std::vector<int>& face_to_output_face);
 	void buildGeom(const processed_grid& output,
@@ -89,7 +89,7 @@ namespace Dune
 #ifdef VERBOSE
 	std::cout << "Parsing " << filename << std::endl;
 #endif
-	EclipseGridParser parser(filename);
+	Opm::EclipseGridParser parser(filename);
 	processEclipseFormat(parser, z_tolerance, periodic_extension, turn_normals);
     }
 
@@ -98,9 +98,9 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
     {
-	EclipseGridInspector inspector(parser);
+	Opm::EclipseGridInspector inspector(parser);
 
 	// Make input struct for processing code.
 	grdecl g;
@@ -131,8 +131,8 @@ namespace Dune
             double maxz_bot = -1e100;
             for (int i = 0; i < g.dims[0]; ++i) {
                 for (int j = 0; j < g.dims[1]; ++j) {
-                    boost::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
-                    boost::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
+                    std::tr1::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
+                    std::tr1::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
                     for (int dd = 0; dd < 4; ++dd) {
                         minz_top = std::min(cellz_top[dd+4], minz_top);
                         maxz_bot = std::max(cellz_bot[dd], maxz_bot);
@@ -548,7 +548,7 @@ namespace Dune
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       cpgrid::OrientedEntityTable<1, 0>& f2c,
-		       SparseTable<int>& f2p,
+		       Opm::SparseTable<int>& f2p,
 		       std::vector<array<int,8> >& c2p,
 		       std::vector<int>& face_to_output_face)
 	{
@@ -717,7 +717,7 @@ namespace Dune
 	    std::vector<double>  cell_volumes;
 	    using namespace GeometryHelpers;
 #ifdef VERBOSE
-	    time::StopWatch clock;
+	    Opm::time::StopWatch clock;
 	    clock.start();
 #endif
 	    // Get the points.

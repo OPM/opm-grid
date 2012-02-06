@@ -38,7 +38,7 @@
 #endif
 #include <fstream>
 #include "../CpGrid.hpp"
-#include <dune/common/param/ParameterGroup.hpp>
+#include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 namespace Dune
 {
@@ -47,7 +47,7 @@ namespace Dune
 
 
     /// Initialize the grid.
-    void CpGrid::init(const parameter::ParameterGroup& param)
+    void CpGrid::init(const Opm::parameter::ParameterGroup& param)
     {
 	std::string fileformat = param.get<std::string>("fileformat");
 	if (fileformat == "sintef_legacy") {

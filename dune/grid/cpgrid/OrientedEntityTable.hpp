@@ -38,7 +38,7 @@
 
 #include "EntityRep.hpp"
 #include <boost/static_assert.hpp>
-#include <dune/common/SparseTable.hpp>
+#include <opm/core/utility/SparseTable.hpp>
 #include <map>
 #include <climits>
 #include <boost/algorithm/minmax_element.hpp>
@@ -53,12 +53,12 @@ namespace Dune
 	/// @brief A class used as a row type for  OrientedEntityTable.
 	/// @tparam codim_to Codimension.
 	template <int codim_to>
-	class OrientedEntityRange : private SparseTable< EntityRep<codim_to> >::row_type
+	class OrientedEntityRange : private Opm::SparseTable< EntityRep<codim_to> >::row_type
 	{
 	public:
 	    typedef EntityRep<codim_to> ToType;
 	    typedef ToType* ToTypePtr;
-	    typedef typename SparseTable<ToType>::row_type R;
+	    typedef typename Opm::SparseTable<ToType>::row_type R;
 
 	    /// @brief Default constructor yielding an empty range.
 	    OrientedEntityRange()
@@ -94,17 +94,17 @@ namespace Dune
 	///
 	/// The purpose of this class is to hide the intricacies of
 	/// handling orientations from the client code, otherwise a
-	/// straight SparseTable would do.
+	/// straight Opm::SparseTable would do.
 	/// @tparam codim_from Codimension of ???
 	/// @tparam codim_to Codimension of ???
 	template <int codim_from, int codim_to>
-	class OrientedEntityTable : private SparseTable< EntityRep<codim_to> >
+	class OrientedEntityTable : private Opm::SparseTable< EntityRep<codim_to> >
 	{
 	public:
 	    typedef EntityRep<codim_from> FromType;
 	    typedef EntityRep<codim_to> ToType;
-	    typedef OrientedEntityRange<codim_to> row_type; // ??? doxygen henter doc fra SparseTable
-	    typedef SparseTable<ToType> super_t;
+	    typedef OrientedEntityRange<codim_to> row_type; // ??? doxygen henter doc fra Opm::SparseTable
+	    typedef Opm::SparseTable<ToType> super_t;
 
 	    /// Default constructor.
 	    OrientedEntityTable()
@@ -115,7 +115,7 @@ namespace Dune
 	    /// data and a sequence of row size data.
 	    ///
 	    /// These table data are in the same format as the underlying
-	    /// SparseTable<int> constructor with the same signature.
+	    /// Opm::SparseTable<int> constructor with the same signature.
 	    /// @tparam DataIter Iterator to table data.
 	    /// @tparam IntegerIter Iterator to  the row length data.
 	    /// @param data_beg The start of the table data.

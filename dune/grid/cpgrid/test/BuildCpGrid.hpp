@@ -43,7 +43,7 @@
 #include <string>
 #include <vector>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include <dune/grid/preprocess/preprocess.h>
 #include <dune/grid/CpGrid.hpp>
 

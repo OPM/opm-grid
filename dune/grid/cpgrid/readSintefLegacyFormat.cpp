@@ -40,7 +40,7 @@
 #include <fstream>
 #include <vector>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include "../CpGrid.hpp"
 
 namespace Dune

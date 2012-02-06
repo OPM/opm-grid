@@ -39,7 +39,7 @@
 #include <dune/grid/common/genericreferenceelements.hh>
 #include <dune/grid/genericgeometry/geometrytraits.hh>
 #include <dune/grid/genericgeometry/matrixhelper.hh>
-#include <dune/common/ErrorMacros.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include <boost/static_assert.hpp>
 
 namespace Dune

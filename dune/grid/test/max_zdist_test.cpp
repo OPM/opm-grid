@@ -33,8 +33,8 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <dune/common/EclipseGridParser.hpp>
-#include <dune/common/EclipseGridInspector.hpp>
+#include opm/core/eclipse/EclipseGridParser.hpp>
+#include opm/core/eclipse/EclipseGridInspector.hpp>
 
 using namespace Dune;
 

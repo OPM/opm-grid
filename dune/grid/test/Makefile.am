@@ -14,9 +14,7 @@ AM_LDFLAGS  += $(ALL_PKG_LDFLAGS) $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
 # run into trouble. Recursive make considered harmful...
 LDADD = $(ALL_PKG_LIBS)  $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_SYSTEM_LIB) \
          ../cpgrid/libcpgrid.la         \
-         ../common/libgrid.la           \
-         ../../common/libcommon.la      \
-         ../../common/param/libparam.la
+         ../common/libgrid.la
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
 

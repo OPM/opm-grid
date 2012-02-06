@@ -39,7 +39,7 @@
 
 #include <cmath>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include "Volumes.hpp"
 
 namespace Dune

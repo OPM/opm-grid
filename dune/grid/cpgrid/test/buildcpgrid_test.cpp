@@ -33,7 +33,7 @@
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <dune/common/param/ParameterGroup.hpp>
+#include <opm/core/utility/parameters/ParameterGroup.hpp>>
 #include <dune/grid/CpGrid.hpp>
 #include "BuildCpGrid.hpp"
 

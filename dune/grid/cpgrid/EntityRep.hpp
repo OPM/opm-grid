@@ -65,8 +65,8 @@ namespace Dune
 
 
 //#include <boost/static_assert.hpp>
-//#include <dune/common/SparseTable.hpp>
-#include <dune/common/ErrorMacros.hpp>
+//#include <opm/core/utility/SparseTable.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include <climits>
 //#include <boost/algorithm/minmax_element.hpp>
 #include <vector>

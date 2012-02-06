@@ -42,8 +42,8 @@
 #include <iostream>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <dune/common/EclipseGridParser.hpp>
-#include <dune/common/EclipseGridInspector.hpp>
+#include <opm/core/eclipse/EclipseGridParser.hpp>
+#include <opm/core/eclipse/EclipseGridInspector.hpp>
 
 using namespace Dune;
 
@@ -52,7 +52,7 @@ using namespace Dune;
 */
 void condWriteDoubleField(std::vector<double> & fieldvector,
                           const std::string& fieldname,
-                          const Dune::EclipseGridParser & eclParser,
+                          const Opm::EclipseGridParser & eclParser,
                           const std::vector<int> & global_cell,
                           VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (eclParser.hasField(fieldname)) {
@@ -60,8 +60,8 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
         std::vector<double> eclVector = eclParser.getFloatingPointValue(fieldname);
         fieldvector.resize(global_cell.size());
 
-        EclipseGridInspector insp(eclParser);
-        boost::array<int, 3> dims = insp.gridSize();
+	Opm::EclipseGridInspector insp(eclParser);
+        std::tr1::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             THROW(fieldname << " field must have the same size as the "
@@ -79,7 +79,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
 // Now repeat for Integers. I should learn C++ templating...
 void condWriteIntegerField(std::vector<double> & fieldvector,
                            const std::string& fieldname,
-                           const Dune::EclipseGridParser & eclParser,
+                           const Opm::EclipseGridParser & eclParser,
                            const std::vector<int> & global_cell,
                            VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (eclParser.hasField(fieldname)) {
@@ -87,8 +87,8 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
         std::vector<int> eclVector = eclParser.getIntegerValue(fieldname);
         fieldvector.resize(global_cell.size());
 
-        EclipseGridInspector insp(eclParser);
-        boost::array<int, 3> dims = insp.gridSize();
+	Opm::EclipseGridInspector insp(eclParser);
+        std::tr1::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             THROW(fieldname << " field must have the same size as the "
@@ -117,7 +117,7 @@ int main(int argc, char** argv)
     
     const char* eclipsefilename = argv[1];
     bool convert_to_SI = false;
-    Dune::EclipseGridParser eclParser(eclipsefilename, convert_to_SI);
+    Opm::EclipseGridParser eclParser(eclipsefilename, convert_to_SI);
 
     grid.processEclipseFormat(eclParser, 0.0, false, false);
     const std::vector<int>& global_cell = grid.globalCell();

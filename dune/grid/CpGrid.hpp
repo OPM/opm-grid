@@ -55,12 +55,17 @@
 #include <opm/core/utility/cpgpreprocess/preprocess.h>
 
 
+namespace Opm {
+    class EclipseGridParser;
+    namespace parameter {
+	class ParameterGroup;
+    }
+}
+
 namespace Dune
 {
 
     class CpGrid;
-    class EclipseGridParser;
-    namespace parameter { class ParameterGroup; }
 
     ////////////////////////////////////////////////////////////////////////
     //
@@ -196,7 +201,7 @@ namespace Dune
 
 
         /// Initialize the grid from parameters.
-	void init(const parameter::ParameterGroup& param);
+	void init(const Opm::parameter::ParameterGroup& param);
 
 
 	/// Read the Sintef legacy grid format ('topogeom').
@@ -227,7 +232,7 @@ namespace Dune
 	///        side. That is, i- faces will match i+ faces etc.
 	/// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
 	/// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-	void processEclipseFormat(const EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
+	void processEclipseFormat(const Opm::EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param input_data the data in grdecl format, declared in preprocess.h.
@@ -716,7 +721,7 @@ namespace Dune
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
-	SparseTable<int> face_to_point_;
+	Opm::SparseTable<int> face_to_point_;
 	std::vector< array<int,8> > cell_to_point_;
 	boost::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;

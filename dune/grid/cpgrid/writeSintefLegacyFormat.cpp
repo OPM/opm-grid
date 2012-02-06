@@ -41,7 +41,7 @@
 #include <fstream>
 #include <vector>
 
-#include <dune/common/ErrorMacros.hpp>
+#include <opm/core/utility/ErrorMacros.hpp>
 #include "../CpGrid.hpp"
 
 namespace Dune
@@ -53,7 +53,7 @@ namespace Dune
 	void writeTopo(std::ostream& topo,
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const cpgrid::OrientedEntityTable<1, 0>& f2c,
-                       const SparseTable<int>& f2p,
+                       const Opm::SparseTable<int>& f2p,
                        const std::vector<array<int,8> >& c2p,
                        const int num_points);
 	void writeGeom(std::ostream& geom,
@@ -114,7 +114,7 @@ namespace Dune
 	void writeTopo(std::ostream& topo,
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const cpgrid::OrientedEntityTable<1, 0>& f2c,
-                       const SparseTable<int>& f2p,
+                       const Opm::SparseTable<int>& f2p,
                        const std::vector<array<int,8> >& c2p,
                        const int num_points)
 	{
@@ -159,7 +159,7 @@ namespace Dune
 
 	    // Write faces to points mapping
 	    for (int face = 0; face < num_faces; ++face) {
-                SparseTable<int>::row_type fp = f2p[face];
+                Opm::SparseTable<int>::row_type fp = f2p[face];
                 int nump = fp.size();
                 topo << nump;
 		for (int j = 0; j < nump; ++j) {
