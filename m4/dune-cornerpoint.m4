@@ -19,7 +19,18 @@ dnl
         AX_BOOST_FILESYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
-        dnl Check for opm-core.
+        dnl Check for OPM-Core
+
+        dnl Cater to the possibility that the OPM-Core library is
+        dnl installed and functional, but might depend on UMFPACK and
+        dnl does not transitively convey that dependency.
+        dnl
+        AC_SEARCH_LIBS([amd_free],             [amd])
+        AC_SEARCH_LIBS([camd_free],            [camd])
+        AC_SEARCH_LIBS([colamd_set_defaults],  [colamd])
+        AC_SEARCH_LIBS([ccolamd_set_defaults], [ccolamd])
+        AC_SEARCH_LIBS([cholmod_l_start],      [cholmod])
+
         AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h],dnl
                          [opmcore_header=yes], [opmcore_header=no])
 
@@ -29,9 +40,8 @@ dnl
                         [$BOOST_SYSTEM_LIB]dnl
                         [$LAPACK_LIBS] [$BLAS_LIBS] [$LIBS] [$FLIBS]])
 
-
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
-              [AC_MSG_ERROR([No suitable opm-core library found!])],dnl
+              [AC_MSG_ERROR([No suitable OPM-Core library found!])],dnl
               [:])
 
         # Add Boost support to module dependencies
