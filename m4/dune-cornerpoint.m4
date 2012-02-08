@@ -20,8 +20,14 @@ dnl
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
         dnl Check for opm-core.
-        AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h], [opmcore_header=yes], [opmcore_header=no])
-        AC_SEARCH_LIBS([process_grdecl], [opmcore], [opmcore_lib=yes], [opmcore_lib=no], [$BOOST_LDFLAGS $BOOST_SYSTEM_LIB $LAPACK_LIBS $BLAS_LIBS $LIBS $FLIBS])
+        AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h],dnl
+                         [opmcore_header=yes], [opmcore_header=no])
+
+        AC_SEARCH_LIBS([process_grdecl], [opmcore],dnl
+                       [opmcore_lib=yes], [opmcore_lib=no],dnl
+                       [[$BOOST_LDFLAGS]dnl
+                        [$BOOST_SYSTEM_LIB]dnl
+                        [$LAPACK_LIBS] [$BLAS_LIBS] [$LIBS] [$FLIBS]])
 
 
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
@@ -37,10 +43,11 @@ dnl
            [$BOOST_FILESYSTEM_LIB]dnl
            [$BOOST_SYSTEM_LIB]])dnl
 
-        DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],[Dune::CpGrid],[dune/grid/CpGrid.hpp],[dune/grid/cpgrid/dgfparser.hh])
+        DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],dnl
+                             [Dune::CpGrid], [dune/grid/CpGrid.hpp],dnl
+                             [dune/grid/cpgrid/dgfparser.hh])
 
         DUNE_ADD_SUMMARY_ENTRY([opm-core], [$opmcore_lib])
-
 ])
 
 
