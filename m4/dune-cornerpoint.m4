@@ -30,6 +30,7 @@ dnl
         AC_SEARCH_LIBS([colamd_set_defaults],  [colamd])
         AC_SEARCH_LIBS([ccolamd_set_defaults], [ccolamd])
         AC_SEARCH_LIBS([cholmod_l_start],      [cholmod])
+        AC_SEARCH_LIBS([umfpack_dl_solve],     [umfpack])
 
         AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h],dnl
                          [opmcore_header=yes], [opmcore_header=no])
