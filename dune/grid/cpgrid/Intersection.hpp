@@ -47,7 +47,7 @@
 // preprocess.h to get at its "enum face_tag" definition.  Enum
 // face_tag is needed in method Intersection::boundaryId().  This hack
 // is in dire need of a better solution!
-#include <opm/core/utility/cpgpreprocess/preprocess.h>
+#include <opm/core/grid/cpgpreprocess/preprocess.h>
 
 #include "Entity.hpp"
 #include "Geometry.hpp"

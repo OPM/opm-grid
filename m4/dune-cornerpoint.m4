@@ -34,10 +34,10 @@ dnl
 	LIBS="$BLAS_LIBS $LIBS $FLIBS"
         AC_SEARCH_LIBS([umfpack_dl_solve],     [umfpack])
 
-        AC_CHECK_HEADERS([opm/core/utility/cpgpreprocess/preprocess.h],dnl
+        AC_CHECK_HEADERS([opm/core/grid/cornerpoint_grid.h],dnl
                          [opmcore_header=yes], [opmcore_header=no])
 
-        AC_SEARCH_LIBS([process_grdecl], [opmcore],dnl
+        AC_SEARCH_LIBS([create_grid_cornerpoint], [opmcore],dnl
                        [opmcore_lib=yes], [opmcore_lib=no],dnl
                        [[$BOOST_LDFLAGS]dnl
                         [$BOOST_SYSTEM_LIB]dnl

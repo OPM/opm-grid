@@ -52,7 +52,7 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
-#include <opm/core/utility/cpgpreprocess/preprocess.h>
+#include <opm/core/grid/cpgpreprocess/preprocess.h>
 
 
 namespace Opm {
