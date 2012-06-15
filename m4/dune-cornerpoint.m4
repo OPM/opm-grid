@@ -39,7 +39,10 @@ dnl
         AC_SEARCH_LIBS([create_grid_cornerpoint], [opmcore],dnl
                        [opmcore_lib=yes], [opmcore_lib=no],dnl
                        [[$BOOST_LDFLAGS]dnl
+                        [$BOOST_FILESYSTEM_LIB]dnl
                         [$BOOST_SYSTEM_LIB]dnl
+                        [$BOOST_DATE_TIME_LIB]dnl
+                        [$BOOST_UNIT_TEST_FRAMEWORK_LIB]dnl
                         [$LAPACK_LIBS] [$BLAS_LIBS] [$LIBS] [$FLIBS]])
 
         AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
