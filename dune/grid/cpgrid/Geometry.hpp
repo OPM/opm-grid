@@ -36,9 +36,9 @@
 #ifndef OPENRS_GEOMETRY_HEADER
 #define OPENRS_GEOMETRY_HEADER
 
-#include <dune/grid/common/genericreferenceelements.hh>
-#include <dune/grid/genericgeometry/geometrytraits.hh>
-#include <dune/grid/genericgeometry/matrixhelper.hh>
+#include <dune/geometry/referenceelements.hh>
+#include <dune/geometry/genericgeometry/geometrytraits.hh>
+#include <dune/geometry/genericgeometry/matrixhelper.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <boost/static_assert.hpp>
 
