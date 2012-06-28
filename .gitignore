@@ -32,8 +32,8 @@ m4/libtool.m4
 
 # Ignoring executables
 *_test
-grid/test/check_grid_normals
-grid/test/grdecl2vtu
+dune/grid/test/check_grid_normals
+dune/grid/test/grdecl2vtu
 
 # Ignoring generated documents
 doc/EquationNotes.pdf
