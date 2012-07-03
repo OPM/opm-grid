@@ -85,9 +85,9 @@ namespace Dune
 		return selector::value(*this);
 	    }
 	private:
-	    friend class GetCellGeom;
-	    friend class GetFaceGeom;
-	    friend class GetPointGeom;
+	    friend struct GetCellGeom;
+	    friend struct GetFaceGeom;
+	    friend struct GetPointGeom;
 	    EntityVariable<cpgrid::Geometry<3, 3, GridType>, 0> cell_geom_;
 	    EntityVariable<cpgrid::Geometry<2, 3, GridType>, 1> face_geom_;
 	    EntityVariable<cpgrid::Geometry<0, 3, GridType>, 3> point_geom_;

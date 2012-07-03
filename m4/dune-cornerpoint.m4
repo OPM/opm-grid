@@ -19,8 +19,6 @@ dnl
         AX_BOOST_FILESYSTEM
         AX_BOOST_UNIT_TEST_FRAMEWORK
 
-        dnl Check for OPM-Core
-
         dnl Cater to the possibility that the OPM-Core library is
         dnl installed and functional, but might depend on UMFPACK and
         dnl does not transitively convey that dependency.
@@ -33,22 +31,9 @@ dnl
         AC_SEARCH_LIBS([umfpack_dl_solve],     [umfpack],dnl
                        ,,[[$BLAS_LIBS] [$LIBS] [$FLIBS]])
 
-        AC_CHECK_HEADERS([opm/core/grid/cornerpoint_grid.h],dnl
-                         [opmcore_header=yes], [opmcore_header=no])
-
-        AC_SEARCH_LIBS([create_grid_cornerpoint], [opmcore],dnl
-                       [opmcore_lib=yes], [opmcore_lib=no],dnl
-                       [[$BOOST_LDFLAGS]dnl
                         [$BOOST_FILESYSTEM_LIB]dnl
-                        [$BOOST_SYSTEM_LIB]dnl
                         [$BOOST_DATE_TIME_LIB]dnl
                         [$BOOST_UNIT_TEST_FRAMEWORK_LIB]dnl
-                        [$LAPACK_LIBS] [$BLAS_LIBS] [$LIBS] [$FLIBS]])
-
-        AS_IF([test "$opmcore_header" != "yes" -o "$opmcore_lib" != "yes"],dnl
-              [AC_MSG_ERROR([No suitable OPM-Core library found!])],dnl
-              [:])
-
         # Add Boost support to module dependencies
         DUNE_ADD_MODULE_DEPS([DUNE_CORNERPOINT],dnl
                              [DUNE_CORNERPOINT],dnl
@@ -61,8 +46,6 @@ dnl
         DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],dnl
                              [Dune::CpGrid], [dune/grid/CpGrid.hpp],dnl
                              [dune/grid/cpgrid/dgfparser.hh])
-
-        DUNE_ADD_SUMMARY_ENTRY([opm-core], [$opmcore_lib])
 ])
 
 
