@@ -36,7 +36,7 @@ along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPENRS_INDEXSETS_HEADER
 #define OPENRS_INDEXSETS_HEADER
 
-#include <dune/common/geometrytype.hh>
+#include <dune/geometry/type.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
 namespace Dune
 {
