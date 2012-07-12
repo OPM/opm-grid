@@ -32,9 +32,11 @@
   You should have received a copy of the GNU General Public License
   along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
+#include <config.h>
 
-
+#if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
+#endif
 #define NVERBOSE // to suppress our messages when throwing
 
 
