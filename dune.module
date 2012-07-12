@@ -6,6 +6,6 @@ Module: dune-cornerpoint
 Version: 1.0
 Maintainer: atgeirr@sintef.no
 #depending on 
-Depends: opm-core dune-common dune-grid dune-istl
+Depends: opm-core dune-common dune-grid
 Suggests: parallelgrid 
 Extra-Suggests: Alu3d
