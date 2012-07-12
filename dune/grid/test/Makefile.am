@@ -6,8 +6,8 @@ check_PROGRAMS = cpgrid_test mapper_test partition_test
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
 noinst_PROGRAMS = grdecl2vtu check_grid_normals
 
-AM_CPPFLAGS += $(ALL_PKG_CPPFLAGS) $(DUNEMPICPPFLAGS) $(BOOST_CPPFLAGS)
-AM_LDFLAGS  += $(ALL_PKG_LDFLAGS) $(DUNEMPILDFLAGS) $(BOOST_LDFLAGS)
+AM_CPPFLAGS += $(ALL_PKG_CPPFLAGS) $(DUNEMPICPPFLAGS) $(OPM_BOOST_CPPFLAGS)
+AM_LDFLAGS  += $(ALL_PKG_LDFLAGS) $(DUNEMPILDFLAGS) $(OPM_BOOST_LDFLAGS)
 # Here we depend on libraries in other parts of
 # the tree that should be built before this one,
 # but if you do not run make from the top you may

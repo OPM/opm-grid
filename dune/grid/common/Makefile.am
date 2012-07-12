@@ -10,8 +10,8 @@ noinst_LTLIBRARIES = libgrid.la
 
 libgrid_la_SOURCES = GeometryHelpers.cpp GridPartitioning.cpp
 
-libgrid_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
-libgrid_la_LDFLAGS  = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
+libgrid_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(OPM_BOOST_CPPFLAGS)
+libgrid_la_LDFLAGS  = $(DUNE_LDFLAGS) $(OPM_BOOST_LDFLAGS) $(BOOST_DATE_TIME_LIB)
 
 
 include $(top_srcdir)/am/global-rules

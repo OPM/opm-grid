@@ -30,8 +30,8 @@ libcommon_la_SOURCES = \
 	StopWatch.cpp
 
 
-libcommon_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(BOOST_CPPFLAGS)
-libcommon_la_LDFLAGS  = $(DUNE_LDFLAGS) $(BOOST_LDFLAGS) \
+libcommon_la_CPPFLAGS = $(DUNE_CPPFLAGS) $(OPM_BOOST_CPPFLAGS)
+libcommon_la_LDFLAGS  = $(DUNE_LDFLAGS) $(OPM_BOOST_LDFLAGS) \
                         $(BOOST_DATE_TIME_LIB)
 
 
