@@ -153,7 +153,9 @@ namespace Dune
 	typedef cpgrid::IdSet<CpGrid> LocalIdSet;
 
 	/// \brief The type of the collective communication.
-	typedef Dune::CollectiveCommunication<CpGrid> CollectiveCommunication;
+
+    typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
+    typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
     };
 
 
@@ -194,8 +196,9 @@ namespace Dune
 	/// Default constructor
 	CpGrid()
 	    : index_set_(*this),
-        use_unique_boundary_ids_(false),
-        idSet_( *this )
+          use_unique_boundary_ids_(false),
+          idSet_( *this ),
+          ccobj_(Dune::MPIHelper::getCommunicator())
 	{
 	}
 
