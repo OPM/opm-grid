@@ -39,6 +39,7 @@
 #include <string>
 #include <map>
 
+#include <dune/common/mpihelper.hh>
 #include <dune/common/collectivecommunication.hh>
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
