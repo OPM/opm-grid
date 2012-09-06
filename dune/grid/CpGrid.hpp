@@ -196,10 +196,10 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid()
-	    : index_set_(*this),
+	    : ccobj_(Dune::MPIHelper::getCommunicator()),
+          index_set_(*this),
           use_unique_boundary_ids_(false),
-          idSet_( *this ),
-          ccobj_(Dune::MPIHelper::getCommunicator())
+          idSet_( *this )
 	{
 	}
 
