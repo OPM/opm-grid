@@ -1,0 +1,23 @@
+Source: libdune-cornerpoint
+Priority: extra
+Maintainer: Arne Morten Kvarving <arne.morten.kvarving@sintef.no>
+Build-Depends: build-essential, debhelper (>= 8.0.0), autotools-dev, automake, libtool, libopmcore-dev, libdune-common-dev, libdune-grid-dev, gfortran, libsuitesparse-dev, pkg-config, libboost-dev, libboost-system-dev, libboost-date-time-dev, libboost-filesystem-dev, libboost-test-dev, doxygen
+Standards-Version: 3.9.2
+Section: libs
+Homepage: http://opm-project.org
+Vcs-Git: git://github.com/OPM/dune-cornerpoint.git
+Vcs-Browser: https://github.com/OPM/dune-cornerpoint
+
+Package: libdune-cornerpoint-dev
+Section: libdevel
+Architecture: any
+Depends: libdune-cornerpoint1 (= ${binary:Version})
+Description: Corner point grid module for DUNE -- development files
+ This provides a DUNE module for cornerpoint grids.
+
+Package: libdune-cornerpoint1
+Section: libs
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Corner point grid module for DUNE
+ This provides a DUNE module for cornerpoint grids.
