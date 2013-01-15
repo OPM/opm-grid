@@ -1,7 +1,7 @@
 # $Date$
 # $Revision$
 
-check_PROGRAMS = cpgrid_test mapper_test partition_test
+check_PROGRAMS = mapper_test partition_test
 
 #noinst_PROGRAMS = finitevolume_test make_vtk_test max_zdist_test grdecl_to_legacy_test
 noinst_PROGRAMS = grdecl2vtu check_grid_normals
