@@ -1,7 +1,7 @@
 # $Date$
 # $Revision$
 
-check_PROGRAMS  = entity_test entityrep_test geometry_test orientedentitytable_test
+#check_PROGRAMS  = entity_test entityrep_test geometry_test orientedentitytable_test
 #noinst_PROGRAMS = buildcpgrid_test
 
 AM_CXXFLAGS = $(DUNE_CPPFLAGS) $(DUNEMPICPPFLAGS) $(OPM_BOOST_CPPFLAGS)
