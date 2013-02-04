@@ -33,8 +33,8 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPENRS_GEOMETRY_HEADER
-#define OPENRS_GEOMETRY_HEADER
+#ifndef OPM_GEOMETRY_HEADER
+#define OPM_GEOMETRY_HEADER
 
 #include <dune/geometry/referenceelements.hh>
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
@@ -545,4 +545,4 @@ namespace Dune
     } // namespace cpgrid
 } // namespace Dune
 
-#endif // OPENRS_GEOMETRY_HEADER
+#endif // OPM_GEOMETRY_HEADER
