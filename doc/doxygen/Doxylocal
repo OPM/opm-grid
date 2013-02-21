@@ -1,5 +1,5 @@
-INPUT                  += @srcdir@/mainpage \
-                         @srcdir@/modules \
-                         @top_srcdir@/common/ \
-                         @top_srcdir@/grid/ \
-                         @top_srcdir@/solvers/
+INPUT                  += @abs_top_srcdir@/doc/doxygen/mainpage \
+                         @abs_top_srcdir@/doc/doxygen/modules \
+                         @abs_top_srcdir@/dune/common/ \
+                         @abs_top_srcdir@/dune/grid/ \
+                         @abs_top_srcdir@/dune/solvers/
