@@ -12,9 +12,8 @@ AM_LDFLAGS  += $(ALL_PKG_LDFLAGS) $(DUNEMPILDFLAGS) $(OPM_BOOST_LDFLAGS)
 # the tree that should be built before this one,
 # but if you do not run make from the top you may
 # run into trouble. Recursive make considered harmful...
-LDADD = $(ALL_PKG_LIBS)  $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_SYSTEM_LIB) \
-         ../cpgrid/libcpgrid.la         \
-         ../common/libgrid.la
+LDADD = ../cpgrid/libcpgrid.la ../common/libgrid.la \
+        $(ALL_PKG_LIBS)  $(DUNE_LIBS) $(DUNEMPILIBS) $(BOOST_SYSTEM_LIB)
 
 cpgrid_test_SOURCES = cpgrid_test.cpp
 
