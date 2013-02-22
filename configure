@@ -31,16 +31,6 @@ Optional Packages:
   --with-boost=PATH       use Boost library from a specified location
   --with-dune-MODULE=PATH use given DUNE module from a specified location
   --with-opm-MODULE=PATH  use given OPM module from a specified location
-  --with-superlu=PATH     user defined path to SuperLU library
-  --with-agmg=PATH        Include DOUBLE PRECISION version Notay's of AGMG
-                          Algebraic Multigrid solver from specified source
-                          location. Note: this option requires a complete,
-                          working Fortran 90 environment.
-  --with-umfpack=PATH     use UMFPACK/SuiteSparse from a specified location
-  --with-ert=PATH         Use ERT libraries
-  --with-tinyxml=PATH     use TinyXML library from a specified location
-                          (Note: if not found, then a bundled library will
-                           be used)
   --with-cmake=PROGRAM    use this program instead of \`cmake' to configure
 
 Some influential environment variables:
