@@ -45,8 +45,8 @@
 #include <sstream>
 
 #include "config.h"
-#include "../Entity.hpp"
-#include "../../CpGrid.hpp"
+#include <dune/grid/cpgrid/Entity.hpp>
+#include <dune/grid/CpGrid.hpp>
 
 using namespace Dune;
 

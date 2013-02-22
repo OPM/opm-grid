@@ -30,7 +30,7 @@
 #include <sstream>
 
 #include "config.h"
-#include "../Geometry.hpp"
+#include <dune/grid/cpgrid/Geometry.hpp>
 
 using namespace Dune;
 

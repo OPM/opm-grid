@@ -43,7 +43,7 @@
 #define BOOST_TEST_MODULE EntityRepTests
 #include <boost/test/unit_test.hpp>
 
-#include "../EntityRep.hpp"
+#include <dune/grid/cpgrid/EntityRep.hpp>
 
 using namespace Dune;
 
