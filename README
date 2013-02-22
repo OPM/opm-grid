@@ -4,11 +4,7 @@ Preparing the Sources
 Additional to the software mentioned in README you'll need the
 following programs installed on your system:
 
-  automake >= 1.5
-
-  autoconf >= 2.50
-
-  libtool
+  cmake >= 2.8
 
 Getting started
 ---------------
