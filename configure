@@ -83,6 +83,8 @@ prefix=/usr/local
 buildtype=Debug
 #pch_use=" -DPRECOMPILE_HEADERS:BOOL=ON"
 pch_use=
+#use_openmp=" -DUSE_OPENMP=OFF"
+use_openmp=
 #silent_rules=" -DCMAKE_VERBOSE_MAKEFILE=OFF"
 silent_rules=
 #debug_loc=" -DSYSTEM_DEBUG=OFF"
@@ -212,6 +214,10 @@ for OPT in "$@"; do
               debug_loc=" -DSYSTEM_DEBUG=OFF"
               pkgname=""
               ;;
+            openmp)
+              use_openmp=" -DUSE_OPENMP=OFF"
+              pkgname=""
+              ;;
             agmg |\
             ert  |\
             superlu)
@@ -238,6 +244,11 @@ for OPT in "$@"; do
           case "${kind}" in
             system-debug)
               debug_loc=" -DSYSTEM_DEBUG=ON"
+              # special flag; don't set shared/static
+              shared=""
+              ;;
+            openmp)
+              use_openmp=" -DUSE_OPENMP=ON"
               # special flag; don't set shared/static
               shared=""
               ;;
@@ -291,7 +302,7 @@ for a in "${VARS[@]}"; do
 done
 
 # pass everything on to CMake
-CMDLINE="env ${ENVVARS} ${CMAKE_COMMAND} \"${srcdir}\" \"-DCMAKE_INSTALL_PREFIX=$prefix\" -DCMAKE_BUILD_TYPE=${buildtype}${pch_use}${silent_rules}${debug_loc} ${FEATURES}"
+CMDLINE="env ${ENVVARS} ${CMAKE_COMMAND} \"${srcdir}\" \"-DCMAKE_INSTALL_PREFIX=$prefix\" -DCMAKE_BUILD_TYPE=${buildtype}${pch_use}${silent_rules}${debug_loc}${use_openmp} ${FEATURES}"
 echo --- calling CMake for ${project} ---
 echo ${CMDLINE}
 eval exec ${CMDLINE}
