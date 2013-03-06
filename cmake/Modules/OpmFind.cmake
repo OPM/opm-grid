@@ -31,16 +31,8 @@
 #		"Boost COMPONENTS filesystem REQUIRED"
 #		SUPERLU
 #	)
-########################################################################
-#
-# - Remove duplicate library declarations
-#
-# Synopsis:
-#
-#	remove_duplicate_libraries (module)
-#
-# where
-#	module         Name of the module whose libraries should be pruned
+
+include (Duplicates)
 
 # list of suffixes for all the project variables
 set (_opm_proj_vars
@@ -63,9 +55,30 @@ endforeach (name)
 macro (find_and_append_package_to prefix name)
   # if we have specified a directory, don't revert to searching the
   # system default paths afterwards
+  string (TOUPPER "${name}" NAME)
+  string (REPLACE "-" "_" NAME "${NAME}")
+  # the documentation says that if *-config.cmake files are not found,
+  # find_package will revert to doing a full search, but that is not
+  # true, so unconditionally setting ${name}_DIR is not safe. however,
+  # if the directory given to us contains a config file, then copy the
+  # value over to this variable to switch to config mode (CMake will
+  # always use config mode if *_DIR is defined)
+  if (NOT DEFINED ${name}_DIR AND (DEFINED ${name}_ROOT OR DEFINED ${NAME}_ROOT))
+	if (EXISTS ${${name}_ROOT}/${name}-config.cmake OR EXISTS ${${name}_ROOT}/${name}Config.cmake)
+	  set (${name}_DIR "${${name}_ROOT}")
+	endif (EXISTS ${${name}_ROOT}/${name}-config.cmake OR EXISTS ${${name}_ROOT}/${name}Config.cmake)
+	if (EXISTS ${${NAME}_ROOT}/${name}-config.cmake OR EXISTS ${${NAME}_ROOT}/${name}Config.cmake)
+	  set (${name}_DIR "${${NAME}_ROOT}")
+	endif (EXISTS ${${NAME}_ROOT}/${name}-config.cmake OR EXISTS ${${NAME}_ROOT}/${name}Config.cmake)
+  endif (NOT DEFINED ${name}_DIR AND (DEFINED ${name}_ROOT OR DEFINED ${NAME}_ROOT))
+  # using config mode is better than using module (aka. find) mode
+  # because then the package has already done all its probes and
+  # stored them in the config file for us
   if (${name}_DIR)
-	find_package (${name} ${ARGN} PATHS ${${name}_DIR} NO_DEFAULT_PATH)
+	message (STATUS "Finding package ${name} using config mode")
+	find_package (${name} ${ARGN} CONFIG PATHS ${${name}_DIR} NO_DEFAULT_PATH)
   else (${name}_DIR)
+	message (STATUS "Finding package ${name} using module mode")
 	find_package (${name} ${ARGN})
   endif (${name}_DIR)
   if (${name}_FOUND)
@@ -81,7 +94,6 @@ macro (find_and_append_package_to prefix name)
 	  endif (DEFINED ${name}_${var})
 	endforeach (var)
 	# some libraries only define xxx_FOUND and not a corresponding HAVE_xxx
-	string (TOUPPER "${name}" NAME)
 	if (NOT DEFINED HAVE_${NAME})
 	  set (HAVE_${NAME} 1)
 	endif (NOT DEFINED HAVE_${NAME})
@@ -108,13 +120,3 @@ endmacro (find_and_append_package_list_to prefix)
 macro (find_and_append_package_list)
   find_and_append_package_list_to (${CMAKE_PROJECT_NAME} ${ARGN})
 endmacro (find_and_append_package_list)
-
-# libraries should always be trimmed from the beginning, so that also
-# missing functions in those later in the list will be resolved
-macro (remove_duplicate_libraries module)
-  if (DEFINED ${module}_LIBRARIES)
-	list (REVERSE ${module}_LIBRARIES)
-	list (REMOVE_DUPLICATES ${module}_LIBRARIES)
-	list (REVERSE ${module}_LIBRARIES)
-  endif (DEFINED ${module}_LIBRARIES)
-endmacro (remove_duplicate_libraries module)
