@@ -56,19 +56,17 @@ it to find libraries and programs with nonstandard names/locations.
 EOF
 }
 
-# report an error regarding the arguments
-invalid_arg () {
+# print a warning if an command line argument is unknown
+unknown_arg () {
   cat <<EOF
-configure: error: unrecognized option: \`$1'
-Try \`$0 --help' for more information
+configure: warning: unrecognized option: \`$1'
 EOF
 }
 
-# exit only if option checking is enabled, otherwise ignore
-invalid_opt () {
+# warn only if an option is enabled, else be silent
+unknown_opt () {
   if [ "${option_check}" = "yes" ]; then
-    invalid_arg $@
-    exit 1
+    unknown_arg $@
   fi
 }
 
@@ -95,12 +93,13 @@ if [ "${CMAKE_COMMAND}" = "" ]; then
   fi
 fi
 
-# long arguments are implemented by putting a dash character followed by
-# a colon in the optspec, see trick by Arvid Requate at
-# <http://stackoverflow.com/questions/402377/#7680682>
-while getopts -- ":-:" optchar; do
-  case "${optchar}" in
-    -)
+ENVVARS=""
+
+# loop over all command-line arguments
+for OPT in "$@"; do
+  case "${OPT}" in
+    --*)
+      OPTARG=${OPT##--}
       # OPTARG now contains everything after double dashes
       case "${OPTARG}" in
         prefix=*)
@@ -156,8 +155,7 @@ while getopts -- ":-:" optchar; do
               rootvar="${rootvar/-/_}"
               ;;
             *)
-              invalid_opt --with-${pkgname}
-              rootvar=""
+              unknown_opt --with-${pkgname}
               ;;
           esac
           # add this to the list of existing features
@@ -215,8 +213,7 @@ while getopts -- ":-:" optchar; do
               pkgname="CXX11Features"
               ;;
             *)
-              invalid_opt --disable-${pkgname}
-              pkgname=""
+              unknown_opt "$OPT"
               ;;
           esac
           # only disable packages if the flag refers to a proper one
@@ -225,7 +222,7 @@ while getopts -- ":-:" optchar; do
           ;;
         enable-*)
           # what kind of library are we building; shared or static?
-          kind=${OPTARG#enable-}
+          kind=${OPT#enable-}
           case "${kind}" in
             system-debug)
               debug_loc=" -DSYSTEM_DEBUG=ON"
@@ -244,8 +241,7 @@ while getopts -- ":-:" optchar; do
               shared="OFF"
               ;;
             *)
-              invalid_opt --enable-${kind}
-              shared=""
+              unknown_opt "$OPT"
               ;;
           esac
           projuppr=${project^^}
@@ -254,16 +250,15 @@ while getopts -- ":-:" optchar; do
           FEATURES="${FEATURES} -DBUILD_${projuppr}_SHARED:BOOL=${shared}"
           ;;
         *)
-          # remove everything *after* the equal sign
-          arg=${OPTARG%=*}
-          invalid_arg --$arg
-          exit 1
+          unknown_arg $OPT
           ;;
       esac
       ;;
+    [A-Z0-9_]*=*)
+      ENVVARS="$ENVVARS $OPT"
+      ;;
     *)
-      invalid_arg -$OPTARG
-      exit 1
+      unknown_arg $OPT
       ;;
   esac
 done
@@ -271,10 +266,12 @@ done
 shift $((OPTIND-1))
 
 # remove Autotools-specific variables
-for a in "$@"; do
+FILTERED_ENVVARS=""
+for a in "$ENVVARS"; do
   a="${a/ACLOCAL_*=*/}"
-  [ -n "$a" ] && ENVVARS="$ENVVARS \"${a/\"/\\\"}\""
+  [ -n "$a" ] && FILTERED_ENVVARS="$FILTERED_ENVVARS \"${a/\"/\\\"}\""
 done
+ENVVARS="$FILTERED_ENVVARS"
 
 # pass everything on to CMake
 CMDLINE="env ${ENVVARS} ${CMAKE_COMMAND} \"${srcdir}\" \"-DCMAKE_INSTALL_PREFIX=$prefix\" -DCMAKE_BUILD_TYPE=${buildtype}${pch_use}${silent_rules}${debug_loc} ${FEATURES}"
