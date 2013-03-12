@@ -39,8 +39,8 @@
 #endif
 #include <fstream>
 #include "../CpGrid.hpp"
-#include <opm/core/eclipse/EclipseGridParser.hpp>
-#include <opm/core/eclipse/EclipseGridInspector.hpp>
+#include <opm/core/io/eclipse/EclipseGridParser.hpp>
+#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <dune/grid/common/GeometryHelpers.hpp>
 #include <opm/core/utility/StopWatch.hpp>
