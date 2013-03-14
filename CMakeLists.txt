@@ -26,7 +26,8 @@ set (${project}_DEPS
 		COMPONENTS date_time filesystem system unit_test_framework REQUIRED"
 	# DUNE dependency
 	"dune-common REQUIRED;
-	dune-grid REQUIRED"
+	dune-grid REQUIRED;
+	dune-geometry REQUIRED"
 	# OPM dependency
 	"opm-core REQUIRED"
 	)
