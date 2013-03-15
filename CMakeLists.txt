@@ -83,6 +83,12 @@ include (UseOptimization)
 # dependencies, in case they alter the list of warnings
 include (UseWarnings)
 
+# parallel computing must be explicitly enabled
+option (USE_MPI "Use Message Passing Interface for parallel computing" OFF)
+if (NOT USE_MPI)
+	set (CMAKE_DISABLE_FIND_PACKAGE_MPI TRUE)
+endif (NOT USE_MPI) 
+
 # macro to set standard variables (INCLUDE_DIRS, LIBRARIES etc.)
 include (OpmFind)
 find_and_append_package_list_to (${project} ${${project}_DEPS})
