@@ -57,6 +57,7 @@ list (APPEND EXAMPLE_SOURCE_FILES
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
 list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/GeometryHelpers.hpp
+	dune/grid/common/GridAdapter.hpp
 	dune/grid/common/GridPartitioning.hpp
 	dune/grid/common/Volumes.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
