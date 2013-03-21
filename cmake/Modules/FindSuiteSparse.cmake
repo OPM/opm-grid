@@ -77,22 +77,30 @@ set (SuiteSparse_EXTRA_LIBS ${LAPACK_LIBRARIES} ${BLAS_LIBRARIES} ${MATH_LIBRARY
 list (APPEND SuiteSparse_SEARCH_PATH "/usr")              # Linux
 list (APPEND SuiteSparse_SEARCH_PATH "/opt/local")        # MacOS X
 
+# if we don't get any further clues about where to look, then start
+# roaming around the system
+set (_no_default_path "")
+
 # pick up paths from the environment if specified there; these replace the
 # pre-defined paths so that we don't accidentially pick up old stuff
 if (NOT $ENV{SuiteSparse_DIR} STREQUAL "")
   set (SuiteSparse_SEARCH_PATH "$ENV{SuiteSparse_DIR}")
+  set (_no_default_path "NO_DEFAULT_PATH")
 endif (NOT $ENV{SuiteSparse_DIR} STREQUAL "")
 if (${SuiteSparse_DIR})
   set (SuiteSparse_SEARCH_PATH "${SuiteSparse_DIR}")
+  set (_no_default_path "NO_DEFAULT_PATH")
 endif (${SuiteSparse_DIR})
 # CMake uses _DIR suffix as default for config-mode files; it is unlikely
 # that we are building SuiteSparse ourselves; use _ROOT suffix to specify
 # location to pre-canned binaries
 if (NOT $ENV{SuiteSparse_ROOT} STREQUAL "")
   set (SuiteSparse_SEARCH_PATH "$ENV{SuiteSparse_ROOT}")
+  set (_no_default_path "NO_DEFAULT_PATH")
 endif (NOT $ENV{SuiteSparse_ROOT} STREQUAL "")
 if (${SuiteSparse_ROOT})
   set (SuiteSparse_SEARCH_PATH "${SuiteSparse_ROOT}")
+  set (_no_default_path "NO_DEFAULT_PATH")
 endif (${SuiteSparse_ROOT})
 
 # transitive closure of dependencies; after this SuiteSparse_MODULES is the
@@ -135,6 +143,7 @@ find_library (config_LIBRARY
   NAMES suitesparseconfig
   PATHS ${SuiteSparse_SEARCH_PATH}
   PATH_SUFFIXES ".libs" "lib" "lib${_BITS}" "lib/${CMAKE_LIBRARY_ARCHITECTURE}" "lib/ufsparse"
+  ${_no_default_path}
   )
 if (config_LIBRARY)
   list (APPEND SuiteSparse_EXTRA_LIBS ${config_LIBRARY})
@@ -153,11 +162,13 @@ foreach (module IN LISTS SuiteSparse_MODULES)
 	NAMES ${module}.h
 	PATHS ${SuiteSparse_SEARCH_PATH}
 	PATH_SUFFIXES "include" "include/suitesparse" "include/ufsparse"
+	${_no_default_path}
 	)
   find_library (${MODULE}_LIBRARY
 	NAMES ${module}
 	PATHS ${SuiteSparse_SEARCH_PATH}
 	PATH_SUFFIXES "lib/.libs" "lib" "lib${_BITS}" "lib/${CMAKE_LIBRARY_ARCHITECTURE}" "lib/ufsparse"
+	${_no_default_path}
 	)
   # start out by including the module itself; other dependencies will be added later
   set (${MODULE}_INCLUDE_DIRS ${${MODULE}_INCLUDE_DIR})
@@ -231,7 +242,9 @@ foreach (module IN LISTS SuiteSparse_FIND_COMPONENTS)
   endforeach (file)
   if (NOT SuiteSparse_${MODULE}_FOUND)
 	set (SuiteSparse_FOUND FALSE)
-	set (HAVE_SUITESPARSE_${MODULE}_H 0 CACHE INT "Is ${module} header present?")
+	# use empty string instead of zero, so it can be tested with #ifdef
+	# as well as #if in the source code
+	set (HAVE_SUITESPARSE_${MODULE}_H "" CACHE INT "Is ${module} header present?")
   else (NOT SuiteSparse_${MODULE}_FOUND)
 	set (HAVE_SUITESPARSE_${MODULE}_H 1 CACHE INT "Is ${module} header present?")
 	list (APPEND SuiteSparse_LIBRARIES "${${MODULE}_LIBRARIES}")

@@ -39,6 +39,9 @@
 
 include (OpmFind)
 
+option (SIBLING_SEARCH "Search sibling directories before system paths" ON)
+mark_as_advanced (SIBLING_SEARCH)
+
 # append all items from src into dst; both must be *names* of lists
 macro (append_found src dst)
   foreach (_item IN LISTS ${src})
@@ -90,14 +93,65 @@ macro (find_opm_package module deps header lib defs prog conf)
 	set (_guess_bin_only
 	  "../${module}-build"
 	  "../${_module_lower}-build"
-	  "../../${module}/build-cmake"
-	  "../../${_module_lower}/build-cmake"
 	  )
+	# try to figure out whether we are in a subdir build tree, and attempt
+	# to put the same name as the appropriate build tree for the module
+	get_filename_component (_build_dir "${CMAKE_CURRENT_BINARY_DIR}" NAME)
+
+	# don't bother if we are in a project specific directory already
+	# (assuming no-one wants to name the build dir after another module!)
+	if ("${_build_dir}" STREQUAL "${PROJECT_NAME}")
+	  set (_build_dir "")
+	endif ("${_build_dir}" STREQUAL "${PROJECT_NAME}")
+
+	# look in similar dirs for the other module
+	list (APPEND _guess_bin_only
+	  "../../${module}/${_build_dir}"
+	  "../../${_module_lower}/${_build_dir}"
+	  )
+
+	# generate items that are in the build, not source dir
 	set (_guess_bin)
 	foreach (_item IN ITEMS ${_guess} ${_guess_bin_only})
 	  list (APPEND _guess_bin "${PROJECT_BINARY_DIR}/${_item}")
 	endforeach (_item)
+	set (_no_system "")
+  else (NOT (${module}_DIR OR ${module}_ROOT OR ${MODULE}_ROOT))
+	# start looking at the paths in this order
+	set (_guess_bin
+	  ${${module}_DIR}
+	  ${${module}_ROOT}
+	  ${${MODULE}_ROOT}
+	  )
+	# when we look for the source, it may be that we have been specified
+	# a build directory which is a sub-dir of the source, so we look in
+	# the parent also
+	set (_guess
+	  ${${module}_DIR}
+	  ${${module}_ROOT}
+	  ${${MODULE}_ROOT}
+	  ${${module}_DIR}/..
+	  ${${module}_ROOT}/..
+	  ${${MODULE}_ROOT}/..
+	  )
+	# don't search the system paths! that would be dangerous; if there
+	# is a problem in our own specified directory, we don't necessarily
+	# want an old version that is left in one of the system paths!
+	set (_no_system "NO_DEFAULT_PATH")
   endif (NOT (${module}_DIR OR ${module}_ROOT OR ${MODULE}_ROOT))
+
+  # by specifying _guess in the HINTS section, it gets searched before
+  # the system locations as well. the CMake documentation has a cloudy
+  # recommendation, but it ends up like this: if NO_DEFAULT_PATH is
+  # specified, then PATHS is used. Otherwise, it looks in HINTS, then in
+  # system paths, and the finally in PATHS (!)
+  if (SIBLING_SEARCH)
+	set (_guess_hints ${_guess})
+	set (_guess_hints_bin ${_guess_bin})
+  else (SIBLING_SEARCH)
+	set (_guess_hints)
+	set (_guess_hints_bin)
+  endif (SIBLING_SEARCH)
 
   # search for this include and library file to get the installation
   # directory of the package; hints are searched before the system locations,
@@ -105,8 +159,9 @@ macro (find_opm_package module deps header lib defs prog conf)
   find_path (${module}_INCLUDE_DIR
 	NAMES "${header}"
 	PATHS ${_guess}
-	HINTS ${${module}_DIR} ${${module}_ROOT} ${${MODULE}_ROOT} ${PkgConf_${module}_INCLUDE_DIRS}
+	HINTS ${PkgConf_${module}_INCLUDE_DIRS} ${_guess_hints}
 	PATH_SUFFIXES "include"
+	${_no_system}
 	)
 
   # some modules are all in headers
@@ -117,8 +172,9 @@ macro (find_opm_package module deps header lib defs prog conf)
 	find_library (${module}_LIBRARY
 	  NAMES "${lib}"
 	  PATHS ${_guess_bin}
-	  HINTS ${${module}_DIR} ${${module}_ROOT} ${${MODULE}_ROOT} ${PkgConf_${module}_LIBRARY_DIRS}
+	  HINTS ${PkgConf_${module}_LIBRARY_DIRS} ${_guess_hints_bin}
 	  PATH_SUFFIXES "lib" "lib/.libs" ".libs" "lib${_BITS}" "lib/${CMAKE_LIBRARY_ARCHITECTURE}" "build-cmake/lib"
+	  ${_no_system}
 	  )
   else (NOT "${lib}" STREQUAL "")
 	set (${module}_LIBRARY "")
