@@ -1,3 +1,35 @@
+/*
+  Copyright 2009, 2010, 2013 SINTEF ICT, Applied Mathematics.
+  Copyright 2009, 2010, 2013 Statoil ASA.
+
+  This file is part of The Open Porous Media project  (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
+
+#if HAVE_CONFIG_H
+#include "config.h"
+#endif
+
+#include <iostream>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/grid/CpGrid.hpp>
+#include <opm/core/io/eclipse/EclipseGridParser.hpp>
+#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
+
+using namespace Dune;
+
 /**
  * @file grdecl2vtu.C
  * @brief Converts grdecl (Eclipse grid) files to vtu (VTK/ParaView)
@@ -11,41 +43,7 @@
  * @author Atgeirr F Rasmussen <atgeirr@sintef.no>
  * @author Bård Skaflestad     <bard.skaflestad@sintef.no>
  *
- * $Id: grdecl2vtu.C 499 2010-05-12 06:37:46Z havb $
- *
  */
-
-/*
-  Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
-
-  This file is part of The Open Reservoir Simulator Project (OpenRS).
-
-  OpenRS is free software: you can redistribute it and/or modify
-  it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 3 of the License, or
-  (at your option) any later version.
-
-  OpenRS is distributed in the hope that it will be useful,
-  but WITHOUT ANY WARRANTY; without even the implied warranty of
-  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  GNU General Public License for more details.
-
-  You should have received a copy of the GNU General Public License
-  along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
-*/
-
-#if HAVE_CONFIG_H
-#include "config.h"
-#endif
-
-#include <iostream>
-#include <dune/grid/io/file/vtk/vtkwriter.hh>
-#include <dune/grid/CpGrid.hpp>
-#include <opm/core/eclipse/EclipseGridParser.hpp>
-#include <opm/core/eclipse/EclipseGridInspector.hpp>
-
-using namespace Dune;
 
 /**
    A function to (conditionally) write a double-field from the grdecl-file to vtk-format
