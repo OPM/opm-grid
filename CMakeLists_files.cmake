@@ -51,6 +51,13 @@ list (APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND EXAMPLE_SOURCE_FILES
+	examples/grdecl2vtu.cpp
+	)
+
+# programs listed here will not only be compiled, but also marked for
+# installation
+list (APPEND PROGRAM_SOURCE_FILES
+	examples/grdecl2vtu.cpp
 	)
 
 # originally generated with the command:
