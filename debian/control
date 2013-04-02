@@ -1,11 +1,12 @@
-Source: libdune-cornerpoint
+Source: dune-cornerpoint
 Priority: extra
 Maintainer: Arne Morten Kvarving <arne.morten.kvarving@sintef.no>
 Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
                libboost-system-dev, libboost-date-time-dev, libboost-test-dev,
                libdune-common-dev, cmake, bc, git, zlib1g-dev, libtool, pkg-config,
-               libopm-core-dev, libdune-grid-dev, libtinyxml-dev, libsuperlu3-dev, libdune-istl-dev
-Build-Depends-Indep: doxygen, texlive-latex-extra, texlive-latex-recommended, ghostscript
+               libopm-core-dev, libdune-grid-dev, libtinyxml-dev,
+               libsuperlu3-dev, libdune-istl-dev, doxygen, texlive-latex-extra,
+               texlive-latex-recommended, ghostscript
 Standards-Version: 3.9.2
 Section: libs
 Homepage: http://opm-project.org
@@ -52,6 +53,23 @@ Architecture: all
 Multi-Arch: foreign
 Provides: libdune-cornerpoint-doc
 Description: dune cornerpoint library -- documentation
+ dune-cornerpoint is intended to enable working with corner-point or, more
+ generally, pillar grids in dune. A standard grid type in the petroleum
+ industry, corner-point grids fill space with a relatively low number
+ of cells while still providing sufficient flexibility to model faults,
+ fractures and erosion. The grid format was originally designed with
+ an eye towards geological modelling rather than numerical simulation
+ and this design choice does limit the number of feasible numerical
+ methods.
+
+Package: libdune-cornerpoint1-bin
+Section: libs
+Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Provides: libdune-cornerpoint-bin
+Description: dune cornerpoint library -- applications
  dune-cornerpoint is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number

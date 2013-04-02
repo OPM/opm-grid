@@ -61,6 +61,15 @@ BuildArch:	noarch
 %description doc
 This package contains the documentation files for dune-cornerpoint
 
+%package bin
+Summary:        Applications in dune-cornerpoint
+Group:          Scientific
+Requires:       %{name} = %{version}
+Requires:       libdune-cornerpoint1 = %{version}
+
+%description bin
+This package contains the applications for dune-cornerpoint
+
 %prep
 %setup -q
 
@@ -96,3 +105,6 @@ rm -rf %{buildroot}
 %{_libdir}/pkgconfig/*
 %{_includedir}/*
 %{_datadir}/cmake/*
+
+%files bin
+%{_bindir}/*
