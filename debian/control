@@ -1,4 +1,4 @@
-Source: libdune-cornerpoint
+Source: dune-cornerpoint
 Priority: extra
 Maintainer: Arne Morten Kvarving <arne.morten.kvarving@sintef.no>
 Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
