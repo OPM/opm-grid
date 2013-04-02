@@ -62,6 +62,23 @@ Description: dune cornerpoint library -- documentation
  and this design choice does limit the number of feasible numerical
  methods.
 
+Package: libdune-cornerpoint1-bin
+Section: libs
+Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Architecture: any
+Multi-Arch: same
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Provides: libdune-cornerpoint-bin
+Description: dune cornerpoint library -- applications
+ dune-cornerpoint is intended to enable working with corner-point or, more
+ generally, pillar grids in dune. A standard grid type in the petroleum
+ industry, corner-point grids fill space with a relatively low number
+ of cells while still providing sufficient flexibility to model faults,
+ fractures and erosion. The grid format was originally designed with
+ an eye towards geological modelling rather than numerical simulation
+ and this design choice does limit the number of feasible numerical
+ methods.
+
 Package: libdune-cornerpoint1-dbg
 Section: debug
 Architecture: any
