@@ -27,7 +27,9 @@ Optional Features:
 
 Optional Packages:
   --with-boost=PATH       use Boost library from a specified location
+  --with-dune=PATH        specify parent of all DUNE modules not specified
   --with-dune-MODULE=PATH use given DUNE module from a specified location
+  --with-opm=PATH         specify parent of all OPM modules not specified
   --with-opm-MODULE=PATH  use given OPM module from a specified location
   --with-cmake=PROGRAM    use this program instead of \`cmake' to configure
 
@@ -153,13 +155,19 @@ for OPT in "$@"; do
               pch_use=" -DPRECOMPILE_HEADERS:BOOL=ON"
               rootvar=""
               ;;
+            mpi         |\
+            mpi-prefix)
+              rootvar="_MPI_PREFIX_PATH"
+              ;;
             agmg        |\
             ert         |\
             boost       |\
             superlu     |\
             SuiteSparse |\
             TinyXML     |\
+            opm         |\
             opm-*       |\
+            dune        |\
             dune-*      |\
             zlib)
               rootvar="${pkgname^^}_ROOT"
@@ -217,6 +225,7 @@ for OPT in "$@"; do
               use_openmp=" -DUSE_OPENMP=OFF"
               pkgname=""
               ;;
+            mpi  | \
             parallel)
               use_mpi=" -DUSE_MPI=OFF"
               pkgname=""
@@ -255,6 +264,7 @@ for OPT in "$@"; do
               # special flag; don't set shared/static
               shared=""
               ;;
+            mpi  | \
             parallel)
               use_openmp=" -DUSE_MPI=ON"
               # special flag; don't set shared/static
