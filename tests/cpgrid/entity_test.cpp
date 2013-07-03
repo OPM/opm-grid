@@ -54,6 +54,9 @@ using namespace Dune;
 
 BOOST_AUTO_TEST_CASE(entity)
 {
+    int m_argc = boost::unit_test::framework::master_test_suite().argc;
+    char** m_argv = boost::unit_test::framework::master_test_suite().argv;
+    Dune::MPIHelper::instance(m_argc, m_argv);
     CpGrid g;
     cpgrid::Entity<0, CpGrid> e1(g, 0, true);
     cpgrid::Entity<0, CpGrid> e2(g, 0, false);
