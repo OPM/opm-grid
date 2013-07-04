@@ -131,8 +131,8 @@ namespace Dune
             double maxz_bot = -1e100;
             for (int i = 0; i < g.dims[0]; ++i) {
                 for (int j = 0; j < g.dims[1]; ++j) {
-                    std::tr1::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
-                    std::tr1::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
+                    boost::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
+                    boost::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
                     for (int dd = 0; dd < 4; ++dd) {
                         minz_top = std::min(cellz_top[dd+4], minz_top);
                         maxz_bot = std::max(cellz_bot[dd], maxz_bot);
