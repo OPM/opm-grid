@@ -23,6 +23,7 @@
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/cpgrid/dgfparser.hh>
+#include <dune/common/mpihelper.hh>
 
 template<int dim>
 struct ElementLayout
@@ -35,9 +36,10 @@ struct ElementLayout
 };
 
 
-int main(int /*argc*/, char** /*argv*/)
+int main(int argc, char** argv)
 {
 //     try {
+        Dune::MPIHelper::instance(argc, argv);
         typedef Dune::CpGrid Grid;
 
 #if 0

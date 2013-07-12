@@ -14,8 +14,8 @@
 #include "initialize.hh"
 #include "evolve.hh"
 
-#include "../CpGrid.hpp"
-#include <dune/common/param/ParameterGroup.hpp>
+#include "dune/grid/CpGrid.hpp"
+#include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 typedef Dune::CpGrid GridType;
 
@@ -94,7 +94,7 @@ void timeloop(const G& grid, double tend)
 int main(int argc , char ** argv)
 {
     // initialize MPI, finalize is done automatically on exit
-    Dune::parameter::ParameterGroup param(argc, argv);
+    Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
 
     // start try/catch block to get error messages from dune

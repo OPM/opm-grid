@@ -33,10 +33,10 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include opm/core/eclipse/EclipseGridParser.hpp>
-#include opm/core/eclipse/EclipseGridInspector.hpp>
-
-using namespace Dune;
+#include<opm/core/io/eclipse/EclipseGridParser.hpp>
+#include<opm/core/io/eclipse/EclipseGridInspector.hpp>
+#include <boost/array.hpp>
+using namespace Opm;
 
 int main(int argc, char** argv)
 {
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 	for (int j = 0; j < dims[1]; ++j) {
 	    for (int i = 0; i < dims[0]; ++i, ++n) {
 		if (actnum[n]) {
-		    boost::array<double, 8> cellz = insp.cellZvals(i, j, k);
+                    boost::array<double, 8> cellz = insp.cellZvals(i, j, k);
 		    double zdiff, zdiff_max = 0.0;
 		    for (int dd = 0; dd < 4; ++dd) {
 			zdiff = cellz[dd+4] - cellz[dd];

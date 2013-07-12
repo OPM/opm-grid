@@ -33,7 +33,8 @@ You should have received a copy of the GNU General Public License
 along with OpenRS.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "../CpGrid.hpp"
+#include <dune/common/mpihelper.hh>
+#include <dune/grid/CpGrid.hpp>
 #include <dune/grid/cpgrid/dgfparser.hh>
 
 //#include <config.h>
@@ -85,8 +86,9 @@ void check_cpgrid(bool do_check)
 }
 
 
-int main(int /*argc*/ , char** /*argv*/)
+int main(int argc , char** argv)
 {
+    Dune::MPIHelper::instance(argc, argv);
     check_cpgrid(false); // Until we get in some changes to the grid interface.
 //     try {
 //         check_cpgrid();
