@@ -36,6 +36,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <dune/common/mpihelper.hh>
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
@@ -144,6 +145,7 @@ int testPartitions()
 
 int main(int argc, char** argv)
 {
+    Dune::MPIHelper::instance(argc, argv);
     if (argc == 1) {
 	// Running in test mode.
 	return testPartitions();

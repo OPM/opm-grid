@@ -33,13 +33,15 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <opm/core/utility/parameters/ParameterGroup.hpp>>
+#include <opm/core/utility/parameters/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/common/mpihelper.hh>
 #include "BuildCpGrid.hpp"
 
 int main(int argc, char** argv)
 {
-    Dune::parameter::ParameterGroup param(argc, argv);
+    Dune::MPIHelper::instance(argc, argv);
+    Opm::parameter::ParameterGroup param(argc, argv);
     int nx = param.getDefault<int>("nx", 100);
     int ny = param.getDefault<int>("ny",  60);
     int nz = param.getDefault<int>("nz",  15);

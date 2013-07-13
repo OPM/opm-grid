@@ -1,4 +1,4 @@
-#include<dune/grid/common/referenceelements.hh>
+#include<dune/geometry/referenceelements.hh>
 #include "transportproblem2.hh"
 
 //! initialize the vector of unknowns with initial value
@@ -29,7 +29,7 @@ void initialize(const G& grid, const M& mapper, V& c)
 
         // get cell center in reference element
         const Dune::FieldVector<ct,dim>&
-        local = Dune::ReferenceElements<ct,dim>::general(gt).position(0,0);
+        local = Dune :: GenericReferenceElements<ct,dim >::general(gt).position(0,0);
 
         // get global coordinate of cell center
         Dune::FieldVector<ct,dimworld> global =

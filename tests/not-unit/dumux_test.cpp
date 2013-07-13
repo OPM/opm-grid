@@ -33,7 +33,7 @@ You should have received a copy of the GNU General Public License
 along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include "../CpGrid.hpp"
+#include <dune/grid/CpGrid.hpp>
 
 
 #include <dune/grid/utility/gridtype.hh>

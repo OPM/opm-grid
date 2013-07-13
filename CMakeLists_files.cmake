@@ -1,7 +1,7 @@
 # -*- mode: cmake; tab-width: 2; indent-tabs-mode: t; truncate-lines: t; compile-command: "cmake -Wdev" -*-
 # vim: set filetype=cmake autoindent tabstop=2 shiftwidth=2 noexpandtab softtabstop=2 nowrap:
 
-# This file sets up five lists:
+# This file sets up six lists:
 #	MAIN_SOURCE_FILES     List of compilation units which will be included in
 #	                      the library. If it isn't on this list, it won't be
 #	                      part of the library. Please try to keep it sorted to
@@ -22,6 +22,9 @@
 #	                      files can of course include other files than these;
 #	                      you should only add to this list if the *user* of
 #	                      the library needs it.
+#
+# NOT_UNIT_TEST_SOURCE_FILES List of programms that will be build during 
+#                            make non-unit-tests
 
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
@@ -33,6 +36,19 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/cpgrid/readSintefLegacyFormat.cpp
 	dune/grid/cpgrid/writeSintefLegacyFormat.cpp
 	)
+
+# originally generated with the command:
+# find tests/not-unit/ -name \*.cpp -o \*.cc
+list (APPEND NOT_UNIT_TEST_SOURCE_FILES
+  tests/not-unit/finitevolume.cc
+  tests/not-unit/partition_test.cpp
+#  tests/not-unit/dumux_test.cpp
+  tests/not-unit/mapper_test.cpp
+  tests/not-unit/cpgrid/buildcpgrid_test.cpp
+#  tests/not-unit/cpgrid_test.cpp
+  tests/not-unit/max_zdist_test.cpp
+  tests/not-unit/check_grid_normals.cpp
+  )
 
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
