@@ -43,6 +43,7 @@ endif (CMAKE_COMPILER_IS_GNUCXX)
 # its own file; this must be called for each target; optionally takes
 # the name of a variable to receive the list of .debug files
 function (strip_debug_symbols targets)
+
   if (CMAKE_COMPILER_IS_GNUCXX AND OBJCOPY)
 	foreach (target IN LISTS targets)
 	  # libraries must retain the symbols in order to link to them, but

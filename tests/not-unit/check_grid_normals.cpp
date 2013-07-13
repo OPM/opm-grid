@@ -38,6 +38,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <dune/common/mpihelper.hh>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 #include <dune/grid/CpGrid.hpp>
 
@@ -45,6 +46,7 @@ using namespace Dune;
 
 int main(int argc, char** argv)
 {
+    Dune::MPIHelper::instance(argc, argv);
     Opm::parameter::ParameterGroup param(argc, argv);
     CpGrid grid;
     grid.init(param);

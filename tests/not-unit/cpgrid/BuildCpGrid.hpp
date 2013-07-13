@@ -44,7 +44,7 @@
 #include <vector>
 
 #include <opm/core/utility/ErrorMacros.hpp>
-#include <dune/grid/preprocess/preprocess.h>
+#include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <dune/grid/CpGrid.hpp>
 
 namespace Dune {
@@ -103,7 +103,7 @@ namespace Dune {
             grdecl.zcorn   = &zcorn [0];
             grdecl.actnum  = &actnum[0];
 
-            g.processEclipseFormat(grdecl, z_tol);
+            g.processEclipseFormat(grdecl, z_tol, false);
         }
 
     protected:

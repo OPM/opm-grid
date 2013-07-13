@@ -33,6 +33,7 @@ macro (opm_sources opm)
   set (TEST_DATA_FILES)
   set (PUBLIC_HEADER_FILES)
   set (PROGRAM_SOURCE_FILES)
+  set (NOT_UNIT_TEST_SOURCE_FILES)
 
   # read the list of components from this file; it should set the above
   # lists (which are generic names)
@@ -58,6 +59,9 @@ macro (opm_sources opm)
   endforeach (_file)
   foreach (_file IN LISTS PROGRAM_SOURCE_FILES)
 	list (APPEND examples_SOURCES_DIST ${PROJECT_SOURCE_DIR}/${_file})
+  endforeach (_file)  
+  foreach (_file IN LISTS NOT_UNIT_TEST_SOURCE_FILES)
+	list (APPEND not_unit_tests_SOURCES ${PROJECT_SOURCE_DIR}/${_file})
   endforeach (_file)
 
   # identify pre-compile header; if the project is called opm-foobar,
