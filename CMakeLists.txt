@@ -175,7 +175,7 @@ opm_data (tests datafiles "${tests_DIR}")
 opm_compile_satellites (${project} tests "" "${tests_REGEXP}")
 
 # add directives to build the not-unit tests
-opm_compile_satellites (${project} not_unit_tests "EXCLUDE_FROM_ALL"  "${tests_REGEXP}")
+opm_compile_satellites (${project} not_unit_tests "EXCLUDE_FROM_ALL"  "")
 
 # use this target to run all tests
 add_custom_target (check
