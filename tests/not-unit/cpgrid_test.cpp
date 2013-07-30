@@ -68,8 +68,8 @@ void check_cpgrid(bool do_check)
 //     Dune::CpGrid &grid = *gridPtr;
 
     Dune::CpGrid grid;
-    Dune::array<int, dim> dims = {{ 1, 1, 1 }};
-    Dune::array<double, dim> cell_sz = {{ 1.0, 1.0, 1.0 }};
+    std::array<int, dim> dims = {{ 1, 1, 1 }};
+    std::array<double, dim> cell_sz = {{ 1.0, 1.0, 1.0 }};
     grid.createCartesian(dims, cell_sz);
 
     // gridcheck(grid);  // TODO fix geometrycheck

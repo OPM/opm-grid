@@ -37,7 +37,7 @@
 #define OPM_GRIDPARTITIONING_HEADER
 
 #include <vector>
-#include <boost/array.hpp>
+#include <array>
 
 namespace Dune
 {
@@ -53,7 +53,7 @@ namespace Dune
     ///                      because of splits to ensure connectedness.
     /// @param[out] cell_part a vector containing, for each cell, its partition number
     void partition(const CpGrid& grid,
-		   const boost::array<int, 3>& initial_split,
+		   const std::array<int, 3>& initial_split,
 		   int& num_part,
 		   std::vector<int>& cell_part,
 		   bool recursive = false);

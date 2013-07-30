@@ -59,7 +59,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
         fieldvector.resize(global_cell.size());
 
 	Opm::EclipseGridInspector insp(eclParser);
-        boost::array<int, 3> dims = insp.gridSize();
+        std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             THROW(fieldname << " field must have the same size as the "
@@ -86,7 +86,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
         fieldvector.resize(global_cell.size());
 
 	Opm::EclipseGridInspector insp(eclParser);
-        boost::array<int, 3> dims = insp.gridSize();
+        std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             THROW(fieldname << " field must have the same size as the "

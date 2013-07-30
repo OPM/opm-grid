@@ -44,7 +44,7 @@ namespace Dune
 {
 
 
-    typedef boost::array<int, 3> coord_t;
+    typedef std::array<int, 3> coord_t;
 
     namespace
     {

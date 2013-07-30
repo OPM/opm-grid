@@ -38,14 +38,12 @@
 
 #include <string>
 #include <map>
+#include <array>
 
 #include <dune/common/mpihelper.hh>
 #include <dune/common/collectivecommunication.hh>
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
-#include <dune/common/array.hh>
-
-#include <boost/array.hpp>
 
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
@@ -254,7 +252,7 @@ namespace Dune
 	/// The logical cartesian size of the grid.
 	/// This function is not part of the Dune grid interface,
 	/// and should be used with caution.
-        const boost::array<int, 3>& logicalCartesianSize() const
+        const std::array<int, 3>& logicalCartesianSize() const
         {
             return logical_cartesian_size_;
         }
@@ -278,7 +276,7 @@ namespace Dune
         ///    Active cell index.
         ///
         /// @param [out] ijk  Cartesian index triplet
-        void getIJK(const int c, boost::array<int,3>& ijk) const
+        void getIJK(const int c, std::array<int,3>& ijk) const
         {
             int gc = global_cell_[c];
             ijk[0] = gc % cartDims_[0];  gc /= cartDims_[0];
@@ -727,11 +725,11 @@ namespace Dune
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 	Opm::SparseTable<int> face_to_point_;
 	std::vector< array<int,8> > cell_to_point_;
-	boost::array<int, 3> logical_cartesian_size_;
+	std::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
         // Size of Cartesian bounding box.
-        boost::array<int,3> cartDims_;
+        std::array<int,3> cartDims_;
         
 	// Representing geometry
 	typedef cpgrid::DefaultGeometryPolicy<CpGrid> Geom;
