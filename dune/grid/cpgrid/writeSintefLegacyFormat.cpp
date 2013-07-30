@@ -63,7 +63,7 @@ namespace Dune
                       const CpGrid& g);
         void writeVtkVolumes(std::ostream& vtk,
                              const std::vector<Dune::FieldVector<double, 3> > points,
-                             const std::vector<Dune::array<int, 8> >& cell_to_point);
+                             const std::vector<std::array<int, 8> >& cell_to_point);
     } // anon namespace
 
 
@@ -229,11 +229,11 @@ namespace Dune
 
         void writeMap(std::ostream& map, const CpGrid& g)
         {
-            boost::array<int, 3> dims = g.logicalCartesianSize();
+            std::array<int, 3> dims = g.logicalCartesianSize();
             map << dims[0] << ' ' << dims[1] << ' ' << dims[2] << '\n';
             int num_cells = g.size(0);
             map << num_cells << '\n';
-            boost::array<int, 3> ijk;
+            std::array<int, 3> ijk;
             for (int cell = 0; cell < num_cells; ++cell) {
                 g.getIJK(cell, ijk);
                 map << ijk[0] << ' ' << ijk[1] << ' ' << ijk[2] << '\n';
@@ -245,7 +245,7 @@ namespace Dune
 
         void writeVtkVolumes(std::ostream& vtk,
                              const std::vector<Dune::FieldVector<double, 3> > points,
-                             const std::vector<Dune::array<int, 8> >& cell_to_point)
+                             const std::vector<std::array<int, 8> >& cell_to_point)
         {
             // Header.
             vtk <<

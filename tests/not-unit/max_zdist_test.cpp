@@ -35,7 +35,7 @@
 
 #include<opm/core/io/eclipse/EclipseGridParser.hpp>
 #include<opm/core/io/eclipse/EclipseGridInspector.hpp>
-#include <boost/array.hpp>
+#include <array>
 using namespace Opm;
 
 int main(int argc, char** argv)
@@ -48,7 +48,7 @@ int main(int argc, char** argv)
     EclipseGridParser parser(argv[1]);
     EclipseGridInspector insp(parser);
 
-    boost::array<int, 3> dims = insp.gridSize();
+    std::array<int, 3> dims = insp.gridSize();
 
     std::vector<int> actnum;
     if (!parser.hasField("ACTNUM")) {
@@ -63,7 +63,7 @@ int main(int argc, char** argv)
 	for (int j = 0; j < dims[1]; ++j) {
 	    for (int i = 0; i < dims[0]; ++i, ++n) {
 		if (actnum[n]) {
-                    boost::array<double, 8> cellz = insp.cellZvals(i, j, k);
+                    std::array<double, 8> cellz = insp.cellZvals(i, j, k);
 		    double zdiff, zdiff_max = 0.0;
 		    for (int dd = 0; dd < 4; ++dd) {
 			zdiff = cellz[dd+4] - cellz[dd];

@@ -50,9 +50,9 @@ int main(int argc, char** argv)
 #else
         int refinement = 1;
         Grid grid;
-        Dune::array<int   , 3> dims;
+        std::array<int   , 3> dims;
         std::fill(dims.begin(), dims.end(), 1 << refinement);
-        Dune::array<double, 3> cell_sz;
+        std::array<double, 3> cell_sz;
         std::fill(cell_sz.begin(), cell_sz.end(), 1.0 / (1 << refinement));
         grid.createCartesian(dims, cell_sz);
 #endif

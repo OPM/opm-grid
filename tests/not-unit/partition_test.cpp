@@ -47,7 +47,7 @@
 using namespace Dune;
 
 int testSinglePartition(const array<int, 3>& dims,
-			const boost::array<int, 3>& split,
+			const std::array<int, 3>& split,
 			const int num_part,
 			const int num_cells,
 			const int* correct_part)
@@ -77,7 +77,7 @@ int testPartitions()
     // Small case.
     {
 	array<int, 3> dims = {{ 2, 3, 4 }};
-	boost::array<int, 3> split = {{ 2, 2, 2 }};
+	std::array<int, 3> split = {{ 2, 2, 2 }};
 	int num_part = 8;
 	const int num_cells = 24;
 	int correct_part[num_cells] = { 0, 0, 4, 4, 1, 1, 5, 5,
@@ -90,7 +90,7 @@ int testPartitions()
     // so we really just test that we reproduce the same results.
     {
 	array<int, 3> dims = {{ 10, 10, 10 }};
-	boost::array<int, 3> split = {{ 2, 3, 7 }};
+	std::array<int, 3> split = {{ 2, 3, 7 }};
 	int num_part = 42;
 	const int num_cells = 1000;
  	int correct_part[num_cells] = {
@@ -157,7 +157,7 @@ int main(int argc, char** argv)
     grid.init(param);
 
     // Partition.
-    boost::array<int, 3> split = {{ param.getDefault("sx", 1), 
+    std::array<int, 3> split = {{ param.getDefault("sx", 1), 
 				    param.getDefault("sy", 1),
 				    param.getDefault("sz", 1) }};
     int num_part = -1;
