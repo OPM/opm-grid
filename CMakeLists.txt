@@ -113,21 +113,6 @@ include (UseDynamicBoost)
 # needed for Debian installation scheme
 include (UseMultiArch)
 
-# we need the version of dune-common. TODO: add
-# "opm_need_version_of("dune-common")" to the config_hook after the
-# 2013.09 build system update
-include(UseDuneVer)
-find_dune_version("dune" "common")
-find_dune_version("dune" "grid")
-list(APPEND ${project}_CONFIG_VAR
-	DUNE_COMMON_VERSION_MAJOR
-	DUNE_COMMON_VERSION_MINOR
-	DUNE_COMMON_VERSION_REVISION
-	DUNE_GRID_VERSION_MAJOR
-	DUNE_GRID_VERSION_MINOR
-	DUNE_GRID_VERSION_REVISION
-	)
-
 # this module contains code to figure out which files is where
 include (OpmFiles)
 opm_auto_dirs ()
@@ -188,9 +173,6 @@ include (CTest)
 # make datafiles necessary for tests available in output directory
 opm_data (tests datafiles "${tests_DIR}")
 opm_compile_satellites (${project} tests "" "${tests_REGEXP}")
-
-# add directives to build the not-unit tests
-opm_compile_satellites (${project} not_unit_tests "EXCLUDE_FROM_ALL"  "")
 
 # use this target to run all tests
 add_custom_target (check
