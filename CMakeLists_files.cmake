@@ -40,7 +40,6 @@ list (APPEND MAIN_SOURCE_FILES
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
 list (APPEND NOT_UNIT_TEST_SOURCE_FILES
-  tests/not-unit/finitevolume.cc
   tests/not-unit/partition_test.cpp
 #  tests/not-unit/dumux_test.cpp
   tests/not-unit/mapper_test.cpp
@@ -67,6 +66,7 @@ list (APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND EXAMPLE_SOURCE_FILES
+  examples/finitevolume.cc
 	examples/grdecl2vtu.cpp
 	)
 
