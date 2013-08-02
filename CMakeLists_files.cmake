@@ -23,8 +23,8 @@
 #	                      you should only add to this list if the *user* of
 #	                      the library needs it.
 #
-# NOT_UNIT_TEST_SOURCE_FILES List of programms that will be build during 
-#                            make non-unit-tests
+# ATTIC_FILES           Unmaintained files. This for the projects developers
+#                       only. Don't expect these files to build.
 
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
@@ -39,14 +39,14 @@ list (APPEND MAIN_SOURCE_FILES
 
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
-list (APPEND NOT_UNIT_TEST_SOURCE_FILES
-  tests/not-unit/partition_test.cpp
-#  tests/not-unit/dumux_test.cpp
-  tests/not-unit/mapper_test.cpp
-  tests/not-unit/cpgrid/buildcpgrid_test.cpp
-#  tests/not-unit/cpgrid_test.cpp
-  tests/not-unit/max_zdist_test.cpp
-  tests/not-unit/check_grid_normals.cpp
+list (APPEND ATTIC_FILES
+	attic/partition_test.cpp
+#	attic/dumux_test.cpp
+	attic/mapper_test.cpp
+	attic/buildcpgrid_test.cpp
+#	attic/cpgrid_test.cpp
+	attic/max_zdist_test.cpp
+	attic/check_grid_normals.cpp
   )
 
 # originally generated with the command:
