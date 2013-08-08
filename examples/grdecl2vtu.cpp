@@ -147,6 +147,6 @@ int main(int argc, char** argv)
     std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
     std::cout << "Writing to filename " << fnamebase << ".vtu" << std::endl;
-    vtkwriter.write(fnamebase, VTKOptions::ascii);
+    vtkwriter.write(fnamebase, VTK::ascii);
 }
 
