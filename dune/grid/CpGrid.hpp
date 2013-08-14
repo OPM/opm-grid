@@ -798,5 +798,4 @@ namespace Dune
 
 } // namespace Dune
 
-#include <dune/grid/cpgrid/PersistentContainer.hpp>
 #endif // OPM_CPGRID_HEADER
