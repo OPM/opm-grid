@@ -18,9 +18,7 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
 
 #include <iostream>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>

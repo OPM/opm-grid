@@ -33,9 +33,9 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#if HAVE_CONFIG_H
+
 #include "config.h"
-#endif
+
 #include <dune/common/mpihelper.hh>
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
