@@ -34,9 +34,8 @@
 */
 
 
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
+
 #include <fstream>
 #include "../CpGrid.hpp"
 #include <opm/core/io/eclipse/EclipseGridParser.hpp>
