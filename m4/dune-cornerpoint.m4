@@ -1,37 +1,12 @@
-# $Date$
-# $Revision$
+dnl -*- autoconf -*-
 
-# Additional checks needed to build the module
-AC_DEFUN([DUNE_CORNERPOINT_CHECKS],
-[
-dnl     Boost support.
-
-        OPM_BOOST_BASE
-        AX_BOOST_SYSTEM
-        AX_BOOST_DATE_TIME
-        AX_BOOST_FILESYSTEM
-        AX_BOOST_UNIT_TEST_FRAMEWORK
-
-        # Add Boost support to module dependencies
-        DUNE_ADD_MODULE_DEPS([DUNE_CORNERPOINT],dnl
-                             [DUNE_CORNERPOINT],dnl
-          [$OPM_BOOST_CPPFLAGS],dnl
-          [$OPM_BOOST_LDFLAGS],dnl
-          [[$BOOST_DATE_TIME_LIB]dnl
-           [$BOOST_FILESYSTEM_LIB]dnl
-           [$BOOST_SYSTEM_LIB]])dnl
-
-        DUNE_DEFINE_GRIDTYPE([CPGRID],[(GRIDDIM == 3) && (WORLDDIM == 3)],dnl
-                             [Dune::CpGrid], [dune/grid/CpGrid.hpp],dnl
-                             [dune/grid/cpgrid/dgfparser.hh])
-])
-
-
-
-# Additional checks needed to find the module
+dnl locate dune-cornerpoint library itself; this macro is called by every
+dnl module that depends on dune-cornerpoint.
 AC_DEFUN([DUNE_CORNERPOINT_CHECK_MODULE],
 [
-        DUNE_CHECK_MODULES([dune-cornerpoint],
-                           [grid/CpGrid.hpp],
-                           [Dune::CpGrid g;])
+ OPM_CHECK_PKG_MODULE([dune-cornerpoint],[1.0],[DUNE module supporting grids in a corner-point format])
 ])
+
+dnl find all prerequisites of dune-cornerpoint; nothing to do here since
+dnl this is done by the CMake module and then stored in the -config file.
+AC_DEFUN([DUNE_CORNERPOINT_CHECKS],[])
