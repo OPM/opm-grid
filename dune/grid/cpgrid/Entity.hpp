@@ -289,6 +289,17 @@ namespace Dune
 		return false;
 	    }
 
+            // Mimic Dune entity wrapper
+            
+            const Entity& impl() const
+            {
+                return *this;
+            }
+            
+            Entity& impl()
+            {
+                return *this;
+            }
 	protected:
 	    const GridType* pgrid_;
 
