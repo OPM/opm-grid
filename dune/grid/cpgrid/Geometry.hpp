@@ -40,7 +40,6 @@
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
-#include <boost/static_assert.hpp>
 
 namespace Dune
 {
@@ -67,7 +66,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<3, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
@@ -135,8 +134,8 @@ namespace Dune
             /// case. We should therefore revisit this at some point.
 	    GlobalCoordinate global(const LocalCoordinate& local) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
                 LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
                 uvw[0] -= local;
@@ -166,8 +165,8 @@ namespace Dune
             /// May be slow.
 	    LocalCoordinate local(const GlobalCoordinate& y) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
                 // \todo: Implement direct computation.
                 const ctype epsilon = 1e-12;
@@ -240,8 +239,8 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
                 LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
                 uvw[0] -= local;
@@ -302,7 +301,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<2, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
@@ -426,7 +425,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<0, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };

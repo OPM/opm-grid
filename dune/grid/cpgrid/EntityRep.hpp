@@ -64,7 +64,6 @@ namespace Dune
 // -------------------------------------------------------------------
 
 
-//#include <boost/static_assert.hpp>
 //#include <opm/core/utility/SparseTable.hpp>
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <climits>

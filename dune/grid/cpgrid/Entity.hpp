@@ -36,7 +36,6 @@
 #ifndef OPM_ENTITY_HEADER
 #define OPM_ENTITY_HEADER
 
-#include <boost/static_assert.hpp>
 #include <dune/geometry/type.hh>
 #include <dune/grid/common/gridenums.hh>
 #include "EntityRep.hpp"
@@ -157,7 +156,7 @@ namespace Dune
 	    template <int cc>
 	    int count() const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
  		if (cc == 0) {
  		    return 1;
  		} else if (cc == 3) {
@@ -178,7 +177,7 @@ namespace Dune
 	    template <int cc>
 	    typename Codim<cc>::EntityPointer subEntity(int i) const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
 		if (cc == 0) {
 		    assert(i == 0);
 		    typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
@@ -204,28 +203,28 @@ namespace Dune
 	    /// Start iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LevelIntersectionIterator ilevelbegin() const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
 		return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, false);
 	    }
 
 	    /// End iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LevelIntersectionIterator ilevelend() const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
 		return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, true);
 	    }
 
 	    /// Start iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
 		return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, false);
 	    }
 
 	    /// End iterator for the cell-cell intersections of this entity.
 	    typename GridType::Traits::LeafIntersectionIterator ileafend() const
 	    {
-		BOOST_STATIC_ASSERT(codim == 0);
+		static_assert(codim == 0, "");
 		return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, true);
 	    }
 
