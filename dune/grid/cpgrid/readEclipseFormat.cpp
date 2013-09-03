@@ -108,11 +108,11 @@ namespace Dune
 	g.dims[1] = inspector.gridSize()[1];
 	g.dims[2] = inspector.gridSize()[2];
 	if (!parser.hasField("COORD")) {
-	    THROW("Eclipse file missing required field COORD.");
+	    OPM_THROW(std::runtime_error, "Eclipse file missing required field COORD.");
 	}
 	g.coord = &(parser.getFloatingPointValue("COORD")[0]);
 	if (!parser.hasField("ZCORN")) {
-	    THROW("Eclipse file missing required field ZCORN.");
+	    OPM_THROW(std::runtime_error, "Eclipse file missing required field ZCORN.");
 	}
 	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
 	std::vector<int> default_actnum; // Used only if needed.
@@ -140,7 +140,7 @@ namespace Dune
                 }
             }
             if (minz_top <= maxz_bot) {
-                THROW("Grid cannot be clipped to a shoe-box (in z): Would be empty afterwards.");
+                OPM_THROW(std::runtime_error, "Grid cannot be clipped to a shoe-box (in z): Would be empty afterwards.");
             }
             int num_zcorn = parser.getFloatingPointValue("ZCORN").size();
             clipped_zcorn.resize(num_zcorn);

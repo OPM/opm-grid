@@ -97,7 +97,7 @@ namespace Dune
 	    /// @param
 	    HierarchicIterator& operator++()
 	    {
-		THROW("Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
+		OPM_THROW(std::runtime_error, "Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
 		return *this;
 	    }
 	};

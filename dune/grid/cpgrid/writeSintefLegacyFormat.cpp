@@ -75,7 +75,7 @@ namespace Dune
 	{
 	    std::ofstream file(topofilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << topofilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << topofilename);
 	    }
 	    writeTopo(file, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, allcorners_.size());
 	}
@@ -83,7 +83,7 @@ namespace Dune
 	{
 	    std::ofstream file(geomfilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << geomfilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << geomfilename);
 	    }
 	    writeGeom(file, geometry_, face_normals_);
 	}
@@ -91,7 +91,7 @@ namespace Dune
         {
             std::ofstream file(mapfilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << mapfilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << mapfilename);
 	    }
             writeMap(file, *this);
         }
@@ -99,7 +99,7 @@ namespace Dune
         {
             std::ofstream file(vtkfilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << vtkfilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << vtkfilename);
 	    }
             writeVtkVolumes(file, allcorners_, cell_to_point_);
         }

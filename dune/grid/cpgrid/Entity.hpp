@@ -189,7 +189,7 @@ namespace Dune
 		    typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
 		    return se;
 		} else {
-		    THROW("No subentity exists of codimension " << cc);
+		    OPM_THROW(std::runtime_error, "No subentity exists of codimension " << cc);
 		}
 // 		int index = 0;
 // 		if (cc == 1) {

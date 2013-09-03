@@ -68,7 +68,7 @@ namespace Dune
 					 param.getDefault<double>("dz", 1.0) }};
 	    createCartesian(dims, cellsz);
 	} else {
-	    THROW("Unknown file format string: " << fileformat);
+	    OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
 	}
     }
 

@@ -186,7 +186,7 @@ namespace Dune
                 // 'unique boundary ids' we use those numbers, although since
                 // they are 1-based and not 0-based we must be careful.
                 if (!boundary()) {
-                    THROW("Cannot call boundarySegmentIndex() on non-boundaries.");
+                    OPM_THROW(std::runtime_error, "Cannot call boundarySegmentIndex() on non-boundaries.");
                 }
                 assert(!pgrid_->unique_boundary_ids_.empty());
                 // Use the unique boundary ids (subtract 1).
@@ -233,7 +233,7 @@ namespace Dune
 	    /// @return
             const LocalGeometry& geometryInInside() const
 	    {
-                THROW("This intersection class does not support geometryInInside().");
+                OPM_THROW(std::runtime_error, "This intersection class does not support geometryInInside().");
 // 		return in_inside_geom_;
 	    }
 
@@ -245,9 +245,9 @@ namespace Dune
             const LocalGeometry& geometryInOutside() const
 	    {
 		if (boundary()) {
-		    THROW("Cannot access geometryInOutside(), intersection is at a boundary.");
+		    OPM_THROW(std::runtime_error, "Cannot access geometryInOutside(), intersection is at a boundary.");
 		}
-                THROW("This intersection class does not support geometryInOutside().");
+                OPM_THROW(std::runtime_error, "This intersection class does not support geometryInOutside().");
 // 		return in_outside_geom_;
 	    }
 
@@ -286,7 +286,7 @@ namespace Dune
                 case TOP:
                     return normal_is_in ? 4 : 5; // min(K) : max(K)
                 default:
-                    THROW("Unhandled face tag: " << tag);
+                    OPM_THROW(std::runtime_error, "Unhandled face tag: " << tag);
                 }
             }
 
@@ -389,7 +389,7 @@ namespace Dune
             int nbcell() const
             {
 		if (is_on_boundary_) {
-		    THROW("There is no outside cell, intersection is at boundary.");
+		    OPM_THROW(std::runtime_error, "There is no outside cell, intersection is at boundary.");
 		}
 		return nbcell_;
 	    }

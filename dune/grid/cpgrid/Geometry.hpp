@@ -344,13 +344,13 @@ namespace Dune
 	    /// This method is meaningless for singular geometries.
 	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
-		THROW("Geometry::global() meaningless on singular geometry.");
+		OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		THROW("Geometry::local() meaningless on singular geometry.");
+		OPM_THROW(std::runtime_error, "Geometry::local() meaningless on singular geometry.");
 	    }
 
             /// For the singular geometry, we return a constant
@@ -378,7 +378,7 @@ namespace Dune
 	    /// This method is meaningless for singular geometries.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                THROW("Meaningless call to cpgrid::Geometry::corner(int): "
+                OPM_THROW(std::runtime_error, "Meaningless call to cpgrid::Geometry::corner(int): "
                       "singular geometry has no corners.");
 	    }
 
@@ -398,14 +398,14 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
-		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
 	    }
 
 	    /// Since integrationElement() is constant, returns true.
@@ -472,7 +472,7 @@ namespace Dune
             /// Meaningless for the vertex geometry.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		THROW("Meaningless to call local() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call local() on singular geometries.");
 	    }
 
             /// Returns 1 for the vertex geometry.
@@ -518,14 +518,14 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
-		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
 	    }
 
 	    /// The mapping implemented by this geometry is constant, therefore affine.
