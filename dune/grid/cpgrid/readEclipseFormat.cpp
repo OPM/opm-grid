@@ -302,7 +302,7 @@ namespace Dune
 	    //     since the grid will be reduced back to its regular
 	    //     size before those fields are processed.
 
-	    MESSAGE("WARNING: Assuming vertical pillars in a cartesian grid.");
+	    OPM_MESSAGE("WARNING: Assuming vertical pillars in a cartesian grid.");
 
 	    // Build new-to-old cell index table.
 	    // First expand in x.

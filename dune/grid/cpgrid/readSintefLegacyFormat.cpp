@@ -192,7 +192,7 @@ namespace Dune
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
 	    // Build cell to point
-	    MESSAGE("Warning: Not yet making a proper cell to point mapping for Sintef legacy grid.");
+	    OPM_MESSAGE("Warning: Not yet making a proper cell to point mapping for Sintef legacy grid.");
 	    c2p.resize(c2f.size());
 	} // void readTopo()
 
