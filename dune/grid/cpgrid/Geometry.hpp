@@ -105,7 +105,7 @@ namespace Dune
 		     const int* corner_indices)
 		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
 	    {
-                ASSERT(allcorners && corner_indices);
+                assert(allcorners && corner_indices);
 	    }
 
 	    /// @brief Construct from centroid and volume (1- and
@@ -217,7 +217,7 @@ namespace Dune
 	    /// The 8 corners of the hexahedral base cell.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                ASSERT(allcorners_ && cor_idx_);
+                assert(allcorners_ && cor_idx_);
                 return allcorners_[cor_idx_[cor]];
 	    }
 
@@ -498,7 +498,7 @@ namespace Dune
             /// Returns the single corner: the vertex itself.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                ASSERT(cor == 0);
+                assert(cor == 0);
                 return pos_;
 	    }
 

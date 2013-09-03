@@ -110,7 +110,7 @@ namespace Dune
 		  nbcell_(cell.index()), // Init to self, which is invalid.
 		  is_on_boundary_(false)
             {
-                ASSERT(index_ >= 0);
+                assert(index_ >= 0);
 		if (update_now) {
 		    update();
 		}
@@ -188,7 +188,7 @@ namespace Dune
                 if (!boundary()) {
                     THROW("Cannot call boundarySegmentIndex() on non-boundaries.");
                 }
-                ASSERT(!pgrid_->unique_boundary_ids_.empty());
+                assert(!pgrid_->unique_boundary_ids_.empty());
                 // Use the unique boundary ids (subtract 1).
                 EntityRep<1> face = faces_of_cell_[subindex_];
                 return pgrid_->unique_boundary_ids_[face] - 1;
@@ -364,7 +364,7 @@ namespace Dune
 		if (is_on_boundary_) {
 		    nbcell_ = index_; // self is invalid value
 		} else {
-                    ASSERT(cells_of_face.size() == 2);
+                    assert(cells_of_face.size() == 2);
                     if (cells_of_face[0].index() == index_) {
                         nbcell_ = cells_of_face[1].index();
                     } else {
@@ -428,13 +428,13 @@ namespace Dune
 
             const Intersection* operator->() const
             {
-		ASSERT(!Intersection::isAtEnd());
+		assert(!Intersection::isAtEnd());
                 return this;
             }
 
             const Intersection& operator*() const
             {
-		ASSERT(!Intersection::isAtEnd());
+		assert(!Intersection::isAtEnd());
                 return *this;
             }
 

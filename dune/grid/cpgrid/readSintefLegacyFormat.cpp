@@ -188,7 +188,7 @@ namespace Dune
 		    c2fdata.push_back(erep);
 		}
 	    }
-	    ASSERT(int(c2fdata.size()) == num_hfaces);
+	    assert(int(c2fdata.size()) == num_hfaces);
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
 	    // Build cell to point
@@ -331,21 +331,21 @@ namespace Dune
         {
             typedef FieldVector<int,3> IntVec;
             IntVec n;
-            map >> n;  ASSERT ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
+            map >> n;  assert ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
 
             int num_cells;
-            map >> num_cells;  ASSERT (num_cells > 0);
+            map >> num_cells;  assert (num_cells > 0);
 
             global_cell.resize(num_cells);
 
             IntVec p; int c = 0;
             while (map >> p) {
                 int glob = p[0] + n[0]*(p[1] + n[1]*p[2]);
-                ASSERT (glob < n[0] * n[1] * n[2]);
+                assert (glob < n[0] * n[1] * n[2]);
 
                 global_cell[c++] = glob;
             }
-            ASSERT (c == num_cells);
+            assert (c == num_cells);
         }
 
     } //anon namespace

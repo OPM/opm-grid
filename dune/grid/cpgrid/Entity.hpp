@@ -180,11 +180,11 @@ namespace Dune
 	    {
 		BOOST_STATIC_ASSERT(codim == 0);
 		if (cc == 0) {
-		    ASSERT(i == 0);
+		    assert(i == 0);
 		    typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
 		    return se;
 		} else if (cc == 3) {
-		    ASSERT(i >= 0 && i < 8);
+		    assert(i >= 0 && i < 8);
 		    int corner_index = pgrid_->cell_to_point_[EntityRep<codim>::index()][i];
 		    typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
 		    return se;
@@ -345,42 +345,42 @@ namespace Dune
 // 	    /// Member by pointer operator.
 // 	    Entity* operator->()
 // 	    {
-// 		ASSERT(Entity::valid());
+// 		assert(Entity::valid());
 // 		return this;
 // 	    }
 
 // 	    /// Const member by pointer operator.
 // 	    const Entity* operator->() const
 // 	    {
-// 		ASSERT(Entity::valid());
+// 		assert(Entity::valid());
 // 		return this;
 // 	    }
 
 // 	    /// Dereferencing operator.
 // 	    Entity& operator*()
 // 	    {
-// 		ASSERT(Entity::valid());
+// 		assert(Entity::valid());
 // 		return *this;
 // 	    }
 
 // 	    /// Const dereferencing operator.
 // 	    const Entity& operator*() const
 // 	    {
-// 		ASSERT(Entity::valid());
+// 		assert(Entity::valid());
 // 		return *this;
 // 	    }
 
 	    /// Const member by pointer operator.
 	    Entity* operator->() const
 	    {
-		ASSERT(Entity::valid());
+		assert(Entity::valid());
 		return const_cast<EntityPointer*>(this); // const_cast-hack added because of error in vtkwriter.hh
 	    }
 
 	    /// Const dereferencing operator.
 	    Entity& operator*() const
 	    {
-		ASSERT(Entity::valid());
+		assert(Entity::valid());
 		return const_cast<EntityPointer&>(*this); // const_cast-hack added because of error in vtkwriter.hh
 	    }
 

@@ -338,7 +338,7 @@ namespace Dune
 		    }
 		}
 	    }
-	    ASSERT(int(new2old.size()) == num_new_cells);
+	    assert(int(new2old.size()) == num_new_cells);
 	    // copy(new2old.begin(), new2old.end(), ostream_iterator<int>(cout, " "));
 	    // cout << endl;
 	    // On second thought, we should have used a multidimensional array or something...
@@ -514,7 +514,7 @@ namespace Dune
             int nodecount = 0;
             for (int node = 0; node < grid.number_of_nodes; ++node) {
                 if (old_to_new[node] != -1) {
-                    ASSERT(old_to_new[node] == 0);
+                    assert(old_to_new[node] == 0);
                     old_to_new[node] = nodecount;
                     ++nodecount;
                 }
@@ -574,7 +574,7 @@ namespace Dune
 		}
 		// Assertation below is no longer true, due to periodic_extension etc.
 		// Instead, the appendRow() is put inside an if test.
-		// ASSERT(cellcount == 1 || cellcount == 2);
+		// assert(cellcount == 1 || cellcount == 2);
 		if (cellcount > 0) {
 		    f2c.appendRow(cells, cells + cellcount);
 		    face_to_output_face.push_back(i);
@@ -603,10 +603,10 @@ namespace Dune
 		int numf = cf.size();
 		int bot_face = face_to_output_face[cf[numf - 2].index()];
 		int bfbegin = output.face_ptr[bot_face];
-		ASSERT(output.face_ptr[bot_face + 1] - bfbegin == 4);
+		assert(output.face_ptr[bot_face + 1] - bfbegin == 4);
 		int top_face = face_to_output_face[cf[numf - 1].index()];
 		int tfbegin = output.face_ptr[top_face];
-		ASSERT(output.face_ptr[top_face + 1] - tfbegin == 4);
+		assert(output.face_ptr[top_face + 1] - tfbegin == 4);
 		// We want the corners in 'x fastest, then y, then z' order,
 		// so we need to take the face_nodes in noncyclic order: 0 1 3 2.
 		array<int,8> corners = {{ output.face_nodes[bfbegin],
@@ -625,7 +625,7 @@ namespace Dune
 #endif
 	    cpgrid::OrientedEntityTable<1, 0> f2c_again;
 	    c2f.makeInverseRelation(f2c_again);
-	    ASSERT(f2c == f2c_again);
+	    assert(f2c == f2c_again);
 #endif
 	}
 
@@ -644,7 +644,7 @@ namespace Dune
 	    }
 	    const T& operator[](int index) const
 	    {
-		ASSERT(index >= 0 && index < size());
+		assert(index >= 0 && index < size());
 		return data_[beg_[index]];
 	    }
 	    int size() const

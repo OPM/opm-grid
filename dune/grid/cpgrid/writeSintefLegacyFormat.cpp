@@ -125,7 +125,7 @@ namespace Dune
 	    // Write numbers of entities.
 	    int num_cells = c2f.size();
             int num_hfaces = c2f.dataSize();
-            ASSERT(c2f.dataSize() == f2c.dataSize());
+            assert(c2f.dataSize() == f2c.dataSize());
             int num_faces = f2c.size();
 	    topo << num_cells << ' ' << num_hfaces << ' ' << num_faces << ' ' << num_points << "\n\n";
 
@@ -144,7 +144,7 @@ namespace Dune
                 topo << '\n';
 	    }
             topo << '\n';
-            ASSERT(hface_count == num_hfaces);
+            assert(hface_count == num_hfaces);
 
 	    // Write hfaces to faces mapping
 	    for (int i = 0; i < num_cells; ++i) {
@@ -191,7 +191,7 @@ namespace Dune
             geom << '\n';
 
 	    // Write face normals
-            ASSERT(gpol.geomVector<1>().size() == normals.size());
+            assert(gpol.geomVector<1>().size() == normals.size());
 	    int num_faces = gpol.geomVector<1>().size();
 	    geom << num_faces << '\n';
 	    for (int i = 0; i < num_faces; ++i) {
