@@ -104,6 +104,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
 
 
 int main(int argc, char** argv)
+try
 {
 
     CpGrid grid;
@@ -148,5 +149,9 @@ int main(int argc, char** argv)
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
     std::cout << "Writing to filename " << fnamebase << ".vtu" << std::endl;
     vtkwriter.write(fnamebase, VTK::ascii);
+}
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
 }
 
