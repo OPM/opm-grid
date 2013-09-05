@@ -57,7 +57,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "dumux/diffusion/problems/uniformproblem.hh"
 #include "dumux/fractionalflow/variableclass2p.hh"
 
-
+#include <iostream>
 
 int main(int argc, char** argv)
 {

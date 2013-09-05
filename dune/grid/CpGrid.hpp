@@ -58,6 +58,8 @@
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 
+#include <iostream>
+
 
 namespace Opm {
     class EclipseGridParser;

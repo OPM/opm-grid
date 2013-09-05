@@ -16,21 +16,19 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
-#include <config.h>
+#include "config.h"
 
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
 #endif
-#define NVERBOSE // to suppress our messages when throwing
-
 
 #define BOOST_TEST_MODULE GeometryTests
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
-#include <sstream>
-
-#include "config.h"
 #include <dune/grid/cpgrid/Geometry.hpp>
+
+#include <sstream>
+#include <iostream>
 
 using namespace Dune;
 

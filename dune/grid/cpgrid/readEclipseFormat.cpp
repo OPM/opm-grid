@@ -37,7 +37,6 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include <fstream>
 #include "../CpGrid.hpp"
 #include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
@@ -45,7 +44,8 @@
 #include <dune/grid/common/GeometryHelpers.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 
-#define VERBOSE
+#include <fstream>
+#include <iostream>
 
 namespace Dune
 {
