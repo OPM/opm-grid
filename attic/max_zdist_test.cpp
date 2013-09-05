@@ -36,6 +36,7 @@
 #include<opm/core/io/eclipse/EclipseGridParser.hpp>
 #include<opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <array>
+#include <iostream>
 using namespace Opm;
 
 int main(int argc, char** argv)

@@ -69,7 +69,7 @@ namespace Dune
 	{
 	    std::ifstream file(topofilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << topofilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << topofilename);
 	    }
 	    readTopo(file, cell_to_face_, face_to_cell_, cell_to_point_);
 	}
@@ -77,7 +77,7 @@ namespace Dune
 	{
 	    std::ifstream file(geomfilename.c_str());
 	    if (!file) {
-		THROW("Could not open file " << geomfilename);
+		OPM_THROW(std::runtime_error, "Could not open file " << geomfilename);
 	    }
 	    readGeom(file, geometry_, face_normals_);
 	}
@@ -115,7 +115,7 @@ namespace Dune
 	    std::getline(topo, topo_header);
 	    std::string correct_header("topology 3 2o 2 0 3-2o 2o-2 2-0");
 	    if (topo_header.compare(correct_header)) {
-		THROW("Header of topology file does not match what we expect, file possibly in wrong format.\n"
+		OPM_THROW(std::runtime_error, "Header of topology file does not match what we expect, file possibly in wrong format.\n"
 		      << "Header is :" << topo_header << ":\n"
 		      << "Should be :" << correct_header << ":\n");
 	    }
@@ -168,7 +168,7 @@ namespace Dune
 		    int face = hface2face[cell2hface[i][j]].first;
 		    int ind = hface2face[cell2hface[i][j]].second ? 0 : 1;
 		    if (face2cell[face][ind] != -1) {
-			THROW("Error in creating faces to cells mapping for face " << face);
+			OPM_THROW(std::runtime_error, "Error in creating faces to cells mapping for face " << face);
 		    }
 		    face2cell[face][ind] = i;
 		}
@@ -188,11 +188,11 @@ namespace Dune
 		    c2fdata.push_back(erep);
 		}
 	    }
-	    ASSERT(int(c2fdata.size()) == num_hfaces);
+	    assert(int(c2fdata.size()) == num_hfaces);
 	    c2f = cpgrid::OrientedEntityTable<0, 1>(c2fdata.begin(), c2fdata.end(), c2fsizes.begin(), c2fsizes.end());
 	    c2f.makeInverseRelation(f2c);
 	    // Build cell to point
-	    MESSAGE("Warning: Not yet making a proper cell to point mapping for Sintef legacy grid.");
+	    OPM_MESSAGE("Warning: Not yet making a proper cell to point mapping for Sintef legacy grid.");
 	    c2p.resize(c2f.size());
 	} // void readTopo()
 
@@ -234,7 +234,7 @@ namespace Dune
 	    std::string wanted_header
 		= "geometry 0:3:point 2:3:normal 2:3:centroid 2:1:area 3:3:centroid 3:1:volume";
 	    if (geom_header.compare(wanted_header)) {
-		THROW("Header of geometry file does not match what we expect, file possibly in wrong format.");
+		OPM_THROW(std::runtime_error, "Header of geometry file does not match what we expect, file possibly in wrong format.");
 	    }
 
 	    typedef FieldVector<double, 3> point_t;
@@ -263,7 +263,7 @@ namespace Dune
 	    int num_faces_again;
 	    geom >> num_faces_again;
 	    if (num_faces != num_faces_again) {
-		THROW("Inconsistent number of faces in file.");
+		OPM_THROW(std::runtime_error, "Inconsistent number of faces in file.");
 	    }
 	    face_centroids.resize(num_faces);
 	    for (int i = 0; i < num_faces; ++i) {
@@ -272,7 +272,7 @@ namespace Dune
 	    // Read face areas
 	    geom >> num_faces_again;
 	    if (num_faces != num_faces_again) {
-		THROW("Inconsistent number of faces in file.");
+		OPM_THROW(std::runtime_error, "Inconsistent number of faces in file.");
 	    }
 	    face_areas.resize(num_faces);
 	    for (int i = 0; i < num_faces; ++i) {
@@ -289,7 +289,7 @@ namespace Dune
 	    int num_cells_again;
 	    geom >> num_cells_again;
 	    if (num_cells != num_cells_again) {
-		THROW("Inconsistent number of cells in file.");
+		OPM_THROW(std::runtime_error, "Inconsistent number of cells in file.");
 	    }
 	    cell_volumes.resize(num_cells);
 	    for (int i = 0; i < num_cells; ++i) {
@@ -331,21 +331,21 @@ namespace Dune
         {
             typedef FieldVector<int,3> IntVec;
             IntVec n;
-            map >> n;  ASSERT ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
+            map >> n;  assert ((n[0] > 0) && (n[1] > 0) && (n[2] > 0));
 
             int num_cells;
-            map >> num_cells;  ASSERT (num_cells > 0);
+            map >> num_cells;  assert (num_cells > 0);
 
             global_cell.resize(num_cells);
 
             IntVec p; int c = 0;
             while (map >> p) {
                 int glob = p[0] + n[0]*(p[1] + n[1]*p[2]);
-                ASSERT (glob < n[0] * n[1] * n[2]);
+                assert (glob < n[0] * n[1] * n[2]);
 
                 global_cell[c++] = glob;
             }
-            ASSERT (c == num_cells);
+            assert (c == num_cells);
         }
 
     } //anon namespace

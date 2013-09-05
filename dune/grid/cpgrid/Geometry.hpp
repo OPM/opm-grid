@@ -40,7 +40,6 @@
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
-#include <boost/static_assert.hpp>
 
 namespace Dune
 {
@@ -67,7 +66,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<3, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
@@ -105,7 +104,7 @@ namespace Dune
 		     const int* corner_indices)
 		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
 	    {
-                ASSERT(allcorners && corner_indices);
+                assert(allcorners && corner_indices);
 	    }
 
 	    /// @brief Construct from centroid and volume (1- and
@@ -135,8 +134,8 @@ namespace Dune
             /// case. We should therefore revisit this at some point.
 	    GlobalCoordinate global(const LocalCoordinate& local) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
                 LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
                 uvw[0] -= local;
@@ -166,8 +165,8 @@ namespace Dune
             /// May be slow.
 	    LocalCoordinate local(const GlobalCoordinate& y) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
                 // \todo: Implement direct computation.
                 const ctype epsilon = 1e-12;
@@ -217,7 +216,7 @@ namespace Dune
 	    /// The 8 corners of the hexahedral base cell.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                ASSERT(allcorners_ && cor_idx_);
+                assert(allcorners_ && cor_idx_);
                 return allcorners_[cor_idx_[cor]];
 	    }
 
@@ -240,8 +239,8 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-                BOOST_STATIC_ASSERT(mydimension == 3);
-                BOOST_STATIC_ASSERT(coorddimension == 3);
+                static_assert(mydimension == 3, "");
+                static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
                 LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
                 uvw[0] -= local;
@@ -302,7 +301,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<2, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
@@ -344,13 +343,13 @@ namespace Dune
 	    /// This method is meaningless for singular geometries.
 	    const GlobalCoordinate& global(const LocalCoordinate&) const
 	    {
-		THROW("Geometry::global() meaningless on singular geometry.");
+		OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		THROW("Geometry::local() meaningless on singular geometry.");
+		OPM_THROW(std::runtime_error, "Geometry::local() meaningless on singular geometry.");
 	    }
 
             /// For the singular geometry, we return a constant
@@ -378,7 +377,7 @@ namespace Dune
 	    /// This method is meaningless for singular geometries.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                THROW("Meaningless call to cpgrid::Geometry::corner(int): "
+                OPM_THROW(std::runtime_error, "Meaningless call to cpgrid::Geometry::corner(int): "
                       "singular geometry has no corners.");
 	    }
 
@@ -398,14 +397,14 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
-		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
 	    }
 
 	    /// Since integrationElement() is constant, returns true.
@@ -426,7 +425,7 @@ namespace Dune
 	template <int cdim, class GridImp> // GridImp arg never used
 	class Geometry<0, cdim, GridImp>
 	{
-	    BOOST_STATIC_ASSERT(cdim == 3);
+	    static_assert(cdim == 3, "");
 	public:
 	    /// Dimension of underlying grid.
 	    enum { dimension = 3 };
@@ -472,7 +471,7 @@ namespace Dune
             /// Meaningless for the vertex geometry.
 	    LocalCoordinate local(const GlobalCoordinate&) const
 	    {
-		THROW("Meaningless to call local() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call local() on singular geometries.");
 	    }
 
             /// Returns 1 for the vertex geometry.
@@ -498,7 +497,7 @@ namespace Dune
             /// Returns the single corner: the vertex itself.
 	    GlobalCoordinate corner(int cor) const
 	    {
-                ASSERT(cor == 0);
+                assert(cor == 0);
                 return pos_;
 	    }
 
@@ -518,14 +517,14 @@ namespace Dune
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
 	    jacobianTransposed(const LocalCoordinate& local) const
 	    {
-		THROW("Meaningless to call jacobianTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, coorddimension, mydimension>&
 	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
 	    {
-		THROW("Meaningless to call jacobianInverseTransposed() on singular geometries.");
+		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
 	    }
 
 	    /// The mapping implemented by this geometry is constant, therefore affine.

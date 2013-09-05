@@ -56,9 +56,9 @@ namespace Dune {
         {}
         double& operator()(int i, int j, int k)
         {
-            ASSERT ((0 <= i) && (i <= nx_));
-            ASSERT ((0 <= j) && (j <= ny_));
-            ASSERT ((0 <= k) && (k <= nz_));
+            assert ((0 <= i) && (i <= nx_));
+            assert ((0 <= j) && (j <= ny_));
+            assert ((0 <= k) && (k <= nz_));
             return data_[i + (nx_+1)*(j + (ny_+1)*k)];
         }
     private:
@@ -163,9 +163,9 @@ namespace Dune {
                          const std::vector<double>&        zcorn ,
                          const std::vector<int>&           actnum)
         {
-            ASSERT (int(coord .size()) == 6 * (nx_+1) * (ny_+1));
-            ASSERT (int(zcorn .size()) == (2*nx_) * (2*ny_) * (2*nz_));
-            ASSERT (int(actnum.size()) == nx_ * ny_ * nz_);
+            assert (int(coord .size()) == 6 * (nx_+1) * (ny_+1));
+            assert (int(zcorn .size()) == (2*nx_) * (2*ny_) * (2*nz_));
+            assert (int(actnum.size()) == nx_ * ny_ * nz_);
 
             grdecl.precision(15);
             grdecl << "SPECGRID\n"

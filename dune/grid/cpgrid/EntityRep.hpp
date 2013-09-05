@@ -64,7 +64,6 @@ namespace Dune
 // -------------------------------------------------------------------
 
 
-//#include <boost/static_assert.hpp>
 //#include <opm/core/utility/SparseTable.hpp>
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <climits>
@@ -106,14 +105,14 @@ namespace Dune
 	    EntityRep(int index, bool orientation)
 		: entityrep_(orientation ? index : ~index)
 	    {
-		ASSERT(index >= 0);
+		assert(index >= 0);
 	    }
 	    /// @brief Set entity value.
 	    /// @param index Entity index
 	    /// @param orientation True if the entity's orientations is positive.
 	    void setValue(int index, bool orientation)
 	    {
-		ASSERT(index >= 0);
+		assert(index >= 0);
 		entityrep_ = orientation ? index : ~index;
 	    }
 	    /// @brief The (positive) index of an entity. Not a Dune interface method.
