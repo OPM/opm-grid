@@ -58,6 +58,8 @@
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 
+#include <iostream>
+
 
 namespace Opm {
     class EclipseGridParser;
@@ -628,7 +630,7 @@ namespace Dune
             bool b = r[0].orientation();
             bool use_first = a ? b : !b;
             if (r.size() == 2) {
-                ASSERT(r[0].orientation() != r[1].orientation());
+                assert(r[0].orientation() != r[1].orientation());
                 return use_first ? r[0].index() : r[1].index();
             } else {
                 return use_first ? r[0].index() : -1;

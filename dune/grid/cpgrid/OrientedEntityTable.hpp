@@ -37,7 +37,6 @@
 #define OPM_ORIENTEDENTITYTABLE_HEADER
 
 #include "EntityRep.hpp"
-#include <boost/static_assert.hpp>
 #include <opm/core/utility/SparseTable.hpp>
 #include <map>
 #include <climits>

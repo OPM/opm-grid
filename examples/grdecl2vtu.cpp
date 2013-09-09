@@ -62,7 +62,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
         std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
-            THROW(fieldname << " field must have the same size as the "
+            OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
                   "logical cartesian size of the grid: "
                   << eclVector.size() << " != " << num_global_cells);
         }
@@ -89,7 +89,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
         std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
-            THROW(fieldname << " field must have the same size as the "
+            OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
                   "logical cartesian size of the grid: "
                   << eclVector.size() << " != " << num_global_cells);
         }
@@ -104,6 +104,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
 
 
 int main(int argc, char** argv)
+try
 {
 
     CpGrid grid;
@@ -148,5 +149,9 @@ int main(int argc, char** argv)
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
     std::cout << "Writing to filename " << fnamebase << ".vtu" << std::endl;
     vtkwriter.write(fnamebase, VTK::ascii);
+}
+catch (const std::exception &e) {
+    std::cerr << "Program threw an exception: " << e.what() << "\n";
+    throw;
 }
 

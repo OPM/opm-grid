@@ -79,7 +79,7 @@ namespace Dune
 	    template <int codim>
 	    const EntityVariable<cpgrid::Geometry<3 - codim, 3, GridType>, codim>& geomVector() const
 	    {
-		BOOST_STATIC_ASSERT(codim != 2);
+		static_assert(codim != 2, "");
 		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom, 
 		    typename boost::mpl::if_c<codim == 1, GetFaceGeom, GetPointGeom>::type >::type selector;
 		return selector::value(*this);

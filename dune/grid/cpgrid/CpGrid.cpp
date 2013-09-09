@@ -32,13 +32,13 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-#if HAVE_CONFIG_H
 #include "config.h"
-#endif
-#include <fstream>
+
 #include "../CpGrid.hpp"
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
+
+#include <fstream>
+#include <iostream>
 
 namespace Dune
 {
@@ -68,7 +68,7 @@ namespace Dune
 					 param.getDefault<double>("dz", 1.0) }};
 	    createCartesian(dims, cellsz);
 	} else {
-	    THROW("Unknown file format string: " << fileformat);
+	    OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
 	}
     }
 

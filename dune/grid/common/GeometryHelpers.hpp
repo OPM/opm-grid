@@ -56,7 +56,7 @@ namespace Dune
 	Point average(const Vector<Point>& points)
 	{
 	    int num_points = points.size();
-	    ASSERT(num_points > 0);
+	    assert(num_points > 0);
 	    Point pt = points[0];
 	    for (int i = 1; i < num_points; ++i) {
 		pt += points[i];
@@ -148,10 +148,10 @@ namespace Dune
 	    for (int i = 0; i < num_points; ++i) {
 		Point tet[4] = { cell_centroid, face_centroid, points[i], points[(i+1)%num_points] };
 		double small_volume = std::fabs(simplex_volume(tet));
-		ASSERT(small_volume > 0);
+		assert(small_volume > 0);
 		tot_volume += small_volume;
 	    }
-	    ASSERT(tot_volume>0);
+	    assert(tot_volume>0);
 	    return tot_volume;
 	}
 
@@ -172,7 +172,7 @@ namespace Dune
 	    for (int i = 0; i < num_points; ++i) {
 		Point tet[4] = { cell_centroid, face_centroid, points[i], points[(i+1)%num_points] };
 		double small_volume = std::fabs(simplex_volume(tet));
-		ASSERT(small_volume > 0);
+		assert(small_volume > 0);
 		Point small_centroid = tet[0];
 		for(int i = 1; i < 4; ++i){
 		    small_centroid += tet[i];
@@ -182,7 +182,7 @@ namespace Dune
 		tot_volume += small_volume;
 	    }
 	    centroid /= tot_volume;
-	    ASSERT(tot_volume>0);
+	    assert(tot_volume>0);
 	    return centroid;
 	
 	}

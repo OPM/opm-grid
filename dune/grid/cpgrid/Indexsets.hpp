@@ -141,7 +141,7 @@ namespace Dune
 		case 1: return index(e.template subEntity<1>(i));
 		case 2: return index(e.template subEntity<2>(i));
 		case 3: return index(e.template subEntity<3>(i));
-		default: THROW("Codimension " << cc << " not supported.");
+		default: OPM_THROW(std::runtime_error, "Codimension " << cc << " not supported.");
 		}
 
 	    }
@@ -202,7 +202,7 @@ namespace Dune
 		case 1: return id(e.template subEntity<1>(i));
 		case 2: return id(e.template subEntity<2>(i));
 		case 3: return id(e.template subEntity<3>(i));
-		default: THROW("Cannot get subId of codimension " << cc);
+		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
 		}
 		return -1;
 	    }
