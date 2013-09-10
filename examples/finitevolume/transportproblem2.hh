@@ -8,6 +8,8 @@
 // We define functions for the parameters c0, u and b.
 //===============================================================
 
+#include <dune/common/fvector.hh>
+
 // the initial condition c0
 template<int dimworld, class ct>
 double c0 (const Dune::FieldVector<ct,dimworld>& x)

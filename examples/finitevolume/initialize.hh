@@ -1,3 +1,4 @@
+#include <dune/common/version.hh>
 #include<dune/geometry/referenceelements.hh>
 #include "transportproblem2.hh"
 
@@ -29,7 +30,11 @@ void initialize(const G& grid, const M& mapper, V& c)
 
         // get cell center in reference element
         const Dune::FieldVector<ct,dim>&
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+        local = Dune :: ReferenceElements<ct,dim >::general(gt).position(0,0);
+#else
         local = Dune :: GenericReferenceElements<ct,dim >::general(gt).position(0,0);
+#endif
 
         // get global coordinate of cell center
         Dune::FieldVector<ct,dimworld> global =

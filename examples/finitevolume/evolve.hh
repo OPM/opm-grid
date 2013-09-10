@@ -1,3 +1,4 @@
+#include <dune/common/version.hh>
 #include<dune/geometry/referenceelements.hh>
 
 template<class G, class M, class V>
@@ -40,15 +41,24 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
 
         // cell center in reference element
         const Dune::FieldVector<ct,dim>&
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+        local = Dune::ReferenceElements<ct,dim>::general(gt).position(0,0);
+#else
         local = Dune::GenericReferenceElements<ct,dim>::general(gt).position(0,0);
+#endif
 
         // cell center in global coordinates
         /*        Dune::FieldVector<ct,dimworld>
                   global = it->geometry().center(); */
 
         // cell volume, assume linear map here
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
         double volume = it->geometry().integrationElement(local)
-                        *Dune::GenericReferenceElements<ct,dim>::general(gt).volume();
+            *Dune::ReferenceElements<ct,dim>::general(gt).volume();
+#else
+        double volume = it->geometry().integrationElement(local)
+            *Dune::GenericReferenceElements<ct,dim>::general(gt).volume();
+#endif
         // double volume = it->geometry().volume();
 
         // cell index
@@ -66,13 +76,21 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
 
             // center in face's reference element
             const Dune::FieldVector<ct,dim-1>&
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+            facelocal = Dune::ReferenceElements<ct,dim-1>::general(gtf).position(0,0);
+#else
             facelocal = Dune::GenericReferenceElements<ct,dim-1>::general(gtf).position(0,0);
+#endif
 
             // get normal vector scaled with volume
             Dune::FieldVector<ct,dimworld> integrationOuterNormal
             = is->integrationOuterNormal(facelocal);
             integrationOuterNormal
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+            *= Dune::ReferenceElements<ct,dim-1>::general(gtf).volume();
+#else
             *= Dune::GenericReferenceElements<ct,dim-1>::general(gtf).volume();
+#endif
 
             // center of face in global coordinates
             Dune::FieldVector<ct,dimworld>
@@ -103,9 +121,15 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
                     // compute factor in neighbor
                     Dune::GeometryType nbgt = outside->type();
                     const Dune::FieldVector<ct,dim>&
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+                    nblocal = Dune::ReferenceElements<ct,dim>::general(nbgt).position(0,0);
+                    double nbvolume = outside->geometry().integrationElement(nblocal)
+                                      *Dune::ReferenceElements<ct,dim>::general(nbgt).volume();
+#else
                     nblocal = Dune::GenericReferenceElements<ct,dim>::general(nbgt).position(0,0);
                     double nbvolume = outside->geometry().integrationElement(nblocal)
                                       *Dune::GenericReferenceElements<ct,dim>::general(nbgt).volume();
+#endif
                     double nbfactor = velocity*integrationOuterNormal/nbvolume;
 
                     if (factor<0) // inflow

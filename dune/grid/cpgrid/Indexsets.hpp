@@ -36,6 +36,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPM_INDEXSETS_HEADER
 #define OPM_INDEXSETS_HEADER
 
+#include <vector>
 #include <dune/geometry/type.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
 namespace Dune
