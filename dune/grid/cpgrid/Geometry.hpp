@@ -36,6 +36,7 @@
 #ifndef OPM_GEOMETRY_HEADER
 #define OPM_GEOMETRY_HEADER
 
+#include <dune/common/version.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
@@ -170,8 +171,13 @@ namespace Dune
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
                 // \todo: Implement direct computation.
                 const ctype epsilon = 1e-12;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+                const ReferenceElement< ctype , 3 > & refElement =
+                    ReferenceElements< ctype, 3 >::general(type());
+#else
                 const GenericReferenceElement< ctype , 3 > & refElement =
                     GenericReferenceElements< ctype, 3 >::general(type());
+#endif
                 LocalCoordinate x = refElement.position(0,0);
                 LocalCoordinate dx;
                 do {

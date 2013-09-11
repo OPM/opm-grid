@@ -5,7 +5,7 @@
 #include <dune/grid/common/mcmgmapper.hh> // mapper class
 
 #include <dune/common/version.hh>
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/mpihelper.hh> // include mpi helper class
 #else
 #include <dune/common/mpihelper.hh> // include mpi helper class
@@ -15,7 +15,6 @@
 //#include <dune/grid/io/file/dgfparser/dgfgridtype.hh>
 
 #include "vtkout.hh"
-// #include"unitcube.hh"
 // #include"transportproblem2.hh"
 #include "initialize.hh"
 #include "evolve.hh"
