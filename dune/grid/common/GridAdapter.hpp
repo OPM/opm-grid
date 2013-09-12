@@ -22,7 +22,10 @@
 
 
 #include <opm/core/grid.h>
+#include <opm/core/utility/ErrorMacros.hpp>
+
 #include <stdexcept>
+#include <vector>
 
 class GridAdapter
 {
