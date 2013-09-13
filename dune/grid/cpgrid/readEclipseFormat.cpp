@@ -212,10 +212,6 @@ namespace Dune
 	// Clean up the output struct.
 	free_processed_grid(&output);
 
-        cartDims_[0] = output.dimensions[0];
-        cartDims_[1] = output.dimensions[1];
-        cartDims_[2] = output.dimensions[2];
-
         computeUniqueBoundaryIds();
         
 #ifdef VERBOSE
