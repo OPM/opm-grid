@@ -64,9 +64,9 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me
 	    /// @param
-	    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3, GridType>, 0>& cell_geom,
-				  const EntityVariable<cpgrid::Geometry<2, 3, GridType>, 1>& face_geom,
-				  const EntityVariable<cpgrid::Geometry<0, 3, GridType>, 3>& point_geom)
+	    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+				  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
+				  const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
 		: cell_geom_(cell_geom), face_geom_(face_geom), point_geom_(point_geom)
 	    {
 	    }
@@ -77,7 +77,7 @@ namespace Dune
 	    /// @param
 	    /// @return
 	    template <int codim>
-	    const EntityVariable<cpgrid::Geometry<3 - codim, 3, GridType>, codim>& geomVector() const
+	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
 	    {
 		static_assert(codim != 2, "");
 		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom, 
@@ -88,9 +88,9 @@ namespace Dune
 	    friend struct GetCellGeom;
 	    friend struct GetFaceGeom;
 	    friend struct GetPointGeom;
-	    EntityVariable<cpgrid::Geometry<3, 3, GridType>, 0> cell_geom_;
-	    EntityVariable<cpgrid::Geometry<2, 3, GridType>, 1> face_geom_;
-	    EntityVariable<cpgrid::Geometry<0, 3, GridType>, 3> point_geom_;
+	    EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
+	    EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
+	    EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;
 	};
 
 	/// @brief
@@ -104,7 +104,7 @@ namespace Dune
 	    /// @param
 	    /// @return
 	    template <class GridType>
-	    static const EntityVariable<cpgrid::Geometry<3, 3, GridType>, 0>&
+	    static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
 	    value(const DefaultGeometryPolicy<GridType>& geom)
 	    {
 		return geom.cell_geom_;
@@ -121,7 +121,7 @@ namespace Dune
 	    /// @param
 	    /// @return
 	    template <class GridType>
-	    static const EntityVariable<cpgrid::Geometry<2, 3, GridType>, 1>&
+	    static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
 	    value(const DefaultGeometryPolicy<GridType>& geom)
 	    {
 		return geom.face_geom_;
@@ -138,7 +138,7 @@ namespace Dune
 	    /// @param
 	    /// @return 
 	    template <class GridType>
-	    static const EntityVariable<cpgrid::Geometry<0, 3, GridType>, 3>&
+	    static const EntityVariable<cpgrid::Geometry<0, 3>, 3>&
 	    value(const DefaultGeometryPolicy<GridType>& geom)
 	    {
 		return geom.point_geom_;

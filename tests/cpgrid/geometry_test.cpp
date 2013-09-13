@@ -36,7 +36,7 @@ class Null;
 
 BOOST_AUTO_TEST_CASE(vertexgeom)
 {
-    typedef cpgrid::Geometry<0, 3, Null> Geometry;
+    typedef cpgrid::Geometry<0, 3> Geometry;
     // Default construction.
     Geometry g_default;
 
@@ -62,7 +62,7 @@ BOOST_AUTO_TEST_CASE(vertexgeom)
 
 BOOST_AUTO_TEST_CASE(intersectiongeom)
 {
-    typedef cpgrid::Geometry<2, 3, Null> Geometry;
+    typedef cpgrid::Geometry<2, 3> Geometry;
     // Default construction.
     Geometry g_default;
 
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(intersectiongeom)
 
 BOOST_AUTO_TEST_CASE(cellgeom)
 {
-    typedef cpgrid::Geometry<3, 3, Null> Geometry;
+    typedef cpgrid::Geometry<3, 3> Geometry;
     // Default construction.
     Geometry g_default;
 
