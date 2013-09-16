@@ -37,7 +37,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "../CpGrid.hpp"
+#include "CpGridData.hpp"
 #include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
@@ -83,7 +83,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
+    void CpGridData::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
     {
 	// Read eclipse file data.
 #ifdef VERBOSE
@@ -98,7 +98,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
     {
 	Opm::EclipseGridInspector inspector(parser);
 

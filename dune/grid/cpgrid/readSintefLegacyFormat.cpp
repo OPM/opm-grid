@@ -41,7 +41,7 @@
 #include <vector>
 
 #include <opm/core/utility/ErrorMacros.hpp>
-#include "../CpGrid.hpp"
+#include "CpGridData.hpp"
 
 namespace Dune
 {
@@ -63,7 +63,7 @@ namespace Dune
 
 
     /// Read the Sintef legacy grid format ('topogeom').
-    void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
+    void CpGridData::readSintefLegacyFormat(const std::string& grid_prefix)
     {
 	std::string topofilename = grid_prefix + "-topo.dat";
 	{
