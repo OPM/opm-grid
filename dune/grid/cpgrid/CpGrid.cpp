@@ -35,6 +35,8 @@
 #include "config.h"
 
 #include "../CpGrid.hpp"
+#include "CpGridData.hpp"
+#include "CpGridData.cpp"
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <fstream>
@@ -43,8 +45,15 @@
 namespace Dune
 {
 
+    CpGrid::CpGrid()
+    : use_unique_boundary_ids_(false),
+      data_( new CpGridData(*this) ), current_view_data_(data_)
+   {}
 
-
+    CpGrid::~CpGrid()
+    {
+        delete data_;
+    }
 
     /// Initialize the grid.
     void CpGrid::init(const Opm::parameter::ParameterGroup& param)
@@ -114,36 +123,6 @@ namespace Dune
 	g.coord = &coord[0];
 	g.zcorn = &zcorn[0];
 	g.actnum = &actnum[0];
-	processEclipseFormat(g, 0.0, false, false);
+	current_view_data->processEclipseFormat(g, 0.0, false, false);
     }
-
-
-
-
-    void CpGrid::computeUniqueBoundaryIds()
-    {
-	// Perhaps we should make available a more comprehensive interface
-	// for EntityVariable, so that we don't have to build a separate
-	// vector and assign() to unique_boundary_ids_ at the end.
-	int num_faces = face_to_cell_.size();
-	std::vector<int> ids(num_faces, 0);
-	int count = 0;
-	for (int i = 0; i < num_faces; ++i) {
-	    cpgrid::EntityRep<1> face(i, true);
-	    if (face_to_cell_[face].size() == 1) {
-		// It's on the boundary.
-		// Important! Since boundary ids run from 1 to n,
-		// we use preincrement instead of postincrement below.
-		ids[i] = ++count;
-	    }
-	}
-	unique_boundary_ids_.assign(ids.begin(), ids.end());
-#ifdef VERBOSE
-	std::cout << "computeUniqueBoundaryIds() gave all boundary intersections\n"
-		  << "unique boundaryId()s ranging from 1 to " << count << std::endl;
-#endif
-    }
-
-
-
 } // namespace Dune

@@ -51,15 +51,15 @@ namespace Dune
 	/// (no difference due to no adaptivity) for CpGrid.
 	/// This could have been a random access iterator, perhaps we will
 	/// use a facade to do this later.
-	template<int cd, PartitionIteratorType pitype, class GridType>
-	class Iterator : public EntityPointer<cd, GridType>
+	template<int cd, PartitionIteratorType pitype>
+	class Iterator : public EntityPointer<cd>
 	{
 	public:
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Iterator(const GridType& grid, int index, bool orientation)
-		: EntityPointer<cd, GridType>(grid, EntityRep<cd>(index, orientation))
+	    Iterator(const Cpgrid& grid, int index, bool orientation)
+		: EntityPointer<cd>(grid, EntityRep<cd>(index, orientation))
 	    {
 	    }
 
@@ -80,15 +80,14 @@ namespace Dune
 
 
 	/// Only needs to provide interface for doing nothing.
-	template <class GridType>
-	class HierarchicIterator : public EntityPointer<0, GridType>
+	class HierarchicIterator : public EntityPointer<0>
 	{
 	public:
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    HierarchicIterator(const GridType& grid)
-		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex, true )
+	    HierarchicIterator(const CpGrid& grid)
+		: EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
 	    {
 	    }
 

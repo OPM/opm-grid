@@ -5,7 +5,7 @@
 // Created: Fri May 29 20:26:48 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Brd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -46,13 +46,16 @@ namespace Dune
     {
 
 
-        template <int codim, class GridType> class EntityPointer;
+	/// @brief
+	/// @todo Doc me!
+	/// @tparam
+        template <int codim> class EntityPointer;
 
 
         /// @brief
         /// @todo Doc me!
         /// @tparam
-        template <int codim, class GridType>
+	template <int codim>
         class Entity : public EntityRep<codim>
         {
         public:
@@ -64,7 +67,7 @@ namespace Dune
             enum { dimensionworld = 3 };
 
 
-            typedef typename GridType::template Codim<codim>::EntityPointer EntityPointer;
+	    typedef EntityPointer<codim> EntityPointer;
 
             /// @brief
             /// @todo Doc me!
@@ -72,15 +75,15 @@ namespace Dune
             template <int cd>
             struct Codim
             {
-                typedef typename GridType::template Codim<cd>::EntityPointer EntityPointer;
+		typedef cpgrid::EntityPointer<codim> EntityPointer;
             };
 
-            typedef typename GridType::template Codim<codim>::Geometry Geometry;
+	    typedef cpgrod::Geometry<3-codim,3> Geometry;
             typedef Geometry LocalGeometry;
 
-            typedef typename GridType::Traits::LeafIntersectionIterator LeafIntersectionIterator;
-            typedef typename GridType::Traits::LevelIntersectionIterator LevelIntersectionIterator;
-            typedef typename GridType::Traits::HierarchicIterator HierarchicIterator;
+	    typedef cpgrid::LeafIntersectionIterator LeafIntersectionIterator;
+	    typedef cpgrid::LevelIntersectionIterator LevelIntersectionIterator;
+	    typedef cpgrid::HierarchicIterator HierarchicIterator;
 
             typedef double ctype;
 
@@ -88,19 +91,19 @@ namespace Dune
             /// This constructor should probably be removed, since it exposes
             /// details of the implementation of \see EntityRep, see comment in
             /// EntityRep<>::EntityRep(int).
-//          Entity(const GridType& grid, int entityrep)
+// 	    Entity(const CpGrid& grid, int entityrep)
 //              : EntityRep<codim>(entityrep), pgrid_(&grid)
 //          {
 //          }
 
             /// Constructor taking a grid and an entity representation.
-            Entity(const GridType& grid, EntityRep<codim> entityrep)
+	    Entity(const Cpgrid& grid, EntityRep<codim> entityrep)
                 : EntityRep<codim>(entityrep), pgrid_(&grid)
             {
             }
 
             /// Constructor taking a grid, entity index and orientation.
-            Entity(const GridType& grid, int index, bool orientation)
+	    Entity(const CpGrid& grid, int index, bool orientation)
                 : EntityRep<codim>(index, orientation), pgrid_(&grid)
             {
             }
@@ -211,43 +214,43 @@ namespace Dune
             }
 
             /// Start iterator for the cell-cell intersections of this entity.
-            typename GridType::Traits::LevelIntersectionIterator ilevelbegin() const
+	    LevelIntersectionIterator ilevelbegin() const
             {
                 static_assert(codim == 0, "");
-                return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, false);
+		return LevelIntersectionIterator(*pgrid_, *this, false);
             }
 
             /// End iterator for the cell-cell intersections of this entity.
-            typename GridType::Traits::LevelIntersectionIterator ilevelend() const
+	    LevelIntersectionIterator ilevelend() const
             {
                 static_assert(codim == 0, "");
-                return typename GridType::Traits::LevelIntersectionIterator(*pgrid_, *this, true);
+		return LevelIntersectionIterator(*pgrid_, *this, true);
             }
 
             /// Start iterator for the cell-cell intersections of this entity.
-            typename GridType::Traits::LeafIntersectionIterator ileafbegin() const
+	    LeafIntersectionIterator ileafbegin() const
             {
                 static_assert(codim == 0, "");
-                return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, false);
+		return LeafIntersectionIterator(*pgrid_, *this, false);
             }
 
             /// End iterator for the cell-cell intersections of this entity.
-            typename GridType::Traits::LeafIntersectionIterator ileafend() const
+	    typename LeafIntersectionIterator ileafend() const
             {
                 static_assert(codim == 0, "");
-                return typename GridType::Traits::LeafIntersectionIterator(*pgrid_, *this, true);
+		return LeafIntersectionIterator(*pgrid_, *this, true);
             }
 
             /// Dummy first child iterator.
-            typename GridType::Traits::HierarchicIterator hbegin(int) const
+	    typename HierarchicIterator hbegin(int) const
             {
-                return typename GridType::Traits::HierarchicIterator(*pgrid_);
+		return HierarchicIterator(*pgrid_);
             }
 
             /// Dummy beyond last child iterator.
-            typename GridType::Traits::HierarchicIterator hend(int) const
+	    typename HierarchicIterator hend(int) const
             {
-                return typename GridType::Traits::HierarchicIterator(*pgrid_);
+		return HierarchicIterator(*pgrid_);
             }
 
             /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
@@ -290,7 +293,7 @@ namespace Dune
             {
                 // Copied implementation from EntityDefaultImplementation,
                 // except for not checking LevelIntersectionIterators.
-                typedef typename GridType::Traits::LeafIntersectionIterator IntersectionIterator;
+		typedef LeafIntersectionIterator IntersectionIterator; 
                 IntersectionIterator end = ileafend();
                 for (IntersectionIterator it = ileafbegin(); it != end; ++it) {
                     if (it->boundary()) return true;
@@ -310,7 +313,7 @@ namespace Dune
                 return *this;
             }
         protected:
-            const GridType* pgrid_;
+	    const CpGrid* pgrid_;
 
             bool valid() const
             {
@@ -327,11 +330,11 @@ namespace Dune
         /// to implement EntityPointer by inheritance from
         /// Entity. Thus all dereferencing operators return the object
         /// itself as an Entity.
-        template <int codim, class GridType>
-        class EntityPointer : public cpgrid::Entity<codim, GridType>
+	template <int codim>
+	class EntityPointer : public cpgrid::Entity<codim>
         {
         public:
-            typedef cpgrid::Entity<codim, GridType> Entity;
+	    typedef cpgrid::Entity<codim> Entity;
 
             /// Construction from entity.
             explicit EntityPointer(const Entity& e)
@@ -340,13 +343,13 @@ namespace Dune
             }
 
             /// Constructor taking a grid and an entity representation.
-            EntityPointer(const GridType& grid, EntityRep<codim> entityrep)
+	    EntityPointer(const CpGrid& grid, EntityRep<codim> entityrep)
                 : Entity(grid, entityrep)
             {
             }
 
             /// Constructor taking a grid, entity index and orientation.
-            EntityPointer(const GridType& grid, int index, bool orientation)
+	    EntityPointer(const CpGrid& grid, int index, bool orientation)
                 : Entity(grid, index, orientation)
             {
             }

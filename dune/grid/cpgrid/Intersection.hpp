@@ -61,7 +61,6 @@ namespace Dune
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
-        template <class GridType>
         class Intersection
         {
         public:
@@ -71,11 +70,11 @@ namespace Dune
 	    enum { dimensionworld = 3 };
 	    /// @brief
 	    /// @todo Doc me!
-	    typedef cpgrid::Entity<0, GridType> Entity;
-	    typedef cpgrid::EntityPointer<0, GridType> EntityPointer;
+	    typedef cpgrid::Entity<0> Entity;
+	    typedef cpgrid::EntityPointer<0> EntityPointer;
 // 	    typedef cpgrid::Geometry<2,3> Geometry;
 // 	    typedef cpgrid::Geometry<2,3> LocalGeometry;
-	    typedef typename GridType::template Codim<1>::Geometry Geometry;
+	    typedef Geometry<2> Geometry;
 	    typedef Geometry LocalGeometry;
 	    typedef double ctype;
 	    typedef FieldVector<ctype, 2> LocalCoordinate;
@@ -98,14 +97,14 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-            Intersection(const GridType& grid, EntityRep<0> cell, int subindex, bool update_now = true)
+            Intersection(const CpGrid& grid, EntityRep<0> cell, int subindex, bool update_now = true)
 		: pgrid_(&grid),
 		  index_(cell.index()),
 		  subindex_(subindex),
 		  faces_of_cell_(grid.cell_to_face_[cell]),
-		  global_geom_(cpgrid::Entity<1, GridType>(grid, faces_of_cell_[subindex_]).geometry()),
+		  global_geom_(cpgrid::Entity<1>(grid, faces_of_cell_[subindex_]).geometry()),
 // 		  in_inside_geom_(global_geom_.center()
-// 				  - cpgrid::Entity<0, GridType>(grid, index_).geometry().center(),
+// 				  - cpgrid::Entity<0>(grid, index_).geometry().center(),
 // 				  global_geom_.volume()),
 		  nbcell_(cell.index()), // Init to self, which is invalid.
 		  is_on_boundary_(false)
@@ -336,7 +335,7 @@ namespace Dune
             }
 
         protected:
-            const GridType* pgrid_;
+            const CpGrid* pgrid_;
             int index_;
             int subindex_;
             OrientedEntityTable<0,1>::row_type faces_of_cell_;
@@ -357,7 +356,7 @@ namespace Dune
 	    void update()
 	    {
                 EntityRep<1> face = faces_of_cell_[subindex_];
-		//global_geom_ = cpgrid::Entity<1, GridType>(*pgrid_, face).geometry();
+		//global_geom_ = cpgrid::Entity<1>(*pgrid_, face).geometry();
                 global_geom_ = pgrid_->geometry_.template geomVector<1>()[face];
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		is_on_boundary_ = (cells_of_face.size() == 1);
@@ -399,18 +398,17 @@ namespace Dune
 
 
 
-        template <class GridType>
-        class IntersectionIterator : public Intersection<GridType>
+        class IntersectionIterator : public Intersection
         {
         public:
-            typedef cpgrid::Intersection<GridType> Intersection;
+            typedef cpgrid::Intersection Intersection;
 
             IntersectionIterator()
 		: Intersection()
             {
             }
 
-            IntersectionIterator(const GridType& grid, EntityRep<0> cell, bool at_end)
+            IntersectionIterator(const CpGrid& grid, EntityRep<0> cell, bool at_end)
 		: Intersection(grid, cell, 0, !at_end)
             {
                 if (at_end) {

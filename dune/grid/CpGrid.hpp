@@ -85,16 +85,16 @@ namespace Dune
 	typedef CpGrid Grid;
 
 	/// \brief The type of the intersection at the leafs of the grid.
-	typedef cpgrid::Intersection<CpGrid> LeafIntersection;
+	typedef cpgrid::Intersection LeafIntersection;
 	/// \brief The type of the intersection at the levels of the grid.
-	typedef cpgrid::Intersection<CpGrid> LevelIntersection;
+	typedef cpgrid::Intersection LevelIntersection;
 	/// \brief The type of the intersection iterator at the leafs of the grid.
-	typedef cpgrid::IntersectionIterator<CpGrid> LeafIntersectionIterator;
+	typedef cpgrid::IntersectionIterator LeafIntersectionIterator;
 	/// \brief The type of the intersection iterator at the levels of the grid.
-	typedef cpgrid::IntersectionIterator<CpGrid> LevelIntersectionIterator;
+	typedef cpgrid::IntersectionIterator LevelIntersectionIterator;
 
 	/// \brief The type of the  hierarchic iterator.
-	typedef cpgrid::HierarchicIterator<CpGrid> HierarchicIterator;
+	typedef cpgrid::HierarchicIterator HierarchicIterator;
 
 	/// \brief Traits associated with a specific codim.
 	/// \tparam cd The codimension.
@@ -109,19 +109,19 @@ namespace Dune
  	    typedef cpgrid::Geometry<3-cd, 3> LocalGeometry;
 	    //typedef Dune::Geometry<3-cd, 3, CpGrid, cpgrid::Geometry> LocalGeometry;
 	    /// \brief The type of the entity.
-	    typedef cpgrid::Entity<cd, CpGrid> Entity;
+	    typedef cpgrid::Entity<cd> Entity;
 
 	    /// \brief The type of the iterator over all level entities of this codim.
-	    typedef cpgrid::Iterator<cd, All_Partition, CpGrid> LevelIterator;
+	    typedef cpgrid::Iterator<cd, All_Partition> LevelIterator;
 
 	    /// \brief The type of the iterator over all leaf entities of this codim.
-	    typedef cpgrid::Iterator<cd, All_Partition, CpGrid> LeafIterator;
+	    typedef cpgrid::Iterator<cd, All_Partition> LeafIterator;
 
 	    /// \brief The type of the entity pointer for entities of this codim.
-	    typedef cpgrid::EntityPointer<cd, CpGrid> EntityPointer;
+	    typedef cpgrid::EntityPointer<cd> EntityPointer;
 
 	    /// \brief The type of the entity pointer for entities of this codim.
-	    typedef cpgrid::EntityPointer<cd, CpGrid> EntitySeed;
+	    typedef cpgrid::EntityPointer<cd> EntitySeed;
 
 	    /// \brief Traits associated with a specific grid partition type.
 	    /// \tparam pitype The type of the grid partition.
@@ -129,9 +129,9 @@ namespace Dune
 	    struct Partition
 	    {
 		/// \brief The type of the iterator over the level entities of this codim on this partition.
-		typedef cpgrid::Iterator<cd, pitype, CpGrid> LevelIterator;
+		typedef cpgrid::Iterator<cd, pitype> LevelIterator;
 		/// \brief The type of the iterator over the leaf entities of this codim on this partition.
-		typedef cpgrid::Iterator<cd, pitype, CpGrid> LeafIterator;
+		typedef cpgrid::Iterator<cd, pitype> LeafIterator;
 	    };
 	};
 
@@ -150,13 +150,13 @@ namespace Dune
 	};
 
 	/// \brief The type of the level index set.
-	typedef cpgrid::IndexSet<CpGrid> LevelIndexSet;
+	typedef cpgrid::IndexSet LevelIndexSet;
 	/// \brief The type of the leaf index set.
-	typedef cpgrid::IndexSet<CpGrid> LeafIndexSet;
+	typedef cpgrid::IndexSet LeafIndexSet;
 	/// \brief The type of the global id set.
-	typedef cpgrid::IdSet<CpGrid> GlobalIdSet;
+	typedef cpgrid::IdSet GlobalIdSet;
 	/// \brief The type of the local id set.
-	typedef cpgrid::IdSet<CpGrid> LocalIdSet;
+	typedef cpgrid::IdSet LocalIdSet;
 
 	/// \brief The type of the collective communication.
 
@@ -334,7 +334,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim, All_Partition, CpGrid >(*this, 0, true);
+            return cpgrid::Iterator<codim, All_Partition>(*this, 0, true);
         }
 
 
@@ -344,7 +344,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,All_Partition, CpGrid >(*this, size(codim), true );
+            return cpgrid::Iterator<codim,All_Partition>(*this, size(codim), true );
         }
 
 
@@ -354,7 +354,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, 0, true );
+            return cpgrid::Iterator<codim,PiType>(*this, 0, true );
         }
 
 
@@ -364,7 +364,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType, CpGrid >(*this, size(codim), true);
+            return cpgrid::Iterator<codim,PiType>(*this, size(codim), true);
         }
 
 
@@ -372,7 +372,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, 0, true);
+            return cpgrid::Iterator<codim, All_Partition>(*this, 0, true);
         }
 
 
@@ -380,7 +380,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, All_Partition, CpGrid>(*this, size(codim), true);
+            return cpgrid::Iterator<codim, All_Partition>(*this, size(codim), true);
         }
 
 
@@ -388,7 +388,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, 0, true);
+            return cpgrid::Iterator<codim, PiType>(*this, 0, true);
         }
 
 
@@ -396,7 +396,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, PiType, CpGrid>(*this, size(codim), true);
+            return cpgrid::Iterator<codim, PiType>(*this, size(codim), true);
         }
 
 
@@ -725,7 +725,7 @@ namespace Dune
 
 	// Dune-ish stuff
         CollectiveCommunication ccobj_;
-	cpgrid::IndexSet<CpGrid> index_set_;
+	cpgrid::IndexSet index_set_;
 
 	// Representing the topology
 	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
@@ -738,7 +738,7 @@ namespace Dune
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
         
 	// Representing geometry
-	typedef cpgrid::DefaultGeometryPolicy<CpGrid> Geom;
+	typedef cpgrid::DefaultGeometryPolicy Geom;
 	Geom geometry_;
 	typedef FieldVector<ctype, 3> PointType;
 	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;

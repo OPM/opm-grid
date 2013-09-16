@@ -47,7 +47,6 @@ namespace Dune
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
-	template <class GridType>
 	class IndexSet
 	{
 	public:
@@ -58,7 +57,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    IndexSet(const GridType& grid)
+	    IndexSet(const CpGrid& grid)
 		: grid_(grid)
 	    {
 		GeometryType t;
@@ -103,7 +102,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template<int cd>
-	    IndexType index(const typename GridType::template Codim<cd>::Entity& e) const 
+	    IndexType index(const cpgrid::Entity<cd>& e) const 
 	    {
 		return e.index(); 
 	    }
@@ -125,7 +124,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template <int cc>
-	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i) const 
 	    {
 		return index(e.template subEntity<cc>(i));
 	    }
@@ -135,7 +134,7 @@ namespace Dune
 	    /// @tparam
 	    /// @return
 	    /// @param
-	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i, unsigned int cc) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const 
 	    {
 		switch(cc) {
 		case 0: return index(e.template subEntity<0>(i));
@@ -159,24 +158,23 @@ namespace Dune
 	    }
 
 	private:
-	    const GridType& grid_;
+	    const CpGrid& grid_;
 	    std::vector<GeometryType> geom_types_[4];
 	};
 
 
-	template <class GridType>
 	class IdSet
 	{
 	public:
 	    typedef int IdType;
 
-	    IdSet(const GridType& grid)
+	    IdSet(const CpGrid& grid)
 		: grid_(grid)
 	    {
 	    }
 
 	    template<int cc>
-	    IdType id(const typename GridType::template Codim<cc>::Entity& e) const 
+	    IdType id(const cpgrid::Entity<cc>& e) const 
 	    {
 		return id(e);
 	    }
@@ -191,12 +189,12 @@ namespace Dune
 	    }
 
 	    template<int cc>
-	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i) const 
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
 	    {
 		return id(e.template subEntity<cc>(i));
 	    }
 
-	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i, int cc) const
+	    IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
 	    {
 		switch (cc) {
 		case 0: return id(e.template subEntity<0>(i));
@@ -208,7 +206,7 @@ namespace Dune
 		return -1;
 	    }
 	private:
-	    const GridType& grid_;
+	    const Cpgrid& grid_;
 	};
 
 
