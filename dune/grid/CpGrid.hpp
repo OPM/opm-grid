@@ -286,9 +286,9 @@ namespace Dune
         void getIJK(const int c, std::array<int,3>& ijk) const
         {
             int gc = global_cell_[c];
-            ijk[0] = gc % cartDims_[0];  gc /= cartDims_[0];
-            ijk[1] = gc % cartDims_[1];
-            ijk[2] = gc / cartDims_[1];
+            ijk[0] = gc % logical_cartesian_size_[0];  gc /= logical_cartesian_size_[0];
+            ijk[1] = gc % logical_cartesian_size_[1];
+            ijk[2] = gc / logical_cartesian_size_[1];
         }
 
 	/// Is the grid currently using unique boundary ids?
@@ -732,11 +732,10 @@ namespace Dune
 	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
 	Opm::SparseTable<int> face_to_point_;
 	std::vector< array<int,8> > cell_to_point_;
+        // Size of Cartesian bounding box.
 	std::array<int, 3> logical_cartesian_size_;
         std::vector<int>                  global_cell_;
         cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
-        // Size of Cartesian bounding box.
-        std::array<int,3> cartDims_;
         
 	// Representing geometry
 	typedef cpgrid::DefaultGeometryPolicy<CpGrid> Geom;
