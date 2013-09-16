@@ -55,7 +55,7 @@ namespace Dune
         /// constant (vertex) or trilinear (cell) mappings.
 	/// For intersections, we use the singular geometry type
         /// (None), and provide no mappings.
-	template <int mydim, int cdim, class GridImp> // GridImp arg never used
+	template <int mydim, int cdim>
 	class Geometry
 	{
         };
@@ -64,8 +64,8 @@ namespace Dune
 
 
         /// Specialization for 3-dimensional geometries, i.e. cells.
-	template <int cdim, class GridImp> // GridImp arg never used
-	class Geometry<3, cdim, GridImp>
+	template <int cdim>
+	class Geometry<3, cdim>
 	{
 	    static_assert(cdim == 3, "");
 	public:
@@ -304,8 +304,8 @@ namespace Dune
 
         /// Specialization for 2 dimensional geometries, that is
         /// intersections (since codim 1 entities are not in CpGrid).
-	template <int cdim, class GridImp> // GridImp arg never used
-	class Geometry<2, cdim, GridImp>
+	template <int cdim> // GridImp arg never used
+	class Geometry<2, cdim>
 	{
 	    static_assert(cdim == 3, "");
 	public:
@@ -428,8 +428,8 @@ namespace Dune
 
 
         /// Specialization for 0 dimensional geometries, i.e. vertices.
-	template <int cdim, class GridImp> // GridImp arg never used
-	class Geometry<0, cdim, GridImp>
+	template <int cdim> // GridImp arg never used
+	class Geometry<0, cdim>
 	{
 	    static_assert(cdim == 3, "");
 	public:

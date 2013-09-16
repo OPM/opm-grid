@@ -200,18 +200,18 @@ namespace Dune
 	template <int dim>
 	struct MakeGeometry
 	{
-	    cpgrid::Geometry<dim, 3, CpGrid> operator()(const FieldVector<double, 3> pos, double vol = 1.0)
+	    cpgrid::Geometry<dim, 3> operator()(const FieldVector<double, 3> pos, double vol = 1.0)
 	    {
-		return cpgrid::Geometry<dim, 3, CpGrid>(pos, vol);
+		return cpgrid::Geometry<dim, 3>(pos, vol);
 	    }
 	};
 
 	template <>
 	struct MakeGeometry<0>
 	{
-	    cpgrid::Geometry<0, 3, CpGrid> operator()(const FieldVector<double, 3> pos)
+	    cpgrid::Geometry<0, 3> operator()(const FieldVector<double, 3> pos)
 	    {
-		return cpgrid::Geometry<0, 3, CpGrid>(pos);
+		return cpgrid::Geometry<0, 3>(pos);
 	    }
 	};
 
@@ -298,24 +298,24 @@ namespace Dune
 
 	    // Code below has been copied to readEclipseFormat: \TODO Refactor!
 	    // Cells
-	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3, CpGrid>, 0> cellgeom;
-	    std::vector<cpgrid::Geometry<3, 3, CpGrid> > cg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
+	    std::vector<cpgrid::Geometry<3, 3> > cg;
 	    MakeGeometry<3> mcellg;
 	    std::transform(cell_centroids.begin(), cell_centroids.end(),
 			   cell_volumes.begin(),
 			   std::back_inserter(cg), mcellg);
 	    cellgeom.assign(cg.begin(), cg.end());
 	    // Faces
-	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3, CpGrid>, 1> facegeom;
-	    std::vector<cpgrid::Geometry<2, 3, CpGrid> > fg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
+	    std::vector<cpgrid::Geometry<2, 3> > fg;
 	    MakeGeometry<2> mfaceg;
 	    std::transform(face_centroids.begin(), face_centroids.end(),
 			   face_areas.begin(),
 			   std::back_inserter(fg), mfaceg);
 	    facegeom.assign(fg.begin(), fg.end());
 	    // Points
-	    cpgrid::EntityVariable<cpgrid::Geometry<0, 3, CpGrid>, 3> pointgeom;
-	    std::vector<cpgrid::Geometry<0, 3, CpGrid> > pg;
+	    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pointgeom;
+	    std::vector<cpgrid::Geometry<0, 3> > pg;
 	    MakeGeometry<0> mpointg;
 	    std::transform(points.begin(), points.end(),
 			   std::back_inserter(pg), mpointg);
