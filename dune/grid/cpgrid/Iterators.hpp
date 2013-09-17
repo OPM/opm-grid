@@ -44,8 +44,7 @@ namespace Dune
 {
     namespace cpgrid
     {
-
-       class Cpgrid;
+        class CpGridData;
     
 	/// Iterator intended to be used as LeafIterator and LevelIterator
 	/// (no difference due to no adaptivity) for CpGrid.
@@ -58,7 +57,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Iterator(const Cpgrid& grid, int index, bool orientation)
+	    Iterator(const CpGridData& grid, int index, bool orientation)
 		: EntityPointer<cd>(grid, EntityRep<cd>(index, orientation))
 	    {
 	    }
@@ -86,7 +85,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    HierarchicIterator(const CpGrid& grid)
+	    HierarchicIterator(const CpGridData& grid)
 		: EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
 	    {
 	    }

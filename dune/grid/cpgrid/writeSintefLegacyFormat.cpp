@@ -57,10 +57,10 @@ namespace Dune
                        const std::vector<array<int,8> >& c2p,
                        const int num_points);
 	void writeGeom(std::ostream& geom,
-                       const cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+                       const cpgrid::DefaultGeometryPolicy& gpol,
                        const cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
         void writeMap(std::ostream& map,
-                      const CpGrid& g);
+                      const cpgrid::CpGridData& g);
         void writeVtkVolumes(std::ostream& vtk,
                              const std::vector<Dune::FieldVector<double, 3> > points,
                              const std::vector<std::array<int, 8> >& cell_to_point);
@@ -69,7 +69,7 @@ namespace Dune
 
 
     /// Read the Sintef legacy grid format ('topogeom').
-    void CpGridData::writeSintefLegacyFormat(const std::string& grid_prefix) const
+    void cpgrid::CpGridData::writeSintefLegacyFormat(const std::string& grid_prefix) const
     {
 	std::string topofilename = grid_prefix + "-topo.dat";
 	{
@@ -174,7 +174,7 @@ namespace Dune
 
 
 	void writeGeom(std::ostream& geom,
-                       const cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+                       const cpgrid::DefaultGeometryPolicy& gpol,
                        const cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
 	{
             geom.precision(15);
@@ -227,7 +227,7 @@ namespace Dune
 
 
 
-        void writeMap(std::ostream& map, const CpGrid& g)
+        void writeMap(std::ostream& map, const cpgrid::CpGridData& g)
         {
             std::array<int, 3> dims = g.logicalCartesianSize();
             map << dims[0] << ' ' << dims[1] << ' ' << dims[2] << '\n';

@@ -36,7 +36,6 @@
 
 #include "../CpGrid.hpp"
 #include "CpGridData.hpp"
-#include "CpGridData.cpp"
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <fstream>
@@ -46,9 +45,8 @@ namespace Dune
 {
 
     CpGrid::CpGrid()
-    : use_unique_boundary_ids_(false),
-      data_( new CpGridData(*this) ), current_view_data_(data_)
-   {}
+    : data_( new cpgrid::CpGridData(*this) ), current_view_data_(data_)
+    {}
 
     CpGrid::~CpGrid()
     {
@@ -123,6 +121,30 @@ namespace Dune
 	g.coord = &coord[0];
 	g.zcorn = &zcorn[0];
 	g.actnum = &actnum[0];
-	current_view_data->processEclipseFormat(g, 0.0, false, false);
+	current_view_data_->processEclipseFormat(g, 0.0, false, false);
     }
+
+    void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
+    {
+        current_view_data_->readSintefLegacyFormat(grid_prefix);
+    }
+    void CpGrid::writeSintefLegacyFormat(const std::string& grid_prefix) const
+    {
+        current_view_data_->writeSintefLegacyFormat(grid_prefix);
+    }
+    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, 
+                                   bool periodic_extension, bool turn_normals)
+    {
+        current_view_data_->readEclipseFormat(filename, z_tolerance, periodic_extension,
+                                              turn_normals);
+    }
+
+    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& input_parser, 
+                                  double z_tolerance, bool periodic_extension, 
+                                  bool turn_normals, bool clip_z)
+    {
+        current_view_data_->processEclipseFormat(input_parser, z_tolerance, periodic_extension,
+                                                 turn_normals, clip_z);
+    }
+
 } // namespace Dune

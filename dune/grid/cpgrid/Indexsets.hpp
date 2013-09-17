@@ -57,7 +57,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    IndexSet(const CpGrid& grid)
+	    IndexSet(const CpGridData& grid)
 		: grid_(grid)
 	    {
 		GeometryType t;
@@ -67,6 +67,10 @@ namespace Dune
 		geom_types_[3].push_back(t);
 	    }
 
+            /// \brief Destructor.
+            ~IndexSet()
+            {}
+            
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
@@ -137,10 +141,10 @@ namespace Dune
 	    IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const 
 	    {
 		switch(cc) {
-		case 0: return index(e.template subEntity<0>(i));
-		case 1: return index(e.template subEntity<1>(i));
-		case 2: return index(e.template subEntity<2>(i));
-		case 3: return index(e.template subEntity<3>(i));
+		case 0: return index(e.subEntity<0>(i));
+		case 1: return index(e.subEntity<1>(i));
+		case 2: return index(e.subEntity<2>(i));
+		case 3: return index(e.subEntity<3>(i));
 		default: OPM_THROW(std::runtime_error, "Codimension " << cc << " not supported.");
 		}
 
@@ -158,7 +162,7 @@ namespace Dune
 	    }
 
 	private:
-	    const CpGrid& grid_;
+	    const CpGridData& grid_;
 	    std::vector<GeometryType> geom_types_[4];
 	};
 
@@ -168,7 +172,7 @@ namespace Dune
 	public:
 	    typedef int IdType;
 
-	    IdSet(const CpGrid& grid)
+	    IdSet(const CpGridData& grid)
 		: grid_(grid)
 	    {
 	    }
@@ -184,7 +188,7 @@ namespace Dune
 	    {
         IdType myId = 0;
         for( int c=0; c<EntityType::codimension; ++c ) 
-          myId += grid_.leafIndexSet().size( c );
+          myId += grid_.indexSet().size( c );
         return  myId + e.index();
 	    }
 
@@ -197,16 +201,16 @@ namespace Dune
 	    IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
 	    {
 		switch (cc) {
-		case 0: return id(e.template subEntity<0>(i));
-		case 1: return id(e.template subEntity<1>(i));
-		case 2: return id(e.template subEntity<2>(i));
-		case 3: return id(e.template subEntity<3>(i));
+		case 0: return id(e.subEntity<0>(i));
+		case 1: return id(e.subEntity<1>(i));
+		case 2: return id(e.subEntity<2>(i));
+		case 3: return id(e.subEntity<3>(i));
 		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
 		}
 		return -1;
 	    }
 	private:
-	    const Cpgrid& grid_;
+	    const CpGridData& grid_;
 	};
 
 

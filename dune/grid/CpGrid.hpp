@@ -40,19 +40,13 @@
 #include <map>
 #include <array>
 
-#include <dune/common/version.hh>
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-#include <dune/common/parallel/mpihelper.hh>
-#else
-#include <dune/common/mpihelper.hh>
-#endif
-#include <dune/common/collectivecommunication.hh>
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 
+#include "cpgrid/CpGridData.hpp"
+#include "cpgrid/Intersection.hpp"
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
-#include "cpgrid/Intersection.hpp"
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
@@ -72,7 +66,7 @@ namespace Dune
 {
 
     class CpGrid;
-    
+
     ////////////////////////////////////////////////////////////////////////
     //
     //   CpGridTraits
@@ -200,15 +194,10 @@ namespace Dune
 
 
 	/// Default constructor
-	CpGrid()
-	    : ccobj_(Dune::MPIHelper::getCommunicator()),
-          index_set_(*this),
-          use_unique_boundary_ids_(false),
-          idSet_( *this )
-	{
-	}
+	CpGrid();
 
-
+        ~CpGrid();
+ 
         /// Initialize the grid from parameters.
 	void init(const Opm::parameter::ParameterGroup& param);
 
@@ -217,11 +206,13 @@ namespace Dune
 	/// \param grid_prefix the grid name, such that topology is
 	/// found in <grid_prefix>-topo.dat etc.
 	void readSintefLegacyFormat(const std::string& grid_prefix);
+                
 
 	/// Write the Sintef legacy grid format ('topogeom').
 	/// \param grid_prefix the grid name, such that topology will be
 	/// found in <grid_prefix>-topo.dat etc.
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
+        
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
@@ -232,23 +223,16 @@ namespace Dune
 	///        side. That is, i- faces will match i+ faces etc.
 	void readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals = false);
 
-	/// Read the Eclipse grid format ('grdecl').
-	/// \param input_data the data contained in a parser object.
-	/// \param z_tolerance points along a pillar that are closer together in z
-	///        coordinate than this parameter, will be replaced by a single point.
-	/// \param periodic_extension if true, the grid will be (possibly) refined, so that
-	///        intersections/faces along i and j boundaries will match those on the other
-	///        side. That is, i- faces will match i+ faces etc.
-	/// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
-	/// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-	void processEclipseFormat(const Opm::EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
-
-	/// Read the Eclipse grid format ('grdecl').
-	/// \param input_data the data in grdecl format, declared in preprocess.h.
-	/// \param z_tolerance points along a pillar that are closer together in z
-	///        coordinate than this parameter, will be replaced by a single point.
-	/// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-	void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+        /// Read the Eclipse grid format ('grdecl').
+        /// \param input_data the data contained in a parser object.
+        /// \param z_tolerance points along a pillar that are closer together in z
+        ///        coordinate than this parameter, will be replaced by a single point.
+        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
+        ///        intersections/faces along i and j boundaries will match those on the other
+        ///        side. That is, i- faces will match i+ faces etc.
+        /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
+        /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
+        void processEclipseFormat(const Opm::EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
 	/// Create a cartesian grid.
 	/// \param dims the number of cells in each cartesian direction.
@@ -261,7 +245,7 @@ namespace Dune
 	/// and should be used with caution.
         const std::array<int, 3>& logicalCartesianSize() const
         {
-            return logical_cartesian_size_;
+            return current_view_data_->logical_cartesian_size_;
         }
 
 	/// Retrieve mapping from internal ("compressed") active grid
@@ -273,7 +257,7 @@ namespace Dune
 	/// from whence the current CpGrid was constructed.
         const std::vector<int>& globalCell() const
         {
-            return global_cell_;
+            return current_view_data_->global_cell_;
         }
 
         /// @brief
@@ -285,10 +269,7 @@ namespace Dune
         /// @param [out] ijk  Cartesian index triplet
         void getIJK(const int c, std::array<int,3>& ijk) const
         {
-            int gc = global_cell_[c];
-            ijk[0] = gc % logical_cartesian_size_[0];  gc /= logical_cartesian_size_[0];
-            ijk[1] = gc % logical_cartesian_size_[1];
-            ijk[2] = gc / logical_cartesian_size_[1];
+            current_view_data_->getIJK(c, ijk);
         }
 
 	/// Is the grid currently using unique boundary ids?
@@ -296,17 +277,14 @@ namespace Dune
 	///         false if we use the (default) 1-6 ids for i- i+ j- j+ k- k+ boundaries.
 	bool uniqueBoundaryIds() const
 	{
-	    return use_unique_boundary_ids_;
+	    return current_view_data_->uniqueBoundaryIds();
 	}
 
 	/// Set whether we want to have unique boundary ids.
 	/// \param uids if true, each boundary intersection will have a unique boundary id.
 	void setUniqueBoundaryIds(bool uids)
 	{
-	    use_unique_boundary_ids_ = uids;
-	    if (use_unique_boundary_ids_ && unique_boundary_ids_.empty()) {
-		computeUniqueBoundaryIds();
-	    }
+            current_view_data_->setUniqueBoundaryIds(uids);
 	}
 
 	// --- Dune interface below ---
@@ -334,7 +312,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim, All_Partition>(*this, 0, true);
+            return cpgrid::Iterator<codim, All_Partition>(*current_view_data_, 0, true);
         }
 
 
@@ -344,7 +322,8 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,All_Partition>(*this, size(codim), true );
+            return cpgrid::Iterator<codim,All_Partition>(*current_view_data_, size(codim), true );
+
         }
 
 
@@ -354,7 +333,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType>(*this, 0, true );
+            return cpgrid::Iterator<codim,PiType>(*current_view_data_, 0, true );
         }
 
 
@@ -364,7 +343,7 @@ namespace Dune
 	{
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return cpgrid::Iterator<codim,PiType>(*this, size(codim), true);
+            return cpgrid::Iterator<codim,PiType>(*current_view_data_, size(codim), true);
         }
 
 
@@ -372,7 +351,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, All_Partition>(*this, 0, true);
+            return cpgrid::Iterator<codim, All_Partition>(*current_view_data_, 0, true);
         }
 
 
@@ -380,7 +359,7 @@ namespace Dune
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, All_Partition>(*this, size(codim), true);
+            return cpgrid::Iterator<codim, All_Partition>(*current_view_data_, size(codim), true);
         }
 
 
@@ -388,7 +367,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const
 	{
-            return cpgrid::Iterator<codim, PiType>(*this, 0, true);
+            return cpgrid::Iterator<codim, PiType>(*current_view_data_, 0, true);
         }
 
 
@@ -396,7 +375,7 @@ namespace Dune
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const
 	{
-            return cpgrid::Iterator<codim, PiType>(*this, size(codim), true);
+            return cpgrid::Iterator<codim, PiType>(*current_view_data_, size(codim), true);
         }
 
 
@@ -412,13 +391,7 @@ namespace Dune
         /// number of leaf entities per codim in this process
         int size (int codim) const
 	{
-	    switch (codim) {
-	    case 0: return cell_to_face_.size();
-	    case 1: return 0;
-	    case 2: return 0;
-	    case 3: return geomVector<3>().size();
-	    default: return 0;
-	    }
+            return current_view_data_->size(codim);
         }
 
 
@@ -434,25 +407,21 @@ namespace Dune
         /// number of leaf entities per geometry type in this process
         int size (GeometryType type) const
         {
-	    if (type.isCube()) {
-		return size(3 - type.dim());
-	    } else {
-		return 0;
-	    }
-	}
+            return current_view_data_->size(type);
+        }
 
 
         /// \brief Access to the GlobalIdSet
         const Traits::GlobalIdSet& globalIdSet() const
 	{
-            return idSet_;
+            return *current_view_data_->local_id_set_;
         }
 
 
         /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const
 	{
-            return idSet_;
+            return *current_view_data_->local_id_set_;
         }
 
 
@@ -461,14 +430,14 @@ namespace Dune
         {
             if (level<0 || level>maxLevel())
                 DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-            return index_set_;
+            return *current_view_data_->index_set_;
         }
 
 
         /// \brief Access to the LeafIndexSet
         const Traits::LeafIndexSet& leafIndexSet() const
         {
-            return index_set_;
+            return *current_view_data_->index_set_;
         }
 
 
@@ -591,7 +560,7 @@ namespace Dune
         /// dummy collective communication
         const CollectiveCommunication& comm () const
         {
-            return ccobj_;
+            return current_view_data_->ccobj_;
         }
 
         // ------------ End of Dune interface, start of simplified interface --------------
@@ -603,29 +572,29 @@ namespace Dune
         // Topology
         int numCells() const
         {
-            return cell_to_face_.size();
+            return current_view_data_->cell_to_face_.size();
         }
         int numFaces() const
         {
-            return face_to_cell_.size();
+            return current_view_data_->face_to_cell_.size();
         }
         int numVertices() const
         {
-            return geomVector<3>().size();
+            return current_view_data_->geomVector<3>().size();
         }
 
         int numCellFaces(int cell) const
         {
-            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
+            return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
         }
         int cellFace(int cell, int local_index) const
         {
-            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
+            return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
         }
         int faceCell(int face, int local_index) const
         {
             cpgrid::OrientedEntityTable<1,0>::row_type r
-                = face_to_cell_[cpgrid::EntityRep<1>(face, true)];
+                = current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
             bool a = (local_index == 0);
             bool b = r[0].orientation();
             bool use_first = a ? b : !b;
@@ -638,37 +607,37 @@ namespace Dune
         }
         int numFaceVertices(int face) const
         {
-            return face_to_point_[face].size();
+            return current_view_data_->face_to_point_[face].size();
         }
         int faceVertex(int face, int local_index) const
         {
-            return face_to_point_[face][local_index];
+            return current_view_data_->face_to_point_[face][local_index];
         }
 
         // Geometry
         const Vector& vertexPosition(int vertex) const
         {
-            return geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
+            return current_view_data_->geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
         }
         double faceArea(int face) const
         {
-            return geomVector<1>()[cpgrid::EntityRep<1>(face, true)].volume();
+            return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].volume();
         }
         const Vector& faceCentroid(int face) const
         {
-            return geomVector<1>()[cpgrid::EntityRep<1>(face, true)].center();
+            return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].center();
         }
         const Vector& faceNormal(int face) const
         {
-            return face_normals_.get(face);
+            return current_view_data_->face_normals_.get(face);
         }
         double cellVolume(int cell) const
         {
-            return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
+            return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
         }
         const Vector& cellCentroid(int cell) const
         {
-            return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
+            return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
         }
 
         // Extra
@@ -676,14 +645,15 @@ namespace Dune
         {
             int ret = 0;
             cpgrid::EntityRep<1> f(face, true);
-            if (face_to_cell_[f].size() == 1) {
-                if (uniqueBoundaryIds()) {
+            if (current_view_data_->face_to_cell_[f].size() == 1) {
+                if (current_view_data_->uniqueBoundaryIds()) {
                     // Use the unique boundary ids.
-                    ret = unique_boundary_ids_[f];
+                    ret = current_view_data_->unique_boundary_ids_[f];
                 } else {
                     // Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
-                    const bool normal_is_in = !(face_to_cell_[f][0].orientation());
-                    enum face_tag tag = face_tag_[f];
+                    const bool normal_is_in = 
+                        !(current_view_data_->face_to_cell_[f][0].orientation());
+                    enum face_tag tag = current_view_data_->face_tag_[f];
                     switch (tag) {
                     case LEFT:
                         //                   LEFT : RIGHT
@@ -708,59 +678,13 @@ namespace Dune
         // ------------ End of simplified interface --------------
 
     private:
-
-	// --------- Friends ---------
-
-	template <int cd, class GridType>
-	friend class cpgrid::Entity;
-
-	template <class GridType>
-	friend class cpgrid::Intersection;
-
-	template <class GridType>
-	friend class cpgrid::IndexSet;
-
-
-	// --------- Data members ---------
-
-	// Dune-ish stuff
-        CollectiveCommunication ccobj_;
-	cpgrid::IndexSet index_set_;
-
-	// Representing the topology
-	cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
-	cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
-	Opm::SparseTable<int> face_to_point_;
-	std::vector< array<int,8> > cell_to_point_;
-        // Size of Cartesian bounding box.
-	std::array<int, 3> logical_cartesian_size_;
-        std::vector<int>                  global_cell_;
-        cpgrid::EntityVariable<enum face_tag, 1> face_tag_; // {LEFT, BACK, TOP}
-        
-	// Representing geometry
-	typedef cpgrid::DefaultGeometryPolicy Geom;
-	Geom geometry_;
-	typedef FieldVector<ctype, 3> PointType;
-	cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
-	std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve.
-	// Boundary information (optional).
-	bool use_unique_boundary_ids_;
-	cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
-
-  const Traits :: LocalIdSet idSet_;
-
-	// --------- Methods ---------
-
-	// Return the geometry vector corresponding to the given codim.
-	template <int codim>
-	const cpgrid::EntityVariable< cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
-	{
-	    return geometry_.geomVector<codim>();
-	}
-
-	// Make unique boundary ids for all intersections.
-	void computeUniqueBoundaryIds();
-
+        /** @brief The data stored in the grid. 
+         * 
+         * All the data of the grid is stored there and
+         * calls are forwarded to it.*/
+        cpgrid::CpGridData *data_;
+        /** @brief A pointer to data of the current View. */
+        cpgrid::CpGridData *current_view_data_;
     }; // end Class CpGrid
 
 

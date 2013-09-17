@@ -45,6 +45,7 @@
 #include <sstream>
 
 #include "config.h"
+#include <dune/grid/cpgrid/Intersection.hpp>
 #include <dune/grid/cpgrid/Entity.hpp>
 #include <dune/grid/CpGrid.hpp>
 
@@ -57,11 +58,11 @@ BOOST_AUTO_TEST_CASE(entity)
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
-    CpGrid g;
-    cpgrid::Entity<0, CpGrid> e1(g, 0, true);
-    cpgrid::Entity<0, CpGrid> e2(g, 0, false);
-    cpgrid::Entity<0, CpGrid> e3(g, 1, true);
-    cpgrid::Entity<0, CpGrid> e4(g, 1, false);
+    cpgrid::CpGridData g;
+    cpgrid::Entity<0> e1(g, 0, true);
+    cpgrid::Entity<0> e2(g, 0, false);
+    cpgrid::Entity<0> e3(g, 1, true);
+    cpgrid::Entity<0> e4(g, 1, false);
     BOOST_CHECK(e1 != e2);
     BOOST_CHECK(e1 != e3);
     BOOST_CHECK(e1 != e4);
@@ -72,7 +73,7 @@ BOOST_AUTO_TEST_CASE(entity)
     // BOOST_CHECK(e1.type().isSingular()); // Our new type
     BOOST_CHECK(e1.type().isCube());
     BOOST_CHECK_EQUAL(e1.partitionType(), InteriorEntity);
-    cpgrid::Entity<3, CpGrid> e5(g, 0, true);
+    cpgrid::Entity<3> e5(g, 0, true);
     BOOST_CHECK(e5.type().isCube());
 
     // Cannot check other members without a real grid.
@@ -87,9 +88,9 @@ BOOST_AUTO_TEST_CASE(entity)
 
 BOOST_AUTO_TEST_CASE(entity_ptr)
 {
-    CpGrid g;
-    cpgrid::EntityPointer<0, CpGrid> p1(g, 5, true);
-    const cpgrid::EntityPointer<0, CpGrid> p2(g, 42, true);
+    cpgrid::CpGridData g;
+    cpgrid::EntityPointer<0> p1(g, 5, true);
+    const cpgrid::EntityPointer<0> p2(g, 42, true);
 //     cpgrid::Entity<0, CpGrid>& e1 = *p1;
 //     const cpgrid::Entity<0, CpGrid>& e2 = *p2;
 //     cpgrid::Entity<0, CpGrid> ee1(g, ~5);

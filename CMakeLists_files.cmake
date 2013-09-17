@@ -29,12 +29,14 @@
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND MAIN_SOURCE_FILES
-	dune/grid/common/GeometryHelpers.cpp
-	dune/grid/common/GridPartitioning.cpp
+  dune/grid/cpgrid/Intersection.cpp
+  dune/grid/cpgrid/CpGridData.cpp
 	dune/grid/cpgrid/CpGrid.cpp
 	dune/grid/cpgrid/readEclipseFormat.cpp
 	dune/grid/cpgrid/readSintefLegacyFormat.cpp
 	dune/grid/cpgrid/writeSintefLegacyFormat.cpp
+	dune/grid/common/GeometryHelpers.cpp
+	dune/grid/common/GridPartitioning.cpp
 	)
 
 # originally generated with the command:
