@@ -147,4 +147,10 @@ namespace Dune
                                                  turn_normals, clip_z);
     }
 
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, 
+                                      bool remove_ij_boundary, bool turn_normals)
+    {
+        current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
+    }
+    
 } // namespace Dune
