@@ -38,6 +38,7 @@
 
 #include <vector>
 #include <array>
+#include <set>
 
 namespace Dune
 {
@@ -57,6 +58,19 @@ namespace Dune
 		   int& num_part,
 		   std::vector<int>& cell_part,
 		   bool recursive = false);
+
+/// \brief Adds a layer of overlap cells to a partitioning.
+/// \param[in] grid The grid that is partitioned.
+/// \param[in] cell_part a vector containing each cells partition number.
+/// \param[out] cell_overlap a vector of sets that contains for each cell all
+///             the partition numbers that it is an overlap cell of.
+/// \param[in] mypart The partition number of the processor.
+/// \param[in] all Whether to compute the overlap for all partions or just the
+///            one associated by mypart.
+     void addOverlapLayer(const CpGrid& grid,
+                     const std::vector<int>& cell_part,
+                     std::vector<std::set<int> >& cell_overlap,
+                     int mypart, bool all=false);
 
 } // namespace Dune
 
