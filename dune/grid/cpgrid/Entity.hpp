@@ -46,6 +46,9 @@ namespace Dune
     {
 
 
+	template <int codim, class GridType> class EntityPointer;
+
+
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
@@ -113,6 +116,13 @@ namespace Dune
 	    {
 		return !operator==(other);
 	    }
+
+            /// Return an entity seed.
+            /// For CpGrid, EntitySeed and EntityPtr are the same class.
+            EntityPointer seed() const
+            {
+                return *this;
+            }
 
 	    /// Returns the geometry of the entity (does not depend on its orientation).
 	    const Geometry& geometry() const
