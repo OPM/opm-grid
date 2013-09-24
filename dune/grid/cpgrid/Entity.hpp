@@ -121,7 +121,7 @@ namespace Dune
             /// For CpGrid, EntitySeed and EntityPtr are the same class.
             EntityPointer seed() const
             {
-                return *this;
+                return EntityPointer(*this);
             }
 
             /// Returns the geometry of the entity (does not depend on its orientation).
