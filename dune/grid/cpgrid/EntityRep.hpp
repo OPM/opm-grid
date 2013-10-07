@@ -206,6 +206,7 @@ namespace Dune
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
 	{
+            friend class CpGridData;
 	public:
 	    typedef std::vector<T> V;
 	    using V::empty;

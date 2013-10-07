@@ -99,6 +99,7 @@ namespace Dune
 	template <int codim_from, int codim_to>
 	class OrientedEntityTable : private Opm::SparseTable< EntityRep<codim_to> >
 	{
+            friend class CpGridData;
 	public:
 	    typedef EntityRep<codim_from> FromType;
 	    typedef EntityRep<codim_to> ToType;

@@ -41,7 +41,8 @@ template<int> class EntityRep;
 class CpGridData
 {
 private:
-    CpGridData(const CpGridData&)
+    CpGridData(const CpGridData& g)
+    : ccobj_(g.ccobj_)
     {}
 public:
     /// Constructor
@@ -149,6 +150,16 @@ public:
     {
         return logical_cartesian_size_;
     }
+
+    /// \brief Redistribute a global grid.
+    ///
+    /// The whole grid must be available on all processors.
+    /// \return The distributed grid Data
+    std::unique_ptr<CpGridData> distributeGlobalGrid(CpGrid& grid,
+                                                     CpGridData& view_data,
+                                                     std::vector<int>& cell_part,
+                                                     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj) const;
+    
 private:
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
@@ -205,8 +216,8 @@ private:
     }
 
     friend class Dune::CpGrid;
-     template<int> friend class Entity;
-     template<int> friend class EntityRep;
+    template<int> friend class Entity;
+    template<int> friend class EntityRep;
     template<int> friend class EntityPointer;
     friend class Intersection;
     

@@ -45,6 +45,14 @@ namespace Dune
 
     class CpGrid;
 
+    struct OrderByFirst
+    {
+        bool operator()(const std::pair<int,int>& o, const std::pair<int,int>& v)
+        {
+            return o.first < v.first;
+        }
+    };
+
     /// Partition a CpGrid based on (ijk) coordinates, with splitting to ensure that each partition is connected.
     /// @param[in] grid the grid to partition
     /// @param[in] initial_split the number of parts in which to partition the grid, in each cardinal direction.
@@ -68,9 +76,9 @@ namespace Dune
 /// \param[in] all Whether to compute the overlap for all partions or just the
 ///            one associated by mypart.
      void addOverlapLayer(const CpGrid& grid,
-                     const std::vector<int>& cell_part,
-                     std::vector<std::set<int> >& cell_overlap,
-                     int mypart, bool all=false);
+                          const std::vector<int>& cell_part,
+                          std::vector<std::set<int> >& cell_overlap,
+                          int mypart, bool all=false);
 
 } // namespace Dune
 
