@@ -16,7 +16,7 @@ is_compiler_gcc_compatible ()
 # only debugging using the GNU toolchain is supported for now
 if (CXX_COMPAT_GCC)
   # default debug level, if not specified by the user
-  set_default_option (_dbg_flag "-ggdb3" "(^|\ )-g")
+  set_default_option (CXX _dbg_flag "-ggdb3" "(^|\ )-g")
 
   # add debug symbols to *all* targets, regardless. there WILL come a
   # time when you need to find a bug which only manifests itself in a
@@ -106,7 +106,7 @@ function (strip_debug_symbols targets)
 		add_custom_command (TARGET ${target}
 		  POST_BUILD
 		  WORKING_DIRECTORY ${_dir}
-		  COMMAND ${DSYMUTIL} ARGS --flat --out=${_target_file}${_debug_ext} ${_target_file}
+		  COMMAND ${DSYMUTIL} ARGS --out=${_target_file}${_debug_ext} ${_target_file}
 		  COMMAND ${OBJCOPY} ARGS -S ${_target_file}
 		  VERBATIM
 		  )
