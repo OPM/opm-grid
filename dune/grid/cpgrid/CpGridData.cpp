@@ -13,7 +13,7 @@ namespace Dune
 namespace cpgrid
 {
 CpGridData::CpGridData()
-    : index_set_(), local_id_set_(),
+    : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator())
 {}
 CpGridData::CpGridData(CpGrid& grid)
@@ -22,8 +22,8 @@ CpGridData::CpGridData(CpGrid& grid)
 {}
 CpGridData::~CpGridData()
 {
-    if(index_set_) delete index_set_;
-    if(local_id_set_) delete local_id_set_;
+    delete index_set_;
+    delete local_id_set_;
 }
 
 void CpGridData::computeUniqueBoundaryIds()
