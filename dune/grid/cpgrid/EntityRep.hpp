@@ -94,6 +94,8 @@ namespace Dune
 	class EntityRep
 	{
 	public:
+            enum{ codimension=codim};
+            
 	    /// Default constructor.
 	    EntityRep()
 		: entityrep_(0)
