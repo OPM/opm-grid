@@ -214,6 +214,79 @@ namespace Dune
 	};
 
 
+	class GlobalIdSet
+	{
+	public:
+	    typedef int IdType;
+
+	    void swap(std::vector<int>& cellMapping,
+                      std::vector<int>& faceMapping,
+                      std::vector<int>& pointMapping)
+	    {
+                idSet_=nullptr;
+                cellMapping_.swap(cellMapping);
+                faceMapping_.swap(faceMapping);
+                pointMapping_.swap(pointMapping);
+	    }
+            GlobalIdSet(const IdSet* ids)
+            : idSet_(ids)
+            {}
+            GlobalIdSet()
+                : idSet_()
+            {}
+	    template<int cc>
+	    IdType id(const cpgrid::Entity<cc>& e) const 
+	    {
+		return id(e);
+	    }
+
+	    template<class EntityType>
+	    IdType id(const EntityType& e) const 
+	    {
+                if(idSet_)
+                    return idSet_->id(e);
+                else 
+                    return getMapping(e)[e.index()];
+	    }
+
+	    template<int cc>
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
+	    {
+		return id(e.template subEntity<cc>(i));
+	    }
+
+	    IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
+	    {
+		switch (cc) {
+		case 0: return id(e.subEntity<0>(i));
+		case 1: return id(e.subEntity<1>(i));
+		case 2: return id(e.subEntity<2>(i));
+		case 3: return id(e.subEntity<3>(i));
+		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
+		}
+		return -1;
+	    }
+	private:
+            const IdSet* idSet_;
+            std::vector<int> cellMapping_;
+            std::vector<int> faceMapping_;
+            std::vector<int> pointMapping_;
+            
+            const std::vector<int>& getMapping(const EntityRep<0>&) const
+            {
+                return cellMapping_;
+            }
+            const std::vector<int>& getMapping(const EntityRep<1>&) const
+            {
+                return faceMapping_;
+            }
+            const std::vector<int>& getMapping(const EntityRep<3>&) const
+            {
+                return pointMapping_;
+            }
+	};
+
+
     } // namespace cpgrid
 } // namespace Dune
 
