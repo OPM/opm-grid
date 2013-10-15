@@ -14,16 +14,19 @@ namespace cpgrid
 {
 CpGridData::CpGridData()
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-    ccobj_(Dune::MPIHelper::getCommunicator())
+      global_id_set_(new GlobalIdSet(local_id_set_)),
+      ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {}
 CpGridData::CpGridData(CpGrid& grid)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
+    global_id_set_(new GlobalIdSet(local_id_set_)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {}
 CpGridData::~CpGridData()
 {
     delete index_set_;
     delete local_id_set_;
+    delete global_id_set_;
 }
 
 void CpGridData::computeUniqueBoundaryIds()
@@ -65,6 +68,8 @@ int CpGridData::size(int codim) const
  // A functor that counts existent entries and renumbers them.
 struct CountExistent
 {
+    CountExistent() : count() {}
+
     void operator()(int& i)
     {
         if(i < std::numeric_limits<int>::max())
@@ -73,12 +78,37 @@ struct CountExistent
     int count;
 };
 
-
-std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
-                                                              CpGridData& view_data,
-                          std::vector<int>& cell_part,
-                          Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj) const
+/** 
+ * @brief Counts the number of global ids and sets them up.
+ * @param indicator A vector indicating whether an entity exists.
+ * @param ids A vector to the the global ids in.
+ * @param idSet The idSet of the global grid.
+ * @return the number of entities that exist.
+ */
+template<int codim>
+int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& ids,
+                           const IdSet& idSet)
 {
+    int count = std::count_if(indicator.begin(),
+                              indicator.end(), 
+                              std::bind2nd(std::less<int>(),
+                                           std::numeric_limits<int>::max()));
+    ids.resize(count);
+    typedef typename std::vector<int>::const_iterator VIter;
+    for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end(); 
+        i!=iend; ++i)
+    {
+        ids[*i]=idSet.id(EntityRep<codim>(i-ibegin,true));
+    }
+    return count;
+}
+
+void CpGridData::distributeGlobalGrid(const CpGrid& grid,
+                                      const CpGridData& view_data,
+                                      const std::vector<int>& cell_part)
+{
+    Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
+    std::unique_ptr<CpGridData> grid_data(new CpGridData);
     int my_rank=ccobj.rank();
     //int size=ccobj.size();
 #ifdef DEBUG
@@ -117,7 +147,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
             if(rank==myrank)
             {
                 global2local.push_back(count);
-                indexset->add(i, Index(++count, OwnerOverlapCopyAttributeSet::owner, true));
+                indexset->add(i, Index(count++, OwnerOverlapCopyAttributeSet::owner, true));
             }
             else
                 global2local.push_back(std::numeric_limits<int>::max());
@@ -136,7 +166,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
             if(iter!=ov.end())
             {
                 global2local.push_back(count);
-                indexset->add(i, Index(++count, OwnerOverlapCopyAttributeSet::overlap, true));
+                indexset->add(i, Index(count++, OwnerOverlapCopyAttributeSet::overlap, true));
                 neighbors.insert(rank);
             }
             else
@@ -186,6 +216,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
         }
     }
 
+    
     // We can identify existing cells with the help of the index set.
     // Now we need to compute the existing faces and points. Either exist
     // if they are reachable from an existing cell.
@@ -197,12 +228,12 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     for(IndexSet::iterator i=indexset.begin(), end=indexset.end();
             i!=end; ++i)
     {
-        typedef boost::iterator_range<EntityRep<1>*>::iterator RowIter;
+        typedef boost::iterator_range<const EntityRep<1>*>::iterator RowIter;
         int row_index=i->global();
         // Somehow g++-4.4 does not find functions of father even if we
         // change inheritance of OrientedEntityTable to public.
         // Therfore we use an ugly task to base class here.
-        Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
+        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
         for(RowIter f=c2f[row_index].begin(), fend=c2f[i->global()].end();
             f!=fend; ++f)
         {
@@ -217,6 +248,21 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
             }
         }
     }
+    
+    std::vector<int> map2GlobalFaceId;
+    int noExistingFaces = setupAndCountGlobalIds<1>(face_indicator, map2GlobalFaceId,
+                                                    *view_data.local_id_set_);
+    std::vector<int> map2GlobalPointId;
+    int noExistingPoints = setupAndCountGlobalIds<3>(face_indicator, map2GlobalFaceId,
+                                                     *view_data.local_id_set_);
+    std::vector<int> map2GlobalCellId(indexset.size());
+    for(IndexSet::const_iterator i=indexset.begin(), end=indexset.end();
+        i!=end; ++i)
+    {
+        map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
+    }
+
+    global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
     // Set up the new topology arrays
     EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom;
     std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(indexset.size());
@@ -232,16 +278,13 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     }
     static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(cell_geom).swap(tmp_cell_geom);
 
-    CountExistent exCount;
     // count the existing faces, renumber, and allocate space.
-    exCount.count = 0;
-    std::for_each(face_indicator.begin(), face_indicator.end(), CountExistent());
     EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom;
-    std::vector<cpgrid::Geometry<2, 3> > tmp_face_geom(exCount.count);
+    std::vector<cpgrid::Geometry<2, 3> > tmp_face_geom(noExistingFaces);
     EntityVariable<enum face_tag, 1> face_tag;
-    std::vector<enum face_tag> tmp_face_tag(exCount.count);
+    std::vector<enum face_tag> tmp_face_tag(noExistingFaces);
     SignedEntityVariable<PointType, 1> face_normals;
-    std::vector<PointType> tmp_face_normals(exCount.count);
+    std::vector<PointType> tmp_face_normals(noExistingFaces);
     const std::vector<cpgrid::Geometry<2, 3> >& global_face_geom=view_data.geomVector<1>();
     const std::vector<enum face_tag>& global_face_tag=view_data.face_tag_;
     const std::vector<PointType>& global_face_normals=view_data.face_normals_;
@@ -266,9 +309,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     static_cast<std::vector<enum face_tag>&>(face_tag).swap(tmp_face_tag);
 
     // Count the existing points and allocate space
-    exCount.count=0;
-    exCount = std::for_each(point_indicator.begin(), point_indicator.end(),exCount);
-    std::vector<cpgrid::Geometry<0, 3> > tmp_point_geom(exCount.count);
+    std::vector<cpgrid::Geometry<0, 3> > tmp_point_geom(noExistingPoints);
     EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom;
     const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
     
@@ -296,7 +337,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     for(auto i=indexset.begin(), end=indexset.end();
         i!=end; ++i)
     {
-        Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
+        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
         data_size+=c2f.rowSize(i->global());
     }
     
@@ -308,14 +349,14 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     for(auto i=indexset.begin(), end=indexset.end();
         i!=end; ++i)
     {
-        typedef boost::iterator_range<EntityRep<1>*>::iterator RowIter;
-        Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
+        typedef boost::iterator_range<const EntityRep<1>*>::const_iterator RowIter;
+        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
         auto row=c2f[i->global()];
         // create the new row, i.e. copy orientation and use new face indicator.
         std::vector<EntityRep<1> > new_row(row.size());
-        std::vector<EntityRep<1> >::iterator  ncell=new_row.begin();
-        for(RowIter cell=row.begin(), cend=row.end(); cell!=cend; ++cell, ++ncell)
-            ncell->setValue(face_indicator[cell->index()], cell->orientation());
+        std::vector<EntityRep<1> >::iterator  nface=new_row.begin();
+        for(RowIter face=row.begin(), fend=row.end(); face!=fend; ++face, ++nface)
+            nface->setValue(face_indicator[face->index()], face->orientation());
         // Append the new row to the matrix
         cell_to_face.appendRow(new_row.begin(), new_row.end());
     }
@@ -323,7 +364,7 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
     // Calculate the number of nonzeros needed for the face_to_cell sparse matrix
     // To speed things up, we only use an upper limit here.
     data_size=0;
-    Opm::SparseTable<EntityRep<0> >& f2c=view_data.face_to_cell_;
+    const Opm::SparseTable<EntityRep<0> >& f2c=view_data.face_to_cell_;
     for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f)
         if(*f<std::numeric_limits<int>::max())
             data_size += f2c.rowSize(*f);
@@ -404,10 +445,6 @@ std::unique_ptr<CpGridData>  CpGridData::distributeGlobalGrid(CpGrid& grid,
         }
     }
 
-    // TODO setup index set and id set!!!
-    
-    std::unique_ptr<CpGridData> grid_data;
-    return grid_data;
 }
 
 } // end namespace cpgrid

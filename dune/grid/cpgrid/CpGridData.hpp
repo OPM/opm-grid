@@ -30,6 +30,7 @@ namespace cpgrid
 
 class IndexSet;
 class IdSet;
+class GlobalIdSet;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
@@ -155,10 +156,9 @@ public:
     ///
     /// The whole grid must be available on all processors.
     /// \return The distributed grid Data
-    std::unique_ptr<CpGridData> distributeGlobalGrid(CpGrid& grid,
-                                                     CpGridData& view_data,
-                                                     std::vector<int>& cell_part,
-                                                     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj) const;
+    void distributeGlobalGrid(const CpGrid& grid,
+                              const CpGridData& view_data,
+                              const std::vector<int>& cell_part);
     
 private:
     // Representing the topology
@@ -199,6 +199,8 @@ private:
     cpgrid::IndexSet* index_set_;
     /** @brief The local id set. */
     const cpgrid::IdSet* local_id_set_;
+    /** @brief The global id set. */
+    GlobalIdSet* global_id_set_;
     /// \brief The type of the collective communication.
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
