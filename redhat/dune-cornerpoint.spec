@@ -3,7 +3,7 @@
 #
 
 Name:           dune-cornerpoint
-Version:        2013.03
+Version:        2013.10
 Release:        0
 Summary:        Cornerpoint grid management module for DUNE
 License:        GPL-3.0
@@ -11,7 +11,7 @@ Group:          Development/Libraries/C and C++
 Url:            http://www.opm-project.org/
 Source0:        %{name}-%{version}.tar.gz
 BuildRequires:  blas-devel gcc-c++ gcc-gfortran lapack-devel dune-common-devel
-BuildRequires:  boost-devel git suitesparse-devel cmake28 doxygen bc
+BuildRequires:  boost-devel git suitesparse-devel cmake28 doxygen bc ert-devel
 BuildRequires:  tinyxml-devel dune-istl-devel opm-core-devel dune-grid-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires:       libdune-cornerpoint1 = %{version}

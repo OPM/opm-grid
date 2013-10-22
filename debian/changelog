@@ -1,3 +1,9 @@
+dune-cornerpoint (2013.10-2~precise) precise; urgency=low
+
+  * New release
+
+ -- Arne Morten Kvarving <arne.morten.kvarving@sintef.no>  Mon, 14 Oct 2013 12:27:55 +0200
+
 dune-cornerpoint (2013.03-2) precise; urgency=low
 
   * Now compatible with precise + launchpad

@@ -6,7 +6,7 @@ Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
                libdune-common-dev, cmake, bc, git, zlib1g-dev, libtool, pkg-config,
                libopm-core-dev, libdune-grid-dev, libtinyxml-dev,
                libsuperlu3-dev, libdune-istl-dev, doxygen, texlive-latex-extra,
-               texlive-latex-recommended, ghostscript
+               texlive-latex-recommended, ghostscript, libert.ecl-dev
 Standards-Version: 3.9.2
 Section: libs
 Homepage: http://opm-project.org
