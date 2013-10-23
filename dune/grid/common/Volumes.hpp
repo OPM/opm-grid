@@ -37,7 +37,12 @@
 
 #include <numeric>
 
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
+#include <dune/common/math.hh>
+#else
 #include <dune/common/misc.hh>
+#endif
 #include <dune/common/fvector.hh>
 
 namespace Dune
