@@ -33,9 +33,12 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
-
+#if HAVE_MPI
+#include "mpi.h"
+#endif
 #include "../CpGrid.hpp"
 #include "CpGridData.hpp"
+#include <dune/grid/common/GridPartitioning.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <fstream>
@@ -45,12 +48,15 @@ namespace Dune
 {
 
     CpGrid::CpGrid()
-    : data_( new cpgrid::CpGridData(*this) ), current_view_data_(data_)
+        : data_( new cpgrid::CpGridData(*this) ), current_view_data_(data_),
+          distributed_data_()
     {}
 
     CpGrid::~CpGrid()
     {
         delete data_;
+        if(distributed_data_)
+            delete distributed_data_;
     }
 
     /// Initialize the grid.
@@ -80,6 +86,52 @@ namespace Dune
     }
 
 
+void CpGrid::scatterGrid()
+{
+#if HAVE_MPI
+    if(distributed_data_)
+        OPM_THROW(std::runtime_error, "There is already a distributed version of the grid."
+                  << " Maybe scatterGrid was called before.");
+    CollectiveCommunication cc(MPI_COMM_WORLD);
+    
+    std::vector<int> cell_part(current_view_data_->global_cell_.size());
+    int my_num=cc.rank();
+    int  num_parts=-1;
+    std::array<int, 3> initial_split;
+    initial_split[0]=initial_split[1]=std::pow(cc.size(), 1.0/3.0);
+    initial_split[2]=cc.size()/(initial_split[0]*initial_split[1]);
+    partition(*this, initial_split, num_parts, cell_part);
+    
+    
+    MPI_Comm new_comm = MPI_COMM_NULL;
+    
+    if(num_parts < cc.size())
+    {
+        std::vector<int> ranks(num_parts);
+        for(int i=0; i<num_parts; ++i)
+            ranks[i]=i;
+        MPI_Group new_group;
+        MPI_Group old_group;
+        MPI_Comm_group(cc, &old_group);
+        MPI_Group_incl(old_group, num_parts, &(ranks[0]), &new_group);
+        
+        // Not all procs take part in the parallel computation
+        MPI_Comm_create(cc, new_group, &new_comm);
+        cc=CollectiveCommunication(new_comm);
+    }else{
+        new_comm = cc;
+    }
+    if(my_num<cc.size())
+    {
+        distributed_data_ = new cpgrid::CpGridData(new_comm);
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+    }
+    current_view_data_ = distributed_data_;
+#else
+    
+        OPM_THROW(std::runtime_error, "CpGrid::scatterGrid() is only available with MPI support.");
+#endif
+}
 
 
     void CpGrid::createCartesian(const array<int, 3>& dims,

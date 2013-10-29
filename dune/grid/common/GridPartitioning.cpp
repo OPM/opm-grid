@@ -200,7 +200,8 @@ namespace Dune
 	}
 
 	// Initial partitioning depending on (ijk) coordinates.
-	const int num_initial = initial_split[0]*initial_split[1]*initial_split[2];
+	std::vector<int>::size_type  num_initial = 
+            initial_split[0]*initial_split[1]*initial_split[2];
 	const std::vector<int>& lc_ind = grid.globalCell();
 	std::vector<int> num_in_part(num_initial, 0); // no cells of partitions
 	std::vector<int> my_part(grid.size(0), -1); // contains partition number of cell

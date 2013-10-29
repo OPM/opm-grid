@@ -54,6 +54,7 @@ list (APPEND ATTIC_FILES
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
+  tests/cpgrid/distribution_test.cpp
 	tests/cpgrid/entityrep_test.cpp
 	tests/cpgrid/entity_test.cpp
 	tests/cpgrid/geometry_test.cpp

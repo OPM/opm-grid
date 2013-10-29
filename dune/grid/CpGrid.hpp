@@ -530,15 +530,13 @@ namespace Dune
             return hostgrid_->ghostSize(level,codim);
         }
 
-
+        
         /// \brief Distributes this grid over the available nodes in a distributed machine
 	///
 	/// \param minlevel The coarsest grid level that gets distributed
 	/// \param maxlevel does currently get ignored
-        void loadBalance(int strategy, int minlevel, int depth, int maxlevel, int minelement){
-            DUNE_THROW(NotImplemented, "CpGrid::loadBalance()");
-        }
-
+        void loadBalance(int strategy, int minlevel, int depth, int maxlevel, int minelement);
+        
         /// \brief The communication interface
 	///  @param T: array class holding data associated with the entities
 	///  @param P: type used to gather/scatter data in and out of the message buffer
@@ -564,6 +562,9 @@ namespace Dune
 
 	end of parallel section */
 
+        /// Scatter a global grid to all processors.
+        void scatterGrid();
+        
         /// dummy collective communication
         const CollectiveCommunication& comm () const
         {
@@ -692,6 +693,8 @@ namespace Dune
         cpgrid::CpGridData *data_;
         /** @brief A pointer to data of the current View. */
         cpgrid::CpGridData *current_view_data_;
+        /** @brief The data stored for the distributed grid. */
+        cpgrid::CpGridData * distributed_data_;
     }; // end Class CpGrid
 
 
