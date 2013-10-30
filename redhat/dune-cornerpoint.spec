@@ -1,6 +1,8 @@
 #
-# spec file for package opm-core
+# spec file for package dune-cornerpoint
 #
+
+%define tag rc3
 
 Name:           dune-cornerpoint
 Version:        2013.10
@@ -70,7 +72,7 @@ Requires:       libdune-cornerpoint1 = %{version}
 This package contains the applications for dune-cornerpoint
 
 %prep
-%setup -q
+%setup -q -n %{name}-release-%{version}-%{tag}
 
 # consider using -DUSE_VERSIONED_DIR=ON if backporting
 %build
