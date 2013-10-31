@@ -40,6 +40,9 @@
 #include <dune/grid/common/gridenums.hh>
 #include <dune/grid/cpgrid/CpGridData.hpp>
 
+#include "Intersection.hpp"
+#include "PartitionTypeIndicator.hpp"
+
 namespace Dune
 {
     namespace cpgrid
@@ -158,10 +161,7 @@ namespace Dune
             }
 
             /// For now, the grid is serial and the only partitionType() is InteriorEntity.
-            PartitionType partitionType() const
-            {
-                return InteriorEntity;
-            }
+	    PartitionType partitionType() const;
 
             /// Using the cube type for all entities now (cells and vertices).
             GeometryType type() const
@@ -392,7 +392,6 @@ namespace Dune
     // now we include the Iterators.hh We need to do this here because for hbegin/hend the compiler
     // needs to know the size of hierarchicIterator
 #include "Iterators.hpp"
-
 namespace Dune
 {
   namespace cpgrid
@@ -439,6 +438,11 @@ namespace Dune
         return HierarchicIterator(*pgrid_);
     }
 
+    template <int codim>
+    PartitionType Entity<codim>::partitionType() const
+    {
+        return pgrid_->partition_type_indicator_->getPartitionType(*this);
+    }
     } // namespace cpgrid
 } // namespace Dune
 

@@ -216,7 +216,7 @@ namespace Dune
 	// Renumber partitions.
 	std::vector<int> num_to_subtract(num_initial); // if partitions are empty they do not get a number.
 	num_to_subtract[0] = 0;
-	for (int i = 1; i < num_initial; ++i) {
+	for (std::vector<int>::size_type i = 1; i < num_initial; ++i) {
 	    num_to_subtract[i] = num_to_subtract[i-1];
 	    if (num_in_part[i-1] == 0) {
 		++num_to_subtract[i];

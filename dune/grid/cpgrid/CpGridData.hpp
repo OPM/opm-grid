@@ -31,6 +31,7 @@ namespace cpgrid
 class IndexSet;
 class IdSet;
 class GlobalIdSet;
+class PartitionTypeIndicator;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
@@ -42,9 +43,8 @@ template<int> class EntityRep;
 class CpGridData
 {
 private:
-    CpGridData(const CpGridData& g)
-    : ccobj_(g.ccobj_)
-    {}
+    CpGridData(const CpGridData& g);
+    
 public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
@@ -207,6 +207,9 @@ private:
     const cpgrid::IdSet* local_id_set_;
     /** @brief The global id set. */
     GlobalIdSet* global_id_set_;
+    /** @brief The indicator of the partition type of the entities */
+    PartitionTypeIndicator* partition_type_indicator_;
+    
     /// \brief The type of the collective communication.
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
@@ -228,7 +231,7 @@ private:
     template<int> friend class EntityRep;
     template<int> friend class EntityPointer;
     friend class Intersection;
-    
+    friend class PartitionTypeIndicator;
 };
 } // end namspace cpgrid
 } // end namespace Dune

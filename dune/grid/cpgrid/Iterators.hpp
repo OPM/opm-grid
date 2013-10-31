@@ -45,6 +45,7 @@ namespace Dune
     namespace cpgrid
     {
         class CpGridData;
+
     
 	/// Iterator intended to be used as LeafIterator and LevelIterator
 	/// (no difference due to no adaptivity) for CpGrid.

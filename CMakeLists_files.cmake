@@ -29,9 +29,10 @@
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND MAIN_SOURCE_FILES
-  dune/grid/cpgrid/Intersection.cpp
-  dune/grid/cpgrid/CpGridData.cpp
+	dune/grid/cpgrid/Intersection.cpp
+	dune/grid/cpgrid/CpGridData.cpp
 	dune/grid/cpgrid/CpGrid.cpp
+	dune/grid/cpgrid/PartitionTypeIndicator.cpp
 	dune/grid/cpgrid/readEclipseFormat.cpp
 	dune/grid/cpgrid/readSintefLegacyFormat.cpp
 	dune/grid/cpgrid/writeSintefLegacyFormat.cpp
@@ -86,6 +87,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/GridAdapter.hpp
 	dune/grid/common/GridPartitioning.hpp
 	dune/grid/common/Volumes.hpp
+	dune/grid/cpgrid/CpGridData.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
 	dune/grid/cpgrid/dgfparser.hh
 	dune/grid/cpgrid/Entity.hpp
@@ -96,5 +98,6 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/Intersection.hpp
 	dune/grid/cpgrid/Iterators.hpp
 	dune/grid/cpgrid/OrientedEntityTable.hpp
+	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
 	)

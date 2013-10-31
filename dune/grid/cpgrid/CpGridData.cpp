@@ -4,6 +4,7 @@
 #include"Entity.hpp"
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
+#include"PartitionTypeIndicator.hpp"
 #include <dune/istl/owneroverlapcopy.hh>
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <algorithm>
@@ -12,23 +13,29 @@ namespace Dune
 {
 namespace cpgrid
 {
+
+
+CpGridData::CpGridData(const CpGridData& g)
+  : partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
+{}
+
 CpGridData::CpGridData()
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-      global_id_set_(new GlobalIdSet(local_id_set_)),
+      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {}
 
 #if HAVE_MPI
 CpGridData::CpGridData(MPI_Comm comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-      global_id_set_(new GlobalIdSet(local_id_set_)),
+      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
 {}
 #endif
 
 CpGridData::CpGridData(CpGrid& grid)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
-    global_id_set_(new GlobalIdSet(local_id_set_)),
+    global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {}
 CpGridData::~CpGridData()
@@ -463,7 +470,34 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             }
         }
     }
-
+    // Compute the partition type for cell
+    partition_type_indicator_->cell_indicator_.resize(indexset.size());
+    for(IndexSet::const_iterator i=indexset.begin(), end=indexset.end();
+            i!=end; ++i)
+    {
+        partition_type_indicator_->cell_indicator_[i->local()]=
+            i->local().attribute()==OwnerOverlapCopyAttributeSet::owner?
+            InteriorEntity:OverlapEntity;
+    }
+    
+    // Compute partition type for points
+    // We initialize all point with interior. Then we loop over the faces. If a face is of 
+    // type border, then the type of the point is overwritten with border. In the other cases
+    // we set type of the point to the one of the face as long as the type of the point is 
+    // not boder.
+    partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
+                                                      InteriorEntity);
+    for(int i=0; i<face_to_point_.size(); ++i)
+    {
+        for(auto p=view_data.face_to_point_[i].begin(), 
+                pend=view_data.face_to_point_[i].end(); p!=pend; ++p)
+        {
+            if(partition_type_indicator_->point_indicator_[*p]!=BorderEntity)
+                partition_type_indicator_->point_indicator_[*p]=
+                    partition_type_indicator_->getFacePartitionType(i);
+        }
+    }
+        
 }
 
 } // end namespace cpgrid
