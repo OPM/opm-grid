@@ -60,6 +60,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/entity_test.cpp
 	tests/cpgrid/geometry_test.cpp
 	tests/cpgrid/orientedentitytable_test.cpp
+	tests/cpgrid/partition_iterator_test.cpp
 	)
 
 # originally generated with the command:
@@ -98,6 +99,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/Intersection.hpp
 	dune/grid/cpgrid/Iterators.hpp
 	dune/grid/cpgrid/OrientedEntityTable.hpp
+	dune/grid/cpgrid/PartitionIteratorRule.hpp
 	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
 	)

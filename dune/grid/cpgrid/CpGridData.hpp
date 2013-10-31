@@ -1,5 +1,44 @@
+//===========================================================================
+//
+// File: CpGrid.hpp
+//
+// Created: Sep 17 21:11:41 2013
+//
+// Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
+//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Markus Blatt        <markus@dr-blatt.de>
+//
+// Comment: Major parts of this file originated in dune/grid/CpGrid.hpp
+//          and got transfered here during refactoring for the parallelization.
+//
+// $Date$
+//
+// $Revision$
+//
+//===========================================================================
+
+/*
+  Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
+  Copyright 2009, 2010, 2013 Statoil ASA.
+  Copyright 2013 Dr. Blatt - HPC-Simulation-Software & Services
+
+  This file is part of The Open Porous Media project  (OPM).
+
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
 /**
- * @brief Holds the implementation of the CpGrid Data.
+ * @brief Holds the implementation of the CpGrid as a pimple.
  * @author Markus Blatt <markus@dr-blatt.de>
  *         Atgeirr F Rasmussen <atgeirr@sintef.no>
  *         Bård Skaflestad     <bard.skaflestad@sintef.no>

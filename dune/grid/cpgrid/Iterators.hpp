@@ -38,6 +38,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/grid/common/gridenums.hh>
 #include "Entity.hpp"
+#include "PartitionIteratorRule.hpp"
 #include <opm/core/utility/ErrorMacros.hpp>
 
 namespace Dune
@@ -59,8 +60,18 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    Iterator(const CpGridData& grid, int index, bool orientation)
-		: EntityPointer<cd>(grid, EntityRep<cd>(index, orientation))
+		: EntityPointer<cd>(grid,
+                                    // If the partition is empty, goto to end iterator!
+                                    EntityRep<cd>(PartitionIteratorRule<pitype>::emptySet?grid.size(cd):index,
+                                                  orientation)),
+                  noEntities_(grid.size(cd))
 	    {
+                if(rule_.fullSet || rule_.emptySet)
+                    return;
+                
+                while(this->index()<noEntities_ && rule_.isInvalid(*this))
+                    EntityRep<cd>::increment();
+                
 	    }
 
 	    /// Increment operator.
@@ -72,8 +83,16 @@ namespace Dune
 	    Iterator& operator++()
 	    {
 		EntityRep<cd>::increment();
-		return *this;
+                if(rule_.fullSet || rule_.emptySet)
+                    return *this;
+                while(this->index()<noEntities_ && rule_.isInvalid(*this))
+                    EntityRep<cd>::increment();
+                return *this;
 	    }
+        private:
+            /// \brief The number of Entities with codim cd.
+            int noEntities_;
+            PartitionIteratorRule<pitype> rule_;
 	};
 
 
