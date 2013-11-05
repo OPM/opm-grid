@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: CpGrid.hpp
+// File: PartitionIteratorRule.hpp
 //
 // Created: Fri Oct 31 2013
 //
