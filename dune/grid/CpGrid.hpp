@@ -511,38 +511,42 @@ namespace Dune
 	end of refinement section */
 
 
-	/* No parallelism implemented.  GridDefaultImplementation's methods will be used.
+	/* No parallelism implemented.  GridDefaultImplementation's methods will be used. */
 
         /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int codim) const {
-            return hostgrid_->overlapSize(codim);
+            return 1;
         }
 
 
         /// \brief Size of the ghost cell layer on the leaf level
         unsigned int ghostSize(int codim) const {
-            return hostgrid_->ghostSize(codim);
+            return 0;
         }
 
 
         /// \brief Size of the overlap on a given level
         unsigned int overlapSize(int level, int codim) const {
-            return hostgrid_->overlapSize(level,codim);
+            return 1;
         }
 
 
         /// \brief Size of the ghost cell layer on a given level
         unsigned int ghostSize(int level, int codim) const {
-            return hostgrid_->ghostSize(level,codim);
+            return 0;
         }
+        /*
+        // loadbalance is not part of the grid interface therefore we skip it.
 
-        
         /// \brief Distributes this grid over the available nodes in a distributed machine
 	///
 	/// \param minlevel The coarsest grid level that gets distributed
 	/// \param maxlevel does currently get ignored
         void loadBalance(int strategy, int minlevel, int depth, int maxlevel, int minelement);
-        
+        */
+
+        /*
+          // The communication iterface
         /// \brief The communication interface
 	///  @param T: array class holding data associated with the entities
 	///  @param P: type used to gather/scatter data in and out of the message buffer
