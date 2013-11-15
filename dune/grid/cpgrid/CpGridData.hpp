@@ -252,11 +252,44 @@ private:
     /// \brief The type of the collective communication.
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
-    /** @brief Object for collective communication operations. */
+    /// \brief Object for collective communication operations.
     CollectiveCommunication ccobj_;
     
     // Boundary information (optional).
     bool use_unique_boundary_ids_;
+
+    /// \brief The type of the set of the attributes
+    typedef OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+
+    /// \brief The type of the parallel index set
+    typedef Dune::ParallelIndexSet<int,Dune::ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
+
+    /// \brief The parallel index set of the cells.
+    PIndexSet cell_indexset;
+    
+    /// \brief The type of the remote indices information
+    typedef Dune::RemoteIndices<IndexSet> RemoteIndices;
+
+    /// \brief The remote index information for the cells.
+    RemoteIndices cell_remote_indices;
+    
+    /// \brief Interface from interior and border to all for the cells.
+    mutable Interface cell_interface_interiorborder_all;
+    
+    /// \brief Interface from overlap to overlap and front for the cells.
+    mutable Interface cell_interface_overlap_overlapfront;
+    
+    /// \brief Interface from all to all for the cells.
+    mutable Interface cell_interface_all_all;    
+
+    /// \brief Communicator from interior and border to all for the cells.
+    mutable BufferedCommunicator cell_communicator_interiorborder_all;
+    
+    /// \brief Communicator from overlap to overlap and front for the cells.
+    mutable BufferedCommunicator cell_communicator_overlap_overlapfront;
+    
+    /// \brief Communicator from all to all for the cells.
+    mutable BufferedCommunicator cell_communicator_all_all;
 
     // Return the geometry vector corresponding to the given codim.
     template <int codim>

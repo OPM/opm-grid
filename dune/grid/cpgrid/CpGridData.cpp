@@ -143,9 +143,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // vector with the set of ranks that
     std::vector<std::set<int> > overlap; 
     
-    //Dune::OwnerOverlapCopyCommunication<int,Dune::ParallelLocalIndex> ownerOverlap;
-    typedef OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
-    typedef Dune::ParallelIndexSet<int,Dune::ParallelLocalIndex<AttributeSet> > IndexSet;
     overlap.resize(cell_part.size());
     addOverlapLayer(grid, cell_part, overlap, my_rank, false);
     // count number of cells
@@ -156,7 +153,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         typedef std::set<int>::const_iterator NeighborIterator;
         std::set<int> neighbors;
         typedef Dune::ParallelLocalIndex<AttributeSet> Index;
-        IndexSet* indexset;
+        ParallelIndexSet* indexset;
         std::vector<int> global2local;
         /**
          * @brief Adds an index with flag owner to the index set.
@@ -200,8 +197,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     cell_counter.myrank=my_rank;
     cell_counter.count=0;
     cell_counter.global2local.reserve(cell_part.size());
-    IndexSet indexset;
-    cell_counter.indexset=&indexset;
+    cell_indexset = new ParallelIndexSet;
+    cell_counter.indexset=indexset;
     // set up the index set.
     cell_counter.indexset->beginResize();
     typedef std::vector<std::set<int> >::const_iterator OIterator;
@@ -215,8 +212,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
     cell_counter.indexset->endResize();
     // setup the remote indices.
-    //typedef Dune::OwnerOverlapCopyCommunication<int,Dune::ParallelLocalIndex>::RemoteIndices RemoteIndices;
-    typedef Dune::RemoteIndices<IndexSet> RemoteIndices;
     typedef RemoteIndexListModifier<RemoteIndices::ParallelIndexSet, RemoteIndices::Allocator,
                                     false> Modifier;
     typedef RemoteIndices::RemoteIndex RemoteIndex;
