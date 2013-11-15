@@ -209,7 +209,13 @@ private:
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
-    /** @brief Container for the lookup attaching cells for each face. */
+    /** 
+     * @brief Container for the lookup of attaching cells for each face. 
+     *
+     * All faces have two neighbours except for those at the domain boundary.
+     * @warn  Note that along the front partition there are invalid neighbours
+     * marked with index std::numeric_limits<int>::max()
+     */
     cpgrid::OrientedEntityTable<1, 0> face_to_cell_;
     /** @brief Container for the lookup of the points for each face. */
     Opm::SparseTable<int>             face_to_point_;

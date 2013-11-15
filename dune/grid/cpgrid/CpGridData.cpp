@@ -414,8 +414,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             // orientation of the old cell.
             for(auto cell = old_row.begin(), cend=old_row.end();cell!=cend; ++cell)
             {
-                if(cell_indicator[cell->index()]<std::numeric_limits<int>::max())
-                    new_row.push_back(EntityRep<0>(cell_indicator[cell->index()], 
+                // The statement below results in all faces having two neighbours
+                // except for those at the domain boundary.
+                // Note that along the front partition there are invalid neighbours
+                // marked with index std::numeric_limits<int>::max()
+                new_row.push_back(EntityRep<0>(cell_indicator[cell->index()], 
                                                    cell->orientation()));
             }
             face_to_cell_.appendRow(new_row.begin(), new_row.end());

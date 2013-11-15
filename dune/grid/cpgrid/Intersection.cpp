@@ -78,8 +78,7 @@ void Intersection::update()
 		//global_geom_ = cpgrid::Entity<1>(*pgrid_, face).geometry();
                 global_geom_ = pgrid_->geometry_.geomVector<1>()[face];
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
-		is_on_boundary_ = (cells_of_face.size() == 1 && 
-                                   Dune::cpgrid::Entity<1>(*pgrid_, face.index(), face.orientation()).partitionType()==InteriorEntity);
+		is_on_boundary_ = cells_of_face.size() == 1;
 		if (is_on_boundary_) {
 		    nbcell_ = index_; // self is invalid value
 		} else {
