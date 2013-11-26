@@ -54,11 +54,16 @@
 #include <dune/common/mpihelper.hh>
 #endif
 #include <array>
+#include <dune/common/tuples.hh>
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <dune/common/collectivecommunication.hh>
+#include <dune/common/parallel/indexset.hh>
+#include <dune/common/parallel/interface.hh>
+#include <dune/common/parallel/plocalindex.hh>
+#include <dune/common/parallel/variablesizecommunicator.hh>
 
 namespace Dune
 {
@@ -265,38 +270,33 @@ private:
     bool use_unique_boundary_ids_;
 
     /// \brief The type of the set of the attributes
-    typedef OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+    enum AttributeSet{owner, overlap};
 
     /// \brief The type of the parallel index set
     typedef Dune::ParallelIndexSet<int,Dune::ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
 
     /// \brief The parallel index set of the cells.
-    PIndexSet cell_indexset;
-    
+    ParallelIndexSet cell_indexset;
+    /*
     /// \brief The type of the remote indices information
     typedef Dune::RemoteIndices<IndexSet> RemoteIndices;
 
     /// \brief The remote index information for the cells.
     RemoteIndices cell_remote_indices;
-    
-    /// \brief Interface from interior and border to all for the cells.
-    mutable Interface cell_interface_interiorborder_all;
-    
-    /// \brief Interface from overlap to overlap and front for the cells.
-    mutable Interface cell_interface_overlap_overlapfront;
-    
-    /// \brief Interface from all to all for the cells.
-    mutable Interface cell_interface_all_all;    
+    */
+    /// \brief Communication interface for the cells.
+    tuple<Dune::Interface,Interface,Interface,Interface,Interface> cell_interfaces;
 
-    /// \brief Communicator from interior and border to all for the cells.
-    mutable BufferedCommunicator cell_communicator_interiorborder_all;
+    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
     
-    /// \brief Communicator from overlap to overlap and front for the cells.
-    mutable BufferedCommunicator cell_communicator_overlap_overlapfront;
-    
-    /// \brief Communicator from all to all for the cells.
-    mutable BufferedCommunicator cell_communicator_all_all;
+    /// \brief Interface from interior and border to interior and border for the faces.
+    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
+    face_interfaces;
 
+    /// \brief Interface from interior and border to interior and border for the faces.
+    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
+    point_interfaces;
+    
     // Return the geometry vector corresponding to the given codim.
     template <int codim>
     const EntityVariable<Geometry<3 - codim, 3>, codim>& geomVector() const

@@ -5,8 +5,8 @@
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
 #include"PartitionTypeIndicator.hpp"
-#include <dune/istl/owneroverlapcopy.hh>
 #include <dune/grid/common/GridPartitioning.hpp>
+#include <dune/common/parallel/remoteindices.hh>
 #include <algorithm>
 
 namespace Dune
@@ -125,6 +125,257 @@ int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& 
     }
     return count;
 }
+
+template<class E>
+struct AttributeDataHandle
+{
+    typedef std::pair<std::size_t,char> DataType;
+    
+    template<class T>
+    AttributeDataHandle(int rank, const std::vector<char>& indicator,
+                        std::vector<std::map<std::size_t, char> >& vals,
+                        const T& cell_to_entity)
+        : rank_(rank), indicator_(indicator), vals_(vals),
+          c2e_(cell_to_entity)
+    {}
+    bool fixedSize()
+    {
+        return true;
+    }
+    std::size_t size(std::size_t i)
+    {
+        return c2f_[i].size();
+    }
+    template<class B>
+    void gather(B buffer, std::size_t i)
+    {
+        typedef typename SparseTable<E>::row_type::const_iterator RowIter;
+        for(RowIter f=c2f[i].begin(), fend=c2f[i].end();
+            f!=fend; ++f)
+        {
+            buffer.write(std::make_pair(rank_,indicator_[f->index()]));
+        }
+    }
+
+    template<class B>
+    void scatter(B buffer, std::size_t i, std::size_t s)
+    {
+        typedef typename SparseTable<E>::row_type::const_iterator RowIter;
+        for(RowIter f=c2f[i].begin(), fend=c2f[i].end();
+            f!=fend; ++f, --s)
+        {
+            std::pair<int,char> rank_attr;
+            buffer.read(rank_attr);
+            vals[f->index()].insert(rank_attr);
+        }
+    }
+    int rank_;
+    const std::vector<char>& indicator;
+    std::vector<std::map<std::size_t, char> >& vals;
+    const SparseTable<E>& c2f_;
+};
+ 
+
+template<class T, class Functor, class FromSet, class ToSet>
+struct InterfaceFunctor
+{
+    InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
+        : map_(m)
+    {}
+    void operator()(int rank, std::size_t index PartitionType mine, PartitionType other)
+    {
+        if(from.contains(mine) && to.contains(other))
+            func(map_[rank]->first, index);
+        if(from.contains(other) && to.contains(mine))
+            func(map_[rank]->second, index);
+    }
+    std::map<int,std::pair<T,T>& map_;
+    FromSet from;
+    ToSet   to;
+    Functor func;
+};
+
+struct InterfaceIncrementor
+{
+    template<class T>
+    void operator()(T& t, std::size_t)
+    {
+        ++t;
+    }    
+};
+
+struct InterfaceAdder
+{
+    template<class T>
+    void operator()(InterfaceInformation& inf, std::size_t index)
+    {
+        info->add(index);
+    }
+};
+
+template<class T0, class T1, class T2, class T3, class T4>
+struct InterfaceTupleFunctor<tuple<T0, T1, T2, T3, T4> >
+{
+    typedef tuple< T0, T1, T2, T3, T4 > MyTuple;
+    InterfaceTupleFunctor(MyTuple& t)
+    : t_(&t)
+    {}
+    
+    void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
+    {
+        get<0>(t)(rank, index, mine, other);
+        get<1>(t)(rank, index, mine, other);
+        get<2>(t)(rank, index, mine, other);
+        get<3>(t)(rank, index, mine, other);
+        get<4>(t)(rank, index, mine, other);
+    }
+};
+
+struct Converter
+{
+    typedef EnumItem<PartitionType, InteriorEntity> Interior;
+    typedef EnumItem<PartitionType, BorderEntity> Border;
+    typedef EnumItem<PartitionType, OverlapEntity> Overlap;
+    typedef EnumItem<PartitionType, Front> Front;
+    typedef Combine<Interior,Border> InteriorBorder;
+    typedef Combine<Overlap,Front> OverlapFront;
+
+    typedef SourceTuple     <InteriorBorder, InteriorBorder, Overlap     , Overlap, AllSet>
+    typedef DestinationTuple<InteriorBorder, AllSet,         OverlapFront, AllSet,  AllSet>
+};
+
+/**
+ * \brief Reserves space for an interface.
+ * \tparam i The index of the interface.
+ * \param sizes A vector with the sizes of the interface for each neighboring rank.
+ * \param interface The communication interfaces.
+ */
+template<std::size_t i>
+void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
+             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             interfaces)
+{
+    get<i>(interfaces)->first.reserve(size[i].first);
+    get<i>(interfaces)->second.reserve(size[i].second);
+}
+
+/**
+ * \brief Reserves space for the interfaces.
+ * \param sizes A vector with the sizes of the interface for each neighboring rank.
+ * \param interface The communication interfaces.
+ */
+void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
+             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             interfaces)
+{
+    reserve<0>(sizes, interfaces);
+    reserve<1>(sizes, interfaces);
+    reserve<2>(sizes, interfaces);
+    reserve<3>(sizes, interfaces);
+    reserve<4>(sizes, interfaces);
+}
+
+/**
+ * \brief A functor that calculates the size of the interface.
+ * \tparam i The indentifier of the interface.
+ */
+template<std::size_t i>
+struct SizeFunctor : 
+    public InterfaceFunctor<std::size_t, InterfaceIncrementor,
+                            tuple_element<i,Converter::SourceTuple>::type,
+                            tuple_element<i,Converter::DestinationTuple>::type>
+{
+    typedef InterfaceFunctor<std::size_t, InterfaceIncrementor,
+                             tuple_element<i,Converter::SourceTuple>::type,
+                             tuple_element<i,Converter::DestinationTuple>::type>
+    Base;
+    SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
+        :Base(m)
+    {}
+};
+
+/**
+ * \brief A functor that adds indices to the interface.
+ * \tparam i The indentifier of the interface.
+ */
+template<std::size_t i>
+struct AddFunctor :
+    public InterfaceFunctor<InterfaceInformation, InterfaceAdder,
+                            tuple_element<i,Converter::SourceTuple>::type,
+                            tuple_element<i,Converter::DestinationTuple>::type>
+{
+    typedef InterfaceFunctor<InterfaceInformation, InterfaceAdder,
+                             tuple_element<i,Converter::SourceTuple>::type,
+                             tuple_element<i,Converter::DestinationTuple>::type>
+    Base;
+    SizeFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
+        : Base(m)
+    {}
+};
+
+/**
+ * \brief Applies a functor the each pair of the interface.
+ * \tparam Functor The type of the functor to apply.
+ * \param attributes[in] A vector that contains for each index a map from other
+ * process ranks to the attribute there.
+ * \param my_attributes[in] A vector with the attributes of each index on this process.
+ * \param func The functor.
+ */
+template<class Functor>
+void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
+                             std::vector<char>& my_attributes, Functor& func)
+{
+    typedef typename std::vector<std::map<int,char> >::const_iterator Iter;
+    typename std::vector<char>::const_iterator mine=my_attributes.begin();
+    for(Iter begin=attributes.begin(), i=begin, end=attributes.end(); i!=end; ++i, ++mine)
+    {
+        typedef typename std::map<int,char>::const_iterator MIter;
+        for(MIter m=i->begin(), mend=m.end(); m!=mend; ++m)
+            func(m->first,i-begin,*mine, m->second);
+    }
+}
+
+        
+/**
+ * \brief Creates the communication interface for either faces or points.
+ * \param attributes[in] A vector that contains for each index a map from other
+ * process ranks to the attribute there.
+ * \param my_attributes[in] A vector with the attributes of each index on this process.
+ * \param[out] interfaces The tuple with the interface maps for communication.
+ */
+void createInterfaces(std::vector<std::map<int,char> >& attributes,
+                      std::vector<char>& my_attributes,
+                      tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+                      interfaces)
+{
+    // calculate sizes
+    std::vector<std::map<int,std::pair<std::size_t,std::size_t> > > sizes(5);
+    typedef tuple<SizeFunctor<0>,SizeFunctor<1>,SizeFunctor<2>,SizeFunctor<3>,
+                  SizeFunctor<4> > SizeTuple;
+    SizeTuple
+        size_functor_tuple(SizeFunctor<0>(sizes[0]),
+                           SizeFunctor<1>(sizes[1]),
+                           SizeFunctor<2>(sizes[2]),
+                           SizeFunctor<3>(sizes[3]),
+                           SizeFunctor<4>(sizes[4]));
+    InterfaceTupleFunctor<SizeTuple> size_functor(size_functor_tuple);
+    iterate_over_attributes(attributes, my_attributes, size_functor);
+    // reserve space
+    reserve(sizes, interfaces);
+    // add indices to the interface
+    typedef tuple<AddFunctor<0>,AddFunctor<1>,AddFunctor<2>,AddFunctor<3>,
+                  AddFunctor<4> > AddTuple;
+    AddTuple
+        add_functor_tuple(AddFunctor<0>(get<0>(interfaces)),
+                          AddFunctor<1>(get<1>(interfaces)),
+                          AddFunctor<2>(get<2>(interfaces)),
+                          AddFunctor<3>(get<3>(interfaces)),
+                          AddFunctor<4>(get<4>(interfaces)));
+    InterfaceTupleFunctor<AddTuple> add_functor(add_functor_tuple);
+    iterate_over_attributes(attributes, my_attributes, add_functor);
+                                
+}
+
 
 void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const CpGridData& view_data,
@@ -250,7 +501,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         int row_index=i->global();
         // Somehow g++-4.4 does not find functions of father even if we
         // change inheritance of OrientedEntityTable to public.
-        // Therfore we use an ugly task to base class here.
+        // Therfore we use an ugly cast to base class here.
         const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
         for(RowIter f=c2f[row_index].begin(), fend=c2f[row_index].end();
             f!=fend; ++f)
@@ -495,7 +746,42 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     partition_type_indicator_->getFacePartitionType(i);
         }
     }
-        
+
+    // Compute the interface information for cells
+    Dune::RemoteIndices<IndexSet> cell_remote_indices.setIndexSets(cell_indexset, cellindexset, ccobj_);
+    get<InteriorBorder_All_Interface>(cell_interfaces)
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
+               AllSet<AttributeSet>());
+    get<Overlap_OverlapFront_Interface>(cell_interfaces)
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
+               EnumItem<AttributeSet, AttributeSet::overlap>());
+     get<Overlap_All_Interface>(cell_interfaces)
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
+                                 AllSet<AttributeSet>());
+    get<All_All_Interface>(cell_interfaces)
+        .build(cell_remote_indices, AllSet<AttributeSet>(), AllSet<AttributeSet>());
+
+    // Now we use the all_all communication of the cells to compute which faces and points
+    // are also present on other processes and with what attribute.
+    std::vector<std::map<int,char> > face_attributes(noExistingFaces);
+    FaceAttributeDataHandle face_handle(ccobj_.rank(), 
+                                        partition_type_indicator_->face_indicator,
+                                        face_attributes,
+                                        cell_to_face_);
+    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces));
+    comm.forward(face_handle);
+    createInterfaces(face_attributes, face_indicator, face_interfaces);
+    std::vector<std::map<int,char> >().swap(face_attributes);
+    std::vector<std::map<int,char> > point_attributes(noExistingPoints);
+    PointAttributeDataHandle point_handle(ccobj_.rank(), 
+                                          partition_type_indicator_->point_indicator_,
+                                          point_attributes,
+                                          cell_to_point_);
+    comm.forward(point_handle);
+    createInterfaces(point_attributes, partition_type_indicator_->point_indicator_,
+                     point_interfaces);
+    
+    
 }
 
 } // end namespace cpgrid
