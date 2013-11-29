@@ -56,15 +56,15 @@ public:
     /// Get the partition type of a cell.
     /// \param cell_entity The entity describing the cell
     /// \return The partition type of the cell.
-    PartitionType getPartitionType(const Entity<0>& cell_entity) const;
+    PartitionType getPartitionType(const EntityRep<0>& cell_entity) const;
     /// Get the partition type of a face.
     /// \param face_entity The entity describing the face
     /// \return The partition type of the face.
-    PartitionType getPartitionType(const Entity<1>& face_entity) const;
+    PartitionType getPartitionType(const EntityRep<1>& face_entity) const;
     /// Get the partition type of a point.
     /// \param point_entity The entity describing the point.
     /// \return The partition type of the point.
-    PartitionType getPartitionType(const Entity<3>& point_entity) const;
+    PartitionType getPartitionType(const EntityRep<3>& point_entity) const;
     
 private:
     /// Get the partition type of a face by its index
@@ -72,6 +72,12 @@ private:
     /// \return The partition type of the face associated with this index.
     PartitionType getFacePartitionType(int i) const;
     
+    
+    /// Get the partition type of a face by its index
+    /// \param i The index of the face.
+    /// \return The partition type of the face associated with this index.
+    PartitionType getPointPartitionType(int i) const;
+
     /// The data of the grid.
     const CpGridData* grid_data_;
     /// An array to store the partition type of cell.
@@ -85,6 +91,7 @@ private:
     /// Otherwise this grid is not parallel and allen entities are interior.
     std::vector<char> point_indicator_;
     friend class CpGridData;
+    friend class FacePartitionTypeIterator;
 };
 } // end namespace Dune
 } // end namespace cpgrid

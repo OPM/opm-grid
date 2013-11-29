@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include"config.h"
+#endif
 #include"EntityRep.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"

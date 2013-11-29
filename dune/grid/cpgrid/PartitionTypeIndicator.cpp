@@ -1,3 +1,6 @@
+#ifdef HAVE_CONFIG_H
+#include "config.h"
+#endif
 #include "Entity.hpp"
 #include "CpGridData.hpp"
 #include "PartitionTypeIndicator.hpp"
@@ -6,24 +9,28 @@ namespace Dune
 {
 namespace cpgrid
 {
-PartitionType PartitionTypeIndicator::getPartitionType(const Entity<0>& cell_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<0>& cell_entity) const
 {
     if(cell_indicator_.size())
         return PartitionType(cell_indicator_[cell_entity.index()]);
     return InteriorEntity;
 }
 
-PartitionType PartitionTypeIndicator::getPartitionType(const Entity<1>& face_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<1>& face_entity) const
 {
     return getFacePartitionType(face_entity.index());
 }
-PartitionType PartitionTypeIndicator::getPartitionType(const Entity<3>& point_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<3>& point_entity) const
+{
+    return getPointPartitionType(point_entity.index());
+}
+PartitionType PartitionTypeIndicator::getPointPartitionType(int index) const
 {
     if(point_indicator_.size())
-        return PartitionType(point_indicator_[point_entity.index()]);
+        return PartitionType(point_indicator_[index]);
     return InteriorEntity;
-        
 }
+
 
 PartitionType getProcessorBoundaryPartitionType(PartitionType cell_partition_type)
 {
@@ -31,7 +38,7 @@ PartitionType getProcessorBoundaryPartitionType(PartitionType cell_partition_typ
         return BorderEntity;
     else
         return FrontEntity;
-    
+}
 
 PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
 {
@@ -51,15 +58,15 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
         }
         else
         {
-            if(cells_of_face[0].index()==<std::numeric_limits<int>::max())
+            if(cells_of_face[0].index()==std::numeric_limits<int>::max())
             {
                 // At the boder of the processor's but not the global domain
-                getProcessorBoundaryPartitionType(cell_indicator_[cells_of_face[1]]);
+                return getProcessorBoundaryPartitionType(PartitionType(cell_indicator_[cells_of_face[1].index()]));
             }
-            if(cells_of_face[1].index()==<std::numeric_limits<int>::max())
+            if(cells_of_face[1].index()==std::numeric_limits<int>::max())
             {
                 // At the boder of the processor's but not the global domain
-                getProcessorBoundaryPartitionType(cell_indicator_[cells_of_face[0]]);
+                return getProcessorBoundaryPartitionType(PartitionType(cell_indicator_[cells_of_face[0].index()]));
             }
                 
             if(cell_indicator_[cells_of_face[0].index()]==
@@ -69,6 +76,7 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
                 return BorderEntity;
         }
     }
+    return InteriorEntity;
 }
 } // end namespace cpgrid
 } // end namespace Dune

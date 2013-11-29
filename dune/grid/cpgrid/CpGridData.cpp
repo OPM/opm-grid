@@ -1,4 +1,7 @@
 #include"config.h"
+#include <algorithm>
+#include <map>
+#include <vector>
 #include"CpGridData.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
@@ -7,7 +10,8 @@
 #include"PartitionTypeIndicator.hpp"
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <dune/common/parallel/remoteindices.hh>
-#include <algorithm>
+#include <dune/common/enumset.hh>
+#include <opm/core/utility/SparseTable.hpp>
 
 namespace Dune
 {
@@ -126,53 +130,93 @@ int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& 
     return count;
 }
 
-template<class E>
+template<class T>
+struct GetRowType
+{};
+
+template<class T>
+struct GetRowType<Opm::SparseTable<T> >
+{
+    typedef typename Opm::SparseTable<T>::row_type type;
+};
+template<class E, class A>
+struct GetRowType<std::vector<E,A> >
+{
+    typedef typename std::vector<E,A>::value_type type;
+};
+
+PartitionType getPartitionType(const PartitionTypeIndicator& p, const EntityRep<1>& f,
+                               const CpGridData&)
+{
+    return p.getPartitionType(f);
+}
+
+PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
+                               const CpGridData& grid)
+{
+    return p.getPartitionType(Entity<3>(grid, i, true));
+}
+
+int getIndex(const int* i)
+{
+    return *i;
+}
+
+template<class T>
+int getIndex(T i)
+{
+    return i->index();
+}
+
+template<class T>
 struct AttributeDataHandle
 {
-    typedef std::pair<std::size_t,char> DataType;
+    typedef std::pair<int,char> DataType;
     
-    template<class T>
-    AttributeDataHandle(int rank, const std::vector<char>& indicator,
-                        std::vector<std::map<std::size_t, char> >& vals,
-                        const T& cell_to_entity)
+    AttributeDataHandle(int rank, const PartitionTypeIndicator& indicator,
+                        std::vector<std::map<int, char> >& vals,
+                        const T& cell_to_entity,
+                        const CpGridData& grid)
         : rank_(rank), indicator_(indicator), vals_(vals),
-          c2e_(cell_to_entity)
+        c2e_(cell_to_entity), grid_(grid)
     {}
-    bool fixedSize()
+    bool fixedsize()
     {
         return true;
     }
     std::size_t size(std::size_t i)
     {
-        return c2f_[i].size();
+        return c2e_[i].size();
     }
     template<class B>
     void gather(B buffer, std::size_t i)
     {
-        typedef typename SparseTable<E>::row_type::const_iterator RowIter;
-        for(RowIter f=c2f[i].begin(), fend=c2f[i].end();
+        typedef typename GetRowType<T>::type::const_iterator RowIter;
+        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f)
         {
-            buffer.write(std::make_pair(rank_,indicator_[f->index()]));
+            char t=getPartitionType(indicator_, *f, grid_);
+            buffer.write(std::make_pair(rank_, t));
         }
     }
 
     template<class B>
     void scatter(B buffer, std::size_t i, std::size_t s)
     {
-        typedef typename SparseTable<E>::row_type::const_iterator RowIter;
-        for(RowIter f=c2f[i].begin(), fend=c2f[i].end();
+        typedef typename GetRowType<T>::type::const_iterator RowIter;
+        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f, --s)
         {
             std::pair<int,char> rank_attr;
             buffer.read(rank_attr);
-            vals[f->index()].insert(rank_attr);
+            vals_[getIndex(f)].insert(rank_attr);
         }
     }
     int rank_;
-    const std::vector<char>& indicator;
-    std::vector<std::map<std::size_t, char> >& vals;
-    const SparseTable<E>& c2f_;
+    const PartitionTypeIndicator& indicator_;
+    std::vector<std::map<int, char> >& vals_;
+    const T& c2e_;
+    const CpGridData& grid_;
 };
  
 
@@ -182,14 +226,14 @@ struct InterfaceFunctor
     InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
         : map_(m)
     {}
-    void operator()(int rank, std::size_t index PartitionType mine, PartitionType other)
+    void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
     {
         if(from.contains(mine) && to.contains(other))
-            func(map_[rank]->first, index);
+            func(map_[rank].first, index);
         if(from.contains(other) && to.contains(mine))
-            func(map_[rank]->second, index);
+            func(map_[rank].second, index);
     }
-    std::map<int,std::pair<T,T>& map_;
+    std::map<int,std::pair<T,T> >& map_;
     FromSet from;
     ToSet   to;
     Functor func;
@@ -206,29 +250,28 @@ struct InterfaceIncrementor
 
 struct InterfaceAdder
 {
-    template<class T>
-    void operator()(InterfaceInformation& inf, std::size_t index)
+    void operator()(InterfaceInformation& info, std::size_t index)
     {
-        info->add(index);
+        info.add(index);
     }
 };
 
-template<class T0, class T1, class T2, class T3, class T4>
-struct InterfaceTupleFunctor<tuple<T0, T1, T2, T3, T4> >
+template<class Tuple>
+struct InterfaceTupleFunctor
 {
-    typedef tuple< T0, T1, T2, T3, T4 > MyTuple;
-    InterfaceTupleFunctor(MyTuple& t)
-    : t_(&t)
+    InterfaceTupleFunctor(Tuple& t)
+    : t_(t)
     {}
     
     void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
     {
-        get<0>(t)(rank, index, mine, other);
-        get<1>(t)(rank, index, mine, other);
-        get<2>(t)(rank, index, mine, other);
-        get<3>(t)(rank, index, mine, other);
-        get<4>(t)(rank, index, mine, other);
+        get<0>(t_)(rank, index, mine, other);
+        get<1>(t_)(rank, index, mine, other);
+        get<2>(t_)(rank, index, mine, other);
+        get<3>(t_)(rank, index, mine, other);
+        get<4>(t_)(rank, index, mine, other);
     }
+    Tuple& t_;
 };
 
 struct Converter
@@ -236,12 +279,14 @@ struct Converter
     typedef EnumItem<PartitionType, InteriorEntity> Interior;
     typedef EnumItem<PartitionType, BorderEntity> Border;
     typedef EnumItem<PartitionType, OverlapEntity> Overlap;
-    typedef EnumItem<PartitionType, Front> Front;
+    typedef EnumItem<PartitionType, FrontEntity> Front;
     typedef Combine<Interior,Border> InteriorBorder;
     typedef Combine<Overlap,Front> OverlapFront;
 
-    typedef SourceTuple     <InteriorBorder, InteriorBorder, Overlap     , Overlap, AllSet>
-    typedef DestinationTuple<InteriorBorder, AllSet,         OverlapFront, AllSet,  AllSet>
+    typedef tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap, 
+                  AllSet<PartitionType> > SourceTuple;
+    typedef tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
+                  AllSet<PartitionType> > DestinationTuple;
 };
 
 /**
@@ -250,13 +295,18 @@ struct Converter
  * \param sizes A vector with the sizes of the interface for each neighboring rank.
  * \param interface The communication interfaces.
  */
-template<std::size_t i>
+template<std::size_t i, class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
              tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
-    get<i>(interfaces)->first.reserve(size[i].first);
-    get<i>(interfaces)->second.reserve(size[i].second);
+    typename InterfaceMap::iterator iiter=get<i>(interfaces).begin();
+    typedef typename std::map<int,std::pair<std::size_t,std::size_t> >::const_iterator Iter;
+    for(Iter iter=sizes[i].begin(), end =sizes[i].end(); iter!=end; ++iter, ++iiter)
+    {
+        iiter->second.first.reserve(iter->second.first);
+        iiter->second.second.reserve(iter->second.second);
+    }
 }
 
 /**
@@ -264,6 +314,7 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
  * \param sizes A vector with the sizes of the interface for each neighboring rank.
  * \param interface The communication interfaces.
  */
+template<class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
              tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
@@ -282,12 +333,12 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
 template<std::size_t i>
 struct SizeFunctor : 
     public InterfaceFunctor<std::size_t, InterfaceIncrementor,
-                            tuple_element<i,Converter::SourceTuple>::type,
-                            tuple_element<i,Converter::DestinationTuple>::type>
+                            typename tuple_element<i,typename Converter::SourceTuple>::type,
+                            typename tuple_element<i,typename Converter::DestinationTuple>::type>
 {
     typedef InterfaceFunctor<std::size_t, InterfaceIncrementor,
-                             tuple_element<i,Converter::SourceTuple>::type,
-                             tuple_element<i,Converter::DestinationTuple>::type>
+                             typename tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
     SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
         :Base(m)
@@ -301,17 +352,37 @@ struct SizeFunctor :
 template<std::size_t i>
 struct AddFunctor :
     public InterfaceFunctor<InterfaceInformation, InterfaceAdder,
-                            tuple_element<i,Converter::SourceTuple>::type,
-                            tuple_element<i,Converter::DestinationTuple>::type>
+                             typename tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
 {
     typedef InterfaceFunctor<InterfaceInformation, InterfaceAdder,
-                             tuple_element<i,Converter::SourceTuple>::type,
-                             tuple_element<i,Converter::DestinationTuple>::type>
+                             typename tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
-    SizeFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
+    AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
         : Base(m)
     {}
 };
+
+class FacePartitionTypeIterator
+{
+public:
+    FacePartitionTypeIterator(const PartitionTypeIndicator* part)
+    : indicator_(part), index_()
+    {}
+    void operator++()
+    {
+        ++index_;
+    }
+    PartitionType operator*()
+    {
+        return indicator_->getFacePartitionType(index_);
+    }
+private:
+    const PartitionTypeIndicator* indicator_;
+    int index_;
+};
+
 
 /**
  * \brief Applies a functor the each pair of the interface.
@@ -321,17 +392,19 @@ struct AddFunctor :
  * \param my_attributes[in] A vector with the attributes of each index on this process.
  * \param func The functor.
  */
-template<class Functor>
+template<class Functor, class T>
 void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
-                             std::vector<char>& my_attributes, Functor& func)
+                             T my_attribute_iter, Functor& func)
 {
     typedef typename std::vector<std::map<int,char> >::const_iterator Iter;
-    typename std::vector<char>::const_iterator mine=my_attributes.begin();
-    for(Iter begin=attributes.begin(), i=begin, end=attributes.end(); i!=end; ++i, ++mine)
+    for(Iter begin=attributes.begin(), i=begin, end=attributes.end(); i!=end; 
+        ++i, ++my_attribute_iter)
     {
         typedef typename std::map<int,char>::const_iterator MIter;
-        for(MIter m=i->begin(), mend=m.end(); m!=mend; ++m)
-            func(m->first,i-begin,*mine, m->second);
+        for(MIter m=i->begin(), mend=i->end(); m!=mend; ++m)
+        {
+            func(m->first,i-begin,PartitionType(*my_attribute_iter), PartitionType(m->second));
+        }
     }
 }
 
@@ -343,8 +416,9 @@ void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
  * \param my_attributes[in] A vector with the attributes of each index on this process.
  * \param[out] interfaces The tuple with the interface maps for communication.
  */
+template<class InterfaceMap,class T>
 void createInterfaces(std::vector<std::map<int,char> >& attributes,
-                      std::vector<char>& my_attributes,
+                      T partition_type_iterator,
                       tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
                       interfaces)
 {
@@ -353,13 +427,13 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
     typedef tuple<SizeFunctor<0>,SizeFunctor<1>,SizeFunctor<2>,SizeFunctor<3>,
                   SizeFunctor<4> > SizeTuple;
     SizeTuple
-        size_functor_tuple(SizeFunctor<0>(sizes[0]),
-                           SizeFunctor<1>(sizes[1]),
-                           SizeFunctor<2>(sizes[2]),
-                           SizeFunctor<3>(sizes[3]),
-                           SizeFunctor<4>(sizes[4]));
+        size_functor_tuple = make_tuple(SizeFunctor<0>(sizes[0]),
+                                        SizeFunctor<1>(sizes[1]),
+                                        SizeFunctor<2>(sizes[2]),
+                                        SizeFunctor<3>(sizes[3]),
+                                        SizeFunctor<4>(sizes[4]));
     InterfaceTupleFunctor<SizeTuple> size_functor(size_functor_tuple);
-    iterate_over_attributes(attributes, my_attributes, size_functor);
+    iterate_over_attributes(attributes, partition_type_iterator, size_functor);
     // reserve space
     reserve(sizes, interfaces);
     // add indices to the interface
@@ -372,7 +446,7 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
                           AddFunctor<3>(get<3>(interfaces)),
                           AddFunctor<4>(get<4>(interfaces)));
     InterfaceTupleFunctor<AddTuple> add_functor(add_functor_tuple);
-    iterate_over_attributes(attributes, my_attributes, add_functor);
+    iterate_over_attributes(attributes, partition_type_iterator, add_functor);
                                 
 }
 
@@ -418,7 +492,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             if(rank==myrank)
             {
                 global2local.push_back(count);
-                indexset->add(i, Index(count++, OwnerOverlapCopyAttributeSet::owner, true));
+                indexset->add(i, Index(count++, AttributeSet::owner, true));
             }
             else
                 global2local.push_back(std::numeric_limits<int>::max());
@@ -437,7 +511,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             if(iter!=ov.end())
             {
                 global2local.push_back(count);
-                indexset->add(i, Index(count++, OwnerOverlapCopyAttributeSet::overlap, true));
+                indexset->add(i, Index(count++, AttributeSet::overlap, true));
                 neighbors.insert(rank);
             }
             else
@@ -448,8 +522,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     cell_counter.myrank=my_rank;
     cell_counter.count=0;
     cell_counter.global2local.reserve(cell_part.size());
-    cell_indexset = new ParallelIndexSet;
-    cell_counter.indexset=indexset;
+    cell_counter.indexset=&cell_indexset_;
     // set up the index set.
     cell_counter.indexset->beginResize();
     typedef std::vector<std::set<int> >::const_iterator OIterator;
@@ -475,13 +548,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             n != end; ++n)
             modifiers.insert(std::make_pair(*n, remoteIndices.getModifier<false,false>(*n)));
         // Insert remote indices. For each entry in the index set, see wether there are overlap occurences and add them.
-        for(IndexSet::const_iterator i=indexset.begin(), end=indexset.end();
+        for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
         {
             std::set<int>::const_iterator iter=overlap[i->local()].find(my_rank);
             if(iter!=overlap[i->local()].end())
                 modifiers[cell_part[i->local()]]
-                    .insert(RemoteIndex(OwnerOverlapCopyAttributeSet::owner,&(*i)));
+                    .insert(RemoteIndex(AttributeSet::owner,&(*i)));
         }
     }
 
@@ -494,7 +567,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                     std::numeric_limits<int>::max());
     std::vector<int> point_indicator(view_data.geometry_.geomVector<3>().size(), 
                                      std::numeric_limits<int>::max());
-    for(IndexSet::iterator i=indexset.begin(), end=indexset.end();
+    for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
     {
         typedef boost::iterator_range<const EntityRep<1>*>::iterator RowIter;
@@ -529,8 +602,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     std::vector<int> map2GlobalPointId;
     int noExistingPoints = setupAndCountGlobalIds<3>(point_indicator, map2GlobalPointId,
                                                      *view_data.local_id_set_);
-    std::vector<int> map2GlobalCellId(indexset.size());
-    for(IndexSet::const_iterator i=indexset.begin(), end=indexset.end();
+    std::vector<int> map2GlobalCellId(cell_indexset_.size());
+    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
     {
         map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
@@ -539,13 +612,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
     // Set up the new topology arrays
     EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom;
-    std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(indexset.size());
+    std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(cell_indexset_.size());
     auto global_cell_geom=view_data.geomVector<0>();
     std::vector<int> global_cell;
-    global_cell.resize(indexset.size());
+    global_cell.resize(cell_indexset_.size());
 
     // Copy the existing cells.
-    for(auto i=indexset.begin(), end=indexset.end(); i!=end; ++i)
+    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
     {
         tmp_cell_geom[i->local()]=static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(global_cell_geom)[i->global()];
         global_cell[i->local()]=view_data.global_cell_[i->global()];
@@ -606,7 +679,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Create the topology information. This is stored in sparse matrix like data structures.
     // First conunt the size of the nonzeros of the cell_to_face data.
     int data_size=0;
-    for(auto i=indexset.begin(), end=indexset.end();
+    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
     {
         const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
@@ -616,10 +689,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     //- cell_to_face_ : extract owner/overlap rows from cell_to_face_
     // Construct the sparse matrix like data structure.
     //OrientedEntityTable<0, 1> cell_to_face;
-    cell_to_face_.reserve(indexset.size(), data_size);
-    cell_to_point_.reserve(indexset.size());
+    cell_to_face_.reserve(cell_indexset_.size(), data_size);
+    cell_to_point_.reserve(cell_indexset_.size());
     
-    for(auto i=indexset.begin(), end=indexset.end();
+    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
     {
         typedef boost::iterator_range<const EntityRep<1>*>::const_iterator RowIter;
@@ -649,7 +722,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     //- face_to cell_ : extract rows that connect to an existent cell
     std::vector<int> cell_indicator(view_data.cell_to_face_.size(),
                                     std::numeric_limits<int>::max());
-    for(auto i=indexset.begin(), end=indexset.end(); i!=end; ++i)
+    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
         cell_indicator[i->global()]=i->local();
     
     for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
@@ -720,12 +793,12 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         }
     }
     // Compute the partition type for cell
-    partition_type_indicator_->cell_indicator_.resize(indexset.size());
-    for(IndexSet::const_iterator i=indexset.begin(), end=indexset.end();
+    partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
+    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
     {
         partition_type_indicator_->cell_indicator_[i->local()]=
-            i->local().attribute()==OwnerOverlapCopyAttributeSet::owner?
+            i->local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
     }
     
@@ -748,7 +821,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
 
     // Compute the interface information for cells
-    Dune::RemoteIndices<IndexSet> cell_remote_indices.setIndexSets(cell_indexset, cellindexset, ccobj_);
+    Dune::RemoteIndices<ParallelIndexSet> cell_remote_indices;
+    cell_remote_indices.setIndexSets(cell_indexset_, cell_indexset_, ccobj_);
     get<InteriorBorder_All_Interface>(cell_interfaces)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
@@ -764,21 +838,21 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.
     std::vector<std::map<int,char> > face_attributes(noExistingFaces);
-    FaceAttributeDataHandle face_handle(ccobj_.rank(), 
-                                        partition_type_indicator_->face_indicator,
-                                        face_attributes,
-                                        cell_to_face_);
+    AttributeDataHandle<Opm::SparseTable<EntityRep<1> > > 
+        face_handle(ccobj_.rank(), *partition_type_indicator_,
+                    face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
+                    *this);
     Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces));
     comm.forward(face_handle);
-    createInterfaces(face_attributes, face_indicator, face_interfaces);
+    createInterfaces(face_attributes, FacePartitionTypeIterator(partition_type_indicator_),
+                     face_interfaces);
     std::vector<std::map<int,char> >().swap(face_attributes);
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
-    PointAttributeDataHandle point_handle(ccobj_.rank(), 
-                                          partition_type_indicator_->point_indicator_,
-                                          point_attributes,
-                                          cell_to_point_);
+    AttributeDataHandle<std::vector<std::array<int,8> > >
+        point_handle(ccobj_.rank(), *partition_type_indicator_,
+                     point_attributes, cell_to_point_, *this);
     comm.forward(point_handle);
-    createInterfaces(point_attributes, partition_type_indicator_->point_indicator_,
+    createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces);
     
     

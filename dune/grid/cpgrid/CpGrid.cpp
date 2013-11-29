@@ -32,7 +32,9 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
 #include "config.h"
+#endif
 #if HAVE_MPI
 #include "mpi.h"
 #endif

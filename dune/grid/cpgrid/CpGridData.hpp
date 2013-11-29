@@ -276,11 +276,11 @@ private:
     typedef Dune::ParallelIndexSet<int,Dune::ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
 
     /// \brief The parallel index set of the cells.
-    ParallelIndexSet cell_indexset;
-    /*
+    ParallelIndexSet cell_indexset_;
+    
     /// \brief The type of the remote indices information
-    typedef Dune::RemoteIndices<IndexSet> RemoteIndices;
-
+    typedef Dune::RemoteIndices<ParallelIndexSet> RemoteIndices;
+    /*
     /// \brief The remote index information for the cells.
     RemoteIndices cell_remote_indices;
     */
