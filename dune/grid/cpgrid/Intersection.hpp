@@ -139,7 +139,7 @@ namespace Dune
 	    /// @return
             bool neighbor() const
             {
-                return !boundary() || nbcell_!=std::numeric_limits<int>::max();
+                return !boundary() && nbcell_!=std::numeric_limits<int>::max();
             }
 
 	    /// @brief
