@@ -10,12 +10,38 @@
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
 
+class MPIError {
+public:
+  /** @brief Constructor. */
+  MPIError(std::string s, int e) : errorstring(s), errorcode(e){}
+  /** @brief The error string. */
+  std::string errorstring;
+  /** @brief The mpi error code. */
+  int errorcode;
+};
+
+void MPI_err_handler(MPI_Comm *comm, int *err_code, ...){
+  char *err_string=new char[MPI_MAX_ERROR_STRING];
+  int err_length;
+  MPI_Error_string(*err_code, err_string, &err_length);
+  std::string s(err_string, err_length);
+  std::cerr << "An MPI Error ocurred:"<<std::endl<<s<<std::endl;
+  delete[] err_string;
+  throw MPIError(s, *err_code);
+}
+
+
 BOOST_AUTO_TEST_CASE(distribute)
 {
 
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
+    MPI_Errhandler handler;
+    MPI_Errhandler_create(MPI_err_handler, &handler);
+    MPI_Errhandler_set(MPI_COMM_WORLD, handler);
+    int procs;
+    MPI_Comm_size(MPI_COMM_WORLD, &procs);
     Dune::CpGrid grid;
     std::array<int, 3> dims={{10, 10, 10}};
     std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
