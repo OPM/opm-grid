@@ -329,12 +329,15 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
              tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
-    typename InterfaceMap::iterator iiter=get<i>(interfaces).begin();
     typedef typename std::map<int,std::pair<std::size_t,std::size_t> >::const_iterator Iter;
-    for(Iter iter=sizes[i].begin(), end =sizes[i].end(); iter!=end; ++iter, ++iiter)
+    const std::map<int,std::pair<std::size_t,std::size_t> >& sizeMap=sizes[i];
+    InterfaceMap& interfaceMap=get<i>(interfaces);
+    
+    for(Iter iter=sizeMap.begin(), end =sizeMap.end(); iter!=end; ++iter)
     {
-        iiter->second.first.reserve(iter->second.first);
-        iiter->second.second.reserve(iter->second.second);
+        std::pair<InterfaceInformation,InterfaceInformation>& interface=interfaceMap[iter->first];
+        interface.first.reserve(iter->second.first);
+        interface.second.reserve(iter->second.second);
     }
 }
 
