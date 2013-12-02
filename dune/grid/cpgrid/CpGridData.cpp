@@ -218,7 +218,7 @@ struct AttributeDataHandle
         return c2e_[i].size();
     }
     template<class B>
-    void gather(B buffer, std::size_t i)
+    void gather(B& buffer, std::size_t i)
     {
         typedef typename GetRowType<T>::type::const_iterator RowIter;
         for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
@@ -230,7 +230,7 @@ struct AttributeDataHandle
     }
 
     template<class B>
-    void scatter(B buffer, std::size_t i, std::size_t s)
+    void scatter(B& buffer, std::size_t i, std::size_t s)
     {
         typedef typename GetRowType<T>::type::const_iterator RowIter;
         for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
