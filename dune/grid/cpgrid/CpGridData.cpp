@@ -495,7 +495,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 indexset->add(i, Index(count++, AttributeSet::owner, true));
             }
             else
+            {
+                neighbors.insert(rank);
                 global2local.push_back(std::numeric_limits<int>::max());
+            }
         }
         /**
          * @brief Adds an index with flag overlap to the index set.
@@ -539,14 +542,15 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     typedef RemoteIndexListModifier<RemoteIndices::ParallelIndexSet, RemoteIndices::Allocator,
                                     false> Modifier;
     typedef RemoteIndices::RemoteIndex RemoteIndex;
-    RemoteIndices remoteIndices;
+    RemoteIndices cell_remote_indices(cell_indexset_, cell_indexset_, ccobj_);
+
 
     // Create a map of ListModifiers
-    { //extra scope to call destructor of the Modifiers
+    if(cell_counter.neighbors.size()){ //extra scope to call destructor of the Modifiers
         std::map<int,Modifier> modifiers;
         for(CellCounter::NeighborIterator n=cell_counter.neighbors.begin(), end=cell_counter.neighbors.end();
             n != end; ++n)
-            modifiers.insert(std::make_pair(*n, remoteIndices.getModifier<false,false>(*n)));
+            modifiers.insert(std::make_pair(*n, cell_remote_indices.getModifier<false,false>(*n)));
         // Insert remote indices. For each entry in the index set, see wether there are overlap occurences and add them.
         for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
@@ -557,8 +561,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     .insert(RemoteIndex(AttributeSet::owner,&(*i)));
         }
     }
+    else
+    {
+        // Force update of the sync counter in the remote indices.
+        Modifier* mod=new Modifier(cell_remote_indices.getModifier<false,false>(0));
+        delete mod;
+    }
 
-    
     // We can identify existing cells with the help of the index set.
     // Now we need to compute the existing faces and points. Either exist
     // if they are reachable from an existing cell.
@@ -821,8 +830,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
 
     // Compute the interface information for cells
-    Dune::RemoteIndices<ParallelIndexSet> cell_remote_indices;
-    cell_remote_indices.setIndexSets(cell_indexset_, cell_indexset_, ccobj_);
     get<InteriorBorder_All_Interface>(cell_interfaces)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
