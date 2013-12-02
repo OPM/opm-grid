@@ -42,11 +42,38 @@ CpGridData::CpGridData(CpGrid& grid)
     global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {}
+
+
+template<class InterfaceMap>
+void freeInterfaces(InterfaceMap& map)
+{
+    typedef typename InterfaceMap::iterator Iter;
+    for(Iter i=map.begin(), end=map.end(); i!=end; ++i)
+    {
+        i->second.first.free();
+        i->second.second.free();
+    }
+}
+
+template<class InterfaceMap>
+void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+                    interfaces)
+{
+    freeInterfaces(get<0>(interfaces));
+    freeInterfaces(get<1>(interfaces));
+    freeInterfaces(get<2>(interfaces));
+    freeInterfaces(get<3>(interfaces));
+    freeInterfaces(get<4>(interfaces));
+}
+
 CpGridData::~CpGridData()
 {
+    freeInterfaces(face_interfaces);
+    freeInterfaces(point_interfaces);
     delete index_set_;
     delete local_id_set_;
     delete global_id_set_;
+    delete partition_type_indicator_;
 }
 
 void CpGridData::computeUniqueBoundaryIds()
