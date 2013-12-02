@@ -20,7 +20,8 @@ namespace cpgrid
 
 
 CpGridData::CpGridData(const CpGridData& g)
-  : partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
+    : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
+      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
 {}
 
 CpGridData::CpGridData()
