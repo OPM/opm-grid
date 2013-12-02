@@ -52,57 +52,64 @@ BOOST_AUTO_TEST_CASE(distribute)
     int cell_size = grid.leafView().size(0);
     int face_size = grid.leafView().size(1);
     int point_size = grid.leafView().size(3);
-    
-    const Dune::CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-    for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
-             it != grid.leafend<0>(); ++it) {
-        Dune::GeometryType gt = it->type () ;
-        const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-            Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
 
-        cell_indices.push_back(ix.index(*it));
-        cell_centers.push_back(it->geometry().center());
-        for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
-                endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
-        {
-            //            face_indices.push_back(ix.index(*it->subEntity<1>(iit->indexInInside())));
-            face_centers.push_back(iit->geometry().center());
-            for(int i=0; i<4; ++i){
-                point_indices.push_back(ix.subIndex(*it, ref.subEntity(iit->indexInInside(),1,i,3), 3));
-                //ref.subEntity(iit->indexInInside(),1,i,dim).geometry().center();
+    const Dune::CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+
+    if(procs==1)
+    {
+        for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
+             it != grid.leafend<0>(); ++it) {
+            Dune::GeometryType gt = it->type () ;
+            const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
+                Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+            
+            cell_indices.push_back(ix.index(*it));
+            cell_centers.push_back(it->geometry().center());
+            for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
+                    endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
+            {
+                //            face_indices.push_back(ix.index(*it->subEntity<1>(iit->indexInInside())));
+                face_centers.push_back(iit->geometry().center());
+                for(int i=0; i<4; ++i){
+                    point_indices.push_back(ix.subIndex(*it, ref.subEntity(iit->indexInInside(),1,i,3), 3));
+                    //ref.subEntity(iit->indexInInside(),1,i,dim).geometry().center();
+                }
             }
         }
     }
-    
+
     grid.scatterGrid();
 
-    BOOST_REQUIRE(cell_size  == grid.leafView().size(0));
-    BOOST_REQUIRE(face_size  == grid.leafView().size(1));
-    BOOST_REQUIRE(point_size == grid.leafView().size(3));
+    if(procs==1)
+    {
+        // Check whether the scattered grid is identical to the orinal one.
+        BOOST_REQUIRE(cell_size  == grid.leafView().size(0));
+        BOOST_REQUIRE(face_size  == grid.leafView().size(1));
+        BOOST_REQUIRE(point_size == grid.leafView().size(3));
     
-    int cell_index=0, face_index=0, point_index=0;
+        int cell_index=0, face_index=0, point_index=0;
 
-    const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
-    BOOST_REQUIRE(&ix!=&ix1);
+        const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
+        BOOST_REQUIRE(&ix!=&ix1);
     
-    for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
+        for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
-        Dune::GeometryType gt = it->type () ;
-        const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-            Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+            Dune::GeometryType gt = it->type () ;
+            const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
+                Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
 
-        BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
-        BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
-        for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
-                endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
-        {
-            //BOOST_REQUIRE(face_indices[face_index]==ix1.index(*it->subEntity<1>(iit->indexInInside())));
-            BOOST_REQUIRE(face_centers[face_index++]==iit->geometry().center());
-            for(int i=0; i<4; ++i){
-                BOOST_REQUIRE(point_indices[point_index++]==ix1.subIndex(*it, ref.subEntity(iit->indexInInside(),1,i,3), 3));
-                //ref.subEntity(iit->indexInInside(),1,i,dim).geometry().center();
+            BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
+            BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
+            for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
+                    endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
+            {
+                //BOOST_REQUIRE(face_indices[face_index]==ix1.index(*it->subEntity<1>(iit->indexInInside())));
+                BOOST_REQUIRE(face_centers[face_index++]==iit->geometry().center());
+                for(int i=0; i<4; ++i){
+                    BOOST_REQUIRE(point_indices[point_index++]==ix1.subIndex(*it, ref.subEntity(iit->indexInInside(),1,i,3), 3));
+                    //ref.subEntity(iit->indexInInside(),1,i,dim).geometry().center();
+                }
             }
         }
-    }
-    
+    }    
 }
