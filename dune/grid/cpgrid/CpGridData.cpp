@@ -869,16 +869,16 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
     
     // Compute partition type for points
-    // We initialize all point with interior. Then we loop over the faces. If a face is of 
+    // We initialize all points with interior. Then we loop over the faces. If a face is of 
     // type border, then the type of the point is overwritten with border. In the other cases
-    // we set type of the point to the one of the face as long as the type of the point is 
-    // not boder.
+    // we set the type of the point to the one of the face as long as the type of the point is 
+    // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                       InteriorEntity);
     for(int i=0; i<face_to_point_.size(); ++i)
     {
-        for(auto p=view_data.face_to_point_[i].begin(), 
-                pend=view_data.face_to_point_[i].end(); p!=pend; ++p)
+        for(auto p=face_to_point_[i].begin(), 
+                pend=face_to_point_[i].end(); p!=pend; ++p)
         {
             if(partition_type_indicator_->point_indicator_[*p]!=BorderEntity)
                 partition_type_indicator_->point_indicator_[*p]=
