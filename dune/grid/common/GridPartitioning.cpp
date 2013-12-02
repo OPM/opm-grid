@@ -241,7 +241,6 @@ namespace Dune
         for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); 
              it != grid.leafend<0>(); ++it) {
             int index = ix.index(*it);
-            std::cout<<it->geometry().center()<<" part: "<<cell_part[index]<<std::endl;
             int owner = -1;
             if(cell_part[index]==mypart)
                 owner = mypart;
