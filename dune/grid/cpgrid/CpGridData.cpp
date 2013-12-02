@@ -589,17 +589,37 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
         {
-            std::set<int>::const_iterator iter=overlap[i->local()].find(my_rank);
-            if(iter!=overlap[i->local()].end())
-                modifiers[cell_part[i->local()]]
-                    .insert(RemoteIndex(AttributeSet::owner,&(*i)));
+            if(i->local().attribute()!=AttributeSet::owner)
+            {
+                std::map<int,Modifier>::iterator mod=modifiers.find(cell_part[i->global()]);
+                assert(mod!=modifiers.end());
+                mod->second.insert(RemoteIndex(AttributeSet::owner,&(*i)));
+            }
+            else
+            {
+                typedef std::set<int>::const_iterator SIter;
+                SIter mine =overlap[i->global()].find(my_rank);
+                for(SIter iter=overlap[i->global()].begin(); iter!=mine; ++iter)
+                {
+                    std::map<int,Modifier>::iterator mod=modifiers.find(*iter);
+                    assert(mod!=modifiers.end());
+                    mod->second.insert(RemoteIndex(AttributeSet::overlap,&(*i)));
+                }
+                SIter end=overlap[i->global()].end();
+                if(mine!=end)
+                    for(++mine; mine!=end; ++mine)
+                    {
+                        std::map<int,Modifier>::iterator mod=modifiers.find(*mine);
+                        assert(mod!=modifiers.end());
+                        mod->second.insert(RemoteIndex(AttributeSet::overlap,&(*i)));
+                    }
+            }
         }
     }
     else
     {
         // Force update of the sync counter in the remote indices.
-        Modifier* mod=new Modifier(cell_remote_indices.getModifier<false,false>(0));
-        delete mod;
+        cell_remote_indices.getModifier<false,false>(0);
     }
 
     // We can identify existing cells with the help of the index set.
