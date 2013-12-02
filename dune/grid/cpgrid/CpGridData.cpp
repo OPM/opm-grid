@@ -153,7 +153,8 @@ int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& 
     for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end(); 
         i!=iend; ++i)
     {
-        ids[*i]=idSet.id(EntityRep<codim>(i-ibegin,true));
+        if(*i<std::numeric_limits<int>::max())
+            ids[*i]=idSet.id(EntityRep<codim>(i-ibegin,true));
     }
     return count;
 }
