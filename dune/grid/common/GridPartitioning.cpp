@@ -255,7 +255,10 @@ namespace Dune
                 if (iit->neighbor()) {
                     int nb_index = ix.index(*(iit->outside()));
                     if(cell_part[nb_index]!=owner)
+                    {
                         cell_overlap[nb_index].insert(owner);
+                        cell_overlap[index].insert(cell_part[nb_index]);
+                    }
                 }
             }
         }

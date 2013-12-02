@@ -522,12 +522,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             {
                 global2local.push_back(count);
                 indexset->add(i, Index(count++, AttributeSet::owner, true));
-            }
-            else
-            {
-                neighbors.insert(rank);
+            }else
                 global2local.push_back(std::numeric_limits<int>::max());
-            }
         }
         /**
          * @brief Adds an index with flag overlap to the index set.
@@ -538,17 +534,26 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
          */
         void operator() (int i, const std::set<int>& ov, int rank)
         {
-            std::set<int>::const_iterator iter=
-                ov.find(myrank);
-            if(iter!=ov.end())
+            if(rank==myrank)
             {
                 global2local.push_back(count);
-                indexset->add(i, Index(count++, AttributeSet::overlap, true));
-                neighbors.insert(rank);
+                indexset->add(i, Index(count++, AttributeSet::owner, true));
+                neighbors.insert(ov.begin(), ov.end());
             }
             else
-                global2local.push_back(std::numeric_limits<int>::max());
-            
+            {
+                std::set<int>::const_iterator iter=
+                    ov.find(myrank);
+                if(iter!=ov.end())
+                {
+                    global2local.push_back(count);
+                    indexset->add(i, Index(count++, AttributeSet::overlap, true));
+                    neighbors.insert(ov.begin(), iter);
+                    neighbors.insert(++iter, ov.end());
+                }
+                else
+                    global2local.push_back(std::numeric_limits<int>::max());
+            }
         }
     } cell_counter;
     cell_counter.myrank=my_rank;
