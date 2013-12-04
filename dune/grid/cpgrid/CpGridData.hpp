@@ -261,7 +261,7 @@ private:
     PartitionTypeIndicator* partition_type_indicator_;
     
     /// \brief The type of the collective communication.
-    typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
+    typedef MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
     /// \brief Object for collective communication operations.
     CollectiveCommunication ccobj_;
@@ -273,7 +273,7 @@ private:
     enum AttributeSet{owner, overlap};
 
     /// \brief The type of the parallel index set
-    typedef Dune::ParallelIndexSet<int,Dune::ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
+    typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
 
     /// \brief The parallel index set of the cells.
     ParallelIndexSet cell_indexset_;
