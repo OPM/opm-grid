@@ -30,6 +30,37 @@ void MPI_err_handler(MPI_Comm *comm, int *err_code, ...){
   throw MPIError(s, *err_code);
 }
 
+class DummyDataHandle
+{
+public:
+    typedef double DataType;
+    bool fixedsize()
+    {
+        return true;
+    }
+    
+    template<class T>
+    std::size_t size(const T& t)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(100.0);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        double val;
+        for(std::size_t i=0; i<s; ++i)
+            buffer.read(val);
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim==3 && (codim<=1 || codim==3);
+    }
+};
 
 BOOST_AUTO_TEST_CASE(distribute)
 {
@@ -78,8 +109,9 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }
 
-    grid.scatterGrid();
+    grid.loadBalance();
 
+    
     if(procs==1)
     {
         // Check whether the scattered grid is identical to the orinal one.
@@ -111,5 +143,9 @@ BOOST_AUTO_TEST_CASE(distribute)
                 }
             }
         }
-    }    
+    }else
+    {
+        DummyDataHandle data;
+        grid.communicate(data, Dune::InteriorBorder_All_Interface, Dune::ForwardCommunication);
+    }
 }

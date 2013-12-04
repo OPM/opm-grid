@@ -88,12 +88,16 @@ namespace Dune
     }
 
 
-void CpGrid::scatterGrid()
+bool CpGrid::scatterGrid()
 {
 #if HAVE_MPI
     if(distributed_data_)
-        OPM_THROW(std::runtime_error, "There is already a distributed version of the grid."
-                  << " Maybe scatterGrid was called before.");
+    {
+        std::cerr<<"There is already a distributed version of the grid."
+                 << " Maybe scatterGrid was called before?"<<std::endl;
+        return false;
+    }
+    
     CollectiveCommunication cc(MPI_COMM_WORLD);
     
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
@@ -129,9 +133,10 @@ void CpGrid::scatterGrid()
         distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
     }
     current_view_data_ = distributed_data_;
+    return true;
 #else
-    
-        OPM_THROW(std::runtime_error, "CpGrid::scatterGrid() is only available with MPI support.");
+    std::cerr<<"CpGrid::scatterGrid() is only available with MPI support."<<std::endl;
+    return false;
 #endif
 }
 

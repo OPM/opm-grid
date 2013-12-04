@@ -64,6 +64,7 @@
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#include <dune/grid/common/gridenums.hh>
 
 namespace Dune
 {
@@ -210,7 +211,42 @@ public:
                               const CpGridData& view_data,
                               const std::vector<int>& cell_part);
     
+    /// \brief communicate objects for all codims on a given level
+    /// \param data The data handle describing the data. Has to adhere to the 
+    /// Dune::DataHandleIF interface.
+    /// \param iftype The interface to use for the communication.
+    /// \param dir The direction of the communication along the interface (forward or backward).
+    template<class DataHandle>
+    void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
+    
 private:
+    
+    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+
+    /// \brief Communicates data of a given codimension
+    /// \tparam codim The codimension
+    /// \tparam DataHandle The type of the data handle describing, gathering,
+    ///  and gathering the data.
+    /// \param DataHandle The data handle describing, gathering,
+    ///  and gathering the data.
+    /// \param dir The direction of the communication.
+    /// \param interface The information about the communication interface
+    template<int codim, class DataHandle>
+    void communicateCodim(DataHandle& data, CommunicationDirection dir,
+                          Interface& interface);
+
+    /// \brief Communicates data of a given codimension
+    /// \tparam codim The codimension
+    /// \tparam DataHandle The type of the data handle describing, gathering,
+    ///  and gathering the data.
+    /// \param DataHandle The data handle describing, gathering,
+    ///  and gathering the data.
+    /// \param dir The direction of the communication.
+    /// \param interface The information about the communication interface
+    template<int codim, class DataHandle>
+    void communicateCodim(DataHandle& data, CommunicationDirection dir,
+                          InterfaceMap& interface);
+
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
@@ -286,8 +322,6 @@ private:
     */
     /// \brief Communication interface for the cells.
     tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
-
-    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
     
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
@@ -311,6 +345,134 @@ private:
     friend class Intersection;
     friend class PartitionTypeIndicator;
 };
+
+namespace
+{
+/// \brief Get a value from a tuple according to the interface type.
+/// \tparam T The type of the values in the tuple.
+/// \param iftype The interface type.
+/// \param interfaces A tuple with the values order by interface type.
+template<class T>
+T& getInterface(InterfaceType iftype, 
+                Dune::tuple<T,T,T,T,T>& interfaces)
+{
+    switch(iftype)
+    {
+    case 0:
+        return get<0>(interfaces);
+    case 1:
+        return get<1>(interfaces);
+    case 2:
+        return get<2>(interfaces);
+    case 3:
+        return get<3>(interfaces);
+    case 4:
+        return get<4>(interfaces);
+    }
+    OPM_THROW(std::runtime_error, "Invalid Interface type was used during communication");
+}
+
+/*
+/// \brief Get the interface map associated with an interface type.
+/// \param iftype The interface type.
+/// \param interfaces A tuple with the interfaces order by interface type.
+
+VariableSizeCommunicator<>::InterfaceMap&
+getInterface(InterfaceType iftype, 
+                           tuple<Interface,Interface,Interface,Interface,Interface>& interfaces)
+ {
+    return get(iftype, interfaces).interfaces();
+ }
+
+/// \brief Get the interface map associated with an interface type.
+/// \param iftype The interface type.
+/// \param interfaces A tuple with the interfaces order by interface type.
+VariableSizeCommunicator<>::InterfaceMap& 
+getInterface(InterfaceType iftype, 
+                           tuple<VariableSizeCommunicator<>::InterfaceMap,
+                                 VariableSizeCommunicator<>::InterfaceMap,
+                                 VariableSizeCommunicator<>::InterfaceMap,
+                                 VariableSizeCommunicator<>::InterfaceMap,
+                                 VariableSizeCommunicator<>::InterfaceMap>& interfaces)
+{
+    return get(iftype, interfaces);
+}
+*/
+/// \brief Wrapper that turns a data handle suitable for dune-grid into one based on
+/// integers instead of entities.
+///
+/// \tparam DataHandle The type of the data handle to wrap. Has to adhere to the interface
+/// of Dune::DataHandleIf
+///  \tparam codim The codimension to use when mapping indices to Entities.
+template<class DataHandle, int codim>
+class Entity2IntDataHandle
+{
+public:
+    typedef typename DataHandle::DataType DataType;
+    
+    Entity2IntDataHandle(const CpGridData& grid, DataHandle& data)
+        : grid_(grid), data_(data)
+    {}
+    bool fixedsize()
+    {
+        return data_.fixedsize();
+    }
+    std::size_t size(std::size_t i)
+    {
+        return data_.size(Entity<codim>(grid_, i, true));
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        data_.gather(buffer, Entity<codim>(grid_, i, true));
+    }
+    template<class B>
+    void scatter(B& buffer, std::size_t i, std::size_t s)
+    {
+        data_.scatter(buffer, Entity<codim>(grid_, i, true), s);
+    }
+private:
+    const CpGridData& grid_;
+    DataHandle& data_;
+    
+};
+} // end unnamed namespace
+
+template<int codim, class DataHandle>
+void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
+                                  Interface& interface)
+{
+    Entity2IntDataHandle<DataHandle, codim> data_wrapper(*this, data);
+    VariableSizeCommunicator<> comm(interface);
+    if(dir==ForwardCommunication)
+        comm.forward(data_wrapper);
+    else
+        comm.backward(data_wrapper);
+}
+
+template<int codim, class DataHandle>
+void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
+                                  InterfaceMap& interface)
+{
+    Entity2IntDataHandle<DataHandle, codim> data_wrapper(*this, data);
+    VariableSizeCommunicator<> comm(ccobj_, interface);
+    if(dir==ForwardCommunication)
+        comm.forward(data_wrapper);
+    else
+        comm.backward(data_wrapper);
+}
+
+template<class DataHandle>
+void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
+                             CommunicationDirection dir)
+{
+    if(data.contains(3,0))
+        communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
+    if(data.contains(3,1))
+        communicateCodim<1>(data, dir, getInterface(iftype, point_interfaces_));
+    if(data.contains(3,3))
+        communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
+}
 } // end namspace cpgrid
 } // end namespace Dune
 
