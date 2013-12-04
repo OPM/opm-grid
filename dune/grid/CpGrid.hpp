@@ -543,14 +543,14 @@ namespace Dune
             return scatterGrid();
         }
         
-        /*
+        
         template<class DataHandle>
         bool loadBalance(DataHandle& data)
         {
-            scatterGrid();
-            scatterData();
+            bool ret = scatterGrid();
+            scatterData(data);
+            return ret;
         }
-        */
         
         /// The new communication interface.
         /// \brief communicate objects for all codims on a given level
@@ -698,13 +698,26 @@ namespace Dune
 
         // ------------ End of simplified interface --------------
 
+        
+        template<class DataHandle>
+        void scatterData(DataHandle& handle)
+        {
+            if(!distributed_data_)
+                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
+            distributed_data_->moveData<true>(handle,data_, distributed_data_);
+        }
+
+        template<class DataHandle>
+        void gatherData(DataHandle& handle)
+        {
+            if(!distributed_data_)
+                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
+            distributed_data_->moveData<false>(handle, data_, distributed_data_);
+        }
     private:
         /// Scatter a global grid to all processors.
         bool scatterGrid();
-        /*
-        template<class DataHandle>
-        void scatterData(DataHandle& data);
-        */
+        
         /** @brief The data stored in the grid. 
          * 
          * All the data of the grid is stored there and

@@ -53,8 +53,13 @@ public:
     void scatter(B& buffer, const T& t, std::size_t s)
     {
         double val;
+        std::cout<<"Scattering ";
         for(std::size_t i=0; i<s; ++i)
+        {            
             buffer.read(val);
+            std::cout<<val<<" to "<<t.index()<<" "<<i;
+        }
+        std::cout<<std::endl;
     }
     bool contains(int dim, int codim)
     {

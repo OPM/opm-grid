@@ -219,9 +219,17 @@ public:
     /// \param dir The direction of the communication along the interface (forward or backward).
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
+
+    template<bool forward, class DataHandle>
+    void moveData(DataHandle& data, CpGridData* global_data, 
+                  CpGridData* distributed_data);
     
 private:
-    
+
+    template<bool forward, int codim, class DataHandle>
+    void moveCodimData(DataHandle& data, CpGridData* global_data, 
+                          CpGridData* distributed_data);
+
     typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
 
     /// \brief Communicates data of a given codimension
@@ -435,6 +443,173 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
         communicateCodim<1>(data, dir, getInterface(iftype, point_interfaces_));
     if(data.contains(3,3))
         communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
+}
+
+namespace
+{
+
+template<class T>
+class MoveBuffer
+{
+public:
+    void read(T& data)
+    {
+        data=buffer_[index_++];
+    }
+    void write(const T& data)
+    {
+        buffer_[index_++]=data;
+    }
+    void reset()
+    {
+        index_=0;
+    }
+    void resize(std::size_t size)
+    {
+        buffer_.resize(size);
+        index_=0;
+    }
+private:
+    std::vector<T> buffer_;
+    typename std::vector<T>::size_type index_;
+};
+
+template<class DataHandle,int codim>
+struct Mover
+{
+};
+
+template<class DataHandle>
+struct BaseMover
+{
+    BaseMover(DataHandle& data)
+    : data_(data)
+    {}
+    template<class E>
+    void moveData(E& from, E& to)
+    {
+        std::size_t size=data_.size(from);
+        buffer.resize(size);
+        data_.gather(buffer, from);
+        buffer.reset();
+        data_.scatter(buffer, to, size);
+    }
+    DataHandle& data_;
+    MoveBuffer<typename DataHandle::DataType> buffer;
+};
+
+
+template<class DataHandle>
+struct Mover<DataHandle,0> : BaseMover<DataHandle>
+{
+    Mover<DataHandle,0>(DataHandle& data, CpGridData* gatherView,
+                        CpGridData* scatterView)
+    : BaseMover<DataHandle>(data), gatherView_(gatherView), scatterView_(scatterView)
+    {}
+
+    void operator()(std::size_t from_cell_index,std::size_t to_cell_index)
+    {
+        Entity<0> from_entity=Entity<0>(gatherView_, from_cell_index, true);
+        Entity<0> to_entity=Entity<0>(scatterView_, to_cell_index, true);
+        this->moveData(from_entity, to_entity);
+    }
+    CpGridData* gatherView_;
+    CpGridData* scatterView_;
+};
+
+template<class DataHandle>
+struct Mover<DataHandle,1> : BaseMover<DataHandle>
+{
+    Mover<DataHandle,1>(DataHandle& data, CpGridData* gatherView,
+                        CpGridData* scatterView)
+    : BaseMover<DataHandle>(data), gatherView_(gatherView), scatterView_(scatterView)
+    {}
+
+    void operator()(std::size_t from_cell_index,std::size_t to_cell_index)
+    {
+        typedef typename OrientedEntityTable<0,1>::row_type::iterator Iter;
+        EntityRep<0> from_cell=EntityRep<0>(from_cell_index, true);
+        EntityRep<0> to_cell=Entity<0>(to_cell_index, true);
+        OrientedEntityTable<0,1>& table = gatherView_->cell_to_face_;
+        Iter from_face=table.operator[](from_cell).begin();
+        Iter end_from_face=gatherView_->cell_to_face_[from_cell].end();
+        Iter to_face=scatterView_->cell_to_face_[to_cell].begin();
+
+        for(;from_face!=end_from_face; ++from_face, ++to_face)
+        {
+            //assert(to_face->valid());
+            assert(to_face!=scatterView_->cell_to_face_[to_cell].end());
+            this->moveData(*from_face, *to_face);
+        }
+    }
+    CpGridData *gatherView_;
+    CpGridData *scatterView_;
+};
+
+template<class DataHandle>
+struct Mover<DataHandle,3> : BaseMover<DataHandle>
+{
+    Mover<DataHandle,3>(DataHandle& data, CpGridData* gatherView,
+                        CpGridData* scatterView)
+    : BaseMover<DataHandle>(data), gatherView_(gatherView), scatterView_(scatterView)
+    {}
+    void operator()(std::size_t from_cell_index,std::size_t to_cell_index)
+    {
+        const std::array<int,8>& from_cell_points=
+            gatherView_->cell_to_point_[from_cell_index];
+        const std::array<int,8>& to_cell_points=
+            scatterView_->cell_to_point_[to_cell_index];
+        for(std::size_t i=0; i<8; ++i)
+        {
+            this->moveData(Entity<1>(*gatherView_, from_cell_points[i], true),
+                           Entity<1>(*scatterView_, to_cell_points[i], true));
+        }
+    }
+    CpGridData* gatherView_;
+    CpGridData* scatterView_;
+};
+
+} // end unnamed namespace
+template<bool forward, class DataHandle>
+void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
+                          CpGridData* distributed_data)
+{
+    if(data.contains(3,0))
+       moveCodimData<forward,0>(data, global_data, distributed_data);
+    if(data.contains(3,1))
+       moveCodimData<forward,1>(data, global_data, distributed_data);
+    if(data.contains(3,3))
+       moveCodimData<forward,3>(data, global_data, distributed_data);
+}
+
+template<bool forward, int codim, class DataHandle>
+void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data, 
+                          CpGridData* distributed_data)
+{
+    CpGridData *gather_view, *scatter_view;
+    
+    if(forward)
+    {
+        gather_view=global_data;
+        scatter_view=distributed_data;
+    }
+    else
+    {
+        gather_view=distributed_data;
+        scatter_view=global_data;
+    }
+    
+    Mover<DataHandle,codim> mover(gather_view, scatter_view);
+    
+    typedef typename ParallelIndexSet::const_iterator Iter;
+    for(Iter index=distributed_data->cell_indexset_.begin(),
+            end = distributed_data->cell_indexset_.end();
+        index!=end; ++index)
+    {
+        std::size_t from=forward?index->global():index->local();
+        std::size_t to=forward?index->local():index->global();
+        mover(from,to);
+    }
 }
 } // end namspace cpgrid
 } // end namespace Dune
