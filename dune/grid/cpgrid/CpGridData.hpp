@@ -285,17 +285,17 @@ private:
     RemoteIndices cell_remote_indices;
     */
     /// \brief Communication interface for the cells.
-    tuple<Dune::Interface,Interface,Interface,Interface,Interface> cell_interfaces;
+    tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
 
     typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
     
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
-    face_interfaces;
+    face_interfaces_;
 
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
-    point_interfaces;
+    point_interfaces_;
     
     // Return the geometry vector corresponding to the given codim.
     template <int codim>

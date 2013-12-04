@@ -69,8 +69,8 @@ void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,In
 
 CpGridData::~CpGridData()
 {
-    freeInterfaces(face_interfaces);
-    freeInterfaces(point_interfaces);
+    freeInterfaces(face_interfaces_);
+    freeInterfaces(point_interfaces_);
     delete index_set_;
     delete local_id_set_;
     delete global_id_set_;
@@ -887,16 +887,16 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
 
     // Compute the interface information for cells
-    get<InteriorBorder_All_Interface>(cell_interfaces)
+    get<InteriorBorder_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
-    get<Overlap_OverlapFront_Interface>(cell_interfaces)
+    get<Overlap_OverlapFront_Interface>(cell_interfaces_)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
                EnumItem<AttributeSet, AttributeSet::overlap>());
-     get<Overlap_All_Interface>(cell_interfaces)
+     get<Overlap_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
                                  AllSet<AttributeSet>());
-    get<All_All_Interface>(cell_interfaces)
+    get<All_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices, AllSet<AttributeSet>(), AllSet<AttributeSet>());
 
     // Now we use the all_all communication of the cells to compute which faces and points
@@ -906,10 +906,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         face_handle(ccobj_.rank(), *partition_type_indicator_,
                     face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
                     *this);
-    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces));
+    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces_));
     comm.forward(face_handle);
     createInterfaces(face_attributes, FacePartitionTypeIterator(partition_type_indicator_),
-                     face_interfaces);
+                     face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
     AttributeDataHandle<std::vector<std::array<int,8> > >
@@ -917,7 +917,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                      point_attributes, cell_to_point_, *this);
     comm.forward(point_handle);
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
-                     point_interfaces);
+                     point_interfaces_);
     
     
 }
