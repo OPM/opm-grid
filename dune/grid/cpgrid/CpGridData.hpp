@@ -65,6 +65,7 @@
 #include <dune/common/parallel/plocalindex.hh>
 #include <dune/common/parallel/variablesizecommunicator.hh>
 #include <dune/grid/common/gridenums.hh>
+#include "Entity2IndexDataHandle.hpp"
 
 namespace Dune
 {
@@ -398,51 +399,13 @@ getInterface(InterfaceType iftype,
     return get(iftype, interfaces);
 }
 */
-/// \brief Wrapper that turns a data handle suitable for dune-grid into one based on
-/// integers instead of entities.
-///
-/// \tparam DataHandle The type of the data handle to wrap. Has to adhere to the interface
-/// of Dune::DataHandleIf
-///  \tparam codim The codimension to use when mapping indices to Entities.
-template<class DataHandle, int codim>
-class Entity2IntDataHandle
-{
-public:
-    typedef typename DataHandle::DataType DataType;
-    
-    Entity2IntDataHandle(const CpGridData& grid, DataHandle& data)
-        : grid_(grid), data_(data)
-    {}
-    bool fixedsize()
-    {
-        return data_.fixedsize();
-    }
-    std::size_t size(std::size_t i)
-    {
-        return data_.size(Entity<codim>(grid_, i, true));
-    }
-    template<class B>
-    void gather(B& buffer, std::size_t i)
-    {
-        data_.gather(buffer, Entity<codim>(grid_, i, true));
-    }
-    template<class B>
-    void scatter(B& buffer, std::size_t i, std::size_t s)
-    {
-        data_.scatter(buffer, Entity<codim>(grid_, i, true), s);
-    }
-private:
-    const CpGridData& grid_;
-    DataHandle& data_;
-    
-};
 } // end unnamed namespace
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   Interface& interface)
 {
-    Entity2IntDataHandle<DataHandle, codim> data_wrapper(*this, data);
+    Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
     VariableSizeCommunicator<> comm(interface);
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
@@ -454,7 +417,7 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   InterfaceMap& interface)
 {
-    Entity2IntDataHandle<DataHandle, codim> data_wrapper(*this, data);
+    Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
     VariableSizeCommunicator<> comm(ccobj_, interface);
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
