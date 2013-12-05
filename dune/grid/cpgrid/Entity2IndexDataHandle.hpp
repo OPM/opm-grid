@@ -23,7 +23,7 @@ public:
     {}
     bool fixedsize()
     {
-        return data_.fixedsize();
+        return data_.fixedsize(3, codim);
     }
     std::size_t size(std::size_t i)
     {

@@ -34,7 +34,7 @@ class DummyDataHandle
 {
 public:
     typedef double DataType;
-    bool fixedsize()
+    bool fixedsize(int dim, int codim)
     {
         return true;
     }
