@@ -84,7 +84,7 @@ namespace Dune
             template <int cd>
             struct Codim
             {
-		typedef cpgrid::EntityPointer<codim> EntityPointer;
+		typedef cpgrid::EntityPointer<cd> EntityPointer;
             };
 
 	    typedef cpgrid::Geometry<3-codim,3> Geometry;
