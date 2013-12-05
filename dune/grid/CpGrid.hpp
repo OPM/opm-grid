@@ -727,6 +727,19 @@ namespace Dune
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
             distributed_data_->moveData<false>(handle, data_, distributed_data_);
         }
+
+        /// \brief Switch to the global view.
+        void switchToGlobalView()
+        {
+            current_view_data_=data_;
+        }
+        
+        /// \brief Switch to the distributed view.
+        void switchToDistributedView()
+        {
+            current_view_data_=distributed_data_;
+        }
+        
     private:
         /// Scatter a global grid to all processors.
         bool scatterGrid();
