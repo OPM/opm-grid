@@ -698,7 +698,14 @@ namespace Dune
 
         // ------------ End of simplified interface --------------
 
+        //------------- methods not in the DUNE grid interface.
         
+        ///
+        /// \brief Moves data from the global (all data on process) view to the distributed view.
+        /// \tparam DataHandle The type of the data handle describing the data and responsible for
+        ///         gathering and scattering the data.
+        /// \param handle The data handle describing the data and responsible for
+        ///         gathering and scattering the data.
         template<class DataHandle>
         void scatterData(DataHandle& handle)
         {
@@ -707,6 +714,12 @@ namespace Dune
             distributed_data_->moveData<true>(handle,data_, distributed_data_);
         }
 
+        ///
+        /// \brief Moves data from the distributed view to the global (all data on process) view.
+        /// \tparam DataHandle The type of the data handle describing the data and responsible for
+        ///         gathering and scattering the data.
+        /// \param handle The data handle describing the data and responsible for
+        ///         gathering and scattering the data.
         template<class DataHandle>
         void gatherData(DataHandle& handle)
         {
