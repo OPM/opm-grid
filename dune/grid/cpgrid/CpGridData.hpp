@@ -82,12 +82,19 @@ template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
 
+namespace mover
+{
+template<class T, int i> class Mover;
+}
+
 /** 
  * @brief Struct that hods all the data needed to represent a 
  * Cpgrid.
  */
 class CpGridData
 {
+    template<class T, int i> friend class mover::Mover;
+    
 private:
     CpGridData(const CpGridData& g);
     
@@ -474,6 +481,10 @@ private:
     typename std::vector<T>::size_type index_;
 };
 
+}
+
+namespace mover
+{
 template<class DataHandle,int codim>
 struct Mover
 {
@@ -569,7 +580,7 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
     CpGridData* scatterView_;
 };
 
-} // end unnamed namespace
+} // end mover namespace
 template<bool forward, class DataHandle>
 void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data)
@@ -599,7 +610,7 @@ void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data,
         scatter_view=global_data;
     }
     
-    Mover<DataHandle,codim> mover(gather_view, scatter_view);
+    mover::Mover<DataHandle,codim> mover(data, gather_view, scatter_view);
     
     typedef typename ParallelIndexSet::const_iterator Iter;
     for(Iter index=distributed_data->cell_indexset_.begin(),
