@@ -520,8 +520,8 @@ struct Mover<DataHandle,0> : BaseMover<DataHandle>
 
     void operator()(std::size_t from_cell_index,std::size_t to_cell_index)
     {
-        Entity<0> from_entity=Entity<0>(gatherView_, from_cell_index, true);
-        Entity<0> to_entity=Entity<0>(scatterView_, to_cell_index, true);
+        Entity<0> from_entity=Entity<0>(*gatherView_, from_cell_index, true);
+        Entity<0> to_entity=Entity<0>(*scatterView_, to_cell_index, true);
         this->moveData(from_entity, to_entity);
     }
     CpGridData* gatherView_;
