@@ -777,7 +777,7 @@ namespace Dune
 	template <>
 	struct isParallel<CpGrid>
 	{
-	    static const bool v = false;
+	    static const bool v = true;
 	};
 
 	/// \todo Please doc me !
