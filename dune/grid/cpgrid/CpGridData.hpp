@@ -538,20 +538,15 @@ struct Mover<DataHandle,1> : BaseMover<DataHandle>
 
     void operator()(std::size_t from_cell_index,std::size_t to_cell_index)
     {
-        typedef typename OrientedEntityTable<0,1>::row_type::iterator Iter;
+        typedef typename OrientedEntityTable<0,1>::row_type row_type;
         EntityRep<0> from_cell=EntityRep<0>(from_cell_index, true);
-        EntityRep<0> to_cell=Entity<0>(to_cell_index, true);
+        EntityRep<0> to_cell=EntityRep<0>(to_cell_index, true);
         OrientedEntityTable<0,1>& table = gatherView_->cell_to_face_;
-        Iter from_face=table.operator[](from_cell).begin();
-        Iter end_from_face=gatherView_->cell_to_face_[from_cell].end();
-        Iter to_face=scatterView_->cell_to_face_[to_cell].begin();
+        row_type from_faces=table.operator[](from_cell);
+        row_type to_faces=scatterView_->cell_to_face_[to_cell];
 
-        for(;from_face!=end_from_face; ++from_face, ++to_face)
-        {
-            //assert(to_face->valid());
-            assert(to_face!=scatterView_->cell_to_face_[to_cell].end());
-            this->moveData(*from_face, *to_face);
-        }
+        for(int i=0; i<from_faces.size(); ++i)
+            this->moveData(from_faces[i], to_faces[i]);
     }
     CpGridData *gatherView_;
     CpGridData *scatterView_;
