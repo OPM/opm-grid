@@ -497,7 +497,7 @@ struct BaseMover
     : data_(data)
     {}
     template<class E>
-    void moveData(E& from, E& to)
+    void moveData(const E& from, const E& to)
     {
         std::size_t size=data_.size(from);
         buffer.resize(size);
