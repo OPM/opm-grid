@@ -780,6 +780,24 @@ namespace Dune
 	    static const bool v = true;
 	};
 
+        template<>
+        struct canCommunicate<CpGrid,0>
+        {
+            static const bool v = true;
+        };
+
+        template<>
+        struct canCommunicate<CpGrid,1>
+        {
+            static const bool v = true;
+        };
+
+        template<>
+        struct canCommunicate<CpGrid,3>
+        {
+            static const bool v = true;
+        };
+
 	/// \todo Please doc me !
 	template <>
 	struct hasBackupRestoreFacilities<CpGrid>
