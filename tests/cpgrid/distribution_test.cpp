@@ -113,8 +113,9 @@ BOOST_AUTO_TEST_CASE(distribute)
             }
         }
     }
+    DummyDataHandle data;
 
-    grid.loadBalance();
+    grid.loadBalance(data);
 
     
     if(procs==1)
@@ -150,7 +151,6 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }else
     {
-        DummyDataHandle data;
         grid.communicate(data, Dune::InteriorBorder_All_Interface, Dune::ForwardCommunication);
     }
 }
