@@ -710,7 +710,7 @@ namespace Dune
         void scatterData(DataHandle& handle)
         {
             if(!distributed_data_)
-                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
+                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
             distributed_data_->moveData<true>(handle,data_, distributed_data_);
         }
 

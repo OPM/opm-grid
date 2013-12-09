@@ -23,7 +23,9 @@ CpGridData::CpGridData(const CpGridData& g)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
 {
+#if HAVE_MPI
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+#endif
 }
 
 CpGridData::CpGridData()
@@ -31,7 +33,9 @@ CpGridData::CpGridData()
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
+#if HAVE_MPI
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+#endif
 }
 
 #if HAVE_MPI
@@ -49,10 +53,12 @@ CpGridData::CpGridData(CpGrid& grid)
     global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
+#if HAVE_MPI
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+#endif
 }
 
-
+#if HAVE_MPI
 template<class InterfaceMap>
 void freeInterfaces(InterfaceMap& map)
 {
@@ -74,11 +80,14 @@ void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,In
     freeInterfaces(get<3>(interfaces));
     freeInterfaces(get<4>(interfaces));
 }
+#endif
 
 CpGridData::~CpGridData()
 {
+#if HAVE_MPI
     freeInterfaces(face_interfaces_);
     freeInterfaces(point_interfaces_);
+#endif
     delete index_set_;
     delete local_id_set_;
     delete global_id_set_;
@@ -120,6 +129,7 @@ int CpGridData::size(int codim) const
     }
 }
 
+#if HAVE_MPI
 
  // A functor that counts existent entries and renumbers them.
 struct CountExistent
@@ -490,11 +500,13 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
                                 
 }
 
+#endif
 
 void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const CpGridData& view_data,
                                       const std::vector<int>& cell_part)
 {
+#if HAVE_MPI
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
     std::unique_ptr<CpGridData> grid_data(new CpGridData);
     int my_rank=ccobj.rank();
@@ -926,8 +938,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     comm.forward(point_handle);
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
-    
-    
+#endif    
 }
 
 } // end namespace cpgrid

@@ -230,9 +230,10 @@ public:
     template<bool forward, class DataHandle>
     void moveData(DataHandle& data, CpGridData* global_data, 
                   CpGridData* distributed_data);
-    
+
 private:
 
+#if HAVE_MPI
     template<bool forward, int codim, class DataHandle>
     void moveCodimData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data);
@@ -262,7 +263,7 @@ private:
     template<int codim, class DataHandle>
     void communicateCodim(DataHandle& data, CommunicationDirection dir,
                           InterfaceMap& interface);
-
+#endif
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
@@ -324,6 +325,7 @@ private:
     /// \brief The type of the set of the attributes
     enum AttributeSet{owner, overlap};
 
+#if HAVE_MPI
     /// \brief The type of the parallel index set
     typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
 
@@ -346,7 +348,8 @@ private:
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
     point_interfaces_;
-    
+#endif
+
     // Return the geometry vector corresponding to the given codim.
     template <int codim>
     const EntityVariable<Geometry<3 - codim, 3>, codim>& geomVector() const
@@ -361,6 +364,8 @@ private:
     friend class Intersection;
     friend class PartitionTypeIndicator;
 };
+
+#if HAVE_MPI
 
 namespace
 {
@@ -388,32 +393,6 @@ T& getInterface(InterfaceType iftype,
     OPM_THROW(std::runtime_error, "Invalid Interface type was used during communication");
 }
 
-/*
-/// \brief Get the interface map associated with an interface type.
-/// \param iftype The interface type.
-/// \param interfaces A tuple with the interfaces order by interface type.
-
-VariableSizeCommunicator<>::InterfaceMap&
-getInterface(InterfaceType iftype, 
-                           tuple<Interface,Interface,Interface,Interface,Interface>& interfaces)
- {
-    return get(iftype, interfaces).interfaces();
- }
-
-/// \brief Get the interface map associated with an interface type.
-/// \param iftype The interface type.
-/// \param interfaces A tuple with the interfaces order by interface type.
-VariableSizeCommunicator<>::InterfaceMap& 
-getInterface(InterfaceType iftype, 
-                           tuple<VariableSizeCommunicator<>::InterfaceMap,
-                                 VariableSizeCommunicator<>::InterfaceMap,
-                                 VariableSizeCommunicator<>::InterfaceMap,
-                                 VariableSizeCommunicator<>::InterfaceMap,
-                                 VariableSizeCommunicator<>::InterfaceMap>& interfaces)
-{
-    return get(iftype, interfaces);
-}
-*/
 } // end unnamed namespace
 
 template<int codim, class DataHandle>
@@ -440,18 +419,23 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         comm.backward(data_wrapper);
 }
 
+#endif
+
 template<class DataHandle>
 void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
                              CommunicationDirection dir)
 {
+#if HAVE_MPI
     if(data.contains(3,0))
         communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
     if(data.contains(3,1))
         communicateCodim<1>(data, dir, getInterface(iftype, point_interfaces_));
     if(data.contains(3,3))
         communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
+#endif
 }
 
+#if HAVE_MPI
 namespace
 {
 
@@ -576,17 +560,23 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
 };
 
 } // end mover namespace
+#endif
+
 template<bool forward, class DataHandle>
 void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data)
 {
+#if HAVE_MPI
     if(data.contains(3,0))
        moveCodimData<forward,0>(data, global_data, distributed_data);
     if(data.contains(3,1))
        moveCodimData<forward,1>(data, global_data, distributed_data);
     if(data.contains(3,3))
        moveCodimData<forward,3>(data, global_data, distributed_data);
+#endif
 }
+
+#if HAVE_MPI
 
 template<bool forward, int codim, class DataHandle>
 void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data, 
@@ -617,6 +607,7 @@ void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data,
         mover(from,to);
     }
 }
+#endif
 } // end namspace cpgrid
 } // end namespace Dune
 

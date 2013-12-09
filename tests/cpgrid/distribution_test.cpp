@@ -12,6 +12,7 @@
 #include <dune/grid/test/checkpartition.cc>
 #include <dune/grid/test/checkcommunicate.cc>
 
+#if HAVE_MPI
 class MPIError {
 public:
   /** @brief Constructor. */
@@ -31,6 +32,7 @@ void MPI_err_handler(MPI_Comm *comm, int *err_code, ...){
   delete[] err_string;
   throw MPIError(s, *err_code);
 }
+#endif
 
 class DummyDataHandle
 {
@@ -75,11 +77,13 @@ BOOST_AUTO_TEST_CASE(distribute)
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
+    int procs=1;
+#if HAVE_MPI
     MPI_Errhandler handler;
     MPI_Errhandler_create(MPI_err_handler, &handler);
     MPI_Errhandler_set(MPI_COMM_WORLD, handler);
-    int procs;
     MPI_Comm_size(MPI_COMM_WORLD, &procs);
+#endif
     Dune::CpGrid grid;
     std::array<int, 3> dims={{10, 10, 10}};
     std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
