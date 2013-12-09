@@ -227,13 +227,14 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+private:
+
+#if HAVE_MPI
+    
     template<bool forward, class DataHandle>
     void moveData(DataHandle& data, CpGridData* global_data, 
                   CpGridData* distributed_data);
 
-private:
-
-#if HAVE_MPI
     template<bool forward, int codim, class DataHandle>
     void moveCodimData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data);
@@ -560,7 +561,6 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
 };
 
 } // end mover namespace
-#endif
 
 template<bool forward, class DataHandle>
 void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
@@ -575,8 +575,6 @@ void CpGridData::moveData(DataHandle& data, CpGridData* global_data,
        moveCodimData<forward,3>(data, global_data, distributed_data);
 #endif
 }
-
-#if HAVE_MPI
 
 template<bool forward, int codim, class DataHandle>
 void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data, 
