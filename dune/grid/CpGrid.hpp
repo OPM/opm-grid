@@ -787,12 +787,6 @@ namespace Dune
         };
 
         template<>
-        struct canCommunicate<CpGrid,1>
-        {
-            static const bool v = true;
-        };
-
-        template<>
         struct canCommunicate<CpGrid,3>
         {
             static const bool v = true;
