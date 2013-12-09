@@ -9,6 +9,8 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
+#include <dune/grid/test/checkpartition.cc>
+#include <dune/grid/test/checkcommunicate.cc>
 
 class MPIError {
 public:
@@ -115,9 +117,9 @@ BOOST_AUTO_TEST_CASE(distribute)
     }
     DummyDataHandle data;
 
-    grid.loadBalance(data);
+    grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
 
-    
+    grid.loadBalance(data);
     if(procs==1)
     {
         // Check whether the scattered grid is identical to the orinal one.
@@ -151,6 +153,7 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }else
     {
-        grid.communicate(data, Dune::InteriorBorder_All_Interface, Dune::ForwardCommunication);
+        //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as we currently only support a fixed number of data per entity, but test is for varying numbers. Additionally the tes requires geometryInInSide, which is not available.
+        checkPartitionType( grid.leafView() );
     }
 }

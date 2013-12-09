@@ -10,22 +10,27 @@
 #include <dune/grid/common/gridenums.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
+#include <dune/grid/test/checkpartition.cc>
 
 template<int codim>
-void testPartitionIteratorsBasic(const Dune::CpGrid& grid)
+void testPartitionIteratorsBasic(const Dune::CpGrid& grid, bool parallel)
 {
-    BOOST_REQUIRE((grid.leafbegin<codim,Dune::Overlap_Partition>()==
-                   grid.leafend<codim,Dune::Overlap_Partition>()));
     BOOST_REQUIRE((grid.leafbegin<codim,Dune::OverlapFront_Partition>()==
-                      grid.leafend<codim,Dune::OverlapFront_Partition>()));
+                      grid.leafbegin<codim,Dune::All_Partition>()));
+    BOOST_REQUIRE((grid.leafend<codim,Dune::OverlapFront_Partition>()==
+                      grid.leafend<codim,Dune::All_Partition>()));
     BOOST_REQUIRE((grid.leafbegin<codim,Dune::Ghost_Partition>()==
                    grid.leafend<codim,Dune::Ghost_Partition>()));
+    if(!parallel)
+    {
         // This is supposed to be a grid with only interior entities,
         // therefore the iterators for interior, interiorborder and all should match!
-    BOOST_REQUIRE((grid.leafbegin<codim,Dune::Interior_Partition>()==
+        BOOST_REQUIRE((grid.leafbegin<codim,Dune::Interior_Partition>()==
                    grid.leafbegin<codim,Dune::InteriorBorder_Partition>()));
-    BOOST_REQUIRE((grid.leafbegin<codim,Dune::Interior_Partition>()==
-                   grid.leafbegin<codim,Dune::All_Partition>()));
+        BOOST_REQUIRE((grid.leafbegin<codim,Dune::Interior_Partition>()==
+                       grid.leafbegin<codim,Dune::All_Partition>()));
+    }
+    
 }
 
 template<int codim>
@@ -63,27 +68,29 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
         std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
         
         grid.createCartesian(dims, size);
-        testPartitionIteratorsBasic<0>(grid);
+        testPartitionIteratorsBasic<0>(grid, false);
         testPartitionIteratorsOnSequentialGrid<0>(grid);
-        testPartitionIteratorsBasic<1>(grid);
+        testPartitionIteratorsBasic<1>(grid, false);
         testPartitionIteratorsOnSequentialGrid<1>(grid);
-        testPartitionIteratorsBasic<3>(grid);
+        testPartitionIteratorsBasic<3>(grid, false);
         testPartitionIteratorsOnSequentialGrid<3>(grid);
     }
 
-    if(helper.size()==1)
-    {
-        Dune::CpGrid grid;
-        std::array<int, 3> dims={{10, 10, 10}};
-        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+    bool parallel =helper.size()>1;
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{10, 10, 10}};
+    std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
         
-        grid.createCartesian(dims, size);
-        grid.scatterGrid();
-        testPartitionIteratorsBasic<0>(grid);
+    grid.createCartesian(dims, size);
+    grid.loadBalance();
+    testPartitionIteratorsBasic<0>(grid, parallel);
+    testPartitionIteratorsBasic<1>(grid, parallel);
+    testPartitionIteratorsBasic<3>(grid, parallel);
+    if(!parallel)
+    {
         testPartitionIteratorsOnSequentialGrid<0>(grid);
-        testPartitionIteratorsBasic<1>(grid);
         testPartitionIteratorsOnSequentialGrid<1>(grid);
-        testPartitionIteratorsBasic<3>(grid);
         testPartitionIteratorsOnSequentialGrid<3>(grid);
     }
+    checkPartitionType( grid.leafView() );
 }
