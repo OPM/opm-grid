@@ -181,16 +181,13 @@ namespace Dune
 	    template<int cc>
 	    IdType id(const cpgrid::Entity<cc>& e) const 
 	    {
-		return id(e);
+		return computeId(e);
 	    }
 
 	    template<class EntityType>
 	    IdType id(const EntityType& e) const 
 	    {
-        IdType myId = 0;
-        for( int c=0; c<EntityType::codimension; ++c ) 
-          myId += grid_.indexSet().size( c );
-        return  myId + e.index();
+                return computeId(e);
 	    }
 
 	    template<int cc>
@@ -211,6 +208,14 @@ namespace Dune
 		return -1;
 	    }
 	private:
+            template<class EntityType>
+            IdType computeId(const EntityType& e) const
+            {
+                IdType myId = 0;
+                for( int c=0; c<EntityType::codimension; ++c ) 
+                    myId += grid_.indexSet().size( c );
+                return  myId + e.index();
+            }
 	    const CpGridData& grid_;
 	};
 
