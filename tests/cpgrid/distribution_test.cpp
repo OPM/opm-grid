@@ -134,7 +134,9 @@ BOOST_AUTO_TEST_CASE(distribute)
         int cell_index=0, face_index=0, point_index=0;
 
         const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
+#if HAVE_MPI
         BOOST_REQUIRE(&ix!=&ix1);
+#endif
     
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
