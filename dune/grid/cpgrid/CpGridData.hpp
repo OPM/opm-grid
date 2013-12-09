@@ -341,11 +341,13 @@ private:
     */
     /// \brief Communication interface for the cells.
     tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
-    
+    /*
+    // code deactivated, because users cannot access face indices and therefore
+    // communication on faces makes no sense!
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
     face_interfaces_;
-
+    */
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
     point_interfaces_;

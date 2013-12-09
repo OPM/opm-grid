@@ -85,7 +85,9 @@ void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,In
 CpGridData::~CpGridData()
 {
 #if HAVE_MPI
-    freeInterfaces(face_interfaces_);
+    // code deactivated, because users cannot access face indices and therefore
+    // communication on faces makes no sense!
+    //freeInterfaces(face_interfaces_);
     freeInterfaces(point_interfaces_);
 #endif
     delete index_set_;
@@ -921,16 +923,21 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.
+    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces_));
+    /*
+      // code deactivated, because users cannot access face indices and therefore
+      // communication on faces makes no sense!
     std::vector<std::map<int,char> > face_attributes(noExistingFaces);
     AttributeDataHandle<Opm::SparseTable<EntityRep<1> > > 
         face_handle(ccobj_.rank(), *partition_type_indicator_,
                     face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
                     *this);
-    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces_));
+    
     comm.forward(face_handle);
     createInterfaces(face_attributes, FacePartitionTypeIterator(partition_type_indicator_),
                      face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
+    */
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
     AttributeDataHandle<std::vector<std::array<int,8> > >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
