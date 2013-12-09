@@ -22,27 +22,35 @@ namespace cpgrid
 CpGridData::CpGridData(const CpGridData& g)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
-{}
+{
+    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+}
 
 CpGridData::CpGridData()
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
-{}
+{
+    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+}
 
 #if HAVE_MPI
 CpGridData::CpGridData(MPI_Comm comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
-{}
+{
+    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+}
 #endif
 
 CpGridData::CpGridData(CpGrid& grid)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
     global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
-{}
+{
+    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+}
 
 
 template<class InterfaceMap>
@@ -893,7 +901,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     get<Overlap_OverlapFront_Interface>(cell_interfaces_)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
                EnumItem<AttributeSet, AttributeSet::overlap>());
-     get<Overlap_All_Interface>(cell_interfaces_)
+    get<Overlap_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
                                  AllSet<AttributeSet>());
     get<All_All_Interface>(cell_interfaces_)
