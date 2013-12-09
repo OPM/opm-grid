@@ -83,19 +83,12 @@ namespace cpgrid
         template<int codim>
         bool isInvalid(const Entity<codim>& e)
         {
-            if(e.partitionType()==OverlapEntity)
-                return false;
-            return true;
+            // interior, border, and overlap are valid!
+            if(e.partitionType()==FrontEntity)
+                return true;
+            return false;
         }
     };    
-    
-    template<>
-    struct PartitionIteratorRule<OverlapFront_Partition>
-        : public PartitionIteratorRule<Overlap_Partition>
-    {
-        // There are no front entities, therefore
-        // we fall back to the behaviour of OverlapPartition
-    };
 
     template<>
     struct PartitionIteratorRule<All_Partition>
@@ -106,6 +99,15 @@ namespace cpgrid
         {
             return false;
         }
+    };
+    
+    template<>
+    struct PartitionIteratorRule<OverlapFront_Partition>
+        : public PartitionIteratorRule<All_Partition>
+    {
+        // Visits everything but ghost entities.
+        // As there are no ghosts in CpGrid, it visits
+        // everything.
     };
 
 } // end namespace cpgrid
