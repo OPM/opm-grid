@@ -551,8 +551,8 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
             scatterView_->cell_to_point_[to_cell_index];
         for(std::size_t i=0; i<8; ++i)
         {
-            this->moveData(Entity<1>(*gatherView_, from_cell_points[i], true),
-                           Entity<1>(*scatterView_, to_cell_points[i], true));
+            this->moveData(Entity<3>(*gatherView_, from_cell_points[i], true),
+                           Entity<3>(*scatterView_, to_cell_points[i], true));
         }
     }
     CpGridData* gatherView_;
