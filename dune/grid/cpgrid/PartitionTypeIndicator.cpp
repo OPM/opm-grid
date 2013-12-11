@@ -54,7 +54,7 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
             grid_data_->face_to_cell_[Entity<1>(*grid_data_,i,true)];
         if(cells_of_face.size()==1)
         {
-            return InteriorEntity;
+            return PartitionType(cell_indicator_[cells_of_face[0].index()]);
         }
         else
         {
