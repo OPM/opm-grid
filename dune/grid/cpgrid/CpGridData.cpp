@@ -510,7 +510,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 {
 #if HAVE_MPI
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
-    std::unique_ptr<CpGridData> grid_data(new CpGridData);
     int my_rank=ccobj.rank();
 #ifdef DEBUG
     int size=ccobj.size();
