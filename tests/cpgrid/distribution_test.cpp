@@ -57,13 +57,13 @@ public:
     void scatter(B& buffer, const T& t, std::size_t s)
     {
         double val;
-        std::cout<<"Scattering ";
+        //std::cout<<"Scattering ";
         for(std::size_t i=0; i<s; ++i)
         {            
             buffer.read(val);
-            std::cout<<val<<" to "<<t.index()<<" "<<i;
+            //  std::cout<<val<<" "<<i<<" ";
         }
-        std::cout<<std::endl;
+        //std::cout<<"to "<<t.index()<<" with codim"<<T::codimension<<std::endl;
     }
     bool contains(int dim, int codim)
     {
@@ -159,7 +159,7 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }else
     {
-        //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as we currently only support a fixed number of data per entity, but test is for varying numbers. Additionally the tes requires geometryInInSide, which is not available.
+        //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as one has to patch cpgrid to support Intersection::geometryInInside and Outside
         checkPartitionType( grid.leafView() );
     }
 }
