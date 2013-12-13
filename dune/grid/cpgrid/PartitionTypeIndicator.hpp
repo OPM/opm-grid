@@ -1,8 +1,8 @@
 //===========================================================================
 //
-// File: Indexsets.hpp
+// File: PartitionTypeIndicator.hpp
 //
-// Created: Fri May 29 23:30:01 2009
+// Created: Oct 20 2013
 //
 // Author(s): Markus Blatt <markus@dr-blatt.de>
 //
