@@ -896,15 +896,23 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // we set the type of the point to the one of the face as long as the type of the point is 
     // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
-                                                      InteriorEntity);
+                                                       OverlapEntity);
     for(int i=0; i<face_to_point_.size(); ++i)
     {
         for(auto p=face_to_point_[i].begin(), 
                 pend=face_to_point_[i].end(); p!=pend; ++p)
         {
-            if(partition_type_indicator_->point_indicator_[*p]!=BorderEntity)
-                partition_type_indicator_->point_indicator_[*p]=
-                    partition_type_indicator_->getFacePartitionType(i);
+            PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
+            PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
+            if(old_type==InteriorEntity)
+            {
+                if(new_type!=OverlapEntity)
+                    partition_type_indicator_->point_indicator_[*p]=new_type;
+            }
+            if(old_type==OverlapEntity)
+                partition_type_indicator_->point_indicator_[*p]=new_type;
+            if(old_type==FrontEntity && new_type==BorderEntity)
+                partition_type_indicator_->point_indicator_[*p]=new_type;
         }
     }
 
