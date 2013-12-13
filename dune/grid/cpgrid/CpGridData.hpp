@@ -431,8 +431,6 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
 #if HAVE_MPI
     if(data.contains(3,0))
         communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
-    if(data.contains(3,1))
-        communicateCodim<1>(data, dir, getInterface(iftype, point_interfaces_));
     if(data.contains(3,3))
         communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
 #endif
@@ -571,8 +569,6 @@ void CpGridData::moveData(DataHandle& data, CpGridData* global_data,
 #if HAVE_MPI
     if(data.contains(3,0))
        moveCodimData<forward,0>(data, global_data, distributed_data);
-    if(data.contains(3,1))
-       moveCodimData<forward,1>(data, global_data, distributed_data);
     if(data.contains(3,3))
        moveCodimData<forward,3>(data, global_data, distributed_data);
 #endif
