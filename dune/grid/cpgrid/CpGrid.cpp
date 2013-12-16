@@ -90,7 +90,7 @@ namespace Dune
 
 bool CpGrid::scatterGrid()
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(distributed_data_)
     {
         std::cerr<<"There is already a distributed version of the grid."

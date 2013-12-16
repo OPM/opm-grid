@@ -23,7 +23,7 @@ CpGridData::CpGridData(const CpGridData& g)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
@@ -33,12 +33,12 @@ CpGridData::CpGridData()
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 CpGridData::CpGridData(MPI_Comm comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
@@ -53,7 +53,7 @@ CpGridData::CpGridData(CpGrid& grid)
     global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
@@ -84,7 +84,7 @@ void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,In
 
 CpGridData::~CpGridData()
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     // code deactivated, because users cannot access face indices and therefore
     // communication on faces makes no sense!
     //freeInterfaces(face_interfaces_);
@@ -131,7 +131,7 @@ int CpGridData::size(int codim) const
     }
 }
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 
  // A functor that counts existent entries and renumbers them.
 struct CountExistent
@@ -508,7 +508,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const CpGridData& view_data,
                                       const std::vector<int>& cell_part)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
     int my_rank=ccobj.rank();
 #ifdef DEBUG

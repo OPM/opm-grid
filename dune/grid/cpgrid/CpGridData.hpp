@@ -63,7 +63,9 @@
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#endif
 #include <dune/grid/common/gridenums.hh>
 #include "Entity2IndexDataHandle.hpp"
 
@@ -102,7 +104,7 @@ public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
@@ -228,7 +230,7 @@ public:
 
 private:
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     
     template<bool forward, class DataHandle>
     void moveData(DataHandle& data, CpGridData* global_data, 
@@ -325,7 +327,7 @@ private:
     /// \brief The type of the set of the attributes
     enum AttributeSet{owner, overlap};
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     /// \brief The type of the parallel index set
     typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
 
@@ -367,7 +369,7 @@ private:
     friend class PartitionTypeIndicator;
 };
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 
 namespace
 {
@@ -427,7 +429,7 @@ template<class DataHandle>
 void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
                              CommunicationDirection dir)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(data.contains(3,0))
         communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
     if(data.contains(3,3))
@@ -435,7 +437,7 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
 #endif
 }
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 namespace
 {
 
@@ -565,7 +567,7 @@ template<bool forward, class DataHandle>
 void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data)
 {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(data.contains(3,0))
        moveCodimData<forward,0>(data, global_data, distributed_data);
     if(data.contains(3,3))

@@ -709,7 +709,7 @@ namespace Dune
         template<class DataHandle>
         void scatterData(DataHandle& handle)
         {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
             distributed_data_->moveData<true>(handle,data_, distributed_data_);
@@ -725,7 +725,7 @@ namespace Dune
         template<class DataHandle>
         void gatherData(DataHandle& handle)
         {
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
             distributed_data_->moveData<false>(handle, data_, distributed_data_);
