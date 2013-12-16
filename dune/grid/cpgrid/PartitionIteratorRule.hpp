@@ -95,7 +95,7 @@ namespace cpgrid
     {
         enum {fullSet=true, emptySet=false};
         template<int codim>
-        bool isInvalid(const Entity<codim>& e)
+        bool isInvalid(const Entity<codim>&)
         {
             return false;
         }

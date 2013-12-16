@@ -48,7 +48,7 @@ CpGridData::CpGridData(MPI_Comm comm)
 }
 #endif
 
-CpGridData::CpGridData(CpGrid& grid)
+CpGridData::CpGridData(CpGrid&)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
     global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
@@ -952,6 +952,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     comm.forward(point_handle);
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
+#else
+    static_cast<void>(grid);
+    static_cast<void>(view_data);
+    static_cast<void>(cell_part);
 #endif    
 }
 

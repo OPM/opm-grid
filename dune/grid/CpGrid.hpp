@@ -456,7 +456,7 @@ namespace Dune
 
 
         /// global refinement
-        void globalRefine (int refCount)
+        void globalRefine (int)
         {
             std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
         }
@@ -512,25 +512,25 @@ namespace Dune
 	end of refinement section */
 
         /// \brief Size of the overlap on the leaf level
-        unsigned int overlapSize(int codim) const {
+        unsigned int overlapSize(int) const {
             return 1;
         }
 
 
         /// \brief Size of the ghost cell layer on the leaf level
-        unsigned int ghostSize(int codim) const {
+        unsigned int ghostSize(int) const {
             return 0;
         }
 
 
         /// \brief Size of the overlap on a given level
-        unsigned int overlapSize(int level, int codim) const {
+        unsigned int overlapSize(int, int) const {
             return 1;
         }
 
 
         /// \brief Size of the ghost cell layer on a given level
-        unsigned int ghostSize(int level, int codim) const {
+        unsigned int ghostSize(int, int) const {
             return 0;
         }
         
