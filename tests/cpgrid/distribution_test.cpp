@@ -23,7 +23,7 @@ public:
   int errorcode;
 };
 
-void MPI_err_handler(MPI_Comm *comm, int *err_code, ...){
+void MPI_err_handler(MPI_Comm *, int *err_code, ...){
   char *err_string=new char[MPI_MAX_ERROR_STRING];
   int err_length;
   MPI_Error_string(*err_code, err_string, &err_length);
@@ -34,17 +34,116 @@ void MPI_err_handler(MPI_Comm *comm, int *err_code, ...){
 }
 #endif
 
-class DummyDataHandle
+class LoadBalanceGlobalIdDataHandle
 {
 public:
-    typedef double DataType;
-    bool fixedsize(int dim, int codim)
+    LoadBalanceGlobalIdDataHandle(const Dune::CpGrid::GlobalIdSet& gid_set,
+                                  const Dune::CpGrid& grid,
+                                  std::vector<int>& dist_point_ids,
+                                  std::vector<int>& dist_cell_ids)
+        : gid_set_(gid_set), grid_(grid), dist_point_ids_(dist_point_ids),
+          dist_cell_ids_(dist_cell_ids)
+    {}
+    typedef int DataType;
+    bool fixedsize(int /*dim*/, int /*codim*/)
     {
         return true;
     }
     
     template<class T>
     std::size_t size(const T& t)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(gid_set_.id(t));
+        
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        int gid;
+        buffer.read(gid);
+        if(T::codimension==3)
+            dist_point_ids_[grid_.leafIndexSet().index(t)]=gid;
+        if(T::codimension==0)
+            dist_cell_ids_[grid_.leafIndexSet().index(t)]=gid;
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim==3 && (codim<=1 || codim==3);
+    }
+private:
+    const Dune::CpGrid::GlobalIdSet& gid_set_;
+    const Dune::CpGrid& grid_;
+    std::vector<int>& dist_point_ids_;
+    std::vector<int>& dist_cell_ids_;
+};  
+
+class GatherGlobalIdDataHandle
+{
+public:
+    GatherGlobalIdDataHandle(const Dune::CpGrid::GlobalIdSet& gathered_gid_set,
+                             const Dune::CpGrid::LeafIndexSet& distributed_indexset,
+                       std::vector<int>& dist_point_ids,
+                       std::vector<int>& dist_cell_ids)
+        : gathered_gid_set_(gathered_gid_set), distributed_indexset_(distributed_indexset),
+          dist_point_ids_(dist_point_ids),
+          dist_cell_ids_(dist_cell_ids)
+    {}
+    
+    typedef int DataType;
+    bool fixedsize(int /*dim*/, int /*codim*/)
+    {
+        return true;
+    }
+    
+    template<class T>
+    std::size_t size(const T& t)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        if(T::codimension==0)
+            buffer.write(dist_cell_ids_[distributed_indexset_.index(t)]);
+        if(T::codimension==3)
+            buffer.write(dist_point_ids_[distributed_indexset_.index(t)]);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        int gid;
+        buffer.read(gid);
+        int ogid=gathered_gid_set_.id(t);
+        if(gid!=gathered_gid_set_.id(t))
+            OPM_THROW(std::runtime_error, "Exspected a different global id");
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim==3 && (codim<=1 || codim==3);
+    }
+private:
+    const Dune::CpGrid::GlobalIdSet& gathered_gid_set_;
+    const Dune::CpGrid::LeafIndexSet& distributed_indexset_;
+    std::vector<int>& dist_point_ids_;
+    std::vector<int>& dist_cell_ids_;
+};
+
+class DummyDataHandle
+{
+public:
+    typedef double DataType;
+    bool fixedsize(int /*dim*/, int /*codim*/)
+    {
+        return true;
+    }
+    
+    template<class T>
+    std::size_t size(const T&)
     {
         return 1;
     }
