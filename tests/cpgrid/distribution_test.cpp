@@ -220,6 +220,8 @@ BOOST_AUTO_TEST_CASE(distribute)
     }
     DummyDataHandle data;
 
+    const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
+    
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
 
     grid.loadBalance(data);
@@ -260,5 +262,17 @@ BOOST_AUTO_TEST_CASE(distribute)
     {
         //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as one has to patch cpgrid to support Intersection::geometryInInside and Outside
         checkPartitionType( grid.leafView() );
+        std::vector<int> point_ids(grid.leafIndexSet().size(3)), cell_ids(grid.leafIndexSet().size(0));
+        LoadBalanceGlobalIdDataHandle lb_gid_data(unbalanced_gid_set,
+                                                  grid,
+                                                  point_ids,
+                                                  cell_ids);
+        grid.scatterData(lb_gid_data);
+        GatherGlobalIdDataHandle gather_gid_set_data(unbalanced_gid_set,
+                                                     grid.leafIndexSet(),
+                                                     point_ids,
+                                                     cell_ids);
+        grid.gatherData(gather_gid_set_data);
+        
     }
 }

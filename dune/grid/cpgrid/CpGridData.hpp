@@ -68,6 +68,7 @@
 #endif
 #include <dune/grid/common/gridenums.hh>
 #include "Entity2IndexDataHandle.hpp"
+#include "GlobalIdMapping.hpp"
 
 namespace Dune
 {
@@ -232,14 +233,48 @@ private:
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     
-    template<bool forward, class DataHandle>
-    void moveData(DataHandle& data, CpGridData* global_data, 
+    /// \brief Gather data on a global grid representation.
+    /// \param data A data handle for getting or setting the data
+    /// \param global_view The view of the global grid (to gather the data on)
+    /// \param distributed_view The view of the distributed grid.
+    /// \tparam DataHandle The type of the data handle used.
+    template<class DataHandle>
+    void gatherData(DataHandle& data, CpGridData* global_view, 
+                    CpGridData* distributed_view);
+    
+        
+    /// \brief Gather data specific to given codimension on a global grid representation.
+    /// \param data A data handle for getting or setting the data
+    /// \param global_view The view of the global grid (to gather the data on)
+    /// \param distributed_view The view of the distributed grid.
+    /// \tparam DataHandle The type of the data handle used.
+    /// \tparam codim The codimension
+    template<int codim, class DataHandle>
+    void gatherCodimData(DataHandle& data, CpGridData* global_data, 
+                         CpGridData* distributed_data);
+    
+    /// \brief Scatter data from a global grid representation
+    /// to a distributed representation of the same grid.
+    /// \param data A data handle for getting or setting the data
+    /// \param global_view The view of the global grid (to gather the data on)
+    /// \param distributed_view The view of the distributed grid.
+    /// \tparam DataHandle The type of the data handle used.
+    template<class DataHandle>
+    void scatterData(DataHandle& data, CpGridData* global_data, 
                   CpGridData* distributed_data);
 
-    template<bool forward, int codim, class DataHandle>
-    void moveCodimData(DataHandle& data, CpGridData* global_data, 
+    /// \brief Scatter data specific to given codimension from a global grid representation
+    /// to a distributed representation of the same grid.
+    /// \param data A data handle for getting or setting the data
+    /// \param global_view The view of the global grid (to gather the data on)
+    /// \param distributed_view The view of the distributed grid.
+    /// \tparam DataHandle The type of the data handle used.
+    /// \tparam codim The codimension.
+    template<int codim, class DataHandle>
+    void scatterCodimData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data);
 
+    /// \brief The type of the interface map for communication.
     typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
 
     /// \brief Communicates data of a given codimension
@@ -352,6 +387,11 @@ private:
     /// \brief Interface from interior and border to interior and border for the faces.
     tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
     point_interfaces_;
+    /// \brief Interface for gathering and scattering cell data.
+    InterfaceMap cell_gather_scatter_interface;
+    /// \brief Interface for gathering and scattering point data.
+    InterfaceMap point_gather_scatter_interface;
+    
 #endif
 
     // Return the geometry vector corresponding to the given codim.
@@ -444,6 +484,7 @@ namespace
 template<class T>
 class MoveBuffer
 {
+    friend class Dune::cpgrid::CpGridData;
 public:
     void read(T& data)
     {
@@ -563,34 +604,25 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
 
 } // end mover namespace
 
-template<bool forward, class DataHandle>
-void CpGridData::moveData(DataHandle& data, CpGridData* global_data, 
+template<class DataHandle>
+void CpGridData::scatterData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(data.contains(3,0))
-       moveCodimData<forward,0>(data, global_data, distributed_data);
+       scatterCodimData<0>(data, global_data, distributed_data);
     if(data.contains(3,3))
-       moveCodimData<forward,3>(data, global_data, distributed_data);
+       scatterCodimData<3>(data, global_data, distributed_data);
 #endif
 }
 
-template<bool forward, int codim, class DataHandle>
-void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data, 
+template<int codim, class DataHandle>
+void CpGridData::scatterCodimData(DataHandle& data, CpGridData* global_data, 
                           CpGridData* distributed_data)
 {
     CpGridData *gather_view, *scatter_view;
-    
-    if(forward)
-    {
-        gather_view=global_data;
-        scatter_view=distributed_data;
-    }
-    else
-    {
-        gather_view=distributed_data;
-        scatter_view=global_data;
-    }
+    gather_view=global_data;
+    scatter_view=distributed_data;
     
     mover::Mover<DataHandle,codim> mover(data, gather_view, scatter_view);
     
@@ -599,13 +631,167 @@ void CpGridData::moveCodimData(DataHandle& data, CpGridData* global_data,
             end = distributed_data->cell_indexset_.end();
         index!=end; ++index)
     {
-        std::size_t from=forward?index->global():index->local();
-        std::size_t to=forward?index->local():index->global();
+        std::size_t from=index->global();
+        std::size_t to=index->local();
         mover(from,to);
     }
 }
+
+namespace
+{
+
+template<int codim, class T, class F>
+void visitInterior(CpGridData& distributed_data, T begin, T endit, F& func)
+{
+    for(T it=begin; it!=endit; ++it)
+    {
+        Entity<codim> entity(distributed_data, it-begin, true);
+        PartitionType pt = entity.partitionType();
+        if(pt==Dune::InteriorEntity)
+        {
+            func(*it, entity);
+        }
+    }
+}
+
+template<class DataHandle>
+struct GlobalIndexSizeGatherer
+{
+    GlobalIndexSizeGatherer(DataHandle& data_,
+                            std::vector<int>& ownedGlobalIndices_, 
+                            std::vector<std::size_t>& ownedSizes_)
+        : data(data_), ownedGlobalIndices(ownedGlobalIndices_), ownedSizes(ownedSizes_)
+    {}
+
+    template<class T, class E>
+    void operator()(T& i, E& entity)
+    {
+            ownedGlobalIndices.push_back(i);
+            ownedSizes.push_back(data.size(entity));
+    }
+    DataHandle& data;
+    std::vector<int>& ownedGlobalIndices;
+    std::vector<std::size_t>& ownedSizes;
+};
+
+template<class DataHandle>
+struct DataGatherer
+{
+    DataGatherer(MoveBuffer<typename DataHandle::DataType>& buffer_,
+                 DataHandle& data_)
+        : buffer(buffer_), data(data_)
+    {}
+    
+    template<class T, class E>
+    void operator()(T& /* it */, E& entity)
+    {
+        data.gather(buffer, entity);
+    }
+    MoveBuffer<typename DataHandle::DataType>& buffer;
+    DataHandle& data;
+};
+
+}
+
+template<class DataHandle>
+void CpGridData::gatherData(DataHandle& data, CpGridData* global_data, 
+                            CpGridData* distributed_data)
+{
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    if(data.contains(3,0))
+       gatherCodimData<0>(data, global_data, distributed_data);
+    if(data.contains(3,3))
+       gatherCodimData<3>(data, global_data, distributed_data);
 #endif
-} // end namspace cpgrid
+}
+
+template<int codim, class DataHandle>
+void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data, 
+                                 CpGridData* distributed_data)
+{
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    // Get the mapping to global index from  the global id set
+    const std::vector<int>& mapping = 
+        static_cast<GlobalIdMapping*>(distributed_data
+                                      ->global_id_set_)->getMapping<codim>();
+    typedef std::vector<int>::const_iterator Iter;
+
+    // Get the global indices and data size for the entities whose data is
+    // to be sent, i.e. the ones that we own.
+    std::vector<int>         owned_global_indices;
+    std::vector<std::size_t> owned_sizes;
+    owned_global_indices.reserve(mapping.size());
+    owned_sizes.reserve(mapping.size());
+   
+    GlobalIndexSizeGatherer<DataHandle> gisg(data, owned_global_indices, owned_sizes);
+    visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gisg);
+    
+    // communicate the number of indices that each processor sends
+    std::size_t no_indices=owned_sizes.size();
+    std::vector<std::size_t> no_indices_to_recv(distributed_data->ccobj_.size());
+    distributed_data->ccobj_.allgather(&no_indices, 1, &(no_indices_to_recv[0]));
+    // compute size of the vector capable for receiving all indices
+    // and allgather the global indices and the sizes.
+    // calculate displacements
+    std::vector<int> displ(distributed_data->ccobj_.size()+1, 0);
+    std::transform(displ.begin(), displ.end()-1, no_indices_to_recv.begin(), displ.begin()+1,
+                   std::plus<std::size_t>());
+    int global_size=displ[displ.size()-1];//+no_indices_to_recv[displ.size()-1];
+    std::vector<int>         global_indices(global_size);
+    std::vector<std::size_t> global_sizes(global_size);
+    MPI_Allgatherv(&(owned_global_indices[0]), no_indices, MPITraits<int>::getType(),
+                   &(global_indices[0]), &global_size, &(displ[0]), 
+                   MPITraits<int>::getType(),
+                   distributed_data->ccobj_);
+    MPI_Allgatherv(&(owned_sizes[0]), no_indices, MPITraits<std::size_t>::getType(),
+                   &(global_sizes[0]), &global_size, &(displ[0]), 
+                   MPITraits<std::size_t>::getType(),
+                   distributed_data->ccobj_);
+    std::vector<int>().swap(owned_global_indices); // free data for reuse.
+    // Compute the number of data items to send
+    std::vector<std::size_t> no_data_send(distributed_data->ccobj_.size());
+    for(typename std::vector<std::size_t>::iterator begin=no_data_send.begin(),
+            i=begin, end=no_data_send.end(); i!=end; ++i)
+        *i = std::accumulate(global_sizes.begin()+displ[i-begin],
+                            global_sizes.begin()+displ[i-begin+1], std::size_t());
+    // free at least some memory that can be reused.
+    std::vector<std::size_t>().swap(owned_sizes);
+    // compute the displacements for receiving with allgatherv
+    displ[0]=0;
+    std::transform(displ.begin(), displ.end()-1, no_data_send.begin(), displ.begin()+1,
+                   std::plus<std::size_t>());
+    // Compute the number of data items we will receive
+    int no_data_recv = displ[displ.size()-1];//+global_sizes[displ.size()-1];
+    
+    // Collect the data to send, gather it
+    MoveBuffer<typename DataHandle::DataType> local_data_buffer, global_data_buffer;
+    local_data_buffer.resize(no_data_send[distributed_data->ccobj_.rank()]);
+    global_data_buffer.resize(no_data_recv);
+
+    DataGatherer<DataHandle> gatherer(local_data_buffer, data);
+    visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gatherer);
+    MPI_Allgatherv(&(local_data_buffer.buffer_[0]), local_data_buffer.buffer_.size(),
+                   MPITraits<typename DataHandle::DataType>::getType(),
+                   &(global_data_buffer.buffer_[0]), &no_data_recv, &(displ[0]), 
+                   MPITraits<typename DataHandle::DataType>::getType(),
+                   distributed_data->ccobj_);
+    Entity2IndexDataHandle<DataHandle, codim> edata(*global_data, data);
+    int offset=0;
+    for(int i=0; i< codim; ++i)
+        offset+=global_data->size(i);
+    
+    typename std::vector<std::size_t>::const_iterator s=global_sizes.begin();
+    for(typename std::vector<int>::const_iterator i=global_indices.begin(),
+            end=global_indices.end();
+        i!=end; ++s, ++i)
+    {
+        edata.scatter(global_data_buffer, *i-offset, *s);
+    }
+#endif
+}
+
+#endif
+} // end namespace cpgrid
 } // end namespace Dune
 
 #endif

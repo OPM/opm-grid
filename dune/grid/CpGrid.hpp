@@ -712,7 +712,7 @@ namespace Dune
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->moveData<true>(handle,data_, distributed_data_);
+            distributed_data_->scatterData(handle, data_, distributed_data_);
 #endif
         }
 
@@ -728,7 +728,7 @@ namespace Dune
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
-            distributed_data_->moveData<false>(handle, data_, distributed_data_);
+            distributed_data_->gatherData(handle, data_, distributed_data_);
 #endif
         }
 

@@ -550,7 +550,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 global2local.push_back(std::numeric_limits<int>::max());
         }
         /**
-         * @brief Adds an index with flag overlap to the index set.
+         * @brief Adds an index that is present on more than one processor to the index set.
          * @param i The global index.
          * @param ov The set of ranks where the index is in the overlap
          * region.
@@ -591,8 +591,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     for(OIterator end=overlap.end(), begin=overlap.begin(), i=begin; i!=end; ++i, ++ci)
     {
         if(i->size())
+            // Cell is shared between different processors
             cell_counter(i-begin, *i, *ci);
         else
+            // cell is not shared
             cell_counter(i-begin, *ci);
     }
     cell_counter.indexset->endResize();
