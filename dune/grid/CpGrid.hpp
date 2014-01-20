@@ -149,7 +149,7 @@ namespace Dune
 	/// \brief The type of the leaf index set.
 	typedef cpgrid::IndexSet LeafIndexSet;
 	/// \brief The type of the global id set.
-	typedef cpgrid::IdSet GlobalIdSet;
+	typedef cpgrid::GlobalIdSet GlobalIdSet;
 	/// \brief The type of the local id set.
 	typedef cpgrid::IdSet LocalIdSet;
 
@@ -428,7 +428,7 @@ namespace Dune
         /// \brief Access to the GlobalIdSet
         const Traits::GlobalIdSet& globalIdSet() const
 	{
-            return *current_view_data_->local_id_set_;
+            return *current_view_data_->global_id_set_;
         }
 
 
