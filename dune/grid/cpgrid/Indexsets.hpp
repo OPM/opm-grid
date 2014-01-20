@@ -240,12 +240,6 @@ namespace Dune
             GlobalIdSet()
                 : idSet_()
             {}
-	    template<int cc>
-	    IdType id(const cpgrid::Entity<cc>& e) const 
-	    {
-		return id(e);
-	    }
-
 	    template<class EntityType>
 	    IdType id(const EntityType& e) const 
 	    {
