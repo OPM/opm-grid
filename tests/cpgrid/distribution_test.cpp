@@ -49,12 +49,12 @@ public:
         return 1;
     }
     template<class B, class T>
-    void gather(B& buffer, const T& t)
+    void gather(B& buffer, const T&)
     {
         buffer.write(100.0);
     }
     template<class B, class T>
-    void scatter(B& buffer, const T& t, std::size_t s)
+    void scatter(B& buffer, const T&, std::size_t s)
     {
         double val;
         //std::cout<<"Scattering ";
