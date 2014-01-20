@@ -36,10 +36,10 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPM_INDEXSETS_HEADER
 #define OPM_INDEXSETS_HEADER
 
-#include <vector>
 #include <dune/common/nullptr.hh>
 #include <dune/geometry/type.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
+#include "GlobalIdMapping.hpp"
 namespace Dune
 {
     namespace cpgrid
@@ -220,8 +220,9 @@ namespace Dune
 	};
 
 
-	class GlobalIdSet
+        class GlobalIdSet : GlobalIdMapping
 	{
+            friend class CpGridData;
 	public:
 	    typedef int IdType;
 
@@ -230,9 +231,9 @@ namespace Dune
                       std::vector<int>& pointMapping)
 	    {
                 idSet_=nullptr;
-                cellMapping_.swap(cellMapping);
-                faceMapping_.swap(faceMapping);
-                pointMapping_.swap(pointMapping);
+                GlobalIdMapping::swap(cellMapping,
+                                      faceMapping,
+                                      pointMapping);
 	    }
             GlobalIdSet(const IdSet* ids)
             : idSet_(ids)
@@ -246,7 +247,7 @@ namespace Dune
                 if(idSet_)
                     return idSet_->id(e);
                 else 
-                    return getMapping(e)[e.index()];
+                    return this->template getMapping<EntityType::codimension>()[e.index()];
 	    }
 
 	    template<int cc>
@@ -259,8 +260,8 @@ namespace Dune
 	    {
 		switch (cc) {
 		case 0: return id(*e.subEntity<0>(i));
-		case 1: return id(*e.subEntity<1>(i));
-		case 2: return id(*e.subEntity<2>(i));
+                //case 1: return id(*e.subEntity<1>(i));
+                //case 2: return id(*e.subEntity<2>(i));
 		case 3: return id(*e.subEntity<3>(i));
 		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
 		}
@@ -268,22 +269,6 @@ namespace Dune
 	    }
 	private:
             const IdSet* idSet_;
-            std::vector<int> cellMapping_;
-            std::vector<int> faceMapping_;
-            std::vector<int> pointMapping_;
-            
-            const std::vector<int>& getMapping(const EntityRep<0>&) const
-            {
-                return cellMapping_;
-            }
-            const std::vector<int>& getMapping(const EntityRep<1>&) const
-            {
-                return faceMapping_;
-            }
-            const std::vector<int>& getMapping(const EntityRep<3>&) const
-            {
-                return pointMapping_;
-            }
 	};
 
 
