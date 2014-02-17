@@ -23,7 +23,7 @@
 
 #include <opm/core/grid.h>
 #include <opm/core/utility/ErrorMacros.hpp>
-
+#include <dune/grid/CpGrid.hpp>
 #include <stdexcept>
 #include <vector>
 
@@ -197,8 +197,7 @@ private:
     // The global cell information
     std::vector<int> global_cell_;
     /// Build (copy of) global cell from grid
-    template<class Grid>
-    void buildGlobalCell(const Grid& grid)
+    void buildGlobalCell(const Dune::CpGrid& grid)
     {
         bool all_active=true;
         int old_cell=-1;
@@ -217,13 +216,22 @@ private:
         else
             g_.global_cell=&(global_cell_[0]);
     }
+    /// Build (copy of) global cell from grid
+    template<class Grid>
+    void buildGlobalCell(const Grid& grid)
+    {
+        g_.global_cell=0;
+    }
     /// Copy the cart dims from grid.
-    void copyCartDims(const CpGrid& grid)
+    void copyCartDims(const Dune::CpGrid& grid)
     {
         for(int i=0; i<3; ++i)
             g_.cartdims[i] = grid.logicalCartesianSize()[i];
     }
-
+    /// Copy the cart dims from grid.
+    template <class Grid>
+    void copyCartDims(const Grid& grid)
+    {}
     /// Build (copy of) topological structure from grid.
     template <class Grid>
     void buildTopology(const Grid& grid)
