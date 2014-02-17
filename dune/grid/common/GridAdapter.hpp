@@ -40,6 +40,8 @@ public:
         buildTopology(grid);
         buildGeometry(grid);
         g_.global_cell = const_cast<int *>(&(grid.globalCell()[0]));
+        for(int i=0; i<3; ++i)
+            g_.cartdims[i] = grid.logicalCartesianSize()[i];
     }
 
     UnstructuredGrid* c_grid()
