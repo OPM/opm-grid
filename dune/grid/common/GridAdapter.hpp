@@ -40,6 +40,7 @@ public:
         buildTopology(grid);
         buildGeometry(grid);
         buildGlobalCell(grid);
+        copyCartDims(grid);
     }
 
     UnstructuredGrid* c_grid()
@@ -216,7 +217,13 @@ private:
         else
             g_.global_cell=&(global_cell_[0]);
     }
-    
+    /// Copy the cart dims from grid.
+    void copyCartDims(const CpGrid& grid)
+    {
+        for(int i=0; i<3; ++i)
+            g_.cartdims[i] = grid.logicalCartesianSize()[i];
+    }
+
     /// Build (copy of) topological structure from grid.
     template <class Grid>
     void buildTopology(const Grid& grid)
