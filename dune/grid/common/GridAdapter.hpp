@@ -199,10 +199,22 @@ private:
     template<class Grid>
     void buildGlobalCell(const Grid& grid)
     {
+        bool all_active=true;
+        int old_cell=-1;
         global_cell_.resize(grid.numCells());
         for(int c=0; c<grid.numCells(); ++c)
-            global_cell_[c]=grid.globalCell()[c];
-        g_.global_cell=&(global_cell_[0]);
+        {
+            int new_cell=global_cell_[c]=grid.globalCell()[c];
+            all_active = all_active && (new_cell==old_cell+1);
+            old_cell=new_cell;
+        }
+        if(all_active){
+            g_.global_cell=0;
+            // really release memory
+            global_cell_.swap(std::vector<int>());
+        }
+        else
+            g_.global_cell=&(global_cell_[0]);
     }
     
     /// Build (copy of) topological structure from grid.
