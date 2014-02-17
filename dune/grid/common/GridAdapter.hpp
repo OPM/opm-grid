@@ -39,9 +39,7 @@ public:
     {
         buildTopology(grid);
         buildGeometry(grid);
-        g_.global_cell = const_cast<int *>(&(grid.globalCell()[0]));
-        for(int i=0; i<3; ++i)
-            g_.cartdims[i] = grid.logicalCartesianSize()[i];
+        buildGlobalCell(grid);
     }
 
     UnstructuredGrid* c_grid()
@@ -195,7 +193,18 @@ private:
     std::vector<double> face_normals_;
     std::vector<double> cell_centroids_;
     std::vector<double> cell_volumes_;
-
+    // The global cell information
+    std::vector<int> global_cell_;
+    /// Build (copy of) global cell from grid
+    template<class Grid>
+    void buildGlobalCell(const Grid& grid)
+    {
+        global_cell_.resize(grid.numCells());
+        for(int c=0; c<grid.numCells(); ++c)
+            global_cell_[c]=grid.globalCell()[c];
+        g_.global_cell=&(global_cell_[0]);
+    }
+    
     /// Build (copy of) topological structure from grid.
     template <class Grid>
     void buildTopology(const Grid& grid)
