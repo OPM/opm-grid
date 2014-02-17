@@ -39,6 +39,7 @@ public:
     {
         buildTopology(grid);
         buildGeometry(grid);
+        g_.global_cell = const_cast<int *>(&(grid.globalCell()[0]));
     }
 
     UnstructuredGrid* c_grid()
