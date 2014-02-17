@@ -23,7 +23,7 @@
 
 #include <opm/core/grid.h>
 #include <opm/core/utility/ErrorMacros.hpp>
-
+#include <dune/grid/CpGrid.hpp>
 #include <stdexcept>
 #include <vector>
 
@@ -39,6 +39,8 @@ public:
     {
         buildTopology(grid);
         buildGeometry(grid);
+        buildGlobalCell(grid);
+        copyCartDims(grid);
     }
 
     UnstructuredGrid* c_grid()
@@ -192,7 +194,44 @@ private:
     std::vector<double> face_normals_;
     std::vector<double> cell_centroids_;
     std::vector<double> cell_volumes_;
-
+    // The global cell information
+    std::vector<int> global_cell_;
+    /// Build (copy of) global cell from grid
+    void buildGlobalCell(const Dune::CpGrid& grid)
+    {
+        bool all_active=true;
+        int old_cell=-1;
+        global_cell_.resize(grid.numCells());
+        for(int c=0; c<grid.numCells(); ++c)
+        {
+            int new_cell=global_cell_[c]=grid.globalCell()[c];
+            all_active = all_active && (new_cell==old_cell+1);
+            old_cell=new_cell;
+        }
+        if(all_active){
+            g_.global_cell=0;
+            // really release memory
+            global_cell_.swap(std::vector<int>());
+        }
+        else
+            g_.global_cell=&(global_cell_[0]);
+    }
+    /// Build (copy of) global cell from grid
+    template<class Grid>
+    void buildGlobalCell(const Grid& grid)
+    {
+        g_.global_cell=0;
+    }
+    /// Copy the cart dims from grid.
+    void copyCartDims(const Dune::CpGrid& grid)
+    {
+        for(int i=0; i<3; ++i)
+            g_.cartdims[i] = grid.logicalCartesianSize()[i];
+    }
+    /// Copy the cart dims from grid.
+    template <class Grid>
+    void copyCartDims(const Grid& grid)
+    {}
     /// Build (copy of) topological structure from grid.
     template <class Grid>
     void buildTopology(const Grid& grid)
