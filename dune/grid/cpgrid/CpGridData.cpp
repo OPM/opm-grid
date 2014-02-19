@@ -864,7 +864,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         }
     }
     
-    // \TODO - logical_cartesian_size ????
+    logical_cartesian_size_=view_data.logical_cartesian_size_;
+    
     // - unique_boundary_ids_ : extract the ones that correspond existent faces
     EntityVariable<int, 1> unique_boundary_ids;
     

@@ -248,14 +248,11 @@ namespace Dune
 	void createCartesian(const array<int, 3>& dims,
 			     const array<double, 3>& cellsize);
 
-	/// The logical cartesian size of the grid.
+	/// The logical cartesian size of the global grid.
 	/// This function is not part of the Dune grid interface,
 	/// and should be used with caution.
         const std::array<int, 3>& logicalCartesianSize() const
         {
-            if(current_view_data_==distributed_data_)
-                OPM_THROW(std::runtime_error, "logicalCartesianSize is only usable"
-                          << " on a non-distributed grid!");
             return current_view_data_->logical_cartesian_size_;
         }
 
