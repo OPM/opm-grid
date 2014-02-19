@@ -51,7 +51,7 @@ public:
     }
     
     template<class T>
-    std::size_t size(const T& t)
+    std::size_t size(const T&)
     {
         return 1;
     }
@@ -62,7 +62,7 @@ public:
         
     }
     template<class B, class T>
-    void scatter(B& buffer, const T& t, std::size_t s)
+    void scatter(B& buffer, const T& t, std::size_t)
     {
         int gid;
         buffer.read(gid);
@@ -101,7 +101,7 @@ public:
     }
     
     template<class T>
-    std::size_t size(const T& t)
+    std::size_t size(const T&
     {
         return 1;
     }
@@ -114,11 +114,10 @@ public:
             buffer.write(dist_point_ids_[distributed_indexset_.index(t)]);
     }
     template<class B, class T>
-    void scatter(B& buffer, const T& t, std::size_t s)
+    void scatter(B& buffer, const T& t, std::size_t)
     {
         int gid;
         buffer.read(gid);
-        int ogid=gathered_gid_set_.id(t);
         if(gid!=gathered_gid_set_.id(t))
             OPM_THROW(std::runtime_error, "Exspected a different global id");
     }

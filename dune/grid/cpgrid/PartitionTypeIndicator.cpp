@@ -32,9 +32,8 @@ PartitionType PartitionTypeIndicator::getPointPartitionType(int index) const
 }
 
 
-PartitionType getProcessorBoundaryPartitionType(PartitionType cell_partition_type)
+PartitionType getProcessorBoundaryPartitionType(PartitionType)
 {
-    assert(cell_partition_type!=InteriorEntity);
     return FrontEntity;
 }
 
