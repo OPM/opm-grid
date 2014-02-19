@@ -622,6 +622,12 @@ namespace Dune
         {
             return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
         }
+
+        const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const
+        {
+            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+        }
+
         int faceCell(int face, int local_index) const
         {
             cpgrid::OrientedEntityTable<1,0>::row_type r
@@ -671,6 +677,16 @@ namespace Dune
             return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
         }
 
+        const std::vector<cpgrid::Geometry<3, 3> >::const_iterator beginCellCentroids() const
+        {
+            return geomVector<0>().begin();
+        }
+
+        const std::vector<cpgrid::Geometry<2, 3> >::const_iterator beginFaceCentroids() const
+        {
+            return geomVector<1>().begin();
+        }
+        
         // Extra
         int boundaryId(int face) const
         {
