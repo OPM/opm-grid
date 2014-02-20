@@ -682,7 +682,7 @@ namespace Dune
         template<int codim>
         class CentroidIterator
             : public RandomAccessIteratorFacade<CentroidIterator<codim>,
-                                                const FieldVector<double, 3>,
+                                                FieldVector<double, 3>,
                                                 const FieldVector<double, 3>&, int>
         {
         public:
