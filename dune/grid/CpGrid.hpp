@@ -677,16 +677,67 @@ namespace Dune
             return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
         }
 
-        const std::vector<cpgrid::Geometry<3, 3> >::const_iterator beginCellCentroids() const
+        /// \brief An iterator over the centroids of the geometry of the entities.
+        /// \tparam codim The co-dimension of the entities.
+        template<int codim>
+        class CentroidIterator
+            : public RandomAccessIteratorFacade<CentroidIterator<codim>,
+                                                const FieldVector<double, 3>,
+                                                const FieldVector<double, 3>&, int>
         {
-            return geomVector<0>().begin();
+        public:
+            /// \brief The type of the iterator over the codim geometries.
+            typedef typename std::vector<cpgrid::Geometry<3-codim, 3> >::const_iterator
+            GeometryIterator;
+            /// \brief Constructs a new iterator from an iterator over the geometries.
+            /// \param iter The iterator of the geometry objects.
+            CentroidIterator(GeometryIterator iter)
+            : iter_(iter)
+            {}
+
+            const FieldVector<double, 3>& dereference() const
+            {
+                return iter_->center();
+            }
+            void increment()
+            {
+                ++iter_;
+            }
+            const int* elementAt(int n)
+            {
+                return iter_[n]->center();
+            }
+            void advance(int n)
+            {
+                iter_+=n;
+            }
+            void decrement()
+            {
+                --iter_;
+            }
+            int distanceTo(const CentroidIterator& o)
+            {
+                return o-iter_;
+            }
+            bool equals(const CentroidIterator& o) const
+            {
+                return o==iter_;
+            }
+        private:
+            /// \brief The iterator over the underlying geometry objects.
+            GeometryIterator iter_;
+        };
+
+        CentroidIterator<0> beginCellCentroids() const
+        {
+            return CentroidIterator<0>(geomVector<0>().begin());
         }
 
-        const std::vector<cpgrid::Geometry<2, 3> >::const_iterator beginFaceCentroids() const
+        CentroidIterator<1> beginFaceCentroids() const
         {
-            return geomVector<1>().begin();
+            return CentroidIterator<1>(geomVector<1>().begin());
         }
-        
+
         // Extra
         int boundaryId(int face) const
         {
