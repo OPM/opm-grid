@@ -618,6 +618,7 @@ namespace Dune
         {
             return cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
         }
+                
         int cellFace(int cell, int local_index) const
         {
             return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
@@ -641,6 +642,10 @@ namespace Dune
             } else {
                 return use_first ? r[0].index() : -1;
             }
+        }
+        int numCellFaces() const
+        {
+            return cell_to_face_.dataSize();
         }
         int numFaceVertices(int face) const
         {
