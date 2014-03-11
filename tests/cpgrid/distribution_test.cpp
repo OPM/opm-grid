@@ -101,7 +101,7 @@ public:
     }
     
     template<class T>
-    std::size_t size(const T&
+    std::size_t size(const T&)
     {
         return 1;
     }
