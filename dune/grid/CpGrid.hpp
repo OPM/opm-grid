@@ -611,16 +611,32 @@ namespace Dune
         }
         int faceCell(int face, int local_index) const
         {
+            // In the parallel case we store non-existent cells for faces along
+            // the front region. Theses marked with index std::numeric_limits<int>::max(),
+            // orientation might be arbitrary, though.
             cpgrid::OrientedEntityTable<1,0>::row_type r
                 = current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
             bool a = (local_index == 0);
             bool b = r[0].orientation();
             bool use_first = a ? b : !b;
-            if (r.size() == 2) {
-                assert(r[0].orientation() != r[1].orientation());
+            // The number of valid cells.
+            int size = r.size();
+            // In the case of only one valid cell, this is the index of it.
+            int index = 0;
+            if(r[0].index()==std::numeric_limits<int>::max()){
+                assert(size==2);
+                --size;
+                index=1;
+            }
+            if(r[1].index()==std::numeric_limits<int>::max())
+            {
+                assert(size==2);
+                --size;
+            }
+            if (size == 2) {
                 return use_first ? r[0].index() : r[1].index();
             } else {
-                return use_first ? r[0].index() : -1;
+                return use_first ? r[index].index() : -1;
             }
         }
         int numFaceVertices(int face) const
