@@ -831,6 +831,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 // except for those at the domain boundary.
                 // Note that along the front partition there are invalid neighbours
                 // marked with index std::numeric_limits<int>::max()
+                // Still they inherit the orientation to make CpGrid::faceCell happy
                 new_row.push_back(EntityRep<0>(cell_indicator[cell->index()], 
                                                    cell->orientation()));
             }
