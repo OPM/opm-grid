@@ -82,7 +82,12 @@ void Intersection::update()
                 global_geom_ = pgrid_->geometry_.geomVector<1>()[face];
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
 		is_on_boundary_ = cells_of_face.size() == 1;
-		if (is_on_boundary_) {
+                // Wether there is no nother nbcell for this intersection
+                // i.e. either this on the boundary or a front intersection
+                bool has_no_nbcell = is_on_boundary_ ||
+                    cells_of_face[0].index()==std::numeric_limits<int>::max() ||
+                    cells_of_face[1].index()==std::numeric_limits<int>::max();
+                if (has_no_nbcell) {
 		    nbcell_ = index_; // self is invalid value
 		} else {
                     assert(cells_of_face.size() == 2);
