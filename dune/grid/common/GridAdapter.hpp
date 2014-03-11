@@ -211,7 +211,7 @@ private:
         if(all_active){
             g_.global_cell=0;
             // really release memory
-            global_cell_.swap(std::vector<int>());
+            std::vector<int>().swap(global_cell_);
         }
         else
             g_.global_cell=&(global_cell_[0]);

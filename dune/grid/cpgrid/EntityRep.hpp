@@ -211,9 +211,14 @@ namespace Dune
             friend class CpGridData;
 	public:
 	    typedef std::vector<T> V;
+            typedef typename std::vector<T>::iterator iterator;
+            typedef typename std::vector<T>::const_iterator const_iterator;
+            
 	    using V::empty;
 	    using V::size;
 	    using V::assign;
+            using V::begin;
+            
 	    /// Default constructor.
 	    EntityVariableBase()
 	    {
