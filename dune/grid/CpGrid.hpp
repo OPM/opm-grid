@@ -618,10 +618,17 @@ namespace Dune
         {
             return cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
         }
+                
         int cellFace(int cell, int local_index) const
         {
             return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
         }
+
+        const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const
+        {
+            return cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+        }
+
         int faceCell(int face, int local_index) const
         {
             cpgrid::OrientedEntityTable<1,0>::row_type r
@@ -635,6 +642,10 @@ namespace Dune
             } else {
                 return use_first ? r[0].index() : -1;
             }
+        }
+        int numCellFaces() const
+        {
+            return cell_to_face_.dataSize();
         }
         int numFaceVertices(int face) const
         {
@@ -669,6 +680,67 @@ namespace Dune
         const Vector& cellCentroid(int cell) const
         {
             return geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
+        }
+
+        /// \brief An iterator over the centroids of the geometry of the entities.
+        /// \tparam codim The co-dimension of the entities.
+        template<int codim>
+        class CentroidIterator
+            : public RandomAccessIteratorFacade<CentroidIterator<codim>,
+                                                FieldVector<double, 3>,
+                                                const FieldVector<double, 3>&, int>
+        {
+        public:
+            /// \brief The type of the iterator over the codim geometries.
+            typedef typename std::vector<cpgrid::Geometry<3-codim, 3> >::const_iterator
+            GeometryIterator;
+            /// \brief Constructs a new iterator from an iterator over the geometries.
+            /// \param iter The iterator of the geometry objects.
+            CentroidIterator(GeometryIterator iter)
+            : iter_(iter)
+            {}
+
+            const FieldVector<double, 3>& dereference() const
+            {
+                return iter_->center();
+            }
+            void increment()
+            {
+                ++iter_;
+            }
+            const int* elementAt(int n)
+            {
+                return iter_[n]->center();
+            }
+            void advance(int n)
+            {
+                iter_+=n;
+            }
+            void decrement()
+            {
+                --iter_;
+            }
+            int distanceTo(const CentroidIterator& o)
+            {
+                return o-iter_;
+            }
+            bool equals(const CentroidIterator& o) const
+            {
+                return o==iter_;
+            }
+        private:
+            /// \brief The iterator over the underlying geometry objects.
+            GeometryIterator iter_;
+        };
+
+        CentroidIterator<0> beginCellCentroids() const
+        {
+            return CentroidIterator<0>(geomVector<0>().begin());
+        }
+
+        CentroidIterator<1> beginFaceCentroids() const
+        {
+            return CentroidIterator<1>(geomVector<1>().begin());
         }
 
         // Extra
