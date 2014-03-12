@@ -90,17 +90,17 @@ namespace mover
 template<class T, int i> class Mover;
 }
 
-/** 
- * @brief Struct that hods all the data needed to represent a 
+/**
+ * @brief Struct that hods all the data needed to represent a
  * Cpgrid.
  */
 class CpGridData
 {
     template<class T, int i> friend class mover::Mover;
-    
+
 private:
     CpGridData(const CpGridData& g);
-    
+
 public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
@@ -117,7 +117,7 @@ public:
     ~CpGridData();
     /// number of leaf entities per codim in this process
     int size(int codim) const;
-    
+
     /// number of leaf entities per geometry type in this process
     int size (GeometryType type) const
     {
@@ -190,7 +190,7 @@ public:
     {
         return use_unique_boundary_ids_;
     }
-    
+
     /// Set whether we want to have unique boundary ids.
     /// \param uids if true, each boundary intersection will have a unique boundary id.
     void setUniqueBoundaryIds(bool uids)
@@ -220,9 +220,9 @@ public:
     void distributeGlobalGrid(const CpGrid& grid,
                               const CpGridData& view_data,
                               const std::vector<int>& cell_part);
-    
+
     /// \brief communicate objects for all codims on a given level
-    /// \param data The data handle describing the data. Has to adhere to the 
+    /// \param data The data handle describing the data. Has to adhere to the
     /// Dune::DataHandleIF interface.
     /// \param iftype The interface to use for the communication.
     /// \param dir The direction of the communication along the interface (forward or backward).
@@ -232,17 +232,17 @@ public:
 private:
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    
+
     /// \brief Gather data on a global grid representation.
     /// \param data A data handle for getting or setting the data
     /// \param global_view The view of the global grid (to gather the data on)
     /// \param distributed_view The view of the distributed grid.
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
-    void gatherData(DataHandle& data, CpGridData* global_view, 
+    void gatherData(DataHandle& data, CpGridData* global_view,
                     CpGridData* distributed_view);
-    
-        
+
+
     /// \brief Gather data specific to given codimension on a global grid representation.
     /// \param data A data handle for getting or setting the data
     /// \param global_view The view of the global grid (to gather the data on)
@@ -250,9 +250,9 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     /// \tparam codim The codimension
     template<int codim, class DataHandle>
-    void gatherCodimData(DataHandle& data, CpGridData* global_data, 
+    void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
-    
+
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
     /// \param data A data handle for getting or setting the data
@@ -260,7 +260,7 @@ private:
     /// \param distributed_view The view of the distributed grid.
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
-    void scatterData(DataHandle& data, CpGridData* global_data, 
+    void scatterData(DataHandle& data, CpGridData* global_data,
                   CpGridData* distributed_data);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
@@ -271,7 +271,7 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     /// \tparam codim The codimension.
     template<int codim, class DataHandle>
-    void scatterCodimData(DataHandle& data, CpGridData* global_data, 
+    void scatterCodimData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data);
 
     /// \brief The type of the interface map for communication.
@@ -304,8 +304,8 @@ private:
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
-    /** 
-     * @brief Container for the lookup of attaching cells for each face. 
+    /**
+     * @brief Container for the lookup of attaching cells for each face.
      *
      * All faces have two neighbours except for those at the domain boundary.
      * @warn  Note that along the front partition there are invalid neighbours
@@ -316,7 +316,7 @@ private:
     Opm::SparseTable<int>             face_to_point_;
     /** @brief Vector that contains an arrays of the points of each cell*/
     std::vector< array<int,8> >       cell_to_point_;
-    /** @brief The size of the underlying logical cartesian grid. 
+    /** @brief The size of the underlying logical cartesian grid.
      *
      * In a Eclipse a cornerpoint grid has the same number of cells
      * in each pillar. Note that of these some may have no volume
@@ -325,7 +325,7 @@ private:
     std::array<int, 3>                logical_cartesian_size_;
     /** @brief vector with the gobal cell index for each cell.
      *
-     * Note the size of this container is determined by the 
+     * Note the size of this container is determined by the
      * underlying cartesian grid.
      */
     std::vector<int>                  global_cell_;
@@ -335,7 +335,7 @@ private:
     cpgrid::DefaultGeometryPolicy geometry_;
     /** @brief The type of a point in the grid. */
     typedef FieldVector<double, 3> PointType;
-    /** @brief The face normals of the grid. */ 
+    /** @brief The face normals of the grid. */
     cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
     /** @brief All corners of the grid. */
     std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve by removing it.
@@ -349,13 +349,13 @@ private:
     GlobalIdSet* global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     PartitionTypeIndicator* partition_type_indicator_;
-    
+
     /// \brief The type of the collective communication.
     typedef MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
     /// \brief Object for collective communication operations.
     CollectiveCommunication ccobj_;
-    
+
     // Boundary information (optional).
     bool use_unique_boundary_ids_;
 
@@ -368,7 +368,7 @@ private:
 
     /// \brief The parallel index set of the cells.
     ParallelIndexSet cell_indexset_;
-    
+
     /// \brief The type of the remote indices information
     typedef Dune::RemoteIndices<ParallelIndexSet> RemoteIndices;
     /*
@@ -381,17 +381,17 @@ private:
     // code deactivated, because users cannot access face indices and therefore
     // communication on faces makes no sense!
     /// \brief Interface from interior and border to interior and border for the faces.
-    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
+    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     face_interfaces_;
     */
     /// \brief Interface from interior and border to interior and border for the faces.
-    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap> 
+    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     point_interfaces_;
     /// \brief Interface for gathering and scattering cell data.
     InterfaceMap cell_gather_scatter_interface;
     /// \brief Interface for gathering and scattering point data.
     InterfaceMap point_gather_scatter_interface;
-    
+
 #endif
 
     // Return the geometry vector corresponding to the given codim.
@@ -418,7 +418,7 @@ namespace
 /// \param iftype The interface type.
 /// \param interfaces A tuple with the values order by interface type.
 template<class T>
-T& getInterface(InterfaceType iftype, 
+T& getInterface(InterfaceType iftype,
                 Dune::tuple<T,T,T,T,T>& interfaces)
 {
     switch(iftype)
@@ -605,7 +605,7 @@ struct Mover<DataHandle,3> : BaseMover<DataHandle>
 } // end mover namespace
 
 template<class DataHandle>
-void CpGridData::scatterData(DataHandle& data, CpGridData* global_data, 
+void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -617,15 +617,15 @@ void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
 }
 
 template<int codim, class DataHandle>
-void CpGridData::scatterCodimData(DataHandle& data, CpGridData* global_data, 
+void CpGridData::scatterCodimData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data)
 {
     CpGridData *gather_view, *scatter_view;
     gather_view=global_data;
     scatter_view=distributed_data;
-    
+
     mover::Mover<DataHandle,codim> mover(data, gather_view, scatter_view);
-    
+
     typedef typename ParallelIndexSet::const_iterator Iter;
     for(Iter index=distributed_data->cell_indexset_.begin(),
             end = distributed_data->cell_indexset_.end();
@@ -658,7 +658,7 @@ template<class DataHandle>
 struct GlobalIndexSizeGatherer
 {
     GlobalIndexSizeGatherer(DataHandle& data_,
-                            std::vector<int>& ownedGlobalIndices_, 
+                            std::vector<int>& ownedGlobalIndices_,
                             std::vector<int>& ownedSizes_)
         : data(data_), ownedGlobalIndices(ownedGlobalIndices_), ownedSizes(ownedSizes_)
     {}
@@ -681,7 +681,7 @@ struct DataGatherer
                  DataHandle& data_)
         : buffer(buffer_), data(data_)
     {}
-    
+
     template<class T, class E>
     void operator()(T& /* it */, E& entity)
     {
@@ -694,7 +694,7 @@ struct DataGatherer
 }
 
 template<class DataHandle>
-void CpGridData::gatherData(DataHandle& data, CpGridData* global_data, 
+void CpGridData::gatherData(DataHandle& data, CpGridData* global_data,
                             CpGridData* distributed_data)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -706,12 +706,12 @@ void CpGridData::gatherData(DataHandle& data, CpGridData* global_data,
 }
 
 template<int codim, class DataHandle>
-void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data, 
+void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
                                  CpGridData* distributed_data)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     // Get the mapping to global index from  the global id set
-    const std::vector<int>& mapping = 
+    const std::vector<int>& mapping =
         static_cast<GlobalIdMapping*>(distributed_data
                                       ->global_id_set_)->getMapping<codim>();
     typedef std::vector<int>::const_iterator Iter;
@@ -725,7 +725,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
 
     GlobalIndexSizeGatherer<DataHandle> gisg(data, owned_global_indices, owned_sizes);
     visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gisg);
-    
+
     // communicate the number of indices that each processor sends
     int no_indices=owned_sizes.size();
     std::vector<int> no_indices_to_recv(distributed_data->ccobj_.size());
@@ -762,7 +762,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
                    std::plus<std::size_t>());
     // Compute the number of data items we will receive
     int no_data_recv = displ[displ.size()-1];//+global_sizes[displ.size()-1];
-    
+
     // Collect the data to send, gather it
     MoveBuffer<typename DataHandle::DataType> local_data_buffer, global_data_buffer;
     local_data_buffer.resize(no_data_send[distributed_data->ccobj_.rank()]);
@@ -779,7 +779,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
     int offset=0;
     for(int i=0; i< codim; ++i)
         offset+=global_data->size(i);
-    
+
     typename std::vector<int>::const_iterator s=global_sizes.begin();
     for(typename std::vector<int>::const_iterator i=global_indices.begin(),
             end=global_indices.end();
