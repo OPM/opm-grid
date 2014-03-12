@@ -659,7 +659,7 @@ struct GlobalIndexSizeGatherer
 {
     GlobalIndexSizeGatherer(DataHandle& data_,
                             std::vector<int>& ownedGlobalIndices_, 
-                            std::vector<std::size_t>& ownedSizes_)
+                            std::vector<int>& ownedSizes_)
         : data(data_), ownedGlobalIndices(ownedGlobalIndices_), ownedSizes(ownedSizes_)
     {}
 
@@ -671,7 +671,7 @@ struct GlobalIndexSizeGatherer
     }
     DataHandle& data;
     std::vector<int>& ownedGlobalIndices;
-    std::vector<std::size_t>& ownedSizes;
+    std::vector<int>& ownedSizes;
 };
 
 template<class DataHandle>
@@ -719,43 +719,43 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
     // Get the global indices and data size for the entities whose data is
     // to be sent, i.e. the ones that we own.
     std::vector<int>         owned_global_indices;
-    std::vector<std::size_t> owned_sizes;
+    std::vector<int> owned_sizes;
     owned_global_indices.reserve(mapping.size());
     owned_sizes.reserve(mapping.size());
-   
+
     GlobalIndexSizeGatherer<DataHandle> gisg(data, owned_global_indices, owned_sizes);
     visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gisg);
     
     // communicate the number of indices that each processor sends
-    std::size_t no_indices=owned_sizes.size();
-    std::vector<std::size_t> no_indices_to_recv(distributed_data->ccobj_.size());
+    int no_indices=owned_sizes.size();
+    std::vector<int> no_indices_to_recv(distributed_data->ccobj_.size());
     distributed_data->ccobj_.allgather(&no_indices, 1, &(no_indices_to_recv[0]));
     // compute size of the vector capable for receiving all indices
     // and allgather the global indices and the sizes.
     // calculate displacements
     std::vector<int> displ(distributed_data->ccobj_.size()+1, 0);
     std::transform(displ.begin(), displ.end()-1, no_indices_to_recv.begin(), displ.begin()+1,
-                   std::plus<std::size_t>());
+                   std::plus<int>());
     int global_size=displ[displ.size()-1];//+no_indices_to_recv[displ.size()-1];
     std::vector<int>         global_indices(global_size);
-    std::vector<std::size_t> global_sizes(global_size);
+    std::vector<int> global_sizes(global_size);
     MPI_Allgatherv(&(owned_global_indices[0]), no_indices, MPITraits<int>::getType(),
-                   &(global_indices[0]), &global_size, &(displ[0]), 
+                   &(global_indices[0]), &(no_indices_to_recv[0]), &(displ[0]),
                    MPITraits<int>::getType(),
                    distributed_data->ccobj_);
-    MPI_Allgatherv(&(owned_sizes[0]), no_indices, MPITraits<std::size_t>::getType(),
-                   &(global_sizes[0]), &global_size, &(displ[0]), 
-                   MPITraits<std::size_t>::getType(),
+    MPI_Allgatherv(&(owned_sizes[0]), no_indices, MPITraits<int>::getType(),
+                   &(global_sizes[0]), &(no_indices_to_recv[0]), &(displ[0]),
+                   MPITraits<int>::getType(),
                    distributed_data->ccobj_);
     std::vector<int>().swap(owned_global_indices); // free data for reuse.
     // Compute the number of data items to send
-    std::vector<std::size_t> no_data_send(distributed_data->ccobj_.size());
-    for(typename std::vector<std::size_t>::iterator begin=no_data_send.begin(),
+    std::vector<int> no_data_send(distributed_data->ccobj_.size());
+    for(typename std::vector<int>::iterator begin=no_data_send.begin(),
             i=begin, end=no_data_send.end(); i!=end; ++i)
         *i = std::accumulate(global_sizes.begin()+displ[i-begin],
                             global_sizes.begin()+displ[i-begin+1], std::size_t());
     // free at least some memory that can be reused.
-    std::vector<std::size_t>().swap(owned_sizes);
+    std::vector<int>().swap(owned_sizes);
     // compute the displacements for receiving with allgatherv
     displ[0]=0;
     std::transform(displ.begin(), displ.end()-1, no_data_send.begin(), displ.begin()+1,
@@ -772,7 +772,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
     visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gatherer);
     MPI_Allgatherv(&(local_data_buffer.buffer_[0]), local_data_buffer.buffer_.size(),
                    MPITraits<typename DataHandle::DataType>::getType(),
-                   &(global_data_buffer.buffer_[0]), &no_data_recv, &(displ[0]), 
+                   &(global_data_buffer.buffer_[0]), &(no_data_send[0]), &(displ[0]),
                    MPITraits<typename DataHandle::DataType>::getType(),
                    distributed_data->ccobj_);
     Entity2IndexDataHandle<DataHandle, codim> edata(*global_data, data);
@@ -780,7 +780,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
     for(int i=0; i< codim; ++i)
         offset+=global_data->size(i);
     
-    typename std::vector<std::size_t>::const_iterator s=global_sizes.begin();
+    typename std::vector<int>::const_iterator s=global_sizes.begin();
     for(typename std::vector<int>::const_iterator i=global_indices.begin(),
             end=global_indices.end();
         i!=end; ++s, ++i)
