@@ -9,8 +9,13 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
+#ifdef HAVE_DUNE_GRID_CHECKS
+// The header below are not installed for dune-grid
+// Therefore we need to deactivate testing, if they
+// not available
 #include <dune/grid/test/checkpartition.cc>
 #include <dune/grid/test/checkcommunicate.cc>
+#endif
 
 #if HAVE_MPI
 class MPIError {
@@ -259,8 +264,10 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }else
     {
+#ifdef HAVE_DUNE_GRID_CHECKS
         //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as one has to patch cpgrid to support Intersection::geometryInInside and Outside
         checkPartitionType( grid.leafView() );
+#endif
         std::vector<int> point_ids(grid.leafIndexSet().size(3)), cell_ids(grid.leafIndexSet().size(0));
         LoadBalanceGlobalIdDataHandle lb_gid_data(unbalanced_gid_set,
                                                   grid,
