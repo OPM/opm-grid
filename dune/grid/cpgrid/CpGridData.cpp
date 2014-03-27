@@ -611,7 +611,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     typedef RemoteIndexListModifier<RemoteIndices::ParallelIndexSet, RemoteIndices::Allocator,
                                     false> Modifier;
     typedef RemoteIndices::RemoteIndex RemoteIndex;
-    RemoteIndices cell_remote_indices(cell_indexset_, cell_indexset_, ccobj_);
+    cell_remote_indices_.setIndexSets(cell_indexset_, cell_indexset_, ccobj_);
 
 
     // Create a map of ListModifiers
@@ -619,7 +619,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         std::map<int,Modifier> modifiers;
         for(CellCounter::NeighborIterator n=cell_counter.neighbors.begin(), end=cell_counter.neighbors.end();
             n != end; ++n)
-            modifiers.insert(std::make_pair(*n, cell_remote_indices.getModifier<false,false>(*n)));
+            modifiers.insert(std::make_pair(*n, cell_remote_indices_.getModifier<false,false>(*n)));
         // Insert remote indices. For each entry in the index set, see wether there are overlap occurences and add them.
         for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
@@ -654,7 +654,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     else
     {
         // Force update of the sync counter in the remote indices.
-        cell_remote_indices.getModifier<false,false>(0);
+        cell_remote_indices_.getModifier<false,false>(0);
     }
 
     // We can identify existing cells with the help of the index set.
@@ -929,16 +929,16 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 
     // Compute the interface information for cells
     get<InteriorBorder_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
+        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
     get<Overlap_OverlapFront_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
+        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::overlap>(),
                EnumItem<AttributeSet, AttributeSet::overlap>());
     get<Overlap_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::overlap>(),
+        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::overlap>(),
                                  AllSet<AttributeSet>());
     get<All_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, AllSet<AttributeSet>(), AllSet<AttributeSet>());
+        .build(cell_remote_indices_, AllSet<AttributeSet>(), AllSet<AttributeSet>());
 
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.

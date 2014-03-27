@@ -53,6 +53,9 @@
 #else
 #include <dune/common/mpihelper.hh>
 #endif
+#ifdef HAVE_DUNE_ISTL
+#include <dune/istl/owneroverlapcopy.hh>
+#endif
 #include <array>
 #include <dune/common/tuples.hh>
 #include "OrientedEntityTable.hpp"
@@ -376,22 +379,27 @@ private:
     // Boundary information (optional).
     bool use_unique_boundary_ids_;
 
+#ifdef HAVE_DUNE_ISTL
+    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+#else
     /// \brief The type of the set of the attributes
     enum AttributeSet{owner, overlap};
+#endif
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+
     /// \brief The type of the parallel index set
-    typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet> > ParallelIndexSet;
+    typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet>,512> ParallelIndexSet;
 
     /// \brief The parallel index set of the cells.
     ParallelIndexSet cell_indexset_;
 
     /// \brief The type of the remote indices information
     typedef Dune::RemoteIndices<ParallelIndexSet> RemoteIndices;
-    /*
+    
     /// \brief The remote index information for the cells.
-    RemoteIndices cell_remote_indices;
-    */
+    RemoteIndices cell_remote_indices_;
+    
     /// \brief Communication interface for the cells.
     tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
     /*
