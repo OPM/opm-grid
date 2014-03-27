@@ -9,7 +9,7 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
-#ifdef HAVE_DUNE_GRID_CHECKS
+#if HAVE_DUNE_GRID_CHECKS
 // The header below are not installed for dune-grid
 // Therefore we need to deactivate testing, if they
 // not available
@@ -264,7 +264,7 @@ BOOST_AUTO_TEST_CASE(distribute)
         }
     }else
     {
-#ifdef HAVE_DUNE_GRID_CHECKS
+#if HAVE_DUNE_GRID_CHECKS
         //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as one has to patch cpgrid to support Intersection::geometryInInside and Outside
         checkPartitionType( grid.leafView() );
 #endif
