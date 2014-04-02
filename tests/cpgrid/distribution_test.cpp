@@ -192,6 +192,9 @@ BOOST_AUTO_TEST_CASE(distribute)
     std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
 
     grid.createCartesian(dims, size);
+#if HAVE_MPI
+    BOOST_REQUIRE(grid.comm()==MPI_COMM_SELF);
+#endif
     std::vector<int> cell_indices, face_indices, point_indices;
     std::vector<Dune::CpGrid::Traits::Codim<0>::Geometry::GlobalCoordinate > cell_centers, face_centers, point_centers;
     int cell_size = grid.leafView().size(0);
@@ -229,6 +232,10 @@ BOOST_AUTO_TEST_CASE(distribute)
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
 
     grid.loadBalance(data);
+
+#if HAVE_MPI
+    BOOST_REQUIRE(grid.comm()!=MPI_COMM_SELF||MPI_COMM_WORLD==MPI_COMM_SELF);
+#endif
     if(procs==1)
     {
         // Check whether the scattered grid is identical to the orinal one.
