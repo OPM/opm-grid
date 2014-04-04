@@ -41,7 +41,7 @@
 #include <vector>
 
 #include <opm/core/utility/ErrorMacros.hpp>
-#include "../CpGrid.hpp"
+#include "CpGridData.hpp"
 
 namespace Dune
 {
@@ -54,7 +54,7 @@ namespace Dune
 		      cpgrid::OrientedEntityTable<1, 0>& f2c,
 		      std::vector<array<int,8> >& c2p);
 	void readGeom(std::istream& geom,
-		      cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+		      cpgrid::DefaultGeometryPolicy& gpol,
 		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
         void readMap (std::istream& map,
                       std::vector<int>& global_cell);
@@ -63,7 +63,7 @@ namespace Dune
 
 
     /// Read the Sintef legacy grid format ('topogeom').
-    void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
+    void cpgrid::CpGridData::readSintefLegacyFormat(const std::string& grid_prefix)
     {
 	std::string topofilename = grid_prefix + "-topo.dat";
 	{
@@ -216,7 +216,7 @@ namespace Dune
 	};
 
 	void readGeom(std::istream& geom,
-		      cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+		      cpgrid::DefaultGeometryPolicy& gpol,
 		      cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals)
 	{
 	    std::string geom_header;
@@ -322,7 +322,7 @@ namespace Dune
 	    pointgeom.assign(pg.begin(), pg.end());
 
 	    // The final, combined object (yes, a lot of copying goes on here).
-	    cpgrid::DefaultGeometryPolicy<CpGrid> gp(cellgeom, facegeom, pointgeom);
+	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
 	}

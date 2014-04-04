@@ -62,6 +62,9 @@ int testSinglePartition(const array<int, 3>& dims,
     int my_num_part = -1;
     std::vector<int> cell_part;
     partition(g, split, my_num_part, cell_part);
+    std::vector<std::set<int> > overlap;
+    addOverlapLayer(g, cell_part, overlap, my_num_part, true);
+    
     // Check.
     if (my_num_part != num_part || int(cell_part.size()) != num_cells) {
 	return EXIT_FAILURE;

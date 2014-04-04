@@ -15,7 +15,8 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2013 Statoil ASA.
+  Copyright 2013 Dr. Markus Blatt - HPC-Simulation-Software & Services
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -200,10 +201,11 @@ namespace Dune
 	}
 
 	// Initial partitioning depending on (ijk) coordinates.
-	const int num_initial = initial_split[0]*initial_split[1]*initial_split[2];
+	std::vector<int>::size_type  num_initial = 
+            initial_split[0]*initial_split[1]*initial_split[2];
 	const std::vector<int>& lc_ind = grid.globalCell();
-	std::vector<int> num_in_part(num_initial, 0);
-	std::vector<int> my_part(grid.size(0), -1);
+	std::vector<int> num_in_part(num_initial, 0); // no cells of partitions
+	std::vector<int> my_part(grid.size(0), -1); // contains partition number of cell
 	IndexToIJK ijk_coord(lc_size);
 	for (int i = 0; i < grid.size(0); ++i) {
 	    coord_t ijk = ijk_coord(lc_ind[i]);
@@ -213,9 +215,9 @@ namespace Dune
 	}
 
 	// Renumber partitions.
-	std::vector<int> num_to_subtract(num_initial);
+	std::vector<int> num_to_subtract(num_initial); // if partitions are empty they do not get a number.
 	num_to_subtract[0] = 0;
-	for (int i = 1; i < num_initial; ++i) {
+	for (std::vector<int>::size_type i = 1; i < num_initial; ++i) {
 	    num_to_subtract[i] = num_to_subtract[i-1];
 	    if (num_in_part[i-1] == 0) {
 		++num_to_subtract[i];
@@ -232,5 +234,40 @@ namespace Dune
 	ensureConnectedPartitions(grid, num_part, cell_part, recursive);
     }
 
+    void addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part, 
+                         std::vector<std::set<int> >& cell_overlap, int mypart, bool all)
+    {
+        cell_overlap.resize(cell_part.size());
+        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+        for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>(); 
+             it != grid.leafend<0>(); ++it) {
+            int index = ix.index(*it);
+            int owner = -1;
+            if(cell_part[index]==mypart)
+                owner = mypart;
+            else
+            {
+                if(all)
+                    owner=cell_part[index];
+                else
+                    continue;
+            }
+            for (CpGrid::LeafIntersectionIterator iit = it->ileafbegin(); iit != it->ileafend(); ++iit) {
+                if (iit->neighbor()) {
+                    int nb_index = ix.index(*(iit->outside()));
+                    if(cell_part[nb_index]!=owner)
+                    {
+                        cell_overlap[nb_index].insert(owner);
+                        cell_overlap[index].insert(cell_part[nb_index]);
+                    }
+                }
+            }
+        }
+        // \TODO Add cells in the corner to overlap region.
+}
+
+        
+        
+        
 } // namespace Dune
 

@@ -38,29 +38,40 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/grid/common/gridenums.hh>
 #include "Entity.hpp"
+#include "PartitionIteratorRule.hpp"
 #include <opm/core/utility/ErrorMacros.hpp>
 
 namespace Dune
 {
     namespace cpgrid
     {
+        class CpGridData;
 
-
-
+    
 	/// Iterator intended to be used as LeafIterator and LevelIterator
 	/// (no difference due to no adaptivity) for CpGrid.
 	/// This could have been a random access iterator, perhaps we will
 	/// use a facade to do this later.
-	template<int cd, PartitionIteratorType pitype, class GridType>
-	class Iterator : public EntityPointer<cd, GridType>
+	template<int cd, PartitionIteratorType pitype>
+	class Iterator : public EntityPointer<cd>
 	{
 	public:
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    Iterator(const GridType& grid, int index, bool orientation)
-		: EntityPointer<cd, GridType>(grid, EntityRep<cd>(index, orientation))
+	    Iterator(const CpGridData& grid, int index, bool orientation)
+		: EntityPointer<cd>(grid,
+                                    // If the partition is empty, goto to end iterator!
+                                    EntityRep<cd>(PartitionIteratorRule<pitype>::emptySet?grid.size(cd):index,
+                                                  orientation)),
+                  noEntities_(grid.size(cd))
 	    {
+                if(rule_.fullSet || rule_.emptySet)
+                    return;
+                
+                while(this->index()<noEntities_ && rule_.isInvalid(*this))
+                    EntityRep<cd>::increment();
+                
 	    }
 
 	    /// Increment operator.
@@ -72,23 +83,30 @@ namespace Dune
 	    Iterator& operator++()
 	    {
 		EntityRep<cd>::increment();
-		return *this;
+                if(rule_.fullSet || rule_.emptySet)
+                    return *this;
+                while(this->index()<noEntities_ && rule_.isInvalid(*this))
+                    EntityRep<cd>::increment();
+                return *this;
 	    }
+        private:
+            /// \brief The number of Entities with codim cd.
+            int noEntities_;
+            PartitionIteratorRule<pitype> rule_;
 	};
 
 
 
 
 	/// Only needs to provide interface for doing nothing.
-	template <class GridType>
-	class HierarchicIterator : public EntityPointer<0, GridType>
+	class HierarchicIterator : public EntityPointer<0>
 	{
 	public:
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    HierarchicIterator(const GridType& grid)
-		: EntityPointer<0, GridType>(grid, EntityRep<0>::InvalidIndex, true )
+	    HierarchicIterator(const CpGridData& grid)
+		: EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
 	    {
 	    }
 

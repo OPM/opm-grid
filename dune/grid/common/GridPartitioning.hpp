@@ -14,8 +14,9 @@
 //===========================================================================
 
 /*
-  Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
+  Copyright 2009, 2010, 2013 SINTEF ICT, Applied Mathematics.
   Copyright 2009, 2010 Statoil ASA.
+  Copyright 2013 Dr. Markus Blatt - HPC-Simulation-Software & Services
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -38,11 +39,20 @@
 
 #include <vector>
 #include <array>
+#include <set>
 
 namespace Dune
 {
 
     class CpGrid;
+
+    struct OrderByFirst
+    {
+        bool operator()(const std::pair<int,int>& o, const std::pair<int,int>& v)
+        {
+            return o.first < v.first;
+        }
+    };
 
     /// Partition a CpGrid based on (ijk) coordinates, with splitting to ensure that each partition is connected.
     /// @param[in] grid the grid to partition
@@ -57,6 +67,19 @@ namespace Dune
 		   int& num_part,
 		   std::vector<int>& cell_part,
 		   bool recursive = false);
+
+/// \brief Adds a layer of overlap cells to a partitioning.
+/// \param[in] grid The grid that is partitioned.
+/// \param[in] cell_part a vector containing each cells partition number.
+/// \param[out] cell_overlap a vector of sets that contains for each cell all
+///             the partition numbers that it is an overlap cell of.
+/// \param[in] mypart The partition number of the processor.
+/// \param[in] all Whether to compute the overlap for all partions or just the
+///            one associated by mypart.
+     void addOverlapLayer(const CpGrid& grid,
+                          const std::vector<int>& cell_part,
+                          std::vector<std::set<int> >& cell_overlap,
+                          int mypart, bool all=false);
 
 } // namespace Dune
 

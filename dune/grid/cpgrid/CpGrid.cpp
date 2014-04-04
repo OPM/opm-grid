@@ -32,9 +32,15 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
 #include "config.h"
-
+#endif
+#if HAVE_MPI
+#include "mpi.h"
+#endif
 #include "../CpGrid.hpp"
+#include "CpGridData.hpp"
+#include <dune/grid/common/GridPartitioning.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <fstream>
@@ -43,8 +49,17 @@
 namespace Dune
 {
 
+    CpGrid::CpGrid()
+        : data_( new cpgrid::CpGridData(*this) ), current_view_data_(data_),
+          distributed_data_()
+    {}
 
-
+    CpGrid::~CpGrid()
+    {
+        delete data_;
+        if(distributed_data_)
+            delete distributed_data_;
+    }
 
     /// Initialize the grid.
     void CpGrid::init(const Opm::parameter::ParameterGroup& param)
@@ -73,6 +88,57 @@ namespace Dune
     }
 
 
+bool CpGrid::scatterGrid()
+{
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    if(distributed_data_)
+    {
+        std::cerr<<"There is already a distributed version of the grid."
+                 << " Maybe scatterGrid was called before?"<<std::endl;
+        return false;
+    }
+    
+    CollectiveCommunication cc(MPI_COMM_WORLD);
+    
+    std::vector<int> cell_part(current_view_data_->global_cell_.size());
+    int my_num=cc.rank();
+    int  num_parts=-1;
+    std::array<int, 3> initial_split;
+    initial_split[0]=initial_split[1]=std::pow(cc.size(), 1.0/3.0);
+    initial_split[2]=cc.size()/(initial_split[0]*initial_split[1]);
+    partition(*this, initial_split, num_parts, cell_part);
+    
+    
+    MPI_Comm new_comm = MPI_COMM_NULL;
+    
+    if(num_parts < cc.size())
+    {
+        std::vector<int> ranks(num_parts);
+        for(int i=0; i<num_parts; ++i)
+            ranks[i]=i;
+        MPI_Group new_group;
+        MPI_Group old_group;
+        MPI_Comm_group(cc, &old_group);
+        MPI_Group_incl(old_group, num_parts, &(ranks[0]), &new_group);
+        
+        // Not all procs take part in the parallel computation
+        MPI_Comm_create(cc, new_group, &new_comm);
+        cc=CollectiveCommunication(new_comm);
+    }else{
+        new_comm = cc;
+    }
+    if(my_num<cc.size())
+    {
+        distributed_data_ = new cpgrid::CpGridData(new_comm);
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+    }
+    current_view_data_ = distributed_data_;
+    return true;
+#else
+    std::cerr<<"CpGrid::scatterGrid() only performs computations with MPI support."<<std::endl;
+    return false;
+#endif
+}
 
 
     void CpGrid::createCartesian(const array<int, 3>& dims,
@@ -114,36 +180,36 @@ namespace Dune
 	g.coord = &coord[0];
 	g.zcorn = &zcorn[0];
 	g.actnum = &actnum[0];
-	processEclipseFormat(g, 0.0, false, false);
+	current_view_data_->processEclipseFormat(g, 0.0, false, false);
     }
 
-
-
-
-    void CpGrid::computeUniqueBoundaryIds()
+    void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
     {
-	// Perhaps we should make available a more comprehensive interface
-	// for EntityVariable, so that we don't have to build a separate
-	// vector and assign() to unique_boundary_ids_ at the end.
-	int num_faces = face_to_cell_.size();
-	std::vector<int> ids(num_faces, 0);
-	int count = 0;
-	for (int i = 0; i < num_faces; ++i) {
-	    cpgrid::EntityRep<1> face(i, true);
-	    if (face_to_cell_[face].size() == 1) {
-		// It's on the boundary.
-		// Important! Since boundary ids run from 1 to n,
-		// we use preincrement instead of postincrement below.
-		ids[i] = ++count;
-	    }
-	}
-	unique_boundary_ids_.assign(ids.begin(), ids.end());
-#ifdef VERBOSE
-	std::cout << "computeUniqueBoundaryIds() gave all boundary intersections\n"
-		  << "unique boundaryId()s ranging from 1 to " << count << std::endl;
-#endif
+        current_view_data_->readSintefLegacyFormat(grid_prefix);
+    }
+    void CpGrid::writeSintefLegacyFormat(const std::string& grid_prefix) const
+    {
+        current_view_data_->writeSintefLegacyFormat(grid_prefix);
+    }
+    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, 
+                                   bool periodic_extension, bool turn_normals)
+    {
+        current_view_data_->readEclipseFormat(filename, z_tolerance, periodic_extension,
+                                              turn_normals);
     }
 
+    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& input_parser, 
+                                  double z_tolerance, bool periodic_extension, 
+                                  bool turn_normals, bool clip_z)
+    {
+        current_view_data_->processEclipseFormat(input_parser, z_tolerance, periodic_extension,
+                                                 turn_normals, clip_z);
+    }
 
-
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, 
+                                      bool remove_ij_boundary, bool turn_normals)
+    {
+        current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
+    }
+    
 } // namespace Dune

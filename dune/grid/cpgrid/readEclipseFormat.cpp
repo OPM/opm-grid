@@ -37,7 +37,7 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include "../CpGrid.hpp"
+#include "CpGridData.hpp"
 #include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
@@ -72,7 +72,7 @@ namespace Dune
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
 		       const std::vector<int>& face_to_output_face,
-		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+		       cpgrid::DefaultGeometryPolicy& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals);
@@ -81,9 +81,10 @@ namespace Dune
 
 
 
-
+namespace cpgrid
+{
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
+    void CpGridData::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
     {
 	// Read eclipse file data.
 #ifdef VERBOSE
@@ -98,7 +99,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
     {
 	Opm::EclipseGridInspector inspector(parser);
 
@@ -170,7 +171,7 @@ namespace Dune
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
 	// Process.
 #ifdef VERBOSE
@@ -219,6 +220,7 @@ namespace Dune
 #endif
     }
 
+    } // end namespace cpgrid
 
 
     // ---- Implementation details below ----
@@ -699,7 +701,7 @@ namespace Dune
 		       const cpgrid::OrientedEntityTable<0, 1>& c2f,
 		       const std::vector<array<int,8> >& c2p,
 		       const std::vector<int>& face_to_output_face,
-		       cpgrid::DefaultGeometryPolicy<CpGrid>& gpol,
+		       cpgrid::DefaultGeometryPolicy& gpol,
 		       cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
 		       std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals)
@@ -840,7 +842,7 @@ namespace Dune
                     face_normals[i] *= -1.0;
                 }
             }
-	    cpgrid::DefaultGeometryPolicy<CpGrid> gp(cellgeom, facegeom, pointgeom);
+	    cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
 	    gpol = gp;
 	    normals.assign(face_normals.begin(), face_normals.end());
 #ifdef VERBOSE
@@ -850,9 +852,5 @@ namespace Dune
 
 
     } // anon namespace
-
-
-
-
 } // namespace Dune
 

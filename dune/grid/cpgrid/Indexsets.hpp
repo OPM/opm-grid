@@ -36,9 +36,10 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPM_INDEXSETS_HEADER
 #define OPM_INDEXSETS_HEADER
 
-#include <vector>
+#include <dune/common/nullptr.hh>
 #include <dune/geometry/type.hh>
 #include <opm/core/utility/ErrorMacros.hpp>
+#include "GlobalIdMapping.hpp"
 namespace Dune
 {
     namespace cpgrid
@@ -47,7 +48,6 @@ namespace Dune
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
-	template <class GridType>
 	class IndexSet
 	{
 	public:
@@ -58,7 +58,7 @@ namespace Dune
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
-	    IndexSet(const GridType& grid)
+	    IndexSet(const CpGridData& grid)
 		: grid_(grid)
 	    {
 		GeometryType t;
@@ -68,6 +68,10 @@ namespace Dune
 		geom_types_[3].push_back(t);
 	    }
 
+            /// \brief Destructor.
+            ~IndexSet()
+            {}
+            
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
@@ -103,7 +107,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template<int cd>
-	    IndexType index(const typename GridType::template Codim<cd>::Entity& e) const 
+	    IndexType index(const cpgrid::Entity<cd>& e) const 
 	    {
 		return e.index(); 
 	    }
@@ -125,7 +129,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template <int cc>
-	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i) const 
 	    {
 		return index(e.template subEntity<cc>(i));
 	    }
@@ -135,13 +139,13 @@ namespace Dune
 	    /// @tparam
 	    /// @return
 	    /// @param
-	    IndexType subIndex(const typename GridType::template Codim<0>::Entity& e, int i, unsigned int cc) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const 
 	    {
 		switch(cc) {
-		case 0: return index(e.template subEntity<0>(i));
-		case 1: return index(e.template subEntity<1>(i));
-		case 2: return index(e.template subEntity<2>(i));
-		case 3: return index(e.template subEntity<3>(i));
+		case 0: return index(e.subEntity<0>(i));
+		case 1: return index(e.subEntity<1>(i));
+		case 2: return index(e.subEntity<2>(i));
+		case 3: return index(e.subEntity<3>(i));
 		default: OPM_THROW(std::runtime_error, "Codimension " << cc << " not supported.");
 		}
 
@@ -159,56 +163,112 @@ namespace Dune
 	    }
 
 	private:
-	    const GridType& grid_;
+	    const CpGridData& grid_;
 	    std::vector<GeometryType> geom_types_[4];
 	};
 
 
-	template <class GridType>
 	class IdSet
 	{
 	public:
 	    typedef int IdType;
 
-	    IdSet(const GridType& grid)
+	    IdSet(const CpGridData& grid)
 		: grid_(grid)
 	    {
 	    }
 
 	    template<int cc>
-	    IdType id(const typename GridType::template Codim<cc>::Entity& e) const 
+	    IdType id(const cpgrid::Entity<cc>& e) const 
 	    {
-		return id(e);
+		return computeId(e);
 	    }
 
 	    template<class EntityType>
 	    IdType id(const EntityType& e) const 
 	    {
-        IdType myId = 0;
-        for( int c=0; c<EntityType::codimension; ++c ) 
-          myId += grid_.leafIndexSet().size( c );
-        return  myId + e.index();
+                return computeId(e);
 	    }
 
 	    template<int cc>
-	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i) const 
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
 	    {
 		return id(e.template subEntity<cc>(i));
 	    }
 
-	    IdType subId(const typename GridType::template Codim<0>::Entity& e, int i, int cc) const
+	    IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
 	    {
 		switch (cc) {
-		case 0: return id(e.template subEntity<0>(i));
-		case 1: return id(e.template subEntity<1>(i));
-		case 2: return id(e.template subEntity<2>(i));
-		case 3: return id(e.template subEntity<3>(i));
+		case 0: return id(e.subEntity<0>(i));
+		case 1: return id(e.subEntity<1>(i));
+		case 2: return id(e.subEntity<2>(i));
+		case 3: return id(e.subEntity<3>(i));
 		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
 		}
 		return -1;
 	    }
 	private:
-	    const GridType& grid_;
+            template<class EntityType>
+            IdType computeId(const EntityType& e) const
+            {
+                IdType myId = 0;
+                for( int c=0; c<EntityType::codimension; ++c ) 
+                    myId += grid_.indexSet().size( c );
+                return  myId + e.index();
+            }
+	    const CpGridData& grid_;
+	};
+
+
+        class GlobalIdSet : GlobalIdMapping
+	{
+            friend class CpGridData;
+	public:
+	    typedef int IdType;
+
+	    void swap(std::vector<int>& cellMapping,
+                      std::vector<int>& faceMapping,
+                      std::vector<int>& pointMapping)
+	    {
+                idSet_=nullptr;
+                GlobalIdMapping::swap(cellMapping,
+                                      faceMapping,
+                                      pointMapping);
+	    }
+            GlobalIdSet(const IdSet* ids)
+            : idSet_(ids)
+            {}
+            GlobalIdSet()
+                : idSet_()
+            {}
+	    template<class EntityType>
+	    IdType id(const EntityType& e) const 
+	    {
+                if(idSet_)
+                    return idSet_->id(e);
+                else 
+                    return this->template getMapping<EntityType::codimension>()[e.index()];
+	    }
+
+	    template<int cc>
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
+	    {
+		return id(e.template subEntity<cc>(i));
+	    }
+
+	    IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
+	    {
+		switch (cc) {
+		case 0: return id(*e.subEntity<0>(i));
+                //case 1: return id(*e.subEntity<1>(i));
+                //case 2: return id(*e.subEntity<2>(i));
+		case 3: return id(*e.subEntity<3>(i));
+		default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
+		}
+		return -1;
+	    }
+	private:
+            const IdSet* idSet_;
 	};
 
 

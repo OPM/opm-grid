@@ -94,6 +94,8 @@ namespace Dune
 	class EntityRep
 	{
 	public:
+            enum{ codimension=codim};
+            
 	    /// Default constructor.
 	    EntityRep()
 		: entityrep_(0)
@@ -206,6 +208,7 @@ namespace Dune
 	template <typename T>
 	class EntityVariableBase : private std::vector<T>
 	{
+            friend class CpGridData;
 	public:
 	    typedef std::vector<T> V;
             typedef typename std::vector<T>::iterator iterator;

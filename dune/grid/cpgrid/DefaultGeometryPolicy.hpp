@@ -51,7 +51,6 @@ namespace Dune
 
 	/// @brief
 	/// @todo Doc me!
-	template <class GridType>
 	class DefaultGeometryPolicy
 	{
 	public:
@@ -103,9 +102,8 @@ namespace Dune
 	    /// @tparam
 	    /// @param
 	    /// @return
-	    template <class GridType>
 	    static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
-	    value(const DefaultGeometryPolicy<GridType>& geom)
+	    value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.cell_geom_;
 	    }
@@ -120,9 +118,8 @@ namespace Dune
 	    /// @tparam
 	    /// @param
 	    /// @return
-	    template <class GridType>
 	    static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
-	    value(const DefaultGeometryPolicy<GridType>& geom)
+	    value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.face_geom_;
 	    }
@@ -136,10 +133,9 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @tparam
 	    /// @param
-	    /// @return 
-	    template <class GridType>
+	    /// @return
 	    static const EntityVariable<cpgrid::Geometry<0, 3>, 3>&
-	    value(const DefaultGeometryPolicy<GridType>& geom)
+	    value(const DefaultGeometryPolicy& geom)
 	    {
 		return geom.point_geom_;
 	    }
