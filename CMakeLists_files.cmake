@@ -91,9 +91,11 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/CpGridData.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
 	dune/grid/cpgrid/dgfparser.hh
+	dune/grid/cpgrid/Entity2IndexDataHandle.hpp
 	dune/grid/cpgrid/Entity.hpp
 	dune/grid/cpgrid/EntityRep.hpp
 	dune/grid/cpgrid/Geometry.hpp
+	dune/grid/cpgrid/GlobalIdMapping.hpp
 	dune/grid/CpGrid.hpp
 	dune/grid/cpgrid/Indexsets.hpp
 	dune/grid/cpgrid/Intersection.hpp
