@@ -326,7 +326,8 @@ private:
     /** @brief vector with the gobal cell index for each cell.
      *
      * Note the size of this container is determined by the
-     * underlying cartesian grid.
+     * the number of cells present on the process and the content
+     * by the mapping to the underlying global cartesian mesh..
      */
     std::vector<int>                  global_cell_;
     /** @brief The tag of the faces. */
