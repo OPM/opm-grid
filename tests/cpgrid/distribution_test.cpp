@@ -233,9 +233,12 @@ BOOST_AUTO_TEST_CASE(distribute)
 
     grid.loadBalance(data);
 
-#if HAVE_MPI
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    // Dune::CpGrid::loadBalance() is non-trivial only if we have MPI
+    // *and* if the target Dune platform is sufficiently recent.
     BOOST_REQUIRE(grid.comm()!=MPI_COMM_SELF||MPI_COMM_WORLD==MPI_COMM_SELF);
-#endif
+#endif // HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+
     if(procs==1)
     {
         // Check whether the scattered grid is identical to the orinal one.
