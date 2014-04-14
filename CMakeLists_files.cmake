@@ -48,7 +48,6 @@ list (APPEND ATTIC_FILES
 	attic/mapper_test.cpp
 	attic/buildcpgrid_test.cpp
 #	attic/cpgrid_test.cpp
-	attic/max_zdist_test.cpp
 	attic/check_grid_normals.cpp
   )
 
