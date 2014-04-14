@@ -5,7 +5,7 @@
 // Created: Thu Jun  4 12:55:28 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -205,6 +205,14 @@ bool CpGrid::scatterGrid()
                                   bool turn_normals, bool clip_z)
     {
         current_view_data_->processEclipseFormat(input_parser, z_tolerance, periodic_extension,
+                                                 turn_normals, clip_z);
+    }
+
+    void CpGrid::processEclipseFormat(Opm::DeckConstPtr deck,
+                                  double z_tolerance, bool periodic_extension,
+                                  bool turn_normals, bool clip_z)
+    {
+        current_view_data_->processEclipseFormat(deck, z_tolerance, periodic_extension,
                                                  turn_normals, clip_z);
     }
 
