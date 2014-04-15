@@ -475,6 +475,11 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
         communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
     if(data.contains(3,3))
         communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
+#else
+    // Suppress warnings for unused arguments.
+    (void) data;
+    (void) iftype;
+    (void) dir;
 #endif
 }
 

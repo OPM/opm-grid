@@ -381,7 +381,7 @@ namespace Dune
 	    }
 
 	    /// This method is meaningless for singular geometries.
-	    GlobalCoordinate corner(int cor) const
+	    GlobalCoordinate corner(int /* cor */) const
 	    {
                 OPM_THROW(std::runtime_error, "Meaningless call to cpgrid::Geometry::corner(int): "
                       "singular geometry has no corners.");
@@ -401,7 +401,7 @@ namespace Dune
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
-	    jacobianTransposed(const LocalCoordinate& local) const
+	    jacobianTransposed(const LocalCoordinate& /* local */) const
 	    {
 		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
@@ -521,7 +521,7 @@ namespace Dune
 
 	    /// This method is meaningless for singular geometries.
 	    const FieldMatrix<ctype, mydimension, coorddimension>&
-	    jacobianTransposed(const LocalCoordinate& local) const
+	    jacobianTransposed(const LocalCoordinate& /* local */) const
 	    {
 		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
 	    }
