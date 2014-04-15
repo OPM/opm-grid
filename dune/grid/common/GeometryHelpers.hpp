@@ -174,8 +174,8 @@ namespace Dune
 		double small_volume = std::fabs(simplex_volume(tet));
 		assert(small_volume > 0);
 		Point small_centroid = tet[0];
-		for(int i = 1; i < 4; ++i){
-		    small_centroid += tet[i];
+		for(int j = 1; j < 4; ++j){
+		    small_centroid += tet[j];
 		}
 		small_centroid *= small_volume/4.0;
 		centroid += small_centroid;
