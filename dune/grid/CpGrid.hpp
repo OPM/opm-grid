@@ -798,6 +798,9 @@ namespace Dune
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
             distributed_data_->scatterData(handle, data_, distributed_data_);
+#else
+            // Suppress warnings for unused argument.
+            (void) handle;
 #endif
         }
 
@@ -814,6 +817,9 @@ namespace Dune
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
             distributed_data_->gatherData(handle, data_, distributed_data_);
+#else
+            // Suppress warnings for unused argument.
+            (void) handle;
 #endif
         }
 
