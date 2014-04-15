@@ -33,11 +33,13 @@
 */
 #ifndef OPM_ENTITY2INDEXDATAHANDLE_HEADER
 #define OPM_ENTITY2INDEXDATAHANDLE_HEADER
+
 namespace Dune
 {
 namespace cpgrid
 {
 template<int codim> class Entity;
+class CpGridData;
 
 /// \brief Wrapper that turns a data handle suitable for dune-grid into one based on
 /// integers instead of entities.
