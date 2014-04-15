@@ -135,7 +135,9 @@ bool CpGrid::scatterGrid()
     current_view_data_ = distributed_data_;
     return true;
 #else
-    std::cerr<<"CpGrid::scatterGrid() only performs computations with MPI support."<<std::endl;
+    std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
+              << "MPI support and if the target Dune platform is "
+              << "sufficiently recent.\n";
     return false;
 #endif
 }
