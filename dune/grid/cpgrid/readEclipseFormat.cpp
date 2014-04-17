@@ -39,7 +39,7 @@
 #endif
 
 #include "CpGridData.hpp"
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
+
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <dune/grid/common/GeometryHelpers.hpp>
@@ -99,73 +99,9 @@ namespace cpgrid
         processEclipseFormat(deck, z_tolerance, periodic_extension, turn_normals);
     }
 
-    /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const Opm::EclipseGridParser& parser, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
-    {
-	Opm::EclipseGridInspector inspector(parser);
 
-	// Make input struct for processing code.
-	grdecl g;
-	g.dims[0] = inspector.gridSize()[0];
-	g.dims[1] = inspector.gridSize()[1];
-	g.dims[2] = inspector.gridSize()[2];
-	if (!parser.hasField("COORD")) {
-	    OPM_THROW(std::runtime_error, "Eclipse file missing required field COORD.");
-	}
-	g.coord = &(parser.getFloatingPointValue("COORD")[0]);
-	if (!parser.hasField("ZCORN")) {
-	    OPM_THROW(std::runtime_error, "Eclipse file missing required field ZCORN.");
-	}
-	g.zcorn = &(parser.getFloatingPointValue("ZCORN")[0]);
-	std::vector<int> default_actnum; // Used only if needed.
-	if (parser.hasField("ACTNUM")) {
-	    g.actnum = &(parser.getIntegerValue("ACTNUM")[0]);
-	} else {
-	    int num_cells = g.dims[0]*g.dims[1]*g.dims[2];
-	    default_actnum.resize(num_cells, 1);
-	    g.actnum = &default_actnum[0]; // default_actnum dies at the end of this function
-	}
 
-        // Handle zcorn clipping.
-        std::vector<double> clipped_zcorn;
-        if (clip_z) {
-            double minz_top = 1e100;
-            double maxz_bot = -1e100;
-            for (int i = 0; i < g.dims[0]; ++i) {
-                for (int j = 0; j < g.dims[1]; ++j) {
-                    std::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
-                    std::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
-                    for (int dd = 0; dd < 4; ++dd) {
-                        minz_top = std::min(cellz_top[dd+4], minz_top);
-                        maxz_bot = std::max(cellz_bot[dd], maxz_bot);
-                    }
-                }
-            }
-            if (minz_top <= maxz_bot) {
-                OPM_THROW(std::runtime_error, "Grid cannot be clipped to a shoe-box (in z): Would be empty afterwards.");
-            }
-            int num_zcorn = parser.getFloatingPointValue("ZCORN").size();
-            clipped_zcorn.resize(num_zcorn);
-            for (int i = 0; i < num_zcorn; ++i) {
-                clipped_zcorn[i] = std::max(maxz_bot, std::min(minz_top, g.zcorn[i]));
-            }
-            g.zcorn = &clipped_zcorn[0];
-        }
 
-        if (periodic_extension) {
-            // Extend grid periodically with one layer of cells in the (i, j) directions.
-            std::vector<double> new_coord;
-            std::vector<double> new_zcorn;
-            std::vector<int> new_actnum;
-            grdecl new_g;           
-            addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
-            // Make the grid.
-            processEclipseFormat(new_g, z_tolerance, true, turn_normals);
-        } else {
-            // Make the grid.
-            processEclipseFormat(g, z_tolerance, false, turn_normals);
-        }
-    }
 
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
