@@ -5,7 +5,7 @@
 // Created: Fri May 29 20:26:36 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -52,6 +52,7 @@
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <iostream>
 
@@ -234,6 +235,17 @@ namespace Dune
         /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         void processEclipseFormat(const Opm::EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
+
+        /// Read the Eclipse grid format ('grdecl').
+        /// \param input_data the data contained in a parser object.
+        /// \param z_tolerance points along a pillar that are closer together in z
+        ///        coordinate than this parameter, will be replaced by a single point.
+        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
+        ///        intersections/faces along i and j boundaries will match those on the other
+        ///        side. That is, i- faces will match i+ faces etc.
+        /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
+        /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
+        void processEclipseFormat(Opm::DeckConstPtr deck, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
         /// Read the Eclipse grid format ('grdecl').
         /// \param input_data the data in grdecl format, declared in preprocess.h.

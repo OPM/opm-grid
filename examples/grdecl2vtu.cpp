@@ -25,8 +25,9 @@
 #include <iostream>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <dune/grid/CpGrid.hpp>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 using namespace Dune;
 
@@ -39,9 +40,9 @@ using namespace Dune;
  *
  * Based on make_vtk_test.cpp
  *
- * @author Håvard Berland <havb@statoil.com>
+ * @author Hï¿½vard Berland <havb@statoil.com>
  * @author Atgeirr F Rasmussen <atgeirr@sintef.no>
- * @author Bård Skaflestad     <bard.skaflestad@sintef.no>
+ * @author Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
  *
  */
 
@@ -50,15 +51,15 @@ using namespace Dune;
 */
 void condWriteDoubleField(std::vector<double> & fieldvector,
                           const std::string& fieldname,
-                          const Opm::EclipseGridParser & eclParser,
+                          Opm::DeckConstPtr deck,
                           const std::vector<int> & global_cell,
                           VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
-    if (eclParser.hasField(fieldname)) {
+    if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<double> eclVector = eclParser.getFloatingPointValue(fieldname);
+        std::vector<double> eclVector = deck->getKeyword(fieldname)->getRawDoubleData();
         fieldvector.resize(global_cell.size());
 
-	Opm::EclipseGridInspector insp(eclParser);
+        Opm::EclipseGridInspector insp(deck);
         std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -77,15 +78,15 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
 // Now repeat for Integers. I should learn C++ templating...
 void condWriteIntegerField(std::vector<double> & fieldvector,
                            const std::string& fieldname,
-                           const Opm::EclipseGridParser & eclParser,
+                           Opm::DeckConstPtr deck,
                            const std::vector<int> & global_cell,
                            VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
-    if (eclParser.hasField(fieldname)) {
+    if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<int> eclVector = eclParser.getIntegerValue(fieldname);
+        std::vector<int> eclVector = deck->getKeyword(fieldname)->getIntData();
         fieldvector.resize(global_cell.size());
 
-	Opm::EclipseGridInspector insp(eclParser);
+        Opm::EclipseGridInspector insp(deck);
         std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -115,35 +116,35 @@ try
     }
     
     const char* eclipsefilename = argv[1];
-    bool convert_to_SI = false;
-    Opm::EclipseGridParser eclParser(eclipsefilename, convert_to_SI);
+    Opm::ParserPtr parser(new Opm::Parser());
+    Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename));
 
-    grid.processEclipseFormat(eclParser, 0.0, false, false);
+    grid.processEclipseFormat(deck, 0.0, false, false);
     const std::vector<int>& global_cell = grid.globalCell();
     
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
     std::vector<double> poros;
-    condWriteDoubleField(poros, "PORO", eclParser, global_cell, vtkwriter);
+    condWriteDoubleField(poros, "PORO", deck, global_cell, vtkwriter);
     
     std::vector<double> permxs;
-    condWriteDoubleField(permxs, "PERMX", eclParser, global_cell, vtkwriter);
+    condWriteDoubleField(permxs, "PERMX", deck, global_cell, vtkwriter);
     std::vector<double> permys;
-    condWriteDoubleField(permys, "PERMY", eclParser, global_cell, vtkwriter);
+    condWriteDoubleField(permys, "PERMY", deck, global_cell, vtkwriter);
 
     std::vector<double> permzs;
-    condWriteDoubleField(permzs, "PERMZ", eclParser, global_cell, vtkwriter);
+    condWriteDoubleField(permzs, "PERMZ", deck, global_cell, vtkwriter);
 
     std::vector<double> actnums;
-    condWriteIntegerField(actnums, "ACTNUM", eclParser, global_cell, vtkwriter);
+    condWriteIntegerField(actnums, "ACTNUM", deck, global_cell, vtkwriter);
 
     std::vector<double> satnums;
-    condWriteIntegerField(satnums, "SATNUM", eclParser, global_cell, vtkwriter);
+    condWriteIntegerField(satnums, "SATNUM", deck, global_cell, vtkwriter);
 
     std::vector<double> regnums;
-    condWriteIntegerField(regnums, "REGNUM", eclParser, global_cell, vtkwriter);
+    condWriteIntegerField(regnums, "REGNUM", deck, global_cell, vtkwriter);
    
     std::vector<double> swats;
-    condWriteDoubleField(swats, "SWAT", eclParser, global_cell, vtkwriter);
+    condWriteDoubleField(swats, "SWAT", deck, global_cell, vtkwriter);
 
     std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
