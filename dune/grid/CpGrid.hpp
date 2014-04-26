@@ -723,7 +723,7 @@ namespace Dune
             {
                 ++iter_;
             }
-            const int* elementAt(int n)
+            const FieldVector<double, 3>& elementAt(int n)
             {
                 return iter_[n]->center();
             }
