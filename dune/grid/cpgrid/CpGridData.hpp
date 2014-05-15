@@ -88,7 +88,7 @@ template<int> class EntityRep;
 
 namespace mover
 {
-template<class T, int i> class Mover;
+template<class T, int i> struct Mover;
 }
 
 /**
@@ -97,7 +97,7 @@ template<class T, int i> class Mover;
  */
 class CpGridData
 {
-    template<class T, int i> friend class mover::Mover;
+    template<class T, int i> friend struct mover::Mover;
 
 private:
     CpGridData(const CpGridData& g);
@@ -494,8 +494,15 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
     (void) dir;
 #endif
 }
+}}
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#include <dune/grid/cpgrid/Entity.hpp>
+#include <dune/grid/cpgrid/Indexsets.hpp>
+
+namespace Dune {
+namespace cpgrid {
+
 namespace
 {
 
@@ -730,8 +737,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     // Get the mapping to global index from  the global id set
     const std::vector<int>& mapping =
-        static_cast<GlobalIdMapping*>(distributed_data
-                                      ->global_id_set_)->getMapping<codim>();
+        distributed_data->global_id_set_->getMapping<codim>();
 
     // Get the global indices and data size for the entities whose data is
     // to be sent, i.e. the ones that we own.
