@@ -289,10 +289,13 @@ namespace Dune
         /// @param [out] ijk  Cartesian index triplet
         void getIJK(const int c, std::array<int,3>& ijk) const
         {
-            if(current_view_data_==distributed_data_)
+            if(current_view_data_==distributed_data_ && comm().size() > 1)
                 OPM_THROW(std::runtime_error, "getIJK is only usable"
                           << " on a non-distributed grid!");
-            current_view_data_->getIJK(c, ijk);
+
+            // TODO: replace "data_" by "current_view_data_" once this
+            // method works for parallel simulations
+            data_->getIJK(c, ijk);
         }
 
 	/// Is the grid currently using unique boundary ids?
