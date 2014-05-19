@@ -813,8 +813,9 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
 #endif
 }
 
-#endif
 } // end namespace cpgrid
 } // end namespace Dune
+
+#endif
 
 #endif
