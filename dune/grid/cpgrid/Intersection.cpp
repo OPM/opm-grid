@@ -1,9 +1,10 @@
 #ifdef HAVE_CONFIG_H
 #include"config.h"
 #endif
-#include"EntityRep.hpp"
 #include"Intersection.hpp"
+#include"EntityRep.hpp"
 #include"Entity.hpp"
+#include "CpGridData.hpp"
 
 namespace Dune
 {
@@ -110,6 +111,47 @@ void Intersection::increment()
 		}
 	    }
 
+int Intersection::indexInInside() const
+{
+    // Use the face tags to decide if an intersection is
+    // on an x, y, or z face and use orientations to decide
+    // if its (for example) an xmin or xmax face.
+    typedef OrientedEntityTable<0,1>::ToType Face;
+    const Face& f = faces_of_cell_[subindex_];
+    const bool normal_is_in = !f.orientation();
+    enum face_tag tag = pgrid_->face_tag_[f];
+    switch (tag) {
+    case LEFT:
+        return normal_is_in ? 0 : 1; // min(I) : max(I)
+    case BACK:
+        return normal_is_in ? 2 : 3; // min(J) : max(J)
+    case TOP:
+        return normal_is_in ? 4 : 5; // min(K) : max(K)
+    default:
+        OPM_THROW(std::runtime_error, "Unhandled face tag: " << tag);
+    }
+}
+
+FieldVector<Intersection::ctype, 3> Intersection::outerNormal(const FieldVector<ctype, 2>&) const
+{
+    return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+}
+
+FieldVector<Intersection::ctype, 3> Intersection::integrationOuterNormal(const FieldVector<ctype, 2>& unused) const
+{
+    FieldVector<ctype, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
+    return n*=geometry().integrationElement(unused);
+}
+
+FieldVector<Intersection::ctype, 3> Intersection::unitOuterNormal(const FieldVector<ctype, 2>&) const
+{
+    return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+}
+
+FieldVector<Intersection::ctype, 3> Intersection::centerUnitOuterNormal() const
+{
+    return pgrid_->face_normals_[faces_of_cell_[subindex_]];
+}
 
 Intersection::EntityPointer Intersection::inside() const
 {

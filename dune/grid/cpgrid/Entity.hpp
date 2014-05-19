@@ -38,10 +38,9 @@
 
 #include <dune/geometry/type.hh>
 #include <dune/grid/common/gridenums.hh>
-#include <dune/grid/cpgrid/CpGridData.hpp>
 
-#include "Intersection.hpp"
 #include "PartitionTypeIndicator.hpp"
+#include "EntityRep.hpp"
 
 namespace Dune
 {
@@ -137,10 +136,7 @@ namespace Dune
             }
 
             /// Returns the geometry of the entity (does not depend on its orientation).
-            const Geometry& geometry() const
-            {
-		return pgrid_->geomVector<codim>()[*this];
-            }
+            const Geometry& geometry() const;
 
             /// We do not support refinement, so level() is always 0.
             int level() const
@@ -194,30 +190,7 @@ namespace Dune
 
             /// Obtain subentity.
             template <int cc>
-            typename Codim<cc>::EntityPointer subEntity(int i) const
-            {
-                static_assert(codim == 0, "");
-                if (cc == 0) {
-                    assert(i == 0);
-                    typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
-                    return se;
-                } else if (cc == 3) {
-                    assert(i >= 0 && i < 8);
-                    int corner_index = pgrid_->cell_to_point_[EntityRep<codim>::index()][i];
-                    typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
-                    return se;
-                } else {
-                    OPM_THROW(std::runtime_error, "No subentity exists of codimension " << cc);
-                }
-//              int index = 0;
-//              if (cc == 1) {
-//                  index = pgrid_->cell_to_face_[*this][i].index();
-//              } else if (cc == 3) {
-//                  index = pgrid_->cell_to_point_[*this][i].index();
-//              }
-//              typename Codim<cc>::EntityPointer se(*pgrid_, index); <--- buggy anyway?
-//              return se;
-            }
+            typename Codim<cc>::EntityPointer subEntity(int i) const;
 
             /// Start iterator for the cell-cell intersections of this entity.
 	    inline LevelIntersectionIterator ilevelbegin() const;
@@ -273,17 +246,7 @@ namespace Dune
             /// Implementation note:
             /// This is a slow, computed, function. Could be speeded
             /// up by putting boundary info in the CpGrid class.
-            bool hasBoundaryIntersections() const
-            {
-                // Copied implementation from EntityDefaultImplementation,
-                // except for not checking LevelIntersectionIterators.
-		typedef LeafIntersectionIterator IntersectionIterator; 
-                IntersectionIterator end = ileafend();
-                for (IntersectionIterator it = ileafbegin(); it != end; ++it) {
-                    if (it->boundary()) return true;
-                }
-                return false;
-            }
+            bool hasBoundaryIntersections() const;
 
             // Mimic Dune entity wrapper
 
@@ -299,10 +262,7 @@ namespace Dune
         protected:
 	    const CpGridData* pgrid_;
 
-            bool valid() const
-            {
-                return EntityRep<codim>::index() < pgrid_->size(codim);
-            }
+            bool valid() const;
         };
 
 
@@ -392,6 +352,8 @@ namespace Dune
     // now we include the Iterators.hh We need to do this here because for hbegin/hend the compiler
     // needs to know the size of hierarchicIterator
 #include "Iterators.hpp"
+#include "Entity.hpp"
+#include "Intersection.hpp"
 namespace Dune
 {
   namespace cpgrid
@@ -445,6 +407,58 @@ namespace Dune
     }
     } // namespace cpgrid
 } // namespace Dune
+
+#include <dune/grid/cpgrid/CpGridData.hpp>
+#include <dune/grid/cpgrid/Intersection.hpp>
+
+namespace Dune {
+namespace cpgrid {
+
+template <int codim>
+const typename Entity<codim>::Geometry& Entity<codim>::geometry() const
+{
+    return pgrid_->geomVector<codim>()[*this];
+}
+
+template <int codim>
+template <int cc>
+typename Entity<codim>::template Codim<cc>::EntityPointer Entity<codim>::subEntity(int i) const
+{
+    static_assert(codim == 0, "");
+    if (cc == 0) {
+        assert(i == 0);
+        typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
+        return se;
+    } else if (cc == 3) {
+        assert(i >= 0 && i < 8);
+        int corner_index = pgrid_->cell_to_point_[EntityRep<codim>::index()][i];
+        typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
+        return se;
+    } else {
+        OPM_THROW(std::runtime_error, "No subentity exists of codimension " << cc);
+    }
+}
+
+template <int codim>
+bool Entity<codim>::hasBoundaryIntersections() const
+{
+    // Copied implementation from EntityDefaultImplementation,
+    // except for not checking LevelIntersectionIterators.
+    typedef LeafIntersectionIterator IntersectionIterator;
+    IntersectionIterator end = ileafend();
+    for (IntersectionIterator it = ileafbegin(); it != end; ++it) {
+        if (it->boundary()) return true;
+    }
+    return false;
+}
+
+template <int codim>
+bool Entity<codim>::valid() const
+{
+    return EntityRep<codim>::index() < pgrid_->size(codim);
+}
+
+}}
 
 
 #endif // OPM_ENTITY_HEADER

@@ -42,8 +42,9 @@ namespace Dune
 {
 namespace cpgrid
 {
-
+class CpGridData;
 template<int> class Entity;
+template<int> class EntityRep;
 
 class PartitionTypeIndicator
 {

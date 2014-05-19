@@ -220,7 +220,7 @@ namespace Dune
 	};
 
 
-        class GlobalIdSet : GlobalIdMapping
+        class GlobalIdSet : public GlobalIdMapping
 	{
             friend class CpGridData;
 	public:

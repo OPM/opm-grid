@@ -51,7 +51,6 @@
 
 #include "Geometry.hpp"
 #include "OrientedEntityTable.hpp"
-#include "CpGridData.hpp"
 namespace Dune
 {
     namespace cpgrid
@@ -60,7 +59,8 @@ namespace Dune
     class Entity;
     template<int>
     class EntityPointer;
-    
+    class CpGridData;
+
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
@@ -203,26 +203,7 @@ namespace Dune
 
             /// Local index of codim 1 entity in the inside() entity
             /// where intersection is contained in.
-            int indexInInside() const
-            {
-                // Use the face tags to decide if an intersection is
-                // on an x, y, or z face and use orientations to decide
-                // if its (for example) an xmin or xmax face.
-                typedef OrientedEntityTable<0,1>::ToType Face;
-                const Face& f = faces_of_cell_[subindex_];
-                const bool normal_is_in = !f.orientation();
-                enum face_tag tag = pgrid_->face_tag_[f];
-                switch (tag) {
-                case LEFT:
-                    return normal_is_in ? 0 : 1; // min(I) : max(I)
-                case BACK:
-                    return normal_is_in ? 2 : 3; // min(J) : max(J)
-                case TOP:
-                    return normal_is_in ? 4 : 5; // min(K) : max(K)
-                default:
-                    OPM_THROW(std::runtime_error, "Unhandled face tag: " << tag);
-                }
-            }
+            int indexInInside() const;
 
             /// Local index of codim 1 entity in outside() entity
             /// where intersection is contained in.
@@ -236,38 +217,25 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-            FieldVector<ctype, 3> outerNormal(const FieldVector<ctype, 2>&) const
-            {
-                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
-            }
+            FieldVector<ctype, 3> outerNormal(const FieldVector<ctype, 2>&) const;
 
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-            FieldVector<ctype, 3> integrationOuterNormal(const FieldVector<ctype, 2>& unused) const
-            {
-                FieldVector<ctype, 3> n = pgrid_->face_normals_[faces_of_cell_[subindex_]];
-                return n*=geometry().integrationElement(unused);
-            }
+            FieldVector<ctype, 3> integrationOuterNormal(const FieldVector<ctype, 2>& unused) const;
 
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-            FieldVector<ctype, 3> unitOuterNormal(const FieldVector<ctype, 2>&) const
-            {
-                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
-            }
+            FieldVector<ctype, 3> unitOuterNormal(const FieldVector<ctype, 2>&) const;
 
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-            FieldVector<ctype, 3> centerUnitOuterNormal() const
-            {
-                return pgrid_->face_normals_[faces_of_cell_[subindex_]];
-            }
+            FieldVector<ctype, 3> centerUnitOuterNormal() const;
 
         protected:
             const CpGridData* pgrid_;
@@ -355,7 +323,5 @@ namespace Dune
 
     } // namespace cpgrid
 } // namespace Dune
-
-
 
 #endif // OPM_INTERSECTION_HEADER
