@@ -712,14 +712,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom;
     std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(cell_indexset_.size());
     auto global_cell_geom=view_data.geomVector<0>();
-    std::vector<int> global_cell;
-    global_cell.resize(cell_indexset_.size());
+    global_cell_.resize(cell_indexset_.size());
 
     // Copy the existing cells.
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
     {
         tmp_cell_geom[i->local()]=static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(global_cell_geom)[i->global()];
-        global_cell[i->local()]=view_data.global_cell_[i->global()];
+        global_cell_[i->local()]=view_data.global_cell_[i->global()];
     }
     static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(cell_geom).swap(tmp_cell_geom);
 

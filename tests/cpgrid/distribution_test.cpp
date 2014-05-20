@@ -232,6 +232,8 @@ BOOST_AUTO_TEST_CASE(distribute)
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
 
     grid.loadBalance(data);
+    std::array<int,3> ijk;
+    grid.getIJK(0, ijk);
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     // Dune::CpGrid::loadBalance() is non-trivial only if we have MPI
