@@ -289,9 +289,6 @@ namespace Dune
         /// @param [out] ijk  Cartesian index triplet
         void getIJK(const int c, std::array<int,3>& ijk) const
         {
-            if(current_view_data_==distributed_data_)
-                OPM_THROW(std::runtime_error, "getIJK is only usable"
-                          << " on a non-distributed grid!");
             current_view_data_->getIJK(c, ijk);
         }
 
