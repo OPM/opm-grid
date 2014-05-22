@@ -200,14 +200,6 @@ bool CpGrid::scatterGrid()
                                               turn_normals);
     }
 
-    void CpGrid::processEclipseFormat(const Opm::EclipseGridParser& input_parser, 
-                                  double z_tolerance, bool periodic_extension, 
-                                  bool turn_normals, bool clip_z)
-    {
-        current_view_data_->processEclipseFormat(input_parser, z_tolerance, periodic_extension,
-                                                 turn_normals, clip_z);
-    }
-
     void CpGrid::processEclipseFormat(Opm::DeckConstPtr deck,
                                   double z_tolerance, bool periodic_extension,
                                   bool turn_normals, bool clip_z)

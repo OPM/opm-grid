@@ -58,8 +58,9 @@
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/core/io/eclipse/EclipseGridParser.hpp>
+
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+
 #include <dune/common/collectivecommunication.hh>
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
@@ -146,17 +147,6 @@ public:
     ///        intersections/faces along i and j boundaries will match those on the other
     ///        side. That is, i- faces will match i+ faces etc.
     void readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals = false);
-
-    /// Read the Eclipse grid format ('grdecl').
-    /// \param input_data the data contained in a parser object.
-    /// \param z_tolerance points along a pillar that are closer together in z
-    ///        coordinate than this parameter, will be replaced by a single point.
-    /// \param periodic_extension if true, the grid will be (possibly) refined, so that
-    ///        intersections/faces along i and j boundaries will match those on the other
-    ///        side. That is, i- faces will match i+ faces etc.
-    /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
-    /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-    void processEclipseFormat(const Opm::EclipseGridParser& input_parser, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param input_data the data contained in a parser object.
