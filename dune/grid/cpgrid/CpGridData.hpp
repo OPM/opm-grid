@@ -60,6 +60,7 @@
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 3, 0)
 #include <dune/common/parallel/collectivecommunication.hh>
@@ -153,7 +154,7 @@ public:
     void readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals = false);
 
     /// Read the Eclipse grid format ('grdecl').
-    /// \param input_data the data contained in a parser object.
+    /// \param deck the parsed deck from opm-parser (which is a low-level object)
     /// \param z_tolerance points along a pillar that are closer together in z
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -162,6 +163,17 @@ public:
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     void processEclipseFormat(Opm::DeckConstPtr deck, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
+
+    /// Read the Eclipse grid format ('grdecl').
+    /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
+    /// \param z_tolerance points along a pillar that are closer together in z
+    ///        coordinate than this parameter, will be replaced by a single point.
+    /// \param periodic_extension if true, the grid will be (possibly) refined, so that
+    ///        intersections/faces along i and j boundaries will match those on the other
+    ///        side. That is, i- faces will match i+ faces etc.
+    /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
+    /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
+    void processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, double z_tolerance, bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param input_data the data in grdecl format, declared in preprocess.h.
