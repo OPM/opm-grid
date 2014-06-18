@@ -45,6 +45,7 @@ include (CMakeLists_files.cmake)
 
 macro (config_hook)
 	opm_need_version_of ("dune-common")
+	opm_need_version_of ("dune-grid")
 	find_file(_HAVE_DUNE_GRID_CHECKS checkpartition.cc HINTS ${dune-grid_INCLUDE_DIR}
 		PATH_SUFFIXES dune/grid/test)
 	if(_HAVE_DUNE_GRID_CHECKS)

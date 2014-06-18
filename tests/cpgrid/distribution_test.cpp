@@ -208,8 +208,13 @@ BOOST_AUTO_TEST_CASE(distribute)
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+            const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
+                Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+#else
             const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
                 Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+#endif
             
             cell_indices.push_back(ix.index(*it));
             cell_centers.push_back(it->geometry().center());
@@ -258,8 +263,13 @@ BOOST_AUTO_TEST_CASE(distribute)
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+            const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
+                Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+#else
             const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
                 Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
+#endif
 
             BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
             BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());

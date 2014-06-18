@@ -61,7 +61,11 @@
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 3, 0)
+#include <dune/common/parallel/collectivecommunication.hh>
+#else
 #include <dune/common/collectivecommunication.hh>
+#endif
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
