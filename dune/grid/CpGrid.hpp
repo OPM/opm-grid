@@ -673,6 +673,10 @@ namespace Dune
         {
             return current_view_data_->face_normals_.get(face);
         }
+        int faceTag(int faceIdx) const
+        {
+            return current_view_data_->face_tag_.get(faceIdx);
+        }
         double cellVolume(int cell) const
         {
             return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
