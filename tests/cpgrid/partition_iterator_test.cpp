@@ -97,6 +97,6 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
     }
 
 #if HAVE_DUNE_GRID_CHECKS
-    checkPartitionType( grid.leafView() );
+    checkPartitionType( grid.leafGridView() );
 #endif // HAVE_DUNE_GRID_CHECKS
 }

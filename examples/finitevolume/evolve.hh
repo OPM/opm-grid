@@ -24,7 +24,7 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
     typedef typename G::template Codim<0>::EntityPointer EntityPointer;
 
     // get grid view on leaf part
-    GridView gridView = grid.leafView();
+    GridView gridView = grid.leafGridView();
 
     // allocate a temporary vector for the update
     V update(c.size());                                  /*@\label{evh:update}@*/

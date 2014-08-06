@@ -197,16 +197,22 @@ BOOST_AUTO_TEST_CASE(distribute)
 #endif
     std::vector<int> cell_indices, face_indices, point_indices;
     std::vector<Dune::CpGrid::Traits::Codim<0>::Geometry::GlobalCoordinate > cell_centers, face_centers, point_centers;
-    int cell_size = grid.leafView().size(0);
-    int face_size = grid.leafView().size(1);
-    int point_size = grid.leafView().size(3);
 
-    const Dune::CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+    typedef Dune::CpGrid::LeafGridView GridView ;
+    GridView gridView = grid.leafGridView();
+
+    int cell_size = gridView.size(0);
+    int face_size = gridView.size(1);
+    int point_size = gridView.size(3);
+
+    typedef GridView :: IndexSet IndexSet;
+    const IndexSet& ix = gridView.indexSet();
 
     if(procs==1)
     {
-        for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
-             it != grid.leafend<0>(); ++it) {
+        typedef GridView :: Codim<0> :: Iterator LeafIterator ;
+        for (LeafIterator it = gridView.begin<0>();
+             it != gridView.end<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
@@ -218,8 +224,9 @@ BOOST_AUTO_TEST_CASE(distribute)
             
             cell_indices.push_back(ix.index(*it));
             cell_centers.push_back(it->geometry().center());
-            for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
-                    endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
+            typedef GridView :: IntersectionIterator IntersectionIterator;
+            for(IntersectionIterator iit=gridView.ibegin(*it), 
+                    endiit = gridView.iend(*it); iit!=endiit; ++iit)
             {
                 //            face_indices.push_back(ix.index(*it->subEntity<1>(iit->indexInInside())));
                 face_centers.push_back(iit->geometry().center());
@@ -249,9 +256,9 @@ BOOST_AUTO_TEST_CASE(distribute)
     if(procs==1)
     {
         // Check whether the scattered grid is identical to the orinal one.
-        BOOST_REQUIRE(cell_size  == grid.leafView().size(0));
-        BOOST_REQUIRE(face_size  == grid.leafView().size(1));
-        BOOST_REQUIRE(point_size == grid.leafView().size(3));
+        BOOST_REQUIRE(cell_size  == gridView.size(0));
+        BOOST_REQUIRE(face_size  == gridView.size(1));
+        BOOST_REQUIRE(point_size == gridView.size(3));
     
         int cell_index=0, face_index=0, point_index=0;
 
@@ -273,8 +280,8 @@ BOOST_AUTO_TEST_CASE(distribute)
 
             BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
             BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
-            for(Dune::CpGrid::LeafIntersectionIterator iit=grid.leafView().ibegin(*it), 
-                    endiit = grid.leafView().iend(*it); iit!=endiit; ++iit)
+            for(Dune::CpGrid::LeafIntersectionIterator iit=gridView.ibegin(*it), 
+                    endiit = gridView.iend(*it); iit!=endiit; ++iit)
             {
                 //BOOST_REQUIRE(face_indices[face_index]==ix1.index(*it->subEntity<1>(iit->indexInInside())));
                 BOOST_REQUIRE(face_centers[face_index++]==iit->geometry().center());
@@ -288,7 +295,7 @@ BOOST_AUTO_TEST_CASE(distribute)
     {
 #if HAVE_DUNE_GRID_CHECKS
         //checkCommunication(grid,-1,Dune::dvverb); // Deactivated as one has to patch cpgrid to support Intersection::geometryInInside and Outside
-        checkPartitionType( grid.leafView() );
+        checkPartitionType( gridView );
 #endif
         std::vector<int> point_ids(grid.leafIndexSet().size(3)), cell_ids(grid.leafIndexSet().size(0));
         LoadBalanceGlobalIdDataHandle lb_gid_data(unbalanced_gid_set,
