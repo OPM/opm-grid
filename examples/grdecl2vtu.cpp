@@ -122,7 +122,7 @@ try
     grid.processEclipseFormat(deck, 0.0, false, false);
     const std::vector<int>& global_cell = grid.globalCell();
     
-    VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafView());
+    VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
     std::vector<double> poros;
     condWriteDoubleField(poros, "PORO", deck, global_cell, vtkwriter);
     

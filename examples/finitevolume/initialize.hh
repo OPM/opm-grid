@@ -20,7 +20,7 @@ void initialize(const G& grid, const M& mapper, V& c)
     typedef typename GridView::template Codim<0>::Iterator LeafIterator;
 
     // get grid view on leaf part
-    GridView gridView = grid.leafView();
+    GridView gridView = grid.leafGridView();
 
     // iterate through leaf grid an evaluate c0 at cell center
     LeafIterator endit = gridView.template end<0>();
