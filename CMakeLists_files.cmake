@@ -58,6 +58,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/entityrep_test.cpp
 	tests/cpgrid/entity_test.cpp
 	tests/cpgrid/geometry_test.cpp
+	tests/cpgrid/intersectionmapper_test.cpp
 	tests/cpgrid/orientedentitytable_test.cpp
 	tests/cpgrid/partition_iterator_test.cpp
 	)
