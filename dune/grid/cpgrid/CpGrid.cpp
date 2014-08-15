@@ -208,6 +208,14 @@ bool CpGrid::scatterGrid()
                                                  turn_normals, clip_z);
     }
 
+    void CpGrid::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid,
+                                      double z_tolerance, bool periodic_extension,
+                                      bool turn_normals, bool clip_z)
+    {
+        current_view_data_->processEclipseFormat(ecl_grid, z_tolerance, periodic_extension,
+                                                 turn_normals, clip_z);
+    }
+
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, 
                                       bool remove_ij_boundary, bool turn_normals)
     {

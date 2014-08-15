@@ -57,6 +57,11 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+	typedef std::array<int, 3> coord_t;
+	typedef std::array<double, 8> cellz_t;
+
+	cellz_t getCellZvals(const coord_t& c, const coord_t& n, const double* z);
+
 	void addOuterCellLayer(const grdecl& original,
 			       std::vector<double>& new_coord,
 			       std::vector<double>& new_zcorn,
@@ -95,40 +100,45 @@ namespace cpgrid
 #endif
         Opm::ParserPtr parser(new Opm::Parser());
         Opm::DeckConstPtr deck(parser->parseFile(filename));
-
-        processEclipseFormat(deck, z_tolerance, periodic_extension, turn_normals);
+        std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
+        std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
+        Opm::EclipseGridPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
+        processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals);
     }
 
-
-
-
-
-    /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
     {
-        Opm::EclipseGridInspector inspector(deck);
+        std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
+        std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
+        Opm::EclipseGridPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
+        processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals, clip_z);
+    }
+
+    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    {
+        std::vector<double> coordData;
+        ecl_grid->exportCOORD(coordData);
+
+        std::vector<double> zcornData;
+        ecl_grid->exportZCORN(zcornData);
+
+        std::vector<int> actnumData;
+        ecl_grid->exportACTNUM(actnumData);
 
         // Make input struct for processing code.
         grdecl g;
-        g.dims[0] = inspector.gridSize()[0];
-        g.dims[1] = inspector.gridSize()[1];
-        g.dims[2] = inspector.gridSize()[2];
-        if (!deck->hasKeyword("COORD")) {
-            OPM_THROW(std::runtime_error, "Eclipse file missing required field COORD.");
-        }
-        g.coord = &(deck->getKeyword("COORD")->getSIDoubleData()[0]);
-        if (!deck->hasKeyword("ZCORN")) {
-            OPM_THROW(std::runtime_error, "Eclipse file missing required field ZCORN.");
-        }
-        g.zcorn = &(deck->getKeyword("ZCORN")->getSIDoubleData()[0]);
-        std::vector<int> default_actnum; // Used only if needed.
-        if (deck->hasKeyword("ACTNUM")) {
-            g.actnum = &(deck->getKeyword("ACTNUM")->getIntData()[0]);
-        } else {
-            int num_cells = g.dims[0]*g.dims[1]*g.dims[2];
-            default_actnum.resize(num_cells, 1);
-            g.actnum = &default_actnum[0]; // default_actnum dies at the end of this function
-        }
+        g.dims[0] = ecl_grid->getNX();
+        g.dims[1] = ecl_grid->getNY();
+        g.dims[2] = ecl_grid->getNZ();
+        g.coord = &coordData[0];
+        g.zcorn = &zcornData[0];
+        g.actnum = &actnumData[0];
+
+        // this variable is only required because getCellZvals() needs
+        // a coord_t instead of a plain integer pointer...
+        coord_t logicalCartesianSize;
+        for (int axisIdx = 0; axisIdx < 3; ++axisIdx)
+            logicalCartesianSize[axisIdx] = g.dims[axisIdx];
 
         // Handle zcorn clipping.
         std::vector<double> clipped_zcorn;
@@ -137,8 +147,16 @@ namespace cpgrid
             double maxz_bot = -1e100;
             for (int i = 0; i < g.dims[0]; ++i) {
                 for (int j = 0; j < g.dims[1]; ++j) {
-                    std::array<double, 8> cellz_bot = inspector.cellZvals(i, j, 0);
-                    std::array<double, 8> cellz_top = inspector.cellZvals(i, j, g.dims[2] - 1);
+                    coord_t logicalCartesianCoord;
+                    logicalCartesianCoord[0] = i;
+                    logicalCartesianCoord[1] = j;
+
+                    logicalCartesianCoord[2] = 0;
+                    std::array<double, 8> cellz_bot = getCellZvals(logicalCartesianCoord, logicalCartesianSize, &zcornData[0]);
+
+                    logicalCartesianCoord[2] = g.dims[2] - 1;
+                    std::array<double, 8> cellz_top = getCellZvals(logicalCartesianCoord, logicalCartesianSize, &zcornData[0]);
+
                     for (int dd = 0; dd < 4; ++dd) {
                         minz_top = std::min(cellz_top[dd+4], minz_top);
                         maxz_bot = std::max(cellz_bot[dd], maxz_bot);
@@ -148,7 +166,7 @@ namespace cpgrid
             if (minz_top <= maxz_bot) {
                 OPM_THROW(std::runtime_error, "Grid cannot be clipped to a shoe-box (in z): Would be empty afterwards.");
             }
-            int num_zcorn = deck->getKeyword("ZCORN")->getSIDoubleData().size();
+            int num_zcorn = zcornData.size();
             clipped_zcorn.resize(num_zcorn);
             for (int i = 0; i < num_zcorn; ++i) {
                 clipped_zcorn[i] = std::max(maxz_bot, std::min(minz_top, g.zcorn[i]));
@@ -378,6 +396,7 @@ namespace cpgrid
 		    for (int ix = 0; ix < new_n[0]; ++ix) {
 			int new_cell_index = ix + jy*(new_n[0]) + kz*(new_n[0])*(new_n[1]);
 			int old_cell_index = new2old[new_cell_index];
+            
 			cellz_t cellvals = getCellZvals(indexToIjk(n, old_cell_index), n, old_zcorn);
 			// cout << new_cell_index << ' ' << old_cell_index << ' ' << cellvals << endl;
 			setCellZvals(indexToIjk(new_n, new_cell_index), new_n, &zcorn[0], cellvals);
@@ -854,8 +873,6 @@ namespace cpgrid
 	    std::cout << "Final construction: " << clock.secsSinceLast() << std::endl;
 #endif
 	}
-
-
     } // anon namespace
 } // namespace Dune
 
