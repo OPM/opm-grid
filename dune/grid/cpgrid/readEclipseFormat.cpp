@@ -102,7 +102,7 @@ namespace cpgrid
         Opm::DeckConstPtr deck(parser->parseFile(filename));
         std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
         std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
-        Opm::EclipseGridPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
+        Opm::EclipseGridConstPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
         processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals);
     }
 
@@ -110,7 +110,7 @@ namespace cpgrid
     {
         std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
         std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
-        Opm::EclipseGridPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
+        Opm::EclipseGridConstPtr ecl_grid(new Opm::EclipseGrid(runspecSection, gridSection));
         processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals, clip_z);
     }
 
