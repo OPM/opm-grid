@@ -132,7 +132,11 @@ namespace cpgrid
         g.dims[2] = ecl_grid->getNZ();
         g.coord = &coordData[0];
         g.zcorn = &zcornData[0];
-        g.actnum = &actnumData[0];
+
+        if (actnumData.size() == 0)
+            g.actnum = NULL;
+        else
+            g.actnum = &actnumData[0];
 
         // this variable is only required because getCellZvals() needs
         // a coord_t instead of a plain integer pointer...
