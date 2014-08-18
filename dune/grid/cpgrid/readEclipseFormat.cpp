@@ -132,7 +132,11 @@ namespace cpgrid
         g.dims[2] = ecl_grid->getNZ();
         g.coord = &coordData[0];
         g.zcorn = &zcornData[0];
-        g.actnum = &actnumData[0];
+
+        if (actnumData.size() == 0)
+            g.actnum = NULL;
+        else
+            g.actnum = &actnumData[0];
 
         // this variable is only required because getCellZvals() needs
         // a coord_t instead of a plain integer pointer...
@@ -400,7 +404,7 @@ namespace cpgrid
 			cellz_t cellvals = getCellZvals(indexToIjk(n, old_cell_index), n, old_zcorn);
 			// cout << new_cell_index << ' ' << old_cell_index << ' ' << cellvals << endl;
 			setCellZvals(indexToIjk(new_n, new_cell_index), new_n, &zcorn[0], cellvals);
-			actnum[new_cell_index] = old_actnum[old_cell_index];
+			actnum[new_cell_index] = old_actnum?old_actnum[old_cell_index]:1;
 			if (ix == 0 || ix == new_n[0] - 1
 			    || jy == 0 || jy == new_n[1] - 1) {
 			    actnum[new_cell_index] = 1;  // This line is changed from the original.
