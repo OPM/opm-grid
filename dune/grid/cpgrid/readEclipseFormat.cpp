@@ -404,7 +404,7 @@ namespace cpgrid
 			cellz_t cellvals = getCellZvals(indexToIjk(n, old_cell_index), n, old_zcorn);
 			// cout << new_cell_index << ' ' << old_cell_index << ' ' << cellvals << endl;
 			setCellZvals(indexToIjk(new_n, new_cell_index), new_n, &zcorn[0], cellvals);
-			actnum[new_cell_index] = old_actnum[old_cell_index];
+			actnum[new_cell_index] = old_actnum?old_actnum[old_cell_index]:1;
 			if (ix == 0 || ix == new_n[0] - 1
 			    || jy == 0 || jy == new_n[1] - 1) {
 			    actnum[new_cell_index] = 1;  // This line is changed from the original.
