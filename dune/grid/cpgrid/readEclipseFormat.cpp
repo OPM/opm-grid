@@ -92,7 +92,7 @@ namespace Dune
 namespace cpgrid
 {
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::readEclipseFormat(const std::string& filename, double z_tolerance, bool periodic_extension, bool turn_normals)
+    void CpGridData::readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals)
     {
 	// Read eclipse file data.
 #ifdef VERBOSE
@@ -100,47 +100,16 @@ namespace cpgrid
 #endif
         Opm::ParserPtr parser(new Opm::Parser());
         Opm::DeckConstPtr deck(parser->parseFile(filename));
-        std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
-        Opm::EclipseGridConstPtr ecl_grid;
-        
-        if (Opm::Section::hasRUNSPEC(deck)) {
-            std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
-            ecl_grid.reset( new Opm::EclipseGrid(runspecSection, gridSection) );
-        } else {
-            Opm::DeckKeywordConstPtr specGridKeyword = deck->getKeyword("SPECGRID");
-            Opm::DeckRecordConstPtr record = specGridKeyword->getRecord(0);
-            int nx = record->getItem("NX")->getInt(0);
-            int ny = record->getItem("NY")->getInt(0);
-            int nz = record->getItem("NZ")->getInt(0);
-            
-            ecl_grid.reset( new Opm::EclipseGrid(nx , ny , nz , gridSection) );
-        }
-            
-        processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals);
+        processEclipseFormat(deck, periodic_extension, turn_normals);
     }
 
-    void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z)
     {
-        std::shared_ptr<const Opm::GRIDSection> gridSection(new Opm::GRIDSection(deck));
-        Opm::EclipseGridConstPtr ecl_grid;
-        
-        if (Opm::Section::hasRUNSPEC(deck)) {
-            std::shared_ptr<const Opm::RUNSPECSection> runspecSection(new Opm::RUNSPECSection(deck));
-            ecl_grid.reset( new Opm::EclipseGrid(runspecSection, gridSection) );
-        } else {
-            Opm::DeckKeywordConstPtr specGridKeyword = deck->getKeyword("SPECGRID");
-            Opm::DeckRecordConstPtr record = specGridKeyword->getRecord(0);
-            int nx = record->getItem("NX")->getInt(0);
-            int ny = record->getItem("NY")->getInt(0);
-            int nz = record->getItem("NZ")->getInt(0);
-            
-            ecl_grid.reset( new Opm::EclipseGrid(nx , ny , nz , gridSection) );
-        }
-
-        processEclipseFormat(ecl_grid, z_tolerance, periodic_extension, turn_normals, clip_z);
+        Opm::EclipseGridConstPtr ecl_grid(new Opm::EclipseGrid(deck));
+        processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z);
     }
 
-    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, double z_tolerance, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z)
     {
         std::vector<double> coordData;
         ecl_grid->exportCOORD(coordData);
@@ -203,6 +172,10 @@ namespace cpgrid
             }
             g.zcorn = &clipped_zcorn[0];
         }
+
+        // Get z_tolerance.
+        const double z_tolerance = ecl_grid->isPinchActive() ?
+            ecl_grid->getPinchThresholdThickness() : 0.0;
 
 	if (periodic_extension) {
 	    // Extend grid periodically with one layer of cells in the (i, j) directions.
