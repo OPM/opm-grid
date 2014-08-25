@@ -42,6 +42,7 @@
 
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/core/grid/MinpvProcessor.hpp>
 #include <dune/grid/common/GeometryHelpers.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
@@ -103,13 +104,15 @@ namespace cpgrid
         processEclipseFormat(deck, periodic_extension, turn_normals);
     }
 
-    void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z,
+                                          const std::vector<double>& poreVolume)
     {
         Opm::EclipseGridConstPtr ecl_grid(new Opm::EclipseGrid(deck));
-        processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z);
+        processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z, poreVolume);
     }
 
-    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z)
+    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
+                                          const std::vector<double>& poreVolume)
     {
         std::vector<double> coordData;
         ecl_grid->exportCOORD(coordData);
@@ -132,6 +135,12 @@ namespace cpgrid
             g.actnum = NULL;
         else
             g.actnum = &actnumData[0];
+
+        // Possibly process MINPV
+        if (!poreVolume.empty() && ecl_grid->isMinpvActive()) {
+            Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
+            mp.process(poreVolume, ecl_grid->getMinpvValue(), zcornData.data());
+        }
 
         // this variable is only required because getCellZvals() needs
         // a coord_t instead of a plain integer pointer...
