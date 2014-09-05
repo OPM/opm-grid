@@ -44,7 +44,6 @@
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
 
-#include "cpgrid/CpGridData.hpp"
 #include "cpgrid/Intersection.hpp"
 #include "cpgrid/Entity.hpp"
 #include "cpgrid/Geometry.hpp"
@@ -68,6 +67,11 @@ namespace Dune
 {
 
     class CpGrid;
+
+    namespace cpgrid
+    {
+        class CpGridData;
+    }
 
     ////////////////////////////////////////////////////////////////////////
     //
