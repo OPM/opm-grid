@@ -62,7 +62,7 @@
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 3, 0)
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
 #include <dune/common/parallel/collectivecommunication.hh>
 #else
 #include <dune/common/collectivecommunication.hh>
