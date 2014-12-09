@@ -207,7 +207,8 @@ namespace Dune
         /// Initialize the grid from parameters.
 	void init(const Opm::parameter::ParameterGroup& param);
 
-
+        /// \name IO routines
+        //@{
 	/// Read the Sintef legacy grid format ('topogeom').
 	/// \param grid_prefix the grid name, such that topology is
 	/// found in <grid_prefix>-topo.dat etc.
@@ -257,6 +258,14 @@ namespace Dune
         /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
         void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
 
+        //@}
+
+        /// \name Cartesian grid extensions.
+        ///
+        /// A cornerpoint grid can be seen as a degenerated and distorted cartesian
+        /// grid. Therefore it provides mappings from cells to the underlying cartesian
+        /// index.
+        //@{
 	/// Create a cartesian grid.
 	/// \param dims the number of cells in each cartesian direction.
 	/// \param cellsize the size of each cell in each dimension.
@@ -294,6 +303,7 @@ namespace Dune
         {
             current_view_data_->getIJK(c, ijk);
         }
+        //@}
 
 	/// Is the grid currently using unique boundary ids?
 	/// \return true if each boundary intersection has a unique id
@@ -312,8 +322,11 @@ namespace Dune
 
 	// --- Dune interface below ---
 
-
-        /// Return grid name. It's the same as the class name.
+        /// \name The DUNE grid interface implementation
+        // \@{
+        /// \brief Get the grid name.
+        ///
+        /// It's the same as the class name.
 	/// What did you expect, something funny?
         std::string name() const
         {
@@ -552,7 +565,10 @@ namespace Dune
             return scatterGrid();
         }
         
-        
+        /// \brief Distributes this grid and data over the available nodes in a distributed machine.
+        /// \param data A data handle describing how to distribute attached data.
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data)
         {
@@ -587,47 +603,76 @@ namespace Dune
             current_view_data_->communicate(data, iftype, dir);
         }
         
-        /// dummy collective communication
+        /// \brief Get the collective communication object.
         const CollectiveCommunication& comm () const
         {
             return current_view_data_->ccobj_;
         }
+        //@}
 
         // ------------ End of Dune interface, start of simplified interface --------------
 
+        /// \name The simplified grid interface.
+        ///
+        /// It provides additional methods not in the DUNE interface but needed by OPM.
+        /// Vertices, faces, and cells are not represented as entities but identified by
+        /// indices.
+        //@{
         // enum { dimension = 3 }; // already defined
 
         typedef Dune::FieldVector<double, 3> Vector;
 
         // Topology
+        /// \brief Get the number of cells.
         int numCells() const
         {
             return current_view_data_->cell_to_face_.size();
         }
+        /// \brief Get the number of faces.
         int numFaces() const
         {
             return current_view_data_->face_to_cell_.size();
         }
+        /// \brief Get The number of vertices.
         int numVertices() const
         {
             return current_view_data_->geomVector<3>().size();
         }
-
+        /// \brief Get the number of faces of a cell.
+        ///
+        /// Due to faults, and collapsing vertices (along pillars) this
+        /// number is quite arbitrary. Its lower bound is 4, but there is
+        /// no upper bound.
+        /// \parame cell the index identifying the cell.
         int numCellFaces(int cell) const
         {
             return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
         }
-                
+        /// \brief Get a specific face of a cell.
+        /// \param cell The index identifying the cell.
+        /// \param local_index The local index (in [0,numFaces(cell))) of the face in this cell.
+        /// \return The index identifying the face.
         int cellFace(int cell, int local_index) const
         {
             return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
         }
 
+        /// \brief Get a list of indices identifying all faces of a cell.
+        /// \param cell The index identifying the cell.
         const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const
         {
             return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
         }
-
+        /// \brief Get the index identifying a cell attached to a face.
+        ///
+        /// Note that a face here is always oriented. If there are two
+        /// neighboring cells then the orientation will be from local_index 0
+        /// to local_index 1
+        /// \param face The index identifying the face.
+        /// \param local_index The local_index of the cell.
+        /// \return The index identifying a cell or -1 if there is no such
+        /// cell due the face being part of the grid boundary or the
+        /// cell being stored on another process.
         int faceCell(int face, int local_index) const
         {
             // In the parallel case we store non-existent cells for faces along
@@ -658,6 +703,12 @@ namespace Dune
                 return use_first ? r[index].index() : -1;
             }
         }
+        /// \brief Get the sum of all faces attached to all cells.
+        ///
+        /// Each face identified by a unique index is counted as often
+        /// as there are neigboring cells attached to it.
+        /// \f$ numCellFaces()=\sum_{c} numCellFaces(c) \f$
+        /// \see numCellFaces(int)const
         int numCellFaces() const
         {
             return current_view_data_->cell_to_face_.dataSize();
@@ -666,32 +717,50 @@ namespace Dune
         {
             return current_view_data_->face_to_point_[face].size();
         }
+        /// \brief Get the index identifying a vertex of a face.
+        /// \param cell The index identifying the face.
+        /// \param local_index The local_index (in [0,numFaceVertices(vertex) - 1]])
+        ///  of the vertex.
         int faceVertex(int face, int local_index) const
         {
             return current_view_data_->face_to_point_[face][local_index];
         }
 
         // Geometry
+        /// \brief Get the Position of a vertex.
+        /// \param cell The index identifying the cell.
+        /// \return The coordinates of the vertex.
         const Vector& vertexPosition(int vertex) const
         {
             return current_view_data_->geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
         }
+        /// \brief Get the area of a face.
+        /// \param cell The index identifying the face.
         double faceArea(int face) const
         {
             return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].volume();
         }
+        /// \brief Get the coordinates of the center of a face.
+        /// \param cell The index identifying the face.
         const Vector& faceCentroid(int face) const
         {
             return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].center();
         }
+        /// \brief Get the unit normal of a face.
+        /// \param cell The index identifying the face.
+        /// \see faceCell
         const Vector& faceNormal(int face) const
         {
             return current_view_data_->face_normals_.get(face);
         }
+        /// \brief Get the volume of the cell.
+        /// \param cell The index identifying the cell.
         double cellVolume(int cell) const
         {
             return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
         }
+        /// \brief Get the coordinates of the center of a cell.
+        /// \param cell The index identifying the face.
         const Vector& cellCentroid(int cell) const
         {
             return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
@@ -748,11 +817,13 @@ namespace Dune
             GeometryIterator iter_;
         };
 
+        /// \brief Get an iterator over the cell centroids positioned at the first one.
         CentroidIterator<0> beginCellCentroids() const
         {
             return CentroidIterator<0>(current_view_data_->geomVector<0>().begin());
         }
 
+        /// \brief Get an iterator over the face centroids positioned at the first one.
         CentroidIterator<1> beginFaceCentroids() const
         {
             return CentroidIterator<1>(current_view_data_->geomVector<1>().begin());
@@ -792,11 +863,17 @@ namespace Dune
             return ret;
         }
 
+        //@}
 
         // ------------ End of simplified interface --------------
 
         //------------- methods not in the DUNE grid interface.
-        
+
+        /// \name Parallel grid extensions.
+        /// Methods extending the DUNE's parallel grid interface.
+        /// These are basically for scattering/gathering data to/from
+        /// distributed views.
+        //@{
         ///
         /// \brief Moves data from the global (all data on process) view to the distributed view.
         /// \tparam DataHandle The type of the data handle describing the data and responsible for
@@ -846,9 +923,11 @@ namespace Dune
         {
             current_view_data_=distributed_data_;
         }
-
+        //@}
 #if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-        // backward compatibility with dune-grid-2.2
+
+        /// \name backward compatibility with dune-grid-2.2
+        //@{
         //! View for a grid level
         template<PartitionIteratorType pitype>
         typename Partition<pitype>::LevelGridView levelGridView(int level) const {
@@ -870,6 +949,7 @@ namespace Dune
         LeafGridView leafGridView() const {
           return this->leafView();
         }
+        //@}
 #endif
         
     private:
