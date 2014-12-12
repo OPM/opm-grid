@@ -57,6 +57,10 @@ namespace Dune
 
 	    /// @brief
 	    /// @todo Doc me!
+	    typedef std::vector<GeometryType> Types;
+
+	    /// @brief
+	    /// @todo Doc me!
 	    /// @param
 	    IndexSet(const CpGridData& grid)
 		: grid_(grid)
@@ -77,6 +81,15 @@ namespace Dune
 	    /// @param
 	    /// @return
 	    const std::vector<GeometryType>& geomTypes(int codim) const
+	    {
+		return geom_types_[codim];
+	    }
+
+	    /// @brief
+	    /// @todo Doc me!
+	    /// @param
+	    /// @return
+	    const std::vector<GeometryType>& types(int codim) const
 	    {
 		return geom_types_[codim];
 	    }
