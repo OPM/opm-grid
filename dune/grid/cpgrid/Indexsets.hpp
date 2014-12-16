@@ -80,7 +80,7 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-	    const std::vector<GeometryType>& geomTypes(int codim) const
+	    const Types& geomTypes(int codim) const
 	    {
 		return geom_types_[codim];
 	    }
@@ -89,7 +89,7 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @param
 	    /// @return
-	    const std::vector<GeometryType>& types(int codim) const
+	    const Types& types(int codim) const
 	    {
 		return geom_types_[codim];
 	    }
@@ -177,7 +177,7 @@ namespace Dune
 
 	private:
 	    const CpGridData& grid_;
-	    std::vector<GeometryType> geom_types_[4];
+	    Types geom_types_[4];
 	};
 
 
