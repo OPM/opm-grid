@@ -23,13 +23,17 @@ namespace Dune
 #else
   template< class Data, class Allocator >
   class PersistentContainer< CpGrid, Data, Allocator >
-  : public PersistentContainerVector< CpGrid, 
+  : public PersistentContainerVector< CpGrid,
                                       typename CpGrid::Traits::LeafIndexSet,
                                       std::vector<Data,Allocator> >
 #endif
   {
   public:
     typedef CpGrid  GridType;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    typedef typename std::vector<Data>::allocator_type Allocator;
+#endif
+
   private:
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     typedef PersistentContainerVector< GridType, typename GridType::Traits::LeafIndexSet, std::vector<Data> > BaseType;
@@ -38,11 +42,11 @@ namespace Dune
 #endif
 
   public:
-    //! Constructor filling the container with values using the default constructor 
+    //! Constructor filling the container with values using the default constructor
     //! Depending on the implementation this could be achieved without allocating memory
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    PersistentContainer ( const GridType &grid, const int codim)
-    : BaseType( grid, codim, grid.leafIndexSet(), 1.1 )
+    PersistentContainer ( const GridType &grid, const int codim, const Data& data = Data(), const Allocator &allocator = Allocator() )
+    : BaseType( grid.leafIndexSet(), codim, data, allocator )
 #else
     PersistentContainer ( const GridType &grid, const int codim, const Allocator &allocator = Allocator() )
     : BaseType( grid, codim, grid.leafIndexSet(), 1.1, allocator )
