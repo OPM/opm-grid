@@ -692,7 +692,7 @@ namespace Dune
                 --size;
                 index=1;
             }
-            if(r[1].index()==std::numeric_limits<int>::max())
+            if(r.size()>1 && r[1].index()==std::numeric_limits<int>::max())
             {
                 assert(size==2);
                 --size;
