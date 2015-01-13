@@ -864,9 +864,12 @@ namespace Dune
             return ret;
         }
 
+        template<class Cell2FacesRowIterator>
         int
-        faceTag(const int cell, const int face) const
+        faceTag(const Cell2FacesRowIterator& cell_face) const
         {
+            const int cell = cell_face.getCellIndex();
+            const int face = *cell_face;
             assert (0 <= cell);  assert (cell < numCells());
             assert (0 <= face);  assert (face < numFaces());
 
