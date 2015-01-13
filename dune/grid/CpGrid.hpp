@@ -832,35 +832,40 @@ namespace Dune
         // Extra
         int boundaryId(int face) const
         {
-            int ret = 0;
             cpgrid::EntityRep<1> f(face, true);
             if (current_view_data_->face_to_cell_[f].size() == 1) {
                 if (current_view_data_->uniqueBoundaryIds()) {
                     // Use the unique boundary ids.
-                    ret = current_view_data_->unique_boundary_ids_[f];
+                    return current_view_data_->unique_boundary_ids_[f];
                 } else {
                     // Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
-                    const bool normal_is_in = 
-                        !(current_view_data_->face_to_cell_[f][0].orientation());
-                    enum face_tag tag = current_view_data_->face_tag_[f];
-                    switch (tag) {
-                    case LEFT:
-                        //                   LEFT : RIGHT
-                        ret = normal_is_in ? 1    : 2; // min(I) : max(I)
-                        break;
-                    case BACK:
-                        //                   BACK : FRONT
-                        ret = normal_is_in ? 3    : 4; // min(J) : max(J)
-                        break;
-                    case TOP:
-                        // Note: TOP at min(K) as 'z' measures *depth*.
-                        //                   TOP  : BOTTOM
-                        ret = normal_is_in ? 5    : 6; // min(K) : max(K)
-                        break;
-                    }
+                    return faceTag(face)+1;
                 }
             }
-            return ret;
+        }
+
+        /// \brief Get the eclipse cartesian tag of a face.
+        /// \param face The id of the face in [0, numCellFaces()]
+        /// \return 0, 1, 2 , 3, 4, 5 for I-, I+, J-, J+, K-, K+
+        /// \warn Note that this is not the return value of boundaryId!
+        int faceTag(int face) const
+        {
+            cpgrid::EntityRep<1> f(face, true);
+            const bool normal_is_in =
+                !(current_view_data_->face_to_cell_[f][0].orientation());
+            enum face_tag tag = current_view_data_->face_tag_[f];
+            switch (tag) {
+            case LEFT:
+                //                   LEFT : RIGHT
+                return normal_is_in ? 0    : 1; // min(I) : max(I)
+            case BACK:
+                //                   BACK : FRONT
+                return normal_is_in ? 1    : 2; // min(J) : max(J)
+            case TOP:
+                // Note: TOP at min(K) as 'z' measures *depth*.
+                //                   TOP  : BOTTOM
+                return normal_is_in ? 4    : 5; // min(K) : max(K)
+            }
         }
 
         //@}
