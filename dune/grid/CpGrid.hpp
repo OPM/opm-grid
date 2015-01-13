@@ -39,6 +39,7 @@
 #include <string>
 #include <map>
 #include <array>
+#include <opm/core/utility/ErrorMacros.hpp>
 
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
@@ -861,6 +862,43 @@ namespace Dune
                 }
             }
             return ret;
+        }
+
+        int
+        faceTag(const int cell, const int face) const
+        {
+            assert (0 <= cell);  assert (cell < numCells());
+            assert (0 <= face);  assert (face < numFaces());
+
+            typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
+
+            const cpgrid::EntityRep<1> f(face, true);
+            const F2C&     f2c = current_view_data_->face_to_cell_[f];
+            const face_tag tag = current_view_data_->face_tag_[f];
+
+            assert ((f2c.size() == 1) || (f2c.size() == 2));
+
+            const bool normal_is_in =
+                ((f2c.size() == 1)
+                 ? ! f2c[0].orientation() // Single cell => boundary
+                 : (f2c[0].index() != cell));     // Two cells => interior
+
+            switch (tag) {
+            case LEFT:
+                //                    LEFT : RIGHT
+                return normal_is_in ? 0    : 1; // min(I) : max(I)
+
+            case BACK:
+                //                    BACK : FRONT
+                return normal_is_in ? 2    : 3; // min(J) : max(J)
+
+            case TOP:
+                // Note: TOP at min(K) as 'z' measures *depth*.
+                //                    TOP  : BOTTOM
+                return normal_is_in ? 4    : 5; // min(K) : max(K)
+            default:
+                OPM_THROW(std::runtime_error, "Unhandeled face tag. This should never happen!");
+            }
         }
 
         //@}
