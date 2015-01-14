@@ -906,7 +906,7 @@ namespace Dune
                 //                    TOP  : BOTTOM
                 return normal_is_in ? 4    : 5; // min(K) : max(K)
             default:
-                OPM_THROW(std::runtime_error, "Unhandeled face tag. This should never happen!");
+                OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
             }
         }
 
