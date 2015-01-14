@@ -864,6 +864,12 @@ namespace Dune
             return ret;
         }
 
+        /// \brief Get the cartesian tag associated with a face tag.
+        ///
+        /// The tag tells us in which direction the face would point
+        /// in the underlying cartesian grid.
+        /// \param An iterator that points to the face and was obtained
+        /// by iterating over Opm::UgGridHelpers::cell2Faces(grid).
         template<class Cell2FacesRowIterator>
         int
         faceTag(const Cell2FacesRowIterator& cell_face) const
