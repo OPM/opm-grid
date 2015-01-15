@@ -835,6 +835,11 @@ namespace Dune
         // Extra
         int boundaryId(int face) const
         {
+            // Note that this relies on the following implementation detail:
+            // The grid is always construct such that the faces where
+            // orientation() returns true are oriented along the positive IJK
+            // direction. Oriented means that the first cell attached to face
+            // has the lower index.
             int ret = 0;
             cpgrid::EntityRep<1> f(face, true);
             if (current_view_data_->face_to_cell_[f].size() == 1) {
@@ -876,6 +881,15 @@ namespace Dune
         int
         faceTag(const Cell2FacesRowIterator& cell_face) const
         {
+            // Note that this relies on the following implementation detail:
+            // The grid is always construct such that the interior faces constructed
+            // with orientation set to true are
+            // oriented along the positive IJK direction. Oriented means that
+            // the first cell attached to face has the lower index.
+            // For faces along the boundary (only one cell, always  attached at index 0)
+            // the orientation has to be determined by the orientation of the cell.
+            // If it is true then in UnstructuredGrid it would be stored at index 0,
+            // otherwise at index 1.
             const int cell = cell_face.getCellIndex();
             const int face = *cell_face;
             assert (0 <= cell);  assert (cell < numCells());
