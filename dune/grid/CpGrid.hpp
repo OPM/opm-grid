@@ -15,7 +15,9 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2014 Statoil ASA.
+  Copyright 2014, 2015 Dr. Blatt - HPC-Simulartion-Software & Services
+  Copyright 2015       NTNU
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -39,6 +41,7 @@
 #include <string>
 #include <map>
 #include <array>
+#include <opm/core/utility/ErrorMacros.hpp>
 
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
@@ -832,6 +835,11 @@ namespace Dune
         // Extra
         int boundaryId(int face) const
         {
+            // Note that this relies on the following implementation detail:
+            // The grid is always construct such that the faces where
+            // orientation() returns true are oriented along the positive IJK
+            // direction. Oriented means that the first cell attached to face
+            // has the lower index.
             int ret = 0;
             cpgrid::EntityRep<1> f(face, true);
             if (current_view_data_->face_to_cell_[f].size() == 1) {
@@ -861,6 +869,61 @@ namespace Dune
                 }
             }
             return ret;
+        }
+
+        /// \brief Get the cartesian tag associated with a face tag.
+        ///
+        /// The tag tells us in which direction the face would point
+        /// in the underlying cartesian grid.
+        /// \param An iterator that points to the face and was obtained
+        /// by iterating over Opm::UgGridHelpers::cell2Faces(grid).
+        template<class Cell2FacesRowIterator>
+        int
+        faceTag(const Cell2FacesRowIterator& cell_face) const
+        {
+            // Note that this relies on the following implementation detail:
+            // The grid is always construct such that the interior faces constructed
+            // with orientation set to true are
+            // oriented along the positive IJK direction. Oriented means that
+            // the first cell attached to face has the lower index.
+            // For faces along the boundary (only one cell, always  attached at index 0)
+            // the orientation has to be determined by the orientation of the cell.
+            // If it is true then in UnstructuredGrid it would be stored at index 0,
+            // otherwise at index 1.
+            const int cell = cell_face.getCellIndex();
+            const int face = *cell_face;
+            assert (0 <= cell);  assert (cell < numCells());
+            assert (0 <= face);  assert (face < numFaces());
+
+            typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
+
+            const cpgrid::EntityRep<1> f(face, true);
+            const F2C&     f2c = current_view_data_->face_to_cell_[f];
+            const face_tag tag = current_view_data_->face_tag_[f];
+
+            assert ((f2c.size() == 1) || (f2c.size() == 2));
+
+            const bool normal_is_in =
+                ((f2c.size() == 1)
+                 ? ! f2c[0].orientation() // Single cell => boundary
+                 : (f2c[0].index() != cell));     // Two cells => interior
+
+            switch (tag) {
+            case LEFT:
+                //                    LEFT : RIGHT
+                return normal_is_in ? 0    : 1; // min(I) : max(I)
+
+            case BACK:
+                //                    BACK : FRONT
+                return normal_is_in ? 2    : 3; // min(J) : max(J)
+
+            case TOP:
+                // Note: TOP at min(K) as 'z' measures *depth*.
+                //                    TOP  : BOTTOM
+                return normal_is_in ? 4    : 5; // min(K) : max(K)
+            default:
+                OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
+            }
         }
 
         //@}
