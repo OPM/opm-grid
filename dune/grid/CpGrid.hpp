@@ -15,7 +15,9 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2014 Statoil ASA.
+  Copyright 2014, 2015 Dr. Blatt - HPC-Simulartion-Software & Services
+  Copyright 2015       NTNU
 
   This file is part of The Open Porous Media project  (OPM).
 
