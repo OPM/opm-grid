@@ -139,7 +139,7 @@ namespace cpgrid
         // Possibly process MINPV
         if (!poreVolume.empty() && ecl_grid->isMinpvActive()) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            mp.process(poreVolume, ecl_grid->getMinpvValue(), zcornData.data());
+            mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, zcornData.data());
         }
 
         // this variable is only required because getCellZvals() needs
