@@ -1014,6 +1014,24 @@ namespace Dune
         }
         //@}
 #endif
+
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+        /// \brief The type of the parallel index set
+        typedef cpgrid::CpGridData::ParallelIndexSet ParallelIndexSet;
+        /// \brief The type of the remote indices information
+        typedef cpgrid::CpGridData::RemoteIndices RemoteIndices;
+
+        ParallelIndexSet& getCellIndexSet()
+        {
+            return current_view_data_->cell_indexset_;
+        }
+
+        RemoteIndices& getCellRemoteIndices()
+        {
+            return current_view_data_->cell_remote_indices_;
+        }
+
+#endif
         
     private:
         /// Scatter a global grid to all processors.
