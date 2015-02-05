@@ -79,7 +79,7 @@ namespace Dune
      void addOverlapLayer(const CpGrid& grid,
                           const std::vector<int>& cell_part,
                           std::vector<std::set<int> >& cell_overlap,
-                          int mypart, bool all=false);
+                          int mypart, int overlapLayers, bool all=false);
 
 } // namespace Dune
 

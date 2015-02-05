@@ -561,9 +561,9 @@ namespace Dune
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
         /// \warning May only be called once.
-        bool loadBalance()
+        bool loadBalance(int overlapLayers=2)
         {
-            return scatterGrid();
+            return scatterGrid(overlapLayers);
         }
         
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -571,9 +571,9 @@ namespace Dune
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
-        bool loadBalance(DataHandle& data)
+        bool loadBalance(DataHandle& data, int overlapLayers=2)
         {
-            bool ret = scatterGrid();
+            bool ret = scatterGrid(overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1033,7 +1033,7 @@ namespace Dune
         
     private:
         /// Scatter a global grid to all processors.
-        bool scatterGrid();
+        bool scatterGrid(int overlapLayers);
         
         /** @brief The data stored in the grid. 
          * 

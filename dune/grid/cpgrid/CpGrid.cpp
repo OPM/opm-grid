@@ -84,7 +84,7 @@ namespace Dune
     }
 
 
-bool CpGrid::scatterGrid()
+bool CpGrid::scatterGrid(int overlapLayers)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(distributed_data_)
@@ -126,6 +126,8 @@ bool CpGrid::scatterGrid()
     if(my_num<cc.size())
     {
         distributed_data_.reset(new cpgrid::CpGridData(new_comm));
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part,
+                                                overlapLayers);
     }
     current_view_data_ = distributed_data_.get();
     return true;
