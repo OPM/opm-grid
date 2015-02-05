@@ -50,16 +50,10 @@ namespace Dune
 {
 
     CpGrid::CpGrid()
-        : data_( new cpgrid::CpGridData(*this) ), current_view_data_(data_),
+        : data_( new cpgrid::CpGridData(*this)),
+          current_view_data_(data_.get()),
           distributed_data_()
     {}
-
-    CpGrid::~CpGrid()
-    {
-        delete data_;
-        if(distributed_data_)
-            delete distributed_data_;
-    }
 
     /// Initialize the grid.
     void CpGrid::init(const Opm::parameter::ParameterGroup& param)
@@ -131,10 +125,9 @@ bool CpGrid::scatterGrid()
     }
     if(my_num<cc.size())
     {
-        distributed_data_ = new cpgrid::CpGridData(new_comm);
-        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+        distributed_data_.reset(new cpgrid::CpGridData(new_comm));
     }
-    current_view_data_ = distributed_data_;
+    current_view_data_ = distributed_data_.get();
     return true;
 #else
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
