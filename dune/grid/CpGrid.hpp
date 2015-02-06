@@ -204,8 +204,6 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid();
-
-        ~CpGrid();
  
         /// Initialize the grid from parameters.
 	void init(const Opm::parameter::ParameterGroup& param);
@@ -949,7 +947,7 @@ namespace Dune
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->scatterData(handle, data_, distributed_data_);
+            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
@@ -968,7 +966,7 @@ namespace Dune
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
-            distributed_data_->gatherData(handle, data_, distributed_data_);
+            distributed_data_->gatherData(handle, data_.get(), distributed_data_.get());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
@@ -978,13 +976,13 @@ namespace Dune
         /// \brief Switch to the global view.
         void switchToGlobalView()
         {
-            current_view_data_=data_;
+            current_view_data_=data_.get();
         }
         
         /// \brief Switch to the distributed view.
         void switchToDistributedView()
         {
-            current_view_data_=distributed_data_;
+            current_view_data_=distributed_data_.get();
         }
         //@}
 #if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -1041,11 +1039,11 @@ namespace Dune
          * 
          * All the data of the grid is stored there and
          * calls are forwarded to it.*/
-        cpgrid::CpGridData *data_;
+        std::shared_ptr<cpgrid::CpGridData> data_;
         /** @brief A pointer to data of the current View. */
-        cpgrid::CpGridData *current_view_data_;
+        cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
-        cpgrid::CpGridData * distributed_data_;
+        std::shared_ptr<cpgrid::CpGridData> distributed_data_;
     }; // end Class CpGrid
 
 
