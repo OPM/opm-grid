@@ -560,8 +560,9 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=2)
+        bool loadBalance(int overlapLayers=1)
         {
             return scatterGrid(overlapLayers);
         }
