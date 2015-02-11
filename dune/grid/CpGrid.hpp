@@ -569,10 +569,12 @@ namespace Dune
         
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
+        /// \param overlapLayers The number of layers of overlap cells to be added
+        ///        (default: 1)
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
-        bool loadBalance(DataHandle& data, int overlapLayers=2)
+        bool loadBalance(DataHandle& data, int overlapLayers=1)
         {
             bool ret = scatterGrid(overlapLayers);
             scatterData(data);
