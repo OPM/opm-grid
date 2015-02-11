@@ -560,20 +560,23 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance()
+        bool loadBalance(int overlapLayers=1)
         {
-            return scatterGrid();
+            return scatterGrid(overlapLayers);
         }
         
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
+        /// \param overlapLayers The number of layers of overlap cells to be added
+        ///        (default: 1)
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
-        bool loadBalance(DataHandle& data)
+        bool loadBalance(DataHandle& data, int overlapLayers=1)
         {
-            bool ret = scatterGrid();
+            bool ret = scatterGrid(overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1033,7 +1036,7 @@ namespace Dune
         
     private:
         /// Scatter a global grid to all processors.
-        bool scatterGrid();
+        bool scatterGrid(int overlapLayers);
         
         /** @brief The data stored in the grid. 
          * 

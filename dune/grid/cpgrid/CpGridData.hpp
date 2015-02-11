@@ -238,7 +238,8 @@ public:
     /// The whole grid must be available on all processors.
     void distributeGlobalGrid(const CpGrid& grid,
                               const CpGridData& view_data,
-                              const std::vector<int>& cell_part);
+                              const std::vector<int>& cell_part,
+                              int overlap_layers);
 
     /// \brief communicate objects for all codims on a given level
     /// \param data The data handle describing the data. Has to adhere to the

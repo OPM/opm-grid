@@ -515,7 +515,8 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const CpGridData& view_data,
-                                      const std::vector<int>& cell_part)
+                                      const std::vector<int>& cell_part,
+                                      int overlap_layers)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
@@ -531,7 +532,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     std::vector<std::set<int> > overlap; 
     
     overlap.resize(cell_part.size());
-    addOverlapLayer(grid, cell_part, overlap, my_rank, false);
+    addOverlapLayer(grid, cell_part, overlap, my_rank, false, overlap_layers);
     // count number of cells
     struct CellCounter
     {
