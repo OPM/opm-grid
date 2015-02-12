@@ -137,7 +137,7 @@ namespace cpgrid
             g.actnum = &actnumData[0];
 
         // Possibly process MINPV
-        if (!poreVolume.empty() && ecl_grid->isMinpvActive()) {
+        if (!poreVolume.empty() && (ecl_grid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {    
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, zcornData.data());
         }
