@@ -23,7 +23,12 @@
 #endif
 
 #include <iostream>
+
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+
 #include <dune/grid/CpGrid.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>

@@ -47,6 +47,9 @@
 #ifndef OPM_CPGRIDDATA_HEADER
 #define OPM_CPGRIDDATA_HEADER
 
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
+
 #include <dune/common/version.hh>
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/mpihelper.hh>
@@ -56,14 +59,6 @@
 #ifdef HAVE_DUNE_ISTL
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
-#include <array>
-#include <dune/common/tuples.hh>
-#include "OrientedEntityTable.hpp"
-#include "DefaultGeometryPolicy.hpp"
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
-
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
 #include <dune/common/parallel/collectivecommunication.hh>
@@ -77,6 +72,17 @@
 #include <dune/common/parallel/variablesizecommunicator.hh>
 #endif
 #include <dune/grid/common/gridenums.hh>
+#include <dune/common/tuples.hh>
+
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+
+
+#include <array>
+#include "OrientedEntityTable.hpp"
+#include "DefaultGeometryPolicy.hpp"
+#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include "Entity2IndexDataHandle.hpp"
 #include "GlobalIdMapping.hpp"
 

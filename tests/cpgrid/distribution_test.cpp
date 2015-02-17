@@ -7,6 +7,11 @@
 #include <boost/test/unit_test.hpp>
 
 #include <dune/grid/CpGrid.hpp>
+
+
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
+
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
 #if HAVE_DUNE_GRID_CHECKS
@@ -16,6 +21,9 @@
 #include <dune/grid/test/checkpartition.cc>
 #include <dune/grid/test/checkcommunicate.cc>
 #endif
+
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+
 
 #if HAVE_MPI
 class MPIError {
