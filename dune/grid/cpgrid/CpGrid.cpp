@@ -131,7 +131,8 @@ bool CpGrid::scatterGrid(int overlapLayers)
     }
     current_view_data_ = distributed_data_.get();
     return true;
-#else
+#else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    static_cast<void>(overlapLayers);
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";
