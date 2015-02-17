@@ -509,6 +509,7 @@ namespace Dune
             /// Returns the single corner: the vertex itself.
 	    GlobalCoordinate corner(int cor) const
 	    {
+                static_cast<void>(cor);
                 assert(cor == 0);
                 return pos_;
 	    }
