@@ -69,7 +69,7 @@ namespace Dune
 			       std::vector<int>& new_actnum,
 			       grdecl& output);
 	void removeOuterCellLayer(processed_grid& grid);
-	void removeUnusedNodes(processed_grid& grid);
+	// void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
 	void buildTopo(const processed_grid& output,
 		       std::vector<int>& global_cell,
 		       cpgrid::OrientedEntityTable<0, 1>& c2f,
@@ -513,6 +513,11 @@ namespace cpgrid
 
 
 
+        /*
+
+        // NOTE: This function has been commented out as it is not in use, and therefore
+        //       generates warnings. It has not been deleted, as it should eventually be
+        //       used, what is missing is thorough testing of the method.
 
 	void removeUnusedNodes(processed_grid& grid)
 	{
@@ -572,7 +577,7 @@ namespace cpgrid
             //   3. Set grid.number_of_nodes.
             grid.number_of_nodes = nodecount;
 	}
-
+        */
 
 
 

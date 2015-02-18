@@ -44,7 +44,11 @@
 //    within method Dune::SignedEntityVariable<T,codim>::operator[](),
 //    but Dune::FieldVector<K,n> does not provide such an operator.
 //
+
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
 #include <dune/common/fvector.hh>
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {

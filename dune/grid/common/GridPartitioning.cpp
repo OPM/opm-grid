@@ -244,11 +244,12 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
     int my_index = ix.index(from);
     int nb_index = ix.index(neighbor);
-
-    for ( int i=0; i< from.subEntities(CpGrid::dimension); i++ )
+    const int num_from_subs = from.subEntities(CpGrid::dimension);
+    for ( int i = 0; i < num_from_subs ; i++ )
     {
         int mypoint = ix.index(*from.subEntity<CpGrid::dimension>(i));
-        for ( int j=0; j<neighbor.subEntities(CpGrid::dimension); j++)
+        const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
+        for ( int j = 0; j < num_nb_subs; j++)
         {
             int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(i));
             if ( mypoint == otherpoint )

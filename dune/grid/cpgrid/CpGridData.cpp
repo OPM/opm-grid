@@ -8,10 +8,16 @@
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
 #include"PartitionTypeIndicator.hpp"
+
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
+
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <dune/common/parallel/remoteindices.hh>
 #include <dune/common/enumset.hh>
 #include <opm/core/utility/SparseTable.hpp>
+
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {
@@ -511,7 +517,8 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
                                 
 }
 
-#endif
+#endif // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+
 
 void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const CpGridData& view_data,
@@ -527,7 +534,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     for(Iterator i=cell_part.begin(); i!= cell_part.end(); ++i)
         if(*i>=size)
             OPM_THROW(std::runtime_error, "rank for cell is too big");
-#endif
+#endif // #ifdef DEBUG
     // vector with the set of ranks that
     std::vector<std::set<int> > overlap; 
     
@@ -965,10 +972,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     comm.forward(point_handle);
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
-#else
+#else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     static_cast<void>(grid);
     static_cast<void>(view_data);
     static_cast<void>(cell_part);
+    static_cast<void>(overlap_layers);
 #endif    
 }
 
