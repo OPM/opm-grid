@@ -615,6 +615,7 @@ namespace cpgrid
 		// Instead, the appendRow() is put inside an if test.
 		// assert(cellcount == 1 || cellcount == 2);
 		if (cellcount > 0) {
+		    std::sort(cells, cells + cellcount);
 		    f2c.appendRow(cells, cells + cellcount);
 		    face_to_output_face.push_back(i);
 		}
