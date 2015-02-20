@@ -73,6 +73,8 @@ namespace Dune
 	    }
 	    using R::size;
 	    using R::empty;
+	    using R::begin;
+	    using R::end;
 	    /// @brief Random access operator.
 	    /// @param subindex Column index.
 	    /// @return Entity representation.
@@ -160,6 +162,36 @@ namespace Dune
 	    bool operator==(const OrientedEntityTable& other) const
 	    {
 		return super_t::operator==(other);
+	    }
+
+            /** @brief Prints the relation matrix corresponding to the table, sparse format.
+
+             Let the entities of codimensions f and t be given by
+             the sets \f$E^f = { e^f_i } \f$ and \f$E^t = { e^t_j }\f$.
+             A relation matrix R is defined by
+	     \f{eqnarray*}{
+	       R_{ij} &=& 0  \mbox{ if } e^f_i \mbox{ and } e^t_j \mbox{ are not neighbours }\\
+               R_{ij} &=& 1  \mbox{ if they are neighbours with same orientation }\\
+	       R_{ij} &=& -1 \mbox{ if they are neighbours with opposite orientation.}
+	     \f}
+             The output is written one entry to each line, in the format:
+                 row   column    entry (either 1 or -1)
+             The row and column numbers start from zero, so if using octave or
+             matlab you should add 1 to those columns after loading, before calling spconvert().
+
+	     @param os   The output stream.
+	    */
+	    void printSparseRelationMatrix(std::ostream& os) const
+	    {
+		for (int i = 0; i < size(); ++i) {
+		    const FromType from_ent(i, true);
+		    const row_type r = operator[](from_ent);
+                    const int rsize = r.size();
+                    for (int j = 0; j < rsize; ++j) {
+                        os << i << ' ' << r[j].index() << ' ' << (r[j].orientation() ? 1 : -1) << '\n';
+                    }
+		}
+                os << std::flush;
 	    }
 
  	    /** @brief Prints the relation matrix corresponding to the table.
