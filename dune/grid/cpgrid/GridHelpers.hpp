@@ -482,7 +482,7 @@ beginFaceCentroids(const Dune::CpGrid& grid);
 /// \param grid The grid.
 /// \param face_index The index of the specific face.
 /// \param coordinate The coordinate index.
-FaceCentroidTraits<Dune::CpGrid>::ValueType
+const FaceCentroidTraits<Dune::CpGrid>::ValueType&
 faceCentroid(const Dune::CpGrid& grid, int face_index);
 
 template<>

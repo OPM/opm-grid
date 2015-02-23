@@ -98,7 +98,7 @@ CellVolumeIterator endCellVolumes(const Dune::CpGrid& grid)
     return CellVolumeIterator(grid, numCells(grid));
 }
 
-FaceCentroidTraits<Dune::CpGrid>::ValueType
+const FaceCentroidTraits<Dune::CpGrid>::ValueType&
 faceCentroid(const Dune::CpGrid& grid, int face_index)
 {
     return grid.faceCentroid(face_index);
