@@ -399,6 +399,74 @@ beginCellCentroids(const Dune::CpGrid& grid);
 double cellCentroidCoordinate(const Dune::CpGrid& grid, int cell_index,
                               int coordinate);
 
+/// \brief Get the centroid of a cell.
+/// \param grid The grid whose cell centroid we query.
+/// \param cell_index The index of the corresponding cell.
+const double* cellCentroid(const Dune::CpGrid& grid, int cell_index);
+
+/// \brief Get the volume of a cell.
+/// \param grid The grid the cell belongs to.
+/// \param cell_index The index of the cell.
+double cellVolume(const  Dune::CpGrid& grid, int cell_index);
+
+/// \brief An iterator over the cell volumes.
+class CellVolumeIterator
+    : public Dune::RandomAccessIteratorFacade<CellVolumeIterator, double, double, int>
+{
+public:
+    /// \brief Creates an iterator.
+    /// \param grid The grid the iterator belongs to.
+    /// \param cell_index The position of the iterator.
+    CellVolumeIterator(const  Dune::CpGrid& grid, int cell_index)
+        : grid_(&grid), cell_index_(cell_index)
+    {}
+
+    double dereference() const
+    {
+        return grid_->cellVolume(cell_index_);
+    }
+    void increment()
+    {
+        ++cell_index_;
+    }
+    double elementAt(int n) const
+    {
+        return grid_->cellVolume(n);
+    }
+    void advance(int n)
+    {
+        cell_index_+=n;
+    }
+    void decrement()
+    {
+        --cell_index_;
+    }
+    int distanceTo(const CellVolumeIterator& o) const
+    {
+        return o.cell_index_-cell_index_;
+    }
+    bool equals(const CellVolumeIterator& o) const
+    {
+        return o.grid_==grid_ && o.cell_index_==cell_index_;
+    }
+
+private:
+    const Dune::CpGrid* grid_;
+    int cell_index_;
+};
+
+template<>
+struct ADCellVolumesTraits<Dune::CpGrid>
+{
+    typedef CellVolumeIterator IteratorType;
+};
+
+/// \brief Get an iterator over the cell volumes of a grid positioned at the first cell.
+CellVolumeIterator beginCellVolumes(const Dune::CpGrid& grid);
+
+/// \brief Get an iterator over the cell volumes of a grid positioned one after the last cell.
+CellVolumeIterator endCellVolumes(const Dune::CpGrid& grid);
+
 template<>
 struct FaceCentroidTraits<Dune::CpGrid>
 {
