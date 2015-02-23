@@ -456,7 +456,7 @@ private:
 };
 
 template<>
-struct ADCellVolumesTraits<Dune::CpGrid>
+struct CellVolumeIteratorTraits<Dune::CpGrid>
 {
     typedef CellVolumeIterator IteratorType;
 };
