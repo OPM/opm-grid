@@ -78,7 +78,27 @@ beginFaceCentroids(const Dune::CpGrid& grid)
     return FaceCentroidTraits<Dune::CpGrid>::IteratorType(grid, 0);
 }
 
-FaceCentroidTraits<Dune::CpGrid>::ValueType
+const double* cellCentroid(const Dune::CpGrid& grid, int cell_index)
+{
+    return &(grid.cellCentroid(cell_index)[0]);
+}
+
+double cellVolume(const  Dune::CpGrid& grid, int cell_index)
+{
+    return grid.cellVolume(cell_index);
+}
+
+CellVolumeIterator beginCellVolumes(const Dune::CpGrid& grid)
+{
+    return CellVolumeIterator(grid, 0);
+}
+
+CellVolumeIterator endCellVolumes(const Dune::CpGrid& grid)
+{
+    return CellVolumeIterator(grid, numCells(grid));
+}
+
+const FaceCentroidTraits<Dune::CpGrid>::ValueType&
 faceCentroid(const Dune::CpGrid& grid, int face_index)
 {
     return grid.faceCentroid(face_index);
