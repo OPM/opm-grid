@@ -32,6 +32,7 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/cpgrid/Intersection.cpp
 	dune/grid/cpgrid/CpGridData.cpp
 	dune/grid/cpgrid/CpGrid.cpp
+	dune/grid/cpgrid/GridHelpers.cpp
 	dune/grid/cpgrid/PartitionTypeIndicator.cpp
 	dune/grid/cpgrid/readEclipseFormat.cpp
 	dune/grid/cpgrid/readSintefLegacyFormat.cpp
@@ -95,6 +96,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/EntityRep.hpp
 	dune/grid/cpgrid/Geometry.hpp
 	dune/grid/cpgrid/GlobalIdMapping.hpp
+	dune/grid/cpgrid/GridHelpers.hpp
 	dune/grid/CpGrid.hpp
 	dune/grid/cpgrid/Indexsets.hpp
 	dune/grid/cpgrid/Intersection.hpp
