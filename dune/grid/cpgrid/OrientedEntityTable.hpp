@@ -73,6 +73,8 @@ namespace Dune
 	    }
 	    using R::size;
 	    using R::empty;
+	    using R::begin;
+	    using R::end;
 	    /// @brief Random access operator.
 	    /// @param subindex Column index.
 	    /// @return Entity representation.
@@ -94,8 +96,8 @@ namespace Dune
 	/// The purpose of this class is to hide the intricacies of
 	/// handling orientations from the client code, otherwise a
 	/// straight Opm::SparseTable would do.
-	/// @tparam codim_from Codimension of ???
-	/// @tparam codim_to Codimension of ???
+	/// @tparam codim_from Codimension of domain of relation mapping
+	/// @tparam codim_to Codimension of range of relation mapping
 	template <int codim_from, int codim_to>
 	class OrientedEntityTable : private Opm::SparseTable< EntityRep<codim_to> >
 	{
@@ -162,16 +164,56 @@ namespace Dune
 		return super_t::operator==(other);
 	    }
 
- 	    /** @brief Prints the relation matrix corresponding to the table.
+            /** @brief Prints the relation matrix corresponding to the table, sparse format.
+
+             Let the entities of codimensions f and t be given by
+             the sets \f$E^f = { e^f_i } \f$ and \f$E^t = { e^t_j }\f$.
+             A relation matrix R is defined by
+             \f{equation*}{
+             R_{ij} =
+             \begin{cases}
+             \phantom{-} 0, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are not neighbours}, \\
+             \phantom{-} 1, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are neighbours with same orientation}, \\
+             -  1, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are neighbours with opposite orientation}.
+             \end{cases}
+             \f}
+             The output is written one entry to each line, in the format:
+
+                 row   column    entry (either 1 or -1)
+
+             The row and column numbers start from zero, so if using octave or
+             matlab you should add 1 to those columns after loading, before calling spconvert().
+
+	     @param os   The output stream.
+	    */
+	    void printSparseRelationMatrix(std::ostream& os) const
+	    {
+		for (int i = 0; i < size(); ++i) {
+		    const FromType from_ent(i, true);
+		    const row_type r = operator[](from_ent);
+                    const int rsize = r.size();
+                    for (int j = 0; j < rsize; ++j) {
+                        os << i << ' ' << r[j].index() << ' ' << (r[j].orientation() ? 1 : -1) << '\n';
+                    }
+		}
+                os << std::flush;
+	    }
+
+            /** @brief Prints the full relation matrix corresponding to the table.
 
  	     Let the entities of codimensions f and t be given by
  	     the sets \f$E^f = { e^f_i } \f$ and \f$E^t = { e^t_j }\f$.
  	     A relation matrix R is defined by
-	     \f{eqnarray*}{
-	       R_{ij} &=& 0  \mbox{ if } e^f_i \mbox{ and } e^t_j \mbox{ are not neighbours }\\
-               R_{ij} &=& 1  \mbox{ if they are neighbours with same orientation }\\
-	       R_{ij} &=& -1 \mbox{ if they are neighbours with opposite orientation.}
-	     \f}
+             \f{equation*}{
+             R_{ij} =
+             \begin{cases}
+             \phantom{-} 0, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are not neighbours}, \\
+             \phantom{-} 1, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are neighbours with same orientation}, \\
+             -  1, &\quad \text{if } e_i^f \text{ and } e_j^f \text{ are neighbours with opposite orientation}.
+             \end{cases}
+             \f}
+             Warning: this method is suited only for tiny grids, use printSparseRelationMatrix() for
+             other cases.
 	     @param os   The output stream.
 	    */
 	    void printRelationMatrix(std::ostream& os) const
