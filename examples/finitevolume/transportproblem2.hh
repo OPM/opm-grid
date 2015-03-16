@@ -15,9 +15,9 @@ template<int dimworld, class ct>
 double c0 (const Dune::FieldVector<ct,dimworld>& x)
 {
   if (x.two_norm()>0.125 && x.two_norm()<0.5)
-	return 1.0;
+        return 1.0;
   else
-	return 0.0;
+        return 0.0;
 }
 
 // the boundary condition b on inflow boundary
@@ -26,9 +26,9 @@ double b (const Dune::FieldVector<ct,dimworld>& x, double t)
 {
   return 0.0;
   if (x.two_norm()<t+0.125)
-	return 1.0;
+        return 1.0;
   else
-	return 0.0;
+        return 0.0;
 }
 
 // the vector field u is returned in r

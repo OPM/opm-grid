@@ -403,10 +403,10 @@ private:
 
     /// \brief The type of the remote indices information
     typedef Dune::RemoteIndices<ParallelIndexSet> RemoteIndices;
-    
+
     /// \brief The remote index information for the cells.
     RemoteIndices cell_remote_indices_;
-    
+
     /// \brief Communication interface for the cells.
     tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
     /*

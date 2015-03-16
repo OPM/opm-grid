@@ -52,7 +52,7 @@ class Entity2IndexDataHandle
 {
 public:
     typedef typename DataHandle::DataType DataType;
-    
+
     Entity2IndexDataHandle(const CpGridData& grid, DataHandle& data)
         : grid_(grid), data_(data)
     {}
@@ -77,7 +77,7 @@ public:
 private:
     const CpGridData& grid_;
     DataHandle& data_;
-    
+
 };
 } // end namespace cpgrid
 } // end namespace Dune

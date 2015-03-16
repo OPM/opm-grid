@@ -63,10 +63,10 @@ namespace Dune
     ///                      because of splits to ensure connectedness.
     /// @param[out] cell_part a vector containing, for each cell, its partition number
     void partition(const CpGrid& grid,
-		   const std::array<int, 3>& initial_split,
-		   int& num_part,
-		   std::vector<int>& cell_part,
-		   bool recursive = false);
+                   const std::array<int, 3>& initial_split,
+                   int& num_part,
+                   std::vector<int>& cell_part,
+                   bool recursive = false);
 
 /// \brief Adds a layer of overlap cells to a partitioning.
 /// \param[in] grid The grid that is partitioned.

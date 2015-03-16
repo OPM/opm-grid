@@ -58,29 +58,29 @@ namespace Dune
     /// Initialize the grid.
     void CpGrid::init(const Opm::parameter::ParameterGroup& param)
     {
-	std::string fileformat = param.get<std::string>("fileformat");
-	if (fileformat == "sintef_legacy") {
-	    std::string grid_prefix = param.get<std::string>("grid_prefix");
-	    readSintefLegacyFormat(grid_prefix);
-	} else if (fileformat == "eclipse") {
-	    std::string filename = param.get<std::string>("filename");
+        std::string fileformat = param.get<std::string>("fileformat");
+        if (fileformat == "sintef_legacy") {
+            std::string grid_prefix = param.get<std::string>("grid_prefix");
+            readSintefLegacyFormat(grid_prefix);
+        } else if (fileformat == "eclipse") {
+            std::string filename = param.get<std::string>("filename");
             if (param.has("z_tolerance")) {
                 std::cerr << "****** Warning: z_tolerance parameter is obsolete, use PINCH in deck input instead\n";
             }
-	    bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-	    bool turn_normals = param.getDefault<bool>("turn_normals", false);
-	    readEclipseFormat(filename, periodic_extension, turn_normals);
-	} else if (fileformat == "cartesian") {
-	    array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
-				    param.getDefault<int>("ny", 1),
-				    param.getDefault<int>("nz", 1) }};
-	    array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
-					 param.getDefault<double>("dy", 1.0),
-					 param.getDefault<double>("dz", 1.0) }};
-	    createCartesian(dims, cellsz);
-	} else {
-	    OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
-	}
+            bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
+            bool turn_normals = param.getDefault<bool>("turn_normals", false);
+            readEclipseFormat(filename, periodic_extension, turn_normals);
+        } else if (fileformat == "cartesian") {
+            array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+                                    param.getDefault<int>("ny", 1),
+                                    param.getDefault<int>("nz", 1) }};
+            array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+                                         param.getDefault<double>("dy", 1.0),
+                                         param.getDefault<double>("dz", 1.0) }};
+            createCartesian(dims, cellsz);
+        } else {
+            OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
+        }
     }
 
 
@@ -93,9 +93,9 @@ bool CpGrid::scatterGrid(int overlapLayers)
                  << " Maybe scatterGrid was called before?"<<std::endl;
         return false;
     }
-    
+
     CollectiveCommunication cc(MPI_COMM_WORLD);
-    
+
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
     int  num_parts=-1;
@@ -103,10 +103,10 @@ bool CpGrid::scatterGrid(int overlapLayers)
     initial_split[0]=initial_split[1]=std::pow(cc.size(), 1.0/3.0);
     initial_split[2]=cc.size()/(initial_split[0]*initial_split[1]);
     partition(*this, initial_split, num_parts, cell_part);
-    
-    
+
+
     MPI_Comm new_comm = MPI_COMM_NULL;
-    
+
     if(num_parts < cc.size())
     {
         std::vector<int> ranks(num_parts);
@@ -116,7 +116,7 @@ bool CpGrid::scatterGrid(int overlapLayers)
         MPI_Group old_group;
         MPI_Comm_group(cc, &old_group);
         MPI_Group_incl(old_group, num_parts, &(ranks[0]), &new_group);
-        
+
         // Not all procs take part in the parallel computation
         MPI_Comm_create(cc, new_group, &new_comm);
         cc=CollectiveCommunication(new_comm);
@@ -142,45 +142,45 @@ bool CpGrid::scatterGrid(int overlapLayers)
 
 
     void CpGrid::createCartesian(const array<int, 3>& dims,
-				 const array<double, 3>& cellsize)
+                                 const array<double, 3>& cellsize)
     {
-	// Make the grdecl format arrays.
-	// Pillar coords.
-	std::vector<double> coord;
-	coord.reserve(6*(dims[0] + 1)*(dims[1] + 1));
-	double bot = 0.0;
-	double top = dims[2]*cellsize[2];
-	// i runs fastest for the pillars.
-	for (int j = 0; j < dims[1] + 1; ++j) {
-	    double y = j*cellsize[1];
-	    for (int i = 0; i < dims[0] + 1; ++i) {
-		double x = i*cellsize[0];
-		double pillar[6] = { x, y, bot, x, y, top };
-		coord.insert(coord.end(), pillar, pillar + 6);
-	    }
-	}
-	std::vector<double> zcorn(8*dims[0]*dims[1]*dims[2]);
-	const int num_per_layer = 4*dims[0]*dims[1];
-	double* offset = &zcorn[0];
-	for (int k = 0; k < dims[2]; ++k) {
-	    double zlow = k*cellsize[2];
-	    std::fill(offset, offset + num_per_layer, zlow);
-	    offset += num_per_layer;
-	    double zhigh = (k+1)*cellsize[2];
-	    std::fill(offset, offset + num_per_layer, zhigh);
-	    offset += num_per_layer;
-	}
-	std::vector<int> actnum(dims[0]*dims[1]*dims[2], 1);
+        // Make the grdecl format arrays.
+        // Pillar coords.
+        std::vector<double> coord;
+        coord.reserve(6*(dims[0] + 1)*(dims[1] + 1));
+        double bot = 0.0;
+        double top = dims[2]*cellsize[2];
+        // i runs fastest for the pillars.
+        for (int j = 0; j < dims[1] + 1; ++j) {
+            double y = j*cellsize[1];
+            for (int i = 0; i < dims[0] + 1; ++i) {
+                double x = i*cellsize[0];
+                double pillar[6] = { x, y, bot, x, y, top };
+                coord.insert(coord.end(), pillar, pillar + 6);
+            }
+        }
+        std::vector<double> zcorn(8*dims[0]*dims[1]*dims[2]);
+        const int num_per_layer = 4*dims[0]*dims[1];
+        double* offset = &zcorn[0];
+        for (int k = 0; k < dims[2]; ++k) {
+            double zlow = k*cellsize[2];
+            std::fill(offset, offset + num_per_layer, zlow);
+            offset += num_per_layer;
+            double zhigh = (k+1)*cellsize[2];
+            std::fill(offset, offset + num_per_layer, zhigh);
+            offset += num_per_layer;
+        }
+        std::vector<int> actnum(dims[0]*dims[1]*dims[2], 1);
 
-	// Process them.
-	grdecl g;
-	g.dims[0] = dims[0];
-	g.dims[1] = dims[1];
-	g.dims[2] = dims[2];
-	g.coord = &coord[0];
-	g.zcorn = &zcorn[0];
-	g.actnum = &actnum[0];
-	current_view_data_->processEclipseFormat(g, 0.0, false, false);
+        // Process them.
+        grdecl g;
+        g.dims[0] = dims[0];
+        g.dims[1] = dims[1];
+        g.dims[2] = dims[2];
+        g.coord = &coord[0];
+        g.zcorn = &zcorn[0];
+        g.actnum = &actnum[0];
+        current_view_data_->processEclipseFormat(g, 0.0, false, false);
     }
 
     void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
@@ -218,10 +218,10 @@ bool CpGrid::scatterGrid(int overlapLayers)
                                                  poreVolume);
     }
 
-    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, 
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)
     {
         current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
     }
-    
+
 } // namespace Dune

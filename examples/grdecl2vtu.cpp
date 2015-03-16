@@ -39,7 +39,7 @@ using namespace Dune;
 /**
  * @file grdecl2vtu.C
  * @brief Converts grdecl (Eclipse grid) files to vtu (VTK/ParaView)
- * 
+ *
  * Converts a corner-point grid with properties to a vtu-file
  * (to be opened in ParaView for example)
  *
@@ -78,7 +78,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
         }
         vtkwriter.addCellData(fieldvector, fieldname);
     }
-    
+
 }
 // Now repeat for Integers. I should learn C++ templating...
 void condWriteIntegerField(std::vector<double> & fieldvector,
@@ -114,23 +114,23 @@ try
 {
 
     CpGrid grid;
-    
+
     if (argc != 2) {
         std::cout << "Usage: grdecl2vtu filename.grdecl" << std::endl;
         exit(1);
     }
-    
+
     const char* eclipsefilename = argv[1];
     Opm::ParserPtr parser(new Opm::Parser());
     Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename));
 
     grid.processEclipseFormat(deck, 0.0, false, false);
     const std::vector<int>& global_cell = grid.globalCell();
-    
+
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
     std::vector<double> poros;
     condWriteDoubleField(poros, "PORO", deck, global_cell, vtkwriter);
-    
+
     std::vector<double> permxs;
     condWriteDoubleField(permxs, "PERMX", deck, global_cell, vtkwriter);
     std::vector<double> permys;
@@ -147,7 +147,7 @@ try
 
     std::vector<double> regnums;
     condWriteIntegerField(regnums, "REGNUM", deck, global_cell, vtkwriter);
-   
+
     std::vector<double> swats;
     condWriteDoubleField(swats, "SWAT", deck, global_cell, vtkwriter);
 

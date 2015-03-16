@@ -30,7 +30,7 @@ struct ElementLayout
 {
     bool contains (Dune::GeometryType gt)
     {
-	// std::cout << "dim = " << dim << "    gt.dim() = " << gt.dim() << "     gt = " << gt << std::endl;
+        // std::cout << "dim = " << dim << "    gt.dim() = " << gt.dim() << "     gt = " << gt << std::endl;
         return dim == gt.dim();//gt.isSingular() && gt.dim() == 3;
     }
 };
@@ -65,19 +65,19 @@ int main(int argc, char** argv)
 
         typedef GridView::IndexSet IndexSet;
         const IndexSet& indexSet(gridView.indexSet());
-        
+
         typedef GridView::Codim<0>::Iterator ElementIterator;
         ElementIterator endEIt = gridView.end<0>();
         for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
             int mapperIdx = elementMapper.map(*eIt);
             int indexSetIdx = indexSet.index(*eIt);
-	    if (mapperIdx != indexSetIdx) {
-		std::cerr << "Mismatched mapper and indexset indices: " << mapperIdx << " vs. " << indexSetIdx << '\n';
-		return EXIT_FAILURE;
-	    }
-	    // std::cout << "mapperIdx = " << mapperIdx << ", indexSetIdx = " << indexSetIdx << std::endl;
+            if (mapperIdx != indexSetIdx) {
+                std::cerr << "Mismatched mapper and indexset indices: " << mapperIdx << " vs. " << indexSetIdx << '\n';
+                return EXIT_FAILURE;
+            }
+            // std::cout << "mapperIdx = " << mapperIdx << ", indexSetIdx = " << indexSetIdx << std::endl;
         }
-	return EXIT_SUCCESS;
+        return EXIT_SUCCESS;
 //     }
 //     catch (Dune::Exception &e){
 //         std::cerr << "Dune reported error: " << e << std::endl;

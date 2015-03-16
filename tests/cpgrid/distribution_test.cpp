@@ -62,7 +62,7 @@ public:
     {
         return true;
     }
-    
+
     template<class T>
     std::size_t size(const T&)
     {
@@ -72,7 +72,7 @@ public:
     void gather(B& buffer, const T& t)
     {
         buffer.write(gid_set_.id(t));
-        
+
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t)
@@ -93,7 +93,7 @@ private:
     const Dune::CpGrid& grid_;
     std::vector<int>& dist_point_ids_;
     std::vector<int>& dist_cell_ids_;
-};  
+};
 
 class GatherGlobalIdDataHandle
 {
@@ -106,13 +106,13 @@ public:
           dist_point_ids_(dist_point_ids),
           dist_cell_ids_(dist_cell_ids)
     {}
-    
+
     typedef int DataType;
     bool fixedsize(int /*dim*/, int /*codim*/)
     {
         return true;
     }
-    
+
     template<class T>
     std::size_t size(const T&)
     {
@@ -153,7 +153,7 @@ public:
     {
         return true;
     }
-    
+
     template<class T>
     std::size_t size(const T&)
     {
@@ -170,7 +170,7 @@ public:
         double val;
         //std::cout<<"Scattering ";
         for(std::size_t i=0; i<s; ++i)
-        {            
+        {
             buffer.read(val);
             //  std::cout<<val<<" "<<i<<" ";
         }
@@ -229,11 +229,11 @@ BOOST_AUTO_TEST_CASE(distribute)
             const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
                 Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
 #endif
-            
+
             cell_indices.push_back(ix.index(*it));
             cell_centers.push_back(it->geometry().center());
             typedef GridView :: IntersectionIterator IntersectionIterator;
-            for(IntersectionIterator iit=gridView.ibegin(*it), 
+            for(IntersectionIterator iit=gridView.ibegin(*it),
                     endiit = gridView.iend(*it); iit!=endiit; ++iit)
             {
                 //            face_indices.push_back(ix.index(*it->subEntity<1>(iit->indexInInside())));
@@ -248,7 +248,7 @@ BOOST_AUTO_TEST_CASE(distribute)
     DummyDataHandle data;
 
     const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
-    
+
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
 
     grid.loadBalance(data);
@@ -267,14 +267,14 @@ BOOST_AUTO_TEST_CASE(distribute)
         BOOST_REQUIRE(cell_size  == gridView.size(0));
         BOOST_REQUIRE(face_size  == gridView.size(1));
         BOOST_REQUIRE(point_size == gridView.size(3));
-    
+
         int cell_index=0, face_index=0, point_index=0;
 
         const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
         BOOST_REQUIRE(&ix!=&ix1);
 #endif
-    
+
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
@@ -288,7 +288,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
             BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
             BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
-            for(Dune::CpGrid::LeafIntersectionIterator iit=gridView.ibegin(*it), 
+            for(Dune::CpGrid::LeafIntersectionIterator iit=gridView.ibegin(*it),
                     endiit = gridView.iend(*it); iit!=endiit; ++iit)
             {
                 //BOOST_REQUIRE(face_indices[face_index]==ix1.index(*it->subEntity<1>(iit->indexInInside())));
@@ -316,6 +316,6 @@ BOOST_AUTO_TEST_CASE(distribute)
                                                      point_ids,
                                                      cell_ids);
         grid.gatherData(gather_gid_set_data);
-        
+
     }
 }

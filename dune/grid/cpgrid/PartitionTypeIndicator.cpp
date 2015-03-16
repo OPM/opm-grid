@@ -51,7 +51,7 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
             grid_data_->face_to_cell_[Entity<1>(*grid_data_,i,true)];
         if(cells_of_face.size()==1)
         {
-            int cell_index = cells_of_face[0].index();            
+            int cell_index = cells_of_face[0].index();
             PartitionType cell_part = PartitionType(cell_indicator_[cell_index]);
             if(cell_part!=OverlapEntity)
                 return cell_part;
@@ -87,7 +87,7 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
                 // At the boder of the processor's but not the global domain
                 return getProcessorBoundaryPartitionType(PartitionType(cell_indicator_[cells_of_face[0].index()]));
             }
-                
+
             if(cell_indicator_[cells_of_face[0].index()]==
                cell_indicator_[cells_of_face[1].index()])
                 return PartitionType(cell_indicator_[cells_of_face[0].index()]);
