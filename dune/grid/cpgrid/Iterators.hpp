@@ -47,64 +47,64 @@ namespace Dune
         class CpGridData;
 
 
-	/// Iterator intended to be used as LeafIterator and LevelIterator
-	/// (no difference due to no adaptivity) for CpGrid.
-	/// This could have been a random access iterator, perhaps we will
-	/// use a facade to do this later.
-	template<int cd, PartitionIteratorType pitype>
-	class Iterator : public EntityPointer<cd>
-	{
-	public:
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    Iterator(const CpGridData& grid, int index, bool orientation);
+        /// Iterator intended to be used as LeafIterator and LevelIterator
+        /// (no difference due to no adaptivity) for CpGrid.
+        /// This could have been a random access iterator, perhaps we will
+        /// use a facade to do this later.
+        template<int cd, PartitionIteratorType pitype>
+        class Iterator : public EntityPointer<cd>
+        {
+        public:
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            Iterator(const CpGridData& grid, int index, bool orientation);
 
-	    /// Increment operator.
-	    /// Implementation note: This class is a friend of
-	    /// \see EntityRep (which is a private base class of
-	    /// Entity) in order to actually access the private
-	    /// variable entityrep_. We may want to change EntityRep,
-	    /// then this must change, too.
-	    Iterator& operator++()
-	    {
-		EntityRep<cd>::increment();
+            /// Increment operator.
+            /// Implementation note: This class is a friend of
+            /// \see EntityRep (which is a private base class of
+            /// Entity) in order to actually access the private
+            /// variable entityrep_. We may want to change EntityRep,
+            /// then this must change, too.
+            Iterator& operator++()
+            {
+                EntityRep<cd>::increment();
                 if(rule_.fullSet || rule_.emptySet)
                     return *this;
                 while(this->index()<noEntities_ && rule_.isInvalid(*this))
                     EntityRep<cd>::increment();
                 return *this;
-	    }
+            }
         private:
             /// \brief The number of Entities with codim cd.
             int noEntities_;
             PartitionIteratorRule<pitype> rule_;
-	};
+        };
 
 
 
 
-	/// Only needs to provide interface for doing nothing.
-	class HierarchicIterator : public EntityPointer<0>
-	{
-	public:
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    HierarchicIterator(const CpGridData& grid)
-		: EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
-	    {
-	    }
+        /// Only needs to provide interface for doing nothing.
+        class HierarchicIterator : public EntityPointer<0>
+        {
+        public:
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            HierarchicIterator(const CpGridData& grid)
+                : EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
+            {
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @param
-	    HierarchicIterator& operator++()
-	    {
-		OPM_THROW(std::runtime_error, "Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
-		return *this;
-	    }
-	};
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            HierarchicIterator& operator++()
+            {
+                OPM_THROW(std::runtime_error, "Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
+                return *this;
+            }
+        };
 
 
 

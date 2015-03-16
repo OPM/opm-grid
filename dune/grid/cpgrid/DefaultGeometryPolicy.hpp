@@ -45,101 +45,101 @@ namespace Dune
     namespace cpgrid
     {
 
-	struct GetCellGeom;
-	struct GetFaceGeom;
-	struct GetPointGeom;
+        struct GetCellGeom;
+        struct GetFaceGeom;
+        struct GetPointGeom;
 
-	/// @brief
-	/// @todo Doc me!
-	class DefaultGeometryPolicy
-	{
-	public:
-	    /// @brief
-	    /// @todo Doc me
-	    DefaultGeometryPolicy()
-	    {
-	    }
+        /// @brief
+        /// @todo Doc me!
+        class DefaultGeometryPolicy
+        {
+        public:
+            /// @brief
+            /// @todo Doc me
+            DefaultGeometryPolicy()
+            {
+            }
 
-	    /// @brief
-	    /// @todo Doc me
-	    /// @param
-	    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
-				  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
-				  const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
-		: cell_geom_(cell_geom), face_geom_(face_geom), point_geom_(point_geom)
-	    {
-	    }
+            /// @brief
+            /// @todo Doc me
+            /// @param
+            DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+                                  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
+                                  const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
+                : cell_geom_(cell_geom), face_geom_(face_geom), point_geom_(point_geom)
+            {
+            }
 
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam
-	    /// @param
-	    /// @return
-	    template <int codim>
-	    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
-	    {
-		static_assert(codim != 2, "");
-		typedef typename boost::mpl::if_c<codim == 0, GetCellGeom,
-		    typename boost::mpl::if_c<codim == 1, GetFaceGeom, GetPointGeom>::type >::type selector;
-		return selector::value(*this);
-	    }
-	private:
-	    friend struct GetCellGeom;
-	    friend struct GetFaceGeom;
-	    friend struct GetPointGeom;
-	    EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
-	    EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
-	    EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;
-	};
+            /// @brief
+            /// @todo Doc me!
+            /// @tparam
+            /// @param
+            /// @return
+            template <int codim>
+            const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
+            {
+                static_assert(codim != 2, "");
+                typedef typename boost::mpl::if_c<codim == 0, GetCellGeom,
+                    typename boost::mpl::if_c<codim == 1, GetFaceGeom, GetPointGeom>::type >::type selector;
+                return selector::value(*this);
+            }
+        private:
+            friend struct GetCellGeom;
+            friend struct GetFaceGeom;
+            friend struct GetPointGeom;
+            EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
+            EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
+            EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;
+        };
 
-	/// @brief
-	/// @todo Doc me!
-	struct GetCellGeom
-	{
-	
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam
-	    /// @param
-	    /// @return
-	    static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
-	    value(const DefaultGeometryPolicy& geom)
-	    {
-		return geom.cell_geom_;
-	    }
-	};
+        /// @brief
+        /// @todo Doc me!
+        struct GetCellGeom
+        {
+        
+            /// @brief
+            /// @todo Doc me!
+            /// @tparam
+            /// @param
+            /// @return
+            static const EntityVariable<cpgrid::Geometry<3, 3>, 0>&
+            value(const DefaultGeometryPolicy& geom)
+            {
+                return geom.cell_geom_;
+            }
+        };
 
-	/// @brief
-	/// @todo Doc me!
-	struct GetFaceGeom
-	{
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam
-	    /// @param
-	    /// @return
-	    static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
-	    value(const DefaultGeometryPolicy& geom)
-	    {
-		return geom.face_geom_;
-	    }
-	};
+        /// @brief
+        /// @todo Doc me!
+        struct GetFaceGeom
+        {
+            /// @brief
+            /// @todo Doc me!
+            /// @tparam
+            /// @param
+            /// @return
+            static const EntityVariable<cpgrid::Geometry<2, 3>, 1>&
+            value(const DefaultGeometryPolicy& geom)
+            {
+                return geom.face_geom_;
+            }
+        };
 
-	/// @brief
-	/// @todo Doc me!
-	struct GetPointGeom
-	{
-	    /// @brief
-	    /// @todo Doc me!
-	    /// @tparam
-	    /// @param
-	    /// @return
-	    static const EntityVariable<cpgrid::Geometry<0, 3>, 3>&
-	    value(const DefaultGeometryPolicy& geom)
-	    {
-		return geom.point_geom_;
-	    }
-	};
+        /// @brief
+        /// @todo Doc me!
+        struct GetPointGeom
+        {
+            /// @brief
+            /// @todo Doc me!
+            /// @tparam
+            /// @param
+            /// @return
+            static const EntityVariable<cpgrid::Geometry<0, 3>, 3>&
+            value(const DefaultGeometryPolicy& geom)
+            {
+                return geom.point_geom_;
+            }
+        };
 
 
 

@@ -53,94 +53,94 @@ namespace Dune
     namespace cpgrid
     {
 
-	/// This class encapsulates geometry for both vertices,
+        /// This class encapsulates geometry for both vertices,
         /// intersections and cells.  The main template is empty,
         /// the actual dim == 3 (cell), dim == 2 (intersection)
         /// and dim == 0 (vertex) cases have specializations.
-	/// For vertices and cells we use the cube type, and provide
+        /// For vertices and cells we use the cube type, and provide
         /// constant (vertex) or trilinear (cell) mappings.
-	/// For intersections, we use the singular geometry type
+        /// For intersections, we use the singular geometry type
         /// (None), and provide no mappings.
-	template <int mydim, int cdim>
-	class Geometry
-	{
+        template <int mydim, int cdim>
+        class Geometry
+        {
         };
 
 
 
 
         /// Specialization for 3-dimensional geometries, i.e. cells.
-	template <int cdim>
-	class Geometry<3, cdim>
-	{
-	    static_assert(cdim == 3, "");
-	public:
-	    /// Dimension of underlying grid.
-	    enum { dimension = 3 };
+        template <int cdim>
+        class Geometry<3, cdim>
+        {
+            static_assert(cdim == 3, "");
+        public:
+            /// Dimension of underlying grid.
+            enum { dimension = 3 };
             /// Dimension of domain space of \see global().
-	    enum { mydimension = 3 };
+            enum { mydimension = 3 };
             /// Dimension of range space of \see global().
-	    enum { coorddimension = cdim };
+            enum { coorddimension = cdim };
             /// World dimension of underlying grid.
-	    enum { dimensionworld = 3 };
+            enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-	    typedef double ctype;
+            typedef double ctype;
 
             /// Domain type of \see global().
-	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            typedef FieldVector<ctype, mydimension> LocalCoordinate;
             /// Range type of \see global().
-	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+            typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
 
             /// Type of Jacobian matrix.
-	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
-	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+            typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
 
-	    /// @brief Construct from centroid, volume (1- and 0-moments) and
+            /// @brief Construct from centroid, volume (1- and 0-moments) and
             ///        corners.
-	    /// @param pos the centroid of the entity
+            /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
-	    /// @param allcorners array of all corner positions in the grid
+            /// @param allcorners array of all corner positions in the grid
             /// @param corner_indices array of 8 indices into allcorners array. The
             ///                       indices must be given in lexicographical order
             ///                       by (kji), i.e. i running fastest.
-	    Geometry(const GlobalCoordinate& pos,
-		     ctype vol,
-		     const GlobalCoordinate* allcorners,
-		     const int* corner_indices)
-		: pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
-	    {
+            Geometry(const GlobalCoordinate& pos,
+                     ctype vol,
+                     const GlobalCoordinate* allcorners,
+                     const int* corner_indices)
+                : pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
+            {
                 assert(allcorners && corner_indices);
-	    }
+            }
 
-	    /// @brief Construct from centroid and volume (1- and
+            /// @brief Construct from centroid and volume (1- and
             ///        0-moments).  Note that since corners are not
             ///        given, the geometry provides no mappings, and
             ///        some calls (corner(), global() etc.) will fail.
             ///        This possibly dangerous constructor is
             ///        available for the benefit of
             ///        CpGrid::readSintefLegacyFormat().
-	    /// @param pos the centroid of the entity
+            /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
-	    Geometry(const GlobalCoordinate& pos,
-		     ctype vol)
-		: pos_(pos), vol_(vol)
-	    {
-	    }
+            Geometry(const GlobalCoordinate& pos,
+                     ctype vol)
+                : pos_(pos), vol_(vol)
+            {
+            }
 
             /// Default constructor, giving a non-valid geometry.
-	    Geometry()
-		: pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
-	    {
-	    }
+            Geometry()
+                : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
+            {
+            }
 
-	    /// Provide a trilinear mapping.
+            /// Provide a trilinear mapping.
             /// Note that this does not give a proper space-filling
             /// embedding of the cell complex in the general (faulted)
             /// case. We should therefore revisit this at some point.
-	    GlobalCoordinate global(const LocalCoordinate& local) const
-	    {
+            GlobalCoordinate global(const LocalCoordinate& local) const
+            {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
@@ -165,13 +165,13 @@ namespace Dune
                     corner_contrib *= factor;
                     xyz += corner_contrib;
                 }
-		return xyz;
-	    }
+                return xyz;
+            }
 
-	    /// Mapping from the cell to the reference domain.
+            /// Mapping from the cell to the reference domain.
             /// May be slow.
-	    LocalCoordinate local(const GlobalCoordinate& y) const
-	    {
+            LocalCoordinate local(const GlobalCoordinate& y) const
+            {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
@@ -196,61 +196,61 @@ namespace Dune
                     x -= dx;
                 } while (dx.two_norm2() > epsilon*epsilon);
                 return x;
-	    }
+            }
 
             /// Equal to \sqrt{\det{J^T J}} where J is the Jacobian.
             /// J_{ij} = (dg_i/du_j)
             /// where g is the mapping from the reference domain,
             /// and {u_j} are the reference coordinates.
-	    double integrationElement(const LocalCoordinate& local) const
-	    {
-		FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local);
+            double integrationElement(const LocalCoordinate& local) const
+            {
+                FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local);
                 using namespace GenericGeometry;
                 return MatrixHelper<DuneCoordTraits<double> >::template sqrtDetAAT<3, 3>(Jt);
-	    }
+            }
 
-	    /// Using the cube type for all entities now (cells and vertices),
-	    /// but we use the singular type for intersections.
-	    GeometryType type() const
-	    {
-		GeometryType t;
+            /// Using the cube type for all entities now (cells and vertices),
+            /// but we use the singular type for intersections.
+            GeometryType type() const
+            {
+                GeometryType t;
                 t.makeCube(mydimension);
-		return t;
-	    }
+                return t;
+            }
 
-	    /// The number of corners of this convex polytope.
-	    /// Returning 8, since we treat all cells as hexahedral.
-	    int corners() const
-	    {
+            /// The number of corners of this convex polytope.
+            /// Returning 8, since we treat all cells as hexahedral.
+            int corners() const
+            {
                 return 8;
-	    }
+            }
 
-	    /// The 8 corners of the hexahedral base cell.
-	    GlobalCoordinate corner(int cor) const
-	    {
+            /// The 8 corners of the hexahedral base cell.
+            GlobalCoordinate corner(int cor) const
+            {
                 assert(allcorners_ && cor_idx_);
                 return allcorners_[cor_idx_[cor]];
-	    }
+            }
 
-	    /// Cell volume.
-	    ctype volume() const
-	    {
-		return vol_;
-	    }
+            /// Cell volume.
+            ctype volume() const
+            {
+                return vol_;
+            }
 
-	    /// Returns the centroid of the geometry.
-	    const GlobalCoordinate& center() const
-	    {
-		return pos_;
-	    }
+            /// Returns the centroid of the geometry.
+            const GlobalCoordinate& center() const
+            {
+                return pos_;
+            }
 
-	    /// @brief Jacobian transposed.
+            /// @brief Jacobian transposed.
             /// J^T_{ij} = (dg_j/du_i)
             /// where g is the mapping from the reference domain,
             /// and {u_i} are the reference coordinates.
-	    const FieldMatrix<ctype, mydimension, coorddimension>
-	    jacobianTransposed(const LocalCoordinate& local) const
-	    {
+            const FieldMatrix<ctype, mydimension, coorddimension>
+            jacobianTransposed(const LocalCoordinate& local) const
+            {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
@@ -265,7 +265,7 @@ namespace Dune
                                         { 1, 0, 1 },
                                         { 0, 1, 1 },
                                         { 1, 1, 1 } };
-		FieldMatrix<ctype, mydimension, coorddimension> Jt(0.0);
+                FieldMatrix<ctype, mydimension, coorddimension> Jt(0.0);
                 for (int i = 0; i < 8; ++i) {
                     for (int deriv = 0; deriv < 3; ++deriv) {
                         // This part contributing to dg/du_{deriv}
@@ -279,30 +279,30 @@ namespace Dune
                         Jt[deriv] += corner_contrib; // using FieldMatrix row access.
                     }
                 }
-		return Jt;
-	    }
+                return Jt;
+            }
 
-	    /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-	    const FieldMatrix<ctype, coorddimension, mydimension>
-	    jacobianInverseTransposed(const LocalCoordinate& local) const
-	    {
-		FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local);
+            /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
+            const FieldMatrix<ctype, coorddimension, mydimension>
+            jacobianInverseTransposed(const LocalCoordinate& local) const
+            {
+                FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local);
                 Jti.invert();
-		return Jti;
-	    }
+                return Jti;
+            }
 
-	    /// The mapping implemented by this geometry is not generally affine.
-	    bool affine() const
-	    {
-		return false;
-	    }
+            /// The mapping implemented by this geometry is not generally affine.
+            bool affine() const
+            {
+                return false;
+            }
 
-	private:
-	    GlobalCoordinate pos_;
-	    double vol_;
-	    const GlobalCoordinate* allcorners_; // For dimension 3 only
-	    const int* cor_idx_;               // For dimension 3 only
-	};
+        private:
+            GlobalCoordinate pos_;
+            double vol_;
+            const GlobalCoordinate* allcorners_; // For dimension 3 only
+            const int* cor_idx_;               // For dimension 3 only
+        };
 
 
 
@@ -310,245 +310,245 @@ namespace Dune
 
         /// Specialization for 2 dimensional geometries, that is
         /// intersections (since codim 1 entities are not in CpGrid).
-	template <int cdim> // GridImp arg never used
-	class Geometry<2, cdim>
-	{
-	    static_assert(cdim == 3, "");
-	public:
-	    /// Dimension of underlying grid.
-	    enum { dimension = 3 };
+        template <int cdim> // GridImp arg never used
+        class Geometry<2, cdim>
+        {
+            static_assert(cdim == 3, "");
+        public:
+            /// Dimension of underlying grid.
+            enum { dimension = 3 };
             /// Dimension of domain space of \see global().
-	    enum { mydimension = 2 };
+            enum { mydimension = 2 };
             /// Dimension of range space of \see global().
-	    enum { coorddimension = cdim };
+            enum { coorddimension = cdim };
             /// World dimension of underlying grid.
-	    enum { dimensionworld = 3 };
+            enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-	    typedef double ctype;
+            typedef double ctype;
 
             /// Domain type of \see global().
-	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            typedef FieldVector<ctype, mydimension> LocalCoordinate;
             /// Range type of \see global().
-	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+            typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
 
             /// Type of Jacobian matrix.
-	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
-	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+            typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
 
-	    /// @brief Construct from centroid and volume (1- and 0-moments).
-	    /// @param pos the centroid of the entity
+            /// @brief Construct from centroid and volume (1- and 0-moments).
+            /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
-	    Geometry(const GlobalCoordinate& pos,
-		     ctype vol)
-		: pos_(pos), vol_(vol)
-	    {
-	    }
+            Geometry(const GlobalCoordinate& pos,
+                     ctype vol)
+                : pos_(pos), vol_(vol)
+            {
+            }
 
             /// Default constructor, giving a non-valid geometry.
-	    Geometry()
-		: pos_(0.0), vol_(0.0)
-	    {
-	    }
+            Geometry()
+                : pos_(0.0), vol_(0.0)
+            {
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    const GlobalCoordinate& global(const LocalCoordinate&) const
-	    {
-		OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
-	    }
+            /// This method is meaningless for singular geometries.
+            const GlobalCoordinate& global(const LocalCoordinate&) const
+            {
+                OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    LocalCoordinate local(const GlobalCoordinate&) const
-	    {
-		OPM_THROW(std::runtime_error, "Geometry::local() meaningless on singular geometry.");
-	    }
+            /// This method is meaningless for singular geometries.
+            LocalCoordinate local(const GlobalCoordinate&) const
+            {
+                OPM_THROW(std::runtime_error, "Geometry::local() meaningless on singular geometry.");
+            }
 
             /// For the singular geometry, we return a constant
             /// integration element equal to the volume.
-	    double integrationElement(const LocalCoordinate&) const
-	    {
-		return vol_;
-	    }
+            double integrationElement(const LocalCoordinate&) const
+            {
+                return vol_;
+            }
 
-	    /// We use the singular type (None) for intersections.
-	    GeometryType type() const
-	    {
-		GeometryType t;
+            /// We use the singular type (None) for intersections.
+            GeometryType type() const
+            {
+                GeometryType t;
                 t.makeNone(mydimension);
-		return t;
-	    }
+                return t;
+            }
 
-	    /// The number of corners of this convex polytope.
+            /// The number of corners of this convex polytope.
             /// Since this geometry is singular, we have no corners as such.
-	    int corners() const
-	    {
+            int corners() const
+            {
                 return 0;
-	    }
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    GlobalCoordinate corner(int /* cor */) const
-	    {
+            /// This method is meaningless for singular geometries.
+            GlobalCoordinate corner(int /* cor */) const
+            {
                 OPM_THROW(std::runtime_error, "Meaningless call to cpgrid::Geometry::corner(int): "
                       "singular geometry has no corners.");
-	    }
+            }
 
             /// Volume (area, actually) of intersection.
-	    ctype volume() const
-	    {
-		return vol_;
-	    }
+            ctype volume() const
+            {
+                return vol_;
+            }
 
-	    /// Returns the centroid of the geometry.
-	    const GlobalCoordinate& center() const
-	    {
-		return pos_;
-	    }
+            /// Returns the centroid of the geometry.
+            const GlobalCoordinate& center() const
+            {
+                return pos_;
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    const FieldMatrix<ctype, mydimension, coorddimension>&
-	    jacobianTransposed(const LocalCoordinate& /* local */) const
-	    {
-		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
-	    }
+            /// This method is meaningless for singular geometries.
+            const FieldMatrix<ctype, mydimension, coorddimension>&
+            jacobianTransposed(const LocalCoordinate& /* local */) const
+            {
+                OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    const FieldMatrix<ctype, coorddimension, mydimension>&
-	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
-	    {
-		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
-	    }
+            /// This method is meaningless for singular geometries.
+            const FieldMatrix<ctype, coorddimension, mydimension>&
+            jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+            {
+                OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
+            }
 
-	    /// Since integrationElement() is constant, returns true.
-	    bool affine() const
-	    {
-		return true;
-	    }
+            /// Since integrationElement() is constant, returns true.
+            bool affine() const
+            {
+                return true;
+            }
 
-	private:
-	    GlobalCoordinate pos_;
-	    ctype vol_;
-	};
+        private:
+            GlobalCoordinate pos_;
+            ctype vol_;
+        };
 
 
 
 
         /// Specialization for 0 dimensional geometries, i.e. vertices.
-	template <int cdim> // GridImp arg never used
-	class Geometry<0, cdim>
-	{
-	    static_assert(cdim == 3, "");
-	public:
-	    /// Dimension of underlying grid.
-	    enum { dimension = 3 };
+        template <int cdim> // GridImp arg never used
+        class Geometry<0, cdim>
+        {
+            static_assert(cdim == 3, "");
+        public:
+            /// Dimension of underlying grid.
+            enum { dimension = 3 };
             /// Dimension of domain space of \see global().
-	    enum { mydimension = 0};
+            enum { mydimension = 0};
             /// Dimension of range space of \see global().
-	    enum { coorddimension = cdim };
+            enum { coorddimension = cdim };
             /// World dimension of underlying grid.
-	    enum { dimensionworld = 3 };
+            enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-	    typedef double ctype;
+            typedef double ctype;
 
             /// Domain type of \see global().
-	    typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            typedef FieldVector<ctype, mydimension> LocalCoordinate;
             /// Range type of \see global().
-	    typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+            typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
 
             /// Type of Jacobian matrix.
-	    typedef FieldMatrix< ctype, coorddimension, mydimension > 	Jacobian;
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
-	    typedef FieldMatrix< ctype, mydimension, coorddimension > 	JacobianTransposed;
+            typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
 
-	    /// @brief Construct from vertex position
-	    /// @param pos the position of the vertex
-	    Geometry(const GlobalCoordinate& pos)
-		: pos_(pos)
-	    {
-	    }
+            /// @brief Construct from vertex position
+            /// @param pos the position of the vertex
+            Geometry(const GlobalCoordinate& pos)
+                : pos_(pos)
+            {
+            }
 
             /// Default constructor, giving a non-valid geometry.
-	    Geometry()
-		: pos_(0.0)
-	    {
-	    }
+            Geometry()
+                : pos_(0.0)
+            {
+            }
 
-	    /// Returns the position of the vertex.
-	    const GlobalCoordinate& global(const LocalCoordinate&) const
-	    {
-		return pos_;
-	    }
+            /// Returns the position of the vertex.
+            const GlobalCoordinate& global(const LocalCoordinate&) const
+            {
+                return pos_;
+            }
 
             /// Meaningless for the vertex geometry.
-	    LocalCoordinate local(const GlobalCoordinate&) const
-	    {
-		OPM_THROW(std::runtime_error, "Meaningless to call local() on singular geometries.");
-	    }
+            LocalCoordinate local(const GlobalCoordinate&) const
+            {
+                OPM_THROW(std::runtime_error, "Meaningless to call local() on singular geometries.");
+            }
 
             /// Returns 1 for the vertex geometry.
-	    double integrationElement(const LocalCoordinate&) const
-	    {
-		return volume();
-	    }
+            double integrationElement(const LocalCoordinate&) const
+            {
+                return volume();
+            }
 
-	    /// Using the cube type for vertices.
-	    GeometryType type() const
-	    {
-		GeometryType t;
+            /// Using the cube type for vertices.
+            GeometryType type() const
+            {
+                GeometryType t;
                 t.makeCube(mydimension);
-		return t;
-	    }
+                return t;
+            }
 
             /// A vertex is defined by a single corner.
-	    int corners() const
-	    {
+            int corners() const
+            {
                 return 1;
-	    }
+            }
 
             /// Returns the single corner: the vertex itself.
-	    GlobalCoordinate corner(int cor) const
-	    {
+            GlobalCoordinate corner(int cor) const
+            {
                 static_cast<void>(cor);
                 assert(cor == 0);
                 return pos_;
-	    }
+            }
 
             /// Volume of vertex is arbitrarily set to 1.
-	    ctype volume() const
-	    {
-		return 1.0;
-	    }
+            ctype volume() const
+            {
+                return 1.0;
+            }
 
-	    /// Returns the centroid of the geometry.
-	    const GlobalCoordinate& center() const
-	    {
-		return pos_;
-	    }
+            /// Returns the centroid of the geometry.
+            const GlobalCoordinate& center() const
+            {
+                return pos_;
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    const FieldMatrix<ctype, mydimension, coorddimension>&
-	    jacobianTransposed(const LocalCoordinate& /* local */) const
-	    {
-		OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
-	    }
+            /// This method is meaningless for singular geometries.
+            const FieldMatrix<ctype, mydimension, coorddimension>&
+            jacobianTransposed(const LocalCoordinate& /* local */) const
+            {
+                OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
+            }
 
-	    /// This method is meaningless for singular geometries.
-	    const FieldMatrix<ctype, coorddimension, mydimension>&
-	    jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
-	    {
-		OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
-	    }
+            /// This method is meaningless for singular geometries.
+            const FieldMatrix<ctype, coorddimension, mydimension>&
+            jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+            {
+                OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
+            }
 
-	    /// The mapping implemented by this geometry is constant, therefore affine.
-	    bool affine() const
-	    {
-		return true;
-	    }
+            /// The mapping implemented by this geometry is constant, therefore affine.
+            bool affine() const
+            {
+                return true;
+            }
 
-	private:
-	    GlobalCoordinate pos_;
-	};
+        private:
+            GlobalCoordinate pos_;
+        };
 
 
 

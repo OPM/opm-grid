@@ -61,11 +61,11 @@ namespace Dune
     template <typename T>
     FieldVector<T, 3> cross(const FieldVector<T, 3>& a, const FieldVector<T, 3>& b)
     {
-	FieldVector<T, 3> res;
-	res[0] = a[1]*b[2] - a[2]*b[1];
-	res[1] = a[2]*b[0] - a[0]*b[2];
-	res[2] = a[0]*b[1] - a[1]*b[0];
-	return res;
+        FieldVector<T, 3> res;
+        res[0] = a[1]*b[2] - a[2]*b[1];
+        res[1] = a[2]*b[0] - a[0]*b[2];
+        res[2] = a[0]*b[1] - a[1]*b[0];
+        return res;
     }
 
     /// @brief
@@ -76,7 +76,7 @@ namespace Dune
     template <class Vector>
     typename Vector::field_type inner(const Vector& a, const Vector& b)
     {
-	return std::inner_product(a.begin(), a.end(), b.begin(), typename Vector::field_type());
+        return std::inner_product(a.begin(), a.end(), b.begin(), typename Vector::field_type());
     }
 
     /// Calculates the determinant of a 2 x 2 matrix, represented in memory as an
@@ -85,7 +85,7 @@ namespace Dune
     template<typename T, template <typename, int> class Point>
     inline T determinantOf(const Point<T, 2>* a)
     {
-	return a[0][0] * a[1][1] - a[1][0] * a[0][1];
+        return a[0][0] * a[1][1] - a[1][0] * a[0][1];
     }
 
 
@@ -95,10 +95,10 @@ namespace Dune
     template<typename T, template <typename, int> class Point>
     inline T determinantOf(const Point<T, 3>* a)
     {
-	return
-	    a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2]) -
-	    a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2]) +
-	    a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
+        return
+            a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2]) -
+            a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2]) +
+            a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);
     }
 
 
@@ -107,12 +107,12 @@ namespace Dune
     template<typename T, template <typename, int> class Point, int Dim>
     inline T simplex_volume(const Point<T, Dim>* a)
     {
-	Point<T, Dim> tmp[Dim];
-	for (int i = 0; i < Dim; ++i) {
-	    tmp[i] = a[i+1] - a[i];
-	}
-	return determinantOf(tmp) / double(Factorial<Dim>::factorial);
-	// determinant / factorial
+        Point<T, Dim> tmp[Dim];
+        for (int i = 0; i < Dim; ++i) {
+            tmp[i] = a[i+1] - a[i];
+        }
+        return determinantOf(tmp) / double(Factorial<Dim>::factorial);
+        // determinant / factorial
     }
 
 
@@ -128,11 +128,11 @@ namespace Dune
     template <typename T, template <typename, int> class Point>
     inline T area(const Point<T, 3>* c)
     {
-	// Using the one-half cross product rule
-	Point<T, 3> d0 = c[1] - c[0];
-	Point<T, 3> d1 = c[2] - c[0];
-	Point<T, 3> crossprod = cross(d0,d1);
-	return 0.5 * crossprod.two_norm();
+        // Using the one-half cross product rule
+        Point<T, 3> d0 = c[1] - c[0];
+        Point<T, 3> d1 = c[2] - c[0];
+        Point<T, 3> crossprod = cross(d0,d1);
+        return 0.5 * crossprod.two_norm();
     }
 
 
@@ -147,15 +147,15 @@ namespace Dune
     template <typename T, template <typename, int> class Point>
     T signed_area(const Point<T, 3>* c, const Point<T, 3>& normal)
     {
-	// Using the one-half cross product rule
-	Point<T, 3> d0 = c[1] - c[0];
-	Point<T, 3> d1 = c[2] - c[0];
-	Point<T, 3> crossprod = cross(d0, d1);
-	if (inner(crossprod, normal) > 0) {
-	    return 0.5 * crossprod.two_norm();
-	} else {
-	    return -0.5 * crossprod.two_norm();
-	}
+        // Using the one-half cross product rule
+        Point<T, 3> d0 = c[1] - c[0];
+        Point<T, 3> d1 = c[2] - c[0];
+        Point<T, 3> crossprod = cross(d0, d1);
+        if (inner(crossprod, normal) > 0) {
+            return 0.5 * crossprod.two_norm();
+        } else {
+            return -0.5 * crossprod.two_norm();
+        }
     }
 
 

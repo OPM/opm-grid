@@ -116,17 +116,17 @@ BOOST_AUTO_TEST_CASE(oriented_entity_table)
 
     // Printing test
     std::string expect1(" -1  1  0 -1  1  0  0\n"
-			"  0 -1  1  0  0 -1  1\n");
+                        "  0 -1  1  0  0 -1  1\n");
     std::ostringstream s1;
     cell2face.printRelationMatrix(s1);
     BOOST_CHECK(expect1 == s1.str());
     std::string expect2(" -1  0\n"
-			"  1 -1\n"
-			"  0  1\n"
-			" -1  0\n"
-			"  1  0\n"
-			"  0 -1\n"
-			"  0  1\n");
+                        "  1 -1\n"
+                        "  0  1\n"
+                        " -1  0\n"
+                        "  1  0\n"
+                        "  0 -1\n"
+                        "  0  1\n");
     std::ostringstream s2;
     face2cell.printRelationMatrix(s2);
     BOOST_CHECK(expect2 == s2.str());
