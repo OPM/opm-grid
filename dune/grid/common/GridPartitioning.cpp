@@ -70,7 +70,7 @@ namespace Dune
 	};
 
 
-	int initialPartition(const coord_t& c, const coord_t& lc_size, const coord_t& initial_split) 
+	int initialPartition(const coord_t& c, const coord_t& lc_size, const coord_t& initial_split)
 	{
 	    coord_t p_coord;
 	    for (int i = 0; i < 3; ++i) {
@@ -201,7 +201,7 @@ namespace Dune
 	}
 
 	// Initial partitioning depending on (ijk) coordinates.
-	std::vector<int>::size_type  num_initial = 
+	std::vector<int>::size_type  num_initial =
             initial_split[0]*initial_split[1]*initial_split[2];
 	const std::vector<int>& lc_ind = grid.globalCell();
 	std::vector<int> num_in_part(num_initial, 0); // no cells of partitions

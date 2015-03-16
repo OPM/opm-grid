@@ -163,4 +163,4 @@ Intersection::EntityPointer Intersection::outside() const
     return EntityPointer(*pgrid_, nbcell(), true);
 }
 } // end namespace cpgrid
-} // end namespace Dune 
+} // end namespace Dune

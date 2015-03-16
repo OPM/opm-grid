@@ -49,7 +49,7 @@
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <fstream>
-#include <iostream> 
+#include <iostream>
 
 namespace Dune
 {
@@ -137,7 +137,7 @@ namespace cpgrid
             g.actnum = &actnumData[0];
 
         // Possibly process MINPV
-        if (!poreVolume.empty() && (ecl_grid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {    
+        if (!poreVolume.empty() && (ecl_grid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, zcornData.data());
         }
@@ -191,7 +191,7 @@ namespace cpgrid
 	    std::vector<double> new_coord;
 	    std::vector<double> new_zcorn;
 	    std::vector<int> new_actnum;
-	    grdecl new_g;	    
+	    grdecl new_g;	
 	    addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
 	    // Make the grid.
 	    processEclipseFormat(new_g, z_tolerance, true, turn_normals);
@@ -249,7 +249,7 @@ namespace cpgrid
 	free_processed_grid(&output);
 
         computeUniqueBoundaryIds();
-        
+
 #ifdef VERBOSE
 	std::cout << "Done with grid processing." << std::endl;
 #endif
@@ -408,7 +408,7 @@ namespace cpgrid
 		    for (int ix = 0; ix < new_n[0]; ++ix) {
 			int new_cell_index = ix + jy*(new_n[0]) + kz*(new_n[0])*(new_n[1]);
 			int old_cell_index = new2old[new_cell_index];
-            
+
 			cellz_t cellvals = getCellZvals(indexToIjk(n, old_cell_index), n, old_zcorn);
 			// cout << new_cell_index << ' ' << old_cell_index << ' ' << cellvals << endl;
 			setCellZvals(indexToIjk(new_n, new_cell_index), new_n, &zcorn[0], cellvals);

@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
         typedef GridView::IndexSet IndexSet;
         const IndexSet& indexSet(gridView.indexSet());
-        
+
         typedef GridView::Codim<0>::Iterator ElementIterator;
         ElementIterator endEIt = gridView.end<0>();
         for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {

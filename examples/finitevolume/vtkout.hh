@@ -15,7 +15,7 @@ void vtkout (const G& grid, const V& c, const char* name, int k, double time=0.0
   sprintf(sername,"%s.series",name);
   vtkwriter.addCellData(c,"celldata");
   vtkwriter.write(fname,Dune::VTK::ascii);
-  if ( rank == 0) 
+  if ( rank == 0)
   {
     std::ofstream serstream(sername, (k==0 ? std::ios_base::out : std::ios_base::app));
     serstream << k << " " << fname << ".vtu " << time << std::endl;

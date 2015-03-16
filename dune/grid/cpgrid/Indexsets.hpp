@@ -75,7 +75,7 @@ namespace Dune
             /// \brief Destructor.
             ~IndexSet()
             {}
-            
+
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @param
@@ -120,9 +120,9 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template<int cd>
-	    IndexType index(const cpgrid::Entity<cd>& e) const 
+	    IndexType index(const cpgrid::Entity<cd>& e) const
 	    {
-		return e.index(); 
+		return e.index();
 	    }
 
 	    /// @brief
@@ -131,7 +131,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template<class EntityType>
-	    IndexType index(const EntityType& e) const 
+	    IndexType index(const EntityType& e) const
 	    {
 		return e.index();
 	    }
@@ -142,7 +142,7 @@ namespace Dune
 	    /// @return
 	    /// @param
 	    template <int cc>
-	    IndexType subIndex(const cpgrid::Entity<0>& e, int i) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i) const
 	    {
 		return index(e.template subEntity<cc>(i));
 	    }
@@ -152,7 +152,7 @@ namespace Dune
 	    /// @tparam
 	    /// @return
 	    /// @param
-	    IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const 
+	    IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const
 	    {
 		switch(cc) {
 		case 0: return index(e.subEntity<0>(i));
@@ -192,19 +192,19 @@ namespace Dune
 	    }
 
 	    template<int cc>
-	    IdType id(const cpgrid::Entity<cc>& e) const 
+	    IdType id(const cpgrid::Entity<cc>& e) const
 	    {
 		return computeId(e);
 	    }
 
 	    template<class EntityType>
-	    IdType id(const EntityType& e) const 
+	    IdType id(const EntityType& e) const
 	    {
                 return computeId(e);
 	    }
 
 	    template<int cc>
-	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const
 	    {
 		return id(e.template subEntity<cc>(i));
 	    }
@@ -225,7 +225,7 @@ namespace Dune
             IdType computeId(const EntityType& e) const
             {
                 IdType myId = 0;
-                for( int c=0; c<EntityType::codimension; ++c ) 
+                for( int c=0; c<EntityType::codimension; ++c )
                     myId += grid_.indexSet().size( c );
                 return  myId + e.index();
             }
@@ -255,16 +255,16 @@ namespace Dune
                 : idSet_()
             {}
 	    template<class EntityType>
-	    IdType id(const EntityType& e) const 
+	    IdType id(const EntityType& e) const
 	    {
                 if(idSet_)
                     return idSet_->id(e);
-                else 
+                else
                     return this->template getMapping<EntityType::codimension>()[e.index()];
 	    }
 
 	    template<int cc>
-	    IdType subId(const cpgrid::Entity<0>& e, int i) const 
+	    IdType subId(const cpgrid::Entity<0>& e, int i) const
 	    {
 		return id(e.template subEntity<cc>(i));
 	    }

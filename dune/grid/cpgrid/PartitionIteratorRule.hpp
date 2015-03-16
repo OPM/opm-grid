@@ -41,14 +41,14 @@ namespace cpgrid
     struct PartitionIteratorRule
     {
         enum {fullSet=false, emptySet=true};
-        
+
         template<int codim>
         bool isInvalid(const Entity<codim>&)
         {
             return true;
         }
     };
-    
+
     template<>
     struct PartitionIteratorRule<Interior_Partition>
     {
@@ -61,7 +61,7 @@ namespace cpgrid
             return true;
         }
     };
-     
+
     template<>
     struct PartitionIteratorRule<InteriorBorder_Partition>
     {
@@ -75,7 +75,7 @@ namespace cpgrid
             return true;
         }
     };
-        
+
     template<>
     struct PartitionIteratorRule<Overlap_Partition>
     {
@@ -88,7 +88,7 @@ namespace cpgrid
                 return true;
             return false;
         }
-    };    
+    };
 
     template<>
     struct PartitionIteratorRule<All_Partition>
@@ -100,7 +100,7 @@ namespace cpgrid
             return false;
         }
     };
-    
+
     template<>
     struct PartitionIteratorRule<OverlapFront_Partition>
         : public PartitionIteratorRule<All_Partition>

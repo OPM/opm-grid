@@ -34,7 +34,7 @@ public:
     /// \param cellMapping A vector with global id of index i at position i.
     /// \param faceMapping A vector with global id of index i at position i.
     /// \param pointMapping A vector with global id of index i at position i.
-    
+
     void swap(std::vector<int>& cellMapping,
               std::vector<int>& faceMapping,
               std::vector<int>& pointMapping)
@@ -56,7 +56,7 @@ public:
             return faceMapping_;
             return pointMapping_;
     }
-      
+
     /// \brief Get the vector with the mappings for a codimension
     /// \tparam codim The codimension.
     template<int codim>

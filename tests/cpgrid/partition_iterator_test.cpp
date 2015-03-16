@@ -33,7 +33,7 @@ void testPartitionIteratorsBasic(const Dune::CpGrid& grid, bool parallel)
         BOOST_REQUIRE((grid.leafbegin<codim,Dune::Interior_Partition>()==
                        grid.leafbegin<codim,Dune::All_Partition>()));
     }
-    
+
 }
 
 template<int codim>
@@ -69,7 +69,7 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
         Dune::CpGrid grid;
         std::array<int, 3> dims={{2, 2, 2}};
         std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
-        
+
         grid.createCartesian(dims, size);
         testPartitionIteratorsBasic<0>(grid, false);
         testPartitionIteratorsOnSequentialGrid<0>(grid);
@@ -83,7 +83,7 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
     Dune::CpGrid grid;
     std::array<int, 3> dims={{10, 10, 10}};
     std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
-        
+
     grid.createCartesian(dims, size);
     grid.loadBalance();
     testPartitionIteratorsBasic<0>(grid, parallel);

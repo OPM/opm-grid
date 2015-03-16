@@ -279,7 +279,7 @@ namespace Dune
             vtk << "CELL_TYPES " << nc << '\n';
             for (int i = 0; i < nc; ++i) {
                 vtk << "12\n";
-            }            
+            }
         }
 
 

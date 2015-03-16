@@ -209,7 +209,7 @@ namespace Dune
 
 	/// Default constructor
 	CpGrid();
- 
+
         /// Initialize the grid from parameters.
 	void init(const Opm::parameter::ParameterGroup& param);
 
@@ -219,13 +219,13 @@ namespace Dune
 	/// \param grid_prefix the grid name, such that topology is
 	/// found in <grid_prefix>-topo.dat etc.
 	void readSintefLegacyFormat(const std::string& grid_prefix);
-                
+
 
 	/// Write the Sintef legacy grid format ('topogeom').
 	/// \param grid_prefix the grid name, such that topology will be
 	/// found in <grid_prefix>-topo.dat etc.
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
-        
+
 
 	/// Read the Eclipse grid format ('grdecl').
 	/// \param filename the name of the file to read.
@@ -489,7 +489,7 @@ namespace Dune
             std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
         }
 
-        const std::vector< Dune :: GeometryType >& geomTypes( const int codim ) const 
+        const std::vector< Dune :: GeometryType >& geomTypes( const int codim ) const
         {
           return leafIndexSet().geomTypes( codim );
         }
@@ -561,7 +561,7 @@ namespace Dune
         unsigned int ghostSize(int, int) const {
             return 0;
         }
-        
+
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
@@ -571,7 +571,7 @@ namespace Dune
         {
             return scatterGrid(overlapLayers);
         }
-        
+
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
         /// \param overlapLayers The number of layers of overlap cells to be added
@@ -585,10 +585,10 @@ namespace Dune
             scatterData(data);
             return ret;
         }
-        
+
         /// The new communication interface.
         /// \brief communicate objects for all codims on a given level
-        /// \param data The data handle describing the data. Has to adhere to the 
+        /// \param data The data handle describing the data. Has to adhere to the
         /// Dune::DataHandleIF interface.
         /// \param iftype The interface to use for the communication.
         /// \param dir The direction of the communication along the interface (forward or backward).
@@ -611,7 +611,7 @@ namespace Dune
         {
             current_view_data_->communicate(data, iftype, dir);
         }
-        
+
         /// \brief Get the collective communication object.
         const CollectiveCommunication& comm () const
         {
@@ -854,7 +854,7 @@ namespace Dune
                     ret = current_view_data_->unique_boundary_ids_[f];
                 } else {
                     // Use the face tag based ids, i.e. 1-6 for i-, i+, j-, j+, k-, k+.
-                    const bool normal_is_in = 
+                    const bool normal_is_in =
                         !(current_view_data_->face_to_cell_[f][0].orientation());
                     enum face_tag tag = current_view_data_->face_tag_[f];
                     switch (tag) {
@@ -986,7 +986,7 @@ namespace Dune
         {
             current_view_data_=data_.get();
         }
-        
+
         /// \brief Switch to the distributed view.
         void switchToDistributedView()
         {
@@ -1038,13 +1038,13 @@ namespace Dune
         }
 
 #endif
-        
+
     private:
         /// Scatter a global grid to all processors.
         bool scatterGrid(int overlapLayers);
-        
-        /** @brief The data stored in the grid. 
-         * 
+
+        /** @brief The data stored in the grid.
+         *
          * All the data of the grid is stored there and
          * calls are forwarded to it.*/
         std::shared_ptr<cpgrid::CpGridData> data_;

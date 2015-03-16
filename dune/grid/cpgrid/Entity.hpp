@@ -53,7 +53,7 @@ namespace Dune
        class IntersectionIterator;
        class HierarchicIterator;
        class CpGridData;
-    
+
 	/// @brief
 	/// @todo Doc me!
 	/// @tparam
@@ -203,10 +203,10 @@ namespace Dune
 
             /// Start iterator for the cell-cell intersections of this entity.
 	    inline LeafIntersectionIterator ileafbegin() const;
-            
+
             /// End iterator for the cell-cell intersections of this entity.
 	    inline LeafIntersectionIterator ileafend() const;
-            
+
             /// Dummy first child iterator.
 	    HierarchicIterator hbegin(int) const;
 
@@ -381,7 +381,7 @@ namespace Dune
       static_assert(codim == 0, "");
       return LeafIntersectionIterator(*pgrid_, *this, false);
   }
-  
+
   template<int codim>
   typename Entity<codim>::LeafIntersectionIterator Entity<codim>::ileafend() const
   {

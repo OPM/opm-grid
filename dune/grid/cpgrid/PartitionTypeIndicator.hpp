@@ -66,14 +66,14 @@ public:
     /// \param point_entity The entity describing the point.
     /// \return The partition type of the point.
     PartitionType getPartitionType(const EntityRep<3>& point_entity) const;
-    
+
 private:
     /// Get the partition type of a face by its index
     /// \param i The index of the face.
     /// \return The partition type of the face associated with this index.
     PartitionType getFacePartitionType(int i) const;
-    
-    
+
+
     /// Get the partition type of a face by its index
     /// \param i The index of the face.
     /// \return The partition type of the face associated with this index.

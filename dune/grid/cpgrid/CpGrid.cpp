@@ -93,9 +93,9 @@ bool CpGrid::scatterGrid(int overlapLayers)
                  << " Maybe scatterGrid was called before?"<<std::endl;
         return false;
     }
-    
+
     CollectiveCommunication cc(MPI_COMM_WORLD);
-    
+
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
     int  num_parts=-1;
@@ -103,10 +103,10 @@ bool CpGrid::scatterGrid(int overlapLayers)
     initial_split[0]=initial_split[1]=std::pow(cc.size(), 1.0/3.0);
     initial_split[2]=cc.size()/(initial_split[0]*initial_split[1]);
     partition(*this, initial_split, num_parts, cell_part);
-    
-    
+
+
     MPI_Comm new_comm = MPI_COMM_NULL;
-    
+
     if(num_parts < cc.size())
     {
         std::vector<int> ranks(num_parts);
@@ -116,7 +116,7 @@ bool CpGrid::scatterGrid(int overlapLayers)
         MPI_Group old_group;
         MPI_Comm_group(cc, &old_group);
         MPI_Group_incl(old_group, num_parts, &(ranks[0]), &new_group);
-        
+
         // Not all procs take part in the parallel computation
         MPI_Comm_create(cc, new_group, &new_comm);
         cc=CollectiveCommunication(new_comm);
@@ -218,10 +218,10 @@ bool CpGrid::scatterGrid(int overlapLayers)
                                                  poreVolume);
     }
 
-    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance, 
+    void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)
     {
         current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
     }
-    
+
 } // namespace Dune

@@ -83,7 +83,7 @@ namespace Dune
     /// array of two-dimensional points.  Same function also exists for 3 x 3
     /// matrices.
     template<typename T, template <typename, int> class Point>
-    inline T determinantOf(const Point<T, 2>* a) 
+    inline T determinantOf(const Point<T, 2>* a)
     {
 	return a[0][0] * a[1][1] - a[1][0] * a[0][1];
     }
@@ -93,9 +93,9 @@ namespace Dune
     /// array of three-dimensional points.  Same function also exists for 2 x 2
     /// matrices.
     template<typename T, template <typename, int> class Point>
-    inline T determinantOf(const Point<T, 3>* a) 
+    inline T determinantOf(const Point<T, 3>* a)
     {
-	return 
+	return
 	    a[0][0] * (a[1][1] * a[2][2] - a[2][1] * a[1][2]) -
 	    a[0][1] * (a[1][0] * a[2][2] - a[2][0] * a[1][2]) +
 	    a[0][2] * (a[1][0] * a[2][1] - a[2][0] * a[1][1]);

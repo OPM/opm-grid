@@ -99,7 +99,7 @@ namespace Dune
 	{
 	public:
             enum{ codimension=codim};
-            
+
 	    /// Default constructor.
 	    EntityRep()
 		: entityrep_(0)
@@ -217,12 +217,12 @@ namespace Dune
 	    typedef std::vector<T> V;
             typedef typename std::vector<T>::iterator iterator;
             typedef typename std::vector<T>::const_iterator const_iterator;
-            
+
 	    using V::empty;
 	    using V::size;
 	    using V::assign;
             using V::begin;
-            
+
 	    /// Default constructor.
 	    EntityVariableBase()
 	    {

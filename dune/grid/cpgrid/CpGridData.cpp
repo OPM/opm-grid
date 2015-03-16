@@ -168,7 +168,7 @@ struct AssignAndIncrement
     int i_;
 } assigner;
 
-/** 
+/**
  * @brief Counts the number of global ids and sets them up.
  * @param indicator A vector indicating whether an entity exists.
  * @param ids A vector to the the global ids in.
@@ -180,12 +180,12 @@ int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& 
                            const IdSet& idSet)
 {
     int count = std::count_if(indicator.begin(),
-                              indicator.end(), 
+                              indicator.end(),
                               std::bind2nd(std::less<int>(),
                                            std::numeric_limits<int>::max()));
     ids.resize(count);
     typedef typename std::vector<int>::const_iterator VIter;
-    for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end(); 
+    for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end();
         i!=iend; ++i)
     {
         if(*i<std::numeric_limits<int>::max())
@@ -236,7 +236,7 @@ template<class T>
 struct AttributeDataHandle
 {
     typedef std::pair<int,char> DataType;
-    
+
     AttributeDataHandle(int rank, const PartitionTypeIndicator& indicator,
                         std::vector<std::map<int, char> >& vals,
                         const T& cell_to_entity,
@@ -282,7 +282,7 @@ struct AttributeDataHandle
     const T& c2e_;
     const CpGridData& grid_;
 };
- 
+
 
 template<class T, class Functor, class FromSet, class ToSet>
 struct InterfaceFunctor
@@ -309,7 +309,7 @@ struct InterfaceIncrementor
     void operator()(T& t, std::size_t)
     {
         ++t;
-    }    
+    }
 };
 
 struct InterfaceAdder
@@ -326,7 +326,7 @@ struct InterfaceTupleFunctor
     InterfaceTupleFunctor(Tuple& t)
     : t_(t)
     {}
-    
+
     void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
     {
         get<0>(t_)(rank, index, mine, other);
@@ -347,7 +347,7 @@ struct Converter
     typedef Combine<Interior,Border> InteriorBorder;
     typedef Combine<Overlap,Front> OverlapFront;
 
-    typedef tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap, 
+    typedef tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap,
                   AllSet<PartitionType> > SourceTuple;
     typedef tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
                   AllSet<PartitionType> > DestinationTuple;
@@ -367,7 +367,7 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
     typedef typename std::map<int,std::pair<std::size_t,std::size_t> >::const_iterator Iter;
     const std::map<int,std::pair<std::size_t,std::size_t> >& sizeMap=sizes[i];
     InterfaceMap& interfaceMap=get<i>(interfaces);
-    
+
     for(Iter iter=sizeMap.begin(), end =sizeMap.end(); iter!=end; ++iter)
     {
         std::pair<InterfaceInformation,InterfaceInformation>& interface=interfaceMap[iter->first];
@@ -398,7 +398,7 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
  * \tparam i The indentifier of the interface.
  */
 template<std::size_t i>
-struct SizeFunctor : 
+struct SizeFunctor :
     public InterfaceFunctor<std::size_t, InterfaceIncrementor,
                             typename tuple_element<i,typename Converter::SourceTuple>::type,
                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
@@ -464,7 +464,7 @@ void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
                              T my_attribute_iter, Functor& func)
 {
     typedef typename std::vector<std::map<int,char> >::const_iterator Iter;
-    for(Iter begin=attributes.begin(), i=begin, end=attributes.end(); i!=end; 
+    for(Iter begin=attributes.begin(), i=begin, end=attributes.end(); i!=end;
         ++i, ++my_attribute_iter)
     {
         typedef typename std::map<int,char>::const_iterator MIter;
@@ -475,7 +475,7 @@ void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
     }
 }
 
-        
+
 /**
  * \brief Creates the communication interface for either faces or points.
  * \param attributes[in] A vector that contains for each index a map from other
@@ -514,7 +514,7 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
                           AddFunctor<4>(get<4>(interfaces)));
     InterfaceTupleFunctor<AddTuple> add_functor(add_functor_tuple);
     iterate_over_attributes(attributes, partition_type_iterator, add_functor);
-                                
+
 }
 
 #endif // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -536,8 +536,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             OPM_THROW(std::runtime_error, "rank for cell is too big");
 #endif // #ifdef DEBUG
     // vector with the set of ranks that
-    std::vector<std::set<int> > overlap; 
-    
+    std::vector<std::set<int> > overlap;
+
     overlap.resize(cell_part.size());
     addOverlapLayer(grid, cell_part, overlap, my_rank, false, overlap_layers);
     // count number of cells
@@ -671,7 +671,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // We use std::numeric_limits<int>::max() to indicate non-existent entities.
     std::vector<int> face_indicator(view_data.geometry_.geomVector<1>().size(),
                                     std::numeric_limits<int>::max());
-    std::vector<int> point_indicator(view_data.geometry_.geomVector<3>().size(), 
+    std::vector<int> point_indicator(view_data.geometry_.geomVector<3>().size(),
                                      std::numeric_limits<int>::max());
     for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
@@ -688,16 +688,16 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             int findex=f->index();
             --face_indicator[findex];
             // points reachable from a cell exist, too.
-            for(auto p=view_data.face_to_point_[findex].begin(), 
+            for(auto p=view_data.face_to_point_[findex].begin(),
                     pend=view_data.face_to_point_[findex].end(); p!=pend; ++p)
             {
                 assert(p>=0);
                 --point_indicator[*p];
             }
-        } 
+        }
     }
-    
-       
+
+
     // renumber  face and point indicators
     std::for_each(face_indicator.begin(), face_indicator.end(), AssignAndIncrement());
     std::for_each(point_indicator.begin(), point_indicator.end(), AssignAndIncrement());
@@ -738,12 +738,12 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     const std::vector<cpgrid::Geometry<2, 3> >& global_face_geom=view_data.geomVector<1>();
     const std::vector<enum face_tag>& global_face_tag=view_data.face_tag_;
     const std::vector<PointType>& global_face_normals=view_data.face_normals_;
-    
+
     // Now copy the face geometries that do exist.
     auto f = tmp_face_geom.begin();
     auto ft = tmp_face_tag.begin();
     auto fn = tmp_face_normals.begin();
-    for(auto begin=face_indicator.begin(), fi=begin,  end=face_indicator.end(); fi!=end; 
+    for(auto begin=face_indicator.begin(), fi=begin,  end=face_indicator.end(); fi!=end;
         ++fi)
     {
         if(*fi<std::numeric_limits<int>::max())
@@ -762,7 +762,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     std::vector<cpgrid::Geometry<0, 3> > tmp_point_geom(noExistingPoints);
     EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom;
     const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
-    
+
     // Now copy the point geometries that do exist.
     auto p= tmp_point_geom.begin();
     for(auto begin=point_indicator.begin(), pi=begin,  end=point_indicator.end(); pi!=end;
@@ -776,9 +776,9 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
     // swap the underlying vectors to get data into point_geom
     static_cast<std::vector<cpgrid::Geometry<0, 3> >&>(point_geom).swap(tmp_point_geom);
-    
+
     // Copy the vectors to geometry. There is no other way currently.
-    geometry_=cpgrid::DefaultGeometryPolicy(cell_geom, face_geom, 
+    geometry_=cpgrid::DefaultGeometryPolicy(cell_geom, face_geom,
                                             point_geom);
 
     // Create the topology information. This is stored in sparse matrix like data structures.
@@ -790,13 +790,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
         data_size+=c2f.rowSize(i->global());
     }
-    
+
     //- cell_to_face_ : extract owner/overlap rows from cell_to_face_
     // Construct the sparse matrix like data structure.
     //OrientedEntityTable<0, 1> cell_to_face;
     cell_to_face_.reserve(cell_indexset_.size(), data_size);
     cell_to_point_.reserve(cell_indexset_.size());
-    
+
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
     {
@@ -823,13 +823,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             data_size += f2c.rowSize(*f);
 
     face_to_cell_.reserve(f2c.size(), data_size);
-    
+
     //- face_to cell_ : extract rows that connect to an existent cell
     std::vector<int> cell_indicator(view_data.cell_to_face_.size(),
                                     std::numeric_limits<int>::max());
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
         cell_indicator[i->global()]=i->local();
-    
+
     for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
     {
         if(*f<std::numeric_limits<int>::max())
@@ -839,7 +839,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             auto old_row = f2c[f-begin];
             new_row.reserve(old_row.size());
             // push back connected existent cells.
-            // for those cells we use the new cell_indicator and copy the 
+            // for those cells we use the new cell_indicator and copy the
             // orientation of the old cell.
             for(auto cell = old_row.begin(), cend=old_row.end();cell!=cend; ++cell)
             {
@@ -848,13 +848,13 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 // Note that along the front partition there are invalid neighbours
                 // marked with index std::numeric_limits<int>::max()
                 // Still they inherit the orientation to make CpGrid::faceCell happy
-                new_row.push_back(EntityRep<0>(cell_indicator[cell->index()], 
+                new_row.push_back(EntityRep<0>(cell_indicator[cell->index()],
                                                    cell->orientation()));
             }
             face_to_cell_.appendRow(new_row.begin(), new_row.end());
         }
     }
-    
+
     // Compute the number of non zeros of the face_to_point matrix.
     data_size=0;
     for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f)
@@ -880,12 +880,12 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             face_to_point_.appendRow(new_row.begin(), new_row.end());
         }
     }
-    
+
     logical_cartesian_size_=view_data.logical_cartesian_size_;
-    
+
     // - unique_boundary_ids_ : extract the ones that correspond existent faces
     EntityVariable<int, 1> unique_boundary_ids;
-    
+
     if(view_data.unique_boundary_ids_.size())
     {
         // Unique boundary ids are inherited from the global grid.
@@ -908,17 +908,17 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             i->local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
     }
-    
+
     // Compute partition type for points
-    // We initialize all points with interior. Then we loop over the faces. If a face is of 
+    // We initialize all points with interior. Then we loop over the faces. If a face is of
     // type border, then the type of the point is overwritten with border. In the other cases
-    // we set the type of the point to the one of the face as long as the type of the point is 
+    // we set the type of the point to the one of the face as long as the type of the point is
     // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                        OverlapEntity);
     for(int i=0; i<face_to_point_.size(); ++i)
     {
-        for(auto p=face_to_point_[i].begin(), 
+        for(auto p=face_to_point_[i].begin(),
                 pend=face_to_point_[i].end(); p!=pend; ++p)
         {
             PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
@@ -955,11 +955,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
       // code deactivated, because users cannot access face indices and therefore
       // communication on faces makes no sense!
     std::vector<std::map<int,char> > face_attributes(noExistingFaces);
-    AttributeDataHandle<Opm::SparseTable<EntityRep<1> > > 
+    AttributeDataHandle<Opm::SparseTable<EntityRep<1> > >
         face_handle(ccobj_.rank(), *partition_type_indicator_,
                     face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
                     *this);
-    
+
     comm.forward(face_handle);
     createInterfaces(face_attributes, FacePartitionTypeIterator(partition_type_indicator_),
                      face_interfaces_);
@@ -977,7 +977,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     static_cast<void>(view_data);
     static_cast<void>(cell_part);
     static_cast<void>(overlap_layers);
-#endif    
+#endif
 }
 
 } // end namespace cpgrid

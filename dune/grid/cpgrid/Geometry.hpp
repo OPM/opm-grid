@@ -365,7 +365,7 @@ namespace Dune
 	    }
 
             /// For the singular geometry, we return a constant
-            /// integration element equal to the volume. 
+            /// integration element equal to the volume.
 	    double integrationElement(const LocalCoordinate&) const
 	    {
 		return vol_;

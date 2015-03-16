@@ -254,7 +254,7 @@ namespace Dune
 	    ///
 	    /// Implementation note: The algorithm has been changed
 	    /// to a three-pass O(n) algorithm.
-	    /// @param inv  The OrientedEntityTable 
+	    /// @param inv  The OrientedEntityTable
 	    void makeInverseRelation(OrientedEntityTable<codim_to, codim_from>& inv) const
 	    {
 		// Find the maximum index used. This will give (one less than) the size

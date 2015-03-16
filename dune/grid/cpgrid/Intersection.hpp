@@ -129,7 +129,7 @@ namespace Dune
 
             /// Returns the boundary id of this intersection.
             int boundaryId() const;
-            
+
 
             /// Returns the boundary segment index of this intersection.
             int boundarySegmentIndex() const;
@@ -146,12 +146,12 @@ namespace Dune
 	    /// @todo Doc me!
 	    /// @return
             EntityPointer inside() const;
-            
+
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @return
             EntityPointer outside() const;
-            
+
 	    /// @brief
 	    /// @todo Doc me!
 	    /// @return

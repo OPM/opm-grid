@@ -37,7 +37,7 @@ namespace cpgrid
 {
 /// \brief A proxy class representing a row of FaceCellsContainer.
 class FaceCellsProxy
-{    
+{
 public:
     /// \brief Constructor.
     /// \param grid The grid whose face to cell mapping we represent.
@@ -61,7 +61,7 @@ class FaceCellsContainerProxy
 {
 public:
     typedef FaceCellsProxy row_type;
-    
+
     /// \brief Constructor.
     /// \param grid The grid whose information we represent.
     explicit FaceCellsContainerProxy(const Dune::CpGrid* grid)
@@ -249,12 +249,12 @@ public:
         {
             return cell_index_;
         }
-        
+
     private:
         const Dune::cpgrid::OrientedEntityTable<0,1>::row_type* row_;
         int cell_index_;
     };
-    
+
     typedef iterator const_iterator;
 
     Cell2FacesRow(const Dune::cpgrid::OrientedEntityTable<0,1>::row_type row,
@@ -271,7 +271,7 @@ public:
     {
         return const_iterator(&row_, row_.size(), cell_index_);
     }
-    
+
 private:
     const Dune::cpgrid::OrientedEntityTable<0,1>::row_type row_;
     const int cell_index_;
@@ -282,17 +282,17 @@ class Cell2FacesContainer
 {
 public:
     typedef  Cell2FacesRow row_type;
-    
+
     explicit Cell2FacesContainer(const Dune::CpGrid* grid)
         : grid_(grid)
     {};
-    
+
     Cell2FacesRow operator[](int cell_index) const
     {
         auto& row=grid_->cellFaceRow(cell_index);
         return Cell2FacesRow(row, cell_index);
     }
-    
+
         /// \brief Get the number of non-zero entries.
     std::size_t noEntries() const
     {
@@ -356,7 +356,7 @@ public:
     {
         return o.grid_==grid_ && o.cell_index_==cell_index_;
     }
-    
+
 private:
     const Dune::CpGrid* grid_;
     int cell_index_;

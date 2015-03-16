@@ -47,7 +47,7 @@ int dimensions(const Dune::CpGrid&)
 
 int numCellFaces(const Dune::CpGrid& grid)
 {
-    return grid.numCellFaces();    
+    return grid.numCellFaces();
 }
 
 const int* cartDims(const Dune::CpGrid& grid)
