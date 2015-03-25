@@ -282,6 +282,7 @@ namespace Dune
         {
         public:
             typedef cpgrid::Entity<codim> Entity;
+            typedef const Entity& Reference;
 
             /// Construction from entity.
             explicit EntityPointer(const Entity& e)
