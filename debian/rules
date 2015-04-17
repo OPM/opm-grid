@@ -27,3 +27,6 @@ override_dh_auto_install:
 
 override_dh_installdocs:
 	dh_installdocs --link-doc=libdune-cornerpoint1
+
+override_dh_strip:
+	dh_strip -plibdune-cornerpoint1 --dbg-package=libdune-cornerpoint1-dbg
