@@ -475,12 +475,7 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   const Interface& interface)
 {
-    Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
-    VariableSizeCommunicator<> comm(interface);
-    if(dir==ForwardCommunication)
-        comm.forward(data_wrapper);
-    else
-        comm.backward(data_wrapper);
+    this->template communicateCodim<codim>(data, dir, interface.interfaces());
 }
 
 template<int codim, class DataHandle>
