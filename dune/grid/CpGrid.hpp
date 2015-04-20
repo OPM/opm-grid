@@ -1037,6 +1037,16 @@ namespace Dune
             return current_view_data_->cell_remote_indices_;
         }
 
+        const ParallelIndexSet& getCellIndexSet() const
+        {
+            return current_view_data_->cell_indexset_;
+        }
+
+        const RemoteIndices& getCellRemoteIndices() const
+        {
+            return current_view_data_->cell_remote_indices_;
+        }
+
 #endif
 
     private:
