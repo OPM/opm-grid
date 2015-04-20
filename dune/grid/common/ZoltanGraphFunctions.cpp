@@ -1,6 +1,7 @@
 /*
   Copyright 2015 Dr. Blatt - HPC-Simulation-Software & Services.
   Copyright 2015 NTNU
+  Copyright 2015 Statoil AS
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -17,13 +18,29 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifdef HAVE_CONFIG_H
 #include <config.h>
+#endif
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
+#include <dune/common/parallel/indexset.hh>
 #ifdef HAVE_ZOLTAN
 namespace Dune
 {
 namespace cpgrid
 {
+
+void getNullVertexList(void* cpGridPointer, int numGlobalIdEntries,
+                       int numLocalIdEntries, ZOLTAN_ID_PTR gids,
+                       ZOLTAN_ID_PTR lids, int wgtDim,
+                       float *objWgts, int *err)
+{
+    (void) cpGridPointer; (void) numGlobalIdEntries;
+    (void) numLocalIdEntries; (void) gids; (void) lids; (void) objWgts;
+    (void) wgtDim;
+    // We do nothing as we pretend to not have any grid cells.
+    *err = ZOLTAN_OK;
+}
+
 void getCpGridVertexList(void* cpGridPointer, int numGlobalIdEntries,
                          int numLocalIdEntries, ZOLTAN_ID_PTR gids,
                          ZOLTAN_ID_PTR lids, int wgtDim,
@@ -48,6 +65,18 @@ void getCpGridVertexList(void* cpGridPointer, int numGlobalIdEntries,
         gids[idx]   = globalIdSet.id(*cell);
         lids[idx++] = localIdSet.id(*cell);
     }
+    *err = ZOLTAN_OK;
+}
+
+void getNullNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
+                           int numCells,
+                           ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                           int *numEdges, int *err)
+{
+    (void) sizeGID; (void) sizeLID; (void) numCells; (void) globalID;
+    (void) localID; (void) numEdges; (void) cpGridPointer;
+    // Pretend that there are no edges
+    numEdges = 0;
     *err = ZOLTAN_OK;
 }
 
@@ -81,6 +110,17 @@ void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
     }
     std::cout<<std::endl;
     *err = ZOLTAN_OK;
+}
+void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
+                       int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                       int *numEdges,
+                       ZOLTAN_ID_PTR nborGID, int *nborProc,
+                       int wgtDim, float *ewgts, int *err)
+{
+    (void) cpGridPointer; (void) sizeGID; (void) sizeLID; (void) numCells;
+    (void) globalID; (void) localID; (void) numEdges; (void) nborGID;
+    (void) nborProc; (void) wgtDim; (void) ewgts;
+    err = ZOLTAN_OK;
 }
 
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
@@ -131,15 +171,16 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     {
         nborProc[i] = myrank;
     }
-#ifdef DEBUG
+#if defined(DEBUG) && false // The index set will not be initialized here!
     // The above relies heavily on the grid not being distributed already.
     // Therefore we check here that all cells are owned by us.
-    GlobalLookupIndexSet<Dune::CpGrid::ParallelIndexSet> globalIdxSet(getCellIndexSet(),
-                                                                      grid.numCells());
+    GlobalLookupIndexSet<Dune::CpGrid::ParallelIndexSet>
+        globalIdxSet(grid.getCellIndexSet(),
+                     grid.numCells());
     for ( int cell = 0; cell < numCells;  cell++ )
     {
-        if ( globaIdxSet.pair(cell).second.attribute() !=
-             Dune::CpGrid::ParallelIndexSet::AttributeSet::owner )
+        if ( globalIdxSet.pair(cell)->local().attribute() !=
+             Dune::CpGrid::ParallelIndexSet::LocalIndex::Attribute::owner )
         {
             *err = ZOLTAN_FATAL;
         }
@@ -147,12 +188,24 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
 #endif
 }
 
-void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, Dune::CpGrid& grid)
+void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
+                                   bool pretendNull)
 {
-      Zoltan_Set_Num_Obj_Fn(zz, getCpGridNumCells, &grid);
-      Zoltan_Set_Obj_List_Fn(zz, getCpGridVertexList, &grid);
-      Zoltan_Set_Num_Edges_Multi_Fn(zz, getCpGridNumEdgesList, &grid);
-      Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridEdgeList, &grid);
+    Dune::CpGrid *gridPointer = const_cast<Dune::CpGrid*>(&grid);
+    if ( pretendNull )
+    {
+        Zoltan_Set_Num_Obj_Fn(zz, getNullNumCells, gridPointer);
+        Zoltan_Set_Obj_List_Fn(zz, getNullVertexList, gridPointer);
+        Zoltan_Set_Num_Edges_Multi_Fn(zz, getNullNumEdgesList, gridPointer);
+        Zoltan_Set_Edge_List_Multi_Fn(zz, getNullEdgeList, gridPointer);
+    }
+    else
+    {
+        Zoltan_Set_Num_Obj_Fn(zz, getCpGridNumCells, gridPointer);
+        Zoltan_Set_Obj_List_Fn(zz, getCpGridVertexList, gridPointer);
+        Zoltan_Set_Num_Edges_Multi_Fn(zz, getCpGridNumEdgesList, gridPointer);
+        Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridEdgeList, gridPointer);
+    }
 }
 } // end namespace cpgrid
 } // end namespace Dune

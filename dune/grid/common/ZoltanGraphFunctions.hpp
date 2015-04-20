@@ -1,6 +1,7 @@
 /*
   Copyright 2015 Dr. Blatt - HPC-Simulation-Software & Services.
   Copyright 2015 NTNU
+  Copyright 2015 Statoil AS
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -60,7 +61,31 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
 
-void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, Dune::CpGrid& grid);
+void getNullVertexList(void* cpGridPointer, int numGlobalIds,
+                         int numLocalIds, ZOLTAN_ID_PTR gids,
+                         ZOLTAN_ID_PTR lids, int wgtDim,
+                         float *objWgts, int *err);
+
+void getNullNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
+                           int numCells,
+                           ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                           int *numEdges, int *err);
+
+void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
+                       int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                       int *num_edges,
+                       ZOLTAN_ID_PTR nborGID, int *nborProc,
+                       int wgt_dim, float *ewgts, int *err);
+
+inline int getNullNumCells(void* cpGridPointer, int* err)
+{
+    (void) cpGridPointer;
+    *err = ZOLTAN_OK;
+    return 0;
+}
+
+void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
+                                   bool pretendNull=false);
 } // end namespace cpgrid
 } // end namespace Dune
 
