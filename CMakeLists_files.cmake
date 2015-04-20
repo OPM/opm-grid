@@ -40,6 +40,7 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/common/GeometryHelpers.cpp
 	dune/grid/common/GridPartitioning.cpp
 	dune/grid/common/ZoltanGraphFunctions.cpp
+	dune/grid/common/ZoltanPartition.cpp
 	)
 
 # originally generated with the command:
@@ -108,4 +109,5 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
 	dune/grid/common/ZoltanGridFunctions.hpp
+	dune/grid/common/ZoltanPartition.hpp
 	)
