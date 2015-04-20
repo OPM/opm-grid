@@ -482,7 +482,7 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-    if ( interface.size() == 0 )
+    if ( interface.empty() )
     {
         // There no communication interface, do nothing.
         // Otherwise we will produce a memory error in
