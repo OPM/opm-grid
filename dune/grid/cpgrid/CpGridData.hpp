@@ -484,9 +484,9 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
 {
     if ( interface.empty() )
     {
-        // There no communication interface, do nothing.
+        // The communication interface is empty, do nothing.
         // Otherwise we will produce a memory error in
-        // VariableSizeCommunicator.
+        // VariableSizeCommunicator prior to DUNE 2.4
         return;
     }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
