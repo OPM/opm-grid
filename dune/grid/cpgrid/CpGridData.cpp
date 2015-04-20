@@ -959,8 +959,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         face_handle(ccobj_.rank(), *partition_type_indicator_,
                     face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
                     *this);
-
-    comm.forward(face_handle);
+    if( get<All_All_Interface>(cell_interfaces_).interfaces().size() )
+    {
+        comm.forward(face_handle);
+    }
     createInterfaces(face_attributes, FacePartitionTypeIterator(partition_type_indicator_),
                      face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
@@ -969,7 +971,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     AttributeDataHandle<std::vector<std::array<int,8> > >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
                      point_attributes, cell_to_point_, *this);
-    comm.forward(point_handle);
+    if( static_cast<const Dune::Interface&>(get<All_All_Interface>(cell_interfaces_))
+        .interfaces().size() )
+    {
+        comm.forward(point_handle);
+    }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
 #else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)

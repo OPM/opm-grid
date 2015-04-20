@@ -482,6 +482,13 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
+    if ( interface.size() == 0 )
+    {
+        // There no communication interface, do nothing.
+        // Otherwise we will produce a memory error in
+        // VariableSizeCommunicator.
+        return;
+    }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
     VariableSizeCommunicator<> comm(ccobj_, interface);
     if(dir==ForwardCommunication)
@@ -489,7 +496,6 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
     else
         comm.backward(data_wrapper);
 }
-
 #endif
 
 template<class DataHandle>
