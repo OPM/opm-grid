@@ -795,7 +795,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Construct the sparse matrix like data structure.
     //OrientedEntityTable<0, 1> cell_to_face;
     cell_to_face_.reserve(cell_indexset_.size(), data_size);
-    cell_to_point_.reserve(cell_indexset_.size());
+    cell_to_point_.resize(cell_indexset_.size());
 
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
