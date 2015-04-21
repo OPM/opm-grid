@@ -1,6 +1,5 @@
 /*
   Copyright 2015 Dr. Blatt - HPC-Simulation-Software & Services.
-  Copyright 2015 NTNU
   Copyright 2015 Statoil AS
 
   This file is part of The Open Porous Media project  (OPM).
