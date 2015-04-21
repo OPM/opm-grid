@@ -28,9 +28,23 @@ namespace Dune
 {
 namespace cpgrid
 {
+/// \brief Partition a CpGrid using Zoltan
+///
+/// This function will extract Zoltan's graph information
+/// form the grid and use it to partition it.
+/// In case the global grid is available on all processes, it
+/// will nevertheless only use the information on the root process
+/// to partition it as Zoltan cannot identify this situation.
+/// @param grid The grid to partition
+/// @paramm cc  The MPI communicator to use for the partitioning.
+///             The will be partitioned among the partiticipating processes.
+/// @param globalGridOnAllProcs If true, we will only extract the information
+///             on the master process for the partitioning.
+/// @return A vector that contains for each local cell of the grid the
+///         the number of the process that owns it after repartitioning.
 std::vector<int> zoltanGraphPartitionGrid(const CpGrid& grid,
                                           const CollectiveCommunication<MPI_Comm>& cc,
-                                          bool globalGridOnAllProcs);
+                                          bool globalGridOnAllProcs=true);
 }
 }
 #endif // HAVE_ZOLTAN

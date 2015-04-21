@@ -37,7 +37,10 @@ namespace Dune
 {
 namespace cpgrid
 {
-
+/// \brief Get the number of cells of the grid.
+///
+/// The cells are the vertices of the graph.
+/// \return The number of vertices of the graph representing the grid.
 inline int getCpGridNumCells(void* cpGridPointer, int* err)
 {
     const Dune::CpGrid&  grid = *static_cast<const Dune::CpGrid*>(cpGridPointer);
@@ -45,38 +48,47 @@ inline int getCpGridNumCells(void* cpGridPointer, int* err)
     return grid.numCells();
 }
 
+/// \brief Get the list of vertices of the graph of the grid.
 void getCpGridVertexList(void* cpGridPointer, int numGlobalIds,
                          int numLocalIds, ZOLTAN_ID_PTR gids,
                          ZOLTAN_ID_PTR lids, int wgtDim,
                          float *objWgts, int *err);
 
+/// \brief Get the number of edges the graph of the grid.
 void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                            int *numEdges, int *err);
 
+/// \brief Get the list of edges of the graph of the grid.
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
                        int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                        int *num_edges,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
 
+/// \brief Get a list of vertices with zero enties
 void getNullVertexList(void* cpGridPointer, int numGlobalIds,
                          int numLocalIds, ZOLTAN_ID_PTR gids,
                          ZOLTAN_ID_PTR lids, int wgtDim,
                          float *objWgts, int *err);
 
+/// \brief Get zero as the number of edges the graph of the grid.
 void getNullNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                            int *numEdges, int *err);
 
+/// \brief Get a list of edges of size zero.
 void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
                        int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                        int *num_edges,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
 
+/// \brief Get always zero as the number of cells of the grid.
+///
+/// The cells are the vertices of the graph.
 inline int getNullNumCells(void* cpGridPointer, int* err)
 {
     (void) cpGridPointer;
@@ -84,6 +96,10 @@ inline int getNullNumCells(void* cpGridPointer, int* err)
     return 0;
 }
 
+/// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.
+/// \param zz The struct with the information for ZOLTAN.
+/// \param grid The grid to partition.
+/// \param pretendNull If true, we will pretend that the grid has zero cells.
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
                                    bool pretendNull=false);
 } // end namespace cpgrid
