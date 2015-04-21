@@ -313,7 +313,7 @@ private:
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
     void communicateCodim(DataHandle& data, CommunicationDirection dir,
-                          Interface& interface);
+                          const Interface& interface);
 
     /// \brief Communicates data of a given codimension
     /// \tparam codim The codimension
@@ -325,7 +325,7 @@ private:
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
     void communicateCodim(DataHandle& data, CommunicationDirection dir,
-                          InterfaceMap& interface);
+                          const InterfaceMap& interface);
 #endif
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
@@ -473,20 +473,22 @@ T& getInterface(InterfaceType iftype,
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
-                                  Interface& interface)
+                                  const Interface& interface)
 {
-    Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
-    VariableSizeCommunicator<> comm(interface);
-    if(dir==ForwardCommunication)
-        comm.forward(data_wrapper);
-    else
-        comm.backward(data_wrapper);
+    this->template communicateCodim<codim>(data, dir, interface.interfaces());
 }
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
-                                  InterfaceMap& interface)
+                                  const InterfaceMap& interface)
 {
+    if ( interface.empty() )
+    {
+        // The communication interface is empty, do nothing.
+        // Otherwise we will produce a memory error in
+        // VariableSizeCommunicator prior to DUNE 2.4
+        return;
+    }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
     VariableSizeCommunicator<> comm(ccobj_, interface);
     if(dir==ForwardCommunication)
@@ -494,7 +496,6 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
     else
         comm.backward(data_wrapper);
 }
-
 #endif
 
 template<class DataHandle>
