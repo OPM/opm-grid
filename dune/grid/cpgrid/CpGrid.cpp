@@ -100,7 +100,7 @@ bool CpGrid::scatterGrid(int overlapLayers)
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
-    cell_part = cpgrid::zoltanGraphPartitionGrid(*this, cc, true);
+    cell_part = cpgrid::zoltanGraphPartitionGridOnRoot(*this, cc, 0);
     int num_parts = cc.size();
 #else
     int  num_parts=-1;

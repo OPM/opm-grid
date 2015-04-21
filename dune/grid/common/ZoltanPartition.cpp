@@ -26,9 +26,9 @@ namespace Dune
 {
 namespace cpgrid
 {
-std::vector<int> zoltanGraphPartitionGrid(const CpGrid& cpgrid,
+std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                           const CollectiveCommunication<MPI_Comm>& cc,
-                                          bool globalGridOnAllProcs)
+                                          int root)
 {
     int rc;
     float ver;
@@ -55,7 +55,7 @@ std::vector<int> zoltanGraphPartitionGrid(const CpGrid& cpgrid,
     Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
-    bool pretendEmptyGrid = globalGridOnAllProcs?(cc.rank()!=0):false;
+    bool pretendEmptyGrid = cc.rank()!=root;
 
     Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, pretendEmptyGrid);
 
@@ -81,12 +81,7 @@ std::vector<int> zoltanGraphPartitionGrid(const CpGrid& cpgrid,
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
-
-    if ( globalGridOnAllProcs )
-    {
-        cc.broadcast(&parts[0], parts.size(), 0);
-    }
-
+    cc.broadcast(&parts[0], parts.size(), root);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);

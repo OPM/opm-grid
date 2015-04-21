@@ -38,13 +38,12 @@ namespace cpgrid
 /// @param grid The grid to partition
 /// @paramm cc  The MPI communicator to use for the partitioning.
 ///             The will be partitioned among the partiticipating processes.
-/// @param globalGridOnAllProcs If true, we will only extract the information
-///             on the master process for the partitioning.
+/// @param root The process number that holds the global grid.
 /// @return A vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning.
-std::vector<int> zoltanGraphPartitionGrid(const CpGrid& grid,
-                                          const CollectiveCommunication<MPI_Comm>& cc,
-                                          bool globalGridOnAllProcs=true);
+std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
+                                                const CollectiveCommunication<MPI_Comm>& cc,
+                                                int root);
 }
 }
 #endif // HAVE_ZOLTAN
