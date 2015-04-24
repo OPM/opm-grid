@@ -24,7 +24,7 @@ macro (opm_doc opm doxy_dir)
   file (MAKE_DIRECTORY ${PROJECT_BINARY_DIR}/${doxy_dir})
   file (WRITE ${PROJECT_BINARY_DIR}/${doxy_dir}/Doxyfile.in ${_doxy_templ} ${_doxy_local})
   # set this generically named variable so even the custom file can be shared
-  set (src_DIR "${${opm}_DIR}")
+  set (src_DIR "dune")
   # replace variables in this combined file
   configure_file (
 	${PROJECT_BINARY_DIR}/${doxy_dir}/Doxyfile.in
