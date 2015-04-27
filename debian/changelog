@@ -1,3 +1,9 @@
+dune-cornerpoint (2015.04-1~precise) precise; urgency=medium
+
+  * Release new version
+
+ -- Arne Morten Kvarving <arne.morten.kvarving@sintef.no>  Fri, 24 Apr 2015 14:58:53 +0200
+
 dune-cornerpoint (2013.10-2~precise) precise; urgency=low
 
   * New release
