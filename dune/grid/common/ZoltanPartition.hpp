@@ -23,7 +23,7 @@
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 
-#if HAVE_ZOLTAN
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid

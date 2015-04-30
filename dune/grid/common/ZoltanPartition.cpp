@@ -21,7 +21,7 @@
 #include <config.h>
 #endif
 #include <dune/grid/common/ZoltanPartition.hpp>
-#ifdef HAVE_ZOLTAN
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid

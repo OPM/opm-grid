@@ -43,6 +43,7 @@ public:
   int errorcode;
 };
 
+#ifdef HAVE_MPI
 void MPI_err_handler(MPI_Comm *, int *err_code, ...){
   char *err_string=new char[MPI_MAX_ERROR_STRING];
   int err_length;
@@ -52,7 +53,7 @@ void MPI_err_handler(MPI_Comm *, int *err_code, ...){
   delete[] err_string;
   throw MPIError(s, *err_code);
 }
-
+#endif
 
 BOOST_AUTO_TEST_CASE(zoltan)
 {
@@ -61,7 +62,9 @@ BOOST_AUTO_TEST_CASE(zoltan)
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     {
         auto& inst = Dune::MPIHelper::instance(m_argc, m_argv);
-#ifdef HAVE_ZOLTAN
+        (void) inst; //omit unused variable warning.
+
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
         int rc;
         float ver;
         int procs=1;

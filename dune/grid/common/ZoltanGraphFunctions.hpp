@@ -23,10 +23,11 @@
 
 #include <dune/grid/CpGrid.hpp>
 
-#ifdef HAVE_ZOLTAN
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 
 #include <mpi.h>
-// Zoltan redefines HAVE_MPI. Therfore we need to back it up, undef, and
+
+// Zoltan redefines HAVE_MPI. Therefore we need to back it up, undef, and
 // redifine it after the header is included
 #undef HAVE_MPI
 #include <zoltan.h>

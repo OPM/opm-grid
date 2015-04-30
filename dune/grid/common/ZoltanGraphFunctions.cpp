@@ -23,7 +23,7 @@
 #endif
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
-#ifdef HAVE_ZOLTAN
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
