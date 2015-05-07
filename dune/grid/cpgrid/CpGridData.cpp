@@ -588,7 +588,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 if(iter!=ov.end())
                 {
                     global2local.push_back(count);
-                    indexset->add(i, Index(count++, AttributeSet::overlap, true));
+                    indexset->add(i, Index(count++, AttributeSet::copy, true));
                     neighbors.insert(ov.begin(), iter);
                     neighbors.insert(++iter, ov.end());
                 }
