@@ -100,8 +100,8 @@ bool CpGrid::scatterGrid(int overlapLayers)
     int my_num=cc.rank();
     int  num_parts=-1;
     std::array<int, 3> initial_split;
-    initial_split[0]=initial_split[1]=std::pow(cc.size(), 1.0/3.0);
-    initial_split[2]=cc.size()/(initial_split[0]*initial_split[1]);
+    initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
+    initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
     partition(*this, initial_split, num_parts, cell_part);
 
 
