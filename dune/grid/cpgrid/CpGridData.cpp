@@ -648,9 +648,9 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     assert(mod!=modifiers.end());
                     mod->second.insert(RemoteIndex(AttributeSet::overlap,&(*i)));
                 }
-                SIter end=overlap[i->global()].end();
-                if(mine!=end)
-                    for(++mine; mine!=end; ++mine)
+                SIter end2=overlap[i->global()].end();
+                if(mine!=end2)
+                    for(++mine; mine!=end2; ++mine)
                     {
                         std::map<int,Modifier>::iterator mod=modifiers.find(*mine);
                         assert(mod!=modifiers.end());
@@ -740,7 +740,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     const std::vector<PointType>& global_face_normals=view_data.face_normals_;
 
     // Now copy the face geometries that do exist.
-    auto f = tmp_face_geom.begin();
+    auto fg = tmp_face_geom.begin();
     auto ft = tmp_face_tag.begin();
     auto fn = tmp_face_normals.begin();
     for(auto begin=face_indicator.begin(), fi=begin,  end=face_indicator.end(); fi!=end;
@@ -748,10 +748,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     {
         if(*fi<std::numeric_limits<int>::max())
         {
-            *f=global_face_geom[fi-begin];
+            *fg=global_face_geom[fi-begin];
             *ft=global_face_tag[fi-begin];
             *fn=global_face_normals[fi-begin];
-            ++f; ++ft; ++fn;
+            ++fg; ++ft; ++fn;
         }
     }
     static_cast<std::vector<PointType>&>(face_normals_).swap(tmp_face_normals);
@@ -764,14 +764,14 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
 
     // Now copy the point geometries that do exist.
-    auto p= tmp_point_geom.begin();
+    auto pt = tmp_point_geom.begin();
     for(auto begin=point_indicator.begin(), pi=begin,  end=point_indicator.end(); pi!=end;
         ++pi)
     {
         if(*pi<std::numeric_limits<int>::max())
         {
-            *p=global_point_geom[pi-begin];
-            ++p;
+            *pt=global_point_geom[pi-begin];
+            ++pt;
         }
     }
     // swap the underlying vectors to get data into point_geom
