@@ -771,6 +771,12 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
 
     // communicate the number of indices that each processor sends
     int no_indices=owned_sizes.size();
+    // We will take the address of the first elemet for MPI_Allgather below.
+    // Make sure the containers have such an element.
+    if ( owned_global_indices.empty() )
+        owned_global_indices.resize(1);
+    if ( owned_sizes.empty() )
+        owned_sizes.resize(1);
     std::vector<int> no_indices_to_recv(distributed_data->ccobj_.size());
     distributed_data->ccobj_.allgather(&no_indices, 1, &(no_indices_to_recv[0]));
     // compute size of the vector capable for receiving all indices
@@ -808,12 +814,19 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
 
     // Collect the data to send, gather it
     MoveBuffer<typename DataHandle::DataType> local_data_buffer, global_data_buffer;
-    local_data_buffer.resize(no_data_send[distributed_data->ccobj_.rank()]);
+    if ( no_data_send[distributed_data->ccobj_.rank()] )
+    {
+        local_data_buffer.resize(no_data_send[distributed_data->ccobj_.rank()]);
+    }
+    else
+    {
+        local_data_buffer.resize(1);
+    }
     global_data_buffer.resize(no_data_recv);
 
     DataGatherer<DataHandle> gatherer(local_data_buffer, data);
     visitInterior<codim>(*distributed_data, mapping.begin(), mapping.end(), gatherer);
-    MPI_Allgatherv(&(local_data_buffer.buffer_[0]), local_data_buffer.buffer_.size(),
+    MPI_Allgatherv(&(local_data_buffer.buffer_[0]), no_data_send[distributed_data->ccobj_.rank()],
                    MPITraits<typename DataHandle::DataType>::getType(),
                    &(global_data_buffer.buffer_[0]), &(no_data_send[0]), &(displ[0]),
                    MPITraits<typename DataHandle::DataType>::getType(),

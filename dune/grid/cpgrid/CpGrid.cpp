@@ -40,6 +40,7 @@
 #endif
 #include "../CpGrid.hpp"
 #include "CpGridData.hpp"
+#include <dune/grid/common/ZoltanPartition.hpp>
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
@@ -98,12 +99,16 @@ bool CpGrid::scatterGrid(int overlapLayers)
 
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
+#ifdef HAVE_ZOLTAN
+    cell_part = cpgrid::zoltanGraphPartitionGridOnRoot(*this, cc, 0);
+    int num_parts = cc.size();
+#else
     int  num_parts=-1;
     std::array<int, 3> initial_split;
     initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
     initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
     partition(*this, initial_split, num_parts, cell_part);
-
+#endif
 
     MPI_Comm new_comm = MPI_COMM_NULL;
 

@@ -250,8 +250,8 @@ BOOST_AUTO_TEST_CASE(distribute)
     const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
 
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
-
     grid.loadBalance(data);
+    
     if ( grid.numCells())
     {
         std::array<int,3> ijk;
