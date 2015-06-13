@@ -6,10 +6,11 @@
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 
 #include <dune/grid/polyhedralgrid/grid.hh>
-#include <dune/grid/polyhedralgrid/hostgridaccess.hh>
 
 namespace Dune
 {
+
+#warning TODO: non-trivial DGFGridFactory
 
   // DGFGridFactory for PolyhedralGrid
   // -------------------------
@@ -26,12 +27,8 @@ namespace Dune
 
     explicit DGFGridFactory ( std::istream &input,
                               MPICommunicator comm = MPIHelper::getCommunicator() )
-    : dgfHostFactory_( input, comm ),
-      grid_( 0 )
+    : grid_( 0 )
     {
-      HostGrid *hostGrid = dgfHostFactory_.grid();
-      assert( hostGrid != 0 );
-      grid_ = new Grid( *hostGrid );
     }
 
     explicit DGFGridFactory ( const std::string &filename,
@@ -39,10 +36,6 @@ namespace Dune
     : dgfHostFactory_( filename, comm ),
       grid_( 0 )
     {
-      HostGrid *hostGrid = dgfHostFactory_.grid();
-      assert( hostGrid != 0 );
-      std::ifstream input( filename.c_str() );
-      grid_ = new Grid( *hostGrid );
     }
 
     Grid *grid () const
@@ -53,41 +46,41 @@ namespace Dune
     template< class Intersection >
     bool wasInserted ( const Intersection &intersection ) const
     {
-      return dgfHostFactory_.wasInserted( HostGridAccess< Grid >::hostIntersection( intersection ) );
+        return false;
     }
 
     template< class Intersection >
     int boundaryId ( const Intersection &intersection ) const
     {
-      return dgfHostFactory_.boundaryId( HostGridAccess< Grid >::hostIntersection( intersection ) );
+        return false;
     }
 
     bool haveBoundaryParameters () const
     {
-      return dgfHostFactory_.haveBoundaryParameters();
+        return false;
     }
 
     template< int codim >
     int numParameters () const
     {
-      return dgfHostFactory_.template numParameters< codim >();
+        return 0;
     }
 
     template< class Intersection >
     const typename DGFBoundaryParameter::type &
     boundaryParameter ( const Intersection &intersection ) const
     {
-      return dgfHostFactory_.boundaryParameter( HostGridAccess< Grid >::hostIntersection( intersection ) );
+        return 0.0;
     }
 
     template< class Entity >
     std::vector< double > &parameter ( const Entity &entity )
     {
-      return dgfHostFactory_.parameter( HostGridAccess< Grid >::hostEntity( entity ) );
+        static std::vector dummy;
+        return dummy;
     }
 
   private:
-    DGFGridFactory< HostGrid > dgfHostFactory_;
     Grid *grid_;
   };
 
@@ -101,12 +94,12 @@ namespace Dune
   {
     static int refineStepsForHalf ()
     {
-      return DGFGridInfo< HostGrid >::refineStepsForHalf();
+        return 0;
     }
 
     static double refineWeight ()
     {
-      return DGFGridInfo< HostGrid >::refineWeight();
+        return 0;
     }
   };
 
