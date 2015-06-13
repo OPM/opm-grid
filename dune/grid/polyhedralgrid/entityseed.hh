@@ -24,9 +24,6 @@ namespace Dune
     typedef typename Traits::template Codim< codim >::Entity Entity;
     typedef typename Traits :: Index Index ;
 
-    typedef typename Traits::HostGrid HostGrid;
-    typedef typename HostGrid::template Codim< codim >::EntitySeed HostEntitySeed;
-
     static const Index defaulIndex = -1;
 
     explicit PolyhedralGridEntitySeed ( const Index& index )
