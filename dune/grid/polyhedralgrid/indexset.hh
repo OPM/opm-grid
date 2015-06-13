@@ -17,40 +17,37 @@ namespace Dune
   // PolyhedralGridIndexSet
   // --------------
 
-  template< class Grid, class HostIndexSet >
+  template< int dim, dimworld >
   class PolyhedralGridIndexSet
-  : public IndexSet< Grid, PolyhedralGridIndexSet< Grid, HostIndexSet >, typename HostIndexSet::IndexType >
+      : public IndexSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIndexSet< PolyhedralGrid< dim, dimworld > >, int >
   {
+    typedef typename PolyhedralGrid<dim, dimworld> GridType;
+
   protected:
-    typedef PolyhedralGridIndexSet< Grid, HostIndexSet > This;
-    typedef IndexSet< Grid, PolyhedralGridIndexSet< Grid, HostIndexSet >, typename HostIndexSet::IndexType > Base;
+    typedef PolyhedralGridIndexSet< dim, dimworld > This;
+      typedef IndexSet< GridType, This, int > Base;
 
-    typedef typename remove_const< Grid >::type::Traits Traits;
-
-    typedef typename Traits::HostGrid HostGrid;
+    typedef typename remove_const< GridType >::type::Traits Traits;
 
   public:
     static const int dimension = Traits::dimension;
 
     typedef typename Base::IndexType IndexType;
 
-    PolyhedralGridIndexSet ()
-    : hostIndexSet_( nullptr )
-    {}
-
-    explicit PolyhedralGridIndexSet ( const HostIndexSet &hostIndexSet )
-    : hostIndexSet_( &hostIndexSet )
-    {}
-
-    PolyhedralGridIndexSet ( const This &other )
-    : hostIndexSet_( other.hostIndexSet_ )
-    {}
-
-    const This &operator= ( const This &other )
+    PolyhedralGridIndexSet ( const GridType* grid )
+        : grid_(grid)
     {
-      hostIndexSet_ = other.hostIndexSet_;
-      return *this;
+        GeometryType t;
+        t.makeCube(/*dim=*/3);
+        geomTypes_[/*codim=*/0].push_back(t);
+
+        t.makeCube(/*dim=*/0);
+        geomTypes_[/*codim=*/3].push_back(t);
     }
+
+    PolyhedralGridIndexSet( const This &other ) = default;
+
+    const This &operator= ( const This &other ) = default;
 
     template< class Entity >
     IndexType index ( const Entity &entity ) const
@@ -61,13 +58,7 @@ namespace Dune
     template< int cd >
     IndexType index ( const typename Traits::template Codim< cd >::Entity &entity ) const
     {
-      return index( Grid::template getHostEntity< cd >( entity ) );
-    }
-
-    template< int cd >
-    IndexType index ( const typename Traits::HostGrid::template Codim< cd >::Entity &entity ) const
-    {
-      return hostIndexSet().index( entity );
+      return entity.template index< cd >( );
     }
 
     template< class Entity >
@@ -76,50 +67,31 @@ namespace Dune
       return subIndex< Entity::codimension >( entity, i, codim );
     }
 
-    template< int cd >
-    IndexType subIndex ( const typename Traits::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
-    {
-      return subIndex( Grid::template getHostEntity< cd >( entity ), i, codim );
-    }
-
-    template< int cd >
-    IndexType subIndex ( const typename Traits::HostGrid::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
-    {
-      return hostIndexSet().subIndex( entity, i, codim );
-    }
-
     IndexType size ( GeometryType type ) const
     {
-      return hostIndexSet().size( type );
+      return entity.size( type );
     }
 
     int size ( int codim ) const
     {
-      return hostIndexSet().size( codim );
+      return grid.size( codim );
     }
 
     template< class Entity >
     bool contains ( const Entity &entity ) const
     {
-      static const int cc = Entity::codimension;
-      return hostIndexSet().contains( Grid::template getHostEntity< cc >( entity ) );
+        return index(entity) >= 0 && index(entity) < size(Entity::codimension);
     }
 
     const std::vector< GeometryType > &geomTypes ( int codim ) const
     {
-      return hostIndexSet().geomTypes( codim );
+        static std::vector<GeometryType> gt{{GeometryType::cube}};
+        return gt;
     }
-
-    operator bool () const { return bool( hostIndexSet_ ); }
 
   protected:
-    const HostIndexSet &hostIndexSet () const
-    {
-      assert( hostIndexSet_ );
-      return *hostIndexSet_;
-    }
-
-    const HostIndexSet *hostIndexSet_;
+    const Grid *grid_;
+    GeometryTypes geomTypes_[4];
   };
 
 } // namespace Dune

@@ -61,10 +61,10 @@ namespace Dune
   // BackupRestoreFacility for PolyhedralGrid
   // --------------------------------
 
-  template< class HostGrid >
-  struct BackupRestoreFacility< PolyhedralGrid< HostGrid > >
+  template< int dim, int dimworld >
+  struct BackupRestoreFacility< PolyhedralGrid< dim, dimworld > >
   {
-    typedef PolyhedralGrid< HostGrid > Grid;
+    typedef PolyhedralGrid< dim, dimworld > Grid;
     typedef BackupRestoreFacility< HostGrid > HostBackupRestoreFacility;
 
     static void backup ( const Grid &grid, const std::string &path, const std::string &fileprefix )

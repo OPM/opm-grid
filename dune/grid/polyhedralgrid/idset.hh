@@ -10,9 +10,9 @@ namespace Dune
   // PolyhedralGridIdSet
   // -----------
 
-  template< class Grid, class HostIdSet >
+  template< class Grid >
   class PolyhedralGridIdSet
-  : public IdSet< Grid, PolyhedralGridIdSet< Grid, HostIdSet >, typename HostIdSet::IdType >
+      : public IdSet< Grid, PolyhedralGridIdSet< dim, dimworld >, /*IdType=*/int >
   {
   protected:
     typedef PolyhedralGridIdSet< Grid, HostIdSet > This;
@@ -23,36 +23,22 @@ namespace Dune
   public:
     typedef typename HostIdSet::IdType IdType;
 
-    PolyhedralGridIdSet ()
-    : hostIdSet_( nullptr )
+    PolyhedralGridIdSet (const Grid& grid)
+        : grid_(grid)
     {}
 
-    explicit PolyhedralGridIdSet ( const HostIdSet &hostIdSet )
-    : hostIdSet_( &hostIdSet )
-    {}
+    PolyhedralGridIdSet ( const This &other ) = default;
 
-    PolyhedralGridIdSet ( const This &other )
-    : hostIdSet_( other.hostIdSet_ )
-    {}
-
-    const This &operator= ( const This &other )
-    {
-      hostIdSet_ = other.hostIdSet_;
-      return *this;
-    }
+    const This &operator= ( const This &other ) = default;
 
     //! id meethod for entity and specific codim
     template< int codim >
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
-      return id( Grid::template getHostEntity< codim >( entity ) );
-    }
-
-    //! id method for host entity (e.g. in ParallelGrid)
-    template< int codim >
-    IdType id ( const typename Traits::HostGrid::template Codim< codim >::Entity &entity ) const
-    {
-      return hostIdSet().id( entity );
+        if (codim == 0)
+            return grid_.cartesianElementIndexIndex(entity.seed());
+        else
+            return entity.seed();
     }
 
     //! id method of all entities
@@ -62,36 +48,16 @@ namespace Dune
       return id< Entity::codimension >( entity );
     }
 
-    template< int cd >
-    IdType subId ( const typename Traits::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
-    {
-      return subId( Grid::template getHostEntity< cd >( entity ), i, codim );
-    }
-
-    //! subId method for host entity (e.g. in ParallelGrid)
-    template< int cd >
-    IdType subId ( const typename Traits::HostGrid::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
-    {
-      return hostIdSet().subId( entity, i, codim );
-    }
-
-    //! subId method for all entities
+    //! subId method for entities
     template< class Entity >
     IdType subId ( const Entity &entity, int i, unsigned int codim ) const
     {
-      return subId< Entity::codimension >( entity, i, codim );
+#warning TODO
+        return 0;
     }
-
-    operator bool () const { return bool( hostIdSet_ ); }
 
   protected:
-    const HostIdSet &hostIdSet () const
-    {
-      assert( *this );
-      return *hostIdSet_;
-    }
-
-    const HostIdSet *hostIdSet_;
+    const Grid& grid_;
   };
 
 } // namespace Dune

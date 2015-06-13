@@ -275,7 +275,7 @@ namespace Dune
     subEntity ( int i ) const
     {
       typedef typename Traits::template Codim< codim >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( data(), data->subEntity( seed_, codim, i ) );
+      return EntityPointerImpl( data(), data->template subEntitySeed< codim >( seed_, i ) );
     }
 
     bool hasBoundaryIntersections () const

@@ -16,68 +16,68 @@ namespace Dune
     // Capabilities from dune-grid
     // ---------------------------
 
-    template< class HostGrid >
-    struct hasSingleGeometryType< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct hasSingleGeometryType< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = hasSingleGeometryType< HostGrid >::v;
       static const unsigned int topologyId = hasSingleGeometryType< HostGrid >::topologyId;
     };
 
 
-    template< class HostGrid >
-    struct isCartesian< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct isCartesian< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = isCartesian< HostGrid >::v;
     };
 
 
-    template< class HostGrid, int codim >
-    struct hasEntity< PolyhedralGrid< HostGrid >, codim >
+    template< int dim, int dimworld, int codim >
+    struct hasEntity< PolyhedralGrid< dim, dimworld >, codim >
     {
       static const bool v = hasEntity< HostGrid, codim >::v;
     };
 
 
-    template< class HostGrid >
-    struct isParallel< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct isParallel< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = isParallel< HostGrid >::v;
     };
 
 
-    template< class HostGrid, int codim >
-    struct canCommunicate< PolyhedralGrid< HostGrid >, codim >
+    template< int dim, int dimworld, int codim >
+    struct canCommunicate< PolyhedralGrid< dim, dimworld >, codim >
     {
       static const bool v = canCommunicate< HostGrid, codim >::v;
     };
 
 
-    template< class HostGrid >
-    struct hasBackupRestoreFacilities< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct hasBackupRestoreFacilities< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = hasBackupRestoreFacilities< HostGrid >::v;
     };
 
-    template< class HostGrid >
-    struct isLevelwiseConforming< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct isLevelwiseConforming< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = isLevelwiseConforming< HostGrid >::v;
     };
 
-    template< class HostGrid >
-    struct isLeafwiseConforming< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct isLeafwiseConforming< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = isLeafwiseConforming< HostGrid >::v;
     };
 
-    template< class HostGrid >
-    struct threadSafe< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct threadSafe< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = false;
     };
 
-    template< class HostGrid >
-    struct viewThreadSafe< PolyhedralGrid< HostGrid > >
+    template< int dim, int dimworld >
+    struct viewThreadSafe< PolyhedralGrid< dim, dimworld > >
     {
       static const bool v = false;
     };

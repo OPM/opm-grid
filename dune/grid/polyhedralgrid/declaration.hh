@@ -4,7 +4,7 @@
 namespace Dune
 {
 
-  template< class HostGrid >
+  template< int dim, int dimworld >
   class PolyhedralGrid;
 
 } // namespace Dune

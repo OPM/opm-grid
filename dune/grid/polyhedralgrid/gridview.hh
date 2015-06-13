@@ -21,7 +21,7 @@ namespace Dune
   // Internal Forward Declarations
   // -----------------------------
 
-  template< class HostGridView, PartitionIteratorType pitype >
+  template< int dim, int dimworldView, PartitionIteratorType pitype >
   class PolyhedralGridView;
 
 
@@ -173,7 +173,7 @@ namespace Dune
 
     typedef PolyhedralGridView< HostGridView, pitype > GridViewImp;
 
-    typedef PolyhedralGrid< HostGrid > Grid;
+    typedef PolyhedralGrid< dim, dimworld > Grid;
 
     typedef PolyhedralGridIndexSet< const Grid, typename HostGridView::IndexSet > IndexSet;
 

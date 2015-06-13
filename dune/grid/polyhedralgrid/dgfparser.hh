@@ -14,10 +14,10 @@ namespace Dune
   // DGFGridFactory for PolyhedralGrid
   // -------------------------
 
-  template< class HostGrid >
-  struct DGFGridFactory< PolyhedralGrid< HostGrid > >
+  template< int dim, int dimworld >
+  struct DGFGridFactory< PolyhedralGrid< dim, dimworld > >
   {
-    typedef PolyhedralGrid< HostGrid > Grid;
+    typedef PolyhedralGrid< dim, dimworld > Grid;
 
     const static int dimension = Grid::dimension;
     typedef MPIHelper::MPICommunicator MPICommunicator;
@@ -96,8 +96,8 @@ namespace Dune
   // DGFGridInfo for PolyhedralGrid
   // ----------------------
 
-  template< class HostGrid >
-  struct DGFGridInfo< PolyhedralGrid< HostGrid > >
+  template< int dim, int dimworld >
+  struct DGFGridInfo< PolyhedralGrid< dim, dimworld > >
   {
     static int refineStepsForHalf ()
     {

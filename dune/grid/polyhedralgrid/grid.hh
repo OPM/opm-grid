@@ -42,13 +42,13 @@ namespace Dune
   // PolyhedralGridFamily
   // ------------
 
-  template< class HostGrid >
+  template< int dim, int dimworld >
   struct PolyhedralGridFamily
   {
     struct Traits
     : public PolyhedralGridExportParams< HostGrid >
     {
-      typedef PolyhedralGrid< HostGrid > Grid;
+      typedef PolyhedralGrid< dim, dimworld > Grid;
 
       typedef typename HostGrid::ctype ctype;
 
@@ -142,10 +142,10 @@ namespace Dune
   : public GridDefaultImplementation
       < HostGrid::dimension, HostGrid::dimensionworld, typename HostGrid::ctype, PolyhedralGridFamily< HostGrid > >,
     public PolyhedralGridExportParams< HostGrid >,
-    public PolyhedralGridBackupRestoreFacilities< PolyhedralGrid< HostGrid > >
+    public PolyhedralGridBackupRestoreFacilities< PolyhedralGrid< dim, dimworld > >
   /** \endcond */
   {
-    typedef PolyhedralGrid< HostGrid > Grid;
+    typedef PolyhedralGrid< dim, dimworld > Grid;
 
     typedef GridDefaultImplementation
       < HostGrid::dimension, HostGrid::dimensionworld, typename HostGrid::ctype, PolyhedralGridFamily< HostGrid > >
@@ -157,7 +157,7 @@ namespace Dune
     template< class, class > friend class PolyhedralGridIntersectionIterator;
     template< class, class > friend class PolyhedralGridIdSet;
     template< class, class > friend class PolyhedralGridIndexSet;
-    template< class > friend class HostGridAccess;
+    template< class > friend int dim, int dimworldAccess;
 
   public:
     /** \cond */
@@ -784,7 +784,36 @@ namespace Dune
     ExtraData extraData () const  { return ExtraData(); }
 
     template <class EntitySeed>
-    int faces( const EntitySeed&
+    int subEntities( const EntitySeed& seed ) const
+    {
+      const Index index = Index( seed );
+      switch (EntitySeed::codimension)
+      {
+        case 1:
+          return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+        case dimension:
+          return 0;//grid_.cell_faces[ index+1 ] - grid_.cell_faces[ index ];
+      }
+      return 0;
+    }
+
+    template <int codim>
+    typename Codim<codim>::EntitySeed
+    subEntitySeed( const Index elementIndex, const int i ) const
+    {
+      typedef typename Codim<codim>::EntitySeed  EntitySeed;
+      if( codim == 0 )
+        return EntitySeed( elementIndex );
+      else if ( codim == 1 )
+      {
+        assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
+        return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ elementIndex ] + i ] );
+      }
+      else
+      {
+        DUNE_THROW(InvalidStateException,"codimension not availalbe");
+      }
+    }
 
   protected:
     std::unique_ptr< UnstructuredGridType > grid_;
@@ -799,9 +828,9 @@ namespace Dune
   // PolyhedralGrid::Codim
   // -------------
 
-  template< class HostGrid >
+  template< int dim, int dimworld >
   template< int codim >
-  struct PolyhedralGrid< HostGrid >::Codim
+  struct PolyhedralGrid< dim, dimworld >::Codim
   : public Base::template Codim< codim >
   {
     /** \name Entity and Entity Pointer Types

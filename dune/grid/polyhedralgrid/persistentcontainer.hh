@@ -11,11 +11,11 @@ namespace Dune
   // PersistentContainer for PolyhedralGrid
   // ------------------------------
 
-  template< class HostGrid, class T >
-  class PersistentContainer< PolyhedralGrid< HostGrid >, T >
-  : public PersistentContainerWrapper< PolyhedralGrid< HostGrid >, T >
+  template< int dim, int dimworld, class T >
+  class PersistentContainer< PolyhedralGrid< dim, dimworld >, T >
+  : public PersistentContainerWrapper< PolyhedralGrid< dim, dimworld >, T >
   {
-    typedef PersistentContainerWrapper< PolyhedralGrid< HostGrid >, T > Base;
+    typedef PersistentContainerWrapper< PolyhedralGrid< dim, dimworld >, T > Base;
 
   public:
     typedef typename Base::Grid Grid;
