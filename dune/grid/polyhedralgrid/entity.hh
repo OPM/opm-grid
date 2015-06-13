@@ -69,22 +69,13 @@ namespace Dune
     typedef typename Traits::ExtraDataType ExtraData;
 
   public:
-    /** \name Host Types
-     *  \{ */
-
-    //! type of corresponding host entity
-    typedef typename HostGrid::template Codim< codimension >::Entity HostEntity;
-    //! type of corresponding host entity pointer
-    typedef typename HostGrid::template Codim< codimension >::EntityPointer HostEntityPointer;
-    /** \} */
-
     /** \name Construction, Initialization and Destruction
      *  \{ */
 
     /** \brief construct a null entity */
     explicit PolyhedralGridEntityBasic ( ExtraData data )
-    : hostEntity_( nullptr ),
-      data_ ( data )
+    : seed_()
+      data_( data )
     {}
 
     /** \brief construct an initialized entity
@@ -94,15 +85,15 @@ namespace Dune
      *  \note The reference to the host entity must remain valid  as long as
      *        this entity is in use.
      */
-    PolyhedralGridEntityBasic ( ExtraData data, const HostEntity &hostEntity )
-    : hostEntity_( &hostEntity ),
-      data_( data )
+    PolyhedralGridEntityBasic ( ExtraData data, const EntitySeed& seed )
+    : seed_( seed )
+    , data_( data )
     {}
 
     /** \} */
 
     /** \brief return true if entity hold a vaild host entity */
-    operator bool () const { return bool( hostEntity_ ); }
+    operator bool () const { return seed_.isValid(); }
 
     /** \name Methods Shared by Entities of All Codimensions
      *  \{ */
@@ -113,49 +104,42 @@ namespace Dune
      */
     GeometryType type () const
     {
-      return hostEntity().type();
+      return GeometryType();
     }
 
     /** \brief obtain the level of this entity */
     int level () const
     {
-      return hostEntity().level();
+      return 0;
     }
 
     /** \brief obtain the partition type of this entity */
     PartitionType partitionType () const
     {
-      return hostEntity().partitionType();
+      return data->partitionType( *this );
     }
 
     /** obtain the geometry of this entity */
     Geometry geometry () const
     {
-      return Geometry( hostEntity().geometry() );
+      return Geometry( seed_ );
     }
 
     /** \brief return EntitySeed of host grid entity */
-    EntitySeed seed () const { return typename EntitySeed::Implementation( hostEntity().seed() ); }
+    EntitySeed seed () const { return seed_; }
 
     /** \} */
 
 
     /** \name Methods Supporting the Grid Implementation
      *  \{ */
-
-    const HostEntity &hostEntity () const
-    {
-      assert( *this );
-      return *hostEntity_;
-    }
-
     ExtraData data() const { return data_; }
 
     /** \} */
 
   protected:
-    const HostEntity *hostEntity_;
-    ExtraData        data_;
+    EntitySeed  seed_;
+    ExtraData   data_;
   };
 
 
@@ -191,8 +175,8 @@ namespace Dune
     : Base( data )
     {}
 
-    PolyhedralGridEntity ( ExtraData data, const HostEntity &hostEntity )
-    : Base( data, hostEntity )
+    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
+    : Base( data, seed )
     {}
   };
 
@@ -266,21 +250,28 @@ namespace Dune
      *  \note The reference to the host entity must remain valid as long as
      *        this entity is in use.
      */
-    PolyhedralGridEntity ( ExtraData data, const HostEntity &hostEntity )
-    : Base( data, hostEntity )
+    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
+    : Base( data, seed )
     {}
 
     /** \} */
 
     unsigned int subEntities( const unsigned int codim ) const
     {
-      return hostEntity().subEntities( codim );
+      switch (codim)
+      {
+        case 0: return 1;
+        case 1: return data->faces( seed_ );
+        case dimension: return data->vertices( seed_ );
+        default: DUNE_THROW(NotImplemented,"Problem with subEntities");
+      }
+      return 0;
     }
 
     template< int codim >
     int count () const
     {
-      return hostEntity().template count< codim >();
+      return subEntities( codim );
     }
 
     template< int codim >
@@ -288,80 +279,68 @@ namespace Dune
     subEntity ( int i ) const
     {
       typedef typename Traits::template Codim< codim >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( data(), hostEntity().template subEntity< codim >( i ) );
-    }
-
-    LevelIntersectionIterator ilevelbegin () const
-    {
-      return LevelIntersectionIteratorImpl( data(), hostEntity().ilevelbegin() );
-    }
-
-    LevelIntersectionIterator ilevelend () const
-    {
-      return LevelIntersectionIteratorImpl( data(), hostEntity().ilevelend() );
-    }
-
-    LeafIntersectionIterator ileafbegin () const
-    {
-      return LeafIntersectionIteratorImpl( data(), hostEntity().ileafbegin() );
-    }
-
-    LeafIntersectionIterator ileafend () const
-    {
-      return LeafIntersectionIteratorImpl( data(), hostEntity().ileafend() );
+      return EntityPointerImpl( data(), data->subEntity( seed_, codim, i ) );
     }
 
     bool hasBoundaryIntersections () const
     {
-      return hostEntity().hasBoundaryIntersections();
+      const int faces = subEntities( 1 );
+      for( int i=0; i<faces; ++i )
+      {
+        if( ! this->template subEntity< 1 >( i ) )
+          return true;
+      }
+      return false;
     }
 
     bool isLeaf () const
     {
-      return hostEntity().isLeaf();
+      return true;
     }
 
     EntityPointer father () const
     {
+      DUNE_THROW(InvalidStateException,"no father available");
       typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( data(), hostEntity().father() );
+      return EntityPointerImpl( data() );
     }
 
     bool hasFather () const
     {
-      return hostEntity().hasFather();
+      return false;
     }
 
     LocalGeometry geometryInFather () const
     {
+      DUNE_THROW(InvalidStateException,"no father available");
       return LocalGeometry( hostEntity().geometryInFather() );
     }
 
     HierarchicIterator hbegin ( int maxLevel ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIteratorImpl( data(), hostEntity().hbegin( maxLevel ) );
+      return HierarchicIteratorImpl( data() );
     }
 
     HierarchicIterator hend ( int maxLevel ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIteratorImpl( data(), hostEntity().hend( maxLevel ) );
+      return HierarchicIteratorImpl( data() );
     }
 
     bool isRegular () const
     {
-      return hostEntity().isRegular();
+      return true;
     }
 
     bool isNew () const
     {
-      return hostEntity().isNew();
+      return false;
     }
 
     bool mightVanish () const
     {
-      return hostEntity().mightVanish();
+      return false;
     }
 
     /** \} */

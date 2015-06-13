@@ -19,26 +19,28 @@ namespace Dune
     static const int mydimension = dimension - codimension;
     static const int dimensionworld = Traits::dimensionworld;
 
+
     typedef typename Traits::Grid Grid;
     typedef typename Traits::template Codim< codim >::Entity Entity;
+    typedef typename Traits :: Index Index ;
 
     typedef typename Traits::HostGrid HostGrid;
     typedef typename HostGrid::template Codim< codim >::EntitySeed HostEntitySeed;
 
-    explicit PolyhedralGridEntitySeed ( const HostEntitySeed &hostEntitySeed )
-      : hostEntitySeed_( hostEntitySeed )
+    static const Index defaulIndex = -1;
+
+    explicit PolyhedralGridEntitySeed ( const Index& index )
+      : index_( index )
     {}
 
     PolyhedralGridEntitySeed ()
-      : hostEntitySeed_()
+      : index_( defaultIndex )
     {}
 
-    bool isValid() const { return hostEntitySeed_.isValid(); }
+    bool isValid() const { return index_ != defaultIndex; }
 
-    const HostEntitySeed &hostEntitySeed () const { return hostEntitySeed_; }
-
-  private:
-    HostEntitySeed hostEntitySeed_;
+  protected:
+    Index index_;
   };
 
 } // namespace Dune
