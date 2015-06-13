@@ -493,15 +493,13 @@ namespace Dune
     /** \brief  @copydoc Dune::Grid::preAdapt() */
     bool preAdapt ()
     {
-      return hostGrid().preAdapt();
+      return false;
     }
 
     /** \brief  @copydoc Dune::Grid::adapt() */
     bool adapt ()
     {
-      bool ret = hostGrid().adapt();
-      update();
-      return ret;
+      return false ;
     }
 
     /** \brief  @copydoc Dune::Grid::adapt()
@@ -511,19 +509,12 @@ namespace Dune
     template< class GridImp, class DataHandle >
     bool adapt ( AdaptDataHandleInterface< GridImp, DataHandle > &datahandle )
     {
-      typedef PolyhedralGridAdaptDataHandle< Grid,
-              AdaptDataHandleInterface< GridImp, DataHandle > > WrappedDataHandle;
-
-      WrappedDataHandle wrappedDataHandle( extraData(), datahandle );
-      const bool ret = hostGrid().adapt( wrappedDataHandle );
-      update();
-      return ret;
+      return false;
     }
 
     /** \brief  @copydoc Dune::Grid::postAdapt() */
     void postAdapt ()
     {
-      hostGrid().postAdapt();
     }
 
     /** \name Parallel Data Distribution and Communication Methods
@@ -535,7 +526,7 @@ namespace Dune
      */
     int overlapSize ( int codim ) const
     {
-      return hostGrid().overlapSize( codim );
+      return 0;
     }
 
     /** \brief obtain size of ghost region for the leaf grid
@@ -544,7 +535,7 @@ namespace Dune
      */
     int ghostSize( int codim ) const
     {
-      return hostGrid().ghostSize( codim );
+      return (codim == 0 ) ? 1 : 0;
     }
 
     /** \brief obtain size of overlap region for a grid level
@@ -554,7 +545,7 @@ namespace Dune
      */
     int overlapSize ( int level, int codim ) const
     {
-      return hostGrid().overlapSize( level, codim );
+      return 0;
     }
 
     /** \brief obtain size of ghost region for a grid level
@@ -564,7 +555,7 @@ namespace Dune
      */
     int ghostSize ( int level, int codim ) const
     {
-      return hostGrid().ghostSize( level, codim );
+      return ghostSize( codim );
     }
 
     /** \brief communicate information on a grid level
@@ -586,7 +577,7 @@ namespace Dune
                        CommunicationDirection direction,
                        int level ) const
     {
-      levelGridView( level ).communicate( dataHandle, interface, direction );
+       //levelGridView( level ).communicate( dataHandle, interface, direction );
     }
 
     /** \brief communicate information on leaf entities
@@ -606,7 +597,7 @@ namespace Dune
                        InterfaceType interface,
                        CommunicationDirection direction ) const
     {
-      leafGridView().communicate( dataHandle, interface, direction );
+      //leafGridView().communicate( dataHandle, interface, direction );
     }
 
     /** \brief obtain CollectiveCommunication object
@@ -619,7 +610,7 @@ namespace Dune
      */
     const CollectiveCommunication &comm () const
     {
-      return hostGrid().comm();
+      return comm_;
     }
 
     // data handle interface different between geo and interface
@@ -635,10 +626,7 @@ namespace Dune
      */
     bool loadBalance ()
     {
-      const bool gridChanged = hostGrid().loadBalance();
-      if( gridChanged )
-        update();
-      return gridChanged;
+      return false ;
     }
 
     /** \brief rebalance the load each process has to handle
@@ -659,15 +647,7 @@ namespace Dune
     template< class DataHandle, class Data >
     bool loadBalance ( CommDataHandleIF< DataHandle, Data > &datahandle )
     {
-      typedef CommDataHandleIF< DataHandle, Data > DataHandleIF;
-      typedef PolyhedralGridDataHandle< DataHandleIF, Grid > WrappedDataHandle;
-
-      WrappedDataHandle wrappedDataHandle( datahandle );
-      typename WrappedDataHandle::DataHandleIF &wrappedDataHandleIF = wrappedDataHandle;
-      const bool gridChanged = hostGrid().loadBalance( wrappedDataHandleIF );
-      if ( gridChanged )
-        update();
-      return gridChanged;
+      return false;
     }
 
     /** \brief rebalance the load each process has to handle
@@ -687,12 +667,7 @@ namespace Dune
     template< class DofManager >
     bool loadBalance ( DofManager &dofManager )
     {
-      PolyhedralGridWrappedDofManager< DofManager, Grid > wrappedDofManager( dofManager );
-
-      const bool gridChanged = hostGrid().loadBalance( wrappedDofManager );
-      if( gridChanged )
-        update();
-      return gridChanged;
+      return false;
     }
 
     /** \brief View for a grid level */
@@ -701,7 +676,7 @@ namespace Dune
     {
       typedef typename Partition< pitype >::LevelGridView View;
       typedef typename View::GridViewImp ViewImp;
-      return View( ViewImp( *this, hostGrid().template levelGridView< pitype >( level ) ) );
+      return View( ViewImp( *this ) );
     }
 
     /** \brief View for the leaf grid */
@@ -710,21 +685,21 @@ namespace Dune
     {
       typedef typename Traits::template Partition< pitype >::LeafGridView View;
       typedef typename View::GridViewImp ViewImp;
-      return View( ViewImp( *this, hostGrid().template leafGridView< pitype >() ) );
+      return View( ViewImp( *this ) );
     }
 
     /** \brief View for a grid level for All_Partition */
     LevelGridView levelGridView ( int level ) const
     {
       typedef typename LevelGridView::GridViewImp ViewImp;
-      return LevelGridView( ViewImp( *this, hostGrid().levelGridView( level ) ) );
+      return LevelGridView( ViewImp( *this ) );
     }
 
     /** \brief View for the leaf grid for All_Partition */
     LeafGridView leafGridView () const
     {
       typedef typename LeafGridView::GridViewImp ViewImp;
-      return LeafGridView( ViewImp( *this, hostGrid().leafGridView() ) );
+      return LeafGridView( ViewImp( *this ) );
     }
 
     /** \brief obtain EntityPointer from EntitySeed. */
@@ -733,16 +708,13 @@ namespace Dune
     entityPointer ( const EntitySeed &seed ) const
     {
       typedef typename Traits::template Codim< EntitySeed::codimension >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( extraData(), hostGrid().entityPointer( seed.impl().hostEntitySeed() ) );
+      return EntityPointerImpl( extraData(), seed ) ;
     }
 
     /** \} */
 
     /** \name Miscellaneous Methods
      *  \{ */
-
-    const HostGrid &hostGrid () const { return *hostGrid_; }
-    HostGrid &hostGrid () { return *hostGrid_; }
 
     /** \brief update grid caches
      *
@@ -754,15 +726,6 @@ namespace Dune
      */
     void update ()
     {
-      const int newNumLevels = maxLevel()+1;
-      const int oldNumLevels = levelIndexSets_.size();
-
-      for( int i = newNumLevels; i < oldNumLevels; ++i )
-      {
-        if( !levelIndexSets_[ i ] )
-          delete levelIndexSets_[ i ];
-      }
-      levelIndexSets_.resize( newNumLevels, nullptr );
     }
 
     /** \} */
@@ -819,6 +782,9 @@ namespace Dune
 
     typedef typename Traits :: ExtraDataType ExtraData;
     ExtraData extraData () const  { return ExtraData(); }
+
+    template <class EntitySeed>
+    int faces( const EntitySeed&
 
   protected:
     std::unique_ptr< UnstructuredGridType > grid_;

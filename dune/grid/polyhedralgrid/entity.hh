@@ -258,14 +258,10 @@ namespace Dune
 
     unsigned int subEntities( const unsigned int codim ) const
     {
-      switch (codim)
-      {
-        case 0: return 1;
-        case 1: return data->faces( seed_ );
-        case dimension: return data->vertices( seed_ );
-        default: DUNE_THROW(NotImplemented,"Problem with subEntities");
-      }
-      return 0;
+      if( codim == 0 )
+        return 1;
+      else
+        return data->subEntities( seed_ );
     }
 
     template< int codim >

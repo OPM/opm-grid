@@ -528,7 +528,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
     int my_rank=ccobj.rank();
-#ifdef DEBUG
+#if 0
     int size=ccobj.size();
     typedef std::vector<int>::const_iterator Iterator;
     for(Iterator i=cell_part.begin(); i!= cell_part.end(); ++i)
