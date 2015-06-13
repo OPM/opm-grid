@@ -782,10 +782,10 @@ namespace Dune
     ExtraData extraData () const  { return ExtraData(); }
 
     template <class EntitySeed>
-    int subEntities( const EntitySeed& seed ) const
+    int subEntities( const EntitySeed& seed, const int codim ) const
     {
-      const Index index = Index( seed );
-      switch (EntitySeed::codimension)
+      const int index = seed.index();
+      switch (codim)
       {
         case 1:
           return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
@@ -811,6 +811,44 @@ namespace Dune
       {
         DUNE_THROW(InvalidStateException,"codimension not availalbe");
       }
+    }
+
+    int faceTag( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    {
+      if( ! grid_.cell_facetag )
+        return i;
+      else
+      {
+        assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
+        return grid_.cell_facetag[ grid_.cell_facepos[ elementIndex ] + i ] ;
+      }
+    }
+
+    typename Codim<0>::EntitySeed
+    neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    {
+      typedef typename Codim<0>::EntitySeed EntitySeed;
+      const int face = 2 * this->template subEntitySeed<1>( seed, i ).index();
+      int nb = grid_.face_cells[ face];
+      if( nb == seed.index() )
+        nb = grid_.face_cells[ face+1 ];
+
+      return EntitySeed( nb );
+    }
+
+    int
+    indexInOutside( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    {
+      typedef typename Codim<0>::EntitySeed EntitySeed;
+      EntitySeed nb = neighbor( seed, i );
+      const int faces = subEntities( seed, 1 );
+      for( int face = 0; face<faces; ++ face )
+      {
+        if( neighbor( nb, face ) == seed )
+          return faceTag( nb, face );
+      }
+      DUNE_THROW(InvalidStateException,"inverse intersection not found");
+      return -1;
     }
 
     template <int codim>

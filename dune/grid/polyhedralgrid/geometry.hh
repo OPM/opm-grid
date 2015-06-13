@@ -49,19 +49,30 @@ namespace Dune
     GlobalCoordinate corner ( const int i ) const { return data->corner( seed_, i ); }
     GlobalCoordinate center () const { return data->centroids( seed_ ); }
 
-    GlobalCoordinate global ( const LocalCoordinate &local   ) const { return GlobalCoordinate( 0 ); }
-    LocalCoordinate  local  ( const GlobalCoordinate &global ) const { return LocalCoordinate( 0 ); }
+    GlobalCoordinate global ( const LocalCoordinate &local   ) const
+    {
+      DUNE_THROW(NotImplemented,"global not implemented");
+      return GlobalCoordinate( 0 );
+    }
+
+    LocalCoordinate  local  ( const GlobalCoordinate &global ) const
+    {
+      DUNE_THROW(NotImplemented,"local not implemented");
+      return LocalCoordinate( 0 );
+    }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
     ctype volume () const { return data->volumes( seed_ ); }
 
     JacobianTransposed jacobianTransposed ( const LocalCoordinate &local ) const
     {
+      DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
       return JacobianTransposed( 0 );
     }
 
     JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate &local ) const
     {
+      DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
 

@@ -40,7 +40,7 @@ namespace Dune
     bool readGrid ( const std::string &filename, double &time )
     {
       const bool success
-        = asImp().hostGrid().template readGrid< type >( filename, time );
+        = asImp().readGrid< type >( filename, time );
       asImp().update();
       return success;
     }
@@ -69,22 +69,25 @@ namespace Dune
 
     static void backup ( const Grid &grid, const std::string &path, const std::string &fileprefix )
     {
-      HostBackupRestoreFacility::backup( grid.hostGrid(), path, fileprefix );
+      std::ofstream file( path+"/"+fileprefix );
+      return backup( file );
     }
 
     static void backup ( const Grid &grid, const std::ostream &stream )
     {
-      HostBackupRestoreFacility::backup( grid.hostGrid(), stream );
+      DUNE_THROW(NotImplemented,"backup not implemented");
     }
 
     static Grid *restore ( const std::string &path, const std::string &fileprefix )
     {
-      return HostBackupRestoreFacility::restore( path, fileprefix );
+      std::ifstream file( path+"/"+fileprefix );
+      return restore( file );
     }
 
     static Grid *restore ( const std::istream &stream )
     {
-      return HostBackupRestoreFacility::restore( stream );
+      DUNE_THROW(NotImplemented,"restore not implemented");
+      return (Grid*) 0;
     }
   };
 
