@@ -300,6 +300,7 @@ namespace Dune
         if( levelIndexSets_[ i ] )
           delete( levelIndexSets_[ i ] );
       }
+      destroy_grid( *grid_ );
     }
 
     /** \} */
@@ -373,7 +374,7 @@ namespace Dune
      */
     size_t numBoundarySegments () const
     {
-      return hostGrid().numBoundarySegments( );
+      return 0; // hostGrid().numBoundarySegments( );
     }
     /** \} */
 
@@ -475,19 +476,16 @@ namespace Dune
 
     void globalRefine ( int refCount )
     {
-      hostGrid().globalRefine( refCount );
-      // update overall status
-      update();
     }
 
     bool mark ( int refCount, const typename Codim< 0 >::Entity &entity )
     {
-      return hostGrid().mark( refCount, getHostEntity< 0 >( entity ) );
+      return false;
     }
 
     int getMark ( const typename Codim< 0 >::Entity &entity ) const
     {
-      return hostGrid().getMark( getHostEntity< 0 >( entity ) );
+      return false;
     }
 
     /** \brief  @copydoc Dune::Grid::preAdapt() */
@@ -766,7 +764,7 @@ namespace Dune
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
-      return cgrid;
+        return cgrid;
     }
 
 
@@ -812,6 +810,38 @@ namespace Dune
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not availalbe");
+      }
+    }
+
+    template <int codim>
+    GlobalCoordinate centroids( const typename Codim<codim>::EntitySeed& seed ) const
+    {
+      const int index = dimension * seed.index();
+      if( codim == 0 )
+        return GlobalCoordinate( &grid_.cell_centroids[ index ] );
+      else if ( codim == 1 )
+        return GlobalCoordinate( &grid_.face_centroids[ index] );
+      else if( codim == dimension )
+        return GlobalCoordinate( &grid_.node_coordinates[ index ] );
+      else
+      {
+        DUNE_THROW(InvalidStateException,"codimension not implemented");
+        return GlobalCoordinate( 0 );
+      }
+    }
+
+    template <int codim>
+    double volumes( const typename Codim<codim>::EntitySeed& seed ) const
+    {
+      const int index = seed.index();
+      if( codim == 0 )
+        return grid_.cell_volumes[ index ];
+      else if ( codim == 1 )
+        return grid_.face_areas[ index ];
+      else
+      {
+        DUNE_THROW(InvalidStateException,"codimension not implemented");
+        return 0.0;
       }
     }
 
