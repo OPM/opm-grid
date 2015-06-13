@@ -92,14 +92,12 @@ namespace Dune
         return data().indexInOutside(seed_, intersectionIdx_));
     }
 
-    auto
+    FieldVector< ctype, dimensionworld >
     outerNormal ( const FieldVector< ctype, dimension-1 > &local ) const
-        -> decltype(data().outerNormal(0, 0))
     { return data().outerNormal(seed_, intersectionIdx_); }
 
-    auto
+    FieldVector< ctype, dimensionworld >
     unitOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
-        -> decltype(data().unitOuterNormal(0, 0))
     {
       return data().unitOuterNormal(seed_, intersectionIdx_); }
     }

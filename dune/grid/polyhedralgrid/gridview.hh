@@ -159,7 +159,7 @@ namespace Dune
     static const PartitionIteratorType pitype = ptype;
     friend class PolyhedralGridView< pitype >;
 
-    typedef PolyhedralGridView< HostGridView, pitype > GridViewImp;
+    typedef PolyhedralGridView< Grid, pitype > GridViewImp;
     typedef PolyhedralGrid< dim, dimworld > Grid;
     typedef PolyhedralGridIndexSet< Grid::dimension, Grid::dimensionworld > IndexSet;
 
@@ -169,7 +169,7 @@ namespace Dune
     typedef PolyhedralGridIntersectionIterator< const Grid > IntersectionIteratorImpl;
     typedef Dune::IntersectionIterator< const Grid, IntersectionIteratorImpl, IntersectionImpl > IntersectionIterator;
 
-    typedef typename HostGridView::CollectiveCommunication CollectiveCommunication;
+    typedef typename Grid::CollectiveCommunication CollectiveCommunication;
 
     template< int codim >
     struct Codim
@@ -183,9 +183,7 @@ namespace Dune
       template< PartitionIteratorType pit >
       struct Partition
       {
-        typedef typename HostGridView::template Codim< codim >::template Partition< pit > HostPartition;
-
-        typedef PolyhedralGridIterator< const Grid, typename HostPartition::Iterator > IteratorImpl;
+        typedef PolyhedralGridIterator< const Grid > IteratorImpl;
         typedef Dune::EntityIterator< codim, const Grid, IteratorImpl > Iterator;
       };
 

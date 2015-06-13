@@ -19,55 +19,55 @@ namespace Dune
     template< int dim, int dimworld >
     struct hasSingleGeometryType< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = hasSingleGeometryType< HostGrid >::v;
-      static const unsigned int topologyId = hasSingleGeometryType< HostGrid >::topologyId;
+      static const bool v = false;
+      static const unsigned int topologyId = ~0u;
     };
 
 
     template< int dim, int dimworld >
     struct isCartesian< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = isCartesian< HostGrid >::v;
+      static const bool v = false;
     };
 
 
     template< int dim, int dimworld, int codim >
     struct hasEntity< PolyhedralGrid< dim, dimworld >, codim >
     {
-      static const bool v = hasEntity< HostGrid, codim >::v;
+      static const bool v = (codim == 0 || codim == 1 || codim == dim);
     };
 
 
     template< int dim, int dimworld >
     struct isParallel< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = isParallel< HostGrid >::v;
+        static const bool v = false;
     };
 
 
     template< int dim, int dimworld, int codim >
     struct canCommunicate< PolyhedralGrid< dim, dimworld >, codim >
     {
-      static const bool v = canCommunicate< HostGrid, codim >::v;
+        static const bool v = false;
     };
 
 
     template< int dim, int dimworld >
     struct hasBackupRestoreFacilities< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = hasBackupRestoreFacilities< HostGrid >::v;
+      static const bool v = false;
     };
 
     template< int dim, int dimworld >
     struct isLevelwiseConforming< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = isLevelwiseConforming< HostGrid >::v;
+      static const bool v = false;
     };
 
     template< int dim, int dimworld >
     struct isLeafwiseConforming< PolyhedralGrid< dim, dimworld > >
     {
-      static const bool v = isLeafwiseConforming< HostGrid >::v;
+      static const bool v = false;
     };
 
     template< int dim, int dimworld >

@@ -13,12 +13,12 @@ namespace Dune
   // PolyhedralGridIterator
   // --------------
 
-  template< class Grid, class HostIterator >
+  template< class Grid >
   class PolyhedralGridIterator
-  : public PolyhedralGridEntityPointer< Grid, HostIterator >
+  : public PolyhedralGridEntityPointer< Grid >
   {
-    typedef PolyhedralGridIterator< Grid, HostIterator > This;
-    typedef PolyhedralGridEntityPointer< Grid, HostIterator > Base;
+    typedef PolyhedralGridIterator< Grid > This;
+    typedef PolyhedralGridEntityPointer< Grid > Base;
 
   protected:
     using Base::hostIterator_;
@@ -27,7 +27,7 @@ namespace Dune
     typedef typename Base::ExtraData ExtraData;
 
   public:
-    PolyhedralGridIterator ( ExtraData data, const HostIterator &hostIterator )
+    PolyhedralGridIterator ( ExtraData data )
     : Base( data, hostIterator )
     {}
 
