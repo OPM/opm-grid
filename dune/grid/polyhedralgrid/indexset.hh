@@ -19,11 +19,11 @@ namespace Dune
   // PolyhedralGridIndexSet
   // --------------
 
-  template< int dim, dimworld >
+  template< int dim, int dimworld >
   class PolyhedralGridIndexSet
-      : public IndexSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIndexSet< PolyhedralGrid< dim, dimworld > >, int >
+      : public IndexSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIndexSet< dim, dimworld >, int >
   {
-    typedef typename PolyhedralGrid<dim, dimworld> GridType;
+    typedef PolyhedralGrid<dim, dimworld> GridType;
 
   protected:
     typedef PolyhedralGridIndexSet< dim, dimworld > This;
@@ -71,12 +71,12 @@ namespace Dune
 
     IndexType size ( GeometryType type ) const
     {
-      return entity.size( type );
+      return grid().size( type );
     }
 
     int size ( int codim ) const
     {
-      return grid.size( codim );
+      return grid().size( codim );
     }
 
     template< class Entity >
@@ -91,9 +91,11 @@ namespace Dune
         return gt;
     }
 
+    const GridType& grid() const { assert( grid_ ); return *grid_; }
+
   protected:
-    const Grid *grid_;
-    GeometryTypes geomTypes_[4];
+    const GridType *grid_;
+    std::vector<GeometryType> geomTypes_[4];
   };
 
 } // namespace Dune

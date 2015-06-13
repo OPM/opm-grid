@@ -13,15 +13,6 @@
 namespace Dune
 {
 
-  // External Forward Declarations
-  // -----------------------------
-
-  template< class, class > class PolyhedralGridIntersection;
-  template< class, class > class PolyhedralGridIntersectionIterator;
-
-  template< class, class > class PolyhedralGridIterator;
-
-
   // PolyhedralGridEntityBasic
   // -----------------
 
@@ -73,15 +64,15 @@ namespace Dune
 
     /** \brief construct a null entity */
     explicit PolyhedralGridEntityBasic ( ExtraData data )
-    : seed_()
-      data_( data )
+    : data_( data ),
+      seed_()
     {}
 
     /** \brief construct an initialized entity
      */
     PolyhedralGridEntityBasic ( ExtraData data, const EntitySeed& seed )
-    : seed_( seed )
-    , data_( data )
+    : data_( data )
+    , seed_( seed )
     {}
 
     /** \} */
@@ -134,8 +125,8 @@ namespace Dune
     }
 
   protected:
-    EntitySeed  seed_;
     ExtraData   data_;
+    EntitySeed  seed_;
   };
 
 
@@ -154,7 +145,9 @@ namespace Dune
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Traits::ExtraDataType ExtraData;
 
+
   public:
+    typedef typename Base :: EntitySeed EntitySeed;
     using Base :: codimension ;
 
     explicit PolyhedralGridEntity ( ExtraData data )
@@ -184,6 +177,7 @@ namespace Dune
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Base::ExtraData ExtraData;
 
+    using Base::seed_;
   public:
     using Base::codimension ;
     using Base::data ;
@@ -198,6 +192,8 @@ namespace Dune
   public:
     /** \name Types Required by DUNE
      *  \{ */
+
+    typedef typename Base :: EntitySeed EntitySeed;
 
     //! type of corresponding local geometry
     typedef typename Traits::template Codim< codimension >::LocalGeometry LocalGeometry;

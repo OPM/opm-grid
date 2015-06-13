@@ -14,10 +14,10 @@ namespace Dune
   // PolyhedralGridEntityPointer
   // -------------------
 
-  template< class Grid >
+  template< class Grid, int codim >
   class PolyhedralGridEntityPointer
   {
-    typedef PolyhedralGridEntityPointer< Grid > This;
+    typedef PolyhedralGridEntityPointer< Grid, codim > This;
 
   protected:
     typedef typename remove_const< Grid >::type::Traits Traits;
@@ -26,7 +26,7 @@ namespace Dune
     /** \brief grid dimension */
     static const int dimension = remove_const< Grid >::type::dimension;
     /** \brief world dimension */
-    static const int codimension = HostIterator::codimension;
+    static const int codimension = codim;
 
     /** \brief type of entity */
     typedef typename Traits::template Codim< codimension >::Entity Entity;

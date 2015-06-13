@@ -3,6 +3,7 @@
 #ifndef DUNE_POLYHEDRALGRID_GEOMETRY_HH
 #define DUNE_POLYHEDRALGRID_GEOMETRY_HH
 
+#include <dune/common/fmatrix.hh>
 #include <dune/grid/common/geometry.hh>
 
 namespace Dune
@@ -31,8 +32,14 @@ namespace Dune
     typedef Dune::FieldVector< ctype, coorddimension > GlobalCoordinate;
     typedef Dune::FieldVector< ctype, mydimension >    LocalCoordinate;
 
-    typedef typename HostGeometry::JacobianTransposed JacobianTransposed;
-    typedef typename HostGeometry::JacobianInverseTransposed JacobianInverseTransposed;
+    //! type of jacobian inverse transposed
+    typedef FieldMatrix<ctype,cdim,mydim> JacobianInverseTransposed;
+
+    //! type of jacobian transposed
+    typedef FieldMatrix< ctype, mydim, cdim > JacobianTransposed;
+
+    typedef typename Grid::Traits::ExtraData  ExtraData;
+    typedef typename Grid::Traits::template Codim<codimension>::EntitySeed EntitySeed;
 
     explicit PolyhedralGridBasicGeometry ( ExtraData data )
     : data_( data ),
@@ -47,9 +54,9 @@ namespace Dune
     GeometryType type () const { return GeometryType( GeometryType::cube, mydimension ); }
     bool affine () const { return false; }
 
-    int corners () const { return data->corners( seed ); }
-    GlobalCoordinate corner ( const int i ) const { return data->corner( seed_, i ); }
-    GlobalCoordinate center () const { return data->centroids( seed_ ); }
+    int corners () const { return data()->corners( seed_ ); }
+    GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
+    GlobalCoordinate center () const { return data()->centroids( seed_ ); }
 
     GlobalCoordinate global ( const LocalCoordinate &local   ) const
     {
@@ -64,7 +71,7 @@ namespace Dune
     }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
-    ctype volume () const { return data->volumes( seed_ ); }
+    ctype volume () const { return data()->volumes( seed_ ); }
 
     JacobianTransposed jacobianTransposed ( const LocalCoordinate &local ) const
     {
@@ -77,6 +84,8 @@ namespace Dune
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
+
+    ExtraData data() const { return data_; }
 
   protected:
     ExtraData  data_;
@@ -95,7 +104,8 @@ namespace Dune
     typedef PolyhedralGridBasicGeometry< mydim, cdim, Grid > Base;
 
   public:
-    typedef typename Base::HostGeometry HostGeometry;
+    typedef typename Base::ExtraData  ExtraData;
+    typedef typename Base::EntitySeed EntitySeed;
 
     explicit PolyhedralGridGeometry ( ExtraData data )
     : Base( data )
@@ -117,13 +127,14 @@ namespace Dune
     typedef PolyhedralGridBasicGeometry< mydim, cdim, Grid >  Base ;
 
   public:
-    typedef typename Base::HostGeometry HostGeometry;
+    typedef typename Base::ExtraData  ExtraData;
+    typedef typename Base::EntitySeed EntitySeed;
 
-    explicit PolyhedralGridGeometry ( ExtraData data )
+    explicit PolyhedralGridLocalGeometry ( ExtraData data )
     : Base( data )
     {}
 
-    PolyhedralGridGeometry ( ExtraData data, const EntitySeed& seed )
+    PolyhedralGridLocalGeometry ( ExtraData data, const EntitySeed& seed )
     : Base( data, seed )
     {}
   };

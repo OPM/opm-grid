@@ -39,12 +39,12 @@ namespace Dune
 
     bool equals ( const This &other ) const
     {
-        return seed_ == other_.seed_ && intersection_.faceIdx_ == other.intersection_.faceIdx_;
+        return intersection_ == other.intersection_;
     }
 
     void increment ()
     {
-      ++intersection_.faceIdx_;
+      ++intersection_.intersectionIdx_;
     }
 
     const Intersection &dereference () const

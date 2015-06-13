@@ -12,18 +12,17 @@ namespace Dune
   // PolyhedralGridIdSet
   // -----------
 
-  template< class Grid >
+  template< int dim, int dimworld >
   class PolyhedralGridIdSet
-      : public IdSet< Grid, PolyhedralGridIdSet< dim, dimworld >, /*IdType=*/int >
+      : public IdSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIdSet< dim, dimworld >, /*IdType=*/int >
   {
-  protected:
-    typedef PolyhedralGridIdSet< Grid, HostIdSet > This;
-    typedef IdSet< Grid, PolyhedralGridIdSet< Grid, HostIdSet >, typename HostIdSet::IdType > Base;
-
-    typedef typename remove_const< Grid >::type::Traits Traits;
-
   public:
-    typedef typename HostIdSet::IdType IdType;
+    typedef PolyhedralGrid<  dim, dimworld > Grid;
+    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename Traits::Index  IdType;
+
+    typedef PolyhedralGridIdSet< dim, dimworld > This;
+    typedef IdSet< Grid, PolyhedralGridIdSet< dim, dimworld >, IdType > Base;
 
     PolyhedralGridIdSet (const Grid& grid)
         : grid_(grid)

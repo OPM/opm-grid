@@ -8,6 +8,7 @@
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
+#include <dune/common/parallel/collectivecommunication.hh>
 
 //- polyhedralgrid includes
 #include <dune/grid/polyhedralgrid/capabilities.hh>
@@ -18,22 +19,14 @@
 #include <dune/grid/polyhedralgrid/gridview.hh>
 #include <dune/grid/polyhedralgrid/idset.hh>
 
+#include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/grid.h>
+#include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/GridManager.hpp>
+#include <opm/core/grid/cornerpoint_grid.h>
 
 namespace Dune
 {
-
-  // PolyhedralGridExportParams
-  // ------------------
-
-  template< class HG >
-  struct PolyhedralGridExportParams
-  : public HostGridHasInOutStreams< HG, Conversion< HG, HasObjectStream >::exists >
-  {
-    typedef HG HostGrid;
-  };
-
 
 
   // PolyhedralGridFamily
@@ -43,34 +36,35 @@ namespace Dune
   struct PolyhedralGridFamily
   {
     struct Traits
-    : public PolyhedralGridExportParams< HostGrid >
     {
       typedef PolyhedralGrid< dim, dimworld > Grid;
 
-      typedef typename HostGrid::ctype ctype;
-
-      struct EmptyData{};
+      typedef double ctype;
 
       // type of data passed to entities, intersections, and iterators
       // for PolyhedralGrid this is just an empty place holder
-      typedef EmptyData ExtraDataType;
+      typedef const Grid* ExtraDataType;
 
-      static const int dimension = HostGrid::dimension;
-      static const int dimensionworld = HostGrid::dimensionworld;
+      typedef int Index ;
 
-      typedef PolyhedralGridIntersection< const Grid, typename HostGrid::LeafIntersection > LeafIntersectionImpl;
+      static const int dimension      = dim;
+      static const int dimensionworld = dimworld;
+
+      typedef Dune::FieldVector< ctype, dimensionworld > GlobalCoordinate ;
+
+      typedef PolyhedralGridIntersection< const Grid > LeafIntersectionImpl;
       typedef Dune::Intersection< const Grid, LeafIntersectionImpl > LeafIntersection;
 
-      typedef PolyhedralGridIntersection< const Grid, typename HostGrid::LevelIntersection > LevelIntersectionImpl;
+      typedef PolyhedralGridIntersection< const Grid > LevelIntersectionImpl;
       typedef Dune::Intersection< const Grid, LevelIntersectionImpl > LevelIntersection;
 
-      typedef PolyhedralGridIntersectionIterator< const Grid, typename HostGrid::LeafIntersectionIterator > LeafIntersectionIteratorImpl;
+      typedef PolyhedralGridIntersectionIterator< const Grid > LeafIntersectionIteratorImpl;
       typedef Dune::IntersectionIterator< const Grid, LeafIntersectionIteratorImpl, LeafIntersectionImpl > LeafIntersectionIterator;
 
-      typedef PolyhedralGridIntersectionIterator< const Grid, typename HostGrid::LevelIntersectionIterator > LevelIntersectionIteratorImpl;
+      typedef PolyhedralGridIntersectionIterator< const Grid > LevelIntersectionIteratorImpl;
       typedef Dune::IntersectionIterator< const Grid, LevelIntersectionIteratorImpl, LevelIntersectionImpl > LevelIntersectionIterator;
 
-      typedef PolyhedralGridIterator< const Grid, typename HostGrid::HierarchicIterator > HierarchicIteratorImpl;
+      typedef PolyhedralGridIterator< const Grid, 0 > HierarchicIteratorImpl;
       typedef Dune::EntityIterator< 0, const Grid, HierarchicIteratorImpl > HierarchicIterator;
 
       template< int codim >
@@ -79,7 +73,7 @@ namespace Dune
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
         typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
-        typedef PolyhedralGridEntityPointer< const Grid, typename HostGrid::template Codim< codim >::EntityPointer > EntityPointerImpl;
+        typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
         typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
 
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
@@ -90,32 +84,29 @@ namespace Dune
         template< PartitionIteratorType pitype >
         struct Partition
         {
-          typedef typename HostGrid::template Codim< codim >::template Partition< pitype > HostPartition;
-
-          typedef PolyhedralGridIterator< const Grid, typename HostPartition::LeafIterator > LeafIteratorImpl;
+          typedef PolyhedralGridIterator< const Grid, pitype > LeafIteratorImpl;
           typedef Dune::EntityIterator< codim, const Grid, LeafIteratorImpl > LeafIterator;
 
-          typedef PolyhedralGridIterator< const Grid, typename HostPartition::LevelIterator > LevelIteratorImpl;
-          typedef Dune::EntityIterator< codim, const Grid, LevelIteratorImpl > LevelIterator;
+          typedef LeafIterator LevelIterator;
         };
 
         typedef typename Partition< All_Partition >::LeafIterator LeafIterator;
         typedef typename Partition< All_Partition >::LevelIterator LevelIterator;
       };
 
-      typedef PolyhedralGridIndexSet< const Grid, typename HostGrid::Traits::LeafIndexSet > LeafIndexSet;
-      typedef PolyhedralGridIndexSet< const Grid, typename HostGrid::Traits::LevelIndexSet > LevelIndexSet;
+      typedef PolyhedralGridIndexSet< dim, dimworld > LeafIndexSet;
+      typedef PolyhedralGridIndexSet< dim, dimworld > LevelIndexSet;
 
-      typedef PolyhedralGridIdSet< const Grid, typename HostGrid::Traits::GlobalIdSet > GlobalIdSet;
-      typedef PolyhedralGridIdSet< const Grid, typename HostGrid::Traits::LocalIdSet > LocalIdSet;
+      typedef PolyhedralGridIdSet< dim, dimworld > GlobalIdSet;
+      typedef GlobalIdSet  LocalIdSet;
 
-      typedef typename HostGrid::Traits::CollectiveCommunication CollectiveCommunication;
+      typedef Dune::CollectiveCommunication< Grid > CollectiveCommunication;
 
       template< PartitionIteratorType pitype >
       struct Partition
       {
-        typedef Dune::GridView< PolyhedralGridViewTraits< typename HostGrid::template Partition< pitype >::LeafGridView, pitype > > LeafGridView;
-        typedef Dune::GridView< PolyhedralGridViewTraits< typename HostGrid::template Partition< pitype >::LevelGridView, pitype > > LevelGridView;
+        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LeafGridView;
+        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LevelGridView;
       };
     };
   };
@@ -137,28 +128,18 @@ namespace Dune
   class PolyhedralGrid
   /** \cond */
   : public GridDefaultImplementation
-      < HostGrid::dimension, HostGrid::dimensionworld, typename HostGrid::ctype, PolyhedralGridFamily< HostGrid > >,
-    public PolyhedralGridExportParams< HostGrid >,
-    public PolyhedralGridBackupRestoreFacilities< PolyhedralGrid< dim, dimworld > >
+      < dim, dimworld, double, PolyhedralGridFamily< dim, dimworld > >
   /** \endcond */
   {
     typedef PolyhedralGrid< dim, dimworld > Grid;
 
     typedef GridDefaultImplementation
-      < HostGrid::dimension, HostGrid::dimensionworld, typename HostGrid::ctype, PolyhedralGridFamily< HostGrid > >
-      Base;
+      < dim, dimworld, double, PolyhedralGridFamily< dim, dimworld > > Base;
 
-    template< int, int, class > friend class PolyhedralGridEntity;
-    template< class, class > friend class PolyhedralGridEntityPointer;
-    template< class, class > friend class PolyhedralGridIntersection;
-    template< class, class > friend class PolyhedralGridIntersectionIterator;
-    template< class, class > friend class PolyhedralGridIdSet;
-    template< class, class > friend class PolyhedralGridIndexSet;
-    template< class > friend int dim, int dimworldAccess;
-
+    typedef UnstructuredGrid  UnstructuredGridType;
   public:
     /** \cond */
-    typedef PolyhedralGridFamily< HostGrid > GridFamily;
+    typedef PolyhedralGridFamily< dim, dimworld > GridFamily;
     /** \endcond */
 
     /** \name Traits
@@ -270,6 +251,8 @@ namespace Dune
     //! communicator with all other processes having some part of the grid
     typedef typename Traits::CollectiveCommunication CollectiveCommunication;
 
+    typedef typename Traits :: GlobalCoordinate GlobalCoordinate;
+
     /** \} */
 
     /** \name Construction and Destruction
@@ -284,7 +267,8 @@ namespace Dune
      */
     explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
-    : grid_( createGrid( deck, poreVolumes )
+    : grid_( createGrid( deck, poreVolumes ) ),
+      comm_( *this )
       // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
     {}
 
@@ -297,7 +281,7 @@ namespace Dune
         if( levelIndexSets_[ i ] )
           delete( levelIndexSets_[ i ] );
       }
-      destroy_grid( *grid_ );
+      //destroy_grid( *grid_ );
     }
 
     /** \} */
@@ -314,7 +298,7 @@ namespace Dune
      */
     int maxLevel () const
     {
-      return hostGrid().maxLevel();
+      return 1;
     }
 
     /** \brief obtain number of entites on a level
@@ -327,7 +311,7 @@ namespace Dune
      */
     int size ( int level, int codim ) const
     {
-      return hostGrid().size( level, codim );
+      return size( codim );
     }
 
     /** \brief obtain number of leaf entities
@@ -338,7 +322,18 @@ namespace Dune
      */
     int size ( int codim ) const
     {
-      return hostGrid().size( codim );
+      if( codim == 0 )
+        return grid_->number_of_cells;
+      else if ( codim == 1 )
+        return grid_->number_of_faces;
+      else if ( codim == dim )
+        return grid_->number_of_nodes;
+      else
+      {
+#warning TODO number of faces
+        std::abort();
+        return -1;
+      }
     }
 
     /** \brief obtain number of entites on a level
@@ -351,7 +346,7 @@ namespace Dune
      */
     int size ( int level, GeometryType type ) const
     {
-      return hostGrid().size( level, type );
+      return size( dim - type.dim() );
     }
 
     /** \brief returns the number of boundary segments within the macro grid
@@ -360,7 +355,7 @@ namespace Dune
      */
     int size ( GeometryType type ) const
     {
-      return hostGrid().size( type );
+      return size( dim - type.dim() );
     }
 
     /** \brief obtain number of leaf entities
@@ -374,34 +369,6 @@ namespace Dune
       return 0; // hostGrid().numBoundarySegments( );
     }
     /** \} */
-
-    template< int codim >
-    typename Codim< codim >::LevelIterator lbegin ( int level ) const
-    {
-      return lbegin< codim, All_Partition >( level );
-    }
-
-    template< int codim >
-    typename Codim< codim >::LevelIterator lend ( int level ) const
-    {
-      return lend< codim, All_Partition >( level );
-    }
-
-    template< int codim, PartitionIteratorType pitype >
-    typename Codim< codim >::template Partition< pitype >::LevelIterator
-    lbegin ( int level ) const
-    {
-      typedef typename Traits::template Codim< codim >::template Partition< pitype >::LevelIteratorImpl Impl;
-      return Impl( extraData(), hostGrid().template lbegin< codim, pitype >( level ) );
-    }
-
-    template< int codim, PartitionIteratorType pitype >
-    typename Codim< codim >::template Partition< pitype >::LevelIterator
-    lend ( int level ) const
-    {
-      typedef typename Traits::template Codim< codim >::template Partition< pitype >::LevelIteratorImpl Impl;
-      return Impl( extraData(), hostGrid().template lend< codim, pitype >( level ) );
-    }
 
     template< int codim >
     typename Codim< codim >::LeafIterator leafbegin () const
@@ -420,7 +387,7 @@ namespace Dune
     leafbegin () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pitype >::LeafIteratorImpl Impl;
-      return Impl( extraData(), hostGrid().template leafbegin< codim, pitype >() );
+      return Impl( extraData(), true );
     }
 
     template< int codim, PartitionIteratorType pitype >
@@ -428,13 +395,13 @@ namespace Dune
     leafend () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pitype >::LeafIteratorImpl Impl;
-      return Impl( extraData(), hostGrid().template leafend< codim, pitype >() );
+      return Impl( extraData(), true );
     }
 
     const GlobalIdSet &globalIdSet () const
     {
       if( !globalIdSet_ )
-        globalIdSet_ = GlobalIdSet( hostGrid().globalIdSet() );
+        globalIdSet_ = GlobalIdSet( *this );
       assert( globalIdSet_ );
       return globalIdSet_;
     }
@@ -442,7 +409,7 @@ namespace Dune
     const LocalIdSet &localIdSet () const
     {
       if( !localIdSet_ )
-        localIdSet_ = LocalIdSet( hostGrid().localIdSet() );
+        localIdSet_ = LocalIdSet( *this );
       assert( localIdSet_ );
       return localIdSet_;
     }
@@ -458,7 +425,7 @@ namespace Dune
 
       LevelIndexSet *&levelIndexSet = levelIndexSets_[ level ];
       if( !levelIndexSet )
-        levelIndexSet = new LevelIndexSet( hostGrid().levelIndexSet( level ) );
+        levelIndexSet = new LevelIndexSet( this );
       assert( levelIndexSet );
       return *levelIndexSet;
     }
@@ -466,7 +433,7 @@ namespace Dune
     const LeafIndexSet &leafIndexSet () const
     {
       if( !leafIndexSet_ )
-        leafIndexSet_ = LeafIndexSet( hostGrid().leafIndexSet() );
+        leafIndexSet_ = LeafIndexSet( this );
       assert( leafIndexSet_ );
       return leafIndexSet_;
     }
@@ -501,8 +468,8 @@ namespace Dune
         \param handle handler for restriction and prolongation operations
         which is a Model of the AdaptDataHandleInterface class.
     */
-    template< class GridImp, class DataHandle >
-    bool adapt ( AdaptDataHandleInterface< GridImp, DataHandle > &datahandle )
+    template< class DataHandle >
+    bool adapt ( DataHandle & )
     {
       return false;
     }
@@ -729,7 +696,7 @@ namespace Dune
     UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
     {
         auto eclipseGrid = std::make_shared<const Opm::EclipseGrid>(deck);
-        struct Opm::grdecl g;
+        struct grdecl g;
         std::vector<int> actnum;
         std::vector<double> coord;
         std::vector<double> zcorn;
@@ -749,11 +716,13 @@ namespace Dune
         g.actnum = actnum.data();
         g.mapaxes = mapaxes.data();
 
+        /*
         if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != MinpvMode::ModeEnum::Inactive)) {
             MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const double minpv_value  = eclipseGrid->getMinpvValue();
             mp.process(poreVolumes, minpv_value, actnum, zcorn.data());
         }
+        */
 
         const double z_tolerance = eclipseGrid->isPinchActive() ?
             eclipseGrid->getPinchThresholdThickness() : 0.0;
@@ -768,15 +737,8 @@ namespace Dune
   public:
     using Base::getRealImplementation;
 
-    template< int codim >
-    static const typename HostGrid::template Codim< codim >::Entity &
-    getHostEntity( const typename Codim< codim >::Entity &entity )
-    {
-      return getRealImplementation( entity ).hostEntity();
-    }
-
     typedef typename Traits :: ExtraDataType ExtraData;
-    ExtraData extraData () const  { return ExtraData(); }
+    ExtraData extraData () const  { return this; }
 
     template <class EntitySeed>
     int subEntities( const EntitySeed& seed, const int codim ) const
@@ -785,8 +747,8 @@ namespace Dune
       switch (codim)
       {
         case 1:
-          return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
-        case dimension:
+          return grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
+        case dim:
           return 0;//grid_.cell_faces[ index+1 ] - grid_.cell_faces[ index ];
       }
       return 0;
@@ -794,7 +756,7 @@ namespace Dune
 
     template <int codim>
     typename Codim<codim>::EntitySeed
-    subEntitySeed( const Index elementIndex, const int i ) const
+    subEntitySeed( const typename Traits::Index elementIndex, const int i ) const
     {
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
       if( codim == 0 )
@@ -802,7 +764,7 @@ namespace Dune
       else if ( codim == 1 )
       {
         assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
-        return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ elementIndex ] + i ] );
+        return EntitySeed( grid_->cell_faces[ grid_->cell_facepos[ elementIndex ] + i ] );
       }
       else
       {
@@ -812,12 +774,12 @@ namespace Dune
 
     int faceTag( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      if( ! grid_.cell_facetag )
+      if( ! grid_->cell_facetag )
         return i;
       else
       {
-        assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
-        return grid_.cell_facetag[ grid_.cell_facepos[ elementIndex ] + i ] ;
+        assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
+        return grid_->cell_facetag[ grid_->cell_facepos[ seed.index() ] + i ] ;
       }
     }
 
@@ -826,9 +788,9 @@ namespace Dune
     {
       typedef typename Codim<0>::EntitySeed EntitySeed;
       const int face = 2 * this->template subEntitySeed<1>( seed, i ).index();
-      int nb = grid_.face_cells[ face];
+      int nb = grid_->face_cells[ face];
       if( nb == seed.index() )
-        nb = grid_.face_cells[ face+1 ];
+        nb = grid_->face_cells[ face+1 ];
 
       return EntitySeed( nb );
     }
@@ -851,13 +813,13 @@ namespace Dune
     template <int codim>
     GlobalCoordinate centroids( const typename Codim<codim>::EntitySeed& seed ) const
     {
-      const int index = dimension * seed.index();
+      const int index = dim * seed.index();
       if( codim == 0 )
-        return GlobalCoordinate( &grid_.cell_centroids[ index ] );
+        return GlobalCoordinate( &grid_->cell_centroids[ index ] );
       else if ( codim == 1 )
-        return GlobalCoordinate( &grid_.face_centroids[ index] );
-      else if( codim == dimension )
-        return GlobalCoordinate( &grid_.node_coordinates[ index ] );
+        return GlobalCoordinate( &grid_->face_centroids[ index] );
+      else if( codim == dim )
+        return GlobalCoordinate( &grid_->node_coordinates[ index ] );
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");
@@ -870,9 +832,9 @@ namespace Dune
     {
       const int index = seed.index();
       if( codim == 0 )
-        return grid_.cell_volumes[ index ];
+        return grid_->cell_volumes[ index ];
       else if ( codim == 1 )
-        return grid_.face_areas[ index ];
+        return grid_->face_areas[ index ];
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");
@@ -882,6 +844,7 @@ namespace Dune
 
   protected:
     std::unique_ptr< UnstructuredGridType > grid_;
+    CollectiveCommunication comm_;
     mutable std::vector< LevelIndexSet * > levelIndexSets_;
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
@@ -904,6 +867,7 @@ namespace Dune
     /** \brief type of entity
      *
      *  The entity is a model of Dune::Entity.
+
      */
     typedef typename Traits::template Codim< codim >::Entity Entity;
 
@@ -978,6 +942,5 @@ namespace Dune
 } // namespace Dune
 
 #include <dune/grid/polyhedralgrid/persistentcontainer.hh>
-#include <dune/grid/polyhedralgrid/twistutility.hh>
 
 #endif // #ifndef DUNE_POLYHEDRALGRID_GRID_HH

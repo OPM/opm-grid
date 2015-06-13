@@ -15,34 +15,38 @@ namespace Dune
   // PolyhedralGridIterator
   // --------------
 
-  template< class Grid >
+  template< class Grid, int codim >
   class PolyhedralGridIterator
-  : public PolyhedralGridEntityPointer< Grid >
+  : public PolyhedralGridEntityPointer< Grid, codim >
   {
-    typedef PolyhedralGridIterator< Grid > This;
-    typedef PolyhedralGridEntityPointer< Grid > Base;
+    typedef PolyhedralGridIterator< Grid, codim > This;
+    typedef PolyhedralGridEntityPointer< Grid, codim > Base;
 
   protected:
     typedef typename Base::ExtraData ExtraData;
+    using Base :: entityImpl;
 
   public:
+    typedef typename Grid::Traits::template Codim<codim>::EntitySeed EntitySeed;
+    typedef typename Grid::Traits::template Codim<codim>::EntityImpl EntityImpl;
+
     PolyhedralGridIterator ( ExtraData data, const bool beginIterator )
     : Base( data )
     {
       if( beginIterator )
-        entity_ = Entity( data, EntitySeed( 0 ) );
+        entityImpl() = EntityImpl( data, EntitySeed( 0 ) );
       else
-        entity_ = Entity( data );
+        entityImpl() = EntityImpl( data );
     }
 
     /** \brief increment */
     void increment ()
     {
-      const int index = entity_.seed().index() + 1 ;
-      if( index >= data->size( 0 ) )
-        entity_ = Entity( entity_.data() );
+      const int index = entityImpl().seed().index() + 1 ;
+      if( index >= entityImpl().data()->size( 0 ) )
+        entityImpl() = EntityImpl( entityImpl().data() );
       else
-        entity_ = Entity( entity_.data(), EntitySeed( index ) );
+        entityImpl() = EntityImpl( entityImpl().data(), EntitySeed( index ) );
     }
   };
 

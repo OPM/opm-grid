@@ -31,7 +31,7 @@ namespace Dune
 #endif
   {
   public:
-    typedef CpGrid  GridType;
+    typedef PolyhedralGrid< dim, dimworld >  GridType;
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     typedef typename std::vector<Data>::allocator_type Allocator;
 #endif

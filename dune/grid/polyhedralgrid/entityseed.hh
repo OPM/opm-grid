@@ -26,7 +26,7 @@ namespace Dune
     typedef typename Traits::template Codim< codim >::Entity Entity;
     typedef typename Traits :: Index Index ;
 
-    static const Index defaulIndex = -1;
+    static const Index defaultIndex = -1;
 
     explicit PolyhedralGridEntitySeed ( const Index& index )
       : index_( index )
@@ -35,6 +35,8 @@ namespace Dune
     PolyhedralGridEntitySeed ()
       : index_( defaultIndex )
     {}
+
+    const Index& index () const { return index_ ; }
 
     bool isValid() const { return index_ != defaultIndex; }
 
