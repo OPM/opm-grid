@@ -18,55 +18,57 @@ namespace Dune
   template< int mydim, int cdim, class Grid >
   struct PolyhedralGridBasicGeometry
   {
-    typedef typename remove_const< Grid >::type::HostGrid HostGrid;
-
-    static const int dimension = HostGrid::dimension;
+    static const int dimension = Grid::dimension;
     static const int mydimension = mydim;
     static const int codimension = dimension - mydimension;
-    typedef typename HostGrid::template Codim< codimension >::Geometry HostGeometry;
 
-    static const int coorddimension = HostGeometry::coorddimension;
-    static const int dimensionworld = HostGeometry::dimensionworld;
+    static const int dimensionworld = Grid::dimensionworld;
+    static const int coorddimension = dimensionworld;
 
-    typedef typename HostGeometry::ctype ctype;
-    typedef typename HostGeometry::LocalCoordinate  LocalCoordinate;
-    typedef typename HostGeometry::GlobalCoordinate GlobalCoordinate;
+    typedef typename Grid::ctype ctype;
+    typedef Dune::FieldVector< ctype, coorddimension > GlobalCoordinate;
+    typedef Dune::FieldVector< ctype, mydimension >    LocalCoordinate;
 
     typedef typename HostGeometry::JacobianTransposed JacobianTransposed;
     typedef typename HostGeometry::JacobianInverseTransposed JacobianInverseTransposed;
 
-    PolyhedralGridBasicGeometry ( const HostGeometry &hostGeometry )
-    : hostGeometry_( hostGeometry )
+    explicit PolyhedralGridBasicGeometry ( ExtraData data )
+    : data_( data ),
+      seed_( )
     {}
 
-    GeometryType type () const { return hostGeometry().type(); }
-    bool affine () const { return hostGeometry().affine(); }
+    PolyhedralGridBasicGeometry ( ExtraData data, const EntitySeed& seed )
+    : data_( data ),
+      seed_( seed )
+    {}
 
-    int corners () const { return hostGeometry().corners(); }
-    GlobalCoordinate corner ( const int i ) const { return hostGeometry().corner( i ); }
-    GlobalCoordinate center () const { return hostGeometry().center(); }
+    GeometryType type () const { return GeometryType( GeometryType::cube, mydimension ); }
+    bool affine () const { return false; }
 
-    GlobalCoordinate global ( const LocalCoordinate &local   ) const { return hostGeometry().global( local ); }
-    LocalCoordinate  local  ( const GlobalCoordinate &global ) const { return hostGeometry().local( global ); }
+    int corners () const { return data->corners( seed ); }
+    GlobalCoordinate corner ( const int i ) const { return data->corner( seed_, i ); }
+    GlobalCoordinate center () const { return data->centroids( seed_ ); }
 
-    ctype integrationElement ( const LocalCoordinate &local ) const { return hostGeometry().integrationElement( local ); }
-    ctype volume () const { return hostGeometry().volume(); }
+    GlobalCoordinate global ( const LocalCoordinate &local   ) const { return GlobalCoordinate( 0 ); }
+    LocalCoordinate  local  ( const GlobalCoordinate &global ) const { return LocalCoordinate( 0 ); }
+
+    ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
+    ctype volume () const { return data->volumes( seed_ ); }
 
     JacobianTransposed jacobianTransposed ( const LocalCoordinate &local ) const
     {
-      return hostGeometry().jacobianTransposed( local );
+      return JacobianTransposed( 0 );
     }
 
     JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate &local ) const
     {
-      return hostGeometry().jacobianInverseTransposed( local );
+      return JacobianInverseTransposed( 0 );
     }
 
   protected:
-    const HostGeometry &hostGeometry () const { return hostGeometry_; }
-
+    ExtraData  data_;
     // host geometry object
-    HostGeometry hostGeometry_;
+    EntitySeed seed_;
   };
 
 
@@ -82,11 +84,12 @@ namespace Dune
   public:
     typedef typename Base::HostGeometry HostGeometry;
 
-    PolyhedralGridGeometry ()
+    explicit PolyhedralGridGeometry ( ExtraData data )
+    : Base( data )
     {}
 
-    PolyhedralGridGeometry ( const HostGeometry &hostGeometry )
-    : Base( hostGeometry )
+    PolyhedralGridGeometry ( ExtraData data, const EntitySeed& seed )
+    : Base( data, seed )
     {}
   };
 
@@ -103,11 +106,12 @@ namespace Dune
   public:
     typedef typename Base::HostGeometry HostGeometry;
 
-    PolyhedralGridLocalGeometry ()
+    explicit PolyhedralGridGeometry ( ExtraData data )
+    : Base( data )
     {}
 
-    PolyhedralGridLocalGeometry ( const HostGeometry &hostGeometry )
-    : Base( hostGeometry )
+    PolyhedralGridGeometry ( ExtraData data, const EntitySeed& seed )
+    : Base( data, seed )
     {}
   };
 
