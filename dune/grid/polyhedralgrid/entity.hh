@@ -1,3 +1,5 @@
+// -*- mode: C++; tab-width: 2; indent-tabs-mode: nil; c-basic-offset: 2 -*-
+// vi: set et ts=2 sw=2 sts=2:
 #ifndef DUNE_POLYHEDRALGRID_ENTITY_HH
 #define DUNE_POLYHEDRALGRID_ENTITY_HH
 
@@ -125,6 +127,11 @@ namespace Dune
     ExtraData data() const { return data_; }
 
     /** \} */
+
+    bool operator==(const PolyhedralGridEntityBasic& other) const
+    {
+        return seed_ == other.seed_;
+    }
 
   protected:
     EntitySeed  seed_;
