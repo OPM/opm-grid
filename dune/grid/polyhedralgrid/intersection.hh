@@ -13,7 +13,7 @@ namespace Dune
   // PolyhedralGridIntersection
   // ------------------
 
-  template< class Grid, class HostIntersection >
+  template< class Grid >
   class PolyhedralGridIntersection
   {
   protected:
@@ -34,94 +34,87 @@ namespace Dune
 
   public:
     explicit PolyhedralGridIntersection ( ExtraData data )
-    : hostIntersection_( nullptr ),
-      data_( data )
+    : data_( data )
     {}
 
-    PolyhedralGridIntersection ( ExtraData data, const HostIntersection &hostIntersection )
-    : hostIntersection_( &hostIntersection ),
-      data_( data )
-    {}
-
-    operator bool () const { return bool( hostIntersection_ ); }
-
-    const EntityPointer inside () const
+    const EntityImpl inside () const
     {
-      return EntityPointer( EntityPointerImpl( data(), hostIntersection().inside() ) );
+        return EntityImpl( data(), seed_ );
     }
 
-    EntityPointer outside () const
+    EntityImpl outside () const
     {
-      return EntityPointer( EntityPointerImpl( data(), hostIntersection().outside() ) );
+        return data()->neighbor(seed_, intersectionIdx_);
     }
 
-    bool boundary () const { return hostIntersection().boundary(); }
+    bool boundary () const { return !neighbor(); }
 
-    bool conforming () const { return hostIntersection().conforming(); }
+    bool conforming () const { return false; }
 
-    bool neighbor () const { return hostIntersection().neighbor(); }
+    bool neighbor () const { return !data()->neighbor(seed_, intersectionIdx_).isValid(); }
 
-    int boundaryId () const { return hostIntersection().boundaryId(); }
+    int boundaryId () const { return 1; }
 
     size_t boundarySegmentIndex () const
     {
-      return hostIntersection().boundarySegmentIndex();
+        // not implementable
+        return -1;
     }
 
     LocalGeometry geometryInInside () const
     {
-      return LocalGeometry( hostIntersection().geometryInInside() );
+      return LocalGeometry( data() );
     }
 
     LocalGeometry geometryInOutside () const
     {
-      return LocalGeometry( hostIntersection().geometryInOutside() );
+        return LocalGeometryImpl(data());
     }
 
     Geometry geometry () const
     {
-      return Geometry( hostIntersection().geometry() );
+        return Geometry( data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_) );
     }
 
-    GeometryType type () const { return hostIntersection().type(); }
+    GeometryType type () const { return GeometryType::none; }
 
-    int indexInInside () const { return hostIntersection().indexInInside(); }
-    int indexInOutside () const { return hostIntersection().indexInOutside(); }
+    int indexInInside () const
+    { return faceTagToSubentityNum(data().faceTag(seed_, intersectionIdx_)); }
+
+    int indexInInside () const
+    {
+        return data().indexInInside(seed_, intersectionIdx_));
+    }
 
     FieldVector< ctype, dimensionworld >
     integrationOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
     {
-      return hostIntersection().integrationOuterNormal( local );
+        return data().indexInOutside(seed_, intersectionIdx_));
     }
 
-    FieldVector< ctype, dimensionworld >
+    auto
     outerNormal ( const FieldVector< ctype, dimension-1 > &local ) const
-    {
-      return hostIntersection().outerNormal( local );
-    }
+        -> decltype(data().outerNormal(0, 0))
+    { return data().outerNormal(seed_, intersectionIdx_); }
 
-    FieldVector< ctype, dimensionworld >
+    auto
     unitOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
+        -> decltype(data().unitOuterNormal(0, 0))
     {
-      return hostIntersection().unitOuterNormal( local );
+      return data().unitOuterNormal(seed_, intersectionIdx_); }
     }
 
     FieldVector< ctype, dimensionworld > centerUnitOuterNormal () const
     {
-      return hostIntersection().centerUnitOuterNormal();
-    }
-
-    const HostIntersection &hostIntersection () const
-    {
-      assert( *this );
-      return *hostIntersection_;
+      return data().unitOuterNormal(seed_, intersectionIdx_); }
     }
 
     ExtraData data() const { return data_; }
 
   protected:
-    const HostIntersection *hostIntersection_;
     ExtraData  data_;
+    EntitySeed seed_;
+    int intersectionIdx_; // the element-local index
   };
 
 } // namespace Dune
