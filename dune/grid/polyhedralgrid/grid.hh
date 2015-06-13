@@ -7,15 +7,10 @@
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
 
-//- dune-metagrid includes
-#include <dune/grid/common/hostgridinoutstreams.hh>
-#include <dune/grid/polyhedralgrid/adaptcallback.hh>
-#include <dune/grid/polyhedralgrid/backuprestore.hh>
+//- polyhedralgrid includes
 #include <dune/grid/polyhedralgrid/capabilities.hh>
-#include <dune/grid/polyhedralgrid/datahandle.hh>
 #include <dune/grid/polyhedralgrid/declaration.hh>
 #include <dune/grid/polyhedralgrid/entity.hh>
-#include <dune/grid/polyhedralgrid/entitypointer.hh>
 #include <dune/grid/polyhedralgrid/entityseed.hh>
 #include <dune/grid/polyhedralgrid/geometry.hh>
 #include <dune/grid/polyhedralgrid/gridview.hh>

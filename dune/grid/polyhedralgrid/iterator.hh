@@ -21,21 +21,26 @@ namespace Dune
     typedef PolyhedralGridEntityPointer< Grid > Base;
 
   protected:
-    using Base::hostIterator_;
-    using Base::releaseEntity;
-
     typedef typename Base::ExtraData ExtraData;
 
   public:
-    PolyhedralGridIterator ( ExtraData data )
-    : Base( data, hostIterator )
-    {}
+    PolyhedralGridIterator ( ExtraData data, const bool beginIterator )
+    : Base( data )
+    {
+      if( beginIterator )
+        entity_ = Entity( data, EntitySeed( 0 ) );
+      else
+        entity_ = Entity( data );
+    }
 
     /** \brief increment */
     void increment ()
     {
-      ++hostIterator_;
-      releaseEntity();
+      const int index = entity_.seed().index() + 1 ;
+      if( index >= data->size( 0 ) )
+        entity_ = Entity( entity_.data() );
+      else
+        entity_ = Entity( entity_.data(), EntitySeed( index ) );
     }
   };
 

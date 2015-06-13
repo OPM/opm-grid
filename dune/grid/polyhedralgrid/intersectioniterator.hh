@@ -1,7 +1,6 @@
 #ifndef DUNE_POLYHEDRALGRID_INTERSECTIONITERATOR_HH
 #define DUNE_POLYHEDRALGRID_INTERSECTIONITERATOR_HH
 
-#include <dune/grid/polyhedralgrid/entitypointer.hh>
 #include <dune/grid/polyhedralgrid/intersection.hh>
 
 namespace Dune

@@ -9,7 +9,6 @@
 #include <dune/grid/common/gridview.hh>
 
 //- dune-metagrid includes
-#include <dune/grid/polyhedralgrid/datahandle.hh>
 #include <dune/grid/polyhedralgrid/indexset.hh>
 #include <dune/grid/polyhedralgrid/intersection.hh>
 #include <dune/grid/polyhedralgrid/intersectioniterator.hh>

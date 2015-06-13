@@ -12,10 +12,10 @@ namespace Dune
   // PolyhedralGridEntityPointer
   // -------------------
 
-  template< class Grid, class HostIterator >
+  template< class Grid >
   class PolyhedralGridEntityPointer
   {
-    typedef PolyhedralGridEntityPointer< Grid, HostIterator > This;
+    typedef PolyhedralGridEntityPointer< Grid > This;
 
   protected:
     typedef typename remove_const< Grid >::type::Traits Traits;
@@ -30,76 +30,45 @@ namespace Dune
     typedef typename Traits::template Codim< codimension >::Entity Entity;
 
   protected:
-    typedef typename Traits::HostGrid::template Codim< codimension >::EntityPointer HostEntityPointer;
-
     typedef typename Traits::ExtraDataType ExtraData;
 
     typedef typename Traits::template Codim< codimension > :: EntityImpl EntityImpl;
 
-  private:
-    friend class PolyhedralGridEntityPointer< Grid, HostEntityPointer >;
-
   public:
-    PolyhedralGridEntityPointer ( ExtraData data, const HostIterator &hostIterator )
-    : entity_( EntityImpl( data ) ),
-      hostIterator_( hostIterator )
+    PolyhedralGridEntityPointer ( ExtraData data )
+    : entity_( EntityImpl( data ) )
     {}
 
     explicit PolyhedralGridEntityPointer ( const EntityImpl &entity )
-    : entity_( EntityImpl( entity.data() ) ),
-      hostIterator_( entity.hostEntity() )
+    : entity_( entity )
     {}
 
     PolyhedralGridEntityPointer ( const This &other )
-    : entity_( EntityImpl( other.data() ) ),
-      hostIterator_( other.hostIterator_ )
-    {}
-
-    template< class HI >
-    explicit PolyhedralGridEntityPointer ( const PolyhedralGridEntityPointer< Grid, HI > &other )
-    : entity_( EntityImpl( other.data() ) ),
-      hostIterator_( other.hostIterator_ )
+    : entity_( other.entity_ )
     {}
 
     const This &operator= ( const This &other )
     {
-      entityImpl() = EntityImpl( other.data() );
-      hostIterator_ = other.hostIterator_;
-      return *this;
-    }
-
-    template< class HI >
-    const This &operator= ( const PolyhedralGridEntityPointer< Grid, HI > &other )
-    {
-      entityImpl() = EntityImpl( other.data() );
-      hostIterator_ = other.hostIterator_;
+      entity_ = other.entity_;
       return *this;
     }
 
     /** \brief check for equality */
-    template< class HI >
-    bool equals ( const PolyhedralGridEntityPointer< Grid, HI > &other ) const
+    bool equals ( const This &other ) const
     {
-      return (hostIterator() == other.hostIterator());
+      return (entity_ == other.entity_);
     }
 
     /** \brief dereference entity */
-    Entity &dereference () const
+    const Entity& dereference () const
     {
-      if( !entityImpl() )
-        entityImpl() = EntityImpl( data(), *hostIterator() );
       return entity_;
     }
 
     /** \brief obtain level */
-    int level () const { return hostIterator().level(); }
-
-    /** \brief obtain host iterator */
-    const HostIterator &hostIterator() const { return hostIterator_; }
+    int level () const { return entity_.level(); }
 
   protected:
-    void releaseEntity () { entityImpl() = EntityImpl( data() ); }
-
     EntityImpl &entityImpl () const
     {
       return Grid::getRealImplementation( entity_ );
@@ -109,7 +78,6 @@ namespace Dune
 
   protected:
     mutable Entity entity_;
-    HostIterator hostIterator_;
   };
 
 } // namespace Dune
