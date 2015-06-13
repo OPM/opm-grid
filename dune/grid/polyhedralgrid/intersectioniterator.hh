@@ -10,17 +10,15 @@ namespace Dune
   // PolyhedralGridIntersectionIterator
   // --------------------------
 
-  template< class Grid, class HostIntersectionIterator >
+  template< class Grid >
   class PolyhedralGridIntersectionIterator
   {
   protected:
-    typedef PolyhedralGridIntersectionIterator< Grid, HostIntersectionIterator > This;
+    typedef PolyhedralGridIntersectionIterator< Grid > This;
 
     typedef typename remove_const< Grid >::type::Traits Traits;
+    static const bool isLeafIntersection = true;
 
-    static const bool isLeafIntersection =
-      is_same< HostIntersectionIterator,
-               typename Grid::HostGrid::Traits::LeafIntersectionIterator > :: value ;
   public:
     typedef typename conditional< isLeafIntersection,
                                   typename Traits :: LeafIntersection,
@@ -31,38 +29,25 @@ namespace Dune
 
     typedef typename Grid::template Codim< 0 >::EntityPointer EntityPointer;
 
-    PolyhedralGridIntersectionIterator ( ExtraData data, const HostIntersectionIterator &hostIterator )
-    : intersection_( IntersectionImpl( data ) ),
-      hostIterator_( hostIterator )
+    PolyhedralGridIntersectionIterator ( ExtraData data )
+    : intersection_( IntersectionImpl( data ) )
     {}
 
-    PolyhedralGridIntersectionIterator ( const This &other )
-    : intersection_( IntersectionImpl( other.data() ) ),
-      hostIterator_( other.hostIterator_ )
-    {}
-
-    const This &operator= ( const This &other )
-    {
-      intersectionImpl() = IntersectionImpl( other.data() );
-      hostIterator_ = other.hostIterator_;
-      return *this;
-    }
+    PolyhedralGridIntersectionIterator ( const This &other ) = default;
+    const This &operator= ( const This &other ) = default;
 
     bool equals ( const This &other ) const
     {
-      return (hostIterator_ == other.hostIterator_);
+        return seed_ == other_.seed_ && intersection_.faceIdx_ == other.intersection_.faceIdx_;
     }
 
     void increment ()
     {
-      ++hostIterator_;
-      intersectionImpl() = IntersectionImpl( data() );
+      ++intersection_.faceIdx_;
     }
 
     const Intersection &dereference () const
     {
-      if( !intersectionImpl() )
-        intersectionImpl() = IntersectionImpl( data(), *hostIterator_ );
       return intersection_;
     }
 
@@ -75,7 +60,6 @@ namespace Dune
     }
 
     mutable Intersection intersection_;
-    HostIntersectionIterator hostIterator_;
   };
 
 } // namespace Dune
