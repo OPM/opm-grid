@@ -21,31 +21,28 @@ namespace Dune
   // Internal Forward Declarations
   // -----------------------------
 
-  template< int dim, int dimworldView, PartitionIteratorType pitype >
+  template< class Grid, PartitionIteratorType defaultpitype >
   class PolyhedralGridView;
+
+  template< class Grid, PartitionIteratorType ptype >
+  struct PolyhedralGridViewTraits;
 
 
   // PolyhedralGridView
   // ----------
 
-  template< class GVTraits >
-  class PolyhedralGridViewBasic
+  template< class Grid, PartitionIteratorType defaultpitype >
+  class PolyhedralGridView
   {
-    typedef PolyhedralGridViewBasic< GVTraits > This;
+    typedef PolyhedralGridView< Grid, defaultpitype > This;
 
   public:
-    typedef GVTraits Traits;
-
-    typedef typename Traits::HostGridView HostGridView;
+    typedef PolyhedralGridViewTraits< Grid, defaultpitype > Traits;
 
     typedef typename Traits::Grid Grid;
-
     typedef typename Traits::IndexSet IndexSet;
-
     typedef typename Traits::Intersection Intersection;
-
     typedef typename Traits::IntersectionIterator IntersectionIterator;
-
     typedef typename Traits::CollectiveCommunication CollectiveCommunication;
 
     template< int codim >
@@ -54,11 +51,10 @@ namespace Dune
     {};
 
     static const bool conforming = Traits :: conforming;
-    static const PartitionIteratorType pitype = Traits :: pitype;
+    static const PartitionIteratorType pitype = Traits :: defaultpitype;
 
-    PolyhedralGridViewBasic ( const Grid &grid, const HostGridView &hostGridView )
-    : grid_( &grid ),
-      hostGridView_( hostGridView )
+    PolyhedralGridView ( const Grid &grid, int level )
+    : grid_( &grid )
     {}
 
     const Grid &grid () const
@@ -69,72 +65,70 @@ namespace Dune
 
     const IndexSet &indexSet () const
     {
-      if( !indexSet_ )
-        indexSet_ = IndexSet( hostGridView().indexSet() );
-      return indexSet_;
+        return grid_->indexSet();
     }
 
     int size ( int codim ) const
     {
-      return hostGridView().size( codim );
+      return grid_->size( codim );
     }
 
     int size ( const GeometryType &type ) const
     {
-      return hostGridView().size( type );
+      return grid_->size( type );
     }
 
     template< int codim >
     typename Codim< codim >::Iterator begin () const
     {
-      return begin< codim, pitype >();
+      return begin< codim, defaultpitype >();
     }
 
     template< int codim, PartitionIteratorType pit >
     typename Codim< codim >::template Partition< pit >::Iterator begin () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pit >::IteratorImpl Impl;
-      return Impl( grid().extraData(), hostGridView().template begin< codim, pit >() );
+      return Impl( grid().extraData() );
     }
 
     template< int codim >
     typename Codim< codim >::Iterator end () const
     {
-      return end< codim, pitype >();
+      return end< codim, defaultpitype >();
     }
 
     template< int codim, PartitionIteratorType pit >
     typename Codim< codim >::template Partition< pit >::Iterator end () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pit >::IteratorImpl Impl;
-      return Impl( grid().extraData(), hostGridView().template end< codim, pit >() );
+      return Impl( grid().extraData() );
     }
 
     IntersectionIterator ibegin ( const typename Codim< 0 >::Entity &entity ) const
     {
       typedef typename Traits::IntersectionIteratorImpl IntersectionIteratorImpl;
-      return IntersectionIteratorImpl( grid().extraData(), hostGridView().ibegin( Grid::getRealImplementation( entity ).hostEntity() ) );
+      return IntersectionIteratorImpl( grid().extraData(), entity, true) );
     }
 
     IntersectionIterator iend ( const typename Codim< 0 >::Entity &entity ) const
     {
       typedef typename Traits::IntersectionIteratorImpl IntersectionIteratorImpl;
-      return IntersectionIteratorImpl( grid().extraData(), hostGridView().iend( Grid::getRealImplementation( entity ).hostEntity() ) );
+      return IntersectionIteratorImpl( grid().extraData(), entity, false) );
     }
 
     const CollectiveCommunication &comm () const
     {
-      return hostGridView().comm();
+      return grid_->.comm();
     }
 
     int overlapSize ( int codim ) const
     {
-      return hostGridView().overlapSize( codim );
+      return grid_->.overlapSize( codim );
     }
 
     int ghostSize ( int codim ) const
     {
-      return hostGridView().ghostSize( codim );
+      return grid_->.ghostSize( codim );
     }
 
     template< class DataHandle, class Data >
@@ -142,45 +136,37 @@ namespace Dune
                        InterfaceType interface,
                        CommunicationDirection direction ) const
     {
+#warning TODO
+#if 0
       typedef CommDataHandleIF< DataHandle, Data > DataHandleIF;
       typedef PolyhedralGridDataHandle< DataHandleIF, Grid > WrappedDataHandle;
 
       WrappedDataHandle wrappedDataHandle( grid().extraData(), dataHandle );
       hostGridView().communicate( wrappedDataHandle, interface, direction );
+#endif
     }
-
-    const HostGridView &hostGridView () const { return hostGridView_; }
 
   protected:
     const Grid *grid_;
-    HostGridView hostGridView_;
-    mutable IndexSet indexSet_;
   };
 
   // PolyhedralGridViewTraits
   // ----------------
 
-  template< class HGV, PartitionIteratorType ptype >
+  template< class Grid, PartitionIteratorType ptype >
   struct PolyhedralGridViewTraits
   {
     static const PartitionIteratorType pitype = ptype;
-
-    friend class PolyhedralGridView< HGV, pitype >;
-
-    typedef HGV HostGridView;
-
-    typedef typename HostGridView::Grid HostGrid;
+    friend class PolyhedralGridView< pitype >;
 
     typedef PolyhedralGridView< HostGridView, pitype > GridViewImp;
-
     typedef PolyhedralGrid< dim, dimworld > Grid;
+    typedef PolyhedralGridIndexSet< Grid::dimension, Grid::dimensionworld > IndexSet;
 
-    typedef PolyhedralGridIndexSet< const Grid, typename HostGridView::IndexSet > IndexSet;
-
-    typedef PolyhedralGridIntersection< const Grid, typename HostGridView::Intersection > IntersectionImpl;
+    typedef PolyhedralGridIntersection< const Grid, Grid::Intersection > IntersectionImpl;
     typedef Dune::Intersection< const Grid, IntersectionImpl > Intersection;
 
-    typedef PolyhedralGridIntersectionIterator< const Grid, typename HostGridView::IntersectionIterator > IntersectionIteratorImpl;
+    typedef PolyhedralGridIntersectionIterator< const Grid > IntersectionIteratorImpl;
     typedef Dune::IntersectionIterator< const Grid, IntersectionIteratorImpl, IntersectionImpl > IntersectionIterator;
 
     typedef typename HostGridView::CollectiveCommunication CollectiveCommunication;
@@ -206,23 +192,7 @@ namespace Dune
       typedef typename Partition< pitype >::Iterator Iterator;
     };
 
-    static const bool conforming = HostGridView::conforming;
-  };
-
-
-  template< class HGV, PartitionIteratorType pitype >
-  class PolyhedralGridView : public PolyhedralGridViewBasic< PolyhedralGridViewTraits< HGV, pitype > >
-  {
-    typedef PolyhedralGridView< HGV, pitype > This;
-    typedef PolyhedralGridViewBasic< PolyhedralGridViewTraits< HGV, pitype > > Base;
-
-  public:
-    typedef typename Base::HostGridView HostGridView;
-    typedef typename Base::Grid Grid;
-
-    PolyhedralGridView ( const Grid &grid, const HostGridView &hostGridView )
-    : Base( grid, hostGridView )
-    {}
+    static const bool conforming = false;
   };
 
 } // namespace Dune
