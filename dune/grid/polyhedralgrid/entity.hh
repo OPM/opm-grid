@@ -62,9 +62,6 @@ namespace Dune
     /** \} */
 
   protected:
-    // type of the host grid
-    typedef typename Traits::HostGrid  HostGrid;
-
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Traits::ExtraDataType ExtraData;
 
@@ -79,11 +76,6 @@ namespace Dune
     {}
 
     /** \brief construct an initialized entity
-     *
-     *  \param[in]  hostEntity  corresponding entity in the host grid
-     *
-     *  \note The reference to the host entity must remain valid  as long as
-     *        this entity is in use.
      */
     PolyhedralGridEntityBasic ( ExtraData data, const EntitySeed& seed )
     : seed_( seed )
@@ -91,9 +83,6 @@ namespace Dune
     {}
 
     /** \} */
-
-    /** \brief return true if entity hold a vaild host entity */
-    operator bool () const { return seed_.isValid(); }
 
     /** \name Methods Shared by Entities of All Codimensions
      *  \{ */
@@ -125,7 +114,7 @@ namespace Dune
       return Geometry( seed_ );
     }
 
-    /** \brief return EntitySeed of host grid entity */
+    /** \brief return EntitySeed */
     EntitySeed seed () const { return seed_; }
 
     /** \} */
@@ -155,21 +144,11 @@ namespace Dune
     typedef typename remove_const< Grid >::type::Traits Traits;
 
   protected:
-    // type of the host grid
-    typedef typename Traits::HostGrid  HostGrid;
-
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Traits::ExtraDataType ExtraData;
 
   public:
     using Base :: codimension ;
-
-    /** \name Host Types
-     *  \{ */
-
-    //! type of corresponding host entity
-    typedef typename HostGrid::template Codim< codimension >::Entity HostEntity;
-    /** \} */
 
     explicit PolyhedralGridEntity ( ExtraData data )
     : Base( data )
@@ -194,7 +173,6 @@ namespace Dune
     typedef PolyhedralGridEntityBasic< 0, dim, Grid > Base ;
   protected:
     typedef typename Base::Traits Traits;
-    typedef typename Base::HostGrid HostGrid;
 
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Base::ExtraData ExtraData;
@@ -202,13 +180,6 @@ namespace Dune
   public:
     using Base::codimension ;
     using Base::data ;
-    using Base::hostEntity ;
-    /** \name Host Types
-     *  \{ */
-
-    //! type of corresponding host entity
-    typedef typename HostGrid::template Codim< codimension >::Entity HostEntity;
-    /** \} */
 
   protected:
     typedef typename Traits :: LeafIntersectionIteratorImpl  LeafIntersectionIteratorImpl;
@@ -243,13 +214,7 @@ namespace Dune
     : Base( data )
     {}
 
-    /** \brief construct an initialized entity
-     *
-     *  \param[in]  hostEntity  corresponding entity in the host grid
-     *
-     *  \note The reference to the host entity must remain valid as long as
-     *        this entity is in use.
-     */
+    /** \brief construct an initialized entity */
     PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
     : Base( data, seed )
     {}
@@ -309,7 +274,7 @@ namespace Dune
     LocalGeometry geometryInFather () const
     {
       DUNE_THROW(InvalidStateException,"no father available");
-      return LocalGeometry( hostEntity().geometryInFather() );
+      return LocalGeometry( data() );
     }
 
     HierarchicIterator hbegin ( int maxLevel ) const
