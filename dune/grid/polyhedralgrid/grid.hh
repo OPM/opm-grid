@@ -779,6 +779,46 @@ namespace Dune
     ExtraData extraData () const  { return this; }
 
     template <class EntitySeed>
+    int corners( const EntitySeed& seed ) const
+    {
+      const int codim = EntitySeed :: codimension;
+      const int index = seed.index();
+      switch (codim)
+      {
+        case 0:
+          return cellVertices_[ index ].size();
+        case 1:
+          return 0;//grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
+        case dim:
+          return 1;
+      }
+      return 0;
+    }
+
+    template <class EntitySeed>
+    GlobalCoordinate
+    corner( const EntitySeed& seed, const int i ) const
+    {
+      const int codim = EntitySeed :: codimension;
+      switch (codim)
+      {
+        case 0:
+          {
+            const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
+            return copyToGlobalCoordinate( grid_->node_coordinates + coordIndex );
+          }
+        //case 1:
+        //  return 0;//grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
+        case dim:
+          {
+            const int coordIndex = GlobalCoordinate :: dimension * seed.index();
+            return copyToGlobalCoordinate( grid_->node_coordinates + coordIndex );
+          }
+      }
+      return GlobalCoordinate( 0 );
+    }
+
+    template <class EntitySeed>
     int subEntities( const EntitySeed& seed, const int codim ) const
     {
       const int index = seed.index();
