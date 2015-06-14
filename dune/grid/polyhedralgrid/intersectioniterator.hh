@@ -36,7 +36,7 @@ namespace Dune
     {}
 
     PolyhedralGridIntersectionIterator ( const This& other )
-      : intersection_( other.intersection_ )
+      : intersection_( IntersectionImpl( other.intersectionImpl()) )
     {}
 
     bool equals ( const This &other ) const

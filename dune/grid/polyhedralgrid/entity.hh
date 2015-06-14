@@ -49,6 +49,9 @@ namespace Dune
 
     typedef typename Traits::Index Index;
 
+    //! type of entity
+    typedef typename Grid::template Codim< codimension >::Entity Entity;
+
     //! type of corresponding entity seed
     typedef typename Grid::template Codim< codimension >::EntitySeed EntitySeed;
     //! type of corresponding geometry
@@ -252,11 +255,12 @@ namespace Dune
     }
 
     template< int codim >
-    typename Grid::template Codim< codim >::Entity
+    typename Grid::template Codim< codim >::EntityPointer
     subEntity ( int i ) const
     {
-      typedef typename Traits::template Codim< codim >::EntityImpl EntityImpl;
-      return EntityImpl( data(), data()->template subEntitySeed< codim >( seed_, i ) );
+      typedef typename Traits::template Codim< codim >::EntityPointerImpl EntityPointerImpl;
+      typedef typename Traits::template Codim< codim >::EntityImpl        EntityImpl;
+      return EntityPointerImpl( EntityImpl( data(), data()->template subEntitySeed< codim >( seed_, i ) ) );
     }
 
     bool hasBoundaryIntersections () const
@@ -296,13 +300,13 @@ namespace Dune
     HierarchicIterator hbegin ( int maxLevel ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIteratorImpl( data() );
+      return HierarchicIterator( HierarchicIteratorImpl( data() ) );
     }
 
     HierarchicIterator hend ( int maxLevel ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIteratorImpl( data() );
+      return HierarchicIterator( HierarchicIteratorImpl( data() ) );
     }
 
     bool isRegular () const

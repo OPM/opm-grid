@@ -7,6 +7,7 @@
 #include <vector>
 
 //- dune-common includes
+#include <dune/common/version.hh>
 #include <dune/common/nullptr.hh>
 
 //- dune-grid includes
@@ -78,14 +79,16 @@ namespace Dune
 
         typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
-        //typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
-        //typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
-
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
 
-        //typedef Dune::EntityPointer< const Grid, EntityImpl > EntityPointer;
-        typedef Entity EntityPointer;
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+        typedef EntityImpl EntityPointerImpl;
+        typedef Entity     EntityPointer;
+#else
+        typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
+        typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
+#endif
 
         //typedef Dune::EntitySeed< const Grid, PolyhedralGridEntitySeed< codim, const Grid > > EntitySeed;
         typedef PolyhedralGridEntitySeed< codim, const Grid > EntitySeed;

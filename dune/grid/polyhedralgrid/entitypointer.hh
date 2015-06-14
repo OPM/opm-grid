@@ -46,7 +46,7 @@ namespace Dune
     {}
 
     PolyhedralGridEntityPointer ( const This &other )
-    : entity_( other.entity_ )
+    : entity_( EntityImpl( other.entityImpl() ) )
     {}
 
     const This &operator= ( const This &other )
@@ -66,6 +66,9 @@ namespace Dune
     {
       return entity_;
     }
+
+    operator const Entity& () const { return entity_; }
+    operator       Entity& ()       { return entity_; }
 
     /** \brief obtain level */
     int level () const { return entity_.level(); }

@@ -38,6 +38,7 @@ namespace Dune
     typedef typename Traits::template Codim< 1 >::LocalGeometry LocalGeometry;
 
   protected:
+    typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
     typedef typename Traits::template Codim< 0 >::EntityImpl EntityImpl;
     typedef typename Traits::template Codim< 1 >::GeometryImpl GeometryImpl;
     //typedef typename Traits::ExtraData  ExtraData;
@@ -49,21 +50,27 @@ namespace Dune
       intersectionIdx_( -1 )
     {}
 
-    explicit PolyhedralGridIntersection ( ExtraData data, const EntitySeed& seed, const int intersectionIdx )
+    PolyhedralGridIntersection ( ExtraData data, const EntitySeed& seed, const int intersectionIdx )
     : data_( data ),
       seed_( seed ),
       intersectionIdx_( intersectionIdx )
     {}
 
-    const EntityImpl inside () const
+    PolyhedralGridIntersection ( const This& other )
+    : data_( other.data_ ),
+      seed_( other.seed_ ),
+      intersectionIdx_( other.intersectionIdx_ )
+    {}
+
+    const EntityPointer inside () const
     {
-        return EntityImpl( data(), seed_ );
+        return EntityPointer( EntityPointerImpl( EntityImpl( data(), seed_ ) ) );
     }
 
-    EntityImpl outside () const
+    EntityPointer outside () const
     {
-      return EntityImpl(data(),
-                        data()->neighbor(seed_, intersectionIdx_));
+      return EntityPointer( EntityPointerImpl( EntityImpl(data(),
+                                               data()->neighbor(seed_, intersectionIdx_)) ) );
     }
 
     bool operator == ( const This& other ) const
@@ -98,7 +105,7 @@ namespace Dune
 
     Geometry geometry () const
     {
-      return Geometry(GeometryImpl(data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_)));
+      return Geometry( GeometryImpl(data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_)));
     }
 
     GeometryType type () const { return GeometryType(GeometryType::cube, dimension); }
