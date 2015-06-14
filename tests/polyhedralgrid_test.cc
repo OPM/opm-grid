@@ -43,8 +43,6 @@ int main()
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
-    //std::cout << deckString;
-
     std::vector<double> porv;
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;
     Grid grid(deck, porv);
