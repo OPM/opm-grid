@@ -300,6 +300,10 @@ namespace Dune
         cellVertices_[ c ].resize( cell_pts.size() );
         std::copy(cell_pts.begin(), cell_pts.end(), cellVertices_[ c ].begin() );
       }
+
+      geomTypes_.resize(dim + 1);
+      for (int codim = 0; codim <= dim; ++codim)
+        geomTypes_[codim].push_back(GeometryType(GeometryType::cube, dim - codim));
     }
 
     /** \brief destructor
@@ -856,6 +860,15 @@ namespace Dune
       }
     }
 
+    const std::vector< GeometryType > &geomTypes ( int codim ) const
+    {
+      static std::vector< GeometryType > emptyDummy;
+      if (codim <= 0 && geomTypes_.size() < codim)
+        return geomTypes_[codim];
+
+      return emptyDummy;
+    }
+
     int faceTag( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       if( ! grid_->cell_facetag )
@@ -957,6 +970,7 @@ namespace Dune
     std::unique_ptr< UnstructuredGridType > grid_;
     CollectiveCommunication comm_;
     std::array< int, 3 > cartDims_;
+    std::vector< std::vector< GeometryType > > geomTypes_;
     std::vector< std::vector< int > > cellVertices_;
     mutable std::vector< LevelIndexSet * > levelIndexSets_;
     mutable LeafIndexSet leafIndexSet_;
@@ -997,7 +1011,7 @@ namespace Dune
 
     /** \brief type of world geometry
      *
-     *  Models the geomtry mapping of the entity, i.e., the mapping from the
+     *  Models the geometry mapping of the entity, i.e., the mapping from the
      *  reference element into world coordinates.
      *
      *  The geometry is a model of Dune::Geometry, implemented through the

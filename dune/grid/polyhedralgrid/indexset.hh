@@ -96,8 +96,7 @@ namespace Dune
 
     const std::vector< GeometryType > &geomTypes ( int codim ) const
     {
-        static std::vector<GeometryType> gt{{GeometryType::cube}};
-        return gt;
+        return grid().geomTypes(codim);
     }
 
     const GridType& grid() const { assert( grid_ ); return *grid_; }
