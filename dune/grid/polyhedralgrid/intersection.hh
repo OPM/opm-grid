@@ -83,7 +83,7 @@ namespace Dune
 
     bool conforming () const { return false; }
 
-    bool neighbor () const { return !data()->neighbor(seed_, intersectionIdx_).isValid(); }
+    bool neighbor () const { return data()->neighbor(seed_, intersectionIdx_).isValid(); }
 
     int boundaryId () const { return 1; }
 

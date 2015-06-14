@@ -322,7 +322,7 @@ namespace Dune
         if( levelIndexSets_[ i ] )
           delete( levelIndexSets_[ i ] );
       }
-      //destroy_grid( *grid_ );
+      destroy_grid( &(*grid_) );
     }
 
     /** \} */
@@ -975,7 +975,7 @@ namespace Dune
     }
 
   protected:
-    std::unique_ptr< UnstructuredGridType > grid_;
+    UnstructuredGridType* grid_;
     CollectiveCommunication comm_;
     std::array< int, 3 > cartDims_;
     std::vector< std::vector< GeometryType > > geomTypes_;
