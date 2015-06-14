@@ -842,6 +842,20 @@ namespace Dune
     }
 
     template <class EntitySeed>
+    GlobalCoordinate
+    outerNormal( const EntitySeed& seed, const int i ) const
+    {
+      const int index = seed.index();
+      const int face  = this->template subEntitySeed<1>( seed, i ).index();
+      const int normalIdx = face * GlobalCoordinate :: dimension ;
+      GlobalCoordinate normal = copyToGlobalCoordinate( grid_->face_normals + normalIdx );
+      const int nb = grid_->face_cells[ face ];
+      if( nb != seed.index() )
+        normal *= -1.0;
+      return std::move( normal );
+    }
+
+    template <class EntitySeed>
     GlobalCoordinate centroids( const EntitySeed& seed ) const
     {
       const int index = GlobalCoordinate :: dimension * seed.index();

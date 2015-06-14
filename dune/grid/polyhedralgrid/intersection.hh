@@ -115,6 +115,9 @@ namespace Dune
 
     GlobalCoordinate
     outerNormal ( const FieldVector< ctype, dimension-1 > &local ) const
+    { return outerNormal(); }
+
+    GlobalCoordinate outerNormal () const
     { return data().outerNormal(seed_, intersectionIdx_); }
 
     GlobalCoordinate
@@ -126,7 +129,9 @@ namespace Dune
     GlobalCoordinate
     centerUnitOuterNormal () const
     {
-      return data().unitOuterNormal(seed_, intersectionIdx_);
+      GlobalCoordinate normal( outerNormal() );
+      normal /= normal.two_norm();
+      return std::move( normal );
     }
 
     ExtraData data() const { return data_; }
