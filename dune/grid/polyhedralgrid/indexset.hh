@@ -59,15 +59,23 @@ namespace Dune
     template< int cd >
     IndexType index ( const typename Traits::template Codim< cd >::Entity &entity ) const
     {
-#warning TODO
-      return 0;
-      //return grid_->getRealImplementation(entity).template index< cd >( );
+      return grid_->getRealImplementation(entity).index();
     }
 
     template< class Entity >
     IndexType subIndex ( const Entity &entity, int i, unsigned int codim ) const
     {
-      return subIndex< Entity::codimension >( entity, i, codim );
+      if( codim == 0 )
+        return index( entity );
+      else if ( codim == 1 )
+        return index( entity.template subEntity< 1 > ( entity, i ) );
+      else if ( codim == dimension )
+        return index( entity.template subEntity< dimension > ( entity, i ) );
+      else
+      {
+        DUNE_THROW(NotImplemented,"codimension not available");
+        return IndexType( -1 );
+      }
     }
 
     IndexType size ( GeometryType type ) const

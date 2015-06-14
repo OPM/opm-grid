@@ -30,7 +30,7 @@ void testGrid( const GridView& gridView )
   typedef typename GridView :: IndexSet IndexSet;
   const IndexSet& indexSet = gridView.indexSet();
   for( Iterator it = gridView.template begin< 0 > (),
-       end = gridView.template begin< 0 > (); it != end; ++it )
+       end = gridView.template end< 0 > (); it != end; ++it )
   {
     const Entity& entity = *it ;
     std::cout << "Entity[ " << indexSet.index( entity ) << " ] = "
@@ -43,7 +43,7 @@ int main()
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
-    std::cout << deckString;
+    //std::cout << deckString;
 
     std::vector<double> porv;
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;

@@ -137,14 +137,6 @@ namespace Dune
                        InterfaceType interface,
                        CommunicationDirection direction ) const
     {
-#warning TODO
-#if 0
-      typedef CommDataHandleIF< DataHandle, Data > DataHandleIF;
-      typedef PolyhedralGridDataHandle< DataHandleIF, Grid > WrappedDataHandle;
-
-      WrappedDataHandle wrappedDataHandle( grid().extraData(), dataHandle );
-      hostGridView().communicate( wrappedDataHandle, interface, direction );
-#endif
     }
 
   protected:
@@ -159,7 +151,6 @@ namespace Dune
   {
     typedef PolyhedralGrid< dim, dimworld > Grid;
     static const PartitionIteratorType pitype = ptype;
-    //friend class PolyhedralGridView< pitype >;
 
     typedef PolyhedralGridView< dim, dimworld, pitype > GridViewImp;
     typedef PolyhedralGridIndexSet< Grid::dimension, Grid::dimensionworld > IndexSet;

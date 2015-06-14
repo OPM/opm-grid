@@ -47,6 +47,8 @@ namespace Dune
     //! coordinate type of the grid
     typedef typename Traits::ctype ctype;
 
+    typedef typename Traits::Index Index;
+
     //! type of corresponding entity seed
     typedef typename Grid::template Codim< codimension >::EntitySeed EntitySeed;
     //! type of corresponding geometry
@@ -117,6 +119,8 @@ namespace Dune
     /** \name Methods Supporting the Grid Implementation
      *  \{ */
     ExtraData data() const { return data_; }
+
+    Index index () const { return seed_.index(); }
 
     /** \} */
 

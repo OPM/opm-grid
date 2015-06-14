@@ -278,7 +278,9 @@ namespace Dune
       globalIdSet_( *this ),
       localIdSet_( *this )
       // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
-    {}
+    {
+
+    }
 
     /** \brief destructor
      */
@@ -745,6 +747,8 @@ namespace Dune
       const int index = seed.index();
       switch (codim)
       {
+        case 0:
+          return 0;
         case 1:
           return grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
         case dim:
@@ -777,7 +781,7 @@ namespace Dune
         return i;
       else
       {
-        assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
+        // assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
         return grid_->cell_facetag[ grid_->cell_facepos[ seed.index() ] + i ] ;
       }
     }
@@ -814,6 +818,7 @@ namespace Dune
     {
       const int index = GlobalCoordinate :: dimension * seed.index();
       const int codim = EntitySeed::codimension;
+      assert( index >= 0 && index < size( codim ) * GlobalCoordinate :: dimension );
 
       if( codim == 0 )
         return copyToGlobalCoordinate( grid_->cell_centroids + index );
@@ -844,6 +849,8 @@ namespace Dune
         return grid_->cell_volumes[ index ];
       else if ( codim == 1 )
         return grid_->face_areas[ index ];
+      else if ( codim == dim )
+        return 1.0;
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");

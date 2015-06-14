@@ -28,17 +28,14 @@ namespace Dune
         : grid_(grid)
     {}
 
-    //PolyhedralGridIdSet ( const This &other ) = default;
-    //const This &operator= ( const This &other ) = default;
-
     //! id meethod for entity and specific codim
     template< int codim >
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
-        if (codim == 0)
-            return grid_.cartesianElementIndexIndex(entity.seed());
-        else
-            return entity.seed();
+      if (codim == 0)
+        return grid_.cartesianElementIndexIndex(entity.seed());
+      else
+        return entity.index();
     }
 
     //! id method of all entities
@@ -52,8 +49,17 @@ namespace Dune
     template< class Entity >
     IdType subId ( const Entity &entity, int i, unsigned int codim ) const
     {
-#warning TODO
-        return 0;
+      if( codim == 0 )
+        return id( entity );
+      else if ( codim == 1 )
+        return id( entity.template subEntity< 1 >( entity, i ) );
+      else if ( codim == dim )
+        return id( entity.template subEntity< dim >( entity, i ) );
+      else
+      {
+        DUNE_THROW(NotImplemented,"codimension not available");
+        return IdType( -1 );
+      }
     }
 
   protected:
