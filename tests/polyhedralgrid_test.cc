@@ -49,11 +49,26 @@ int main()
 
     GridView gridView = grid.leafGridView();
 
+    int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
+        int numIs = 0;
         IsIt isIt = elemIt->ibegin();
         IsIt isEndIt = elemIt->iend();
+        for (; isIt != isEndIt; ++isIt) {
+            ++ numIs;
+        }
+
+        if (numIs != 6) {
+            std::cout << "number of elements is wrong for element " << numElem << "\n";
+        }
+
+        ++ numElem;
+    }
+
+    if (numElem != 10*10*10) {
+        std::cout << "number of intersections is wrong\n";
     }
 
     testGrid( grid.leafGridView() );
