@@ -717,6 +717,19 @@ namespace Dune
       return cartDims_;
     }
 
+    const int* globalCell() const
+    {
+      return grid_->global_cell;
+    }
+
+    void getIJK(const int c, std::array<int,3>& ijk) const
+    {
+      int gc = globalCell()[c];
+      ijk[0] = gc % logicalCartesianSize()[0];  gc /= logicalCartesianSize()[0];
+      ijk[1] = gc % logicalCartesianSize()[1];
+      ijk[2] = gc / logicalCartesianSize()[1];
+    }
+
   protected:
     UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
     {
