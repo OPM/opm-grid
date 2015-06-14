@@ -70,8 +70,29 @@ int main()
 
     testGrid( grid.leafGridView() );
 
+    std::cout << "create vertex mapper\n";
+    Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
+                                              Dune::MCMGVertexLayout> mapper(grid.leafGridView());
+
+    std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
+    if (mapper.size() != 27) {
+        std::cout << "Wrong size of vertex mapper. Expected 27!\n";
+        std::abort();
+    }
+
+    std::cout << "create vtkWriter\n";
     typedef Dune::VTKWriter<GridView> VtkWriter;
     VtkWriter vtkWriter(grid.leafGridView());
-    vtkWriter.write("polyhedralgrid_test");
+
+    std::cout << "create cellData\n";
+    int numElems = grid.size(0);
+    std::vector<double> tmpData(numElems, 0.0);
+
+    std::cout << "add cellData\n";
+    vtkWriter.addCellData(tmpData, "testdata");
+
+    std::cout << "write\n";
+    vtkWriter.write("polyhedralgrid_test", Dune::VTK::ascii);
+
     return 0;
 }

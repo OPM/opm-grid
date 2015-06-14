@@ -92,7 +92,7 @@ namespace Dune
      */
     GeometryType type () const
     {
-      return GeometryType();
+      return data()->geomTypes(codimension)[0];
     }
 
     /** \brief obtain the level of this entity */

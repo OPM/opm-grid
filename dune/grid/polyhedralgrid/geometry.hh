@@ -51,7 +51,7 @@ namespace Dune
       seed_( seed )
     {}
 
-    GeometryType type () const { return GeometryType( GeometryType::cube, mydimension ); }
+    GeometryType type () const { return data()->geomTypes(codimension)[0]; }
     bool affine () const { return false; }
 
     int corners () const { return data()->corners( seed_ ); }

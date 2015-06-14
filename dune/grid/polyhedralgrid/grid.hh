@@ -306,8 +306,11 @@ namespace Dune
       }
 
       geomTypes_.resize(dim + 1);
-      for (int codim = 0; codim <= dim; ++codim)
-        geomTypes_[codim].push_back(GeometryType(GeometryType::cube, dim - codim));
+      GeometryType tmp;
+      for (int codim = 0; codim <= dim; ++codim) {
+        tmp.makeCube(dim - codim);
+        geomTypes_[codim].push_back(tmp);
+      }
     }
 
     /** \brief destructor
@@ -867,7 +870,7 @@ namespace Dune
     const std::vector< GeometryType > &geomTypes ( int codim ) const
     {
       static std::vector< GeometryType > emptyDummy;
-      if (codim <= 0 && geomTypes_.size() < codim)
+      if (0 <= codim && codim < geomTypes_.size())
         return geomTypes_[codim];
 
       return emptyDummy;
