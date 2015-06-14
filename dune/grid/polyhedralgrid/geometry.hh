@@ -58,16 +58,59 @@ namespace Dune
     GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
     GlobalCoordinate center () const { return data()->centroids( seed_ ); }
 
-    GlobalCoordinate global ( const LocalCoordinate &local   ) const
+    GlobalCoordinate global(const LocalCoordinate& local) const
     {
-      DUNE_THROW(NotImplemented,"global not implemented");
-      return GlobalCoordinate( 0 );
+      static_assert(mydimension == 3, "");
+      static_assert(coorddimension == 3, "");
+      // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
+      LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
+      uvw[0] -= local;
+      // Access pattern for uvw matching ordering of corners.
+      const int pat[8][3] = { { 0, 0, 0 },
+                              { 1, 0, 0 },
+                              { 0, 1, 0 },
+                              { 1, 1, 0 },
+                              { 0, 0, 1 },
+                              { 1, 0, 1 },
+                              { 0, 1, 1 },
+                              { 1, 1, 1 } };
+      GlobalCoordinate xyz(0.0);
+      for (int i = 0; i < 8; ++i) {
+        GlobalCoordinate corner_contrib = corner(i);
+        double factor = 1.0;
+        for (int j = 0; j < 3; ++j) {
+          factor *= uvw[pat[i][j]][j];
+        }
+        corner_contrib *= factor;
+        xyz += corner_contrib;
+      }
+      return xyz;
     }
 
-    LocalCoordinate  local  ( const GlobalCoordinate &global ) const
+    /// Mapping from the cell to the reference domain.
+    /// May be slow.
+    LocalCoordinate local(const GlobalCoordinate& y) const
     {
-      DUNE_THROW(NotImplemented,"local not implemented");
-      return LocalCoordinate( 0 );
+      static_assert(mydimension == 3, "");
+      static_assert(coorddimension == 3, "");
+      // This code is modified from dune/grid/genericgeometry/mapping.hh
+      // \todo: Implement direct computation.
+      const ctype epsilon = 1e-12;
+      const ReferenceElement< ctype , 3 > & refElement =
+        ReferenceElements< ctype, 3 >::general(type());
+
+      LocalCoordinate x = refElement.position(0,0);
+      LocalCoordinate dx;
+      do {
+        using namespace GenericGeometry;
+        // DF^n dx^n = F^n, x^{n+1} -= dx^n
+        JacobianTransposed JT = jacobianTransposed(x);
+        GlobalCoordinate z = global(x);
+        z -= y;
+        MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<3, 3>(JT, z, dx );
+        x -= dx;
+      } while (dx.two_norm2() > epsilon*epsilon);
+      return x;
     }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
