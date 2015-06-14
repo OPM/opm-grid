@@ -3,6 +3,9 @@
 #ifndef DUNE_POLYHEDRALGRID_GRID_HH
 #define DUNE_POLYHEDRALGRID_GRID_HH
 
+#include <set>
+#include <vector>
+
 //- dune-common includes
 #include <dune/common/nullptr.hh>
 
@@ -279,7 +282,22 @@ namespace Dune
       localIdSet_( *this )
       // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
     {
+      const int numCells = size( 0 );
+      cellVertices_.reserve( numCells );
+      for (int c = 0; c < numCells; ++c)
+      {
+        std::set<int> cell_pts;
+        for (int hf=grid_->cell_facepos[ c ]; hf < grid_->cell_facepos[c+1]; ++hf)
+        {
+           int f = grid_->cell_faces[ hf ];
+           const int* fnbeg = grid_->face_nodes + grid_->face_nodepos[f];
+           const int* fnend = grid_->face_nodes + grid_->face_nodepos[f+1];
+           cell_pts.insert(fnbeg, fnend);
+        }
 
+        cellVertices_[ c ].resize( cell_pts.size() );
+        std::copy(cell_pts.begin(), cell_pts.end(), cellVertices_[ c ].begin() );
+      }
     }
 
     /** \brief destructor
@@ -752,7 +770,7 @@ namespace Dune
         case 1:
           return grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
         case dim:
-          return 0;//grid_.cell_faces[ index+1 ] - grid_.cell_faces[ index ];
+          return cellVertices_[ index ].size();
       }
       return 0;
     }
@@ -768,6 +786,11 @@ namespace Dune
       {
         assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
         return EntitySeed( grid_->cell_faces[ grid_->cell_facepos[ elementIndex ] + i ] );
+      }
+      else if ( codim == dim )
+      {
+        assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
+        return EntitySeed( cellVertices_[ elementIndex ][ i ] );
       }
       else
       {
@@ -861,6 +884,7 @@ namespace Dune
   protected:
     std::unique_ptr< UnstructuredGridType > grid_;
     CollectiveCommunication comm_;
+    std::vector< std::vector< int > > cellVertices_;
     mutable std::vector< LevelIndexSet * > levelIndexSets_;
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
