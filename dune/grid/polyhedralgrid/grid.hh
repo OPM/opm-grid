@@ -43,7 +43,7 @@ namespace Dune
 
       // type of data passed to entities, intersections, and iterators
       // for PolyhedralGrid this is just an empty place holder
-      typedef const Grid* ExtraDataType;
+      typedef const Grid* ExtraData;
 
       typedef int Index ;
 
@@ -73,11 +73,13 @@ namespace Dune
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
         typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
-        typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
-        typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
+        //typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
+        //typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
 
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
+
+        typedef Dune::EntityPointer< const Grid, EntityImpl > EntityPointer;
 
         typedef Dune::EntitySeed< const Grid, PolyhedralGridEntitySeed< codim, const Grid > > EntitySeed;
 
@@ -268,7 +270,10 @@ namespace Dune
     explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
     : grid_( createGrid( deck, poreVolumes ) ),
-      comm_( *this )
+      comm_( *this ),
+      leafIndexSet_( *this ),
+      globalIdSet_( *this ),
+      localIdSet_( *this )
       // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
     {}
 
@@ -400,17 +405,11 @@ namespace Dune
 
     const GlobalIdSet &globalIdSet () const
     {
-      if( !globalIdSet_ )
-        globalIdSet_ = GlobalIdSet( *this );
-      assert( globalIdSet_ );
       return globalIdSet_;
     }
 
     const LocalIdSet &localIdSet () const
     {
-      if( !localIdSet_ )
-        localIdSet_ = LocalIdSet( *this );
-      assert( localIdSet_ );
       return localIdSet_;
     }
 
@@ -432,9 +431,6 @@ namespace Dune
 
     const LeafIndexSet &leafIndexSet () const
     {
-      if( !leafIndexSet_ )
-        leafIndexSet_ = LeafIndexSet( this );
-      assert( leafIndexSet_ );
       return leafIndexSet_;
     }
 
@@ -737,7 +733,7 @@ namespace Dune
   public:
     using Base::getRealImplementation;
 
-    typedef typename Traits :: ExtraDataType ExtraData;
+    typedef typename Traits :: ExtraData ExtraData;
     ExtraData extraData () const  { return this; }
 
     template <class EntitySeed>

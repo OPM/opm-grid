@@ -56,7 +56,7 @@ namespace Dune
 
   protected:
     // type of extra data, e.g. a pointer to grid (here empty)
-    typedef typename Traits::ExtraDataType ExtraData;
+    typedef typename Traits::ExtraData ExtraData;
 
   public:
     /** \name Construction, Initialization and Destruction

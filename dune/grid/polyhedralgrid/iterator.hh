@@ -42,7 +42,9 @@ namespace Dune
     /** \brief increment */
     void increment ()
     {
-      const int index = entityImpl().seed().index() + 1 ;
+      int index = entityImpl().seed().index();
+      ++index;
+
       if( index >= entityImpl().data()->size( 0 ) )
         entityImpl() = EntityImpl( entityImpl().data() );
       else

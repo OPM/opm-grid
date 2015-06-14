@@ -32,7 +32,7 @@ namespace Dune
     typedef typename Traits::template Codim< codimension >::Entity Entity;
 
   protected:
-    typedef typename Traits::ExtraDataType ExtraData;
+    typedef typename Traits::ExtraData ExtraData;
 
     typedef typename Traits::template Codim< codimension > :: EntityImpl EntityImpl;
 
@@ -42,7 +42,7 @@ namespace Dune
     {}
 
     explicit PolyhedralGridEntityPointer ( const EntityImpl &entity )
-    : entity_( entity )
+    : entity_( EntityImpl( entity ) )
     {}
 
     PolyhedralGridEntityPointer ( const This &other )
@@ -62,7 +62,7 @@ namespace Dune
     }
 
     /** \brief dereference entity */
-    const Entity& dereference () const
+    Entity& dereference () const
     {
       return entity_;
     }

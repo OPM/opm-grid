@@ -54,7 +54,7 @@ namespace Dune
     static const bool conforming = Traits :: conforming;
     static const PartitionIteratorType pitype = Traits :: defaultpitype;
 
-    PolyhedralGridView ( const Grid &grid, int level )
+    PolyhedralGridView ( const Grid &grid )
     : grid_( &grid )
     {}
 
@@ -66,7 +66,7 @@ namespace Dune
 
     const IndexSet &indexSet () const
     {
-        return grid().indexSet();
+        return grid().leafIndexSet();
     }
 
     int size ( int codim ) const

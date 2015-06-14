@@ -28,9 +28,8 @@ namespace Dune
         : grid_(grid)
     {}
 
-    PolyhedralGridIdSet ( const This &other ) = default;
-
-    const This &operator= ( const This &other ) = default;
+    //PolyhedralGridIdSet ( const This &other ) = default;
+    //const This &operator= ( const This &other ) = default;
 
     //! id meethod for entity and specific codim
     template< int codim >

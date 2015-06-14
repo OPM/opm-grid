@@ -36,8 +36,8 @@ namespace Dune
 
     typedef typename Base::IndexType IndexType;
 
-    PolyhedralGridIndexSet ( const GridType* grid )
-        : grid_(grid)
+    PolyhedralGridIndexSet ( const GridType& grid )
+        : grid_(&grid)
     {
         GeometryType t;
         t.makeCube(/*dim=*/3);
@@ -47,9 +47,8 @@ namespace Dune
         geomTypes_[/*codim=*/3].push_back(t);
     }
 
-    PolyhedralGridIndexSet( const This &other ) = default;
-
-    const This &operator= ( const This &other ) = default;
+    //PolyhedralGridIndexSet( const This &other ) = default;
+    //const This &operator= ( const This &other ) = default;
 
     template< class Entity >
     IndexType index ( const Entity &entity ) const

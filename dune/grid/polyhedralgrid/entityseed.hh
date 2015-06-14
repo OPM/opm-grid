@@ -36,7 +36,7 @@ namespace Dune
       : index_( defaultIndex )
     {}
 
-    const Index& index () const { return index_ ; }
+    int index () const { return index_ ; }
 
     bool isValid() const { return index_ != defaultIndex; }
 
