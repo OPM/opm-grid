@@ -62,7 +62,8 @@ namespace Dune
 
     EntityImpl outside () const
     {
-        return data()->neighbor(seed_, intersectionIdx_);
+      return EntityImpl(data(),
+                        data()->neighbor(seed_, intersectionIdx_));
     }
 
     bool operator == ( const This& other ) const
@@ -104,7 +105,12 @@ namespace Dune
 
     int indexInInside () const
     {
-        return data().indexInInside(seed_, intersectionIdx_);
+        return data()->indexInInside(seed_, intersectionIdx_);
+    }
+
+    int indexInOutside () const
+    {
+        return data()->indexInOutside(seed_, intersectionIdx_);
     }
 
     GlobalCoordinate
@@ -118,7 +124,7 @@ namespace Dune
     { return outerNormal(); }
 
     GlobalCoordinate outerNormal () const
-    { return data().outerNormal(seed_, intersectionIdx_); }
+    { return data()->outerNormal(seed_, intersectionIdx_); }
 
     GlobalCoordinate
     unitOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const

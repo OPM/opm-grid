@@ -176,6 +176,8 @@ namespace Dune
   class PolyhedralGridEntity< 0, dim, Grid > : public PolyhedralGridEntityBasic< 0, dim, Grid >
   {
     typedef PolyhedralGridEntityBasic< 0, dim, Grid > Base ;
+    typedef PolyhedralGridEntity< 0, dim, Grid > This;
+
   protected:
     typedef typename Base::Traits Traits;
 
@@ -229,6 +231,12 @@ namespace Dune
 
     /** \} */
 
+    const This& dereference() const
+    { return *this; }
+
+    This& dereference()
+    { return *this; }
+
     unsigned int subEntities( const unsigned int codim ) const
     {
       if( codim == 0 )
@@ -256,7 +264,7 @@ namespace Dune
       const int faces = subEntities( 1 );
       for( int i=0; i<faces; ++i )
       {
-        if( ! this->template subEntity< 1 >( i ) )
+        if( !this->template subEntity< 1 >( i ).seed().isValid() )
           return true;
       }
       return false;

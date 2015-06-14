@@ -84,7 +84,8 @@ namespace Dune
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
 
-        typedef Dune::EntityPointer< const Grid, EntityImpl > EntityPointer;
+        //typedef Dune::EntityPointer< const Grid, EntityImpl > EntityPointer;
+        typedef Entity EntityPointer;
 
         //typedef Dune::EntitySeed< const Grid, PolyhedralGridEntitySeed< codim, const Grid > > EntitySeed;
         typedef PolyhedralGridEntitySeed< codim, const Grid > EntitySeed;
@@ -869,8 +870,9 @@ namespace Dune
       return emptyDummy;
     }
 
-    int faceTag( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
+#warning TODO: convert face tag to face index in reference element
       if( ! grid_->cell_facetag )
         return i;
       else
@@ -900,8 +902,8 @@ namespace Dune
       const int faces = subEntities( seed, 1 );
       for( int face = 0; face<faces; ++ face )
       {
-        if( neighbor( nb, face ) == seed )
-          return faceTag( nb, face );
+        if( neighbor( nb, face ).equals(seed) )
+          return indexInInside( nb, face );
       }
       DUNE_THROW(InvalidStateException,"inverse intersection not found");
       return -1;
