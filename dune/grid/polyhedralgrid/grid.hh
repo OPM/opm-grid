@@ -858,7 +858,6 @@ namespace Dune
     GlobalCoordinate
     outerNormal( const EntitySeed& seed, const int i ) const
     {
-      const int index = seed.index();
       const int face  = this->template subEntitySeed<1>( seed, i ).index();
       const int normalIdx = face * GlobalCoordinate :: dimension ;
       GlobalCoordinate normal = copyToGlobalCoordinate( grid_->face_normals + normalIdx );
