@@ -289,7 +289,7 @@ namespace Dune
       for( int i=0; i<3; ++i )
         cartDims_[ i ] = grid_->cartdims[ i ];
       const int numCells = size( 0 );
-      cellVertices_.reserve( numCells );
+      cellVertices_.resize( numCells );
       for (int c = 0; c < numCells; ++c)
       {
         std::set<int> cell_pts;

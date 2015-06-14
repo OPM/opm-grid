@@ -107,6 +107,11 @@ namespace Dune
         return grid().geomTypes(codim);
     }
 
+    const std::vector< GeometryType >& types(int codim) const
+    {
+        return geomTypes(codim);
+    }
+
     const GridType& grid() const { assert( grid_ ); return *grid_; }
 
   protected:
