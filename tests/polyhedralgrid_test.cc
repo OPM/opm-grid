@@ -43,10 +43,17 @@ int main()
     std::vector<double> porv;
     Grid grid(deck, porv);
 
+    typedef Grid::LeafGridView GridView;
     typedef Grid::template Codim<0>::EntityIterator ElemIterator;
-    ElemIterator elemIt = grid.template begin<0>();
-    ElemIterator elemEndIt = grid.template end<0>();
+    typedef Grid::template Codim<0>::IntersectionIterator IsIt;
+
+    GridView gridView = grid.leafGridView();
+
+    ElemIterator elemIt = gridView.template begin<0>();
+    ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
+        IsIt isIt = elemIt->ibegin();
+        IsIt isEndIt = elemIt->iend();
     }
 
     testGrid( grid.leafGridView() );
