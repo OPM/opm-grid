@@ -41,7 +41,13 @@ int main()
     const auto deck = parser.parseString(deckString);
 
     std::vector<double> porv;
-    Dune::PolyhedralGrid<3, 3> grid(deck, porv);
+    Grid grid(deck, porv);
+
+    typedef Grid::template Codim<0>::EntityIterator ElemIterator;
+    ElemIterator elemIt = grid.template begin<0>();
+    ElemIterator elemEndIt = grid.template end<0>();
+    for (; elemIt != elemEndIt; ++elemIt) {
+    }
 
     testGrid( grid.leafGridView() );
 
