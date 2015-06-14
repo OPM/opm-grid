@@ -11,16 +11,16 @@ const char *deckString =
     "RUNSPEC\n"
     "METRIC\n"
     "DIMENS\n"
-    "10 10 10 /\n"
+    "2 2 2 /\n"
     "GRID\n"
     "DXV\n"
-    "10*1 /\n"
+    "2*1 /\n"
     "DYV\n"
-    "10*1 /\n"
+    "2*1 /\n"
     "DZ\n"
-    "1000*1 /\n"
+    "8*1 /\n"
     "TOPS\n"
-    "100*100.0 /\n";
+    "4*100.0 /\n";
 
 template <class GridView>
 void testGrid( const GridView& gridView )
