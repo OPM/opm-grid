@@ -705,7 +705,7 @@ namespace Dune
         g.dims[1] = eclipseGrid->getNY();
         g.dims[2] = eclipseGrid->getNZ();
 
-        eclipseGrid->exportMAPAXES( mapaxes );
+        //eclipseGrid->exportMAPAXES( mapaxes );
         eclipseGrid->exportCOORD( coord );
         eclipseGrid->exportZCORN( zcorn );
         eclipseGrid->exportACTNUM( actnum );
@@ -713,7 +713,7 @@ namespace Dune
         g.coord = coord.data();
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
-        g.mapaxes = mapaxes.data();
+        g.mapaxes = 0; // mapaxes.data();
 
         /*
         if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != MinpvMode::ModeEnum::Inactive)) {

@@ -9,6 +9,7 @@
 
 const char *deckString =
     "RUNSPEC\n"
+    "METRIC\n"
     "DIMENS\n"
     "10 10 10 /\n"
     "GRID\n"
@@ -16,8 +17,10 @@ const char *deckString =
     "10*1 /\n"
     "DYV\n"
     "10*1 /\n"
-    "DZV\n"
-    "10*1 /\n";
+    "DZ\n"
+    "1000*1 /\n"
+    "TOPS\n"
+    "100*100.0 /\n";
 
 template <class GridView>
 void testGrid( const GridView& gridView )
@@ -39,6 +42,8 @@ int main()
 {
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
+
+    std::cout << deckString;
 
     std::vector<double> porv;
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;
