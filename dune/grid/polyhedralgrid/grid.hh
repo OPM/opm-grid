@@ -358,8 +358,7 @@ namespace Dune
         return grid_->number_of_nodes;
       else
       {
-#warning TODO number of faces
-        std::abort();
+        DUNE_THROW(NotImplemented,"codimension not available");
         return -1;
       }
     }

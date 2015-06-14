@@ -32,7 +32,7 @@ namespace Dune
     typedef typename Grid::template Codim< 0 >::EntityPointer EntityPointer;
 
     PolyhedralGridIntersectionIterator ( ExtraData data, const Element& elem, bool isBegin )
-      : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:-1 ) )
+      : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:data->subEntities(elem.seed(), 1) ) )
     {}
 
     //PolyhedralGridIntersectionIterator ( const This &other ) = default;
