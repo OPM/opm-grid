@@ -17,7 +17,8 @@ namespace Dune
   protected:
     typedef PolyhedralGridIntersectionIterator< Grid > This;
 
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename Grid::Traits Traits;
+    typedef typename Traits::template Codim<0>::Entity Element;
     static const bool isLeafIntersection = true;
 
   public:
@@ -26,16 +27,16 @@ namespace Dune
                                   typename Traits :: LevelIntersection > :: type  Intersection ;
     typedef typename Intersection :: Implementation IntersectionImpl ;
 
-    typedef typename Traits :: ExtraDataType ExtraData;
+    typedef typename Traits :: ExtraData ExtraData;
 
     typedef typename Grid::template Codim< 0 >::EntityPointer EntityPointer;
 
-    PolyhedralGridIntersectionIterator ( ExtraData data )
-    : intersection_( IntersectionImpl( data ) )
+    PolyhedralGridIntersectionIterator ( ExtraData data, const Element& elem, bool isBegin )
+      : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:-1 ) )
     {}
 
     PolyhedralGridIntersectionIterator ( const This &other ) = default;
-    const This &operator= ( const This &other ) = default;
+    This &operator= ( const This &other ) = default;
 
     bool equals ( const This &other ) const
     {
@@ -44,7 +45,7 @@ namespace Dune
 
     void increment ()
     {
-      ++intersection_.intersectionIdx_;
+      ++(data()->getRealImplementation(intersection_).intersectionIdx_);
     }
 
     const Intersection &dereference () const

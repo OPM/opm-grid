@@ -20,10 +20,10 @@ namespace Dune
   {
     typedef PolyhedralGridIntersection< Grid > This;
   protected:
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename Grid :: Traits Traits;
 
-    typedef typename Traits :: ExtraDataType ExtraData ;
-    typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
+    typedef typename Traits :: ExtraData ExtraData ;
+
   public:
     typedef typename Traits::ctype ctype;
 
@@ -38,6 +38,7 @@ namespace Dune
 
   protected:
     typedef typename Traits::template Codim< 0 >::EntityImpl EntityImpl;
+    typedef typename Traits::template Codim< 1 >::GeometryImpl GeometryImpl;
     //typedef typename Traits::ExtraData  ExtraData;
 
   public:
@@ -95,7 +96,7 @@ namespace Dune
 
     Geometry geometry () const
     {
-        return Geometry( data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_) );
+      return Geometry(GeometryImpl(data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_)));
     }
 
     GeometryType type () const { return GeometryType(GeometryType::cube, dimension); }
@@ -127,6 +128,11 @@ namespace Dune
     }
 
     ExtraData data() const { return data_; }
+
+    bool equals(const This& other) const
+    {
+      return seed_.equals(other.seed_) && intersectionIdx_ == other.intersectionIdx_;
+    }
 
   protected:
     ExtraData  data_;
