@@ -234,7 +234,7 @@ namespace Dune
       if( codim == 0 )
         return 1;
       else
-        return data->subEntities( seed_, codim );
+        return data()->subEntities( seed_, codim );
     }
 
     template< int codim >
