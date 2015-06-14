@@ -53,23 +53,23 @@ int main()
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
+        if (std::abs(elemIt->geometry().volume() - 1.0) < 1e-8)
+            std::cout << "element's " << numElem << " volume is wrong\n";
+
         int numIs = 0;
         IsIt isIt = elemIt->ibegin();
         IsIt isEndIt = elemIt->iend();
-        for (; isIt != isEndIt; ++isIt) {
+        for (; isIt != isEndIt; ++isIt)
             ++ numIs;
-        }
 
-        if (numIs != 6) {
-            std::cout << "number of elements is wrong for element " << numElem << "\n";
-        }
+        if (numIs != 6)
+            std::cout << "number of intersections is wrong for element " << numElem << "\n";
 
         ++ numElem;
     }
 
-    if (numElem != 10*10*10) {
-        std::cout << "number of intersections is wrong\n";
-    }
+    if (numElem != 10*10*10)
+        std::cout << "number of elements is wrong: " << numElem << "\n";
 
     testGrid( grid.leafGridView() );
 
