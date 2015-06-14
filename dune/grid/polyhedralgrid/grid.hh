@@ -804,8 +804,11 @@ namespace Dune
             const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
             return copyToGlobalCoordinate( grid_->node_coordinates + coordIndex );
           }
-        //case 1:
-        //  return 0;//grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
+        case 1:
+        {
+          const int faceVertex = grid_->face_nodes[grid_->face_nodepos[seed.index()] + i];
+          return copyToGlobalCoordinate( grid_->node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+        }
         case dim:
           {
             const int coordIndex = GlobalCoordinate :: dimension * seed.index();
