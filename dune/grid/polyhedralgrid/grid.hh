@@ -70,7 +70,9 @@ namespace Dune
       template< int codim >
       struct Codim
       {
+        typedef PolyhedralGridGeometry<dimension-codim, dimensionworld, const Grid> GeometryImpl;
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
+
         typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
         //typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;

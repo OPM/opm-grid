@@ -41,8 +41,12 @@ int main()
     const auto deck = parser.parseString(deckString);
 
     std::vector<double> porv;
+    typedef Dune::PolyhedralGrid< 3, 3 > Grid;
     Grid grid(deck, porv);
 
+    testGrid( grid.leafGridView() );
+
+    /*
     typedef Grid::LeafGridView GridView;
     typedef Grid::template Codim<0>::EntityIterator ElemIterator;
     typedef Grid::template Codim<0>::IntersectionIterator IsIt;
@@ -59,8 +63,11 @@ int main()
         int numIs = 0;
         IsIt isIt = elemIt->ibegin();
         IsIt isEndIt = elemIt->iend();
-        for (; isIt != isEndIt; ++isIt)
+        for (; isIt != isEndIt; ++isIt) {
+            if (isId->geometry().volume() != 1)
+                std::cout << "intersection's " << numIs << " of element " << numElem << " volume is wrong\n";
             ++ numIs;
+        }
 
         if (numIs != 6)
             std::cout << "number of intersections is wrong for element " << numElem << "\n";
@@ -70,8 +77,8 @@ int main()
 
     if (numElem != 10*10*10)
         std::cout << "number of elements is wrong: " << numElem << "\n";
+        */
 
-    testGrid( grid.leafGridView() );
 
     return 0;
 }

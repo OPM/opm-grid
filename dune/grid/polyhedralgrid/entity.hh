@@ -50,7 +50,8 @@ namespace Dune
     //! type of corresponding entity seed
     typedef typename Grid::template Codim< codimension >::EntitySeed EntitySeed;
     //! type of corresponding geometry
-    typedef typename Traits::template Codim< codimension >::Geometry Geometry;
+    typedef typename Traits::template Codim< codimension >::Geometry     Geometry;
+    typedef typename Traits::template Codim< codimension >::GeometryImpl GeometryImpl;
 
     /** \} */
 
@@ -104,7 +105,7 @@ namespace Dune
     /** obtain the geometry of this entity */
     Geometry geometry () const
     {
-      return Geometry( seed_ );
+      return Geometry( GeometryImpl( data(), seed_ ) );
     }
 
     /** \brief return EntitySeed */
