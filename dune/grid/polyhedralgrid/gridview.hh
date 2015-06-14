@@ -52,7 +52,7 @@ namespace Dune
     {};
 
     static const bool conforming = Traits :: conforming;
-    static const PartitionIteratorType pitype = Traits :: defaultpitype;
+    static const PartitionIteratorType pitype = Traits :: pitype;
 
     PolyhedralGridView ( const Grid &grid )
     : grid_( &grid )
@@ -89,7 +89,7 @@ namespace Dune
     typename Codim< codim >::template Partition< pit >::Iterator begin () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pit >::IteratorImpl Impl;
-      return Impl( grid().extraData() );
+      return Impl( grid().extraData(), true );
     }
 
     template< int codim >
@@ -102,7 +102,7 @@ namespace Dune
     typename Codim< codim >::template Partition< pit >::Iterator end () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pit >::IteratorImpl Impl;
-      return Impl( grid().extraData() );
+      return Impl( grid().extraData(), false );
     }
 
     IntersectionIterator ibegin ( const typename Codim< 0 >::Entity &entity ) const

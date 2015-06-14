@@ -40,6 +40,9 @@ namespace Dune
 
     bool isValid() const { return index_ != defaultIndex; }
 
+    bool equals(const PolyhedralGridEntitySeed& other) const
+    { return index_ == other.index_; }
+
   protected:
     Index index_;
   };

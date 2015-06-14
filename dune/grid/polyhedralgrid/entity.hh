@@ -98,7 +98,7 @@ namespace Dune
     /** \brief obtain the partition type of this entity */
     PartitionType partitionType () const
     {
-      return data->partitionType( *this );
+      return InteriorEntity; // data()->partitionType( *this );
     }
 
     /** obtain the geometry of this entity */
@@ -119,9 +119,9 @@ namespace Dune
 
     /** \} */
 
-    bool operator==(const PolyhedralGridEntityBasic& other) const
+    bool equals(const PolyhedralGridEntityBasic& other) const
     {
-        return seed_ == other.seed_;
+      return seed_.equals(other.seed_);
     }
 
   protected:
