@@ -766,7 +766,7 @@ namespace Dune
       switch (codim)
       {
         case 0:
-          return 0;
+          return 1;
         case 1:
           return grid_->cell_facepos[ index+1 ] - grid_->cell_facepos[ index ];
         case dim:
@@ -779,17 +779,16 @@ namespace Dune
     typename Codim<codim>::EntitySeed
     subEntitySeed( const typename Codim<0>::EntitySeed& elemSeed, const int i ) const
     {
+      assert( i>= 0 && i<subEntities( elemSeed ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
       if( codim == 0 )
         return EntitySeed( elemSeed.index() );
       else if ( codim == 1 )
       {
-        assert( i>= 0 && i<subEntities( seed ) );
         return EntitySeed( grid_->cell_faces[ grid_->cell_facepos[ elemSeed.index() ] + i ] );
       }
       else if ( codim == dim )
       {
-        assert( i>= 0 && i<subEntities( EntitySeed( elementIndex ) ) );
         return EntitySeed( cellVertices_[ elemSeed.index() ][ i ] );
       }
       else

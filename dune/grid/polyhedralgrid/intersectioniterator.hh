@@ -35,8 +35,8 @@ namespace Dune
       : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:-1 ) )
     {}
 
-    PolyhedralGridIntersectionIterator ( const This &other ) = default;
-    This &operator= ( const This &other ) = default;
+    //PolyhedralGridIntersectionIterator ( const This &other ) = default;
+    //This &operator= ( const This &other ) = default;
 
     bool equals ( const This &other ) const
     {
