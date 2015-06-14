@@ -893,7 +893,7 @@ namespace Dune
     {
       typedef typename Codim<0>::EntitySeed EntitySeed;
       const int face = 2 * this->template subEntitySeed<1>( seed, i ).index();
-      int nb = grid_->face_cells[ face];
+      int nb = grid_->face_cells[ face ];
       if( nb == seed.index() )
         nb = grid_->face_cells[ face+1 ];
 
