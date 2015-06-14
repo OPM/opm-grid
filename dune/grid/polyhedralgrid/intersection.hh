@@ -26,6 +26,7 @@ namespace Dune
 
   public:
     typedef typename Traits::ctype ctype;
+    typedef typename Traits::GlobalCoordinate GlobalCoordinate;
 
     static const int dimension = Traits::dimension;
     static const int dimensionworld = Traits::dimensionworld;
@@ -106,23 +107,24 @@ namespace Dune
         return data().indexInInside(seed_, intersectionIdx_);
     }
 
-    FieldVector< ctype, dimensionworld >
+    GlobalCoordinate
     integrationOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
     {
-        return data().indexInOutside(seed_, intersectionIdx_);
+      return outerNormal( local );
     }
 
-    FieldVector< ctype, dimensionworld >
+    GlobalCoordinate
     outerNormal ( const FieldVector< ctype, dimension-1 > &local ) const
     { return data().outerNormal(seed_, intersectionIdx_); }
 
-    FieldVector< ctype, dimensionworld >
+    GlobalCoordinate
     unitOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
     {
-      return data().unitOuterNormal(seed_, intersectionIdx_);
+      return centerUnitOuterNormal();
     }
 
-    FieldVector< ctype, dimensionworld > centerUnitOuterNormal () const
+    GlobalCoordinate
+    centerUnitOuterNormal () const
     {
       return data().unitOuterNormal(seed_, intersectionIdx_);
     }

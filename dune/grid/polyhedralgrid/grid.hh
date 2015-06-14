@@ -282,6 +282,8 @@ namespace Dune
       localIdSet_( *this )
       // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
     {
+      for( int i=0; i<3; ++i )
+        cartDims_[ i ] = grid_->cartdims[ i ];
       const int numCells = size( 0 );
       cellVertices_.reserve( numCells );
       for (int c = 0; c < numCells; ++c)
@@ -710,6 +712,11 @@ namespace Dune
 
     /** \} */
 
+    const std::array<int, 3>& logicalCartesianSize() const
+    {
+      return cartDims_;
+    }
+
   protected:
     UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
     {
@@ -778,7 +785,7 @@ namespace Dune
     typename Codim<codim>::EntitySeed
     subEntitySeed( const typename Codim<0>::EntitySeed& elemSeed, const int i ) const
     {
-      assert( i>= 0 && i<subEntities( elemSeed ) );
+      assert( i>= 0 && i<subEntities( elemSeed, codim ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
       if( codim == 0 )
         return EntitySeed( elemSeed.index() );
@@ -883,6 +890,7 @@ namespace Dune
   protected:
     std::unique_ptr< UnstructuredGridType > grid_;
     CollectiveCommunication comm_;
+    std::array< int, 3 > cartDims_;
     std::vector< std::vector< int > > cellVertices_;
     mutable std::vector< LevelIndexSet * > levelIndexSets_;
     mutable LeafIndexSet leafIndexSet_;

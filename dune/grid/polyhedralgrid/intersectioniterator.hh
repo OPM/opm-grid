@@ -35,17 +35,18 @@ namespace Dune
       : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:data->subEntities(elem.seed(), 1) ) )
     {}
 
-    //PolyhedralGridIntersectionIterator ( const This &other ) = default;
-    //This &operator= ( const This &other ) = default;
+    PolyhedralGridIntersectionIterator ( const This& other )
+      : intersection_( other.intersection_ )
+    {}
 
     bool equals ( const This &other ) const
     {
-        return intersection_ == other.intersection_;
+      return intersectionImpl().equals( other.intersectionImpl() );
     }
 
     void increment ()
     {
-      ++(data()->getRealImplementation(intersection_).intersectionIdx_);
+      ++(intersectionImpl()).intersectionIdx_;
     }
 
     const Intersection &dereference () const

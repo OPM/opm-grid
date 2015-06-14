@@ -34,16 +34,16 @@ void testGrid( const GridView& gridView )
     for (; elemIt != elemEndIt; ++elemIt) {
         const auto& elem = *elemIt;
         const auto& elemGeom = elem.geometry();
-        if (std::abs(elemGeom.volume() - 1.0) < 1e-8)
-            std::cout << "element's " << numElem << " volume is wrong\n";
+        if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
+            std::cout << "element's " << numElem << " volume is wrong:"<<elemGeom.volume()<<"\n";
 
         int numIs = 0;
         IsIt isIt = gridView.ibegin(elem);
         IsIt isEndIt = gridView.iend(elem);
         for (; isIt != isEndIt; ++isIt) {
             const auto& isGeom = (*isIt).geometry();
-            if (isGeom.volume() != 1)
-                std::cout << "intersection's " << numIs << " of element " << numElem << " volume is wrong\n";
+            if (std::abs(isGeom.volume() - 1.0) > 1e-8)
+                std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
             ++ numIs;
         }
 
