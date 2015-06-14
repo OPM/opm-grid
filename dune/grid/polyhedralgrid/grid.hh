@@ -809,21 +809,31 @@ namespace Dune
       return -1;
     }
 
-    template <int codim>
-    GlobalCoordinate centroids( const typename Codim<codim>::EntitySeed& seed ) const
+    template <class EntitySeed>
+    GlobalCoordinate centroids( const EntitySeed& seed ) const
     {
-      const int index = dim * seed.index();
+      const int index = GlobalCoordinate :: dimension * seed.index();
+      const int codim = EntitySeed::codimension;
+
       if( codim == 0 )
-        return GlobalCoordinate( &grid_->cell_centroids[ index ] );
+        return copyToGlobalCoordinate( grid_->cell_centroids + index );
       else if ( codim == 1 )
-        return GlobalCoordinate( &grid_->face_centroids[ index] );
+        return copyToGlobalCoordinate( grid_->face_centroids + index );
       else if( codim == dim )
-        return GlobalCoordinate( &grid_->node_coordinates[ index ] );
+        return copyToGlobalCoordinate( grid_->node_coordinates + index );
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");
         return GlobalCoordinate( 0 );
       }
+    }
+
+    GlobalCoordinate copyToGlobalCoordinate( const double* coords ) const
+    {
+      GlobalCoordinate coordinate;
+      for( int i=0; i<GlobalCoordinate::dimension; ++i )
+        coordinate[ i ] = coords[ i ];
+      return std::move( coordinate );
     }
 
     template <int codim>

@@ -58,7 +58,7 @@ namespace Dune
     /** \brief check for equality */
     bool equals ( const This &other ) const
     {
-      return (entity_ == other.entity_);
+      return entityImpl().equals( other.entityImpl() );
     }
 
     /** \brief dereference entity */

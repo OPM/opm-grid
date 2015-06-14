@@ -59,7 +59,9 @@ namespace Dune
     template< int cd >
     IndexType index ( const typename Traits::template Codim< cd >::Entity &entity ) const
     {
-      return entity.template index< cd >( );
+#warning TODO
+      return 0;
+      //return grid_->getRealImplementation(entity).template index< cd >( );
     }
 
     template< class Entity >
