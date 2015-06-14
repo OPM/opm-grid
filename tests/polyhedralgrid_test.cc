@@ -1,6 +1,7 @@
 #include "config.h"
 
 #include <dune/grid/polyhedralgrid.hh>
+#include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
@@ -64,9 +65,13 @@ int main()
 
     std::vector<double> porv;
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+    typedef Grid::LeafGridView GridView;
     Grid grid(deck, porv);
 
     testGrid( grid.leafGridView() );
 
+    typedef Dune::VTKWriter<GridView> VtkWriter;
+    VtkWriter vtkWriter(grid.leafGridView());
+    vtkWriter.write("polyhedralgrid_test");
     return 0;
 }

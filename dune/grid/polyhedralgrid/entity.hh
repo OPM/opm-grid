@@ -148,7 +148,7 @@ namespace Dune
 
   protected:
     // type of extra data, e.g. a pointer to grid (here empty)
-    typedef typename Traits::ExtraDataType ExtraData;
+    typedef typename Traits::ExtraData ExtraData;
 
 
   public:
@@ -202,8 +202,8 @@ namespace Dune
 
     //! type of corresponding local geometry
     typedef typename Traits::template Codim< codimension >::LocalGeometry LocalGeometry;
-    //! type of corresponding entity pointer
-    typedef typename Traits::template Codim< codimension >::EntityPointer EntityPointer;
+    //! type of corresponding entity
+    typedef typename Traits::template Codim< codimension >::Entity Entity;
 
     //! type of hierarchic iterator
     typedef typename Traits::HierarchicIterator        HierarchicIterator;
@@ -244,11 +244,11 @@ namespace Dune
     }
 
     template< int codim >
-    typename Grid::template Codim< codim >::EntityPointer
+    typename Grid::template Codim< codim >::Entity
     subEntity ( int i ) const
     {
-      typedef typename Traits::template Codim< codim >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( data(), data->template subEntitySeed< codim >( seed_, i ) );
+      typedef typename Traits::template Codim< codim >::EntityImpl EntityImpl;
+      return EntityImpl( data(), data()->template subEntitySeed< codim >( seed_, i ) );
     }
 
     bool hasBoundaryIntersections () const
@@ -267,11 +267,11 @@ namespace Dune
       return true;
     }
 
-    EntityPointer father () const
+    Entity father () const
     {
       DUNE_THROW(InvalidStateException,"no father available");
-      typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( data() );
+      typedef typename Traits::template Codim< 0 >::EntityImpl EntityImpl;
+      return EntityImpl( data() );
     }
 
     bool hasFather () const
