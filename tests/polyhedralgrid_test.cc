@@ -6,6 +6,12 @@
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+#include <dune/grid/test/gridcheck.hh>
+#else
+#include <dune/grid/test/gridcheck.cc>
+#endif
+
 #include <iostream>
 
 const char *deckString =
@@ -26,6 +32,7 @@ const char *deckString =
 template <class GridView>
 void testGrid( const GridView& gridView )
 {
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
 
@@ -47,10 +54,10 @@ void testGrid( const GridView& gridView )
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
             if (isIt->neighbor())
-                if (std::abs(isIt->outside().geometry().volume() - 1.0) > 1e-8)
+                if (std::abs(isIt->outside()->geometry().volume() - 1.0) > 1e-8)
                     std::cout << "outside element volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isIt->outside().geometry().volume() << "\n";
 
-            if (std::abs(isIt->inside().geometry().volume() - 1.0) > 1e-8)
+            if (std::abs(isIt->inside()->geometry().volume() - 1.0) > 1e-8)
                 std::cout << "inside element volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isIt->inside().geometry().volume() << "\n";
         }
 
@@ -62,6 +69,7 @@ void testGrid( const GridView& gridView )
 
     if (numElem != 2*2*2)
         std::cout << "number of elements is wrong: " << numElem << "\n";
+#endif
 }
 
 int main()
@@ -73,6 +81,8 @@ int main()
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;
     typedef Grid::LeafGridView GridView;
     Grid grid(deck, porv);
+
+    gridcheck( grid );
 
     testGrid( grid.leafGridView() );
 

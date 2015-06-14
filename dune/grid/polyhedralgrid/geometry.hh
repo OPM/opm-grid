@@ -60,8 +60,8 @@ namespace Dune
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
-      static_assert(mydimension == 3, "");
-      static_assert(coorddimension == 3, "");
+      assert( mydimension == 3 );
+      assert( coorddimension == 3 );
       // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
       LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
       uvw[0] -= local;
@@ -91,13 +91,14 @@ namespace Dune
     /// May be slow.
     LocalCoordinate local(const GlobalCoordinate& y) const
     {
-      static_assert(mydimension == 3, "");
-      static_assert(coorddimension == 3, "");
+      /*
+      assert( mydimension == 3 );
+      assert( coorddimension == 3 );
       // This code is modified from dune/grid/genericgeometry/mapping.hh
       // \todo: Implement direct computation.
       const ctype epsilon = 1e-12;
-      const ReferenceElement< ctype , 3 > & refElement =
-        ReferenceElements< ctype, 3 >::general(type());
+      const ReferenceElement< ctype , mydimension > & refElement =
+        ReferenceElements< ctype, mydimension >::general(type());
 
       LocalCoordinate x = refElement.position(0,0);
       LocalCoordinate dx;
@@ -111,6 +112,8 @@ namespace Dune
         x -= dx;
       } while (dx.two_norm2() > epsilon*epsilon);
       return x;
+      */
+      return LocalCoordinate( 0 );
     }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }

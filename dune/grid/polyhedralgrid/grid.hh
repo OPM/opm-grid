@@ -68,7 +68,7 @@ namespace Dune
       typedef PolyhedralGridIntersectionIterator< const Grid > LevelIntersectionIteratorImpl;
       typedef Dune::IntersectionIterator< const Grid, LevelIntersectionIteratorImpl, LevelIntersectionImpl > LevelIntersectionIterator;
 
-      typedef PolyhedralGridIterator< const Grid, 0 > HierarchicIteratorImpl;
+      typedef PolyhedralGridIterator< 0, const Grid, All_Partition > HierarchicIteratorImpl;
       typedef Dune::EntityIterator< 0, const Grid, HierarchicIteratorImpl > HierarchicIterator;
 
       template< int codim >
@@ -77,6 +77,7 @@ namespace Dune
         typedef PolyhedralGridGeometry<dimension-codim, dimensionworld, const Grid> GeometryImpl;
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
 
+        typedef PolyhedralGridLocalGeometry< dimension-codim, dimensionworld, const Grid> LocalGeometryImpl;
         typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
@@ -86,7 +87,7 @@ namespace Dune
         typedef EntityImpl EntityPointerImpl;
         typedef Entity     EntityPointer;
 #else
-        typedef PolyhedralGridEntityPointer< const Grid, codim > EntityPointerImpl;
+        typedef PolyhedralGridEntityPointer< codim, const Grid > EntityPointerImpl;
         typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
 #endif
 
@@ -96,7 +97,7 @@ namespace Dune
         template< PartitionIteratorType pitype >
         struct Partition
         {
-          typedef PolyhedralGridIterator< const Grid, pitype > LeafIteratorImpl;
+          typedef PolyhedralGridIterator< codim, const Grid, pitype > LeafIteratorImpl;
           typedef Dune::EntityIterator< codim, const Grid, LeafIteratorImpl > LeafIterator;
 
           typedef LeafIterator LevelIterator;
@@ -284,7 +285,6 @@ namespace Dune
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this )
-      // levelIndexSets_( hostGrid.maxLevel()+1, nullptr )
     {
       for( int i=0; i<3; ++i )
         cartDims_[ i ] = grid_->cartdims[ i ];
@@ -317,11 +317,6 @@ namespace Dune
      */
     ~PolyhedralGrid ()
     {
-      for( unsigned int i = 0; i < levelIndexSets_.size(); ++i )
-      {
-        if( levelIndexSets_[ i ] )
-          delete( levelIndexSets_[ i ] );
-      }
       destroy_grid( &(*grid_) );
     }
 
@@ -450,18 +445,7 @@ namespace Dune
 
     const LevelIndexSet &levelIndexSet ( int level ) const
     {
-      assert( levelIndexSets_.size() == (size_t)(maxLevel()+1) );
-      if( (level < 0) || (level > maxLevel()) )
-      {
-        DUNE_THROW( GridError, "LevelIndexSet for nonexisting level " << level
-                               << " requested." );
-      }
-
-      LevelIndexSet *&levelIndexSet = levelIndexSets_[ level ];
-      if( !levelIndexSet )
-        levelIndexSet = new LevelIndexSet( this );
-      assert( levelIndexSet );
-      return *levelIndexSet;
+      return leafIndexSet();
     }
 
     const LeafIndexSet &leafIndexSet () const
@@ -700,8 +684,10 @@ namespace Dune
     typename Traits::template Codim< EntitySeed::codimension >::EntityPointer
     entityPointer ( const EntitySeed &seed ) const
     {
+      typedef typename Traits::template Codim< EntitySeed::codimension >::EntityPointer     EntityPointer;
       typedef typename Traits::template Codim< EntitySeed::codimension >::EntityPointerImpl EntityPointerImpl;
-      return EntityPointerImpl( extraData(), seed ) ;
+      typedef typename Traits::template Codim< EntitySeed::codimension >::EntityImpl        EntityImpl;
+      return EntityPointer( EntityPointerImpl( EntityImpl( extraData(), seed ) ) );
     }
 
     /** \} */

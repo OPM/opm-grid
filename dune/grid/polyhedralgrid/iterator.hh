@@ -15,12 +15,12 @@ namespace Dune
   // PolyhedralGridIterator
   // --------------
 
-  template< class Grid, int codim >
+  template< int codim, class Grid, PartitionIteratorType pitype >
   class PolyhedralGridIterator
-  : public PolyhedralGridEntityPointer< Grid, codim >
+  : public PolyhedralGridEntityPointer< codim, Grid >
   {
-    typedef PolyhedralGridIterator< Grid, codim > This;
-    typedef PolyhedralGridEntityPointer< Grid, codim > Base;
+    typedef PolyhedralGridIterator< codim, Grid, pitype > This;
+    typedef PolyhedralGridEntityPointer< codim, Grid > Base;
 
   protected:
     typedef typename Base::ExtraData ExtraData;

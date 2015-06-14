@@ -194,10 +194,7 @@ namespace Dune
 
   protected:
     typedef typename Traits :: LeafIntersectionIteratorImpl  LeafIntersectionIteratorImpl;
-    typedef typename Traits :: LevelIntersectionIteratorImpl LevelIntersectionIteratorImpl;
-
-    typedef typename Traits :: LeafIntersectionImpl          LeafIntersectionImpl;
-    typedef typename Traits :: LevelIntersectionImpl         LevelIntersectionImpl;
+    typedef typename Traits::template Codim< codimension >::LocalGeometryImpl LocalGeometryImpl;
 
   public:
     /** \name Types Required by DUNE
@@ -209,6 +206,8 @@ namespace Dune
     typedef typename Traits::template Codim< codimension >::LocalGeometry LocalGeometry;
     //! type of corresponding entity
     typedef typename Traits::template Codim< codimension >::Entity Entity;
+    //! type of corresponding entity
+    typedef typename Traits::template Codim< codimension >::EntityPointer EntityPointer;
 
     //! type of hierarchic iterator
     typedef typename Traits::HierarchicIterator        HierarchicIterator;
@@ -268,22 +267,45 @@ namespace Dune
       const int faces = subEntities( 1 );
       for( int i=0; i<faces; ++i )
       {
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
         if( !this->template subEntity< 1 >( i ).seed().isValid() )
+#else
+        if( !this->template subEntity< 1 >( i )->seed().isValid() )
+#endif
           return true;
       }
       return false;
     }
+
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+    LeafIntersectionIterator ibegin () const
+    {
+      return LeafIntersectionIterator( LeafIntersectionIteratorImpl( data(), seed_, true ) );
+    }
+
+    LeafIntersectionIterator iend () const
+    {
+      return LeafIntersectionIterator( LeafIntersectionIteratorImpl( data(), seed_, false ) );
+    }
+
+    LeafIntersectionIterator  ileafbegin  () const { return ibegin(); }
+    LevelIntersectionIterator ilevelbegin () const { return ibegin(); }
+
+    LeafIntersectionIterator  ileafend  () const { return iend(); }
+    LevelIntersectionIterator ilevelend () const { return iend(); }
+#endif
 
     bool isLeaf () const
     {
       return true;
     }
 
-    Entity father () const
+    EntityPointer father () const
     {
       DUNE_THROW(InvalidStateException,"no father available");
       typedef typename Traits::template Codim< 0 >::EntityImpl EntityImpl;
-      return EntityImpl( data() );
+      typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
+      return EntityPointer( EntityPointerImpl( EntityImpl( data() ) ) );
     }
 
     bool hasFather () const
@@ -294,19 +316,18 @@ namespace Dune
     LocalGeometry geometryInFather () const
     {
       DUNE_THROW(InvalidStateException,"no father available");
-      return LocalGeometry( data() );
+      return LocalGeometry( LocalGeometryImpl( data() ) );
     }
 
     HierarchicIterator hbegin ( int maxLevel ) const
     {
-      typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIterator( HierarchicIteratorImpl( data() ) );
+      return hend( maxLevel );
     }
 
     HierarchicIterator hend ( int maxLevel ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
-      return HierarchicIterator( HierarchicIteratorImpl( data() ) );
+      return HierarchicIterator( HierarchicIteratorImpl( data(), false ) );
     }
 
     bool isRegular () const

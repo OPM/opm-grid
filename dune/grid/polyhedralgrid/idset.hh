@@ -32,11 +32,21 @@ namespace Dune
     template< int codim >
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
+      const int index = entity.seed().index();
       if (codim == 0)
-        return grid_.cartesianElementIndexIndex(entity.seed());
+        return grid_.globalCell()[ index ];
       else
-        return entity.index();
+        return index;
     }
+
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+    //! id meethod for entity and specific codim
+    template< int codim >
+    IdType id ( const typename Traits::template Codim< codim >::EntityPointer &entityPointer ) const
+    {
+      return id( *entityPointer );
+    }
+#endif
 
     //! id method of all entities
     template< class Entity >
@@ -52,9 +62,9 @@ namespace Dune
       if( codim == 0 )
         return id( entity );
       else if ( codim == 1 )
-        return id( entity.template subEntity< 1 >( entity, i ) );
+        return id( entity.template subEntity< 1 >( i ) );
       else if ( codim == dim )
-        return id( entity.template subEntity< dim >( entity, i ) );
+        return id( entity.template subEntity< dim >( i ) );
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");

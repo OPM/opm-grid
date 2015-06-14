@@ -41,7 +41,7 @@ namespace Dune
     typedef typename Traits::template Codim< 0 >::EntityPointerImpl EntityPointerImpl;
     typedef typename Traits::template Codim< 0 >::EntityImpl EntityImpl;
     typedef typename Traits::template Codim< 1 >::GeometryImpl GeometryImpl;
-    //typedef typename Traits::ExtraData  ExtraData;
+    typedef typename Traits::template Codim< 1 >::LocalGeometryImpl LocalGeometryImpl;
 
   public:
     explicit PolyhedralGridIntersection ( ExtraData data )
@@ -95,12 +95,12 @@ namespace Dune
 
     LocalGeometry geometryInInside () const
     {
-      return LocalGeometry( data() );
+      return LocalGeometry( LocalGeometryImpl( data() ) );
     }
 
     LocalGeometry geometryInOutside () const
     {
-        return LocalGeometryImpl(data());
+      return LocalGeometry( LocalGeometryImpl( data() ) );
     }
 
     Geometry geometry () const

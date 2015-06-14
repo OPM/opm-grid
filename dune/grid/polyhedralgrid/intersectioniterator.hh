@@ -22,6 +22,8 @@ namespace Dune
     static const bool isLeafIntersection = true;
 
   public:
+    typedef typename Traits::template Codim<0>::EntitySeed EntitySeed;
+
     typedef typename conditional< isLeafIntersection,
                                   typename Traits :: LeafIntersection,
                                   typename Traits :: LevelIntersection > :: type  Intersection ;
@@ -31,13 +33,19 @@ namespace Dune
 
     typedef typename Grid::template Codim< 0 >::EntityPointer EntityPointer;
 
-    PolyhedralGridIntersectionIterator ( ExtraData data, const Element& elem, bool isBegin )
-      : intersection_( IntersectionImpl( data, elem.seed(), isBegin?0:data->subEntities(elem.seed(), 1) ) )
+    PolyhedralGridIntersectionIterator ( ExtraData data, const EntitySeed& seed, bool isBegin )
+      : intersection_( IntersectionImpl( data, seed, isBegin?0:data->subEntities(seed, 1) ) )
     {}
 
     PolyhedralGridIntersectionIterator ( const This& other )
       : intersection_( IntersectionImpl( other.intersectionImpl()) )
     {}
+
+    PolyhedralGridIntersectionIterator& operator=( const This& other )
+    {
+      intersectionImpl() = other.intersectionImpl();
+      return *this;
+    }
 
     bool equals ( const This &other ) const
     {
