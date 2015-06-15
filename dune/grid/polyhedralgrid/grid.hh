@@ -1092,5 +1092,6 @@ namespace Dune
 } // namespace Dune
 
 #include <dune/grid/polyhedralgrid/persistentcontainer.hh>
+#include <dune/grid/polyhedralgrid/cartesianindexmapper.hh>
 
 #endif // #ifndef DUNE_POLYHEDRALGRID_GRID_HH
