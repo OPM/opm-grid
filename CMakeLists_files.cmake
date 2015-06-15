@@ -92,6 +92,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/GridAdapter.hpp
 	dune/grid/common/GridPartitioning.hpp
 	dune/grid/common/Volumes.hpp
+	dune/grid/cpgrid/CartesianIndexMapper.hpp
 	dune/grid/cpgrid/CpGridData.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
 	dune/grid/cpgrid/dgfparser.hh
@@ -109,6 +110,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/PartitionIteratorRule.hpp
 	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
+	dune/grid/common/CartesianIndexMapper.hpp
 	dune/grid/common/ZoltanGraphFunctions.hpp
 	dune/grid/common/ZoltanPartition.hpp
 	)
