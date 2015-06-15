@@ -77,8 +77,8 @@ namespace Dune
         typedef PolyhedralGridGeometry<dimension-codim, dimensionworld, const Grid> GeometryImpl;
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
 
-        typedef PolyhedralGridGeometry< dimension-codim, dimensionworld, const Grid> LocalGeometryImpl;
-        typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridGeometry > LocalGeometry;
+        typedef PolyhedralGridLocalGeometry< dimension-codim, dimensionworld, const Grid> LocalGeometryImpl;
+        typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
