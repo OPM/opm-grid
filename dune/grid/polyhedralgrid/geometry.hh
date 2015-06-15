@@ -3,6 +3,7 @@
 #ifndef DUNE_POLYHEDRALGRID_GEOMETRY_HH
 #define DUNE_POLYHEDRALGRID_GEOMETRY_HH
 
+#include <dune/common/version.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/common/geometry.hh>
 
@@ -193,6 +194,7 @@ namespace Dune
   };
 
 
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
   namespace FacadeOptions
   {
 
@@ -213,8 +215,7 @@ namespace Dune
     };
 
   }
-
-
+#endif
 
 
 } // namespace Dune
