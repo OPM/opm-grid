@@ -433,6 +433,32 @@ namespace Dune
       return Impl( extraData(), true );
     }
 
+    template< int codim >
+    typename Codim< codim >::LevelIterator lbegin ( const int level ) const
+    {
+      return leafbegin< codim, All_Partition >();
+    }
+
+    template< int codim >
+    typename Codim< codim >::LevelIterator lend ( const int level ) const
+    {
+      return leafend< codim, All_Partition >();
+    }
+
+    template< int codim, PartitionIteratorType pitype >
+    typename Codim< codim >::template Partition< pitype >::LevelIterator
+    lbegin ( const int level ) const
+    {
+      return leafbegin< codim, pitype > ();
+    }
+
+    template< int codim, PartitionIteratorType pitype >
+    typename Codim< codim >::template Partition< pitype >::LevelIterator
+    lend ( const int level ) const
+    {
+      return leafend< codim, pitype > ();
+    }
+
     const GlobalIdSet &globalIdSet () const
     {
       return globalIdSet_;
