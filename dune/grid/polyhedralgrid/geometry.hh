@@ -119,6 +119,7 @@ namespace Dune
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
     ctype volume () const { return data()->volumes( seed_ ); }
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     JacobianTransposed jacobianTransposed ( const LocalCoordinate &local ) const
     {
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
@@ -130,6 +131,21 @@ namespace Dune
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
+#else
+    const JacobianTransposed& jacobianTransposed ( const LocalCoordinate &local ) const
+    {
+      DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
+      static const JacobianTransposed jac( 0 );
+      return jac;
+    }
+
+    const JacobianInverseTransposed& jacobianInverseTransposed ( const LocalCoordinate &local ) const
+    {
+      DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
+      static const JacobianInverseTransposed jac( 0 );
+      return jac;
+    }
+#endif
 
     ExtraData data() const { return data_; }
 
@@ -163,27 +179,34 @@ namespace Dune
   };
 
 
-  // PolyhedralGridLocalGeometry
-  // -------------------
-
-  template< int mydim, int cdim, class Grid >
-  class PolyhedralGridLocalGeometry
-  : public PolyhedralGridBasicGeometry< mydim, cdim, Grid >
+  namespace FacadeOptions
   {
-    typedef PolyhedralGridBasicGeometry< mydim, cdim, Grid >  Base ;
 
-  public:
-    typedef typename Base::ExtraData  ExtraData;
-    typedef typename Base::EntitySeed EntitySeed;
+    //! \brief Traits class determining whether the Dune::Geometry facade
+    //!        class stores the implementation object by reference or by value
+    /**
+     * \ingroup GIGeometry
+     *
+     * Storing by reference is appropriate for grid managers that keep an
+     * instance of each geometry around anyway.  Note that the reference to
+     * that instance must be valid at least until the next grid modification.
+     *
+     * \note Even grid managers that let the facade class store a copy must
+     *       take care to keep that copy valid until the next grid
+     *       modification, e.g. if the geometry implementation object does not
+     *       itself store the corner coordinates but only keeps references.
+     */
+    template< int mydim, int cdim, class GridImp >
+    struct StoreGeometryReference< mydim, cdim, GridImp, PolyhedralGridGeometry >
+    {
+      //! Whether to store by reference.
+      static const bool v = false;
+    };
 
-    explicit PolyhedralGridLocalGeometry ( ExtraData data )
-    : Base( data )
-    {}
+  }
 
-    PolyhedralGridLocalGeometry ( ExtraData data, const EntitySeed& seed )
-    : Base( data, seed )
-    {}
-  };
+
+
 
 } // namespace Dune
 

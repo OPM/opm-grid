@@ -6,8 +6,8 @@
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #include <dune/grid/test/gridcheck.hh>
 #else
 #include <dune/grid/test/gridcheck.cc>
