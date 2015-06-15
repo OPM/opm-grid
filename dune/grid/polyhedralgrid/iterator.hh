@@ -35,8 +35,6 @@ namespace Dune
     {
       if( beginIterator )
         entityImpl() = EntityImpl( data, EntitySeed( 0 ) );
-      else
-        entityImpl() = EntityImpl( data );
     }
 
     PolyhedralGridIterator ( const This& other )
@@ -49,7 +47,7 @@ namespace Dune
       int index = entityImpl().seed().index();
       ++index;
 
-      if( index >= entityImpl().data()->size( 0 ) )
+      if( index >= entityImpl().data()->size( codim ) )
         entityImpl() = EntityImpl( entityImpl().data() );
       else
         entityImpl() = EntityImpl( entityImpl().data(), EntitySeed( index ) );

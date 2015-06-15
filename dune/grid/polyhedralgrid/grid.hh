@@ -430,7 +430,7 @@ namespace Dune
     leafend () const
     {
       typedef typename Traits::template Codim< codim >::template Partition< pitype >::LeafIteratorImpl Impl;
-      return Impl( extraData(), true );
+      return Impl( extraData(), false );
     }
 
     template< int codim >
@@ -893,7 +893,7 @@ namespace Dune
 
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-#warning TODO: convert face tag to face index in reference element
+#warning TODO: check face direction, might be wrong
       if( ! grid_->cell_facetag )
         return i;
       else

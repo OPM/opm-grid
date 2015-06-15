@@ -63,9 +63,14 @@ namespace Dune
     {
       assert( mydimension == 3 );
       assert( coorddimension == 3 );
+
       // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
       LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
       uvw[0] -= local;
+
+      //const ReferenceElement< ctype , mydimension > & refElement =
+      //  ReferenceElements< ctype, mydimension >::general( type() );
+
       // Access pattern for uvw matching ordering of corners.
       const int pat[8][3] = { { 0, 0, 0 },
                               { 1, 0, 0 },
@@ -75,15 +80,23 @@ namespace Dune
                               { 1, 0, 1 },
                               { 0, 1, 1 },
                               { 1, 1, 1 } };
+
+      const int nCorners = corners();
+      //refElement.size( mydimension );
+
       GlobalCoordinate xyz(0.0);
-      for (int i = 0; i < 8; ++i) {
-        GlobalCoordinate corner_contrib = corner(i);
+      for (int i = 0; i < nCorners ; ++i)
+      {
+        GlobalCoordinate cornerContrib = corner(i);
+        //LocalCoordinate  refCorner = refElement.position(i,mydimension);
         double factor = 1.0;
-        for (int j = 0; j < 3; ++j) {
-          factor *= uvw[pat[i][j]][j];
+        for (int j = 0; j < mydimension; ++j)
+        {
+          //factor *= uvw[ refCorner[ j ] ][ j ];
+          factor *= uvw[ pat[ i ][ j ] ][ j ];
         }
-        corner_contrib *= factor;
-        xyz += corner_contrib;
+        cornerContrib *= factor;
+        xyz += cornerContrib;
       }
       return xyz;
     }

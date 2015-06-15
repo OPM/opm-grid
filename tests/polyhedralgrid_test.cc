@@ -33,33 +33,52 @@ const char *deckString =
 template <class GridView>
 void testGrid( const GridView& gridView )
 {
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
+    typedef typename GridView::template Codim<0>::Geometry Geometry;
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
         const auto& elem = *elemIt;
-        const auto& elemGeom = elem.geometry();
+        const Geometry& elemGeom = elem.geometry();
         if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
             std::cout << "element's " << numElem << " volume is wrong:"<<elemGeom.volume()<<"\n";
+
+        typename Geometry::LocalCoordinate local( 0.5 );
+        typename Geometry::GlobalCoordinate global = elemGeom.global( local );
+        typename Geometry::GlobalCoordinate center = elemGeom.center();
+        if( (center - global).two_norm() > 1e-6 )
+        {
+          std::cout << "center = " << center << " global( localCenter ) = " << global << std::endl;
+        }
+
 
         int numIs = 0;
         IsIt isIt = gridView.ibegin(elem);
         IsIt isEndIt = gridView.iend(elem);
-        for (; isIt != isEndIt; ++isIt, ++ numIs) {
-            const auto& isGeom = (*isIt).geometry();
+        for (; isIt != isEndIt; ++isIt, ++ numIs)
+        {
+            const auto& intersection = (*isIt);
+            const auto& isGeom = intersection.geometry();
             if (std::abs(isGeom.volume() - 1.0) > 1e-8)
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
-            if (isIt->neighbor())
-                if (std::abs(isIt->outside().geometry().volume() - 1.0) > 1e-8)
-                    std::cout << "outside element volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isIt->outside().geometry().volume() << "\n";
+            if (intersection.neighbor())
+            {
+              if( numIs != intersection.indexInInside() )
+                  std::cout << "num iit = " << numIs << " indexInInside " << intersection.indexInInside() << std::endl;
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+              if (std::abs(intersection.outside().geometry().volume() - 1.0) > 1e-8)
+                  std::cout << "outside element volume of intersection " << numIs << " of element " << numElem
+                            << " volume is wrong: " << intersection.outside().geometry().volume() << std::endl;
 
-            if (std::abs(isIt->inside().geometry().volume() - 1.0) > 1e-8)
-                std::cout << "inside element volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isIt->inside().geometry().volume() << "\n";
+              if (std::abs(intersection.inside().geometry().volume() - 1.0) > 1e-8)
+                  std::cout << "inside element volume of intersection " << numIs << " of element " << numElem
+                            << " volume is wrong: " << intersection.inside().geometry().volume() << std::endl;
+#endif
+            }
         }
 
         if (numIs != 6)
@@ -70,7 +89,6 @@ void testGrid( const GridView& gridView )
 
     if (numElem != 2*2*2)
         std::cout << "number of elements is wrong: " << numElem << "\n";
-#endif
 }
 
 int main()
@@ -83,7 +101,7 @@ int main()
     typedef Grid::LeafGridView GridView;
     Grid grid(deck, porv);
 
-    gridcheck( grid );
+    // gridcheck( grid );
 
     testGrid( grid.leafGridView() );
 
@@ -108,7 +126,7 @@ int main()
     std::cout << "add cellData\n";
     vtkWriter.addCellData(tmpData, "testdata");
 
-    std::cout << "write\n";
+    std::cout << "write data\n";
     vtkWriter.write("polyhedralgrid_test", Dune::VTK::ascii);
 
     return 0;
