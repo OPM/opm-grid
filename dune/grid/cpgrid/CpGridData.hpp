@@ -523,9 +523,8 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
 namespace Dune {
 namespace cpgrid {
 
-namespace
+namespace mover
 {
-
 template<class T>
 class MoveBuffer
 {
@@ -552,11 +551,6 @@ private:
     std::vector<T> buffer_;
     typename std::vector<T>::size_type index_;
 };
-
-}
-
-namespace mover
-{
 template<class DataHandle,int codim>
 struct Mover
 {
@@ -583,7 +577,7 @@ struct BaseMover
 
 
 template<class DataHandle>
-struct Mover<DataHandle,0> : BaseMover<DataHandle>
+struct Mover<DataHandle,0> : public BaseMover<DataHandle>
 {
     Mover<DataHandle,0>(DataHandle& data, CpGridData* gatherView,
                         CpGridData* scatterView)
@@ -601,7 +595,7 @@ struct Mover<DataHandle,0> : BaseMover<DataHandle>
 };
 
 template<class DataHandle>
-struct Mover<DataHandle,1> : BaseMover<DataHandle>
+struct Mover<DataHandle,1> : public BaseMover<DataHandle>
 {
     Mover<DataHandle,1>(DataHandle& data, CpGridData* gatherView,
                         CpGridData* scatterView)
@@ -625,7 +619,7 @@ struct Mover<DataHandle,1> : BaseMover<DataHandle>
 };
 
 template<class DataHandle>
-struct Mover<DataHandle,3> : BaseMover<DataHandle>
+struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 {
     Mover<DataHandle,3>(DataHandle& data, CpGridData* gatherView,
                         CpGridData* scatterView)
@@ -722,7 +716,7 @@ struct GlobalIndexSizeGatherer
 template<class DataHandle>
 struct DataGatherer
 {
-    DataGatherer(MoveBuffer<typename DataHandle::DataType>& buffer_,
+    DataGatherer(mover::MoveBuffer<typename DataHandle::DataType>& buffer_,
                  DataHandle& data_)
         : buffer(buffer_), data(data_)
     {}
@@ -732,7 +726,7 @@ struct DataGatherer
     {
         data.gather(buffer, entity);
     }
-    MoveBuffer<typename DataHandle::DataType>& buffer;
+    mover::MoveBuffer<typename DataHandle::DataType>& buffer;
     DataHandle& data;
 };
 
@@ -813,7 +807,7 @@ void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
     int no_data_recv = displ[displ.size()-1];//+global_sizes[displ.size()-1];
 
     // Collect the data to send, gather it
-    MoveBuffer<typename DataHandle::DataType> local_data_buffer, global_data_buffer;
+    mover::MoveBuffer<typename DataHandle::DataType> local_data_buffer, global_data_buffer;
     if ( no_data_send[distributed_data->ccobj_.rank()] )
     {
         local_data_buffer.resize(no_data_send[distributed_data->ccobj_.rank()]);
