@@ -101,7 +101,13 @@ int main()
     typedef Grid::LeafGridView GridView;
     Grid grid(deck, porv);
 
-    // gridcheck( grid );
+    try {
+      gridcheck( grid );
+    }
+    catch ( const Dune::Exception& e)
+    {
+      std::cerr << "Warning: " << e.what() << std::endl;
+    }
 
     testGrid( grid.leafGridView() );
 

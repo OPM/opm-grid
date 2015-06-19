@@ -56,8 +56,8 @@ namespace Dune
     bool affine () const { return false; }
 
     int corners () const { return data()->corners( seed_ ); }
-    GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
-    GlobalCoordinate center () const { return data()->centroids( seed_ ); }
+    GlobalCoordinate corner ( const int i ) const { return std::move(data()->corner( seed_, i )); }
+    GlobalCoordinate center () const { return std::move(data()->centroids( seed_ )); }
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
@@ -98,16 +98,13 @@ namespace Dune
         cornerContrib *= factor;
         xyz += cornerContrib;
       }
-      return xyz;
+      return std::move(xyz);
     }
 
     /// Mapping from the cell to the reference domain.
     /// May be slow.
     LocalCoordinate local(const GlobalCoordinate& y) const
     {
-      /*
-      assert( mydimension == 3 );
-      assert( coorddimension == 3 );
       // This code is modified from dune/grid/genericgeometry/mapping.hh
       // \todo: Implement direct computation.
       const ctype epsilon = 1e-12;
@@ -122,12 +119,11 @@ namespace Dune
         JacobianTransposed JT = jacobianTransposed(x);
         GlobalCoordinate z = global(x);
         z -= y;
-        MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<3, 3>(JT, z, dx );
+        MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
         x -= dx;
       } while (dx.two_norm2() > epsilon*epsilon);
       return x;
-      */
-      return LocalCoordinate( 0 );
+      //return LocalCoordinate( 0 );
     }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }

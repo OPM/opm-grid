@@ -364,8 +364,8 @@ namespace Dune
         return grid_.number_of_nodes;
       else
       {
-        DUNE_THROW(NotImplemented,"codimension not available");
-        return -1;
+        std::cerr << "Warning: codimension " << codim << " not available in PolyhedralGrid" << std::endl;
+        return 0;
       }
     }
 
@@ -1007,8 +1007,7 @@ namespace Dune
 
       for( int i=0; i<8; ++i )
       {
-        KeyType key; // default is 4 (for the 2d case)
-        key.fill( 4 );
+        KeyType key; key.fill( 4 ); // default is 4 which is the first z coord (for the 2d case)
         for( int j=0; j<dim; ++j )
           key[ j ] = vertexFacePattern[ i ][ j ];
 
@@ -1066,11 +1065,12 @@ namespace Dune
           }
 
           cellVertices_[ c ].resize( vertexList.size() );
+          assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
           for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
           {
             assert( (*it).second.size() == dim );
-            KeyType key;
-            key.fill( 4 );
+            KeyType key; key.fill( 4 ); // fill with 4 which is the first z coord
+
             std::copy( (*it).second.begin(), (*it).second.end(), key.begin() );
             auto vx = vertexFaceTags.find( key );
             assert( vx != vertexFaceTags.end() );
@@ -1114,7 +1114,6 @@ namespace Dune
     std::array< int, 3 > cartDims_;
     std::vector< std::vector< GeometryType > > geomTypes_;
     std::vector< std::vector< int > > cellVertices_;
-    mutable std::vector< LevelIndexSet * > levelIndexSets_;
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
     mutable LocalIdSet localIdSet_;
