@@ -279,7 +279,7 @@ namespace Dune
      */
     explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
-    : gridPtr_( createGrid( deck, poreVolumes ) ),
+    : gridPtr_( createGrid( deck, poreVolumes ), destroy_grid ),
       grid_( *gridPtr_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
@@ -305,17 +305,6 @@ namespace Dune
       localIdSet_( *this )
     {
       init();
-    }
-
-    /** \brief destructor
-     */
-    ~PolyhedralGrid ()
-    {
-      if( gridPtr_ )
-      {
-        destroy_grid( gridPtr_ );
-        gridPtr_ = 0;
-      }
     }
 
     /** \} */
@@ -1074,7 +1063,6 @@ namespace Dune
             std::copy( (*it).second.begin(), (*it).second.end(), key.begin() );
             auto vx = vertexFaceTags.find( key );
             assert( vx != vertexFaceTags.end() );
-            //std::cout << (*vx).second << " " << (*it).first << std::endl;
             // store node numbder on correct local position
             cellVertices_[ c ][ (*vx).second ] = (*it).first ;
           }
@@ -1107,7 +1095,7 @@ namespace Dune
     }
 
   protected:
-    UnstructuredGridType* gridPtr_;
+    std::shared_ptr< UnstructuredGridType > gridPtr_;
     const UnstructuredGridType& grid_;
 
     CollectiveCommunication comm_;
