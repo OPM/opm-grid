@@ -24,7 +24,7 @@ namespace Dune
     public:
         static const int dimension = Grid :: dimension ;
 
-        CartesianIndexMapper( const Grid& grid )
+        explicit CartesianIndexMapper( const Grid& grid )
           : grid_( grid ),
             cartesianSize_( computeCartesianSize() )
         {}

@@ -28,7 +28,7 @@ namespace Dune
         }
 
     public:
-        CartesianIndexMapper( const Grid& grid )
+        explicit CartesianIndexMapper( const Grid& grid )
             : grid_( grid ),
               cartesianSize_( computeCartesianSize() )
         {
