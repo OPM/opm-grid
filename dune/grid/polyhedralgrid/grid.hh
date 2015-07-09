@@ -830,10 +830,10 @@ namespace Dune
             return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
           }
         case 1:
-        {
-          const int faceVertex = grid_.face_nodes[grid_.face_nodepos[seed.index()] + i];
-          return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
-        }
+          {
+            const int faceVertex = grid_.face_nodes[grid_.face_nodepos[seed.index()] + i];
+            return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+          }
         case dim:
           {
             const int coordIndex = GlobalCoordinate :: dimension * seed.index();
@@ -911,11 +911,11 @@ namespace Dune
     neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       typedef typename Codim<0>::EntitySeed EntitySeed;
-      const int faceCellIdx = 2 * this->template subEntitySeed<1>( seed, i ).index();
-      int nb = grid_.face_cells[ faceCellIdx ];
+      const int face = this->template subEntitySeed<1>( seed, i ).index();
+      int nb = grid_.face_cells[ 2 * face ];
       if( nb == seed.index() )
       {
-        nb = grid_.face_cells[ faceCellIdx + 1 ];
+        nb = grid_.face_cells[ 2 * face + 1 ];
       }
 
       return EntitySeed( nb );
