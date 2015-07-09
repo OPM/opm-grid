@@ -879,7 +879,7 @@ namespace Dune
       }
       else
       {
-        DUNE_THROW(InvalidStateException,"codimension not availalbe");
+        DUNE_THROW(NotImplemented,"codimension not available");
       }
     }
 
