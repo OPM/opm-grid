@@ -796,11 +796,17 @@ namespace Dune
       switch (codim)
       {
         case 0:
-          return cellVertices_[ index ].size();
+          {
+            return cellVertices_[ index ].size();
+          }
         case 1:
-          return 0;//grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+          {
+            return 0;//grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+          }
         case dim:
-          return 1;
+          {
+            return 1;
+          }
       }
       return 0;
     }
@@ -854,7 +860,9 @@ namespace Dune
       assert( i>= 0 && i<subEntities( elemSeed, codim ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
       if( codim == 0 )
+      {
         return EntitySeed( elemSeed.index() );
+      }
       else if ( codim == 1 )
       {
         return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ elemSeed.index() ] + i ] );
@@ -873,7 +881,9 @@ namespace Dune
     {
       static std::vector< GeometryType > emptyDummy;
       if (0 <= codim && codim < geomTypes_.size())
+      {
         return geomTypes_[codim];
+      }
 
       return emptyDummy;
     }
@@ -881,7 +891,9 @@ namespace Dune
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       if( ! grid_.cell_facetag )
+      {
         return i;
+      }
       else
       {
         // assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
@@ -893,10 +905,12 @@ namespace Dune
     neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
       typedef typename Codim<0>::EntitySeed EntitySeed;
-      const int face = 2 * this->template subEntitySeed<1>( seed, i ).index();
-      int nb = grid_.face_cells[ face ];
+      const int faceCellIdx = 2 * this->template subEntitySeed<1>( seed, i ).index();
+      int nb = grid_.face_cells[ faceCellIdx ];
       if( nb == seed.index() )
-        nb = grid_.face_cells[ face+1 ];
+      {
+        nb = grid_.face_cells[ faceCellIdx + 1 ];
+      }
 
       return EntitySeed( nb );
     }
@@ -910,7 +924,9 @@ namespace Dune
       for( int face = 0; face<faces; ++ face )
       {
         if( neighbor( nb, face ).equals(seed) )
+        {
           return indexInInside( nb, face );
+        }
       }
       DUNE_THROW(InvalidStateException,"inverse intersection not found");
       return -1;
@@ -923,9 +939,11 @@ namespace Dune
       const int face  = this->template subEntitySeed<1>( seed, i ).index();
       const int normalIdx = face * GlobalCoordinate :: dimension ;
       GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
-      const int nb = grid_.face_cells[ face ];
+      const int nb = grid_.face_cells[ 2*face ];
       if( nb != seed.index() )
+      {
         normal *= -1.0;
+      }
       return std::move( normal );
     }
 
@@ -937,11 +955,17 @@ namespace Dune
       assert( index >= 0 && index < size( codim ) * GlobalCoordinate :: dimension );
 
       if( codim == 0 )
+      {
         return copyToGlobalCoordinate( grid_.cell_centroids + index );
+      }
       else if ( codim == 1 )
+      {
         return copyToGlobalCoordinate( grid_.face_centroids + index );
+      }
       else if( codim == dim )
+      {
         return copyToGlobalCoordinate( grid_.node_coordinates + index );
+      }
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");
@@ -953,7 +977,9 @@ namespace Dune
     {
       GlobalCoordinate coordinate;
       for( int i=0; i<GlobalCoordinate::dimension; ++i )
+      {
         coordinate[ i ] = coords[ i ];
+      }
       return std::move( coordinate );
     }
 
@@ -963,11 +989,17 @@ namespace Dune
       const int index = seed.index();
       const int codim = EntitySeed::codimension;
       if( codim == 0 )
+      {
         return grid_.cell_volumes[ index ];
+      }
       else if ( codim == 1 )
+      {
         return grid_.face_areas[ index ];
+      }
       else if ( codim == dim )
+      {
         return 1.0;
+      }
       else
       {
         DUNE_THROW(InvalidStateException,"codimension not implemented");
@@ -979,7 +1011,9 @@ namespace Dune
     {
       // copy Cartesian dimensions
       for( int i=0; i<3; ++i )
+      {
         cartDims_[ i ] = grid_.cartdims[ i ];
+      }
 
       typedef Dune::array<int, 3> KeyType;
       std::map< const KeyType, const int > vertexFaceTags;
@@ -998,7 +1032,9 @@ namespace Dune
       {
         KeyType key; key.fill( 4 ); // default is 4 which is the first z coord (for the 2d case)
         for( int j=0; j<dim; ++j )
+        {
           key[ j ] = vertexFacePattern[ i ][ j ];
+        }
 
         vertexFaceTags.insert( std::make_pair( key, i ) );
       }
@@ -1088,7 +1124,8 @@ namespace Dune
 
       geomTypes_.resize(dim + 1);
       GeometryType tmp;
-      for (int codim = 0; codim <= dim; ++codim) {
+      for (int codim = 0; codim <= dim; ++codim)
+      {
         tmp.makeCube(dim - codim);
         geomTypes_[codim].push_back(tmp);
       }
