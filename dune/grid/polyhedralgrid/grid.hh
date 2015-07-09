@@ -950,7 +950,7 @@ namespace Dune
       {
         normal *= -1.0;
       }
-      return std::move( normal );
+      return normal;
     }
 
     template <class EntitySeed>
@@ -986,7 +986,7 @@ namespace Dune
       {
         coordinate[ i ] = coords[ i ];
       }
-      return std::move( coordinate );
+      return coordinate;
     }
 
     template <class EntitySeed>

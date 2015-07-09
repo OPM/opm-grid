@@ -144,7 +144,7 @@ namespace Dune
     {
       GlobalCoordinate normal( outerNormal() );
       normal /= normal.two_norm();
-      return std::move( normal );
+      return normal;
     }
 
     ExtraData data() const { return data_; }

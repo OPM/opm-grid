@@ -56,8 +56,8 @@ namespace Dune
     bool affine () const { return false; }
 
     int corners () const { return data()->corners( seed_ ); }
-    GlobalCoordinate corner ( const int i ) const { return std::move(data()->corner( seed_, i )); }
-    GlobalCoordinate center () const { return std::move(data()->centroids( seed_ )); }
+    GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
+    GlobalCoordinate center () const { return data()->centroids( seed_ ); }
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
@@ -98,7 +98,7 @@ namespace Dune
         cornerContrib *= factor;
         xyz += cornerContrib;
       }
-      return std::move(xyz);
+      return xyz;
     }
 
     /// Mapping from the cell to the reference domain.
