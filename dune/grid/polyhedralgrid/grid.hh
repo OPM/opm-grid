@@ -346,11 +346,17 @@ namespace Dune
     int size ( int codim ) const
     {
       if( codim == 0 )
+      {
         return grid_.number_of_cells;
+      }
       else if ( codim == 1 )
+      {
         return grid_.number_of_faces;
+      }
       else if ( codim == dim )
+      {
         return grid_.number_of_nodes;
+      }
       else
       {
         std::cerr << "Warning: codimension " << codim << " not available in PolyhedralGrid" << std::endl;
