@@ -162,6 +162,14 @@ namespace Dune
       < dim, dimworld, double, PolyhedralGridFamily< dim, dimworld > > Base;
 
     typedef UnstructuredGrid  UnstructuredGridType;
+
+    struct UnstructuredGridDeleter
+    {
+      void operator () ( UnstructuredGridType* grdPtr )
+      {
+        destroy_grid( grdPtr );
+      }
+    };
   public:
     /** \cond */
     typedef PolyhedralGridFamily< dim, dimworld > GridFamily;
@@ -290,7 +298,7 @@ namespace Dune
      */
     explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
-    : gridPtr_( createGrid( deck, poreVolumes ), destroy_grid ),
+    : gridPtr_( createGrid( deck, poreVolumes ) ),
       grid_( *gridPtr_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
@@ -1149,7 +1157,7 @@ namespace Dune
     }
 
   protected:
-    std::shared_ptr< UnstructuredGridType > gridPtr_;
+    std::unique_ptr< UnstructuredGridType, UnstructuredGridDeleter > gridPtr_;
     const UnstructuredGridType& grid_;
 
     CollectiveCommunication comm_;
