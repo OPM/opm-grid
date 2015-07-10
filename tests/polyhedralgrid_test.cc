@@ -122,20 +122,23 @@ int main()
         std::abort();
     }
 
-    return 0;
-    std::cout << "create vtkWriter\n";
-    typedef Dune::VTKWriter<GridView> VtkWriter;
-    VtkWriter vtkWriter(grid.leafGridView());
+    // VTKWriter does not work with geometry type none at the moment
+    if( grid.geomTypes( 0 )[ 0 ].isCube() )
+    {
+      std::cout << "create vtkWriter\n";
+      typedef Dune::VTKWriter<GridView> VtkWriter;
+      VtkWriter vtkWriter(grid.leafGridView());
 
-    std::cout << "create cellData\n";
-    int numElems = grid.size(0);
-    std::vector<double> tmpData(numElems, 0.0);
+      std::cout << "create cellData\n";
+      int numElems = grid.size(0);
+      std::vector<double> tmpData(numElems, 0.0);
 
-    std::cout << "add cellData\n";
-    vtkWriter.addCellData(tmpData, "testdata");
+      std::cout << "add cellData\n";
+      vtkWriter.addCellData(tmpData, "testdata");
 
-    std::cout << "write data\n";
-    vtkWriter.write("polyhedralgrid_test", Dune::VTK::ascii);
+      std::cout << "write data\n";
+      vtkWriter.write("polyhedralgrid_test", Dune::VTK::ascii);
+    }
 
     return 0;
 }
