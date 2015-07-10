@@ -122,6 +122,7 @@ int main()
         std::abort();
     }
 
+    return 0;
     std::cout << "create vtkWriter\n";
     typedef Dune::VTKWriter<GridView> VtkWriter;
     VtkWriter vtkWriter(grid.leafGridView());

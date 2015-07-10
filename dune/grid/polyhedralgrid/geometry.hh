@@ -61,74 +61,101 @@ namespace Dune
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
-      assert( mydimension == 3 );
-      assert( coorddimension == 3 );
-
-      // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
-      LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
-      uvw[0] -= local;
-
-      //const ReferenceElement< ctype , mydimension > & refElement =
-      //  ReferenceElements< ctype, mydimension >::general( type() );
-
-      // Access pattern for uvw matching ordering of corners.
-      const int pat[8][3] = { { 0, 0, 0 },
-                              { 1, 0, 0 },
-                              { 0, 1, 0 },
-                              { 1, 1, 0 },
-                              { 0, 0, 1 },
-                              { 1, 0, 1 },
-                              { 0, 1, 1 },
-                              { 1, 1, 1 } };
-
-      const int nCorners = corners();
-      //refElement.size( mydimension );
-
-      GlobalCoordinate xyz(0.0);
-      for (int i = 0; i < nCorners ; ++i)
+      const GeometryType geomType = type();
+      if( geomType.isCube() )
       {
-        GlobalCoordinate cornerContrib = corner(i);
-        //LocalCoordinate  refCorner = refElement.position(i,mydimension);
-        double factor = 1.0;
-        for (int j = 0; j < mydimension; ++j)
+        assert( mydimension == 3 );
+        assert( coorddimension == 3 );
+
+        // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
+        LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
+        uvw[0] -= local;
+
+        //const ReferenceElement< ctype , mydimension > & refElement =
+        //  ReferenceElements< ctype, mydimension >::general( type() );
+
+        // Access pattern for uvw matching ordering of corners.
+        const int pat[8][3] = { { 0, 0, 0 },
+                                { 1, 0, 0 },
+                                { 0, 1, 0 },
+                                { 1, 1, 0 },
+                                { 0, 0, 1 },
+                                { 1, 0, 1 },
+                                { 0, 1, 1 },
+                                { 1, 1, 1 } };
+
+        const int nCorners = corners();
+        //refElement.size( mydimension );
+
+        GlobalCoordinate xyz(0.0);
+        for (int i = 0; i < nCorners ; ++i)
         {
-          //factor *= uvw[ refCorner[ j ] ][ j ];
-          factor *= uvw[ pat[ i ][ j ] ][ j ];
+          GlobalCoordinate cornerContrib = corner(i);
+          //LocalCoordinate  refCorner = refElement.position(i,mydimension);
+          double factor = 1.0;
+          for (int j = 0; j < mydimension; ++j)
+          {
+            //factor *= uvw[ refCorner[ j ] ][ j ];
+            factor *= uvw[ pat[ i ][ j ] ][ j ];
+          }
+          cornerContrib *= factor;
+          xyz += cornerContrib;
         }
-        cornerContrib *= factor;
-        xyz += cornerContrib;
+        return xyz;
       }
-      return xyz;
+      else if ( geomType.isNone() )
+      {
+        // if no geometry type return the center of the element
+        return center();
+      }
+      else
+      {
+        DUNE_THROW(NotImplemented,"global for geometry type " << geomType << " is not  supported!");
+        return GlobalCoordinate( 0 );
+      }
     }
 
     /// Mapping from the cell to the reference domain.
     /// May be slow.
     LocalCoordinate local(const GlobalCoordinate& y) const
     {
-      // This code is modified from dune/grid/genericgeometry/mapping.hh
-      // \todo: Implement direct computation.
-      const ctype epsilon = 1e-12;
+      const GeometryType geomType = type();
+      if( geomType.isCube() )
+      {
+        // This code is modified from dune/grid/genericgeometry/mapping.hh
+        // \todo: Implement direct computation.
+        const ctype epsilon = 1e-12;
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
-      const ReferenceElement< ctype , mydimension > & refElement =
-        ReferenceElements< ctype, mydimension >::general(type());
+        const ReferenceElement< ctype , mydimension > & refElement =
+          ReferenceElements< ctype, mydimension >::general(type());
 #else
-      const GenericReferenceElement< ctype , mydimension > & refElement =
-        GenericReferenceElements< ctype, mydimension >::general(type());
+        const GenericReferenceElement< ctype , mydimension > & refElement =
+          GenericReferenceElements< ctype, mydimension >::general(type());
 #endif
 
-      LocalCoordinate x = refElement.position(0,0);
-      LocalCoordinate dx;
-      do {
-        using namespace GenericGeometry;
-        // DF^n dx^n = F^n, x^{n+1} -= dx^n
-        JacobianTransposed JT = jacobianTransposed(x);
-        GlobalCoordinate z = global(x);
-        z -= y;
-        MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
-        x -= dx;
-      } while (dx.two_norm2() > epsilon*epsilon);
-      return x;
-      //return LocalCoordinate( 0 );
+        LocalCoordinate x = refElement.position(0,0);
+        LocalCoordinate dx;
+        do {
+          using namespace GenericGeometry;
+          // DF^n dx^n = F^n, x^{n+1} -= dx^n
+          JacobianTransposed JT = jacobianTransposed(x);
+          GlobalCoordinate z = global(x);
+          z -= y;
+          MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
+          x -= dx;
+        } while (dx.two_norm2() > epsilon*epsilon);
+        return x;
+      }
+      else if ( geomType.isNone() )
+      {
+        // if no geometry type return a vector filled with 1
+        return LocalCoordinate( 1 );
+      }
+      else
+      {
+        DUNE_THROW(NotImplemented,"local for geometry type " << geomType << " is not  supported!");
+        return LocalCoordinate( 0 );
+      }
     }
 
     ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }

@@ -1043,29 +1043,6 @@ namespace Dune
         cartDims_[ i ] = grid_.cartdims[ i ];
       }
 
-      typedef Dune::array<int, 3> KeyType;
-      std::map< const KeyType, const int > vertexFaceTags;
-      const int vertexFacePattern [8][3] = {
-                              { 0, 2, 4 }, // vertex 0
-                              { 1, 2, 4 }, // vertex 1
-                              { 0, 3, 4 }, // vertex 2
-                              { 1, 3, 4 }, // vertex 3
-                              { 0, 2, 5 }, // vertex 4
-                              { 1, 2, 5 }, // vertex 5
-                              { 0, 3, 5 }, // vertex 6
-                              { 1, 3, 5 }  // vertex 7
-                             };
-
-      for( int i=0; i<8; ++i )
-      {
-        KeyType key; key.fill( 4 ); // default is 4 which is the first z coord (for the 2d case)
-        for( int j=0; j<dim; ++j )
-        {
-          key[ j ] = vertexFacePattern[ i ][ j ];
-        }
-
-        vertexFaceTags.insert( std::make_pair( key, i ) );
-      }
 
       // setup list of cell vertices
       const int numCells = size( 0 );
@@ -1073,6 +1050,30 @@ namespace Dune
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
+        typedef Dune::array<int, 3> KeyType;
+        std::map< const KeyType, const int > vertexFaceTags;
+        const int vertexFacePattern [8][3] = {
+                                { 0, 2, 4 }, // vertex 0
+                                { 1, 2, 4 }, // vertex 1
+                                { 0, 3, 4 }, // vertex 2
+                                { 1, 3, 4 }, // vertex 3
+                                { 0, 2, 5 }, // vertex 4
+                                { 1, 2, 5 }, // vertex 5
+                                { 0, 3, 5 }, // vertex 6
+                                { 1, 3, 5 }  // vertex 7
+                               };
+
+        for( int i=0; i<8; ++i )
+        {
+          KeyType key; key.fill( 4 ); // default is 4 which is the first z coord (for the 2d case)
+          for( int j=0; j<dim; ++j )
+          {
+            key[ j ] = vertexFacePattern[ i ][ j ];
+          }
+
+          vertexFaceTags.insert( std::make_pair( key, i ) );
+        }
+
         for (int c = 0; c < numCells; ++c)
         {
           typedef std::map<int,int> vertexmap_t;
@@ -1131,6 +1132,14 @@ namespace Dune
             cellVertices_[ c ][ (*vx).second ] = (*it).first ;
           }
         }
+        // if face_tag is available we assume that the elements follow a cube-like structure
+        geomTypes_.resize(dim + 1);
+        GeometryType tmp;
+        for (int codim = 0; codim <= dim; ++codim)
+        {
+          tmp.makeCube(dim - codim);
+          geomTypes_[codim].push_back(tmp);
+        }
       }
       else
       {
@@ -1148,14 +1157,15 @@ namespace Dune
           cellVertices_[ c ].resize( cell_pts.size() );
           std::copy(cell_pts.begin(), cell_pts.end(), cellVertices_[ c ].begin() );
         }
-      }
-
-      geomTypes_.resize(dim + 1);
-      GeometryType tmp;
-      for (int codim = 0; codim <= dim; ++codim)
-      {
-        tmp.makeCube(dim - codim);
-        geomTypes_[codim].push_back(tmp);
+        // if no face_tag is available we assume that no reference element can be
+        // assigned to the elements
+        geomTypes_.resize(dim + 1);
+        GeometryType tmp;
+        for (int codim = 0; codim <= dim; ++codim)
+        {
+          tmp.makeNone(dim - codim);
+          geomTypes_[codim].push_back(tmp);
+        }
       }
     }
 
