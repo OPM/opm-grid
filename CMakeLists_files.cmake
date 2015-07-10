@@ -114,22 +114,21 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/ZoltanGraphFunctions.hpp
 	dune/grid/common/ZoltanPartition.hpp
 	dune/grid/polyhedralgrid/capabilities.hh
-  dune/grid/polyhedralgrid/datahandle.hh
-  dune/grid/polyhedralgrid/declaration.hh
-  dune/grid/polyhedralgrid/dgfparser.hh
-  dune/grid/polyhedralgrid/entity.hh
-  dune/grid/polyhedralgrid/entitypointer.hh
-  dune/grid/polyhedralgrid/entityseed.hh
-  dune/grid/polyhedralgrid/geometry.hh
-  dune/grid/polyhedralgrid/grid.hh
-  dune/grid/polyhedralgrid/gridhelpers.hh
-  dune/grid/polyhedralgrid/gridview.hh
-  dune/grid/polyhedralgrid/hostgridaccess.hh
-  dune/grid/polyhedralgrid/idset.hh
-  dune/grid/polyhedralgrid/indexset.hh
-  dune/grid/polyhedralgrid/intersection.hh
+	dune/grid/polyhedralgrid/cartesianindexmapper.hh
+	dune/grid/polyhedralgrid/declaration.hh
+	dune/grid/polyhedralgrid/dgfparser.hh
+	dune/grid/polyhedralgrid/entity.hh
+	dune/grid/polyhedralgrid/entitypointer.hh
+	dune/grid/polyhedralgrid/entityseed.hh
+	dune/grid/polyhedralgrid/geometry.hh
+	dune/grid/polyhedralgrid/gridhelpers.hh
+	dune/grid/polyhedralgrid/grid.hh
+	dune/grid/polyhedralgrid/gridview.hh
+	dune/grid/polyhedralgrid.hh
+	dune/grid/polyhedralgrid/idset.hh
+	dune/grid/polyhedralgrid/indexset.hh
+	dune/grid/polyhedralgrid/intersection.hh
 	dune/grid/polyhedralgrid/intersectioniterator.hh
-  dune/grid/polyhedralgrid/iterator.hh
-  dune/grid/polyhedralgrid/persistentcontainer.hh
-  dune/grid/polyhedralgrid/twistutility.hh
+	dune/grid/polyhedralgrid/iterator.hh
+	dune/grid/polyhedralgrid/persistentcontainer.hh
 	)
