@@ -3,9 +3,12 @@
 #ifndef DUNE_POLYHEDRALGRID_ENTITYSEED_HH
 #define DUNE_POLYHEDRALGRID_ENTITYSEED_HH
 
+#include <dune/common/version.hh>
 #include <dune/common/typetraits.hh>
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
 #include <dune/grid/common/entityseed.hh>
+#endif
 
 namespace Dune
 {

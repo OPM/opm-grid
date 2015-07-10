@@ -1,5 +1,6 @@
-#include "config.h"
+#include <config.h>
 
+#include <dune/common/unused.hh>
 #include <dune/grid/polyhedralgrid.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 

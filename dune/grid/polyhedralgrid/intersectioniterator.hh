@@ -24,7 +24,7 @@ namespace Dune
   public:
     typedef typename Traits::template Codim<0>::EntitySeed EntitySeed;
 
-    typedef typename conditional< isLeafIntersection,
+    typedef typename std::conditional< isLeafIntersection,
                                   typename Traits :: LeafIntersection,
                                   typename Traits :: LevelIntersection > :: type  Intersection ;
     typedef typename Intersection :: Implementation IntersectionImpl ;

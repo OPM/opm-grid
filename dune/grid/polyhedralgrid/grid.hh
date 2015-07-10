@@ -13,7 +13,11 @@
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON,2,3)
 #include <dune/common/parallel/collectivecommunication.hh>
+#else
+#include <dune/common/collectivecommunication.hh>
+#endif
 
 //- polyhedralgrid includes
 #include <dune/grid/polyhedralgrid/capabilities.hh>
@@ -58,16 +62,23 @@ namespace Dune
       typedef Dune::FieldVector< ctype, dimensionworld > GlobalCoordinate ;
 
       typedef PolyhedralGridIntersection< const Grid > LeafIntersectionImpl;
-      typedef Dune::Intersection< const Grid, LeafIntersectionImpl > LeafIntersection;
-
       typedef PolyhedralGridIntersection< const Grid > LevelIntersectionImpl;
+      typedef PolyhedralGridIntersectionIterator< const Grid > LeafIntersectionIteratorImpl;
+      typedef PolyhedralGridIntersectionIterator< const Grid > LevelIntersectionIteratorImpl;
+
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
+      typedef Dune::Intersection< const Grid, LeafIntersectionImpl > LeafIntersection;
       typedef Dune::Intersection< const Grid, LevelIntersectionImpl > LevelIntersection;
 
-      typedef PolyhedralGridIntersectionIterator< const Grid > LeafIntersectionIteratorImpl;
       typedef Dune::IntersectionIterator< const Grid, LeafIntersectionIteratorImpl, LeafIntersectionImpl > LeafIntersectionIterator;
-
-      typedef PolyhedralGridIntersectionIterator< const Grid > LevelIntersectionIteratorImpl;
       typedef Dune::IntersectionIterator< const Grid, LevelIntersectionIteratorImpl, LevelIntersectionImpl > LevelIntersectionIterator;
+#else
+      typedef Dune::Intersection< const Grid, PolyhedralGridIntersection > LeafIntersection;
+      typedef Dune::Intersection< const Grid, PolyhedralGridIntersection > LevelIntersection;
+
+      typedef Dune::IntersectionIterator< const Grid, PolyhedralGridIntersectionIterator, PolyhedralGridIntersection > LeafIntersectionIterator;
+      typedef Dune::IntersectionIterator< const Grid, PolyhedralGridIntersectionIterator, PolyhedralGridIntersection > LevelIntersectionIterator;
+#endif
 
       typedef PolyhedralGridIterator< 0, const Grid, All_Partition > HierarchicIteratorImpl;
       typedef Dune::EntityIterator< 0, const Grid, HierarchicIteratorImpl > HierarchicIterator;
