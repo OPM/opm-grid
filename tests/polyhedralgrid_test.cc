@@ -10,7 +10,7 @@
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #include <dune/grid/test/gridcheck.hh>
-#else
+#elif DUNE_VERSION_NEWER(DUNE_GRID,2,3)
 #include <dune/grid/test/gridcheck.cc>
 #endif
 
@@ -102,6 +102,7 @@ int main()
     typedef Grid::LeafGridView GridView;
     Grid grid(deck, porv);
 
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
     try {
       gridcheck( grid );
     }
@@ -109,6 +110,7 @@ int main()
     {
       std::cerr << "Warning: " << e.what() << std::endl;
     }
+#endif
 
     testGrid( grid.leafGridView() );
 
