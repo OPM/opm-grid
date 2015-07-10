@@ -167,10 +167,7 @@ namespace Dune
     {
       inline void operator () ( UnstructuredGridType* grdPtr )
       {
-        if( grdPtr != 0 )
-        {
-          destroy_grid( grdPtr );
-        }
+        destroy_grid( grdPtr );
       }
     };
   public:
