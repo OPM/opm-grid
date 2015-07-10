@@ -122,6 +122,7 @@ list (APPEND PUBLIC_HEADER_FILES
   dune/grid/polyhedralgrid/entityseed.hh
   dune/grid/polyhedralgrid/geometry.hh
   dune/grid/polyhedralgrid/grid.hh
+  dune/grid/polyhedralgrid/gridhelpers.hh
   dune/grid/polyhedralgrid/gridview.hh
   dune/grid/polyhedralgrid/hostgridaccess.hh
   dune/grid/polyhedralgrid/idset.hh
