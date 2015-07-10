@@ -64,6 +64,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/orientedentitytable_test.cpp
 	tests/cpgrid/partition_iterator_test.cpp
 	tests/cpgrid/zoltan_test.cpp
+	tests/polyhedralgrid_test.cc
 	)
 
 # originally generated with the command:
@@ -91,6 +92,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/GridAdapter.hpp
 	dune/grid/common/GridPartitioning.hpp
 	dune/grid/common/Volumes.hpp
+	dune/grid/cpgrid/CartesianIndexMapper.hpp
 	dune/grid/cpgrid/CpGridData.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
 	dune/grid/cpgrid/dgfparser.hh
@@ -108,6 +110,26 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/PartitionIteratorRule.hpp
 	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
+	dune/grid/common/CartesianIndexMapper.hpp
 	dune/grid/common/ZoltanGraphFunctions.hpp
 	dune/grid/common/ZoltanPartition.hpp
+	dune/grid/polyhedralgrid/capabilities.hh
+  dune/grid/polyhedralgrid/datahandle.hh
+  dune/grid/polyhedralgrid/declaration.hh
+  dune/grid/polyhedralgrid/dgfparser.hh
+  dune/grid/polyhedralgrid/entity.hh
+  dune/grid/polyhedralgrid/entitypointer.hh
+  dune/grid/polyhedralgrid/entityseed.hh
+  dune/grid/polyhedralgrid/geometry.hh
+  dune/grid/polyhedralgrid/grid.hh
+  dune/grid/polyhedralgrid/gridhelpers.hh
+  dune/grid/polyhedralgrid/gridview.hh
+  dune/grid/polyhedralgrid/hostgridaccess.hh
+  dune/grid/polyhedralgrid/idset.hh
+  dune/grid/polyhedralgrid/indexset.hh
+  dune/grid/polyhedralgrid/intersection.hh
+	dune/grid/polyhedralgrid/intersectioniterator.hh
+  dune/grid/polyhedralgrid/iterator.hh
+  dune/grid/polyhedralgrid/persistentcontainer.hh
+  dune/grid/polyhedralgrid/twistutility.hh
 	)

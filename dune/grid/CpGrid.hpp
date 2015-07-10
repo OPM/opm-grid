@@ -1113,4 +1113,5 @@ namespace Dune
 } // namespace Dune
 
 #include <dune/grid/cpgrid/PersistentContainer.hpp>
+#include <dune/grid/cpgrid/CartesianIndexMapper.hpp>
 #endif // OPM_CPGRID_HEADER
