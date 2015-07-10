@@ -1163,7 +1163,14 @@ namespace Dune
         GeometryType tmp;
         for (int codim = 0; codim <= dim; ++codim)
         {
-          tmp.makeNone(dim - codim);
+          if( codim == dim )
+          {
+            tmp.makeCube(dim - codim);
+          }
+          else
+          {
+            tmp.makeNone(dim - codim);
+          }
           geomTypes_[codim].push_back(tmp);
         }
       }

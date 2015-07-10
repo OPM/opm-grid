@@ -39,16 +39,7 @@ namespace Dune
     PolyhedralGridIndexSet ( const GridType& grid )
         : grid_(&grid)
     {
-        GeometryType t;
-        t.makeCube(/*dim=*/3);
-        geomTypes_[/*codim=*/0].push_back(t);
-
-        t.makeCube(/*dim=*/0);
-        geomTypes_[/*codim=*/3].push_back(t);
     }
-
-    //PolyhedralGridIndexSet( const This &other ) = default;
-    //const This &operator= ( const This &other ) = default;
 
     template< class Entity >
     IndexType index ( const Entity &entity ) const
@@ -109,14 +100,13 @@ namespace Dune
 
     const std::vector< GeometryType >& types(int codim) const
     {
-        return geomTypes(codim);
+        return grid().geomTypes(codim);
     }
 
     const GridType& grid() const { assert( grid_ ); return *grid_; }
 
   protected:
     const GridType *grid_;
-    std::vector<GeometryType> geomTypes_[4];
   };
 
 } // namespace Dune
