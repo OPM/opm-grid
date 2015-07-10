@@ -328,6 +328,12 @@ namespace Dune
 
     /** \} */
 
+    /** \name Casting operators
+     *  \{ */
+    operator const UnstructuredGridType& () const { return grid_; }
+
+    /** \} */
+
     /** \name Size Methods
      *  \{ */
 
@@ -1139,7 +1145,7 @@ namespace Dune
           geomTypes_[codim].push_back(tmp);
         }
       }
-      else
+      else // if ( grid_.cell_facetag )
       {
         for (int c = 0; c < numCells; ++c)
         {
@@ -1171,7 +1177,7 @@ namespace Dune
           }
           geomTypes_[codim].push_back(tmp);
         }
-      }
+      } // end else of ( grid_.cell_facetag )
     }
 
   protected:
@@ -1283,5 +1289,6 @@ namespace Dune
 
 #include <dune/grid/polyhedralgrid/persistentcontainer.hh>
 #include <dune/grid/polyhedralgrid/cartesianindexmapper.hh>
+#include <dune/grid/polyhedralgrid/gridhelpers.hh>
 
 #endif // #ifndef DUNE_POLYHEDRALGRID_GRID_HH
