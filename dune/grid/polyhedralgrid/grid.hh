@@ -165,7 +165,7 @@ namespace Dune
 
     struct UnstructuredGridDeleter
     {
-      void operator () ( UnstructuredGridType* grdPtr )
+      inline void operator () ( UnstructuredGridType* grdPtr )
       {
         destroy_grid( grdPtr );
       }
