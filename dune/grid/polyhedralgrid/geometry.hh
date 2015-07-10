@@ -108,7 +108,7 @@ namespace Dune
       // This code is modified from dune/grid/genericgeometry/mapping.hh
       // \todo: Implement direct computation.
       const ctype epsilon = 1e-12;
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY,2,3)
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
       const ReferenceElement< ctype , mydimension > & refElement =
         ReferenceElements< ctype, mydimension >::general(type());
 #else
