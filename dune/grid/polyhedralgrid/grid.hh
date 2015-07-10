@@ -754,6 +754,7 @@ namespace Dune
 
     const int* globalCell() const
     {
+      assert( grid_.global_cell != 0 );
       return grid_.global_cell;
     }
 
