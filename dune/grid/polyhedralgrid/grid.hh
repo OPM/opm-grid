@@ -33,6 +33,7 @@
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/GridManager.hpp>
 #include <opm/core/grid/cornerpoint_grid.h>
+#include <opm/core/grid/MinpvProcessor.hpp>
 
 namespace Dune
 {
@@ -786,7 +787,7 @@ namespace Dune
         g.dims[1] = eclipseGrid->getNY();
         g.dims[2] = eclipseGrid->getNZ();
 
-        //eclipseGrid->exportMAPAXES( mapaxes );
+        eclipseGrid->exportMAPAXES( mapaxes );
         eclipseGrid->exportCOORD( coord );
         eclipseGrid->exportZCORN( zcorn );
         eclipseGrid->exportACTNUM( actnum );
@@ -794,15 +795,13 @@ namespace Dune
         g.coord = coord.data();
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
-        g.mapaxes = 0; // mapaxes.data();
+        g.mapaxes = mapaxes.data();
 
-        /*
-        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != MinpvMode::ModeEnum::Inactive)) {
-            MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
+        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+            Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const double minpv_value  = eclipseGrid->getMinpvValue();
             mp.process(poreVolumes, minpv_value, actnum, zcorn.data());
         }
-        */
 
         const double z_tolerance = eclipseGrid->isPinchActive() ?
             eclipseGrid->getPinchThresholdThickness() : 0.0;
