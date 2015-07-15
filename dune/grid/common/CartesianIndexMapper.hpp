@@ -44,13 +44,13 @@ namespace Dune
         }
 
         /** \brief return index of the cells in the logical Cartesian grid */
-        int cartesianIndex( const int compressedElementIndex ) const
+        int cartesianIndex( const int /* compressedElementIndex */) const
         {
             return 0;
         }
 
         /** \brief return Cartesian coordinate, i.e. IJK, for a given cell */
-        void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords) const
+        void cartesianCoordinate(const int /* compressedElementIndex */, std::array<int,dimension>& /* coords */) const
         {
         }
     };

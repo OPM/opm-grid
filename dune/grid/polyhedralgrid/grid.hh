@@ -6,6 +6,9 @@
 #include <set>
 #include <vector>
 
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
+
 //- dune-common includes
 #include <dune/common/version.hh>
 #include <dune/common/array.hh>
@@ -27,6 +30,9 @@
 #include <dune/grid/polyhedralgrid/geometry.hh>
 #include <dune/grid/polyhedralgrid/gridview.hh>
 #include <dune/grid/polyhedralgrid/idset.hh>
+
+// Re-enable warnings.
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/grid.h>
@@ -358,7 +364,7 @@ namespace Dune
      *  \returns number of entities of codimension \em codim on grid level
      *           \em level.
      */
-    int size ( int level, int codim ) const
+    int size ( int /* level */, int codim ) const
     {
       return size( codim );
     }
@@ -398,7 +404,7 @@ namespace Dune
      *  \returns number of entities with a geometry of type \em type on grid
      *           level \em level.
      */
-    int size ( int level, GeometryType type ) const
+    int size ( int /* level */, GeometryType type ) const
     {
       return size( dim - type.dim() );
     }
@@ -453,27 +459,27 @@ namespace Dune
     }
 
     template< int codim >
-    typename Codim< codim >::LevelIterator lbegin ( const int level ) const
+    typename Codim< codim >::LevelIterator lbegin ( const int /* level */ ) const
     {
       return leafbegin< codim, All_Partition >();
     }
 
     template< int codim >
-    typename Codim< codim >::LevelIterator lend ( const int level ) const
+    typename Codim< codim >::LevelIterator lend ( const int /* level */ ) const
     {
       return leafend< codim, All_Partition >();
     }
 
     template< int codim, PartitionIteratorType pitype >
     typename Codim< codim >::template Partition< pitype >::LevelIterator
-    lbegin ( const int level ) const
+    lbegin ( const int /* level */ ) const
     {
       return leafbegin< codim, pitype > ();
     }
 
     template< int codim, PartitionIteratorType pitype >
     typename Codim< codim >::template Partition< pitype >::LevelIterator
-    lend ( const int level ) const
+    lend ( const int /* level */ ) const
     {
       return leafend< codim, pitype > ();
     }
@@ -488,7 +494,7 @@ namespace Dune
       return localIdSet_;
     }
 
-    const LevelIndexSet &levelIndexSet ( int level ) const
+    const LevelIndexSet &levelIndexSet ( int /* level */ ) const
     {
       return leafIndexSet();
     }
@@ -498,16 +504,16 @@ namespace Dune
       return leafIndexSet_;
     }
 
-    void globalRefine ( int refCount )
+    void globalRefine ( int /* refCount */ )
     {
     }
 
-    bool mark ( int refCount, const typename Codim< 0 >::Entity &entity )
+    bool mark ( int /* refCount */, const typename Codim< 0 >::Entity& /* entity */ )
     {
       return false;
     }
 
-    int getMark ( const typename Codim< 0 >::Entity &entity ) const
+    int getMark ( const typename Codim< 0 >::Entity& /* entity */) const
     {
       return false;
     }
@@ -546,7 +552,7 @@ namespace Dune
      *
      *  \param[in]  codim  codimension for with the information is desired
      */
-    int overlapSize ( int codim ) const
+    int overlapSize ( int /* codim */) const
     {
       return 0;
     }
@@ -565,7 +571,7 @@ namespace Dune
      *  \param[in]  level  grid level (0, ..., maxLevel())
      *  \param[in]  codim  codimension (0, ..., dimension)
      */
-    int overlapSize ( int level, int codim ) const
+    int overlapSize ( int /* level */, int /* codim */ ) const
     {
       return 0;
     }
@@ -575,7 +581,7 @@ namespace Dune
      *  \param[in]  level  grid level (0, ..., maxLevel())
      *  \param[in]  codim  codimension (0, ..., dimension)
      */
-    int ghostSize ( int level, int codim ) const
+    int ghostSize ( int /* level */, int codim ) const
     {
       return ghostSize( codim );
     }
@@ -594,10 +600,10 @@ namespace Dune
      *  \param[in]  level       grid level to communicate
      */
     template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data > &dataHandle,
-                       InterfaceType interface,
-                       CommunicationDirection direction,
-                       int level ) const
+    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+                       InterfaceType /* interface */,
+                       CommunicationDirection /* direction */,
+                       int /* level */ ) const
     {
        //levelGridView( level ).communicate( dataHandle, interface, direction );
     }
@@ -615,9 +621,9 @@ namespace Dune
      *                          ForwardCommunication, BackwardCommunication)
      */
     template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data > &dataHandle,
-                       InterfaceType interface,
-                       CommunicationDirection direction ) const
+    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+                       InterfaceType /* interface */,
+                       CommunicationDirection /* direction */ ) const
     {
       //leafGridView().communicate( dataHandle, interface, direction );
     }
@@ -667,7 +673,7 @@ namespace Dune
      */
 
     template< class DataHandle, class Data >
-    bool loadBalance ( CommDataHandleIF< DataHandle, Data > &datahandle )
+    bool loadBalance ( CommDataHandleIF< DataHandle, Data >& /* datahandle */ )
     {
       return false;
     }
@@ -687,14 +693,14 @@ namespace Dune
      *  \returns \b true, if the grid has changed.
      */
     template< class DofManager >
-    bool loadBalance ( DofManager &dofManager )
+    bool loadBalance ( DofManager& /* dofManager */ )
     {
       return false;
     }
 
     /** \brief View for a grid level */
     template< PartitionIteratorType pitype >
-    typename Partition< pitype >::LevelGridView levelGridView ( int level ) const
+    typename Partition< pitype >::LevelGridView levelGridView ( int /* level */ ) const
     {
       typedef typename Partition< pitype >::LevelGridView View;
       typedef typename View::GridViewImp ViewImp;
@@ -711,7 +717,7 @@ namespace Dune
     }
 
     /** \brief View for a grid level for All_Partition */
-    LevelGridView levelGridView ( int level ) const
+    LevelGridView levelGridView ( int /* level */ ) const
     {
       typedef typename LevelGridView::GridViewImp ViewImp;
       return LevelGridView( ViewImp( *this ) );
