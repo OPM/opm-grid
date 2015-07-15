@@ -1,11 +1,11 @@
 #include <config.h>
 
+// Warning suppression for Dune includes.
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
+
 #include <dune/common/unused.hh>
 #include <dune/grid/polyhedralgrid.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
-
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
@@ -13,6 +13,12 @@
 #elif DUNE_VERSION_NEWER(DUNE_GRID,2,3)
 #include <dune/grid/test/gridcheck.cc>
 #endif
+
+// Re-enable warnings.
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <iostream>
 
