@@ -46,8 +46,7 @@ void testGrid( const GridView& gridView )
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
-        const auto& elem = *elemIt;
-        const Geometry& elemGeom = elem.geometry();
+        const Geometry& elemGeom = elemIt->geometry();
         if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
             std::cout << "element's " << numElem << " volume is wrong:"<<elemGeom.volume()<<"\n";
 
@@ -61,27 +60,26 @@ void testGrid( const GridView& gridView )
 
 
         int numIs = 0;
-        IsIt isIt = gridView.ibegin(elem);
-        IsIt isEndIt = gridView.iend(elem);
+        IsIt isIt = gridView.ibegin(*elemIt);
+        IsIt isEndIt = gridView.iend(*elemIt);
         for (; isIt != isEndIt; ++isIt, ++ numIs)
         {
-            const auto& intersection = (*isIt);
-            const auto& isGeom = intersection.geometry();
+            const auto& isGeom = isIt->geometry();
             if (std::abs(isGeom.volume() - 1.0) > 1e-8)
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
-            if (intersection.neighbor())
+            if (isIt->neighbor())
             {
-              if( numIs != intersection.indexInInside() )
-                  std::cout << "num iit = " << numIs << " indexInInside " << intersection.indexInInside() << std::endl;
+              if( numIs != isIt->indexInInside() )
+                  std::cout << "num iit = " << numIs << " indexInInside " << isIt->indexInInside() << std::endl;
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-              if (std::abs(intersection.outside().geometry().volume() - 1.0) > 1e-8)
+              if (std::abs(isIt->outside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "outside element volume of intersection " << numIs << " of element " << numElem
-                            << " volume is wrong: " << intersection.outside().geometry().volume() << std::endl;
+                            << " volume is wrong: " << isIt->outside().geometry().volume() << std::endl;
 
-              if (std::abs(intersection.inside().geometry().volume() - 1.0) > 1e-8)
+              if (std::abs(isIt->inside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "inside element volume of intersection " << numIs << " of element " << numElem
-                            << " volume is wrong: " << intersection.inside().geometry().volume() << std::endl;
+                            << " volume is wrong: " << isIt->inside().geometry().volume() << std::endl;
 #endif
             }
         }
