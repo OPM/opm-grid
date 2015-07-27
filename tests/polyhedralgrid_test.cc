@@ -15,6 +15,7 @@
 // Re-enable warnings.
 #include <opm/core/utility/platform_dependent/reenable_warnings.h>
 
+#include <opm/parser/eclipse/Parser/ParseMode.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
@@ -97,7 +98,8 @@ void testGrid( const GridView& gridView )
 int main()
 {
     Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
+    Opm::ParseMode parseMode;
+    const auto deck = parser.parseString(deckString , parseMode);
 
     std::vector<double> porv;
     typedef Dune::PolyhedralGrid< 3, 3 > Grid;
