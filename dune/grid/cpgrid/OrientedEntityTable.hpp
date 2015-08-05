@@ -71,7 +71,7 @@ namespace Dune
                 : R(r), orientation_(orientation)
             {
             }
-            using R::size;
+            int size () const { return R::size(); }
             using R::empty;
             using R::begin;
             using R::end;
