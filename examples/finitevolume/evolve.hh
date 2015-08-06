@@ -61,8 +61,13 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
 #endif
         // double volume = it->geometry().volume();
 
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 4)
+        // cell index
+        int indexi = mapper.index(*it);
+#else
         // cell index
         int indexi = mapper.map(*it);
+#endif
 
         // variable to compute sum of positive factors
         double sumfactor = 0.0;
@@ -111,7 +116,11 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
             {
                 // access neighbor
                 EntityPointer outside = is->outside();
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 4)
+                int indexj = mapper.index(*outside);
+#else
                 int indexj = mapper.map(*outside);
+#endif
 
                 // compute flux from one side only
                 // this should become easier with the new IntersectionIterator functionality!
