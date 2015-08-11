@@ -41,7 +41,9 @@
 
 
 #define BOOST_TEST_MODULE EntityRepTests
+#include <opm/core/utility/platform_dependent/disable_warnings.h>
 #include <boost/test/unit_test.hpp>
+#include <opm/core/utility/platform_dependent/reenable_warnings.h>
 
 #include <dune/grid/cpgrid/EntityRep.hpp>
 
