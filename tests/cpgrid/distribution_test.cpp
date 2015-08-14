@@ -191,8 +191,8 @@ BOOST_AUTO_TEST_CASE(distribute)
     int procs=1;
 #if HAVE_MPI
     MPI_Errhandler handler;
-    MPI_Errhandler_create(MPI_err_handler, &handler);
-    MPI_Errhandler_set(MPI_COMM_WORLD, handler);
+    MPI_Comm_create_errhandler(MPI_err_handler, &handler);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
     MPI_Comm_size(MPI_COMM_WORLD, &procs);
 #endif
     Dune::CpGrid grid;

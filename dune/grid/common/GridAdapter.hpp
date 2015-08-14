@@ -218,7 +218,7 @@ private:
     }
     /// Build (copy of) global cell from grid
     template<class Grid>
-    void buildGlobalCell(const Grid& grid)
+    void buildGlobalCell(const Grid& /*grid*/)
     {
         g_.global_cell=0;
     }
@@ -230,7 +230,7 @@ private:
     }
     /// Copy the cart dims from grid.
     template <class Grid>
-    void copyCartDims(const Grid& grid)
+    void copyCartDims(const Grid& /*grid*/)
     {}
     /// Build (copy of) topological structure from grid.
     template <class Grid>
