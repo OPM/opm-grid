@@ -158,17 +158,17 @@ namespace Dune
       }
     }
 
-    ctype integrationElement ( const LocalCoordinate &local ) const { return volume(); }
+    ctype integrationElement ( const LocalCoordinate & ) const { return volume(); }
     ctype volume () const { return data()->volumes( seed_ ); }
 
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    JacobianTransposed jacobianTransposed ( const LocalCoordinate &local ) const
+    JacobianTransposed jacobianTransposed ( const LocalCoordinate & ) const
     {
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
       return JacobianTransposed( 0 );
     }
 
-    JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate &local ) const
+    JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate & ) const
     {
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );

@@ -324,7 +324,7 @@ namespace Dune
       return hend( maxLevel );
     }
 
-    HierarchicIterator hend ( int maxLevel ) const
+    HierarchicIterator hend ( int ) const
     {
       typedef typename Traits :: HierarchicIteratorImpl HierarchicIteratorImpl ;
       return HierarchicIterator( HierarchicIteratorImpl( data(), false ) );

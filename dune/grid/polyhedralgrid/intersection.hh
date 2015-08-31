@@ -127,14 +127,14 @@ namespace Dune
     }
 
     GlobalCoordinate
-    outerNormal ( const FieldVector< ctype, dimension-1 > &local ) const
+    outerNormal ( const FieldVector< ctype, dimension-1 > & ) const
     { return outerNormal(); }
 
     GlobalCoordinate outerNormal () const
     { return data()->outerNormal(seed_, intersectionIdx_); }
 
     GlobalCoordinate
-    unitOuterNormal ( const FieldVector< ctype, dimension-1 > &local ) const
+    unitOuterNormal ( const FieldVector< ctype, dimension-1 > & ) const
     {
       return centerUnitOuterNormal();
     }
