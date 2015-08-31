@@ -31,17 +31,20 @@ namespace cpgrid
 /// \brief Partition a CpGrid using Zoltan
 ///
 /// This function will extract Zoltan's graph information
-/// form the grid and use it to partition it.
+/// form the grid, and the wells and use it to partition the grid.
 /// In case the global grid is available on all processes, it
 /// will nevertheless only use the information on the root process
 /// to partition it as Zoltan cannot identify this situation.
 /// @param grid The grid to partition
+/// @param eclipseState The eclipse state  to extract the well
+///                     information from. If null wells will be neglected.
 /// @paramm cc  The MPI communicator to use for the partitioning.
 ///             The will be partitioned among the partiticipating processes.
 /// @param root The process number that holds the global grid.
 /// @return A vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning.
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
+                                                const Opm::EclipseStateConstPtr eclipseState,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root);
 }
