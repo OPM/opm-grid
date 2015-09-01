@@ -323,9 +323,10 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     : grid_(grid)
 {
     wellsGraph_.resize(grid.numCells());
+    const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
     std::vector<Opm::WellConstPtr> wells  = eclipseState->getSchedule()->getWells();
-    std::vector<int> cartesian_to_compressed(grid.numCells(), -1);
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
     int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
     for( int i=0; i < grid.numCells(); ++i )
     {
@@ -341,7 +342,6 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             int i = completion->getI();
             int j = completion->getJ();
             int k = completion->getK();
-            const auto cpgdim = grid.logicalCartesianSize();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
             assert(compressed_idx>=0);
