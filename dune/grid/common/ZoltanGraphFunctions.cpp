@@ -256,7 +256,6 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 
         // First the strong edges of the well completions.
         auto wellEdges = graph.getWellsGraph()[currentCell];
-        well_perf += wellEdges.size();
         for( auto edge : wellEdges)
         {
             nborGID[idx] = edge;
