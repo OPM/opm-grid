@@ -111,8 +111,8 @@ namespace Dune
             }
 
             /// Constructor taking a grid, entity index and orientation.
-            Entity(const CpGridData& grid, int index, bool orientation)
-                : EntityRep<codim>(index, orientation), pgrid_(&grid)
+            Entity(const CpGridData& grid, int index_arg, bool orientation_arg)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid)
             {
             }
 
@@ -297,8 +297,8 @@ namespace Dune
             }
 
             /// Constructor taking a grid, entity index and orientation.
-            EntityPointer(const CpGridData& grid, int index, bool orientation)
-                : Entity(grid, index, orientation)
+            EntityPointer(const CpGridData& grid, int index_arg, bool orientation_arg)
+                : Entity(grid, index_arg, orientation_arg)
             {
             }
 
@@ -448,9 +448,9 @@ bool Entity<codim>::hasBoundaryIntersections() const
 {
     // Copied implementation from EntityDefaultImplementation,
     // except for not checking LevelIntersectionIterators.
-    typedef LeafIntersectionIterator IntersectionIterator;
-    IntersectionIterator end = ileafend();
-    for (IntersectionIterator it = ileafbegin(); it != end; ++it) {
+    typedef LeafIntersectionIterator Iter;
+    Iter end = ileafend();
+    for (Iter it = ileafbegin(); it != end; ++it) {
         if (it->boundary()) return true;
     }
     return false;
