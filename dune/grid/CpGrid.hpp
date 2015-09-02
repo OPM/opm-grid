@@ -693,20 +693,20 @@ namespace Dune
             bool b = r[0].orientation();
             bool use_first = a ? b : !b;
             // The number of valid cells.
-            int size = r.size();
+            int r_size = r.size();
             // In the case of only one valid cell, this is the index of it.
             int index = 0;
             if(r[0].index()==std::numeric_limits<int>::max()){
-                assert(size==2);
-                --size;
+                assert(r_size==2);
+                --r_size;
                 index=1;
             }
             if(r.size()>1 && r[1].index()==std::numeric_limits<int>::max())
             {
-                assert(size==2);
-                --size;
+                assert(r_size==2);
+                --r_size;
             }
-            if (size == 2) {
+            if (r_size == 2) {
                 return use_first ? r[0].index() : r[1].index();
             } else {
                 return use_first ? r[index].index() : -1;

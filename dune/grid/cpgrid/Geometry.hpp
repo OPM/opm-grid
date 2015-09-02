@@ -5,7 +5,7 @@
 // Created: Fri May 29 23:29:24 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -139,13 +139,13 @@ namespace Dune
             /// Note that this does not give a proper space-filling
             /// embedding of the cell complex in the general (faulted)
             /// case. We should therefore revisit this at some point.
-            GlobalCoordinate global(const LocalCoordinate& local) const
+            GlobalCoordinate global(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
-                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
-                uvw[0] -= local;
+                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local_coord };
+                uvw[0] -= local_coord;
                 // Access pattern for uvw matching ordering of corners.
                 const int pat[8][3] = { { 0, 0, 0 },
                                         { 1, 0, 0 },
@@ -202,9 +202,9 @@ namespace Dune
             /// J_{ij} = (dg_i/du_j)
             /// where g is the mapping from the reference domain,
             /// and {u_j} are the reference coordinates.
-            double integrationElement(const LocalCoordinate& local) const
+            double integrationElement(const LocalCoordinate& local_coord) const
             {
-                FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local);
+                FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local_coord);
                 using namespace GenericGeometry;
                 return MatrixHelper<DuneCoordTraits<double> >::template sqrtDetAAT<3, 3>(Jt);
             }
@@ -249,13 +249,13 @@ namespace Dune
             /// where g is the mapping from the reference domain,
             /// and {u_i} are the reference coordinates.
             const FieldMatrix<ctype, mydimension, coorddimension>
-            jacobianTransposed(const LocalCoordinate& local) const
+            jacobianTransposed(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
-                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
-                uvw[0] -= local;
+                LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local_coord };
+                uvw[0] -= local_coord;
                 // Access pattern for uvw matching ordering of corners.
                 const int pat[8][3] = { { 0, 0, 0 },
                                         { 1, 0, 0 },
@@ -284,9 +284,9 @@ namespace Dune
 
             /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
             const FieldMatrix<ctype, coorddimension, mydimension>
-            jacobianInverseTransposed(const LocalCoordinate& local) const
+            jacobianInverseTransposed(const LocalCoordinate& local_coord) const
             {
-                FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local);
+                FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local_coord);
                 Jti.invert();
                 return Jti;
             }

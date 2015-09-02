@@ -5,7 +5,7 @@
 // Created: Tue Jun  9 11:11:24 2009
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
-//            Bård Skaflestad     <bard.skaflestad@sintef.no>
+//            Bï¿½rd Skaflestad     <bard.skaflestad@sintef.no>
 //
 // $Date$
 //
@@ -106,20 +106,20 @@ namespace Dune
             {
             }
             /// @brief Constructor taking an entity index and an orientation.
-            /// @param index Entity index
-            /// @param orientation True if the entity's orientations is positive.
-            EntityRep(int index, bool orientation)
-                : entityrep_(orientation ? index : ~index)
+            /// @param index_arg Entity index
+            /// @param orientation_arg True if the entity's orientations is positive.
+            EntityRep(int index_arg, bool orientation_arg)
+                : entityrep_(orientation_arg ? index_arg : ~index_arg)
             {
-                assert(index >= 0);
+                assert(index_arg >= 0);
             }
             /// @brief Set entity value.
             /// @param index Entity index
             /// @param orientation True if the entity's orientations is positive.
-            void setValue(int index, bool orientation)
+            void setValue(int index_arg, bool orientation_arg)
             {
-                assert(index >= 0);
-                entityrep_ = orientation ? index : ~index;
+                assert(index_arg >= 0);
+                entityrep_ = orientation_arg ? index_arg : ~index_arg;
             }
             /// @brief The (positive) index of an entity. Not a Dune interface method.
             /// @return the (positive) index of an entity.
