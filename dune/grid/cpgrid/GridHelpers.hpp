@@ -233,17 +233,17 @@ public:
         public IndexIterator
     {
     public:
-        iterator(const Dune::cpgrid::OrientedEntityTable<0,1>::row_type* row,
+        iterator(const Dune::cpgrid::OrientedEntityTable<0,1>::row_type& row,
                  int index, int cell_index)
             : IndexIterator(index), row_(row), cell_index_(cell_index)
         {}
         int dereference() const
         {
-            return row_->operator[](this->index_).index();
+            return row_[this->index_].index();
         }
         int elementAt(int n) const
         {
-            return row_->operator[](n).index();
+            return row_[n].index();
         }
         int getCellIndex()const
         {
@@ -251,28 +251,40 @@ public:
         }
 
     private:
-        const Dune::cpgrid::OrientedEntityTable<0,1>::row_type* row_;
+        // Note that row_ is a boost::iterator_range returned by Opm::SparseTable.
+        // and stored in CellFacesRow. It is a temporary object that only lives
+        // as long as there is a reference to it e.g. by storing the Cell2FacesRow.
+        // Therefore it needs to be copied. As it is rather light weight this
+        // should be fast anyway. A const reference would mean that the iterator
+        // is not assignable.
+        const Dune::cpgrid::OrientedEntityTable<0,1>::row_type row_;
         int cell_index_;
     };
 
     typedef iterator const_iterator;
 
-    Cell2FacesRow(const Dune::cpgrid::OrientedEntityTable<0,1>::row_type row,
+    Cell2FacesRow(const Dune::cpgrid::OrientedEntityTable<0,1>::row_type& row,
                   const int cell_index)
         : row_(row), cell_index_(cell_index)
     {}
 
     const_iterator begin() const
     {
-        return const_iterator(&row_, 0, cell_index_);
+        return const_iterator(row_, 0, cell_index_);
     }
 
     const_iterator end() const
     {
-        return const_iterator(&row_, row_.size(), cell_index_);
+        return const_iterator(row_, row_.size(), cell_index_);
     }
 
 private:
+    // Note that row_ is a boost::iterator_range returned by Opm::SparseTable.
+    // and stored in CellFacesRow. It is a temporary object that only lives
+    // as long as there is a reference to it e.g. by storing the Cell2FacesRow.
+    // Therefore it needs to be copied. As it is rather light weight this
+    // should be fast anyway.  A const reference would mean that the row
+    // is not assignable.
     const Dune::cpgrid::OrientedEntityTable<0,1>::row_type row_;
     const int cell_index_;
 };
