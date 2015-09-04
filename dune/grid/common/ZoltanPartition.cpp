@@ -113,7 +113,7 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
             }
             if ( cells_on_other.size() )
             {
-                OPM_THROW(std::domain_error, "Well is distributed between proceses, which should not be the case!");
+                OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
             }
             ++index;
         }

@@ -31,7 +31,7 @@ namespace cpgrid
 /// \brief Partition a CpGrid using Zoltan
 ///
 /// This function will extract Zoltan's graph information
-/// form the grid, and the wells and use it to partition the grid.
+/// from the grid, and the wells and use it to partition the grid.
 /// In case the global grid is available on all processes, it
 /// will nevertheless only use the information on the root process
 /// to partition it as Zoltan cannot identify this situation.

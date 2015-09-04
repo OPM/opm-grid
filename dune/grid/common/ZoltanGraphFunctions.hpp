@@ -123,7 +123,7 @@ class CombinedGridWellGraph
 public:
     typedef std::vector<std::set<int> > GraphType;
 
-    /// \brief Create a grapg representing a grid together with the wells.
+    /// \brief Create a graph representing a grid together with the wells.
     /// \param grid The grid.
     /// \param eclipseState The eclipse state to extract the well information from.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
