@@ -27,8 +27,9 @@ namespace Dune
 namespace cpgrid
 {
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                                          const CollectiveCommunication<MPI_Comm>& cc,
-                                          int root)
+                                                const Opm::EclipseStateConstPtr eclipseState,
+                                                const CollectiveCommunication<MPI_Comm>& cc,
+                                                int root)
 {
     int rc;
     float ver;
@@ -53,11 +54,24 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
     Zoltan_Set_Param(zz, "DEBUG_LEVEL", "3");
     Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
+    Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
+    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
     bool pretendEmptyGrid = cc.rank()!=root;
+    std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
 
-    Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, pretendEmptyGrid);
+    if( eclipseState )
+    {
+        Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState));
+        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
+                                                    pretendEmptyGrid);
+    }
+    else
+    {
+        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, pretendEmptyGrid);
+    }
 
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
                              &changes,        /* 1 if partitioning was changed, 0 otherwise */
@@ -81,6 +95,30 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
+    //#ifndef NDEBUG
+    if( eclipseState )
+    {
+        int index = 0;
+        for( auto well : grid_and_wells->getWellsGraph() )
+        {
+            int part=parts[index];
+            std::set<std::pair<int,int> > cells_on_other;
+
+            for( auto vertex : well )
+            {
+                if( part != parts[vertex] )
+                {
+                    cells_on_other.insert(std::make_pair(vertex, parts[vertex]));
+                }
+            }
+            if ( cells_on_other.size() )
+            {
+                OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
+            }
+            ++index;
+        }
+    }
+//#endif
     cc.broadcast(&parts[0], parts.size(), root);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);

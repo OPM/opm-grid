@@ -21,6 +21,8 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <limits>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
@@ -108,9 +110,49 @@ void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
         }
         numEdges[i] = edges;
     }
-    std::cout<<std::endl;
     *err = ZOLTAN_OK;
 }
+
+void getCpGridWellsNumEdgesList(void *graphPointer, int sizeGID, int sizeLID,
+                           int numCells,
+                           ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                           int *numEdges, int *err)
+{
+    (void) globalID;
+    const CombinedGridWellGraph& graph =
+        *static_cast<CombinedGridWellGraph*>(graphPointer);
+    const Dune::CpGrid&  grid = graph.getGrid();
+    if ( sizeGID != 1 || sizeLID != 1 || numCells != grid.numCells() )
+    {
+        *err = ZOLTAN_FATAL;
+        return;
+    }
+    for( int i = 0; i < numCells;  i++ )
+    {
+        // Initial set of faces is the ones of the well completions
+        auto edges = graph.getWellsGraph()[i];
+        // For the graph there is an edge only if the face has two neighbors.
+        // Therefore we need to check each face
+        int lid   = localID[i];
+        for ( int local_face = 0; local_face < grid.numCellFaces(static_cast<int>(localID[i])); ++local_face )
+        {
+            const int face  = grid.cellFace(lid, local_face);
+            const int face0 = grid.faceCell(face, 0);
+            const int face1 = grid.faceCell(face, 1);
+
+            if ( face0 != -1 && face1 != -1 )
+            {
+                if ( face0 != i )
+                    edges.insert(face0);
+                else
+                    edges.insert(face1);
+            }
+        }
+        numEdges[i] = edges.size();
+    }
+    *err = ZOLTAN_OK;
+}
+
 void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
                        int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                        int *numEdges,
@@ -188,6 +230,129 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
 #endif
 }
 
+void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
+                       int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                       int *numEdges,
+                       ZOLTAN_ID_PTR nborGID, int *nborProc,
+                       int wgtDim, float *ewgts, int *err)
+{
+    (void) wgtDim; (void) globalID; (void) numEdges; (void) ewgts;
+    assert(wgtDim==1);
+    const CombinedGridWellGraph& graph =
+        *static_cast<const CombinedGridWellGraph*>(graphPointer);
+    const Dune::CpGrid&  grid = graph.getGrid();
+
+    if ( sizeGID != 1 || sizeLID != 1 || numCells != grid.numCells() )
+    {
+        *err = ZOLTAN_FATAL;
+        return;
+    }
+    int oldidx = 0;
+    int idx = 0;
+
+    for( int cell = 0; cell < numCells;  cell++ )
+    {
+        const int currentCell = localID[cell];
+
+        // First the strong edges of the well completions.
+        auto wellEdges = graph.getWellsGraph()[currentCell];
+        for( auto edge : wellEdges)
+        {
+            nborGID[idx] = edge;
+            ewgts[idx++] = std::numeric_limits<float>::max();
+        }
+
+        // Now the ones of the grid that are not handled by the well completions
+        for ( int local_face = 0 ; local_face < grid.numCellFaces(static_cast<int>(localID[cell])); ++local_face )
+        {
+            const int face  = grid.cellFace(currentCell, local_face);
+            int otherCell   = grid.faceCell(face, 0);
+            if ( otherCell == currentCell || otherCell == -1 )
+            {
+                otherCell = grid.faceCell(face, 1);
+                if ( otherCell == currentCell || otherCell == -1 )
+                {
+                    // no real face or already handled by well
+                    continue;
+                }
+                else
+                {
+                    if ( wellEdges.find(otherCell) == wellEdges.end() )
+                    {
+                        nborGID[idx] = globalID[otherCell];
+                        ewgts[idx++] = 1;
+                    }
+                    continue;
+                }
+            }
+            if ( wellEdges.find(otherCell) == wellEdges.end() )
+            {
+                nborGID[idx] = globalID[otherCell];
+                ewgts[idx++] = 1;
+            }
+        }
+        assert(idx-oldidx==numEdges[cell]);
+        oldidx = idx;
+    }
+
+    const int myrank = grid.comm().rank();
+
+    for ( int i = 0; i < idx; ++i )
+    {
+        nborProc[i] = myrank;
+    }
+#if defined(DEBUG) && false // The index set will not be initialized here!
+    // The above relies heavily on the grid not being distributed already.
+    // Therefore we check here that all cells are owned by us.
+    GlobalLookupIndexSet<Dune::CpGrid::ParallelIndexSet>
+        globalIdxSet(grid.getCellIndexSet(),
+                     grid.numCells());
+    for ( int cell = 0; cell < numCells;  cell++ )
+    {
+        if ( globalIdxSet.pair(cell)->local().attribute() !=
+             Dune::CpGrid::ParallelIndexSet::LocalIndex::Attribute::owner )
+        {
+            *err = ZOLTAN_FATAL;
+        }
+    }
+#endif
+}
+
+CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
+                      const Opm::EclipseStateConstPtr eclipseState)
+    : grid_(grid)
+{
+    wellsGraph_.resize(grid.numCells());
+    const auto& cpgdim = grid.logicalCartesianSize();
+    // create compressed lookup from cartesian.
+    std::vector<Opm::WellConstPtr> wells  = eclipseState->getSchedule()->getWells();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
+    for( int i=0; i < grid.numCells(); ++i )
+    {
+        cartesian_to_compressed[grid.globalCell()[i]] = i;
+    }
+    // We assume that we know all the wells.
+    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
+        Opm::WellConstPtr well = (*wellIter);
+        std::set<int> well_indices;
+        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
+        for (size_t c=0; c<completionSet->size(); c++) {
+            Opm::CompletionConstPtr completion = completionSet->get(c);
+            int i = completion->getI();
+            int j = completion->getJ();
+            int k = completion->getK();
+            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
+            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
+            assert(compressed_idx>=0);
+            well_indices.insert(compressed_idx);
+        }
+            
+        addCompletionSetToGraph(well_indices);
+            
+    }
+}
+
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
                                    bool pretendNull)
 {
@@ -207,6 +372,29 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
         Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridEdgeList, gridPointer);
     }
 }
+
+    
+void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
+                                   const CombinedGridWellGraph& graph,
+                                   bool pretendNull)
+{
+    Dune::CpGrid *gridPointer = const_cast<Dune::CpGrid*>(&graph.getGrid());
+    if ( pretendNull )
+    {
+        Zoltan_Set_Num_Obj_Fn(zz, getNullNumCells, gridPointer);
+        Zoltan_Set_Obj_List_Fn(zz, getNullVertexList, gridPointer);
+        Zoltan_Set_Num_Edges_Multi_Fn(zz, getNullNumEdgesList, gridPointer);
+        Zoltan_Set_Edge_List_Multi_Fn(zz, getNullEdgeList, gridPointer);
+    }
+    else
+    {
+        CombinedGridWellGraph* graphPointer = const_cast<CombinedGridWellGraph*>(&graph);
+        Zoltan_Set_Num_Obj_Fn(zz, getCpGridNumCells, gridPointer);
+        Zoltan_Set_Obj_List_Fn(zz, getCpGridVertexList, gridPointer);
+        Zoltan_Set_Num_Edges_Multi_Fn(zz, getCpGridWellsNumEdgesList, graphPointer);
+        Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridWellsEdgeList, graphPointer);
+    }
+}   
 } // end namespace cpgrid
 } // end namespace Dune
 #endif // HAVE_ZOLTAN

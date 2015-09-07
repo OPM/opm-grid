@@ -36,6 +36,9 @@
 #include "config.h"
 #endif
 
+
+#include <opm/core/utility/parameters/ParameterGroup.hpp>
+
 #if HAVE_MPI
 #include <opm/core/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
@@ -46,7 +49,6 @@
 #include "CpGridData.hpp"
 #include <dune/grid/common/ZoltanPartition.hpp>
 #include <dune/grid/common/GridPartitioning.hpp>
-#include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -89,7 +91,7 @@ namespace Dune
     }
 
 
-bool CpGrid::scatterGrid(int overlapLayers)
+bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers)
 {
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(distributed_data_)
@@ -104,7 +106,7 @@ bool CpGrid::scatterGrid(int overlapLayers)
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
-    cell_part = cpgrid::zoltanGraphPartitionGridOnRoot(*this, cc, 0);
+    cell_part = cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, cc, 0);
     int num_parts = cc.size();
 #else
     int  num_parts=-1;

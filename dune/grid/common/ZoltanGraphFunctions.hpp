@@ -21,6 +21,7 @@
 #ifndef DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 #define DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <dune/grid/CpGrid.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
@@ -97,12 +98,81 @@ inline int getNullNumCells(void* cpGridPointer, int* err)
     return 0;
 }
 
+/// \brief Get the number of edges the graph of the grid and the wells.
+void getCpGridWellsNumEdgesList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
+                           int numCells,
+                           ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                           int *numEdges, int *err);
+
+/// \brief Get the list of edges of the graph of the grid and the wells
+void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
+                       int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
+                       int *num_edges,
+                       ZOLTAN_ID_PTR nborGID, int *nborProc,
+                       int wgt_dim, float *ewgts, int *err);
+
+/// \brief A graph repesenting a grid together with the well completions.
+///
+/// The edges of the graph are formed by the superset of the edges representing
+/// the faces of the grid and the ones that represent the connections within the
+/// wells. If a well has completions
+/// on cell i and cell j, then there is an edge from i to j and j to i in the graph.
+/// Even for shut wells the connections will exist.
+class CombinedGridWellGraph
+{
+public:
+    typedef std::vector<std::set<int> > GraphType;
+
+    /// \brief Create a graph representing a grid together with the wells.
+    /// \param grid The grid.
+    /// \param eclipseState The eclipse state to extract the well information from.
+    CombinedGridWellGraph(const Dune::CpGrid& grid,
+                          const Opm::EclipseStateConstPtr eclipseState);
+
+    /// \brief Access the grid.
+    const Dune::CpGrid& getGrid() const
+    {
+        return grid_;
+    }
+
+    const GraphType& getWellsGraph() const
+    {
+        return wellsGraph_;
+    }
+    
+private:
+    void addCompletionSetToGraph(std::set<int>& well_indices)
+    {
+        for( auto well_idx = well_indices.begin(); well_idx != well_indices.end();
+             ++well_idx)
+        {
+            auto well_idx2 = well_idx;
+            for( ++well_idx2; well_idx2 != well_indices.end();
+                 ++well_idx2)
+            {
+                wellsGraph_[*well_idx].insert(*well_idx2);
+                wellsGraph_[*well_idx2].insert(*well_idx);
+            }
+        }
+
+    }
+    
+        
+    const Dune::CpGrid& grid_;
+    GraphType wellsGraph_;
+};
+
+
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.
 /// \param zz The struct with the information for ZOLTAN.
 /// \param grid The grid to partition.
 /// \param pretendNull If true, we will pretend that the grid has zero cells.
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
                                    bool pretendNull=false);
+
+void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
+                                   const CombinedGridWellGraph& graph,
+                                   bool pretendNull);
 } // end namespace cpgrid
 } // end namespace Dune
 

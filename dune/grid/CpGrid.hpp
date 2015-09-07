@@ -46,6 +46,8 @@
 // Warning suppression for Dune includes.
 #include <opm/core/utility/platform_dependent/disable_warnings.h>
 
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
@@ -565,23 +567,40 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///            If this is not null then complete well information of
+        ///            of the last scheduler step of the eclipse state will be
+        ///            used to make sure that all the possible completion cells
+        ///            of each well are stored on one process. This done by
+        ///            adding an edge with a very high edge weight for all
+        ///            possible pairs of cells in the completion set of a well.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=1)
+        bool loadBalance(Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+                         int overlapLayers=1)
         {
-            return scatterGrid(overlapLayers);
+            return scatterGrid(ecl, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
+        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///            If this is not null then complete well information of
+        ///            of the last scheduler step of the eclipse state will be
+        ///            used to make sure that all the possible completion cells
+        ///            of each well are stored on one process. This done by
+        ///            adding an edge with a very high edge weight for all
+        ///            possible pairs of cells in the completion set of a well.
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
-        bool loadBalance(DataHandle& data, int overlapLayers=1)
+        bool loadBalance(DataHandle& data,
+                         Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+                         int overlapLayers=1)
         {
-            bool ret = scatterGrid(overlapLayers);
+            bool ret = scatterGrid(ecl, overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1050,8 +1069,15 @@ namespace Dune
 #endif
 
     private:
-        /// Scatter a global grid to all processors.
-        bool scatterGrid(int overlapLayers);
+        /// \brief Scatter a global grid to all processors.
+        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///            If this is not null then complete well information of
+        ///            of the last scheduler step of the eclipse state will be
+        ///            used to make sure that all the possible completion cells
+        ///            of each well are stored on one process. This done by
+        ///            adding an edge with a very high edge weight for all
+        ///            possible pairs of cells in the completion set of a well.
+        bool scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers);
 
         /** @brief The data stored in the grid.
          *
