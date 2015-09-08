@@ -95,9 +95,9 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
-    //#ifndef NDEBUG
     if( eclipseState && ! pretendEmptyGrid )
     {
+#ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
         {
@@ -117,8 +117,8 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
             }
             ++index;
         }
+#endif
     }
-//#endif
     cc.broadcast(&parts[0], parts.size(), root);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
