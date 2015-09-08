@@ -139,6 +139,8 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers)
         distributed_data_.reset(new cpgrid::CpGridData(new_comm));
         distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part,
                                                 overlapLayers);
+        std::cout<<"After loadbalancing process "<<my_num<<" has "<<
+            distributed_data_->cell_to_face_.size()<<" cells."<<std::endl;
     }
     current_view_data_ = distributed_data_.get();
     return true;
