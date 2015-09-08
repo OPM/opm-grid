@@ -126,8 +126,10 @@ public:
     /// \brief Create a graph representing a grid together with the wells.
     /// \param grid The grid.
     /// \param eclipseState The eclipse state to extract the well information from.
+    /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
-                          const Opm::EclipseStateConstPtr eclipseState);
+                          Opm::EclipseStateConstPtr eclipseState,
+                          bool pretendEmptyGrid);
 
     /// \brief Access the grid.
     const Dune::CpGrid& getGrid() const

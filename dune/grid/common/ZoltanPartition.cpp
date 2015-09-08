@@ -64,7 +64,7 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState));
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState, pretendEmptyGrid));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     pretendEmptyGrid);
     }
@@ -96,7 +96,7 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         parts[exportLocalGids[i]] = exportProcs[i];
     }
     //#ifndef NDEBUG
-    if( eclipseState )
+    if( eclipseState && ! pretendEmptyGrid )
     {
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )

@@ -319,9 +319,15 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                      const Opm::EclipseStateConstPtr eclipseState)
+                                             const Opm::EclipseStateConstPtr eclipseState,
+                                             bool pretendEmptyGrid)
     : grid_(grid)
 {
+    if ( pretendEmptyGrid )
+    {
+        // wellsGraph not needed
+        return;
+    }
     wellsGraph_.resize(grid.numCells());
     const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
@@ -347,9 +353,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             assert(compressed_idx>=0);
             well_indices.insert(compressed_idx);
         }
-            
         addCompletionSetToGraph(well_indices);
-            
     }
 }
 
@@ -373,7 +377,6 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
     }
 }
 
-    
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
                                    const CombinedGridWellGraph& graph,
                                    bool pretendNull)
@@ -394,7 +397,7 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
         Zoltan_Set_Num_Edges_Multi_Fn(zz, getCpGridWellsNumEdgesList, graphPointer);
         Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridWellsEdgeList, graphPointer);
     }
-}   
+}
 } // end namespace cpgrid
 } // end namespace Dune
 #endif // HAVE_ZOLTAN
