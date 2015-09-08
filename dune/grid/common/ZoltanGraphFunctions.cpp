@@ -321,7 +321,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const Opm::EclipseStateConstPtr eclipseState,
                                              bool pretendEmptyGrid)
-    : grid_(grid)
+    : grid_(grid), eclipseState_(eclipseState)
 {
     if ( pretendEmptyGrid )
     {
@@ -354,6 +354,68 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             well_indices.insert(compressed_idx);
         }
         addCompletionSetToGraph(well_indices);
+    }
+}
+
+void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
+{
+    if( ! wellsGraph_.size() )
+    {
+        // No wells to be processed
+        return;
+    }
+    // create compressed lookup from cartesian.
+    const auto& cpgdim = grid_.logicalCartesianSize();
+    std::vector<Opm::WellConstPtr> wells  = eclipseState_->getSchedule()->getWells();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    for( int i=0; i < grid_.numCells(); ++i )
+    {
+        cartesian_to_compressed[grid_.globalCell()[i]] = i;
+    }
+    int last_time_step = eclipseState_->getSchedule()->getTimeMap()->size()-1;
+    // Check that all completions of a well have ended up on one process.
+    // If that is not the case for well then move them manually to the
+    // process that already has the most completions on it.
+    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
+        Opm::WellConstPtr well = (*wellIter);
+        std::set<int> well_indices;
+        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
+        if( ! completionSet->size() )
+        {
+            continue;
+        }
+        std::map<int,std::size_t> no_completions_on_proc;
+        for (size_t c=0; c<completionSet->size(); c++) {
+            Opm::CompletionConstPtr completion = completionSet->get(c);
+            int i = completion->getI();
+            int j = completion->getJ();
+            int k = completion->getK();
+            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
+            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
+            assert(compressed_idx>=0);
+            ++no_completions_on_proc[parts[compressed_idx]];
+        }
+        if ( no_completions_on_proc.size() > 1 )
+        {
+            // partition with the most completions on it becomes new owner
+            int new_owner = std::max_element(no_completions_on_proc.begin(),
+                                             no_completions_on_proc.end(),
+                                             [](const std::pair<int,std::size_t>& p1,
+                                                const std::pair<int,std::size_t>& p2){
+                                                 return ( p1.second > p2.second );
+                                             })->first;
+            std::cout << "Manually moving well " << well->name() << " to partition "
+                      << new_owner<<std::endl;
+             for (size_t c=0; c<completionSet->size(); c++) {
+                 Opm::CompletionConstPtr completion = completionSet->get(c);
+                 int i = completion->getI();
+                 int j = completion->getJ();
+                 int k = completion->getK();
+                 int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
+                 int compressed_idx = cartesian_to_compressed[cart_grid_idx];
+                 parts[compressed_idx] = new_owner;
+             }
+        }
     }
 }
 

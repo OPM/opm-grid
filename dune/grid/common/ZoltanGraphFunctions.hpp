@@ -141,6 +141,9 @@ public:
     {
         return wellsGraph_;
     }
+    /// \brief Post process partitioning to ensure a well is completely on one process.
+    /// \param[inout] parts The assigned partition numbers for each vertex.
+    void postProcessPartitioningForWells(std::vector<int>& parts);
     
 private:
     void addCompletionSetToGraph(std::set<int>& well_indices)
@@ -161,6 +164,7 @@ private:
     
         
     const Dune::CpGrid& grid_;
+    Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
 };
 
