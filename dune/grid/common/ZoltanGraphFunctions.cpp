@@ -395,7 +395,7 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
             int k = completion->getK();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx >= 0 ) // ignore completions in inactive cells
+            if ( compressed_idx < 0 ) // ignore completions in inactive cells
             {
                 continue;
             }
