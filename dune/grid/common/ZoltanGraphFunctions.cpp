@@ -350,13 +350,10 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             int k = completion->getK();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx < 1 )
-            {
-                OPM_THROW(std::runtime_error, "Cell with i,j,k indices " << i << ' ' << j << ' '
-                          << k << " not found in grid (well = " << well->name() << ')');
+            if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
+            {            
+                well_indices.insert(compressed_idx);
             }
-            
-            well_indices.insert(compressed_idx);
         }
         addCompletionSetToGraph(well_indices);
     }
@@ -398,7 +395,10 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
             int k = completion->getK();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            assert( compressed_idx >= 0 );
+            if ( compressed_idx >= 0 ) // ignore completions in inactive cells
+            {
+                continue;
+            }
             ++no_completions_on_proc[parts[compressed_idx]];
         }
         if ( no_completions_on_proc.size() > 1 )
@@ -420,6 +420,10 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
                  int k = completion->getK();
                  int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
                  int compressed_idx = cartesian_to_compressed[cart_grid_idx];
+                 if ( compressed_idx >= 0 ) // ignore completions in inactive cells
+                 {
+                     continue;
+                 }
                  parts[compressed_idx] = new_owner;
              }
         }
