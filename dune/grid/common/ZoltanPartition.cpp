@@ -102,11 +102,6 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
         {
-            if( ! well.size() )
-            {
-                ++index;
-                continue;
-            }
             int part=parts[index];
             std::set<std::pair<int,int> > cells_on_other;
             for( auto vertex : well )
