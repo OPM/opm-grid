@@ -385,14 +385,15 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
             continue;
         }
         std::map<int,std::size_t> no_completions_on_proc;
-        for (size_t c=0; c<completionSet->size(); c++) {
+        for ( size_t c = 0; c < completionSet->size(); c++  )
+        {
             Opm::CompletionConstPtr completion = completionSet->get(c);
             int i = completion->getI();
             int j = completion->getJ();
             int k = completion->getK();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            assert(compressed_idx>=0);
+            assert( compressed_idx >= 0 );
             ++no_completions_on_proc[parts[compressed_idx]];
         }
         if ( no_completions_on_proc.size() > 1 )
@@ -405,8 +406,9 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
                                                  return ( p1.second > p2.second );
                                              })->first;
             std::cout << "Manually moving well " << well->name() << " to partition "
-                      << new_owner<<std::endl;
-             for (size_t c=0; c<completionSet->size(); c++) {
+                      << new_owner << std::endl;
+             for ( size_t c = 0; c < completionSet->size(); c++ )
+             {
                  Opm::CompletionConstPtr completion = completionSet->get(c);
                  int i = completion->getI();
                  int j = completion->getJ();
