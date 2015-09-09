@@ -350,7 +350,12 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             int k = completion->getK();
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            assert(compressed_idx>=0);
+            if ( compressed_idx < 1 )
+            {
+                OPM_THROW(std::runtime_error, "Cell with i,j,k indices " << i << ' ' << j << ' '
+                          << k << " not found in grid (well = " << well->name() << ')');
+            }
+            
             well_indices.insert(compressed_idx);
         }
         addCompletionSetToGraph(well_indices);
