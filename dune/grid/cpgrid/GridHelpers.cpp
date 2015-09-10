@@ -72,6 +72,11 @@ double cellCentroidCoordinate(const Dune::CpGrid& grid, int cell_index,
     return grid.cellCentroid(cell_index)[coordinate];
 }
 
+double cellCenterDepth(const Dune::CpGrid& grid, int cell_index)
+{
+    return grid.cellCenterDepth(cell_index);
+}
+
 FaceCentroidTraits<Dune::CpGrid>::IteratorType
 beginFaceCentroids(const Dune::CpGrid& grid)
 {
