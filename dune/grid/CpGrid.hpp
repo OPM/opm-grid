@@ -755,7 +755,7 @@ namespace Dune
         }
         /// \brief Get vertical position of cell center ("zcorn" average).
         /// \brief cell_index The index of the specific cell.
-        double cellCenterDepth(int cell_index)
+        double cellCenterDepth(int cell_index) const
         {
             // Here cell center depth is computed as a raw average of cell corner depths.
             // This generally gives slightly different results than using the cell centroid.
