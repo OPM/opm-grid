@@ -753,7 +753,20 @@ namespace Dune
         {
             return current_view_data_->face_to_point_[face][local_index];
         }
-
+        /// \brief Get vertical position of cell center ("zcorn" average).
+        /// \brief cell_index The index of the specific cell.
+        double cellCenterDepth(int cell_index)
+        {
+            // Here cell center depth is computed as a raw average of cell corner depths.
+            // This generally gives slightly different results than using the cell centroid.
+            double zz = 0.0;
+            const int nv = current_view_data_->cell_to_point_[cell_index].size();
+            const int nd = 3;
+            for (int i=0; i<nv; ++i) {
+                zz += vertexPosition(current_view_data_->cell_to_point_[cell_index][i])[nd-1];
+            }
+            return zz/nv;
+        }
         // Geometry
         /// \brief Get the Position of a vertex.
         /// \param cell The index identifying the cell.

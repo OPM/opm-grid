@@ -417,6 +417,11 @@ double cellCentroidCoordinate(const Dune::CpGrid& grid, int cell_index,
 /// \param cell_index The index of the corresponding cell.
 const double* cellCentroid(const Dune::CpGrid& grid, int cell_index);
 
+/// \brief Get vertical position of cell center ("zcorn" average).
+/// \brief grid The grid.
+/// \brief cell_index The index of the specific cell.
+double cellCenterDepth(const Dune::CpGrid& grid, int cell_index);
+
 /// \brief Get the volume of a cell.
 /// \param grid The grid the cell belongs to.
 /// \param cell_index The index of the cell.
