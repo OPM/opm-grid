@@ -757,6 +757,8 @@ namespace Dune
         /// \brief cell_index The index of the specific cell.
         double cellCenterDepth(int cell_index)
         {
+            // Here cell center depth is computed as a raw average of cell corner depths.
+            // This generally gives slightly different results than using the cell centroid.
             double zz = 0.0;
             const int nv = current_view_data_->cell_to_point_[cell_index].size();
             const int nd = 3;

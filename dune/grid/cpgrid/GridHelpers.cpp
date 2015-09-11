@@ -74,6 +74,10 @@ double cellCentroidCoordinate(const Dune::CpGrid& grid, int cell_index,
 
 double cellCenterDepth(const Dune::CpGrid& grid, int cell_index)
 {
+    // This method is an alternative to the method cellCentroidCoordinate(...).
+    // The cell center depth is computed as a raw average of cell corner depths.
+    // For cornerpoint grids, this is likely to give slightly different depths that seem
+    // to agree with eclipse.
     return grid.cellCenterDepth(cell_index);
 }
 
