@@ -23,26 +23,34 @@ namespace Dune
     const double factor_;
     mutable size_t pos_;
 public:
+    /** \brief constructor taking memory reserve estimation factor (default is 1.1, i.e. 10% over estimation )
+     */
     SimpleMessageBuffer( const double factor = 1.1 )
       : buffer_(), factor_( factor )
     {
       resetReadPosition();
     }
 
+    /** \brief clear the buffer */
     void clear() { BufferType().swap( buffer_ ); resetReadPosition(); }
+    /** \brief reset read position of buffer to beginning */
     void resetReadPosition() { pos_ = 0 ; }
+    /** \brief return size of buffer */
     size_t size() const { return buffer_.size(); }
 
+    /** \brief reserve memory for 'size' entries  */
     void reserve( const size_t size )
     {
         buffer_.reserve( size );
     }
 
+    /** \brief resize buffer to 'size' entries  */
     void resize( const size_t size )
     {
         buffer_.resize( size );
     }
 
+    /** \brief write value to buffer, value must implement the operator= correctly (i.e. no internal pointers etc.) */
     template <class T>
     void write( const T& value )
     {
@@ -65,6 +73,7 @@ public:
       }
     }
 
+    /** \brief read value from buffer, value must implement the operator= correctly (i.e. no internal pointers etc.) */
     template <class T>
     void read( T& value ) const
     {
@@ -79,7 +88,7 @@ public:
       value = convert.value;
     }
 
-    // return pointer to buffer and size for use with MPI functions
+    /** \brief return pointer to buffer and size for use with MPI functions */
     std::pair< char* , int > buffer() const
     {
       return std::make_pair( buffer_.data(), int(buffer_.size()) );
