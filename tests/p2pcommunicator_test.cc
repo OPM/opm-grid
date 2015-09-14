@@ -62,9 +62,11 @@ typedef Dune :: Point2PointCommunicator< Dune :: SimpleMessageBuffer > P2PCommun
 class DataHandle : public P2PCommunicatorType :: DataHandleInterface
 {
   const P2PCommunicatorType& comm_;
+  const bool output_ ;
 public:
   typedef typename P2PCommunicatorType :: MessageBufferType MessageBufferType ;
-  DataHandle( const P2PCommunicatorType& comm ) : comm_( comm ) {}
+  DataHandle( const P2PCommunicatorType& comm, const bool output )
+    : comm_( comm ), output_( output ) {}
 
   void pack( const int link, MessageBufferType& buffer )
   {
@@ -80,7 +82,10 @@ public:
     assert( link == 0 && comm_.recvLinks() == 1 );
     int bsize = -1;
     buffer.read( bsize );
-    std::cout << "Handle: Received bsize = " << bsize << std::endl;
+    if( output_ )
+    {
+      std::cout << "Handle: Received bsize = " << bsize << std::endl;
+    }
     for( int r=0; r<bsize; ++r )
     {
       int rr = -1;
@@ -90,7 +95,7 @@ public:
   }
 };
 
-void testCommunicator()
+void testCommunicator( const bool output )
 {
   typedef typename P2PCommunicatorType :: MessageBufferType MessageBufferType ;
 
@@ -126,7 +131,10 @@ void testCommunicator()
   {
     int bsize = -1;
     recvBuffers[ i ].read( bsize );
-    std::cout << "Received bsize = " << bsize << std::endl;
+    if( output )
+    {
+      std::cout << "Received bsize = " << bsize << std::endl;
+    }
     for( int r=0; r<bsize; ++r )
     {
       int rr = -1;
@@ -136,13 +144,13 @@ void testCommunicator()
   }
 
   // use handle to perform the same operations as above
-  DataHandle handle( comm );
+  DataHandle handle( comm, output );
   comm.exchange( handle );
 
   for( int i=0; i<5; ++i )
   {
     // use handle to perform the same operations as above
-    DataHandle handle( comm );
+    DataHandle handle( comm, output );
     comm.exchangeCached( handle );
   }
 }
@@ -154,6 +162,6 @@ int main(int argc, char** argv)
   // test buffer
   testBuffer();
   // test communication, needs to be run with more than 1 core to be effective
-  testCommunicator();
+  testCommunicator( false );
   return 0;
 }
