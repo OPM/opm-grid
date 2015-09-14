@@ -90,7 +90,8 @@ public:
     {
       int rr = -1;
       buffer.read( rr );
-      std::cout << rr << std::endl;
+      if( output_ )
+        std::cout << rr << std::endl;
     }
   }
 };
@@ -139,7 +140,8 @@ void testCommunicator( const bool output )
     {
       int rr = -1;
       recvBuffers[ i ].read( rr );
-      std::cout << rr << std::endl;
+      if( output )
+        std::cout << rr << std::endl;
     }
   }
 
