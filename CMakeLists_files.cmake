@@ -65,6 +65,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/partition_iterator_test.cpp
 	tests/cpgrid/zoltan_test.cpp
 	tests/polyhedralgrid_test.cc
+	tests/p2pcommunicator_test.cc
 	)
 
 # originally generated with the command:
@@ -92,6 +93,8 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/common/GridAdapter.hpp
 	dune/grid/common/GridPartitioning.hpp
 	dune/grid/common/Volumes.hpp
+	dune/grid/common/p2pcommunicator.hh
+	dune/grid/common/p2pcommunicator_impl.hh
 	dune/grid/cpgrid/CartesianIndexMapper.hpp
 	dune/grid/cpgrid/CpGridData.hpp
 	dune/grid/cpgrid/DefaultGeometryPolicy.hpp
