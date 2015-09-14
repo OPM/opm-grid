@@ -163,42 +163,46 @@ public:
     inline void insertRequest( const std::set< int >& sendLinks, const std::set< int >& recvLinks );
 
   public:
-    // return number of processes we will send data to
+    /** \brief return number of processes we will send data to */
     inline int sendLinks () const { return _sendLinkage.size(); }
-    // return number of processes we will receive data from
+    /** \brief return number of processes we will receive data from */
     inline int recvLinks () const { return _recvLinkage.size(); }
 
-    // return vector containing possible recv buffer sizes
+    /** \brief return vector containing possible recv buffer sizes */
     const vector_t& recvBufferSizes() const { return _recvBufferSizes; }
 
-    // use assert here, since this part also affects some communications methods in dune-fem
+    /** \brief return send link number for a given send rank number */
     inline int sendLink (const int rank) const
     {
       assert (_sendLinkage.end () != _sendLinkage.find (rank)) ;
       return (* _sendLinkage.find (rank)).second ;
     }
 
+    /** \brief return recv link number for a given recv rank number */
     inline int recvLink (const int rank) const
     {
       assert (_recvLinkage.end () != _recvLinkage.find (rank)) ;
       return (* _recvLinkage.find (rank)).second ;
     }
 
-    // use assert here, since this part also affects some communications methods in dune-fem
+    /** \brief return vector containing all process numbers we will send to */
     const std::vector< int > &sendDest   () const { return _sendDest; }
+    /** \brief return vector containing all process numbers we will receive from */
     const std::vector< int > &recvSource () const { return _recvSource; }
 
-    // remove stored linkage
+    /** \brief remove stored linkage */
     inline void removeLinkage () ;
 
-    // exchange message buffers with peers
-    std::vector< MessageBufferType > exchange (const std::vector< MessageBufferType > &) const;
+    /** \brief exchange message buffers with peers defined by inserted linkage */
+    virtual std::vector< MessageBufferType > exchange (const std::vector< MessageBufferType > &) const;
 
-    // exchange object stream and immediately unpack, when data was received
-    void exchange ( DataHandleInterface& ) const;
+    /** \brief exchange data with peers, handle defines pack and unpack of data */
+    virtual void exchange ( DataHandleInterface& ) const;
 
-    // exchange data and reuse buffer sizes from the previous run
-    void exchangeCached ( DataHandleInterface& ) const;
+    /** \brief exchange data with peers, handle defines pack and unpack of data,
+     *  if receive buffers are known from previous run and have not changed
+     *  communication could be faster */
+    virtual void exchangeCached ( DataHandleInterface& ) const;
   };
 
 } // namespace Dune
