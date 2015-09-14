@@ -19,6 +19,7 @@
 #ifndef DUNE_COMMUNICATOR_HEADER_INCLUDED
 #define DUNE_COMMUNICATOR_HEADER_INCLUDED
 
+#include <algorithm>
 #include <vector>
 #include <set>
 #include <map>
@@ -74,8 +75,6 @@ public:
     {
       // union to access bytes in value
       const size_t tsize = sizeof( T );
-      union { T value; char bytes[ tsize ]; } convert;
-      convert.value = value;
       size_t pos  = buffer_.size();
       const size_t sizeNeeded = pos + tsize ;
       // reserve with some 10% overestimation
@@ -85,10 +84,8 @@ public:
       }
       // resize to size need to store value
       buffer_.resize( sizeNeeded );
-      for(unsigned int i=0; i<tsize; ++i )
-      {
-        buffer_[ pos++ ] = convert.bytes[ i ] ;
-      }
+      // copy value to buffer
+      std::copy_n( reinterpret_cast<const char *> (&value), tsize, buffer_.data()+pos );
     }
 
     /** \brief read value from buffer, value must implement the operator= correctly (i.e. no internal pointers etc.) */
@@ -97,13 +94,9 @@ public:
     {
       // read bytes from stream and store in value
       const size_t tsize = sizeof( T );
-      union { T value; char bytes[ tsize ]; } convert;
       assert( pos_ + tsize <= buffer_.size() );
-      for( unsigned int i=0; i<tsize; ++i )
-      {
-        convert.bytes[ i ] = buffer_[ pos_++ ];
-      }
-      value = convert.value;
+      std::copy_n( buffer_.data()+pos_, tsize, reinterpret_cast<char *> (&value) );
+      pos_ += tsize;
     }
 
     /** \brief return pointer to buffer and size for use with MPI functions */
@@ -164,12 +157,12 @@ public:
     Point2PointCommunicator( const BaseType& comm ) : BaseType( comm ) { removeLinkage(); }
 
     // return new tag number for the exchange messages
-    static int getMessageTag( const unsigned int icrement )
+    static int getMessageTag( const unsigned int increment )
     {
       static int tag = messagetag + 2 ;
       // increase tag counter
       const int retTag = tag;
-      tag += icrement ;
+      tag += increment ;
       // the MPI standard guaratees only up to 2^15-1
       // this needs to be revised for the all-to-all communication
       if( tag < 0 ) // >= 32767 )
