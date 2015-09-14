@@ -109,11 +109,11 @@ public:
     typedef std::map< int, int > linkage_t;
     typedef std::vector< int >   vector_t;
 
-    linkage_t  _sendLinkage ;
-    linkage_t  _recvLinkage ;
+    linkage_t  sendLinkage_ ;
+    linkage_t  recvLinkage_ ;
 
-    vector_t   _sendDest ;
-    vector_t   _recvSource ;
+    vector_t   sendDest_ ;
+    vector_t   recvSource_ ;
 
     mutable vector_t   _recvBufferSizes;
     mutable bool       _recvBufferSizesComputed;
@@ -173,9 +173,9 @@ public:
 
   public:
     /** \brief return number of processes we will send data to */
-    inline int sendLinks () const { return _sendLinkage.size(); }
+    inline int sendLinks () const { return sendLinkage_.size(); }
     /** \brief return number of processes we will receive data from */
-    inline int recvLinks () const { return _recvLinkage.size(); }
+    inline int recvLinks () const { return recvLinkage_.size(); }
 
     /** \brief return vector containing possible recv buffer sizes */
     const vector_t& recvBufferSizes() const { return _recvBufferSizes; }
@@ -183,21 +183,21 @@ public:
     /** \brief return send link number for a given send rank number */
     inline int sendLink (const int rank) const
     {
-      assert (_sendLinkage.end () != _sendLinkage.find (rank)) ;
-      return (* _sendLinkage.find (rank)).second ;
+      assert (sendLinkage_.end () != sendLinkage_.find (rank)) ;
+      return (* sendLinkage_.find (rank)).second ;
     }
 
     /** \brief return recv link number for a given recv rank number */
     inline int recvLink (const int rank) const
     {
-      assert (_recvLinkage.end () != _recvLinkage.find (rank)) ;
-      return (* _recvLinkage.find (rank)).second ;
+      assert (recvLinkage_.end () != recvLinkage_.find (rank)) ;
+      return (* recvLinkage_.find (rank)).second ;
     }
 
     /** \brief return vector containing all process numbers we will send to */
-    const std::vector< int > &sendDest   () const { return _sendDest; }
+    const std::vector< int > &sendDest   () const { return sendDest_; }
     /** \brief return vector containing all process numbers we will receive from */
-    const std::vector< int > &recvSource () const { return _recvSource; }
+    const std::vector< int > &recvSource () const { return recvSource_; }
 
     /** \brief remove stored linkage */
     inline void removeLinkage () ;

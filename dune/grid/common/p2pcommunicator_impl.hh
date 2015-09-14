@@ -11,10 +11,10 @@ namespace Dune
   Point2PointCommunicator< MsgBuffer, Comm >::
   removeLinkage()
   {
-    _sendLinkage.clear();
-    _recvLinkage.clear();
-    _sendDest.clear();
-    _recvSource.clear();
+    sendLinkage_.clear();
+    recvLinkage_.clear();
+    sendDest_.clear();
+    recvSource_.clear();
 
     // clear previously stored buffer sizes
     _recvBufferSizes.clear();
@@ -49,8 +49,8 @@ namespace Dune
       typedef std::map< int, int >::iterator iterator ;
       typedef std::set< int >::const_iterator const_iterator;
 
-      const iterator sendEnd = _sendLinkage.end ();
-      const iterator recvEnd = _recvLinkage.end ();
+      const iterator sendEnd = sendLinkage_.end ();
+      const iterator recvEnd = recvLinkage_.end ();
       const const_iterator sendLinksEnd = sendLinks.end ();
       int sendLink = 0 ;
       int recvLink = 0 ;
@@ -58,9 +58,9 @@ namespace Dune
       {
         const int rank = (*i);
         // if rank was not inserted, insert with current link number
-        if( rank != me && (_sendLinkage.find ( rank ) == sendEnd ) )
+        if( rank != me && (sendLinkage_.find ( rank ) == sendEnd ) )
         {
-          _sendLinkage.insert( std::make_pair( rank, sendLink++) );
+          sendLinkage_.insert( std::make_pair( rank, sendLink++) );
         }
       }
 
@@ -69,18 +69,18 @@ namespace Dune
       {
         const int rank = (*i);
         // if rank was not inserted, insert with current link number
-        if( rank != me && (_recvLinkage.find ( rank ) == recvEnd ) )
+        if( rank != me && (recvLinkage_.find ( rank ) == recvEnd ) )
         {
-          _recvLinkage.insert( std::make_pair( rank, recvLink++) );
+          recvLinkage_.insert( std::make_pair( rank, recvLink++) );
         }
       }
     }
 
     // compute send destinations
-    computeDestinations( _sendLinkage, _sendDest );
+    computeDestinations( sendLinkage_, sendDest_ );
 
     // compute send destinations
-    computeDestinations( _recvLinkage, _recvSource );
+    computeDestinations( recvLinkage_, recvSource_ );
   }
 
 
