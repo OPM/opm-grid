@@ -51,7 +51,7 @@ public:
     }
 
     /** \brief clear the buffer */
-    void clear() { BufferType().swap( buffer_ ); resetReadPosition(); }
+    void clear() { buffer_.clear(); resetReadPosition(); }
     /** \brief reset read position of buffer to beginning */
     void resetReadPosition() { pos_ = 0 ; }
     /** \brief return size of buffer */
