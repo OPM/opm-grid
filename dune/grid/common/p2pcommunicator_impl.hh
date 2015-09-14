@@ -149,8 +149,10 @@ namespace Dune
         _needToSend( true )
     {
       // make sure every process has the same tag
+#ifndef NDEBUG
       int mytag = tag ;
       assert ( mytag == _p2pCommunicator.max( mytag ) );
+#endif
     }
 
     NonBlockingExchangeImplementation( const P2PCommunicatorType& p2pComm,
@@ -166,8 +168,10 @@ namespace Dune
         _needToSend( false )
     {
       // make sure every process has the same tag
+#ifndef NDEBUG
       int mytag = tag ;
       assert ( mytag == _p2pCommunicator.max( mytag ) );
+#endif
 
       assert ( _sendLinks == int( in.size() ) );
       sendImpl( in );
