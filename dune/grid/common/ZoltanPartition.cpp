@@ -64,7 +64,7 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState));
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState, pretendEmptyGrid));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     pretendEmptyGrid);
     }
@@ -95,15 +95,15 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
-    //#ifndef NDEBUG
-    if( eclipseState )
+    if( eclipseState && ! pretendEmptyGrid )
     {
+        grid_and_wells->postProcessPartitioningForWells(parts);
+#ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
         {
             int part=parts[index];
             std::set<std::pair<int,int> > cells_on_other;
-
             for( auto vertex : well )
             {
                 if( part != parts[vertex] )
@@ -117,8 +117,8 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
             }
             ++index;
         }
+#endif
     }
-//#endif
     cc.broadcast(&parts[0], parts.size(), root);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
