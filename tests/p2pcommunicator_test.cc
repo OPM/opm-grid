@@ -70,7 +70,6 @@ public:
 
   void pack( const int link, MessageBufferType& buffer )
   {
-    assert( link == 0 && comm_.sendLinks() == 1 );
     int bsize = comm_.size() - comm_.rank();
     buffer.write( bsize );
     for( int r=comm_.rank(); r<comm_.size(); ++r )
@@ -79,7 +78,6 @@ public:
 
   void unpack( const int link, MessageBufferType& buffer )
   {
-    assert( link == 0 && comm_.recvLinks() == 1 );
     int bsize = -1;
     buffer.read( bsize );
     if( output_ )
@@ -109,6 +107,13 @@ void testCommunicator( const bool output )
   send.insert( rank < size-1 ? rank+1 : 0 );
   std::set<int> recv;
   recv.insert( rank > 0 ? rank-1 : size-1 );
+  if( rank > 0 )
+    send.insert( 0 );
+  if( rank == 0 )
+  {
+    for( int i=1; i<size; ++i )
+      recv.insert( i );
+  }
 
   comm.insertRequest( send, recv );
 
