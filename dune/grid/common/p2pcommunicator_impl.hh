@@ -481,7 +481,7 @@ namespace Dune
                       MessageBufferType& msgBuffer, MPI_Request& request, MPI_Comm& comm )
     {
       // reserve memory for receive buffer
-      msgBuffer.resize( bufferSize );
+      msgBuffer.resizeAndReset( bufferSize );
 
       // get buffer and size
       std::pair< char*, int > buffer = msgBuffer.buffer();
@@ -557,7 +557,7 @@ namespace Dune
         }
 
         // reserve memory
-        osRecv.resize( bufferSize );
+        osRecv.resizeAndReset( bufferSize );
 
         // get buffer
         std::pair< char*, int > buffer = osRecv.buffer();
