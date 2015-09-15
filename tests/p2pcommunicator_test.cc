@@ -48,11 +48,11 @@ void testBuffer()
     buffer.read( lCheck );
     assert( lVal == lCheck );
     std::vector< double > checkValues( 5 );
-    for( int i=0; i<5; ++i )
-      buffer.read( checkValues[ i ] );
+    for( int j=0; j<5; ++j )
+      buffer.read( checkValues[ j ] );
 #ifndef NDEBUG
-    for( int i=0; i<5; ++i )
-      assert( std::abs(values[ i ] - checkValues[ i ] ) < 1e-12 );
+    for( int j=0; j<5; ++j )
+      assert( std::abs(values[ j ] - checkValues[ j ] ) < 1e-12 );
 #endif
   }
 }
@@ -152,7 +152,6 @@ void testCommunicator( const bool output )
   for( int i=0; i<5; ++i )
   {
     // use handle to perform the same operations as above
-    DataHandle handle( comm, output );
     comm.exchangeCached( handle );
   }
 }
