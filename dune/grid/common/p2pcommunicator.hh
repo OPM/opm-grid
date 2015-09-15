@@ -232,8 +232,7 @@ public:
       const int retTag = tag;
       tag += increment ;
       // the MPI standard guaratees only up to 2^15-1
-      // this needs to be revised for the all-to-all communication
-      if( tag < 0 ) // >= 32767 )
+      if( tag >= 32767 )
       {
         // reset tag to initial value
         tag = messagetag + 2 ;
