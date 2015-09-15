@@ -24,9 +24,9 @@
 namespace Dune
 {
 
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline void
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   removeLinkage()
   {
     sendLinkage_.clear();
@@ -39,9 +39,9 @@ namespace Dune
     _recvBufferSizesComputed = false ;
   }
 
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline void
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   computeDestinations( const linkage_t& linkage, vector_t& dest )
   {
     typedef linkage_t::const_iterator const_iterator ;
@@ -53,9 +53,9 @@ namespace Dune
     }
   }
 
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline void
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   insertRequest( const std::set< int >& sendLinks, const std::set< int >& recvLinks )
   {
     // remove old linkage
@@ -579,9 +579,9 @@ namespace Dune
 
   // --exchange
 
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline void
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   exchange( DataHandleInterface& handle ) const
   {
     assert( _recvBufferSizes.empty () );
@@ -592,9 +592,9 @@ namespace Dune
   }
 
   // --exchange
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline std::vector< MsgBuffer >
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   exchange( const std::vector< MessageBufferType > & in ) const
   {
 #if HAVE_MPI
@@ -609,9 +609,9 @@ namespace Dune
   }
 
   // --exchange
-  template <class MsgBuffer, class Comm >
+  template <class MsgBuffer>
   inline void
-  Point2PointCommunicator< MsgBuffer, Comm >::
+  Point2PointCommunicator< MsgBuffer >::
   exchangeCached( DataHandleInterface& handle ) const
   {
 #if HAVE_MPI

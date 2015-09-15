@@ -24,6 +24,9 @@
 #include <set>
 #include <map>
 
+#include <dune/common/version.hh>
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON,2,3)
 #include <dune/common/parallel/mpihelper.hh>
 #include <dune/common/parallel/collectivecommunication.hh>
 
@@ -31,6 +34,16 @@
 #if HAVE_MPI
 #include <dune/common/parallel/mpicollectivecommunication.hh>
 #endif
+#else // DUNE_COMMON 2.2
+#include <dune/common/mpihelper.hh>
+#include <dune/common/collectivecommunication.hh>
+
+// the following implementation is only available in case MPI is available
+#if HAVE_MPI
+#include <dune/common/mpicollectivecommunication.hh>
+#endif
+#endif // #if DUNE_VERSION_NEWER()
+
 
 namespace Dune
 {
@@ -107,12 +120,19 @@ public:
   };
 
   /** \brief Point-2-Point communicator for exchange messages between processes */
-  template <class MsgBuffer, class Comm = MPIHelper::MPICommunicator >
-  class Point2PointCommunicator : public CollectiveCommunication< Comm >
+  template < class MsgBuffer >
+  class Point2PointCommunicator : public CollectiveCommunication< MPIHelper::MPICommunicator >
   {
+  public:
+    /** \brief type of MPI communicator, either MPI_Comm or NoComm as defined in MPIHelper */
+    typedef MPIHelper::MPICommunicator  MPICommunicator ;
+
+    /** \brief type of message buffer used */
+    typedef MsgBuffer MessageBufferType ;
+
   protected:
-    typedef CollectiveCommunication< Comm > BaseType;
-    typedef Point2PointCommunicator< MsgBuffer, Comm > ThisType;
+    typedef CollectiveCommunication< MPICommunicator >   BaseType;
+    typedef Point2PointCommunicator< MessageBufferType > ThisType;
 
     // starting message tag
     static const int messagetag = 234;
@@ -133,9 +153,6 @@ public:
     using BaseType :: rank;
     using BaseType :: size;
 
-    // export type of message buffer
-    typedef MsgBuffer MessageBufferType ;
-
     /* \brief data handle interface that needs to be implemented for use with some of
      * the exchange methods */
     class DataHandleInterface
@@ -150,41 +167,21 @@ public:
       virtual void localComputation () {}
     };
 
-  public :
-    // default constructor
-    Point2PointCommunicator() : BaseType() { removeLinkage(); }
-    // constructor taking CollectiveCommunication
+  public:
+    /** \brief constructor taking mpi communicator */
+    Point2PointCommunicator( const MPICommunicator& mpiComm = MPIHelper::getCommunicator() )
+      : BaseType( mpiComm ) { removeLinkage(); }
+
+    /** \brief constructor taking collective communication */
     Point2PointCommunicator( const BaseType& comm ) : BaseType( comm ) { removeLinkage(); }
 
-    // return new tag number for the exchange messages
-    static int getMessageTag( const unsigned int increment )
-    {
-      static int tag = messagetag + 2 ;
-      // increase tag counter
-      const int retTag = tag;
-      tag += increment ;
-      // the MPI standard guaratees only up to 2^15-1
-      // this needs to be revised for the all-to-all communication
-      if( tag < 0 ) // >= 32767 )
-      {
-        // reset tag to initial value
-        tag = messagetag + 2 ;
-      }
-      return retTag;
-    }
 
-    // return new tag number for the exchange messages
-    static int getMessageTag()
-    {
-      return getMessageTag( 1 );
-    }
-
-    inline void computeDestinations( const linkage_t& linkage, vector_t& dest );
+    /** \brief insert communication request with a set os ranks to send to and a set of ranks to receive from */
     inline void insertRequest( const std::set< int >& sendLinks, const std::set< int >& recvLinks );
 
-  public:
     /** \brief return number of processes we will send data to */
     inline int sendLinks () const { return sendLinkage_.size(); }
+
     /** \brief return number of processes we will receive data from */
     inline int recvLinks () const { return recvLinkage_.size(); }
 
@@ -223,6 +220,32 @@ public:
      *  if receive buffers are known from previous run and have not changed
      *  communication could be faster */
     virtual void exchangeCached ( DataHandleInterface& ) const;
+
+  protected:
+    inline void computeDestinations( const linkage_t& linkage, vector_t& dest );
+
+    // return new tag number for the exchange messages
+    static int getMessageTag( const unsigned int increment )
+    {
+      static int tag = messagetag + 2 ;
+      // increase tag counter
+      const int retTag = tag;
+      tag += increment ;
+      // the MPI standard guaratees only up to 2^15-1
+      // this needs to be revised for the all-to-all communication
+      if( tag < 0 ) // >= 32767 )
+      {
+        // reset tag to initial value
+        tag = messagetag + 2 ;
+      }
+      return retTag;
+    }
+
+    // return new tag number for the exchange messages
+    static int getMessageTag()
+    {
+      return getMessageTag( 1 );
+    }
   };
 
 } // namespace Dune
