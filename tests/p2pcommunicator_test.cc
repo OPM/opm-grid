@@ -145,13 +145,16 @@ void testCommunicator( const bool output )
     }
   }
 
-  // use handle to perform the same operations as above
-  DataHandle handle( comm, output );
-  comm.exchange( handle );
+  {
+    // use handle to perform the same operations as above
+    DataHandle handle( comm, output );
+    comm.exchange( handle );
+  }
 
   for( int i=0; i<5; ++i )
   {
     // use handle to perform the same operations as above
+    DataHandle handle( comm, output );
     comm.exchangeCached( handle );
   }
 }
