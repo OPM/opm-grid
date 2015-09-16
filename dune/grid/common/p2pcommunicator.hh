@@ -82,13 +82,6 @@ public:
         buffer_.resize( size );
     }
 
-    /** \brief resize buffer to 'size' entries and reset read Position */
-    void resizeAndReset( const size_t size )
-    {
-        resize( size );
-        resetReadPosition();
-    }
-
     /** \brief write value to buffer, value must implement the operator= correctly (i.e. no internal pointers etc.) */
     template <class T>
     void write( const T& value )

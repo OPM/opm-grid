@@ -175,7 +175,7 @@ namespace Dune
 
     NonBlockingExchangeImplementation( const P2PCommunicatorType& p2pComm,
                                        const int tag,
-                                       const std::vector< MessageBufferType > & in )
+                                       const std::vector< MessageBufferType > & sendBuffers )
       : _p2pCommunicator( p2pComm ),
         _sendLinks( _p2pCommunicator.sendLinks() ),
         _recvLinks( _p2pCommunicator.recvLinks() ),
@@ -191,8 +191,8 @@ namespace Dune
       assert ( mytag == _p2pCommunicator.max( mytag ) );
 #endif
 
-      assert ( _sendLinks == int( in.size() ) );
-      sendImpl( in );
+      assert ( _sendLinks == int( sendBuffers.size() ) );
+      sendImpl( sendBuffers );
     }
 
     /////////////////////////////////////////
@@ -214,7 +214,7 @@ namespace Dune
     }
 
     // virtual methods
-    void send( const std::vector< MessageBufferType > & in ) { sendImpl( in ); }
+    void send( const std::vector< MessageBufferType > & sendBuffers ) { sendImpl( sendBuffers ); }
     std::vector< MessageBufferType > receive() { return receiveImpl(); }
 
     //////////////////////////////////////////
@@ -222,7 +222,7 @@ namespace Dune
     //////////////////////////////////////////
 
     // send data implementation
-    void sendImpl( const std::vector< MessageBufferType > & osv )
+    void sendImpl( const std::vector< MessageBufferType > & sendBuffers )
     {
       // get mpi communicator
       MPI_Comm comm = mpiCommunicator();
@@ -233,7 +233,7 @@ namespace Dune
       // send data
       for (int link = 0; link < _sendLinks; ++link)
       {
-        sendLink( sendDest[ link ], _tag, osv[ link ], _sendRequest[ link ], comm );
+        sendLink( sendDest[ link ], _tag, sendBuffers[ link ], _sendRequest[ link ], comm );
       }
 
       // set send info
@@ -244,13 +244,13 @@ namespace Dune
     std::vector< MessageBufferType > receiveImpl ()
     {
       // create vector of empty streams
-      std::vector< MessageBufferType > out ( _recvLinks );
-      receiveImpl( out );
-      return out;
+      std::vector< MessageBufferType > recvBuffer( _recvLinks );
+      receiveImpl( recvBuffer );
+      return recvBuffer;
     }
 
     // receive data implementation with given buffers
-    void receiveImpl ( std::vector< MessageBufferType >& out, DataHandleInterface* dataHandle = 0)
+    void receiveImpl ( std::vector< MessageBufferType >& recvBuffers, DataHandleInterface* dataHandle = 0)
     {
       // do nothing if number of links is zero
       if( (_recvLinks + _sendLinks) == 0 ) return;
@@ -262,18 +262,7 @@ namespace Dune
       const std::vector< int >& recvSource = _p2pCommunicator.recvSource();
 
       // check whether out vector has more than one stream
-      const bool useFirstStreamOnly = (out.size() == 1) ;
-#ifdef NDEBUG
-      {
-        const int outSize = out.size();
-        // check for all links messages
-        for (int link = 0; link < outSize; ++link )
-        {
-          // contains no written data
-          assert ( out[ link ].notReceived() );
-        }
-      }
-#endif
+      const bool useFirstStreamOnly = (recvBuffers.size() == 1) ;
 
       // flag vector holding information about received links
       std::vector< bool > linkNotReceived( _recvLinks, true );
@@ -289,14 +278,14 @@ namespace Dune
           if( linkNotReceived[ link ] )
           {
             // get appropriate object stream
-            MessageBufferType& osRecv = useFirstStreamOnly ? out[ 0 ] : out[ link ];
+            MessageBufferType& recvBuffer = useFirstStreamOnly ? recvBuffers[ 0 ] : recvBuffers[ link ];
 
             // check whether a message was completely received
             // if message was received the unpack data
-            if( probeAndReceive( comm, recvSource[ link ], _tag, osRecv ) )
+            if( probeAndReceive( comm, recvSource[ link ], _tag, recvBuffer ) )
             {
               // if data handle was given do unpack
-              if( dataHandle ) dataHandle->unpack( link, osRecv );
+              if( dataHandle ) dataHandle->unpack( link, recvBuffer );
 
               // mark link as received
               linkNotReceived[ link ] = false ;
@@ -318,7 +307,7 @@ namespace Dune
     }
 
     // receive data implementation with given buffers
-    void unpackRecvBufferSizeKnown( std::vector< MessageBufferType >& out, DataHandleInterface& dataHandle )
+    void unpackRecvBufferSizeKnown( std::vector< MessageBufferType >& recvBuffers, DataHandleInterface& dataHandle )
     {
       // do nothing if number of links is zero
       if( _recvLinks == 0 ) return;
@@ -338,10 +327,10 @@ namespace Dune
           {
             assert( _recvRequest );
             // check whether message was received, and if unpack data
-            if( receivedMessage( _recvRequest[ link ], out[ link ] ) )
+            if( receivedMessage( _recvRequest[ link ], recvBuffers[ link ] ) )
             {
               // if data handle was given do unpack
-              dataHandle.unpack( link, out[ link ] );
+              dataHandle.unpack( link, recvBuffers[ link ] );
 
               // mark link as received
               linkNotReceived[ link ] = false ;
@@ -362,16 +351,16 @@ namespace Dune
     }
 
     // receive data implementation with given buffers
-    void send( std::vector< MessageBufferType >& osSend,
+    void send( std::vector< MessageBufferType >& sendBuffers,
                DataHandleInterface& dataHandle )
     {
-      std::vector< MessageBufferType > osRecv;
-      send( osSend, osRecv, dataHandle );
+      std::vector< MessageBufferType > recvBuffers;
+      send( sendBuffers, recvBuffers, dataHandle );
     }
 
     // receive data implementation with given buffers
-    void send( std::vector< MessageBufferType >& osSend,
-               std::vector< MessageBufferType >& osRecv,
+    void send( std::vector< MessageBufferType >& sendBuffer,
+               std::vector< MessageBufferType >& recvBuffer,
                DataHandleInterface& dataHandle )
     {
       if( _needToSend )
@@ -386,10 +375,10 @@ namespace Dune
         for (int link = 0; link < _sendLinks; ++link)
         {
           // pack data
-          dataHandle.pack( link, osSend[ link ] );
+          dataHandle.pack( link, sendBuffer[ link ] );
 
           // send data
-          sendLink( sendDest[ link ], _tag, osSend[ link ], _sendRequest[ link ], comm );
+          sendLink( sendDest[ link ], _tag, sendBuffer[ link ], _sendRequest[ link ], comm );
         }
 
         // set send info
@@ -402,7 +391,7 @@ namespace Dune
         // get mpi communicator
         MPI_Comm comm = mpiCommunicator();
 
-        osRecv.resize( _recvLinks );
+        recvBuffer.resize( _recvLinks );
 
         // get vector with destinations
         const std::vector< int >& recvSource = _p2pCommunicator.recvSource();
@@ -417,7 +406,7 @@ namespace Dune
           // post receive if in symmetric mode
           assert( _recvRequest );
           assert( &_recvRequest[ link ] );
-          postReceive( recvSource[ link ], _tag, bufferSize, osRecv[ link ], _recvRequest[ link ], comm );
+          postReceive( recvSource[ link ], _tag, bufferSize, recvBuffer[ link ], _recvRequest[ link ], comm );
         }
       }
     }
@@ -429,9 +418,9 @@ namespace Dune
       dataHandle.localComputation() ;
 
       // create receive message buffers
-      std::vector< MessageBufferType > out( 1 );
+      std::vector< MessageBufferType > recvBuffer( 1 );
       // receive data
-      receiveImpl( out, &dataHandle );
+      receiveImpl( recvBuffer, &dataHandle );
     }
 
     // receive data implementation with given buffers
@@ -444,22 +433,22 @@ namespace Dune
       // send message buffers, we need several because of the
       // non-blocking send routines, send might not be finished
       // when we start recieving
-      std::vector< MessageBufferType > osSend ;
-      std::vector< MessageBufferType > osRecv ;
+      std::vector< MessageBufferType > sendBuffers ;
+      std::vector< MessageBufferType > recvBuffers ;
 
       // if data was noy send yet, do it now
       if( _needToSend )
       {
         // resize message buffer vector
-        osSend.resize( _sendLinks );
+        sendBuffers.resize( _sendLinks );
 
         // send data
-        send( osSend, osRecv, dataHandle );
+        send( sendBuffers, recvBuffers, dataHandle );
       }
 
       // now receive data
       if( _recvBufferSizesKnown )
-        unpackRecvBufferSizeKnown( osRecv, dataHandle );
+        unpackRecvBufferSizeKnown( recvBuffers, dataHandle );
       else
         receive( dataHandle );
     }
@@ -481,7 +470,9 @@ namespace Dune
                       MessageBufferType& msgBuffer, MPI_Request& request, MPI_Comm& comm )
     {
       // reserve memory for receive buffer
-      msgBuffer.resizeAndReset( bufferSize );
+      msgBuffer.resize( bufferSize );
+      // reset read position
+      msgBuffer.resetReadPosition();
 
       // get buffer and size
       std::pair< char*, int > buffer = msgBuffer.buffer();
@@ -529,7 +520,7 @@ namespace Dune
     bool probeAndReceive( MPI_Comm& comm,
                           const int source,
                           const int tag,
-                          MessageBufferType& osRecv )
+                          MessageBufferType& recvBuffer )
     {
       // corresponding MPI status
       MPI_Status status;
@@ -557,10 +548,12 @@ namespace Dune
         }
 
         // reserve memory
-        osRecv.resizeAndReset( bufferSize );
+        recvBuffer.resize( bufferSize );
+        // reset read position for unpack
+        recvBuffer.resetReadPosition();
 
         // get buffer
-        std::pair< char*, int > buffer = osRecv.buffer();
+        std::pair< char*, int > buffer = recvBuffer.buffer();
 
         // MPI receive (blocking)
         {
