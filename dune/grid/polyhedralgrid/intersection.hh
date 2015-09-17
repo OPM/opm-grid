@@ -5,6 +5,7 @@
 
 //- dune-common includes
 #include <dune/common/nullptr.hh>
+#include <dune/common/version.hh>
 
 //- local includes
 #include <dune/grid/polyhedralgrid/declaration.hh>
@@ -62,7 +63,19 @@ namespace Dune
       intersectionIdx_( other.intersectionIdx_ )
     {}
 
-    const EntityPointer inside () const
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+    Entity inside () const
+    {
+        return Entity( EntityImpl( data(), seed_ ) );
+    }
+
+    Entity outside () const
+    {
+      return Entity( EntityImpl(data(),
+                                data()->neighbor(seed_, intersectionIdx_)) );
+    }
+#else
+    EntityPointer inside () const
     {
         return EntityPointer( EntityPointerImpl( EntityImpl( data(), seed_ ) ) );
     }
@@ -72,6 +85,7 @@ namespace Dune
       return EntityPointer( EntityPointerImpl( EntityImpl(data(),
                                                data()->neighbor(seed_, intersectionIdx_)) ) );
     }
+#endif
 
     bool operator == ( const This& other ) const
     {
