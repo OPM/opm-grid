@@ -1,5 +1,7 @@
 #include <config.h>
 
+#include <dune/common/version.hh>
+
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
 #endif
@@ -18,8 +20,14 @@
 // The header below are not installed for dune-grid
 // Therefore we need to deactivate testing, if they
 // not available
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+#include <dune/grid/test/checkpartition.hh>
+#include <dune/grid/test/checkcommunicate.hh>
+#else
 #include <dune/grid/test/checkpartition.cc>
 #include <dune/grid/test/checkcommunicate.cc>
+#endif
+
 #endif
 
 #include <opm/core/utility/platform_dependent/reenable_warnings.h>
@@ -251,7 +259,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
     grid.loadBalance(data);
-    
+
     if ( grid.numCells())
     {
         std::array<int,3> ijk;

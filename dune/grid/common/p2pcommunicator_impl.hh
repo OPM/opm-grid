@@ -485,7 +485,11 @@ namespace Dune
     }
 
     // does receive operation for one link
-    bool receivedMessage( MPI_Request& request, MessageBufferType& buffer )
+    bool receivedMessage( MPI_Request& request, MessageBufferType&
+#ifndef NDEBUG
+        buffer
+#endif
+        )
     {
 #ifndef NDEBUG
       // for checking whether the buffer size is correct

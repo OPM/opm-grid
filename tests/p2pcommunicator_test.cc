@@ -68,7 +68,7 @@ public:
   DataHandle( const P2PCommunicatorType& comm, const bool output )
     : comm_( comm ), output_( output ) {}
 
-  void pack( const int link, MessageBufferType& buffer )
+  void pack( const int /* link */, MessageBufferType& buffer )
   {
     int bsize = comm_.size() - comm_.rank();
     buffer.write( bsize );
@@ -76,7 +76,7 @@ public:
       buffer.write( r );
   }
 
-  void unpack( const int link, MessageBufferType& buffer )
+  void unpack( const int /* link */, MessageBufferType& buffer )
   {
     int bsize = -1;
     buffer.read( bsize );

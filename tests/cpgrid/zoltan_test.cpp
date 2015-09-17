@@ -70,7 +70,7 @@ BOOST_AUTO_TEST_CASE(zoltan)
         int procs=1;
         struct Zoltan_Struct *zz;
         int changes, numGidEntries, numLidEntries, numImport, numExport;
-        int myRank, numProcs;
+        int myRank;
         ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
         int *importProcs, *importToPart, *exportProcs, *exportToPart;
         rc = Zoltan_Initialize(m_argc, m_argv, &ver);
@@ -106,7 +106,6 @@ BOOST_AUTO_TEST_CASE(zoltan)
 
         Dune::CpGrid grid;
         std::array<int, 3> dims={{1, 2, 2}};
-        std::array<int, 3> nulldims={{0, 0, 0}};
         std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
 #ifdef ONE_TO_ALL
         if (myRank==0)
