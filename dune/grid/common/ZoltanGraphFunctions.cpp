@@ -178,7 +178,9 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
         *err = ZOLTAN_FATAL;
         return;
     }
+#ifndef NDEBUG
     int oldidx = 0;
+#endif
     int idx = 0;
 
     for( int cell = 0; cell < numCells;  cell++ )
@@ -203,8 +205,10 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
             }
             nborGID[idx++] = globalID[otherCell];
         }
+#ifndef NDEBUG
         assert(numEdges[cell] == idx - oldidx);
         oldidx = idx;
+#endif
     }
 
     const int myrank = grid.comm().rank();
@@ -247,7 +251,9 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
         *err = ZOLTAN_FATAL;
         return;
     }
+#ifndef NDEBUG
     int oldidx = 0;
+#endif
     int idx = 0;
 
     for( int cell = 0; cell < numCells;  cell++ )
@@ -291,8 +297,10 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
                 ewgts[idx++] = 1;
             }
         }
+#ifndef NDEBUG
         assert(idx-oldidx==numEdges[cell]);
         oldidx = idx;
+#endif
     }
 
     const int myrank = grid.comm().rank();
@@ -351,7 +359,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
             int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
             if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
-            {            
+            {
                 well_indices.insert(compressed_idx);
             }
         }

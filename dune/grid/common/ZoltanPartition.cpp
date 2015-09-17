@@ -31,14 +31,14 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root)
 {
-    int rc;
-    float ver;
+    int rc = ZOLTAN_OK - 1;
+    float ver = 0;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries, numLidEntries, numImport, numExport;
     ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     int argc=0;
-    char** argv;
+    char** argv = 0 ;
     rc = Zoltan_Initialize(argc, argv, &ver);
     zz = Zoltan_Create(cc);
     if ( rc != ZOLTAN_OK )
