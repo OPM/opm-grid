@@ -6,13 +6,20 @@
 #define BOOST_TEST_MODULE PartitionIteratorCpGridTests
 #include <boost/test/unit_test.hpp>
 
+#include <dune/common/version.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/gridenums.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
 
 #if HAVE_DUNE_GRID_CHECKS
+
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+#include <dune/grid/test/checkpartition.hh>
+#else
 #include <dune/grid/test/checkpartition.cc>
+#endif
+
 #endif
 
 template<int codim>
