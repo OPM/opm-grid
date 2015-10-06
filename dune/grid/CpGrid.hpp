@@ -44,7 +44,7 @@
 #include <opm/core/utility/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
@@ -52,7 +52,7 @@
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include "cpgrid/Intersection.hpp"
 #include "cpgrid/Entity.hpp"

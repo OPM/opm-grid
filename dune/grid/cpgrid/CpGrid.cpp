@@ -40,9 +40,9 @@
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #if HAVE_MPI
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 #endif
 
 #include "../CpGrid.hpp"

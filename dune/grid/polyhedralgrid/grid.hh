@@ -7,7 +7,7 @@
 #include <vector>
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 //- dune-common includes
 #include <dune/common/version.hh>
@@ -32,7 +32,7 @@
 #include <dune/grid/polyhedralgrid/idset.hh>
 
 // Re-enable warnings.
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/core/utility/ErrorMacros.hpp>
 #include <opm/core/grid.h>
