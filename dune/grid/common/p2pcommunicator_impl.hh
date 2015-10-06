@@ -512,9 +512,9 @@ namespace Dune
       {
         int checkBufferSize = -1;
         MPI_Get_count ( & status, MPI_BYTE, &checkBufferSize );
-        if( checkBufferSize != buffer.size() )
+        if( checkBufferSize != int(buffer.size()) )
           std::cout << "Buffer sizes don't match: "  << checkBufferSize << " " << buffer.size() << std::endl;
-        assert( checkBufferSize == buffer.size() );
+        assert( checkBufferSize == int(buffer.size()) );
       }
 #endif
       return bool(received);
