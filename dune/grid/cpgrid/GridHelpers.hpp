@@ -24,12 +24,12 @@
 
 #include <opm/core/grid/GridHelpers.hpp>
 
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/CpGrid.hpp>
 #include <dune/common/iteratorfacades.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {

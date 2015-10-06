@@ -37,14 +37,14 @@
 #define OPM_GEOMETRY_HEADER
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/core/utility/ErrorMacros.hpp>
 

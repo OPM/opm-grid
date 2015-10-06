@@ -38,7 +38,7 @@
 #include <numeric>
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
@@ -48,7 +48,7 @@
 #endif
 #include <dune/common/fvector.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {

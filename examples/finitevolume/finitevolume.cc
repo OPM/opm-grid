@@ -5,7 +5,7 @@
 
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/common/mcmgmapper.hh> // mapper class
 
@@ -19,7 +19,7 @@
 // checks for defined gridtype and inlcudes appropriate dgfparser implementation
 //#include <dune/grid/io/file/dgfparser/dgfgridtype.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include "vtkout.hh"
 // #include"transportproblem2.hh"

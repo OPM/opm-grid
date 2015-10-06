@@ -30,7 +30,7 @@
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 
 class MPIError {

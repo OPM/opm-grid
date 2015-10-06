@@ -1,7 +1,7 @@
 #include <config.h>
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/unused.hh>
 #include <dune/grid/polyhedralgrid.hh>
@@ -13,7 +13,7 @@
 #endif
 
 // Re-enable warnings.
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/parser/eclipse/Parser/ParseMode.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>

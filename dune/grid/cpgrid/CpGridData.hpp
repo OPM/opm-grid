@@ -48,7 +48,7 @@
 #define OPM_CPGRIDDATA_HEADER
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -74,7 +74,7 @@
 #include <dune/grid/common/gridenums.hh>
 #include <dune/common/tuples.hh>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 
 #include <array>

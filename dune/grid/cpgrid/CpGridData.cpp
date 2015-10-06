@@ -10,14 +10,14 @@
 #include"PartitionTypeIndicator.hpp"
 
 // Warning suppression for Dune includes.
-#include <opm/core/utility/platform_dependent/disable_warnings.h>
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/common/GridPartitioning.hpp>
 #include <dune/common/parallel/remoteindices.hh>
 #include <dune/common/enumset.hh>
 #include <opm/core/utility/SparseTable.hpp>
 
-#include <opm/core/utility/platform_dependent/reenable_warnings.h>
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {
