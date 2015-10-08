@@ -38,7 +38,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/common/nullptr.hh>
 #include <dune/geometry/type.hh>
-#include <opm/core/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 #include "GlobalIdMapping.hpp"
 namespace Dune
 {
