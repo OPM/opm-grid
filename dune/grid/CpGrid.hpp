@@ -41,7 +41,7 @@
 #include <string>
 #include <map>
 #include <array>
-#include <opm/core/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
