@@ -39,6 +39,8 @@ const char *deckString =
 template <class GridView>
 void testGrid( const GridView& gridView )
 {
+// disable this function on GCC 4.4 because it causes an ICE
+#if !defined __GNUC__ || (__GNUC__ > 4 || (__GNUC__ == 4 && __GNUC_MINOR__ > 4))
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
@@ -94,6 +96,7 @@ void testGrid( const GridView& gridView )
 
     if (numElem != 2*2*2)
         std::cout << "number of elements is wrong: " << numElem << "\n";
+#endif
 }
 
 int main()
