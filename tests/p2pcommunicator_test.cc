@@ -10,6 +10,7 @@
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <iostream>
+#include <limits>
 
 void testBuffer()
 {
@@ -64,7 +65,7 @@ class DataHandle : public P2PCommunicatorType :: DataHandleInterface
   const P2PCommunicatorType& comm_;
   const bool output_ ;
 public:
-  typedef typename P2PCommunicatorType :: MessageBufferType MessageBufferType ;
+  typedef P2PCommunicatorType :: MessageBufferType MessageBufferType ;
   DataHandle( const P2PCommunicatorType& comm, const bool output )
     : comm_( comm ), output_( output ) {}
 
@@ -96,7 +97,7 @@ public:
 
 void testCommunicator( const bool output )
 {
-  typedef typename P2PCommunicatorType :: MessageBufferType MessageBufferType ;
+  typedef P2PCommunicatorType :: MessageBufferType MessageBufferType ;
 
   P2PCommunicatorType comm;
 

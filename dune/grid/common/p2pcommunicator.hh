@@ -52,7 +52,7 @@ namespace Dune
     typedef std::vector< char >  BufferType;
 
     mutable BufferType buffer_;
-    const double factor_;
+    double factor_;
     mutable size_t pos_;
 public:
     /** \brief constructor taking memory reserve estimation factor (default is 1.1, i.e. 10% over estimation )
