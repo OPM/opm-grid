@@ -496,6 +496,13 @@ namespace Dune
           return leafIndexSet().geomTypes( codim );
         }
 
+        /// given an EntitySeed (or EntityPointer) return an entity object
+        template <int codim>
+        cpgrid::Entity<codim> entity( const cpgrid::EntityPointer< codim >& seed ) const
+        {
+            return cpgrid::Entity<codim>( *seed );
+        }
+
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
         /// \brief Mark entity for refinement

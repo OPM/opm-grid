@@ -75,7 +75,11 @@ namespace Dune
             enum { dimensionworld = 3 };
 
 
-            typedef EntityPointer<codim> EntityPointerType;
+            typedef cpgrid::EntityPointer<codim> EntityPointerType;
+
+            // the official DUNE names
+            typedef EntityPointerType    EntityPointer;
+            typedef EntityPointerType    EntitySeed;
 
             /// @brief
             /// @todo Doc me!
@@ -85,6 +89,7 @@ namespace Dune
             {
                 typedef cpgrid::EntityPointer<cd> EntityPointer;
             };
+
 
             typedef cpgrid::Geometry<3-codim,3> Geometry;
             typedef Geometry LocalGeometry;
@@ -103,6 +108,12 @@ namespace Dune
 //              : EntityRep<codim>(entityrep), pgrid_(&grid)
 //          {
 //          }
+
+            /// Constructor creating empty entity
+            Entity()
+                : EntityRep<codim>(), pgrid_( 0 )
+            {
+            }
 
             /// Constructor taking a grid and an entity representation.
             Entity(const CpGridData& grid, EntityRep<codim> entityrep)
@@ -130,9 +141,9 @@ namespace Dune
 
             /// Return an entity seed.
             /// For CpGrid, EntitySeed and EntityPtr are the same class.
-            EntityPointerType seed() const
+            EntitySeed seed() const
             {
-                return EntityPointerType(*this);
+                return EntitySeed( impl() );
             }
 
             /// Returns the geometry of the entity (does not depend on its orientation).
@@ -262,6 +273,7 @@ namespace Dune
             {
                 return *this;
             }
+
         protected:
             const CpGridData* pgrid_;
 
@@ -283,6 +295,11 @@ namespace Dune
         public:
             typedef cpgrid::Entity<codim> Entity;
             typedef const Entity& Reference;
+
+            /// Construction empty entity pointer
+            EntityPointer() : Entity()
+            {
+            }
 
             /// Construction from entity.
             explicit EntityPointer(const Entity& e)
@@ -331,14 +348,14 @@ namespace Dune
 //          }
 
             /// Const member by pointer operator.
-            Entity* operator->() const
+            const Entity* operator->() const
             {
                 assert(Entity::valid());
                 return const_cast<EntityPointer*>(this); // const_cast-hack added because of error in vtkwriter.hh
             }
 
             /// Const dereferencing operator.
-            Entity& operator*() const
+            const Entity& operator*() const
             {
                 assert(Entity::valid());
                 return const_cast<EntityPointer&>(*this); // const_cast-hack added because of error in vtkwriter.hh
