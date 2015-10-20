@@ -4,7 +4,6 @@
 #define DUNE_POLYHEDRALGRID_INTERSECTION_HH
 
 //- dune-common includes
-#include <dune/common/nullptr.hh>
 #include <dune/common/version.hh>
 
 //- local includes

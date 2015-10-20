@@ -12,7 +12,6 @@
 //- dune-common includes
 #include <dune/common/version.hh>
 #include <dune/common/array.hh>
-#include <dune/common/nullptr.hh>
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
@@ -323,7 +322,7 @@ namespace Dune
      *  \param[in]  ug    UnstructuredGrid reference
      */
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
-    : gridPtr_( 0 ),
+    : gridPtr_(),
       grid_( grid ),
       comm_( *this ),
       leafIndexSet_( *this ),

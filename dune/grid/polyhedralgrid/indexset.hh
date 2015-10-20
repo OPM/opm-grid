@@ -5,7 +5,6 @@
 
 #include <vector>
 
-#include <dune/common/nullptr.hh>
 #include <dune/common/typetraits.hh>
 
 #include <dune/grid/common/gridenums.hh>
