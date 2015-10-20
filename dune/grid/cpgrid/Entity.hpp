@@ -274,10 +274,12 @@ namespace Dune
                 return *this;
             }
 
+            /// isValid method for EntitySeed
+            /// \return return true if seed is pointing to a valid entity
+            bool isValid () const;
+
         protected:
             const CpGridData* pgrid_;
-
-            bool valid() const;
         };
 
 
@@ -322,14 +324,14 @@ namespace Dune
             /// Const member by pointer operator.
             const Entity* operator->() const
             {
-                assert(Entity::valid());
+                assert(Entity::isValid());
                 return (this);
             }
 
             /// Const dereferencing operator.
             const Entity& operator*() const
             {
-                assert(Entity::valid());
+                assert(Entity::isValid());
                 return (*this);
             }
 
@@ -447,9 +449,9 @@ bool Entity<codim>::hasBoundaryIntersections() const
 }
 
 template <int codim>
-bool Entity<codim>::valid() const
+bool Entity<codim>::isValid() const
 {
-    return EntityRep<codim>::index() < pgrid_->size(codim);
+    return pgrid_ ? EntityRep<codim>::index() < pgrid_->size(codim) : false;
 }
 
 }}

@@ -571,6 +571,12 @@ namespace Dune
             return 0;
         }
 
+        /// \brief returns the number of boundary segments within the macro grid
+        unsigned int numBoundarySegments() const
+        {
+            return 0;
+        }
+
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
