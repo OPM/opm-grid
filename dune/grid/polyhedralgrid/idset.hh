@@ -3,7 +3,6 @@
 #ifndef DUNE_POLYHEDRALGRID_IDSET_HH
 #define DUNE_POLYHEDRALGRID_IDSET_HH
 
-#include <dune/common/nullptr.hh>
 #include <dune/grid/common/indexidset.hh>
 
 namespace Dune
