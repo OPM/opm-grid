@@ -40,6 +40,8 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/geometry/type.hh>
 #include <opm/common/ErrorMacros.hpp>
 #include "GlobalIdMapping.hpp"
+#include "Intersection.hpp"
+
 namespace Dune
 {
     namespace cpgrid
@@ -201,6 +203,12 @@ namespace Dune
             IdType id(const EntityType& e) const
             {
                 return computeId(e);
+            }
+
+            /// return id of intersection (here face number)
+            IdType id( const cpgrid::Intersection& intersection ) const
+            {
+                return intersection.id();
             }
 
             template<int cc>

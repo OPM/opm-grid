@@ -43,6 +43,9 @@ void testGridIteration( const GridView& gridView )
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
+    typedef typename GridView::Grid::LocalIdSet LocalIdSet;
+
+    const LocalIdSet& localIdSet = gridView.grid().localIdSet();
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
@@ -68,6 +71,7 @@ void testGridIteration( const GridView& gridView )
         {
             const auto& intersection = *isIt;
             const auto& isGeom = intersection.geometry();
+            std::cout << "Checking intersection id = " << localIdSet.id( intersection ) << std::endl;
             if (std::abs(isGeom.volume() - 1.0) > 1e-8)
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
