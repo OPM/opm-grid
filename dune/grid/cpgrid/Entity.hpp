@@ -319,46 +319,18 @@ namespace Dune
             {
             }
 
-//          /// Member by pointer operator.
-//          Entity* operator->()
-//          {
-//              assert(Entity::valid());
-//              return this;
-//          }
-
-//          /// Const member by pointer operator.
-//          const Entity* operator->() const
-//          {
-//              assert(Entity::valid());
-//              return this;
-//          }
-
-//          /// Dereferencing operator.
-//          Entity& operator*()
-//          {
-//              assert(Entity::valid());
-//              return *this;
-//          }
-
-//          /// Const dereferencing operator.
-//          const Entity& operator*() const
-//          {
-//              assert(Entity::valid());
-//              return *this;
-//          }
-
             /// Const member by pointer operator.
             const Entity* operator->() const
             {
                 assert(Entity::valid());
-                return const_cast<EntityPointer*>(this); // const_cast-hack added because of error in vtkwriter.hh
+                return (this);
             }
 
             /// Const dereferencing operator.
             const Entity& operator*() const
             {
                 assert(Entity::valid());
-                return const_cast<EntityPointer&>(*this); // const_cast-hack added because of error in vtkwriter.hh
+                return (*this);
             }
 
 
@@ -370,8 +342,9 @@ namespace Dune
         };
     } // namespace cpgrid
 } // namespace Dune
-    // now we include the Iterators.hh We need to do this here because for hbegin/hend the compiler
-    // needs to know the size of hierarchicIterator
+
+// now we include the Iterators.hh We need to do this here because for hbegin/hend the compiler
+// needs to know the size of hierarchicIterator
 #include "Iterators.hpp"
 #include "Entity.hpp"
 #include "Intersection.hpp"

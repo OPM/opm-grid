@@ -115,26 +115,26 @@ namespace Dune
 
 namespace std
 {
-  template< int codim, Dune::PartitionIteratorType pitype >
-  struct iterator_traits< Dune::cpgrid::Iterator< codim, pitype > >
-  {
-    typedef Dune::cpgrid::Iterator< codim, pitype > Iterator;
-    typedef ptrdiff_t difference_type;
-    typedef typename Iterator::Entity value_type;
-    typedef value_type *pointer;
-    typedef value_type &reference;
-    typedef forward_iterator_tag iterator_category;
-  };
+    template< int codim, Dune::PartitionIteratorType pitype >
+    struct iterator_traits< Dune::cpgrid::Iterator< codim, pitype > >
+    {
+        typedef Dune::cpgrid::Iterator< codim, pitype >     Iterator;
+        typedef ptrdiff_t                                   difference_type;
+        typedef typename Iterator::Entity                   value_type;
+        typedef value_type*                                 pointer;
+        typedef value_type&                                 reference;
+        typedef forward_iterator_tag                        iterator_category;
+    };
 
-  template <>
-  struct iterator_traits< Dune::cpgrid::HierarchicIterator >
-  {
-    typedef ptrdiff_t difference_type;
-    typedef Dune::cpgrid::HierarchicIterator::Entity value_type;
-    typedef value_type *pointer;
-    typedef value_type &reference;
-    typedef forward_iterator_tag iterator_category;
-  };
+    template <>
+    struct iterator_traits< Dune::cpgrid::HierarchicIterator >
+    {
+        typedef ptrdiff_t                                   difference_type;
+        typedef Dune::cpgrid::HierarchicIterator::Entity    value_type;
+        typedef value_type*                                 pointer;
+        typedef value_type&                                 reference;
+        typedef forward_iterator_tag                        iterator_category;
+    };
 
 } // namespace std
 
