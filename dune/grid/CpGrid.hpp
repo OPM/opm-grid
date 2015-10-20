@@ -574,7 +574,22 @@ namespace Dune
         /// \brief returns the number of boundary segments within the macro grid
         unsigned int numBoundarySegments() const
         {
-            return 0;
+            if( uniqueBoundaryIds() )
+            {
+                return current_view_data_->unique_boundary_ids_.size();
+            }
+            else
+            {
+                unsigned int numBndSegs = 0;
+                const int num_faces = numFaces();
+                for (int i = 0; i < num_faces; ++i) {
+                    cpgrid::EntityRep<1> face(i, true);
+                    if (current_view_data_->face_to_cell_[face].size() == 1) {
+                        ++numBndSegs;
+                    }
+                }
+                return numBndSegs;
+            }
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
