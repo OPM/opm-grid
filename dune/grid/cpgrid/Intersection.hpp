@@ -237,6 +237,12 @@ namespace Dune
             /// @return
             FieldVector<ctype, 3> centerUnitOuterNormal() const;
 
+            int id() const
+            {
+                const EntityRep<1>& face = faces_of_cell_[subindex_];
+                return face.index();
+            }
+
         protected:
             const CpGridData* pgrid_;
             int index_;

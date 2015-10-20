@@ -4,6 +4,7 @@
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/unused.hh>
+#include <dune/grid/CpGrid.hpp>
 #include <dune/grid/polyhedralgrid.hh>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
@@ -37,11 +38,14 @@ const char *deckString =
     "4*100.0 /\n";
 
 template <class GridView>
-void testGrid( const GridView& gridView )
+void testGridIteration( const GridView& gridView )
 {
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
+    typedef typename GridView::Grid::LocalIdSet LocalIdSet;
+
+    const LocalIdSet& localIdSet = gridView.grid().localIdSet();
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
@@ -67,6 +71,7 @@ void testGrid( const GridView& gridView )
         {
             const auto& intersection = *isIt;
             const auto& isGeom = intersection.geometry();
+            std::cout << "Checking intersection id = " << localIdSet.id( intersection ) << std::endl;
             if (std::abs(isGeom.volume() - 1.0) > 1e-8)
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
@@ -96,17 +101,10 @@ void testGrid( const GridView& gridView )
         std::cout << "number of elements is wrong: " << numElem << "\n";
 }
 
-int main()
+template <class Grid>
+void testGrid(Grid& grid, const std::string& name)
 {
-    Opm::Parser parser;
-    Opm::ParseMode parseMode;
-    const auto deck = parser.parseString(deckString , parseMode);
-
-    std::vector<double> porv;
-    typedef Dune::PolyhedralGrid< 3, 3 > Grid;
-    typedef Grid::LeafGridView GridView;
-    Grid grid(deck, porv);
-
+    typedef typename Grid::LeafGridView GridView;
 #if DUNE_VERSION_NEWER(DUNE_GRID,3,0)
     try {
       gridcheck( grid );
@@ -117,7 +115,7 @@ int main()
     }
 #endif
 
-    testGrid( grid.leafGridView() );
+    testGridIteration( grid.leafGridView() );
 
     std::cout << "create vertex mapper\n";
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
@@ -141,11 +139,36 @@ int main()
       std::vector<double> tmpData(numElems, 0.0);
 
       std::cout << "add cellData\n";
-      vtkWriter.addCellData(tmpData, "testdata");
+      vtkWriter.addCellData(tmpData, name);
 
       std::cout << "write data\n";
-      vtkWriter.write("polyhedralgrid_test", Dune::VTK::ascii);
+      vtkWriter.write(name, Dune::VTK::ascii);
     }
 
+}
+
+int main(int argc, char** argv )
+{
+    // initialize MPI
+    Dune::MPIHelper::instance( argc, argv );
+
+    Opm::Parser parser;
+    Opm::ParseMode parseMode;
+    const auto deck = parser.parseString(deckString , parseMode);
+    std::vector<double> porv;
+
+    // test PolyhedralGrid
+    {
+      typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+      Grid grid(deck, porv);
+      testGrid( grid, "polyhedralgrid" );
+    }
+
+    // test CpGrid
+    {
+      Dune::CpGrid grid;
+      grid.processEclipseFormat(deck, false, false, false, porv);
+      testGrid( grid, "cpgrid" );
+    }
     return 0;
 }

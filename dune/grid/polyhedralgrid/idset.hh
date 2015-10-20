@@ -55,6 +55,13 @@ namespace Dune
       return id< Entity::codimension >( entity );
     }
 
+    //! id method of all entities
+    template< class IntersectionImpl >
+    IdType id ( const Dune::Intersection< const Grid, IntersectionImpl >& intersection ) const
+    {
+      return Grid::getRealImplementation( intersection ).id();
+    }
+
     //! subId method for entities
     template< class Entity >
     IdType subId ( const Entity &entity, int i, unsigned int codim ) const

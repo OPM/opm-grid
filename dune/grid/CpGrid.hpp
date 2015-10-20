@@ -496,6 +496,13 @@ namespace Dune
           return leafIndexSet().geomTypes( codim );
         }
 
+        /// given an EntitySeed (or EntityPointer) return an entity object
+        template <int codim>
+        cpgrid::Entity<codim> entity( const cpgrid::EntityPointer< codim >& seed ) const
+        {
+            return cpgrid::Entity<codim>( *seed );
+        }
+
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
         /// \brief Mark entity for refinement
@@ -562,6 +569,27 @@ namespace Dune
         /// \brief Size of the ghost cell layer on a given level
         unsigned int ghostSize(int, int) const {
             return 0;
+        }
+
+        /// \brief returns the number of boundary segments within the macro grid
+        unsigned int numBoundarySegments() const
+        {
+            if( uniqueBoundaryIds() )
+            {
+                return current_view_data_->unique_boundary_ids_.size();
+            }
+            else
+            {
+                unsigned int numBndSegs = 0;
+                const int num_faces = numFaces();
+                for (int i = 0; i < num_faces; ++i) {
+                    cpgrid::EntityRep<1> face(i, true);
+                    if (current_view_data_->face_to_cell_[face].size() == 1) {
+                        ++numBndSegs;
+                    }
+                }
+                return numBndSegs;
+            }
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.

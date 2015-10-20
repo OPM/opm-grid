@@ -64,7 +64,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/orientedentitytable_test.cpp
 	tests/cpgrid/partition_iterator_test.cpp
 	tests/cpgrid/zoltan_test.cpp
-	tests/polyhedralgrid_test.cc
+	tests/grid_test.cc
 	tests/p2pcommunicator_test.cc
 	)
 

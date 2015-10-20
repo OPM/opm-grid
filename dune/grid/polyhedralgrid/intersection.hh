@@ -168,6 +168,13 @@ namespace Dune
       return seed_.equals(other.seed_) && intersectionIdx_ == other.intersectionIdx_;
     }
 
+    // intersection id (here index of the face in the grid)
+    int id() const
+    {
+      // return face number of current intersection
+      return data()->template subEntitySeed<1>( seed_, intersectionIdx_).index();
+    }
+
   protected:
     ExtraData  data_;
     EntitySeed seed_;
