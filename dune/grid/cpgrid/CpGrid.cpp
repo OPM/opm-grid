@@ -93,6 +93,9 @@ namespace Dune
 
 bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers)
 {
+    // Silence any unused argument warnings that could occur with various configurations.
+    static_cast<void>(ecl);
+    static_cast<void>(overlapLayers);
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     if(distributed_data_)
     {
@@ -145,7 +148,6 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers)
     current_view_data_ = distributed_data_.get();
     return true;
 #else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    static_cast<void>(overlapLayers);
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";
