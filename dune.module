@@ -4,8 +4,8 @@
 #Name of the module
 Module: dune-cornerpoint
 Description: DUNE module supporting grids in a corner-point format
-Version: 1.1
-Label: 2013.10
+Version: 2015.10
+Label: 2015.10
 Maintainer: atgeirr@sintef.no
 #depending on 
 Depends: opm-common opm-core dune-common dune-grid

@@ -2,10 +2,10 @@
 # spec file for package dune-cornerpoint
 #
 
-%define tag rc3
+%define tag rc1
 
 Name:           dune-cornerpoint
-Version:        2013.10
+Version:        2015.10
 Release:        0
 Summary:        Cornerpoint grid management module for DUNE
 License:        GPL-3.0
