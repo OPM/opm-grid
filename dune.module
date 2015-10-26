@@ -11,5 +11,3 @@ Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
 Depends: opm-common opm-core dune-common dune-grid
-Suggests: parallelgrid 
-Extra-Suggests: Alu3d
