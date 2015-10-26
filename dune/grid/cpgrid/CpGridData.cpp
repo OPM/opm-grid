@@ -646,7 +646,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 {
                     std::map<int,Modifier>::iterator mod=modifiers.find(*iter);
                     assert(mod!=modifiers.end());
-                    mod->second.insert(RemoteIndex(AttributeSet::overlap,&(*i)));
+                    mod->second.insert(RemoteIndex(AttributeSet::copy, &(*i)));
                 }
                 SIter end2=overlap[i->global()].end();
                 if(mine!=end2)
@@ -654,7 +654,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     {
                         std::map<int,Modifier>::iterator mod=modifiers.find(*mine);
                         assert(mod!=modifiers.end());
-                        mod->second.insert(RemoteIndex(AttributeSet::overlap,&(*i)));
+                        mod->second.insert(RemoteIndex(AttributeSet::copy, &(*i)));
                     }
             }
         }
@@ -940,10 +940,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
     get<Overlap_OverlapFront_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::overlap>(),
-               EnumItem<AttributeSet, AttributeSet::overlap>());
+        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
+               EnumItem<AttributeSet, AttributeSet::copy>());
     get<Overlap_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::overlap>(),
+        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
                                  AllSet<AttributeSet>());
     get<All_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, AllSet<AttributeSet>(), AllSet<AttributeSet>());
