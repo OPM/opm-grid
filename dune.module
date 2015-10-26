@@ -1,13 +1,13 @@
-#dune module information file#
-##############################
+####################################################################
+# Dune module information file: This file gets parsed by dunecontrol
+# and by the CMake build scripts.
+####################################################################
 
-#Name of the module
 Module: dune-cornerpoint
 Description: DUNE module supporting grids in a corner-point format
 Version: 2015.10
 Label: 2015.10
 Maintainer: atgeirr@sintef.no
-#depending on 
+MaintainerName: Atgeirr F. Rasmussen
+Url: http://opm-project.org
 Depends: opm-common opm-core dune-common dune-grid
-Suggests: parallelgrid 
-Extra-Suggests: Alu3d
