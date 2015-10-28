@@ -2,7 +2,7 @@
 # spec file for package dune-cornerpoint
 #
 
-%define tag rc1
+%define tag rc2
 
 Name:           dune-cornerpoint
 Version:        2015.10
