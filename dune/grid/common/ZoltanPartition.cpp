@@ -28,6 +28,7 @@ namespace cpgrid
 {
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                 const Opm::EclipseStateConstPtr eclipseState,
+                                                const double* transmissibilities,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root)
 {
@@ -64,7 +65,8 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState, pretendEmptyGrid));
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState,
+                                                       transmissibilities, pretendEmptyGrid));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     pretendEmptyGrid);
     }

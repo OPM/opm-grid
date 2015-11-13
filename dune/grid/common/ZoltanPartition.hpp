@@ -45,6 +45,7 @@ namespace cpgrid
 ///         the number of the process that owns it after repartitioning.
 std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                                 const Opm::EclipseStateConstPtr eclipseState,
+                                                const double* transmissibilities,
                                                 const CollectiveCommunication<MPI_Comm>& cc,
                                                 int root);
 }
