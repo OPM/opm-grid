@@ -113,6 +113,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
 int main(int argc, char** argv)
 try
 {
+    Dune::MPIHelper::instance(argc,argv); // Dummy if no MPI.
 
     CpGrid grid;
 
