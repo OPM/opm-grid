@@ -605,9 +605,10 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         bool loadBalance(Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+                         const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
-            return scatterGrid(ecl, overlapLayers);
+            return scatterGrid(ecl, transmissibilities, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -626,9 +627,10 @@ namespace Dune
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
                          Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
+                         const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
-            bool ret = scatterGrid(ecl, overlapLayers);
+            bool ret = scatterGrid(ecl, transmissibilities, overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1118,7 +1120,8 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        bool scatterGrid(Opm::EclipseStateConstPtr ecl, int overlapLayers);
+        bool scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
+                         int overlapLayers);
 
         /** @brief The data stored in the grid.
          *

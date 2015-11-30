@@ -129,6 +129,7 @@ public:
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
                           Opm::EclipseStateConstPtr eclipseState,
+                          const double* transmissibilities,
                           bool pretendEmptyGrid);
 
     /// \brief Access the grid.
@@ -144,7 +145,11 @@ public:
     /// \brief Post process partitioning to ensure a well is completely on one process.
     /// \param[inout] parts The assigned partition numbers for each vertex.
     void postProcessPartitioningForWells(std::vector<int>& parts);
-    
+
+    double transmissibility(int face_index) const
+    {
+        return transmissibilities_ ? (1.0e18*transmissibilities_[face_index]) : 1;
+    }
 private:
     void addCompletionSetToGraph(std::set<int>& well_indices)
     {
@@ -166,6 +171,7 @@ private:
     const Dune::CpGrid& grid_;
     Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
+    const double* transmissibilities_;
 };
 
 

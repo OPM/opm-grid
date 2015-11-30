@@ -286,7 +286,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
                     if ( wellEdges.find(otherCell) == wellEdges.end() )
                     {
                         nborGID[idx] = globalID[otherCell];
-                        ewgts[idx++] = 1;
+                        ewgts[idx++] = graph.transmissibility(face);
                     }
                     continue;
                 }
@@ -294,7 +294,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
             if ( wellEdges.find(otherCell) == wellEdges.end() )
             {
                 nborGID[idx] = globalID[otherCell];
-                ewgts[idx++] = 1;
+                ewgts[idx++] = graph.transmissibility(face);
             }
         }
 #ifndef NDEBUG
@@ -328,8 +328,9 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const Opm::EclipseStateConstPtr eclipseState,
+                                             const double* transmissibilities,
                                              bool pretendEmptyGrid)
-    : grid_(grid), eclipseState_(eclipseState)
+    : grid_(grid), eclipseState_(eclipseState), transmissibilities_(transmissibilities)
 {
     if ( pretendEmptyGrid )
     {
