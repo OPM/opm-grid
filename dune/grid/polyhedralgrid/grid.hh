@@ -805,8 +805,9 @@ namespace Dune
         if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const double minpv_value  = eclipseGrid->getMinpvValue();
-            bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
-            std::cout << opmfil << std::endl;
+            // Currently the pinchProcessor is not used and only opmfil is supported
+            //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            bool opmfil = true;
             mp.process(poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
         }
 
