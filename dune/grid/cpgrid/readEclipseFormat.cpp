@@ -141,7 +141,10 @@ namespace cpgrid
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, zcornData.data());
+            // Currently the pinchProcessor is not used and only opmfil is supported
+            //bool opmfil = ecl_grid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            bool opmfil = true;
+            mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, opmfil, zcornData.data());
         }
 
         // this variable is only required because getCellZvals() needs
