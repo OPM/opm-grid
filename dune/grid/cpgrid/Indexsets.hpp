@@ -36,7 +36,6 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPM_INDEXSETS_HEADER
 #define OPM_INDEXSETS_HEADER
 
-#include <dune/common/nullptr.hh>
 #include <dune/geometry/type.hh>
 #include <opm/common/ErrorMacros.hpp>
 #include "GlobalIdMapping.hpp"
