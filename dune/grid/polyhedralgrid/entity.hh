@@ -68,6 +68,12 @@ namespace Dune
      *  \{ */
 
     /** \brief construct a null entity */
+    PolyhedralGridEntityBasic ()
+    : data_( nullptr ),
+      seed_()
+    {}
+
+    /** \brief construct a null entity with data pointer */
     explicit PolyhedralGridEntityBasic ( ExtraData data )
     : data_( data ),
       seed_()
@@ -157,7 +163,11 @@ namespace Dune
     typedef typename Base :: EntitySeed EntitySeed;
     using Base :: codimension ;
 
-    explicit PolyhedralGridEntity ( ExtraData data )
+    explicit PolyhedralGridEntity ()
+    : Base()
+    {}
+
+    PolyhedralGridEntity ( ExtraData data )
     : Base( data )
     {}
 
@@ -221,6 +231,11 @@ namespace Dune
      *  \{ */
 
     /** \brief construct a null entity */
+    PolyhedralGridEntity ()
+    : Base()
+    {}
+
+    /** \brief construct a null entity with data pointer */
     explicit PolyhedralGridEntity ( ExtraData data )
     : Base( data )
     {}
