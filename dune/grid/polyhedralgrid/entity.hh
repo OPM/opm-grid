@@ -163,11 +163,11 @@ namespace Dune
     typedef typename Base :: EntitySeed EntitySeed;
     using Base :: codimension ;
 
-    explicit PolyhedralGridEntity ()
+    PolyhedralGridEntity ()
     : Base()
     {}
 
-    PolyhedralGridEntity ( ExtraData data )
+    explicit PolyhedralGridEntity ( ExtraData data )
     : Base( data )
     {}
 
