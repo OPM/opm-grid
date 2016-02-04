@@ -21,6 +21,7 @@
 #include <config.h>
 #endif
 #include <dune/grid/common/ZoltanPartition.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
