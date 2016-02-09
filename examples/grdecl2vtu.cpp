@@ -63,7 +63,7 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
                           VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<double> eclVector = deck->getKeyword(fieldname)->getRawDoubleData();
+        std::vector<double> eclVector = deck->getKeyword(fieldname).getRawDoubleData();
         fieldvector.resize(global_cell.size());
 
         Opm::EclipseGridInspector insp(deck);
@@ -90,7 +90,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
                            VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
     if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<int> eclVector = deck->getKeyword(fieldname)->getIntData();
+        std::vector<int> eclVector = deck->getKeyword(fieldname).getIntData();
         fieldvector.resize(global_cell.size());
 
         Opm::EclipseGridInspector insp(deck);
