@@ -1,5 +1,5 @@
-Preparing the Sources
-=========================
+# Preparing the Sources [![Build Status](https://travis-ci.org/OPM/dune-cornerpoint.svg?branch=master)](https://travis-ci.org/OPM/dune-cornerpoint)
+
 
 Additional to the software mentioned in README you'll need the
 following programs installed on your system:
