@@ -32,7 +32,7 @@
 #include <dune/grid/CpGrid.hpp>
 #include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseMode.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 
@@ -123,10 +123,10 @@ try
         exit(1);
     }
 
-    Opm::ParseMode parseMode;
+    Opm::ParseContext parseContext;
     const char* eclipsefilename = argv[1];
     Opm::ParserPtr parser(new Opm::Parser());
-    Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename, parseMode));
+    Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename, parseContext));
 
     grid.processEclipseFormat(deck, 0.0, false, false);
     const std::vector<int>& global_cell = grid.globalCell();

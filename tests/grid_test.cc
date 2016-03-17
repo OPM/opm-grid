@@ -16,7 +16,7 @@
 // Re-enable warnings.
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/parser/eclipse/Parser/ParseMode.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
@@ -153,8 +153,8 @@ int main(int argc, char** argv )
     Dune::MPIHelper::instance( argc, argv );
 
     Opm::Parser parser;
-    Opm::ParseMode parseMode;
-    const auto deck = parser.parseString(deckString , parseMode);
+    Opm::ParseContext parseContext;
+    const auto deck = parser.parseString(deckString , parseContext);
     std::vector<double> porv;
 
     // test PolyhedralGrid
