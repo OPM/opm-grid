@@ -46,7 +46,7 @@
 #include <dune/grid/common/GeometryHelpers.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseMode.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <fstream>
@@ -100,9 +100,9 @@ namespace cpgrid
 #ifdef VERBOSE
         std::cout << "Parsing " << filename << std::endl;
 #endif
-        Opm::ParseMode parseMode;
+        Opm::ParseContext parseContext;
         Opm::ParserPtr parser(new Opm::Parser());
-        Opm::DeckConstPtr deck(parser->parseFile(filename , parseMode));
+        Opm::DeckConstPtr deck(parser->parseFile(filename , parseContext));
         processEclipseFormat(deck, periodic_extension, turn_normals);
     }
 
