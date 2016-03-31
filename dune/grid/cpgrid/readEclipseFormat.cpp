@@ -40,7 +40,6 @@
 
 #include "CpGridData.hpp"
 
-#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
 #include <dune/grid/common/GeometryHelpers.hpp>

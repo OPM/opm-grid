@@ -30,7 +30,6 @@
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 #include <dune/grid/CpGrid.hpp>
-#include <opm/core/io/eclipse/EclipseGridInspector.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
@@ -56,18 +55,16 @@ using namespace Dune;
 /**
    A function to (conditionally) write a double-field from the grdecl-file to vtk-format
 */
-void condWriteDoubleField(std::vector<double> & fieldvector,
+void condWriteDoubleField(std::vector<double>& fieldvector,
                           const std::string& fieldname,
                           Opm::DeckConstPtr deck,
-                          const std::vector<int> & global_cell,
-                          VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
+                          const std::vector<int>& global_cell,
+                          const std::array<size_t, 3>& dims,
+                          VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
     if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
         std::vector<double> eclVector = deck->getKeyword(fieldname).getRawDoubleData();
         fieldvector.resize(global_cell.size());
-
-        Opm::EclipseGridInspector insp(deck);
-        std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
@@ -83,18 +80,16 @@ void condWriteDoubleField(std::vector<double> & fieldvector,
 
 }
 // Now repeat for Integers. I should learn C++ templating...
-void condWriteIntegerField(std::vector<double> & fieldvector,
+void condWriteIntegerField(std::vector<double>& fieldvector,
                            const std::string& fieldname,
                            Opm::DeckConstPtr deck,
-                           const std::vector<int> & global_cell,
-                           VTKWriter<CpGrid::LeafGridView> & vtkwriter) {
+                           const std::vector<int>& global_cell,
+                           const std::array<size_t, 3>& dims,
+                           VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
     if (deck->hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
         std::vector<int> eclVector = deck->getKeyword(fieldname).getIntData();
         fieldvector.resize(global_cell.size());
-
-        Opm::EclipseGridInspector insp(deck);
-        std::array<int, 3> dims = insp.gridSize();
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
             OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
@@ -105,7 +100,7 @@ void condWriteIntegerField(std::vector<double> & fieldvector,
         for (size_t i = 0; i < global_cell.size(); ++i) {
             fieldvector[i] = (double)eclVector[global_cell[i]];
         }
-                vtkwriter.addCellData(fieldvector, fieldname);
+        vtkwriter.addCellData(fieldvector, fieldname);
     }
 
 }
@@ -128,32 +123,48 @@ try
     Opm::ParserPtr parser(new Opm::Parser());
     Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename, parseContext));
 
-    grid.processEclipseFormat(deck, 0.0, false, false);
+    // Get logical cartesian grid dimensions.
+    std::array<size_t, 3> dims;
+    if (deck->hasKeyword("SPECGRID")) {
+        const auto& specgridRecord = deck->getKeyword("SPECGRID").getRecord(0);
+        dims[0] = specgridRecord.getItem("NX").get< int >(0);
+        dims[1] = specgridRecord.getItem("NY").get< int >(0);
+        dims[2] = specgridRecord.getItem("NZ").get< int >(0);
+    } else if (deck->hasKeyword("DIMENS")) {
+        const auto& dimensRecord = deck->getKeyword("DIMENS").getRecord(0);
+        dims[0] = dimensRecord.getItem("NX").get< int >(0);
+        dims[1] = dimensRecord.getItem("NY").get< int >(0);
+        dims[2] = dimensRecord.getItem("NZ").get< int >(0);
+    } else {
+        OPM_THROW(std::runtime_error, "Found neither SPECGRID nor DIMENS in file. At least one is needed.");
+    }
+
+    grid.processEclipseFormat(deck, false);
     const std::vector<int>& global_cell = grid.globalCell();
 
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
     std::vector<double> poros;
-    condWriteDoubleField(poros, "PORO", deck, global_cell, vtkwriter);
+    condWriteDoubleField(poros, "PORO", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> permxs;
-    condWriteDoubleField(permxs, "PERMX", deck, global_cell, vtkwriter);
+    condWriteDoubleField(permxs, "PERMX", deck, global_cell, dims, vtkwriter);
     std::vector<double> permys;
-    condWriteDoubleField(permys, "PERMY", deck, global_cell, vtkwriter);
+    condWriteDoubleField(permys, "PERMY", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> permzs;
-    condWriteDoubleField(permzs, "PERMZ", deck, global_cell, vtkwriter);
+    condWriteDoubleField(permzs, "PERMZ", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> actnums;
-    condWriteIntegerField(actnums, "ACTNUM", deck, global_cell, vtkwriter);
+    condWriteIntegerField(actnums, "ACTNUM", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> satnums;
-    condWriteIntegerField(satnums, "SATNUM", deck, global_cell, vtkwriter);
+    condWriteIntegerField(satnums, "SATNUM", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> regnums;
-    condWriteIntegerField(regnums, "REGNUM", deck, global_cell, vtkwriter);
+    condWriteIntegerField(regnums, "REGNUM", deck, global_cell, dims, vtkwriter);
 
     std::vector<double> swats;
-    condWriteDoubleField(swats, "SWAT", deck, global_cell, vtkwriter);
+    condWriteDoubleField(swats, "SWAT", deck, global_cell, dims, vtkwriter);
 
     std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
