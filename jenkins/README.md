@@ -19,4 +19,4 @@ It is intended for pre-merge builds of pull requests.
 You can optionally specify a given pull request to use for opm-common, opm-parser, opm-material and opm-core through the trigger.
 The trigger line needs to contain ert=&lt;pull request number&gt; and/or
 opm-common=&lt;pull request number&gt; and/or opm-parser=&lt;pull request number&gt;
-and/or opm-material=&lt;pull request number&gt; and/or opm-core=&lt;pull request number&gt;.
+and/or opm-material=&lt;pull request number&gt; and/or opm-core=&lt;pull request number&gt;. asdfasdfa
