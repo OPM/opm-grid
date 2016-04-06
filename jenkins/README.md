@@ -1,18 +1,18 @@
-# dune-cornerpoint jenkins build scripts:
+# opm-grid jenkins build scripts:
 
-**build-dune-cornerpoint.sh**:
+**build-opm-grid.sh**:
 This is a helper script which contains a function for building,
-testing and cloning dune-cornerpoint and its dependencies.
+testing and cloning opm-grid and its dependencies.
 
 **build.sh**:
-This script will build dependencies, then build dune-cornerpoint and execute its tests.
+This script will build dependencies, then build opm-grid and execute its tests.
 It is intended for post-merge builds of the master branch.
 
 **build-pr.sh**:
-This script will build dependencies, then build dune-cornerpoint and execute its tests.
+This script will build dependencies, then build opm-grid and execute its tests.
 It inspects the $ghbPrBuildComment environmental variable to obtain a pull request
 to use for ert, opm-common, opm-parser, opm-material and
-opm-core (defaults to master) and then builds $sha1 of dune-cornerpoint.
+opm-core (defaults to master) and then builds $sha1 of opm-grid.
 
 It is intended for pre-merge builds of pull requests.
 
