@@ -2,7 +2,7 @@
 set -ex
 
 pushd . > /dev/null
-dune-cornerpoint/travis/build-dune-cornerpoint.sh
-cd dune-cornerpoint/build
+opm-grid/travis/build-opm-grid.sh
+cd opm-grid/build
 ctest --output-on-failure
 popd > /dev/null
