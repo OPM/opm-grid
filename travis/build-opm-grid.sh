@@ -2,7 +2,7 @@
 set -ex
 
 pushd . > /dev/null
-cd dune-cornerpoint
+cd opm-grid
 mkdir build
 cd build
 cmake -D SUPERLU_ROOT=../../SuperLU ../

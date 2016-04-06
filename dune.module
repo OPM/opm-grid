@@ -3,11 +3,11 @@
 # and by the CMake build scripts.
 ####################################################################
 
-Module: dune-cornerpoint
+Module: opm-grid
 Description: DUNE module supporting grids in a corner-point format
 Version: 2016.04-pre
 Label: 2016.04-pre
 Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
-Depends: opm-common opm-core dune-common dune-grid
+Depends: opm-common opm-parser opm-core dune-common dune-grid

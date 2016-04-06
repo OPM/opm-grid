@@ -1,13 +1,13 @@
 #!/bin/bash
 
-source `dirname $0`/build-dune-cornerpoint.sh
+source `dirname $0`/build-opm-grid.sh
 
 ERT_REVISION=master
 OPM_COMMON_REVISION=master
 OPM_PARSER_REVISION=master
 OPM_MATERIAL_REVISION=master
 OPM_CORE_REVISION=master
-DUNE_CORNERPOINT_REVISION=$sha1
+OPM_GRID_REVISION=$sha1
 
 if grep -q "ert=" <<< $ghprbCommentBody
 then
@@ -34,9 +34,9 @@ then
   OPM_CORE_REVISION=pull/`echo $ghprbCommentBody | sed -r 's/.*opm-core=([0-9]+).*/\1/g'`/merge
 fi
 
-echo "Building with ert=$ERT_REVISION opm-common=$OPM_COMMON_REVISION opm-parser=$OPM_PARSER_REVISION opm-material=$OPM_MATERIAL_REVISION opm-core=$OPM_CORE_REVISION dune-cornerpoint=$DUNE_CORNERPOINT_REVISION"
+echo "Building with ert=$ERT_REVISION opm-common=$OPM_COMMON_REVISION opm-parser=$OPM_PARSER_REVISION opm-material=$OPM_MATERIAL_REVISION opm-core=$OPM_CORE_REVISION opm-grid=$OPM_GRID_REVISION"
 
-build_dune_cornerpoint
+build_opm_grid
 test $? -eq 0 || exit 1
 
-cp serial/build-dune-cornerpoint/testoutput.xml .
+cp serial/build-opm-grid/testoutput.xml .
