@@ -1,6 +1,6 @@
 #!/bin/bash
 
-function build_dune_cornerpoint {
+function build_opm_grid {
   # Build ERT
   pushd .
   mkdir -p $WORKSPACE/deps/ert
@@ -52,10 +52,10 @@ function build_dune_cornerpoint {
   clone_and_build_module opm-core "-DCMAKE_PREFIX_PATH=$WORKSPACE/serial/install -DCMAKE_INSTALL_PREFIX=$WORKSPACE/serial/install" $OPM_CORE_REVISION $WORKSPACE/serial
   test $? -eq 0 || exit 1
 
-  # Build dune-cornerpoint
+  # Build opm-grid
   pushd .
-  mkdir serial/build-dune-cornerpoint
-  cd serial/build-dune-cornerpoint
+  mkdir serial/build-opm-grid
+  cd serial/build-opm-grid
   build_module "-DCMAKE_PREFIX_PATH=$WORKSPACE/serial/install" 1 $WORKSPACE
   test $? -eq 0 || exit 1
   popd
