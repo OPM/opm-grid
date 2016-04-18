@@ -8,6 +8,7 @@
 
 # Uncomment this to turn on verbose mode.
 #export DH_VERBOSE=1
+export OMPI_MCA_plm_rsh_agent=/bin/false
 
 %:
 	dh $@ 
@@ -20,13 +21,13 @@ override_dh_auto_build:
 
 # consider using -DUSE_VERSIONED_DIR=ON if backporting
 override_dh_auto_configure:
-	dh_auto_configure -v --buildsystem=cmake -- -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=1 -DCMAKE_INSTALL_DOCDIR=share/doc/libdune-cornerpoint1 -DWHOLE_PROG_OPTIM=ON -DUSE_RUNPATH=OFF
+	dh_auto_configure -v --buildsystem=cmake -- -DCMAKE_BUILD_TYPE=Release -DUSE_MPI=1 -DBUILD_SHARED_LIBS=1 -DCMAKE_INSTALL_DOCDIR=share/doc/libopm-grid1 -DWHOLE_PROG_OPTIM=ON -DUSE_RUNPATH=OFF
 
 override_dh_auto_install:
 	dh_auto_install -- install-html
 
 override_dh_installdocs:
-	dh_installdocs --link-doc=libdune-cornerpoint1
+	dh_installdocs --link-doc=libopm-grid1
 
 override_dh_strip:
-	dh_strip -plibdune-cornerpoint1 --dbg-package=libdune-cornerpoint1-dbg
+	dh_strip -plibopm-grid1 --dbg-package=libopm-grid1-dbg
