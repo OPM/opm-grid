@@ -1,4 +1,4 @@
-Source: dune-cornerpoint
+Source: opm-grid
 Priority: extra
 Maintainer: Arne Morten Kvarving <arne.morten.kvarving@sintef.no>
 Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
@@ -9,22 +9,24 @@ Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
                texlive-latex-recommended, ghostscript, libert.ecl-dev,
                libboost-iostreams-dev, libopm-parser-dev, libsuitesparse-dev,
                libug-dev, libopm-common-dev, libopm-material-dev,
-               libdune-geometry-dev
+               libdune-geometry-dev, libtrilinos-zoltan-dev, libopenmpi-dev,
+               mpi-default-bin
 Standards-Version: 3.9.2
 Section: libs
 Homepage: http://opm-project.org
-Vcs-Git: git://github.com/OPM/dune-cornerpoint.git
-Vcs-Browser: https://github.com/OPM/dune-cornerpoint
+Vcs-Git: git://github.com/OPM/opm-grid.git
+Vcs-Browser: https://github.com/OPM/opm-grid
 
-Package: libdune-cornerpoint1-dev
+Package: libopm-grid1-dev
 Section: libdevel
 Architecture: any
 Multi-Arch: foreign
-Depends: libdune-cornerpoint1 (= ${binary:Version})
-Provides: libdune-cornerpoint-dev
-Suggests: libdune-cornerpoint1-doc
-Description: dune cornerpoint library -- development files
- dune-cornerpoint is intended to enable working with corner-point or, more
+Depends: libopm-grid1 (= ${binary:Version})
+Provides: libopm-grid-dev
+Suggests: libopm-grid1-doc
+Replaces: libdune-cornerpoint1-dev
+Description: opm-grid library -- development files
+ opm-grid is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number
  of cells while still providing sufficient flexibility to model faults,
@@ -33,15 +35,16 @@ Description: dune cornerpoint library -- development files
  and this design choice does limit the number of feasible numerical
  methods.
 
-Package: libdune-cornerpoint1
+Package: libopm-grid1
 Section: libs
 Pre-Depends: ${misc:Pre-Depends}, multiarch-support
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: libdune-cornerpoint
-Description: dune cornerpoint library
- dune-cornerpoint is intended to enable working with corner-point or, more
+Provides: libopm-grid
+Replaces: libdune-cornerpoint1
+Description: opm grid library
+ opm-grid is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number
  of cells while still providing sufficient flexibility to model faults,
@@ -50,13 +53,14 @@ Description: dune cornerpoint library
  and this design choice does limit the number of feasible numerical
  methods.
 
-Package: libdune-cornerpoint1-doc
+Package: libopm-grid1-doc
 Section: doc
 Architecture: all
 Multi-Arch: foreign
-Provides: libdune-cornerpoint-doc
-Description: dune cornerpoint library -- documentation
- dune-cornerpoint is intended to enable working with corner-point or, more
+Provides: libopm-grid-doc
+Replaces: libdune-cornerpoint1-doc
+Description: opm grid library -- documentation
+ opm-grid is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number
  of cells while still providing sufficient flexibility to model faults,
@@ -65,15 +69,16 @@ Description: dune cornerpoint library -- documentation
  and this design choice does limit the number of feasible numerical
  methods.
 
-Package: libdune-cornerpoint1-bin
+Package: libopm-grid1-bin
 Section: libs
 Pre-Depends: ${misc:Pre-Depends}, multiarch-support
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
-Provides: libdune-cornerpoint-bin
-Description: dune cornerpoint library -- applications
- dune-cornerpoint is intended to enable working with corner-point or, more
+Provides: libopm-grid-bin
+Replaces: libdune-cornerpoint1-bin
+Description: opm grid library -- applications
+ opm-grid is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number
  of cells while still providing sufficient flexibility to model faults,
@@ -82,14 +87,15 @@ Description: dune cornerpoint library -- applications
  and this design choice does limit the number of feasible numerical
  methods.
 
-Package: libdune-cornerpoint1-dbg
+Package: libopm-grid1-dbg
 Section: debug
 Architecture: any
 Multi-Arch: foreign
-Provides: libdune-cornerpoint-dbg
-Depends: libdune-cornerpoint1 (= ${binary:Version}), ${misc:Depends}
-Description: dune cornerpoint library -- debug symbols
- dune-cornerpoint is intended to enable working with corner-point or, more
+Provides: libopm-grid-dbg
+Depends: libopm-grid1 (= ${binary:Version}), ${misc:Depends}
+Replaces: libdune-cornerpoint1-dbg
+Description: opm grid library -- debug symbols
+ opm-grid is intended to enable working with corner-point or, more
  generally, pillar grids in dune. A standard grid type in the petroleum
  industry, corner-point grids fill space with a relatively low number
  of cells while still providing sufficient flexibility to model faults,
