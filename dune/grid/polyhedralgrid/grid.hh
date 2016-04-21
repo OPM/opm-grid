@@ -41,6 +41,7 @@
 #include <opm/core/grid/MinpvProcessor.hpp>
 
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 
 namespace Dune
 {
