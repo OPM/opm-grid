@@ -40,13 +40,16 @@
 
 #include "CpGridData.hpp"
 
+#include <dune/grid/common/GeometryHelpers.hpp>
+
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
-#include <dune/grid/common/GeometryHelpers.hpp>
 #include <opm/core/utility/StopWatch.hpp>
+
+#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -108,7 +111,8 @@ namespace cpgrid
     void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {
-        Opm::EclipseGridConstPtr ecl_grid(new Opm::EclipseGrid(deck));
+        Opm::EclipseState es(deck, Opm::ParseContext());
+        Opm::EclipseGridConstPtr ecl_grid = es.getInputGrid();
         processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z, poreVolume);
     }
 
