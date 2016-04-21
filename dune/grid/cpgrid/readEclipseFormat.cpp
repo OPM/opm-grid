@@ -47,7 +47,6 @@
 #include <opm/core/utility/StopWatch.hpp>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 
@@ -111,8 +110,10 @@ namespace cpgrid
     void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {
-        Opm::EclipseState es(deck, Opm::ParseContext());
-        Opm::EclipseGridConstPtr ecl_grid = es.getInputGrid();
+        const int* actnum = deck->hasKeyword("ACTNUM")
+          ? deck->getKeyword("ACTNUM").getIntData().data()
+          : nullptr;
+        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
         processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z, poreVolume);
     }
 
