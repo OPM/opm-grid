@@ -40,9 +40,6 @@
 #include <opm/core/grid/cornerpoint_grid.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
 
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-
 namespace Dune
 {
 
@@ -784,8 +781,11 @@ namespace Dune
   protected:
     UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
     {
-        Opm::EclipseState es(deck, Opm::ParseContext());
-        auto eclipseGrid = es.getInputGrid();
+        const int* rawactnum = deck->hasKeyword("ACTNUM")
+          ? deck->getKeyword("ACTNUM").getIntData().data()
+          : nullptr;
+        const auto eclipseGrid = std::make_shared<Opm::EclipseGrid>(deck, rawactnum);
+
         struct grdecl g;
         std::vector<int> actnum;
         std::vector<double> coord;
