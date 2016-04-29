@@ -183,15 +183,6 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
         current_view_data_->writeSintefLegacyFormat(grid_prefix);
     }
 
-    void CpGrid::processEclipseFormat(Opm::DeckConstPtr deck,
-                                      bool periodic_extension,
-                                      bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume)
-    {
-        current_view_data_->processEclipseFormat(deck, periodic_extension,
-                                                 turn_normals, clip_z,
-                                                 poreVolume);
-    }
 
     void CpGrid::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid,
                                       bool periodic_extension,

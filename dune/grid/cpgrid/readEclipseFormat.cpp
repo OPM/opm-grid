@@ -92,16 +92,6 @@ namespace Dune
 
 namespace cpgrid
 {
-    
-    void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume)
-    {
-        const int* actnum = deck->hasKeyword("ACTNUM")
-          ? deck->getKeyword("ACTNUM").getIntData().data()
-          : nullptr;
-        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
-        processEclipseFormat(ecl_grid, periodic_extension, turn_normals, clip_z, poreVolume);
-    }
 
     void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)

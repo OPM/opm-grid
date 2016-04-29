@@ -122,8 +122,10 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
         Opm::ParseContext parseContext;
         Opm::Parser parser;
         Opm::DeckConstPtr deck(parser.parseFile(filename , parseContext));
-        grid.processEclipseFormat(deck, periodic_extension, turn_normals);
+        const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
 
+        grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);
     } else if (fileformat == "cartesian") {
         std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
                                 param.getDefault<int>("ny", 1),

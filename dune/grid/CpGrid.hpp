@@ -239,17 +239,6 @@ namespace Dune
 
 
         /// Read the Eclipse grid format ('grdecl').
-        /// \param deck the parsed deck from opm-parser (which is a low-level object)
-        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
-        ///        intersections/faces along i and j boundaries will match those on the other
-        ///        side. That is, i- faces will match i+ faces etc.
-        /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
-        /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-        /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-        void processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                                  const std::vector<double>& poreVolume = std::vector<double>());
-
-        /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
         ///        intersections/faces along i and j boundaries will match those on the other

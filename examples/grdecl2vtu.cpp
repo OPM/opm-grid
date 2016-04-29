@@ -139,7 +139,11 @@ try
         OPM_THROW(std::runtime_error, "Found neither SPECGRID nor DIMENS in file. At least one is needed.");
     }
 
-    grid.processEclipseFormat(deck, false);
+    {
+        const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+        grid.processEclipseFormat(ecl_grid, false);
+    }
     const std::vector<int>& global_cell = grid.globalCell();
 
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
