@@ -239,14 +239,6 @@ namespace Dune
 
 
         /// Read the Eclipse grid format ('grdecl').
-        /// \param filename the name of the file to read.
-        /// \param periodic_extension if true, the grid will be (possibly) refined, so that
-        ///        intersections/faces along i and j boundaries will match those on the other
-        ///        side. That is, i- faces will match i+ faces etc.
-        void readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals = false);
-
-
-        /// Read the Eclipse grid format ('grdecl').
         /// \param deck the parsed deck from opm-parser (which is a low-level object)
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
         ///        intersections/faces along i and j boundaries will match those on the other

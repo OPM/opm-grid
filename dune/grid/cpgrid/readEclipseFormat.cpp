@@ -47,8 +47,6 @@
 #include <opm/core/utility/StopWatch.hpp>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -94,19 +92,7 @@ namespace Dune
 
 namespace cpgrid
 {
-    /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals)
-    {
-        // Read eclipse file data.
-#ifdef VERBOSE
-        std::cout << "Parsing " << filename << std::endl;
-#endif
-        Opm::ParseContext parseContext;
-        Opm::ParserPtr parser(new Opm::Parser());
-        Opm::DeckConstPtr deck(parser->parseFile(filename , parseContext));
-        processEclipseFormat(deck, periodic_extension, turn_normals);
-    }
-
+    
     void CpGridData::processEclipseFormat(Opm::DeckConstPtr deck, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {

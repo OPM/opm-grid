@@ -30,6 +30,10 @@
 #include "dune/grid/CpGrid.hpp"
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
 
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
+
+
 typedef Dune::CpGrid GridType;
 
 //===============================================================
@@ -114,7 +118,12 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
         }
         bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
         bool turn_normals = param.getDefault<bool>("turn_normals", false);
-        grid.readEclipseFormat(filename, periodic_extension, turn_normals);
+
+        Opm::ParseContext parseContext;
+        Opm::Parser parser;
+        Opm::DeckConstPtr deck(parser.parseFile(filename , parseContext));
+        grid.processEclipseFormat(deck, periodic_extension, turn_normals);
+
     } else if (fileformat == "cartesian") {
         std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
                                 param.getDefault<int>("ny", 1),
