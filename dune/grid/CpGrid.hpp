@@ -67,11 +67,6 @@
 #include <iostream>
 
 
-namespace Opm {
-    namespace parameter {
-        class ParameterGroup;
-    }
-}
 
 namespace Dune
 {
@@ -228,9 +223,6 @@ namespace Dune
 
         /// Default constructor
         CpGrid();
-
-        /// Initialize the grid from parameters.
-        void init(const Opm::parameter::ParameterGroup& param);
 
         /// \name IO routines
         //@{
