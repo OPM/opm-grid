@@ -988,10 +988,16 @@ namespace Dune
 
             assert ((f2c.size() == 1) || (f2c.size() == 2));
 
-            const bool normal_is_in =
-                ((f2c.size() == 1)
-                 ? ! f2c[0].orientation() // Single cell => boundary
-                 : (f2c[0].index() != cell));     // Two cells => interior
+            int inside_cell = 0;
+
+            if ( f2c.size() == 2 ) // Two cells => interior
+            {
+                if ( f2c[1].index() == cell )
+                {
+                    inside_cell = 1;
+                }
+            }
+            const bool normal_is_in = ! f2c[inside_cell].orientation();
 
             switch (tag) {
             case LEFT:
