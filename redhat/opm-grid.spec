@@ -2,7 +2,7 @@
 # spec file for package opm-grid
 #
 
-%define tag final
+%define tag final2
 
 Name:           opm-grid
 Version:        2016.04
