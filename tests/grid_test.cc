@@ -167,7 +167,10 @@ int main(int argc, char** argv )
     // test CpGrid
     {
       Dune::CpGrid grid;
-      grid.processEclipseFormat(deck, false, false, false, porv);
+      const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+      const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+
+      grid.processEclipseFormat(ecl_grid, false, false, false, porv);
       testGrid( grid, "cpgrid" );
     }
     return 0;

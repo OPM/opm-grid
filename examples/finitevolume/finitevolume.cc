@@ -2,6 +2,7 @@
 #include <iostream>               // for input/output to shell
 #include <fstream>                // for input/output to files
 #include <vector>                 // STL vector class
+#include <array>
 
 
 // Warning suppression for Dune includes.
@@ -28,6 +29,10 @@
 
 #include "dune/grid/CpGrid.hpp"
 #include <opm/core/utility/parameters/ParameterGroup.hpp>
+
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Parser/ParseContext.hpp>
+
 
 typedef Dune::CpGrid GridType;
 
@@ -99,6 +104,42 @@ void timeloop(const G& grid, double tend)
 }
 
 
+
+void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
+{
+    std::string fileformat = param.get<std::string>("fileformat");
+    if (fileformat == "sintef_legacy") {
+        std::string grid_prefix = param.get<std::string>("grid_prefix");
+        grid.readSintefLegacyFormat(grid_prefix);
+    } else if (fileformat == "eclipse") {
+        std::string filename = param.get<std::string>("filename");
+        if (param.has("z_tolerance")) {
+            std::cerr << "****** Warning: z_tolerance parameter is obsolete, use PINCH in deck input instead\n";
+        }
+        bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
+        bool turn_normals = param.getDefault<bool>("turn_normals", false);
+
+        Opm::ParseContext parseContext;
+        Opm::Parser parser;
+        Opm::DeckConstPtr deck(parser.parseFile(filename , parseContext));
+        const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+
+        grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);
+    } else if (fileformat == "cartesian") {
+        std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
+                                param.getDefault<int>("ny", 1),
+                                param.getDefault<int>("nz", 1) }};
+        std::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
+                                     param.getDefault<double>("dy", 1.0),
+                                     param.getDefault<double>("dz", 1.0) }};
+        grid.createCartesian(dims, cellsz);
+    } else {
+        OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
+    }
+}
+
+
 //===============================================================
 // The main function creates objects and does the time loop
 //===============================================================
@@ -114,8 +155,7 @@ int main(int argc , char ** argv)
         using namespace Dune;
 
         GridType grid;
-        grid.init(param);
-
+        initGrid( param , grid );
         // do time loop until end time 0.5
         timeloop(grid, 0.5);
     } catch (std::exception & e) {

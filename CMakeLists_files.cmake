@@ -34,7 +34,7 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/cpgrid/CpGrid.cpp
 	dune/grid/cpgrid/GridHelpers.cpp
 	dune/grid/cpgrid/PartitionTypeIndicator.cpp
-	dune/grid/cpgrid/readEclipseFormat.cpp
+	dune/grid/cpgrid/processEclipseFormat.cpp
 	dune/grid/cpgrid/readSintefLegacyFormat.cpp
 	dune/grid/cpgrid/writeSintefLegacyFormat.cpp
 	dune/grid/common/GeometryHelpers.cpp

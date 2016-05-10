@@ -37,8 +37,6 @@
 #endif
 
 
-#include <opm/core/utility/parameters/ParameterGroup.hpp>
-
 #if HAVE_MPI
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
@@ -62,33 +60,8 @@ namespace Dune
           distributed_data_()
     {}
 
-    /// Initialize the grid.
-    void CpGrid::init(const Opm::parameter::ParameterGroup& param)
-    {
-        std::string fileformat = param.get<std::string>("fileformat");
-        if (fileformat == "sintef_legacy") {
-            std::string grid_prefix = param.get<std::string>("grid_prefix");
-            readSintefLegacyFormat(grid_prefix);
-        } else if (fileformat == "eclipse") {
-            std::string filename = param.get<std::string>("filename");
-            if (param.has("z_tolerance")) {
-                std::cerr << "****** Warning: z_tolerance parameter is obsolete, use PINCH in deck input instead\n";
-            }
-            bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-            bool turn_normals = param.getDefault<bool>("turn_normals", false);
-            readEclipseFormat(filename, periodic_extension, turn_normals);
-        } else if (fileformat == "cartesian") {
-            array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
-                                    param.getDefault<int>("ny", 1),
-                                    param.getDefault<int>("nz", 1) }};
-            array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
-                                         param.getDefault<double>("dy", 1.0),
-                                         param.getDefault<double>("dz", 1.0) }};
-            createCartesian(dims, cellsz);
-        } else {
-            OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
-        }
-    }
+
+
 
 
 bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
@@ -209,22 +182,7 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     {
         current_view_data_->writeSintefLegacyFormat(grid_prefix);
     }
-    void CpGrid::readEclipseFormat(const std::string& filename,
-                                   bool periodic_extension, bool turn_normals)
-    {
-        current_view_data_->readEclipseFormat(filename, periodic_extension,
-                                              turn_normals);
-    }
 
-    void CpGrid::processEclipseFormat(Opm::DeckConstPtr deck,
-                                      bool periodic_extension,
-                                      bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume)
-    {
-        current_view_data_->processEclipseFormat(deck, periodic_extension,
-                                                 turn_normals, clip_z,
-                                                 poreVolume);
-    }
 
     void CpGrid::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid,
                                       bool periodic_extension,
