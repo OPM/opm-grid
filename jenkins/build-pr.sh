@@ -4,11 +4,13 @@ source `dirname $0`/build-opm-grid.sh
 
 declare -a upstreams
 upstreams=(opm-parser
+           opm-output
            opm-material
            opm-core)
 
 declare -A upstreamRev
 upstreamRev[opm-parser]=master
+upstreamRev[opm-output]=master
 upstreamRev[opm-material]=master
 upstreamRev[opm-core]=master
 
@@ -47,13 +49,11 @@ fi
 
 # Downstreams and default revisions
 declare -a downstreams
-downstreams=(opm-output
-             opm-simulators
+downstreams=(opm-simulators
              opm-upscaling
              ewoms)
 
 declare -A downstreamRev
-downstreamRev[opm-output]=master
 downstreamRev[opm-simulators]=master
 downstreamRev[opm-upscaling]=master
 downstreamRev[ewoms]=master
