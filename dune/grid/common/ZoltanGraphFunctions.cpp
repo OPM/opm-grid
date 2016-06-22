@@ -345,7 +345,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     wellsGraph_.resize(grid.numCells());
     const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
-    std::vector<Opm::WellConstPtr> wells  = eclipseState->getSchedule()->getWells();
+    std::vector<const Opm::Well*> wells  = eclipseState->getSchedule()->getWells();
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
     int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
     for( int i=0; i < grid.numCells(); ++i )
@@ -354,7 +354,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     }
     // We assume that we know all the wells.
     for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        Opm::WellConstPtr well = (*wellIter);
+        const Opm::Well* well = (*wellIter);
         std::set<int> well_indices;
         Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
         for (size_t c=0; c<completionSet->size(); c++) {
@@ -382,7 +382,7 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
     }
     // create compressed lookup from cartesian.
     const auto& cpgdim = grid_.logicalCartesianSize();
-    std::vector<Opm::WellConstPtr> wells  = eclipseState_->getSchedule()->getWells();
+    std::vector<const Opm::Well*> wells  = eclipseState_->getSchedule()->getWells();
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
     for( int i=0; i < grid_.numCells(); ++i )
     {
@@ -393,7 +393,7 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
     // If that is not the case for well then move them manually to the
     // process that already has the most completions on it.
     for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        Opm::WellConstPtr well = (*wellIter);
+        const Opm::Well* well = (*wellIter);
         std::set<int> well_indices;
         Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
         if( ! completionSet->size() )
