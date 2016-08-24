@@ -89,7 +89,7 @@ void Intersection::update()
                     cells_of_face[0].index()==std::numeric_limits<int>::max() ||
                     cells_of_face[1].index()==std::numeric_limits<int>::max();
                 if (has_no_nbcell) {
-                    nbcell_ = index_; // self is invalid value
+                    nbcell_ = std::numeric_limits<int>::max(); // neighbor is not within this process
                 } else {
                     assert(cells_of_face.size() == 2);
                     if (cells_of_face[0].index() == index_) {
