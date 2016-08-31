@@ -93,23 +93,23 @@ namespace Dune
 namespace cpgrid
 {
 
-    void CpGridData::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
+    void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {
         std::vector<double> coordData;
-        ecl_grid->exportCOORD(coordData);
+        ecl_grid.exportCOORD(coordData);
 
         std::vector<double> zcornData;
-        ecl_grid->exportZCORN(zcornData);
+        ecl_grid.exportZCORN(zcornData);
 
         std::vector<int> actnumData;
-        ecl_grid->exportACTNUM(actnumData);
+        ecl_grid.exportACTNUM(actnumData);
 
         // Make input struct for processing code.
         grdecl g;
-        g.dims[0] = ecl_grid->getNX();
-        g.dims[1] = ecl_grid->getNY();
-        g.dims[2] = ecl_grid->getNZ();
+        g.dims[0] = ecl_grid.getNX();
+        g.dims[1] = ecl_grid.getNY();
+        g.dims[2] = ecl_grid.getNZ();
         g.coord = &coordData[0];
         g.zcorn = &zcornData[0];
 
@@ -119,12 +119,12 @@ namespace cpgrid
             g.actnum = &actnumData[0];
 
         // Possibly process MINPV
-        if (!poreVolume.empty() && (ecl_grid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             // Currently the pinchProcessor is not used and only opmfil is supported
-            //bool opmfil = ecl_grid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            //bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             bool opmfil = true;
-            mp.process(poreVolume, ecl_grid->getMinpvValue(), actnumData, opmfil, zcornData.data());
+            mp.process(poreVolume, ecl_grid.getMinpvValue(), actnumData, opmfil, zcornData.data());
         }
 
         // this variable is only required because getCellZvals() needs
@@ -168,8 +168,8 @@ namespace cpgrid
         }
 
         // Get z_tolerance.
-        const double z_tolerance = ecl_grid->isPinchActive() ?
-            ecl_grid->getPinchThresholdThickness() : 0.0;
+        const double z_tolerance = ecl_grid.isPinchActive() ?
+            ecl_grid.getPinchThresholdThickness() : 0.0;
 
         if (periodic_extension) {
             // Extend grid periodically with one layer of cells in the (i, j) directions.

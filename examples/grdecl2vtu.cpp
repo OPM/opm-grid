@@ -141,7 +141,7 @@ try
 
     {
         const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
-        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+        Opm::EclipseGrid ecl_grid(deck , actnum);
         grid.processEclipseFormat(ecl_grid, false);
     }
     const std::vector<int>& global_cell = grid.globalCell();

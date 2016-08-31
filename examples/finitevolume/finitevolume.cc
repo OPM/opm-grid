@@ -123,7 +123,7 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
         Opm::Parser parser;
         Opm::DeckConstPtr deck(parser.parseFile(filename , parseContext));
         const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
-        const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+        Opm::EclipseGrid ecl_grid(deck , actnum);
 
         grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);
     } else if (fileformat == "cartesian") {

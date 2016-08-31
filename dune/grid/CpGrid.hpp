@@ -246,7 +246,7 @@ namespace Dune
         /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-        void processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+        void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>());
 
         /// Read the Eclipse grid format ('grdecl').
