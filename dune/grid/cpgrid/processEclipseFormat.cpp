@@ -136,9 +136,11 @@ namespace cpgrid
         for (int axisIdx = 0; axisIdx < 3; ++axisIdx)
             logicalCartesianSize[axisIdx] = g.dims[axisIdx];
 
-        // Handle zcorn clipping.
+        // Handle zcorn clipping. The g variable points to the data in
+        // the clipped_zcorn variable, i.e. clipped_zcorn must remain
+        // in scope.
+        std::vector<double> clipped_zcorn;
         if (clip_z) {
-            std::vector<double> clipped_zcorn;
             double minz_top = 1e100;
             double maxz_bot = -1e100;
             for (int i = 0; i < g.dims[0]; ++i) {

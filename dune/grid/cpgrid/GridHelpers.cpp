@@ -21,6 +21,7 @@
 
 #include <config.h>
 
+#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <dune/grid/cpgrid/GridHelpers.hpp>
 
 namespace Opm
@@ -29,6 +30,28 @@ namespace Opm
 
 namespace UgGridHelpers
 {
+
+EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid)
+{
+    const int * dims = cartDims( grid );
+    if ((inputGrid.getNX( ) == static_cast<size_t>(dims[0])) &&
+        (inputGrid.getNY( ) == static_cast<size_t>(dims[1])) &&
+        (inputGrid.getNZ( ) == static_cast<size_t>(dims[2]))) {
+
+        std::vector<int> updatedACTNUM( inputGrid.getCartesianSize( ) , 0 );
+        const int* global_cell = UgGridHelpers::globalCell( grid );
+        for (int c = 0; c < numCells( grid ); c++) {
+            updatedACTNUM[global_cell[c]] = 1;
+        }
+
+        return Opm::EclipseGrid( inputGrid, grid.zcornData( ) , updatedACTNUM );
+    } else {
+        // This will throw up if the clip_z option has been used in the
+        // processEclipseFormat() method to extend the grid in the z
+        // direction.
+        throw std::invalid_argument("Size mismatch - dimensions of inputGrid argument and current Dune CpGrid instance disagree");
+    }
+}
 
 int numCells(const Dune::CpGrid& grid)
 {

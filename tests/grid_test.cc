@@ -6,6 +6,7 @@
 #include <dune/common/unused.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/polyhedralgrid.hh>
+#include <dune/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
@@ -172,6 +173,7 @@ int main(int argc, char** argv )
 
       grid.processEclipseFormat(ecl_grid, false, false, false, porv);
       testGrid( grid, "cpgrid" );
+      Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
     }
     return 0;
 }
