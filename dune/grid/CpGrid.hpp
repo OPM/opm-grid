@@ -670,6 +670,12 @@ namespace Dune
 
         typedef Dune::FieldVector<double, 3> Vector;
 
+
+        const std::vector<double>& zcornData() const {
+            return data_->zcornData();
+        }
+
+
         // Topology
         /// \brief Get the number of cells.
         int numCells() const

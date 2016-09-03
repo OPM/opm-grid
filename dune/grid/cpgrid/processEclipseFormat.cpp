@@ -124,7 +124,10 @@ namespace cpgrid
             // Currently the pinchProcessor is not used and only opmfil is supported
             //bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             bool opmfil = true;
-            mp.process(poreVolume, ecl_grid.getMinpvValue(), actnumData, opmfil, zcornData.data());
+            size_t cells_modified = mp.process(poreVolume, ecl_grid.getMinpvValue(), actnumData, opmfil, zcornData.data());
+            if (cells_modified > 0) {
+                this->zcorn = zcornData;
+            }
         }
 
         // this variable is only required because getCellZvals() needs
@@ -134,8 +137,8 @@ namespace cpgrid
             logicalCartesianSize[axisIdx] = g.dims[axisIdx];
 
         // Handle zcorn clipping.
-        std::vector<double> clipped_zcorn;
         if (clip_z) {
+            std::vector<double> clipped_zcorn;
             double minz_top = 1e100;
             double maxz_bot = -1e100;
             for (int i = 0; i < g.dims[0]; ++i) {
@@ -165,6 +168,7 @@ namespace cpgrid
                 clipped_zcorn[i] = std::max(maxz_bot, std::min(minz_top, g.zcorn[i]));
             }
             g.zcorn = &clipped_zcorn[0];
+            this->zcorn = clipped_zcorn;
         }
 
         // Get z_tolerance.
@@ -176,7 +180,7 @@ namespace cpgrid
             std::vector<double> new_coord;
             std::vector<double> new_zcorn;
             std::vector<int> new_actnum;
-            grdecl new_g;        
+            grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
             processEclipseFormat(new_g, z_tolerance, true, turn_normals);

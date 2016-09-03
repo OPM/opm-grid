@@ -225,6 +225,15 @@ public:
             computeUniqueBoundaryIds();
         }
     }
+
+    /// Return the internalized zcorn copy from the grid processing, if
+    /// no cells were adjusted during the minpvprocessing this can be
+    /// and empty vector.
+    const std::vector<double>& zcornData() const {
+        return zcorn;
+    }
+
+
     /// Get the index set. This is the lead as well as th level index set.
     /// \return The index set.
     const IndexSet& indexSet() const
@@ -385,6 +394,13 @@ private:
 
     // Boundary information (optional).
     bool use_unique_boundary_ids_;
+
+    /// This vector contains zcorn values from the initialization
+    /// process where a CpGrid instance has been created from
+    /// cornerpoint input zcorn and coord. During the initialization
+    /// the zcorn values will typically be modified, and we retain a
+    /// copy here to be able to create an EclipseGrid for output.
+    std::vector<double> zcorn;
 
 #ifdef HAVE_DUNE_ISTL
     typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
