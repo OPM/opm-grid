@@ -6,6 +6,7 @@
 #include <dune/common/unused.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/polyhedralgrid.hh>
+#include <dune/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
@@ -168,10 +169,11 @@ int main(int argc, char** argv )
     {
       Dune::CpGrid grid;
       const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
-      const auto ecl_grid = std::make_shared<Opm::EclipseGrid>(deck, actnum);
+      Opm::EclipseGrid ecl_grid(deck , actnum);
 
       grid.processEclipseFormat(ecl_grid, false, false, false, porv);
       testGrid( grid, "cpgrid" );
+      Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
     }
     return 0;
 }

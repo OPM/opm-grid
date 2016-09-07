@@ -184,7 +184,7 @@ bool CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     }
 
 
-    void CpGrid::processEclipseFormat(Opm::EclipseGridConstPtr ecl_grid,
+    void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
                                       const std::vector<double>& poreVolume)
