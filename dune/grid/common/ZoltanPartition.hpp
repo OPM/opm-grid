@@ -43,11 +43,12 @@ namespace cpgrid
 /// @param root The process number that holds the global grid.
 /// @return A vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning.
-std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
-                                                const Opm::EclipseStateConstPtr eclipseState,
-                                                const double* transmissibilities,
-                                                const CollectiveCommunication<MPI_Comm>& cc,
-                                                int root);
+std::pair<std::vector<int>,std::vector<int> >
+zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
+                                    const Opm::EclipseStateConstPtr eclipseState,
+                                    const double* transmissibilities,
+                                    const CollectiveCommunication<MPI_Comm>& cc,
+                                    int root);
 }
 }
 #endif // HAVE_ZOLTAN

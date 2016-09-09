@@ -27,11 +27,12 @@ namespace Dune
 {
 namespace cpgrid
 {
-std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                                                const Opm::EclipseStateConstPtr eclipseState,
-                                                const double* transmissibilities,
-                                                const CollectiveCommunication<MPI_Comm>& cc,
-                                                int root)
+std::pair<std::vector<int>, std::vector<int> >
+zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
+                               const Opm::EclipseStateConstPtr eclipseState,
+                               const double* transmissibilities,
+                               const CollectiveCommunication<MPI_Comm>& cc,
+                               int root)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -90,17 +91,19 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                              &exportLocalGids,   /* Local IDs of the vertices I must send */
                              &exportProcs,    /* Process to which I send each of the vertices */
                              &exportToPart);  /* Partition to which each vertex will belong */
-    int size = cpgrid.numCells();
-    int         rank  = cc.rank();
-    std::vector<int> parts=std::vector<int>(size, rank);
+    int                         size = cpgrid.numCells();
+    int                         rank  = cc.rank();
+    std::vector<int>            parts(size, rank);
+    std::vector<std::vector<int> > wells_on_proc;
 
     for ( int i=0; i < numExport; ++i )
     {
         parts[exportLocalGids[i]] = exportProcs[i];
     }
+
     if( eclipseState && ! pretendEmptyGrid )
     {
-        grid_and_wells->postProcessPartitioningForWells(parts);
+        wells_on_proc = grid_and_wells->postProcessPartitioningForWells(parts);
 #ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
@@ -122,11 +125,42 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         }
 #endif
     }
-    cc.broadcast(&parts[0], parts.size(), root);
+    // free space allocated for zoltan.
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
-    return parts;
+
+    cc.broadcast(&parts[0], parts.size(), root);
+    std::vector<int> my_well_indices;
+
+    if( pretendEmptyGrid)
+    {
+        std::vector<MPI_Request> reqs(cc.size(), MPI_REQUEST_NULL);
+        my_well_indices = wells_on_proc[root];
+        for ( int i=0; i < cc.size(); ++i )
+        {
+            if(i==root)
+            {
+                continue;
+            }
+            MPI_Isend(wells_on_proc[i].data(), wells_on_proc[i].size(),
+                      MPI_INT, i, 267553, cc, &reqs[i]);
+        }
+        std::vector<MPI_Status> stats(reqs.size());
+        MPI_Waitall(reqs.size(), reqs.data(), stats.data());
+    }
+    else
+    {
+        MPI_Status stat;
+        MPI_Probe(root, 267553, cc, &stat);
+        int msg_size;
+        MPI_Get_count(&stat, MPI_INT, &msg_size);
+        my_well_indices.resize(msg_size);
+        MPI_Recv(my_well_indices.data(), msg_size, MPI_INT, root, 267553,
+                 cc, &stat);
+    }
+
+    return std::make_pair(parts, my_well_indices);
 }
 }
 }

@@ -375,15 +375,26 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     }
 }
 
-void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
+std::vector<std::vector<int> >
+CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
 {
+    // Contains for each process the indices of the wells assigned to it.
+    std::vector<std::vector<int> > well_indices_on_proc(grid_.comm().size());
+
     if( ! wellsGraph_.size() )
     {
         // No wells to be processed
-        return;
+        return well_indices_on_proc;
     }
     std::vector<const Opm::Well*> wells  = eclipseState_->getSchedule()->getWells();
     int last_time_step = eclipseState_->getSchedule()->getTimeMap()->size()-1;
+
+    // prevent memory allocation
+    for(auto& well_indices : well_indices_on_proc)
+    {
+        well_indices.reserve(wells.size());
+    }
+
     // Check that all completions of a well have ended up on one process.
     // If that is not the case for well then move them manually to the
     // process that already has the most completions on it.
@@ -395,6 +406,9 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
         {
             ++no_completions_on_proc[parts[c]];
         }
+
+        int owner = no_completions_on_proc.begin()->first;
+
         if ( no_completions_on_proc.size() > 1 )
         {
             // partition with the most completions on it becomes new owner
@@ -410,8 +424,11 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
              {
                  parts[c] = new_owner;
              }
+             owner = new_owner;
         }
+        well_indices_on_proc[owner].push_back(wellIter - wells.begin());
     }
+    return well_indices_on_proc;
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,

@@ -144,7 +144,10 @@ public:
     }
     /// \brief Post process partitioning to ensure a well is completely on one process.
     /// \param[inout] parts The assigned partition numbers for each vertex.
-    void postProcessPartitioningForWells(std::vector<int>& parts);
+    /// \return A vector containing for each process the set of indices of the wells
+    ///         that are assigned to it.
+    std::vector<std::vector<int> >
+    postProcessPartitioningForWells(std::vector<int>& parts);
 
     double transmissibility(int face_index) const
     {
