@@ -172,6 +172,7 @@ private:
     Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
+    std::vector<std::set<int> > well_indices_;
 };
 
 

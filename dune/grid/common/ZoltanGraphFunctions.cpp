@@ -352,10 +352,12 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
+    well_indices_.resize(wells.size());
+
     // We assume that we know all the wells.
     for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
         const Opm::Well* well = (*wellIter);
-        std::set<int> well_indices;
+        std::set<int>& well_indices = well_indices_[wellIter - wells.begin()];
         Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
         for (size_t c=0; c<completionSet->size(); c++) {
             Opm::CompletionConstPtr completion = completionSet->get(c);
@@ -380,40 +382,18 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
         // No wells to be processed
         return;
     }
-    // create compressed lookup from cartesian.
-    const auto& cpgdim = grid_.logicalCartesianSize();
     std::vector<const Opm::Well*> wells  = eclipseState_->getSchedule()->getWells();
-    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    for( int i=0; i < grid_.numCells(); ++i )
-    {
-        cartesian_to_compressed[grid_.globalCell()[i]] = i;
-    }
     int last_time_step = eclipseState_->getSchedule()->getTimeMap()->size()-1;
     // Check that all completions of a well have ended up on one process.
     // If that is not the case for well then move them manually to the
     // process that already has the most completions on it.
     for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
         const Opm::Well* well = (*wellIter);
-        std::set<int> well_indices;
-        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
-        if( ! completionSet->size() )
-        {
-            continue;
-        }
+        const std::set<int>& well_indices = well_indices_[wellIter - wells.begin()];
         std::map<int,std::size_t> no_completions_on_proc;
-        for ( size_t c = 0; c < completionSet->size(); c++  )
+        for ( size_t c = 0; c < well_indices.size(); c++  )
         {
-            Opm::CompletionConstPtr completion = completionSet->get(c);
-            int i = completion->getI();
-            int j = completion->getJ();
-            int k = completion->getK();
-            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx < 0 ) // ignore completions in inactive cells
-            {
-                continue;
-            }
-            ++no_completions_on_proc[parts[compressed_idx]];
+            ++no_completions_on_proc[parts[c]];
         }
         if ( no_completions_on_proc.size() > 1 )
         {
@@ -426,19 +406,9 @@ void CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& pa
                                              })->first;
             std::cout << "Manually moving well " << well->name() << " to partition "
                       << new_owner << std::endl;
-             for ( size_t c = 0; c < completionSet->size(); c++ )
+             for ( size_t c = 0; c < well_indices.size(); c++ )
              {
-                 Opm::CompletionConstPtr completion = completionSet->get(c);
-                 int i = completion->getI();
-                 int j = completion->getJ();
-                 int k = completion->getK();
-                 int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-                 int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-                 if ( compressed_idx < 0 ) // ignore completions in inactive cells
-                 {
-                     continue;
-                 }
-                 parts[compressed_idx] = new_owner;
+                 parts[c] = new_owner;
              }
         }
     }
