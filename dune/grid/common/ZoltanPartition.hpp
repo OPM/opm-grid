@@ -20,6 +20,8 @@
 #ifndef DUNE_CPGRID_ZOLTANPARTITION_HEADER
 #define DUNE_CPGRID_ZOLTANPARTITION_HEADER
 
+#include <unordered_set>
+
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 
@@ -41,9 +43,11 @@ namespace cpgrid
 /// @paramm cc  The MPI communicator to use for the partitioning.
 ///             The will be partitioned among the partiticipating processes.
 /// @param root The process number that holds the global grid.
-/// @return A vector that contains for each local cell of the grid the
-///         the number of the process that owns it after repartitioning.
-std::pair<std::vector<int>,std::vector<int> >
+/// @return A pair consisting of a vector that contains for each local cell of the grid the
+///         the number of the process that owns it after repartitioning,
+///         and a set of names of wells that should be defunct in a parallel
+///         simulation.
+std::pair<std::vector<int>,std::unordered_set<std::string> >
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                     const Opm::EclipseStateConstPtr eclipseState,
                                     const double* transmissibilities,

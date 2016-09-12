@@ -64,7 +64,7 @@ namespace Dune
 
 
 
-std::pair<bool, std::vector<int> >
+std::pair<bool, std::unordered_set<std::string> >
 CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
                     const double* transmissibilities, int overlapLayers)
 {
@@ -77,7 +77,7 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     {
         std::cerr<<"There is already a distributed version of the grid."
                  << " Maybe scatterGrid was called before?"<<std::endl;
-        return std::make_pair(false, std::vector<int>());
+        return std::make_pair(false, std::unordered_set<std::string>());
     }
 
     CollectiveCommunication cc(MPI_COMM_WORLD);
@@ -131,7 +131,7 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";
-    return std::make_pair(false, std::vector<int>());
+    return std::make_pair(false, std::unordered_set<std::string>());
 #endif
 }
 

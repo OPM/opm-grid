@@ -376,10 +376,11 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
 }
 
 std::vector<std::vector<int> >
-CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
+CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts,
+                                                       std::size_t no_procs)
 {
     // Contains for each process the indices of the wells assigned to it.
-    std::vector<std::vector<int> > well_indices_on_proc(grid_.comm().size());
+    std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
     if( ! wellsGraph_.size() )
     {
@@ -402,9 +403,9 @@ CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts)
         const Opm::Well* well = (*wellIter);
         const std::set<int>& well_indices = well_indices_[wellIter - wells.begin()];
         std::map<int,std::size_t> no_completions_on_proc;
-        for ( size_t c = 0; c < well_indices.size(); c++  )
+        for ( auto well_index: well_indices )
         {
-            ++no_completions_on_proc[parts[c]];
+            ++no_completions_on_proc[parts[well_index]];
         }
 
         int owner = no_completions_on_proc.begin()->first;

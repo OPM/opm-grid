@@ -41,6 +41,7 @@
 #include <string>
 #include <map>
 #include <array>
+#include <unordered_set>
 #include <opm/common/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
@@ -594,7 +595,7 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        std::pair<bool, std::vector<int> >
+        std::pair<bool, std::unordered_set<std::string> >
         loadBalance(Opm::EclipseStateConstPtr ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
@@ -628,7 +629,7 @@ namespace Dune
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
-        std::pair<bool, std::vector<int> >
+        std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
                     Opm::EclipseStateConstPtr ecl,
                     const double* transmissibilities = nullptr,
@@ -1151,7 +1152,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        std::pair<bool, std::vector<int> >
+        std::pair<bool, std::unordered_set<std::string> >
         scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
                     int overlapLayers);
 

@@ -22,12 +22,14 @@
 #endif
 #include <dune/grid/common/ZoltanPartition.hpp>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
 {
-std::pair<std::vector<int>, std::vector<int> >
+std::pair<std::vector<int>, std::unordered_set<std::string> >
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const Opm::EclipseStateConstPtr eclipseState,
                                const double* transmissibilities,
@@ -103,7 +105,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
     if( eclipseState && ! pretendEmptyGrid )
     {
-        wells_on_proc = grid_and_wells->postProcessPartitioningForWells(parts);
+        wells_on_proc = grid_and_wells->postProcessPartitioningForWells(parts,
+                                                                        cc.size());
 #ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
@@ -133,7 +136,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     cc.broadcast(&parts[0], parts.size(), root);
     std::vector<int> my_well_indices;
 
-    if( pretendEmptyGrid)
+    if( !pretendEmptyGrid)
     {
         std::vector<MPI_Request> reqs(cc.size(), MPI_REQUEST_NULL);
         my_well_indices = wells_on_proc[root];
@@ -160,7 +163,27 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                  cc, &stat);
     }
 
-    return std::make_pair(parts, my_well_indices);
+    // Compute defunct wells in parallel run.
+    const auto& wells = eclipseState->getSchedule()->getWells();
+    std::vector<int> defunct_wells(wells.size(), true);
+
+    for(auto well_index : my_well_indices)
+    {
+        defunct_wells[well_index] = false;
+    }
+
+    // We need to use well names as only they are consistent.
+    std::unordered_set<std::string> defunct_well_names;
+
+    for(auto defunct = defunct_wells.begin(); defunct != defunct_wells.end(); ++defunct)
+    {
+        if ( *defunct )
+        {
+            defunct_well_names.insert(wells[defunct-defunct_wells.begin()]->name());
+        }
+    }
+
+    return std::make_pair(parts, defunct_well_names);
 }
 }
 }
