@@ -388,7 +388,6 @@ CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts,
         return well_indices_on_proc;
     }
     std::vector<const Opm::Well*> wells  = eclipseState_->getSchedule()->getWells();
-    int last_time_step = eclipseState_->getSchedule()->getTimeMap()->size()-1;
 
     // prevent memory allocation
     for(auto& well_indices : well_indices_on_proc)
