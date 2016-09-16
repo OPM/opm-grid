@@ -54,7 +54,6 @@ std::vector<int> zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
     Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
     Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "3");
     Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
     Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
