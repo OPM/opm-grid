@@ -41,6 +41,7 @@
 
 
 #define BOOST_TEST_MODULE EntityTests
+#define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 #include <sstream>
 
@@ -99,3 +100,16 @@ BOOST_AUTO_TEST_CASE(entity_ptr)
 //     BOOST_CHECK(e2 == ee2);
 }
 
+
+bool
+init_unit_test_func()
+{
+    return true;
+}
+
+int main(int argc, char** argv)
+{
+    Dune::MPIHelper::instance(argc, argv);
+    boost::unit_test::unit_test_main(&init_unit_test_func,
+                                     argc, argv);
+}
