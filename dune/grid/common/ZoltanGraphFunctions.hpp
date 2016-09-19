@@ -144,7 +144,11 @@ public:
     }
     /// \brief Post process partitioning to ensure a well is completely on one process.
     /// \param[inout] parts The assigned partition numbers for each vertex.
-    void postProcessPartitioningForWells(std::vector<int>& parts);
+    /// \param[in]    no_parts The number of partitions.
+    /// \return A vector containing for each process the set of indices of the wells
+    ///         that are assigned to it.
+    std::vector<std::vector<int> >
+    postProcessPartitioningForWells(std::vector<int>& parts, std::size_t no_parts);
 
     double transmissibility(int face_index) const
     {
@@ -172,6 +176,7 @@ private:
     Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
+    std::vector<std::set<int> > well_indices_;
 };
 
 

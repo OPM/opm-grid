@@ -41,6 +41,7 @@
 #include <string>
 #include <map>
 #include <array>
+#include <unordered_set>
 #include <opm/common/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
@@ -594,11 +595,24 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        bool loadBalance(Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
-                         const double* transmissibilities = nullptr,
-                         int overlapLayers=1)
+        std::pair<bool, std::unordered_set<std::string> >
+        loadBalance(Opm::EclipseStateConstPtr ecl,
+                    const double* transmissibilities = nullptr,
+                    int overlapLayers=1)
         {
             return scatterGrid(ecl, transmissibilities, overlapLayers);
+        }
+
+        // loadbalance is not part of the grid interface therefore we skip it.
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        bool loadBalance(int overlapLayers=1)
+        {
+            using std::get;
+            return get<0>(scatterGrid(Opm::EclipseStateConstPtr(), nullptr,
+                                      overlapLayers ));
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -615,12 +629,28 @@ namespace Dune
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
+        std::pair<bool, std::unordered_set<std::string> >
+        loadBalance(DataHandle& data,
+                    Opm::EclipseStateConstPtr ecl,
+                    const double* transmissibilities = nullptr,
+                    int overlapLayers=1)
+        {
+            auto ret = loadBalance(ecl, transmissibilities, overlapLayers);
+            scatterData(data);
+            return ret;
+        }
+
+        /// \brief Distributes this grid and data over the available nodes in a distributed machine.
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param overlapLayers The number of layers of overlap cells to be added
+        ///        (default: 1)
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
+        template<class DataHandle>
         bool loadBalance(DataHandle& data,
-                         Opm::EclipseStateConstPtr ecl=Opm::EclipseStateConstPtr(),
-                         const double* transmissibilities = nullptr,
                          int overlapLayers=1)
         {
-            bool ret = scatterGrid(ecl, transmissibilities, overlapLayers);
+            bool ret = loadBalance(overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1122,8 +1152,9 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        bool scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
-                         int overlapLayers);
+        std::pair<bool, std::unordered_set<std::string> >
+        scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
+                    int overlapLayers);
 
         /** @brief The data stored in the grid.
          *
