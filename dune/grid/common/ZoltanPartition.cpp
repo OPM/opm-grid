@@ -140,6 +140,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
     cc.broadcast(&parts[0], parts.size(), root);
     std::vector<int> my_well_indices;
+    const int well_information_tag = 267553;
 
     if( partitionIsWholeGrid )
     {
@@ -152,7 +153,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                 continue;
             }
             MPI_Isend(wells_on_proc[i].data(), wells_on_proc[i].size(),
-                      MPI_INT, i, 267553, cc, &reqs[i]);
+                      MPI_INT, i, well_information_tag, cc, &reqs[i]);
         }
         std::vector<MPI_Status> stats(reqs.size());
         MPI_Waitall(reqs.size(), reqs.data(), stats.data());
@@ -160,12 +161,12 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     else
     {
         MPI_Status stat;
-        MPI_Probe(root, 267553, cc, &stat);
+        MPI_Probe(root, well_information_tag, cc, &stat);
         int msg_size;
         MPI_Get_count(&stat, MPI_INT, &msg_size);
         my_well_indices.resize(msg_size);
-        MPI_Recv(my_well_indices.data(), msg_size, MPI_INT, root, 267553,
-                 cc, &stat);
+        MPI_Recv(my_well_indices.data(), msg_size, MPI_INT, root,
+                 well_information_tag, cc, &stat);
     }
 
     // Compute defunct wells in parallel run.
