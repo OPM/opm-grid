@@ -63,20 +63,25 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
-    bool pretendEmptyGrid = cc.rank()!=root;
+    // For the load balancer one process has the whole grid and
+    // all others an empty partition before loadbalancing.
+    bool partitionIsEmpty     = cc.rank()!=root;
+    bool partitionIsWholeGrid = !partitionIsEmpty;
+
     std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
 
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
         grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState,
-                                                       transmissibilities, pretendEmptyGrid));
+                                                       transmissibilities,
+                                                       partitionIsEmpty));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
-                                                    pretendEmptyGrid);
+                                                    partitionIsEmpty);
     }
     else
     {
-        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, pretendEmptyGrid);
+        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, partitionIsEmpty);
     }
 
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
@@ -103,7 +108,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         parts[exportLocalGids[i]] = exportProcs[i];
     }
 
-    if( eclipseState && ! pretendEmptyGrid )
+    if( eclipseState && partitionIsWholeGrid )
     {
         wells_on_proc = grid_and_wells->postProcessPartitioningForWells(parts,
                                                                         cc.size());
@@ -136,7 +141,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     cc.broadcast(&parts[0], parts.size(), root);
     std::vector<int> my_well_indices;
 
-    if( !pretendEmptyGrid)
+    if( partitionIsWholeGrid )
     {
         std::vector<MPI_Request> reqs(cc.size(), MPI_REQUEST_NULL);
         my_well_indices = wells_on_proc[root];
