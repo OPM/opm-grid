@@ -36,39 +36,80 @@ namespace Dune
 namespace cpgrid
 {
 
+/// \brief A class calculating and representing all connections of wells.
+///
+/// Wells are identified by their position as ecported by the eclipse file.
+/// For each well the container stores at the well index all indices of cells
+/// that the well perforates.
 class WellConnections
 {
 public:
+    /// \brief The const iterator type.
     typedef std::vector<std::set<int> >::const_iterator const_iterator;
+
+    /// \brief The iterator type (always const).
     typedef const_iterator iterator;
 
+    /// \brief Constructor
+    /// \param eclipseState The eclipse information
+    /// \param cartesianSize The logical cartesian size of the grid.
+    /// \param cartesian_to_compressed Mapping of cartesian index
+    ///        compressed cell index. The compressed index is used
+    ///        to represent the well conditions.
     WellConnections(const Opm::EclipseStateConstPtr eclipseState,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
+    /// \brief Initialze the data of the container
+    /// \param eclipseState The eclipse information
+    /// \param cartesianSize The logical cartesian size of the grid.
+    /// \param cartesian_to_compressed Mapping of cartesian index
+    ///        compressed cell index. The compressed index is used
+    ///        to represent the well conditions.
+    void init(const Opm::EclipseStateConstPtr eclipseState,
+              const std::array<int, 3>& cartesianSize,
+              const std::vector<int>& cartesian_to_compressed);
+
+    /// \brief Access all connections of a well
+    /// \param i The index of the well (position of the well in the
+    ///          eclipse schedule.
+    /// \return The set of compressed indices of cells perforated by the well.
     const std::set<int>& operator[](std::size_t i) const
     {
         return well_indices_[i];
     }
 
+    /// \brief Get a begin iterator
     const_iterator begin() const
     {
         return well_indices_.begin();
     }
 
+    /// \brief Get the end iterator
     const_iterator end() const
     {
         return well_indices_.end();
     }
 
+    /// \breif Get the number of wells
     std::size_t size() const
     {
         return well_indices_.size();
     }
 private:
+    /// Stores at index i all cells that are perforated by
+    /// the well at position i of the eclipse schedule.
     std::vector<std::set<int> > well_indices_;
 };
 
+/// \brief Computes wells assigned to processes.
+///
+/// Computes for all processes all indices of wells that
+/// will be assigned to this process.
+/// \param parts The partition number for each cell
+/// \param eclipseState The eclipse information
+/// \param well_connecton The informatio about the perforations of each well.
+/// \param no_procs The number of processes.
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
                                 const Opm::EclipseStateConstPtr eclipseState,
@@ -76,6 +117,12 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 std::size_t no_procs);
 
 #ifdef HAVE_MPI
+/// \brief Computes that names that of all wells not handled by this process
+/// \param wells_on_proc well indices assigned to each process
+/// \param eclipseState The eclipse information
+/// \param cc The communicator
+/// \param root The rank of the process that has the complete partitioning
+///             information.
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
                         const Opm::EclipseStateConstPtr eclipseState,
