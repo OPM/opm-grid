@@ -47,6 +47,7 @@
 #include "CpGridData.hpp"
 #include <dune/grid/common/ZoltanPartition.hpp>
 #include <dune/grid/common/GridPartitioning.hpp>
+#include <dune/grid/common/WellConnections.hpp>
 
 #include <fstream>
 #include <iostream>
@@ -89,6 +90,7 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     int num_parts = cc.size();
     using std::get;
     auto cell_part = get<0>(part_and_wells);
+    auto defunct_wells = get<1>(part_and_wells);
 #else
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int  num_parts=-1;
@@ -96,6 +98,31 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
     initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
     partition(*this, initial_split, num_parts, cell_part);
+    const auto& cpgdim =  logicalCartesianSize();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    for( int i=0; i < numCells(); ++i )
+    {
+        cartesian_to_compressed[globalCell()[i]] = i;
+    }
+
+    std::unordered_set<std::string> defunct_wells;
+
+    if ( ecl )
+    {
+        cpgrid::WellConnections well_connections(ecl,
+                                                 cpgdim,
+                                                 cartesian_to_compressed);
+
+        auto wells_on_proc =
+            cpgrid::postProcessPartitioningForWells(cell_part,
+                                                    ecl,
+                                                    well_connections,
+                                                    cc.size());
+        defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
+                                                        ecl,
+                                                        cc,
+                                                        0);
+    }
 #endif
 
     MPI_Comm new_comm = MPI_COMM_NULL;
@@ -125,8 +152,8 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
             distributed_data_->cell_to_face_.size() << " cells." << std::endl;
     }
     current_view_data_ = distributed_data_.get();
-    using std::get;
-    return std::make_pair(true, get<1>(part_and_wells));
+    return std::make_pair(true, defunct_wells);
+
 #else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "

@@ -39,6 +39,7 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/cpgrid/writeSintefLegacyFormat.cpp
 	dune/grid/common/GeometryHelpers.cpp
 	dune/grid/common/GridPartitioning.cpp
+	dune/grid/common/WellConnections.cpp
 	dune/grid/common/ZoltanGraphFunctions.cpp
 	dune/grid/common/ZoltanPartition.cpp
 	)
