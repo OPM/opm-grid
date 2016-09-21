@@ -109,8 +109,12 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
     if( eclipseState && partitionIsWholeGrid )
     {
-        wells_on_proc = grid_and_wells->postProcessPartitioningForWells(parts,
-                                                                        cc.size());
+        wells_on_proc =
+            postProcessPartitioningForWells(parts,
+                                            eclipseState,
+                                            grid_and_wells->getWellConnections(),
+                                            cc.size());
+
 #ifndef NDEBUG
         int index = 0;
         for( auto well : grid_and_wells->getWellsGraph() )
@@ -137,56 +141,17 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
 
-    cc.broadcast(&parts[0], parts.size(), root);
-    std::vector<int> my_well_indices;
-    const int well_information_tag = 267553;
-
-    if( partitionIsWholeGrid )
-    {
-        std::vector<MPI_Request> reqs(cc.size(), MPI_REQUEST_NULL);
-        my_well_indices = wells_on_proc[root];
-        for ( int i=0; i < cc.size(); ++i )
-        {
-            if(i==root)
-            {
-                continue;
-            }
-            MPI_Isend(wells_on_proc[i].data(), wells_on_proc[i].size(),
-                      MPI_INT, i, well_information_tag, cc, &reqs[i]);
-        }
-        std::vector<MPI_Status> stats(reqs.size());
-        MPI_Waitall(reqs.size(), reqs.data(), stats.data());
-    }
-    else
-    {
-        MPI_Status stat;
-        MPI_Probe(root, well_information_tag, cc, &stat);
-        int msg_size;
-        MPI_Get_count(&stat, MPI_INT, &msg_size);
-        my_well_indices.resize(msg_size);
-        MPI_Recv(my_well_indices.data(), msg_size, MPI_INT, root,
-                 well_information_tag, cc, &stat);
-    }
-
-    // Compute defunct wells in parallel run.
-    const auto& wells = eclipseState->getSchedule()->getWells();
-    std::vector<int> defunct_wells(wells.size(), true);
-
-    for(auto well_index : my_well_indices)
-    {
-        defunct_wells[well_index] = false;
-    }
-
-    // We need to use well names as only they are consistent.
     std::unordered_set<std::string> defunct_well_names;
 
-    for(auto defunct = defunct_wells.begin(); defunct != defunct_wells.end(); ++defunct)
+    if( eclipseState )
     {
-        if ( *defunct )
-        {
-            defunct_well_names.insert(wells[defunct-defunct_wells.begin()]->name());
-        }
+        defunct_well_names = computeDefunctWellNames(wells_on_proc,
+                                                     eclipseState,
+                                                     cc,
+                                                     root);
     }
+
+    cc.broadcast(&parts[0], parts.size(), root);
 
     return std::make_pair(parts, defunct_well_names);
 }

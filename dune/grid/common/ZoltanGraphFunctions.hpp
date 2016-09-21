@@ -23,6 +23,7 @@
 
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <dune/grid/CpGrid.hpp>
+#include <dune/grid/common/WellConnections.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 
@@ -142,33 +143,34 @@ public:
     {
         return wellsGraph_;
     }
-    /// \brief Post process partitioning to ensure a well is completely on one process.
-    /// \param[inout] parts The assigned partition numbers for each vertex.
-    /// \param[in]    no_parts The number of partitions.
-    /// \return A vector containing for each process the set of indices of the wells
-    ///         that are assigned to it.
-    std::vector<std::vector<int> >
-    postProcessPartitioningForWells(std::vector<int>& parts, std::size_t no_parts);
 
     double transmissibility(int face_index) const
     {
         return transmissibilities_ ? (1.0e18*transmissibilities_[face_index]) : 1;
     }
-private:
-    void addCompletionSetToGraph(std::set<int>& well_indices)
+
+    const WellConnections& getWellConnections() const
     {
-        for( auto well_idx = well_indices.begin(); well_idx != well_indices.end();
-             ++well_idx)
+        return well_indices_;
+    }
+private:
+
+    void addCompletionSetToGraph()
+    {
+        for(const auto& well_indices: well_indices_)
         {
-            auto well_idx2 = well_idx;
-            for( ++well_idx2; well_idx2 != well_indices.end();
-                 ++well_idx2)
+            for( auto well_idx = well_indices.begin(); well_idx != well_indices.end();
+                 ++well_idx)
             {
-                wellsGraph_[*well_idx].insert(*well_idx2);
-                wellsGraph_[*well_idx2].insert(*well_idx);
+                auto well_idx2 = well_idx;
+                for( ++well_idx2; well_idx2 != well_indices.end();
+                     ++well_idx2)
+                {
+                    wellsGraph_[*well_idx].insert(*well_idx2);
+                    wellsGraph_[*well_idx2].insert(*well_idx);
+                }
             }
         }
-
     }
     
         
@@ -176,7 +178,7 @@ private:
     Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
-    std::vector<std::set<int> > well_indices_;
+    WellConnections well_indices_;
 };
 
 
