@@ -36,6 +36,13 @@ WellConnections::WellConnections(const Opm::EclipseStateConstPtr eclipseState,
                                  const std::array<int, 3>& cartesianSize,
                                  const std::vector<int>& cartesian_to_compressed)
 {
+    init(eclipseState, cartesianSize, cartesian_to_compressed);
+}
+
+void WellConnections::init(const Opm::EclipseStateConstPtr eclipseState,
+                           const std::array<int, 3>& cartesianSize,
+                           const std::vector<int>& cartesian_to_compressed)
+{
     std::vector<const Opm::Well*>  wells  = eclipseState->getSchedule()->getWells();
     int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
     well_indices_.resize(wells.size());

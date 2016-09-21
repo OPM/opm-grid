@@ -50,6 +50,8 @@ public:
     /// \brief The iterator type (always const).
     typedef const_iterator iterator;
 
+    WellConnections() = default;
+
     /// \brief Constructor
     /// \param eclipseState The eclipse information
     /// \param cartesianSize The logical cartesian size of the grid.
