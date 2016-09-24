@@ -117,9 +117,9 @@ postProcessPartitioningForWells(std::vector<int>& parts,
             std::cout << "Manually moving well " << well->name() << " to partition "
                       << new_owner << std::endl;
 
-            for ( size_t c = 0; c < well_completions.size(); c++ )
+            for ( auto well_index: well_completions )
             {
-                parts[c] = new_owner;
+                parts[well_index] = new_owner;
             }
 
             owner = new_owner;
