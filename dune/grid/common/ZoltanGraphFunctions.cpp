@@ -346,7 +346,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
+
     for( int i=0; i < grid.numCells(); ++i )
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
