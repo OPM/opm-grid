@@ -38,7 +38,8 @@ namespace cpgrid
 
 /// \brief A class calculating and representing all connections of wells.
 ///
-/// Wells are identified by their position as ecported by the eclipse file.
+/// Wells are identified by their position as exported by the wells method
+/// of the eclipse parser.
 /// For each well the container stores at the well index all indices of cells
 /// that the well perforates.
 class WellConnections
