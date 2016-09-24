@@ -116,6 +116,7 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/cpgrid/PartitionTypeIndicator.hpp
 	dune/grid/cpgrid/PersistentContainer.hpp
 	dune/grid/common/CartesianIndexMapper.hpp
+	dune/grid/common/WellConnections.hpp
 	dune/grid/common/ZoltanGraphFunctions.hpp
 	dune/grid/common/ZoltanPartition.hpp
 	dune/grid/polyhedralgrid/capabilities.hh
