@@ -345,90 +345,15 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     wellsGraph_.resize(grid.numCells());
     const auto& cpgdim = grid.logicalCartesianSize();
     // create compressed lookup from cartesian.
-    std::vector<const Opm::Well*> wells  = eclipseState->getSchedule()->getWells();
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
+
     for( int i=0; i < grid.numCells(); ++i )
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
-    well_indices_.resize(wells.size());
-
-    // We assume that we know all the wells.
-    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        const Opm::Well* well = (*wellIter);
-        std::set<int>& well_indices = well_indices_[wellIter - wells.begin()];
-        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
-        for (size_t c=0; c<completionSet->size(); c++) {
-            Opm::CompletionConstPtr completion = completionSet->get(c);
-            int i = completion->getI();
-            int j = completion->getJ();
-            int k = completion->getK();
-            int cart_grid_idx = i + cpgdim[0]*(j + cpgdim[1]*k);
-            int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
-            {
-                well_indices.insert(compressed_idx);
-            }
-        }
-        addCompletionSetToGraph(well_indices);
-    }
-}
-
-std::vector<std::vector<int> >
-CombinedGridWellGraph::postProcessPartitioningForWells(std::vector<int>& parts,
-                                                       std::size_t no_procs)
-{
-    // Contains for each process the indices of the wells assigned to it.
-    std::vector<std::vector<int> > well_indices_on_proc(no_procs);
-
-    if( ! wellsGraph_.size() )
-    {
-        // No wells to be processed
-        return well_indices_on_proc;
-    }
-    std::vector<const Opm::Well*> wells  = eclipseState_->getSchedule()->getWells();
-
-    // prevent memory allocation
-    for(auto& well_indices : well_indices_on_proc)
-    {
-        well_indices.reserve(wells.size());
-    }
-
-    // Check that all completions of a well have ended up on one process.
-    // If that is not the case for well then move them manually to the
-    // process that already has the most completions on it.
-    for (auto wellIter= wells.begin(); wellIter != wells.end(); ++wellIter) {
-        const Opm::Well* well = (*wellIter);
-        const std::set<int>& well_indices = well_indices_[wellIter - wells.begin()];
-        std::map<int,std::size_t> no_completions_on_proc;
-        for ( auto well_index: well_indices )
-        {
-            ++no_completions_on_proc[parts[well_index]];
-        }
-
-        int owner = no_completions_on_proc.begin()->first;
-
-        if ( no_completions_on_proc.size() > 1 )
-        {
-            // partition with the most completions on it becomes new owner
-            int new_owner = std::max_element(no_completions_on_proc.begin(),
-                                             no_completions_on_proc.end(),
-                                             [](const std::pair<int,std::size_t>& p1,
-                                                const std::pair<int,std::size_t>& p2){
-                                                 return ( p1.second > p2.second );
-                                             })->first;
-            std::cout << "Manually moving well " << well->name() << " to partition "
-                      << new_owner << std::endl;
-             for ( size_t c = 0; c < well_indices.size(); c++ )
-             {
-                 parts[c] = new_owner;
-             }
-             owner = new_owner;
-        }
-        well_indices_on_proc[owner].push_back(wellIter - wells.begin());
-    }
-    return well_indices_on_proc;
+    well_indices_.init(eclipseState, cpgdim, cartesian_to_compressed);
+    std::vector<int>().swap(cartesian_to_compressed); // free memory.
+    addCompletionSetToGraph();
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
