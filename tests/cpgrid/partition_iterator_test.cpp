@@ -4,6 +4,7 @@
 #define BOOST_TEST_DYN_LINK
 #endif
 #define BOOST_TEST_MODULE PartitionIteratorCpGridTests
+#define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 
 #include <dune/common/version.hh>
@@ -106,4 +107,17 @@ BOOST_AUTO_TEST_CASE(partitionIteratorTest)
 #if HAVE_DUNE_GRID_CHECKS
     checkPartitionType( grid.leafGridView() );
 #endif // HAVE_DUNE_GRID_CHECKS
+
+}
+
+bool
+init_unit_test_func()
+{
+    return true;
+}
+
+int main(int argc, char** argv)
+{
+    Dune::MPIHelper::instance(argc, argv);
+    boost::unit_test::unit_test_main(&init_unit_test_func, argc, argv);
 }
