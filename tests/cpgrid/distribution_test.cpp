@@ -332,6 +332,36 @@ BOOST_AUTO_TEST_CASE(distribute)
     }
 }
 
+BOOST_AUTO_TEST_CASE(intersectionOverlap)
+{
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    grid.createCartesian(dims, size);
+    typedef Dune::CpGrid::LeafGridView GridView;
+    GridView gridView(grid.leafGridView());
+    enum{dimWorld = GridView::dimensionworld};
+    typedef typename GridView::ctype CoordScalar;
+    typedef Dune::FieldVector<CoordScalar,dimWorld> GlobalPosition;
+    typedef GridView::Codim<0>::Iterator ElementIterator;
+    typedef typename GridView::IntersectionIterator IntersectionIterator;
+
+    grid.loadBalance();
+    ElementIterator endEIt = gridView.end<0>();
+    for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
+        IntersectionIterator isEndIt = gridView.iend(eIt);
+        for (IntersectionIterator isIt = gridView.ibegin(eIt); isIt != isEndIt; ++isIt)
+        {
+            if (isIt->neighbor())
+            {
+                GlobalPosition distVec = eIt->geometry().center() -
+                    isIt->outside()->geometry().center();
+                // Make sure that Coordinates of an element and its neighbor are not identical
+                BOOST_REQUIRE(distVec.two_norm2()>=1e-8);
+            }
+        }
+    }
+}
 
 bool
 init_unit_test_func()
