@@ -47,8 +47,6 @@
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
@@ -62,8 +60,7 @@
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
 #include <iostream>
 
@@ -596,7 +593,7 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(Opm::EclipseStateConstPtr ecl,
+        loadBalance(const Opm::EclipseState* ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
@@ -611,8 +608,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1)
         {
             using std::get;
-            return get<0>(scatterGrid(Opm::EclipseStateConstPtr(), nullptr,
-                                      overlapLayers ));
+            return get<0>(scatterGrid(nullptr, nullptr, overlapLayers ));
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -631,7 +627,7 @@ namespace Dune
         template<class DataHandle>
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
-                    Opm::EclipseStateConstPtr ecl,
+                    const Opm::EclipseState* ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
@@ -1153,7 +1149,7 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(Opm::EclipseStateConstPtr ecl, const double* transmissibilities,
+        scatterGrid(const Opm::EclipseState* ecl, const double* transmissibilities,
                     int overlapLayers);
 
         /** @brief The data stored in the grid.

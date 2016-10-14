@@ -332,10 +332,10 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                                             const Opm::EclipseStateConstPtr eclipseState,
+                                             const Opm::EclipseState* eclipseState,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid)
-    : grid_(grid), eclipseState_(eclipseState), transmissibilities_(transmissibilities)
+    : grid_(grid), transmissibilities_(transmissibilities)
 {
     if ( pretendEmptyGrid )
     {
@@ -351,7 +351,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
-    well_indices_.init(eclipseState, cpgdim, cartesian_to_compressed);
+    well_indices_.init(*eclipseState, cpgdim, cartesian_to_compressed);
     std::vector<int>().swap(cartesian_to_compressed); // free memory.
     addCompletionSetToGraph();
 }

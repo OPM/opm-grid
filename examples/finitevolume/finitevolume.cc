@@ -121,8 +121,8 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
 
         Opm::ParseContext parseContext;
         Opm::Parser parser;
-        Opm::DeckConstPtr deck(parser.parseFile(filename , parseContext));
-        const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+        auto deck = parser.parseFile(filename , parseContext);
+        const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
         Opm::EclipseGrid ecl_grid(deck , actnum);
 
         grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);

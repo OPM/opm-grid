@@ -57,13 +57,13 @@ using namespace Dune;
 */
 void condWriteDoubleField(std::vector<double>& fieldvector,
                           const std::string& fieldname,
-                          Opm::DeckConstPtr deck,
+                          const Opm::Deck& deck,
                           const std::vector<int>& global_cell,
                           const std::array<size_t, 3>& dims,
                           VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
-    if (deck->hasKeyword(fieldname)) {
+    if (deck.hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<double> eclVector = deck->getKeyword(fieldname).getRawDoubleData();
+        std::vector<double> eclVector = deck.getKeyword(fieldname).getRawDoubleData();
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -82,13 +82,13 @@ void condWriteDoubleField(std::vector<double>& fieldvector,
 // Now repeat for Integers. I should learn C++ templating...
 void condWriteIntegerField(std::vector<double>& fieldvector,
                            const std::string& fieldname,
-                           Opm::DeckConstPtr deck,
+                           const Opm::Deck& deck,
                            const std::vector<int>& global_cell,
                            const std::array<size_t, 3>& dims,
                            VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
-    if (deck->hasKeyword(fieldname)) {
+    if (deck.hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<int> eclVector = deck->getKeyword(fieldname).getIntData();
+        std::vector<int> eclVector = deck.getKeyword(fieldname).getIntData();
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -120,18 +120,18 @@ try
 
     Opm::ParseContext parseContext;
     const char* eclipsefilename = argv[1];
-    Opm::ParserPtr parser(new Opm::Parser());
-    Opm::DeckConstPtr deck(parser->parseFile(eclipsefilename, parseContext));
+    Opm::Parser parser;
+    auto deck = parser.parseFile(eclipsefilename, parseContext);
 
     // Get logical cartesian grid dimensions.
     std::array<size_t, 3> dims;
-    if (deck->hasKeyword("SPECGRID")) {
-        const auto& specgridRecord = deck->getKeyword("SPECGRID").getRecord(0);
+    if (deck.hasKeyword("SPECGRID")) {
+        const auto& specgridRecord = deck.getKeyword("SPECGRID").getRecord(0);
         dims[0] = specgridRecord.getItem("NX").get< int >(0);
         dims[1] = specgridRecord.getItem("NY").get< int >(0);
         dims[2] = specgridRecord.getItem("NZ").get< int >(0);
-    } else if (deck->hasKeyword("DIMENS")) {
-        const auto& dimensRecord = deck->getKeyword("DIMENS").getRecord(0);
+    } else if (deck.hasKeyword("DIMENS")) {
+        const auto& dimensRecord = deck.getKeyword("DIMENS").getRecord(0);
         dims[0] = dimensRecord.getItem("NX").get< int >(0);
         dims[1] = dimensRecord.getItem("NY").get< int >(0);
         dims[2] = dimensRecord.getItem("NZ").get< int >(0);
@@ -140,7 +140,7 @@ try
     }
 
     {
-        const int* actnum = deck->hasKeyword("ACTNUM") ? deck->getKeyword("ACTNUM").getIntData().data() : nullptr;
+        const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
         Opm::EclipseGrid ecl_grid(deck , actnum);
         grid.processEclipseFormat(ecl_grid, false);
     }

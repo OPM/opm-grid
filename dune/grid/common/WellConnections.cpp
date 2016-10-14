@@ -32,31 +32,31 @@ namespace Dune
 {
 namespace cpgrid
 {
-WellConnections::WellConnections(const Opm::EclipseStateConstPtr eclipseState,
+WellConnections::WellConnections(const Opm::EclipseState& eclipseState,
                                  const std::array<int, 3>& cartesianSize,
                                  const std::vector<int>& cartesian_to_compressed)
 {
     init(eclipseState, cartesianSize, cartesian_to_compressed);
 }
 
-void WellConnections::init(const Opm::EclipseStateConstPtr eclipseState,
+void WellConnections::init(const Opm::EclipseState& eclipseState,
                            const std::array<int, 3>& cartesianSize,
                            const std::vector<int>& cartesian_to_compressed)
 {
-    std::vector<const Opm::Well*>  wells  = eclipseState->getSchedule()->getWells();
-    int last_time_step = eclipseState->getSchedule()->getTimeMap()->size()-1;
+    std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
+    int last_time_step = eclipseState.getSchedule().getTimeMap().size()-1;
     well_indices_.resize(wells.size());
 
     // We assume that we know all the wells.
     int index=0;
     for (const auto well : wells) {
         std::set<int>& well_indices = well_indices_[index];
-        Opm::CompletionSetConstPtr completionSet = well->getCompletions(last_time_step);
-        for (size_t c=0; c<completionSet->size(); c++) {
-            Opm::CompletionConstPtr completion = completionSet->get(c);
-            int i = completion->getI();
-            int j = completion->getJ();
-            int k = completion->getK();
+        const auto& completionSet = well->getCompletions(last_time_step);
+        for (size_t c=0; c<completionSet.size(); c++) {
+            const auto& completion = completionSet.get(c);
+            int i = completion.getI();
+            int j = completion.getJ();
+            int k = completion.getK();
             int cart_grid_idx = i + cartesianSize[0]*(j + cartesianSize[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
             if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
@@ -70,11 +70,11 @@ void WellConnections::init(const Opm::EclipseStateConstPtr eclipseState,
 
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const Opm::EclipseStateConstPtr eclipseState,
+                                const Opm::EclipseState& eclipseState,
                                 const WellConnections& well_connections,
                                 std::size_t no_procs)
 {
-    std::vector<const Opm::Well*>  wells  = eclipseState->getSchedule()->getWells();
+    std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
@@ -135,11 +135,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 #ifdef HAVE_MPI
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const Opm::EclipseStateConstPtr eclipseState,
+                        const Opm::EclipseState& eclipseState,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root)
 {
-    std::vector<const Opm::Well*>  wells  = eclipseState->getSchedule()->getWells();
+    std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
     std::vector<int> my_well_indices;
     const int well_information_tag = 267553;
 
