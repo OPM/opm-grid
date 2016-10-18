@@ -406,7 +406,7 @@ private:
     typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
 #else
     /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap};
+    enum AttributeSet{owner, overlap, copy};
 #endif
 
 #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
