@@ -66,7 +66,8 @@ namespace Dune
                    const std::array<int, 3>& initial_split,
                    int& num_part,
                    std::vector<int>& cell_part,
-                   bool recursive = false);
+                   bool recursive = false,
+                   bool ensureConnectivity = true);
 
 /// \brief Adds a layer of overlap cells to a partitioning.
 /// \param[in] grid The grid that is partitioned.
