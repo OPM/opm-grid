@@ -109,17 +109,17 @@ CpGrid::scatterGrid(const Opm::EclipseState* ecl,
 
     if ( ecl )
     {
-        cpgrid::WellConnections well_connections(ecl,
+        cpgrid::WellConnections well_connections(*ecl,
                                                  cpgdim,
                                                  cartesian_to_compressed);
 
         auto wells_on_proc =
             cpgrid::postProcessPartitioningForWells(cell_part,
-                                                    ecl,
+                                                    *ecl,
                                                     well_connections,
                                                     cc.size());
         defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
-                                                        ecl,
+                                                        *ecl,
                                                         cc,
                                                         0);
     }
