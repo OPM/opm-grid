@@ -302,7 +302,7 @@ namespace Dune
      *  \param[in]  deck         Opm Eclipse deck
      *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
      */
-    explicit PolyhedralGrid ( Opm::DeckConstPtr deck,
+    explicit PolyhedralGrid ( const Opm::Deck& deck,
                               const  std::vector<double>& poreVolumes = std::vector<double> ())
     : gridPtr_( createGrid( deck, poreVolumes ) ),
       grid_( *gridPtr_ ),
@@ -779,10 +779,10 @@ namespace Dune
     }
 
   protected:
-    UnstructuredGridType* createGrid( Opm::DeckConstPtr deck, const std::vector< double >& poreVolumes ) const
+    UnstructuredGridType* createGrid( const Opm::Deck& deck, const std::vector< double >& poreVolumes ) const
     {
-        const int* rawactnum = deck->hasKeyword("ACTNUM")
-          ? deck->getKeyword("ACTNUM").getIntData().data()
+        const int* rawactnum = deck.hasKeyword("ACTNUM")
+          ? deck.getKeyword("ACTNUM").getIntData().data()
           : nullptr;
         const auto eclipseGrid = std::make_shared<Opm::EclipseGrid>(deck, rawactnum);
 

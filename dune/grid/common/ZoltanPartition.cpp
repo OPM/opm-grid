@@ -31,7 +31,7 @@ namespace cpgrid
 {
 std::pair<std::vector<int>, std::unordered_set<std::string> >
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                               const Opm::EclipseStateConstPtr eclipseState,
+                               const Opm::EclipseState* eclipseState,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                int root)
@@ -72,7 +72,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     if( eclipseState )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid, eclipseState,
+        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid,
+                                                       eclipseState,
                                                        transmissibilities,
                                                        partitionIsEmpty));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
@@ -111,7 +112,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         wells_on_proc =
             postProcessPartitioningForWells(parts,
-                                            eclipseState,
+                                            *eclipseState,
                                             grid_and_wells->getWellConnections(),
                                             cc.size());
 
@@ -146,7 +147,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     if( eclipseState )
     {
         defunct_well_names = computeDefunctWellNames(wells_on_proc,
-                                                     eclipseState,
+                                                     *eclipseState,
                                                      cc,
                                                      root);
     }

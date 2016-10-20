@@ -66,7 +66,7 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
+CpGrid::scatterGrid(const Opm::EclipseState* ecl,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.

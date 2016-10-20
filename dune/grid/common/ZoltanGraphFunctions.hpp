@@ -129,7 +129,7 @@ public:
     /// \param eclipseState The eclipse state to extract the well information from.
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
-                          Opm::EclipseStateConstPtr eclipseState,
+                          const Opm::EclipseState*,
                           const double* transmissibilities,
                           bool pretendEmptyGrid);
 
@@ -172,10 +172,9 @@ private:
             }
         }
     }
-    
-        
+
+
     const Dune::CpGrid& grid_;
-    Opm::EclipseStateConstPtr eclipseState_;
     GraphType wellsGraph_;
     const double* transmissibilities_;
     WellConnections well_indices_;
