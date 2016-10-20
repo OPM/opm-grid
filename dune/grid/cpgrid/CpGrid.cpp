@@ -97,7 +97,7 @@ CpGrid::scatterGrid(Opm::EclipseStateConstPtr ecl,
     std::array<int, 3> initial_split;
     initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
     initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
-    partition(*this, initial_split, num_parts, cell_part);
+    partition(*this, initial_split, num_parts, cell_part, false, false);
     const auto& cpgdim =  logicalCartesianSize();
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
     for( int i=0; i < numCells(); ++i )

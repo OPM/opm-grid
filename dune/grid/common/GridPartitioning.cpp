@@ -189,7 +189,8 @@ namespace Dune
                    const coord_t& initial_split,
                    int& num_part,
                    std::vector<int>& cell_part,
-                   bool recursive)
+                   bool recursive,
+                   bool ensureConnectivity)
     {
         // Checking that the initial split makes sense (that there may be at least one cell
         // in each expected partition).
@@ -231,7 +232,10 @@ namespace Dune
         cell_part.swap(my_part);
 
         // Check the connectivity, split.
-        ensureConnectedPartitions(grid, num_part, cell_part, recursive);
+        if ( ensureConnectivity )
+        {
+            ensureConnectedPartitions(grid, num_part, cell_part, recursive);
+        }
     }
 
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
