@@ -425,7 +425,7 @@ namespace Dune
      */
     size_t numBoundarySegments () const
     {
-      return 0; // hostGrid().numBoundarySegments( );
+      return 0;
     }
     /** \} */
 
@@ -740,6 +740,15 @@ namespace Dune
       return EntityPointer( EntityPointerImpl( EntityImpl( extraData(), seed ) ) );
     }
 
+    /** \brief obtain EntityPointer from EntitySeed. */
+    template< class EntitySeed >
+    typename Traits::template Codim< EntitySeed::codimension >::Entity
+    entity ( const EntitySeed &seed ) const
+    {
+      typedef typename Traits::template Codim< EntitySeed::codimension >::EntityImpl        EntityImpl;
+      return EntityImpl( extraData(), seed );
+    }
+
     /** \} */
 
     /** \name Miscellaneous Methods
@@ -933,15 +942,13 @@ namespace Dune
 
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      if( ! grid_.cell_facetag )
-      {
-        return i;
-      }
-      else
-      {
-        // assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
-        return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
-      }
+      return ( grid_.cell_facetag ) ? cartesianIndexInInside( seed, i ) : i;
+    }
+
+    int cartesianIndexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    {
+      assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
+      return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
     }
 
     typename Codim<0>::EntitySeed
@@ -961,18 +968,27 @@ namespace Dune
     int
     indexInOutside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      typedef typename Codim<0>::EntitySeed EntitySeed;
-      EntitySeed nb = neighbor( seed, i );
-      const int faces = subEntities( seed, 1 );
-      for( int face = 0; face<faces; ++ face )
+      if( grid_.cell_facetag )
       {
-        if( neighbor( nb, face ).equals(seed) )
-        {
-          return indexInInside( nb, face );
-        }
+        // if cell_facetag is present we assume pseudo Cartesian corner point case
+        const int in_inside = cartesianIndexInInside( seed, i );
+        return in_inside + ((in_inside % 2) ? -1 : 1);
       }
-      DUNE_THROW(InvalidStateException,"inverse intersection not found");
-      return -1;
+      else
+      {
+        typedef typename Codim<0>::EntitySeed EntitySeed;
+        EntitySeed nb = neighbor( seed, i );
+        const int faces = subEntities( seed, 1 );
+        for( int face = 0; face<faces; ++ face )
+        {
+          if( neighbor( nb, face ).equals(seed) )
+          {
+            return indexInInside( nb, face );
+          }
+        }
+        DUNE_THROW(InvalidStateException,"inverse intersection not found");
+        return -1;
+      }
     }
 
     template <class EntitySeed>
@@ -1058,10 +1074,10 @@ namespace Dune
         cartDims_[ i ] = grid_.cartdims[ i ];
       }
 
-
       // setup list of cell vertices
       const int numCells = size( 0 );
       cellVertices_.resize( numCells );
+
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
@@ -1133,8 +1149,9 @@ namespace Dune
             }
           }
 
-          cellVertices_[ c ].resize( vertexList.size() );
           assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
+
+          cellVertices_[ c ].resize( vertexList.size() );
           for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
           {
             assert( (*it).second.size() == dim );
@@ -1143,8 +1160,13 @@ namespace Dune
             std::copy( (*it).second.begin(), (*it).second.end(), key.begin() );
             auto vx = vertexFaceTags.find( key );
             assert( vx != vertexFaceTags.end() );
-            // store node numbder on correct local position
-            cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+            if( vx != vertexFaceTags.end() )
+            {
+              if( (*vx).second >= int(cellVertices_[ c ].size()) )
+                cellVertices_[ c ].resize( (*vx).second+1 );
+              // store node number on correct local position
+              cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+            }
           }
         }
         // if face_tag is available we assume that the elements follow a cube-like structure
