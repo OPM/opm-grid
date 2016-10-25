@@ -154,11 +154,7 @@ namespace Dune
 
     GlobalCoordinate
     centerUnitOuterNormal () const
-    {
-      GlobalCoordinate normal( outerNormal() );
-      normal /= normal.two_norm();
-      return normal;
-    }
+    { return data()->unitOuterNormal(seed_, intersectionIdx_); }
 
     ExtraData data() const { return data_; }
 

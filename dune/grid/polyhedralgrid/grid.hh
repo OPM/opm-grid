@@ -425,7 +425,7 @@ namespace Dune
      */
     size_t numBoundarySegments () const
     {
-      return 0; // hostGrid().numBoundarySegments( );
+      return 0;
     }
     /** \} */
 
@@ -740,6 +740,15 @@ namespace Dune
       return EntityPointer( EntityPointerImpl( EntityImpl( extraData(), seed ) ) );
     }
 
+    /** \brief obtain EntityPointer from EntitySeed. */
+    template< class EntitySeed >
+    typename Traits::template Codim< EntitySeed::codimension >::Entity
+    entity ( const EntitySeed &seed ) const
+    {
+      typedef typename Traits::template Codim< EntitySeed::codimension >::EntityImpl        EntityImpl;
+      return EntityImpl( extraData(), seed );
+    }
+
     /** \} */
 
     /** \name Miscellaneous Methods
@@ -933,21 +942,18 @@ namespace Dune
 
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      if( ! grid_.cell_facetag )
-      {
-        return i;
-      }
-      else
-      {
-        // assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
-        return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
-      }
+      return ( grid_.cell_facetag ) ? cartesianIndexInInside( seed, i ) : i;
+    }
+
+    int cartesianIndexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
+    {
+      assert( i>= 0 && i<subEntities( seed, 1 ) );
+      return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
     }
 
     typename Codim<0>::EntitySeed
     neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      typedef typename Codim<0>::EntitySeed EntitySeed;
       const int face = this->template subEntitySeed<1>( seed, i ).index();
       int nb = grid_.face_cells[ 2 * face ];
       if( nb == seed.index() )
@@ -955,24 +961,34 @@ namespace Dune
         nb = grid_.face_cells[ 2 * face + 1 ];
       }
 
+      typedef typename Codim<0>::EntitySeed EntitySeed;
       return EntitySeed( nb );
     }
 
     int
     indexInOutside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      typedef typename Codim<0>::EntitySeed EntitySeed;
-      EntitySeed nb = neighbor( seed, i );
-      const int faces = subEntities( seed, 1 );
-      for( int face = 0; face<faces; ++ face )
+      if( grid_.cell_facetag )
       {
-        if( neighbor( nb, face ).equals(seed) )
-        {
-          return indexInInside( nb, face );
-        }
+        // if cell_facetag is present we assume pseudo Cartesian corner point case
+        const int in_inside = cartesianIndexInInside( seed, i );
+        return in_inside + ((in_inside % 2) ? -1 : 1);
       }
-      DUNE_THROW(InvalidStateException,"inverse intersection not found");
-      return -1;
+      else
+      {
+        typedef typename Codim<0>::EntitySeed EntitySeed;
+        EntitySeed nb = neighbor( seed, i );
+        const int faces = subEntities( seed, 1 );
+        for( int face = 0; face<faces; ++ face )
+        {
+          if( neighbor( nb, face ).equals(seed) )
+          {
+            return indexInInside( nb, face );
+          }
+        }
+        DUNE_THROW(InvalidStateException,"inverse intersection not found");
+        return -1;
+      }
     }
 
     template <class EntitySeed>
@@ -988,6 +1004,23 @@ namespace Dune
         normal *= -1.0;
       }
       return normal;
+    }
+
+    template <class EntitySeed>
+    GlobalCoordinate
+    unitOuterNormal( const EntitySeed& seed, const int i ) const
+    {
+      const int face  = this->template subEntitySeed<1>( seed, i ).index();
+      if( seed.index() == grid_.face_cells[ 2*face ] )
+      {
+        return unitOuterNormals_[ face ];
+      }
+      else
+      {
+        GlobalCoordinate normal = unitOuterNormals_[ face ];
+        normal *= -1.0;
+        return normal;
+      }
     }
 
     template <class EntitySeed>
@@ -1058,10 +1091,10 @@ namespace Dune
         cartDims_[ i ] = grid_.cartdims[ i ];
       }
 
-
       // setup list of cell vertices
       const int numCells = size( 0 );
       cellVertices_.resize( numCells );
+
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
@@ -1133,8 +1166,9 @@ namespace Dune
             }
           }
 
-          cellVertices_[ c ].resize( vertexList.size() );
           assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
+
+          cellVertices_[ c ].resize( vertexList.size() );
           for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
           {
             assert( (*it).second.size() == dim );
@@ -1143,8 +1177,13 @@ namespace Dune
             std::copy( (*it).second.begin(), (*it).second.end(), key.begin() );
             auto vx = vertexFaceTags.find( key );
             assert( vx != vertexFaceTags.end() );
-            // store node numbder on correct local position
-            cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+            if( vx != vertexFaceTags.end() )
+            {
+              if( (*vx).second >= int(cellVertices_[ c ].size()) )
+                cellVertices_[ c ].resize( (*vx).second+1 );
+              // store node number on correct local position
+              cellVertices_[ c ][ (*vx).second ] = (*it).first ;
+            }
           }
         }
         // if face_tag is available we assume that the elements follow a cube-like structure
@@ -1189,6 +1228,16 @@ namespace Dune
           geomTypes_[codim].push_back(tmp);
         }
       } // end else of ( grid_.cell_facetag )
+
+      unitOuterNormals_.resize( grid_.number_of_faces );
+      for( int face = 0; face < grid_.number_of_faces; ++face )
+      {
+         const int normalIdx = face * GlobalCoordinate :: dimension ;
+         GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
+         normal /= normal.two_norm();
+
+         unitOuterNormals_[ face ] = normal;
+      }
     }
 
   protected:
@@ -1199,6 +1248,9 @@ namespace Dune
     std::array< int, 3 > cartDims_;
     std::vector< std::vector< GeometryType > > geomTypes_;
     std::vector< std::vector< int > > cellVertices_;
+
+    std::vector< GlobalCoordinate > unitOuterNormals_;
+
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
     mutable LocalIdSet localIdSet_;
