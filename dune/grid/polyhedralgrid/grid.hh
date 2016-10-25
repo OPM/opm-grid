@@ -947,14 +947,13 @@ namespace Dune
 
     int cartesianIndexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      assert( i>= 0 && i<subEntities( EntitySeed( seed.index() ) ) );
+      assert( i>= 0 && i<subEntities( seed, 1 ) );
       return grid_.cell_facetag[ grid_.cell_facepos[ seed.index() ] + i ] ;
     }
 
     typename Codim<0>::EntitySeed
     neighbor( const typename Codim<0>::EntitySeed& seed, const int i ) const
     {
-      typedef typename Codim<0>::EntitySeed EntitySeed;
       const int face = this->template subEntitySeed<1>( seed, i ).index();
       int nb = grid_.face_cells[ 2 * face ];
       if( nb == seed.index() )
@@ -962,6 +961,7 @@ namespace Dune
         nb = grid_.face_cells[ 2 * face + 1 ];
       }
 
+      typedef typename Codim<0>::EntitySeed EntitySeed;
       return EntitySeed( nb );
     }
 
@@ -1004,6 +1004,23 @@ namespace Dune
         normal *= -1.0;
       }
       return normal;
+    }
+
+    template <class EntitySeed>
+    GlobalCoordinate
+    unitOuterNormal( const EntitySeed& seed, const int i ) const
+    {
+      const int face  = this->template subEntitySeed<1>( seed, i ).index();
+      if( seed.index() == grid_.face_cells[ 2*face ] )
+      {
+        return unitOuterNormals_[ face ];
+      }
+      else
+      {
+        GlobalCoordinate normal = unitOuterNormals_[ face ];
+        normal *= -1.0;
+        return normal;
+      }
     }
 
     template <class EntitySeed>
@@ -1211,6 +1228,16 @@ namespace Dune
           geomTypes_[codim].push_back(tmp);
         }
       } // end else of ( grid_.cell_facetag )
+
+      unitOuterNormals_.resize( grid_.number_of_faces );
+      for( int face = 0; face < grid_.number_of_faces; ++face )
+      {
+         const int normalIdx = face * GlobalCoordinate :: dimension ;
+         GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
+         normal /= normal.two_norm();
+
+         unitOuterNormals_[ face ] = normal;
+      }
     }
 
   protected:
@@ -1221,6 +1248,9 @@ namespace Dune
     std::array< int, 3 > cartDims_;
     std::vector< std::vector< GeometryType > > geomTypes_;
     std::vector< std::vector< int > > cellVertices_;
+
+    std::vector< GlobalCoordinate > unitOuterNormals_;
+
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
     mutable LocalIdSet localIdSet_;
