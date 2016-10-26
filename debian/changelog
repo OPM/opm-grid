@@ -1,3 +1,9 @@
+opm-grid (2016.10-rc1-1~xenial) xenial; urgency=medium
+
+  * New release
+
+ -- Arne Morten Kvarving <arne.morten.kvarving@sintef.no>  Wed, 26 Oct 2016 12:20:57 +0200
+
 opm-grid (2013.10-2~precise) precise; urgency=low
 
   * New release
