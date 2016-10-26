@@ -929,6 +929,29 @@ namespace Dune
       }
     }
 
+    template <int codim>
+    typename Codim<codim>::EntitySeed
+    subEntitySeed( const typename Codim<2>::EntitySeed& edgeSeed, const int i ) const
+    {
+      typedef typename Codim<codim>::EntitySeed  EntitySeed;
+      if ( codim == 2 )
+      {
+        return EntitySeed( edgeSeed.index() );
+      }
+      else
+      {
+        DUNE_THROW(NotImplemented,"codimension not available");
+      }
+    }
+
+    template <int codim>
+    typename Codim<codim>::EntitySeed
+    subEntitySeed( const typename Codim<3>::EntitySeed& vxSeed, const int i ) const
+    {
+      typedef typename Codim<codim>::EntitySeed  EntitySeed;
+      return EntitySeed( vxSeed.index() );
+    }
+
     const std::vector< GeometryType > &geomTypes ( const unsigned int codim ) const
     {
       static std::vector< GeometryType > emptyDummy;

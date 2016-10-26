@@ -66,9 +66,9 @@ namespace Dune
       if( codim == 0 )
         return index( entity );
       else if ( codim == 1 )
-        return index( entity.template subEntity< 1 > ( i ) );
+        return index( grid().getRealImplementation( entity ).template subEntity< 1 > ( i ) );
       else if ( codim == dimension )
-        return index( entity.template subEntity< dimension > ( i ) );
+        return index( grid().getRealImplementation( entity ).template subEntity< dimension > ( i ) );
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");
