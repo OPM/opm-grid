@@ -20,8 +20,6 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
     // intersection iterator type
     typedef typename GridView::IntersectionIterator IntersectionIterator;
 
-    // entity pointer type
-    typedef typename G::template Codim<0>::EntityPointer EntityPointer;
 
     // get grid view on leaf part
     GridView gridView = grid.leafGridView();
@@ -115,9 +113,9 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
             if (is->neighbor()) // "correct" version /*@\label{evh:neighbor}@*/
             {
                 // access neighbor
-                EntityPointer outside = is->outside();
+                const auto& outside = is->outside();
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 4)
-                int indexj = mapper.index(*outside);
+                int indexj = mapper.index(outside);
 #else
                 int indexj = mapper.map(*outside);
 #endif

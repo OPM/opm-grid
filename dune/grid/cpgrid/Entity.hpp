@@ -88,6 +88,7 @@ namespace Dune
             struct Codim
             {
                 typedef cpgrid::EntityPointer<cd> EntityPointer;
+                typedef cpgrid::Entity<cd> Entity;
             };
 
 
