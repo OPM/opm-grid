@@ -909,51 +909,38 @@ namespace Dune
       return 0;
     }
 
-    template <int codim>
+    template <int codim, class EntitySeedArg >
     typename Codim<codim>::EntitySeed
-    subEntitySeed( const typename Codim<0>::EntitySeed& elemSeed, const int i ) const
+    subEntitySeed( const EntitySeedArg& baseSeed, const int i ) const
     {
-      assert( i>= 0 && i<subEntities( elemSeed, codim ) );
+      assert( codim >= EntitySeedArg::dimension );
+      assert( i>= 0 && i<subEntities( baseSeed, codim ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
-      if( codim == 0 )
-      {
-        return EntitySeed( elemSeed.index() );
-      }
-      else if ( codim == 1 )
-      {
-        return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ elemSeed.index() ] + i ] );
-      }
-      else if ( codim == dim )
-      {
-        return EntitySeed( cellVertices_[ elemSeed.index() ][ i ] );
-      }
-      else
-      {
-        DUNE_THROW(NotImplemented,"codimension not available");
-      }
-    }
 
-    template <int codim>
-    typename Codim<codim>::EntitySeed
-    subEntitySeed( const typename Codim<2>::EntitySeed& edgeSeed, const int i ) const
-    {
-      typedef typename Codim<codim>::EntitySeed  EntitySeed;
-      if ( codim == 2 )
+      // if codim equals entity seed codim just return same entity seed.
+      if( codim == EntitySeedArg::codimension )
       {
-        return EntitySeed( edgeSeed.index() );
+        return EntitySeed( baseSeed.index() );
       }
-      else
-      {
-        DUNE_THROW(NotImplemented,"codimension not available");
-      }
-    }
 
-    template <int codim>
-    typename Codim<codim>::EntitySeed
-    subEntitySeed( const typename Codim<3>::EntitySeed& vxSeed, const int i ) const
-    {
-      typedef typename Codim<codim>::EntitySeed  EntitySeed;
-      return EntitySeed( vxSeed.index() );
+      if( EntitySeedArg::codimension == 0 )
+      {
+        if ( codim == 1 )
+        {
+          return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ baseSeed.index() ] + i ] );
+        }
+        else if ( codim == dim )
+        {
+          return EntitySeed( cellVertices_[ baseSeed.index() ][ i ] );
+        }
+      }
+      else if ( EntitySeedArg::codimension == 1 && codim == dim )
+      {
+        return EntitySeed( grid_.face_nodes[ grid_.face_nodepos[ baseSeed.index() + i ] ]);
+      }
+
+      DUNE_THROW(NotImplemented,"codimension not available");
+      return EntitySeed();
     }
 
     const std::vector< GeometryType > &geomTypes ( const unsigned int codim ) const

@@ -40,7 +40,7 @@ namespace Dune
     };
 
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
     template< int dim, int dimworld >
     struct isParallel< PolyhedralGrid< dim, dimworld > >
     {
