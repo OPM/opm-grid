@@ -96,7 +96,7 @@ namespace Dune
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
-            /// Tye of the inverse of the transposed Jacobian matrix
+            /// Type of the inverse of the transposed Jacobian matrix
             typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
 
             /// @brief Construct from centroid, volume (1- and 0-moments) and
@@ -338,6 +338,8 @@ namespace Dune
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
+            /// Type of the inverse of the transposed Jacobian matrix
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
 
             /// @brief Construct from centroid and volume (1- and 0-moments).
             /// @param pos the centroid of the entity
@@ -462,6 +464,9 @@ namespace Dune
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
+            /// Type of the inverse of the transposed Jacobian matrix
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
+
 
             /// @brief Construct from vertex position
             /// @param pos the position of the vertex
