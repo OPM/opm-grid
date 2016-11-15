@@ -10,7 +10,7 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
-#if DUNE_VERSION_NEWER(DUNE_GRID,3,0)
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/test/gridcheck.hh>
 #endif
 
@@ -106,7 +106,7 @@ template <class Grid>
 void testGrid(Grid& grid, const std::string& name)
 {
     typedef typename Grid::LeafGridView GridView;
-#if DUNE_VERSION_NEWER(DUNE_GRID,3,0)
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
     try {
       gridcheck( grid );
     }

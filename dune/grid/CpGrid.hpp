@@ -143,7 +143,7 @@ namespace Dune
         template <PartitionIteratorType pitype>
         struct Partition
         {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             /// \brief The type of the level grid view associated with this partition type.
             typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
             /// \brief The type of the leaf grid view associated with this partition type.
@@ -157,7 +157,7 @@ namespace Dune
 
         };
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \brief The type of the level grid view associated with this partition type.
         typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
         /// \brief The type of the leaf grid view associated with this partition type.
@@ -1181,7 +1181,7 @@ namespace Dune
             static const bool v = true;
         };
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 3, 0)
+#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \todo Please doc me !
         template <>
         struct isParallel<CpGrid>

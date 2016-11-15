@@ -158,10 +158,11 @@ namespace Dune
     // type of extra data, e.g. a pointer to grid (here empty)
     typedef typename Traits::ExtraData ExtraData;
 
-
+    using Base::seed_;
   public:
     typedef typename Base :: EntitySeed EntitySeed;
     using Base :: codimension ;
+    using Base :: data ;
 
     PolyhedralGridEntity ()
     : Base()
@@ -174,6 +175,23 @@ namespace Dune
     PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
     : Base( data, seed )
     {}
+
+    unsigned int subEntities( const unsigned int cd ) const
+    {
+      if( cd == Base :: codimension )
+        return 1;
+      else
+        return data()->subEntities( seed_, cd );
+    }
+
+    template< int cd >
+    typename Grid::template Codim< cd >::EntityPointer
+    subEntity ( int i ) const
+    {
+      typedef typename Traits::template Codim< cd >::EntityPointerImpl EntityPointerImpl;
+      typedef typename Traits::template Codim< cd >::EntityImpl        EntityImpl;
+      return EntityPointerImpl( EntityImpl( data(), data()->template subEntitySeed< cd >( seed_, i ) ) );
+    }
   };
 
 

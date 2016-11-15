@@ -139,6 +139,10 @@ namespace Dune
         typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LeafGridView;
         typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LevelGridView;
       };
+
+      typedef typename Partition<All_Partition>::LevelGridView LevelGridView;
+      typedef typename Partition<All_Partition>::LeafGridView LeafGridView;
+
     };
   };
 
@@ -905,28 +909,38 @@ namespace Dune
       return 0;
     }
 
-    template <int codim>
+    template <int codim, class EntitySeedArg >
     typename Codim<codim>::EntitySeed
-    subEntitySeed( const typename Codim<0>::EntitySeed& elemSeed, const int i ) const
+    subEntitySeed( const EntitySeedArg& baseSeed, const int i ) const
     {
-      assert( i>= 0 && i<subEntities( elemSeed, codim ) );
+      assert( codim >= EntitySeedArg::dimension );
+      assert( i>= 0 && i<subEntities( baseSeed, codim ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
-      if( codim == 0 )
+
+      // if codim equals entity seed codim just return same entity seed.
+      if( codim == EntitySeedArg::codimension )
       {
-        return EntitySeed( elemSeed.index() );
+        return EntitySeed( baseSeed.index() );
       }
-      else if ( codim == 1 )
+
+      if( EntitySeedArg::codimension == 0 )
       {
-        return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ elemSeed.index() ] + i ] );
+        if ( codim == 1 )
+        {
+          return EntitySeed( grid_.cell_faces[ grid_.cell_facepos[ baseSeed.index() ] + i ] );
+        }
+        else if ( codim == dim )
+        {
+          return EntitySeed( cellVertices_[ baseSeed.index() ][ i ] );
+        }
       }
-      else if ( codim == dim )
+      else if ( EntitySeedArg::codimension == 1 && codim == dim )
       {
-        return EntitySeed( cellVertices_[ elemSeed.index() ][ i ] );
+        return EntitySeed( grid_.face_nodes[ grid_.face_nodepos[ baseSeed.index() + i ] ]);
       }
-      else
-      {
-        DUNE_THROW(NotImplemented,"codimension not available");
-      }
+
+      DUNE_THROW(NotImplemented,"codimension not available");
+      return EntitySeed();
     }
 
     const std::vector< GeometryType > &geomTypes ( const unsigned int codim ) const
