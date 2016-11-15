@@ -68,10 +68,8 @@ namespace Dune
 // -------------------------------------------------------------------
 
 
-//#include <opm/core/utility/SparseTable.hpp>
 #include <opm/common/ErrorMacros.hpp>
 #include <climits>
-//#include <boost/algorithm/minmax_element.hpp>
 #include <vector>
 
 /// The namespace Dune is the main namespace for all Dune code.

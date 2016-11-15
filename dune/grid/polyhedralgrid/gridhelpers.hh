@@ -19,7 +19,7 @@
 #ifndef DUNE_POLYHEDRALGRID_GRIDHELPERS_HEADER_INCLUDED
 #define DUNE_POLYHEDRALGRID_GRIDHELPERS_HEADER_INCLUDED
 
-#include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/GridHelpers.hpp>
 #include <dune/grid/polyhedralgrid.hh>
 
 namespace Opm

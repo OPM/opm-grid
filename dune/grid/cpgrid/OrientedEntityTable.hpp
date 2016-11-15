@@ -37,7 +37,7 @@
 #define OPM_ORIENTEDENTITYTABLE_HEADER
 
 #include "EntityRep.hpp"
-#include <opm/core/utility/SparseTable.hpp>
+#include <opm/grid/utility/SparseTable.hpp>
 #include <map>
 #include <climits>
 #include <boost/algorithm/minmax_element.hpp>

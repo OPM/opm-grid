@@ -42,9 +42,9 @@
 
 #include <dune/grid/common/GeometryHelpers.hpp>
 
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/core/grid/MinpvProcessor.hpp>
-#include <opm/core/utility/StopWatch.hpp>
+#include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/MinpvProcessor.hpp>
+#include <opm/grid/utility/StopWatch.hpp>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
@@ -426,7 +426,7 @@ namespace cpgrid
             // Build output.
             new_coord.swap(coord);
             new_zcorn.swap(zcorn);
-            new_actnum.swap(actnum);        
+            new_actnum.swap(actnum);
             output.dims[0] = new_n[0];
             output.dims[1] = new_n[1];
             output.dims[2] = new_n[2];

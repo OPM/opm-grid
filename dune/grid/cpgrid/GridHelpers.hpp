@@ -22,7 +22,7 @@
 #define DUNE_CORNERPOINT_GRIDHELPERS_HEADER_INCLUDED
 
 
-#include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/GridHelpers.hpp>
 
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 

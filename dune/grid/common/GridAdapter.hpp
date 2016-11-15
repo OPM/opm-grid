@@ -21,7 +21,7 @@
 #define OPM_GRIDADAPTER_HEADER_INCLUDED
 
 
-#include <opm/core/grid.h>
+#include <opm/grid/grid.h>
 #include <opm/common/ErrorMacros.hpp>
 #include <dune/grid/CpGrid.hpp>
 #include <stdexcept>

@@ -8,6 +8,7 @@
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
+#include <dune/common/parametertreeparser.hh>
 #include <dune/grid/common/mcmgmapper.hh> // mapper class
 
 #include <dune/common/version.hh>
@@ -28,7 +29,6 @@
 #include "evolve.hh"
 
 #include "dune/grid/CpGrid.hpp"
-#include <opm/core/utility/parameters/ParameterGroup.hpp>
 
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
@@ -105,7 +105,7 @@ void timeloop(const G& grid, double tend)
 
 
 
-void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
+void initGrid(const Dune::ParameterTree &param, GridType& grid)
 {
     std::string fileformat = param.get<std::string>("fileformat");
     if (fileformat == "sintef_legacy") {
@@ -113,11 +113,11 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
         grid.readSintefLegacyFormat(grid_prefix);
     } else if (fileformat == "eclipse") {
         std::string filename = param.get<std::string>("filename");
-        if (param.has("z_tolerance")) {
+        if (param.hasKey("z_tolerance")) {
             std::cerr << "****** Warning: z_tolerance parameter is obsolete, use PINCH in deck input instead\n";
         }
-        bool periodic_extension = param.getDefault<bool>("periodic_extension", false);
-        bool turn_normals = param.getDefault<bool>("turn_normals", false);
+        bool periodic_extension = param.get<bool>("periodic_extension", false);
+        bool turn_normals = param.get<bool>("turn_normals", false);
 
         Opm::ParseContext parseContext;
         Opm::Parser parser;
@@ -127,12 +127,12 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
 
         grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);
     } else if (fileformat == "cartesian") {
-        std::array<int, 3> dims = {{ param.getDefault<int>("nx", 1),
-                                param.getDefault<int>("ny", 1),
-                                param.getDefault<int>("nz", 1) }};
-        std::array<double, 3> cellsz = {{ param.getDefault<double>("dx", 1.0),
-                                     param.getDefault<double>("dy", 1.0),
-                                     param.getDefault<double>("dz", 1.0) }};
+        std::array<int, 3> dims = {{ param.get<int>("nx", 1),
+                                param.get<int>("ny", 1),
+                                param.get<int>("nz", 1) }};
+        std::array<double, 3> cellsz = {{ param.get<double>("dx", 1.0),
+                                     param.get<double>("dy", 1.0),
+                                     param.get<double>("dz", 1.0) }};
         grid.createCartesian(dims, cellsz);
     } else {
         OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
@@ -147,8 +147,10 @@ void initGrid(const Opm::parameter::ParameterGroup& param , GridType& grid)
 int main(int argc , char ** argv)
 {
     // initialize MPI, finalize is done automatically on exit
-    Opm::parameter::ParameterGroup param(argc, argv);
     Dune::MPIHelper::instance(argc,argv);
+
+    Dune::ParameterTree param;
+    Dune::ParameterTreeParser::readINITree( argv[ 1 ], param );
 
     // start try/catch block to get error messages from dune
     try {
