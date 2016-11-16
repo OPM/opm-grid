@@ -167,7 +167,7 @@ void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     (void) cpGridPointer; (void) sizeGID; (void) sizeLID; (void) numCells;
     (void) globalID; (void) localID; (void) numEdges; (void) nborGID;
     (void) nborProc; (void) wgtDim; (void) ewgts;
-    err = ZOLTAN_OK;
+    *err = ZOLTAN_OK;
 }
 
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,

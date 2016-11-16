@@ -25,7 +25,9 @@
 #include <vector>
 
 #ifdef HAVE_MPI
+#include <opm/common/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
+#include <opm/common/utility/platform_dependent/reenable_warnings.h>
 #endif
 
 #include <dune/common/parallel/mpicollectivecommunication.hh>
