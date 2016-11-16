@@ -691,7 +691,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             for(auto p=view_data.face_to_point_[findex].begin(),
                     pend=view_data.face_to_point_[findex].end(); p!=pend; ++p)
             {
-                assert(p>=0);
+                assert(*p >= 0);
                 --point_indicator[*p];
             }
         }

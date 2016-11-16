@@ -61,7 +61,7 @@ namespace Dune
     // remove old linkage
     removeLinkage();
 
-    const int me = rank ();
+    const int me_rank = rank ();
 
     {
       typedef std::map< int, int >::iterator iterator ;
@@ -76,7 +76,7 @@ namespace Dune
       {
         const int rank = (*i);
         // if rank was not inserted, insert with current link number
-        if( rank != me && (sendLinkage_.find ( rank ) == sendEnd ) )
+        if( rank != me_rank && (sendLinkage_.find ( rank ) == sendEnd ) )
         {
           sendLinkage_.insert( std::make_pair( rank, sendLink++) );
         }
@@ -87,7 +87,7 @@ namespace Dune
       {
         const int rank = (*i);
         // if rank was not inserted, insert with current link number
-        if( rank != me && (recvLinkage_.find ( rank ) == recvEnd ) )
+        if( rank != me_rank && (recvLinkage_.find ( rank ) == recvEnd ) )
         {
           recvLinkage_.insert( std::make_pair( rank, recvLink++) );
         }
