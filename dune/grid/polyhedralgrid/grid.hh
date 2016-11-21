@@ -913,7 +913,7 @@ namespace Dune
     typename Codim<codim>::EntitySeed
     subEntitySeed( const EntitySeedArg& baseSeed, const int i ) const
     {
-      assert( codim >= EntitySeedArg::dimension );
+      assert( codim >= EntitySeedArg::codimension );
       assert( i>= 0 && i<subEntities( baseSeed, codim ) );
       typedef typename Codim<codim>::EntitySeed  EntitySeed;
 
