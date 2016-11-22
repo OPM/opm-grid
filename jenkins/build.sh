@@ -23,14 +23,14 @@ fi
 
 # Downstreams and revisions
 declare -a downstreams
-downstreams=(opm-simulators
-             opm-upscaling
-             ewoms)
+downstreams=(ewoms
+             opm-simulators
+             opm-upscaling)
 
 declare -A downstreamRev
+downstreamRev[ewoms]=master
 downstreamRev[opm-simulators]=master
 downstreamRev[opm-upscaling]=master
-downstreamRev[ewoms]=master
 
 # Clone opm-common
 pushd .
