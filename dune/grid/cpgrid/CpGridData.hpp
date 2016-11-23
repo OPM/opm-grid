@@ -80,7 +80,7 @@
 #include <array>
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include "Entity2IndexDataHandle.hpp"

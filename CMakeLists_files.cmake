@@ -42,6 +42,17 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/common/WellConnections.cpp
 	dune/grid/common/ZoltanGraphFunctions.cpp
 	dune/grid/common/ZoltanPartition.cpp
+	opm/grid/GridHelpers.cpp
+	opm/grid/GridManager.cpp
+	opm/grid/GridUtilities.cpp
+	opm/grid/cart_grid.c
+	opm/grid/cornerpoint_grid.c
+	opm/grid/cpgpreprocess/facetopology.c
+	opm/grid/cpgpreprocess/geometry.c
+	opm/grid/cpgpreprocess/preprocess.c
+	opm/grid/cpgpreprocess/uniquepoints.c
+	opm/grid/grid.c
+	opm/grid/grid_equal.cpp
 	)
 
 # originally generated with the command:

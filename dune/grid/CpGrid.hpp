@@ -59,7 +59,7 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
 #include <iostream>
