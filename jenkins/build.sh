@@ -3,18 +3,12 @@
 declare -a upstreams
 upstreams=(opm-common
            ert
-           opm-parser
-           opm-output
-           opm-material
-           opm-core)
+           opm-parser)
 
 declare -A upstreamRev
 upstreamRev[opm-common]=master
 upstreamRev[ert]=master
 upstreamRev[opm-parser]=master
-upstreamRev[opm-output]=master
-upstreamRev[opm-material]=master
-upstreamRev[opm-core]=master
 
 if grep -q "opm-common=" <<< $ghprbCommentBody
 then
@@ -23,11 +17,17 @@ fi
 
 # Downstreams and revisions
 declare -a downstreams
-downstreams=(ewoms
+downstreams=(opm-material
+             opm-output
+             opm-core
+             ewoms
              opm-simulators
              opm-upscaling)
 
 declare -A downstreamRev
+downstreamRev[opm-material]=master
+downstreamRev[opm-output]=master
+downstreamRev[opm-core]=master
 downstreamRev[ewoms]=master
 downstreamRev[opm-simulators]=master
 downstreamRev[opm-upscaling]=master
