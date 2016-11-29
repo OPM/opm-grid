@@ -42,6 +42,18 @@ list (APPEND MAIN_SOURCE_FILES
 	dune/grid/common/WellConnections.cpp
 	dune/grid/common/ZoltanGraphFunctions.cpp
 	dune/grid/common/ZoltanPartition.cpp
+        opm/core/grid/GridHelpers.cpp
+        opm/core/grid/GridManager.cpp
+        opm/core/grid/GridUtilities.cpp
+        opm/core/grid/cart_grid.c
+        opm/core/grid/cornerpoint_grid.c
+        opm/core/grid/cpgpreprocess/facetopology.c
+        opm/core/grid/cpgpreprocess/geometry.c
+        opm/core/grid/cpgpreprocess/preprocess.c
+        opm/core/grid/cpgpreprocess/uniquepoints.c
+        opm/core/grid/grid.c
+        opm/core/grid/grid_equal.cpp
+        opm/core/utility/StopWatch.cpp
 	)
 
 # originally generated with the command:
@@ -68,6 +80,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/zoltan_test.cpp
 	tests/grid_test.cc
 	tests/p2pcommunicator_test.cc
+        tests/test_sparsetable.cpp
 	)
 
 # originally generated with the command:
@@ -137,4 +150,21 @@ list (APPEND PUBLIC_HEADER_FILES
 	dune/grid/polyhedralgrid/intersectioniterator.hh
 	dune/grid/polyhedralgrid/iterator.hh
 	dune/grid/polyhedralgrid/persistentcontainer.hh
+        opm/core/grid.h
+        opm/core/grid/CellQuadrature.hpp
+        opm/core/grid/ColumnExtract.hpp
+        opm/core/grid/FaceQuadrature.hpp
+        opm/core/grid/GridHelpers.hpp
+        opm/core/grid/GridManager.hpp
+        opm/core/grid/GridUtilities.hpp
+        opm/core/grid/MinpvProcessor.hpp
+        opm/core/grid/PinchProcessor.hpp
+        opm/core/grid/cart_grid.h
+        opm/core/grid/cornerpoint_grid.h
+        opm/core/grid/cpgpreprocess/facetopology.h
+        opm/core/grid/cpgpreprocess/geometry.h
+        opm/core/grid/cpgpreprocess/preprocess.h
+        opm/core/grid/cpgpreprocess/uniquepoints.h
+        opm/core/utility/SparseTable.hpp
+        opm/core/utility/StopWatch.hpp
 	)
