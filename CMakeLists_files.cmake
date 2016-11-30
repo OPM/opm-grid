@@ -80,12 +80,20 @@ list (APPEND TEST_SOURCE_FILES
 	tests/cpgrid/zoltan_test.cpp
 	tests/grid_test.cc
 	tests/p2pcommunicator_test.cc
-        tests/test_sparsetable.cpp
+	tests/test_sparsetable.cpp
+	tests/test_cartgrid.cpp
+	tests/test_column_extract.cpp
+	tests/test_geom2d.cpp
+	tests/test_gridutilities.cpp
+	tests/test_minpvprocessor.cpp
+	tests/test_quadratures.cpp
+	tests/test_ug.cpp
 	)
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_DATA_FILES
+     tests/CORNERPOINT_ACTNUM.DATA
 	)
 
 # originally generated with the command:
@@ -93,12 +101,14 @@ list (APPEND TEST_DATA_FILES
 list (APPEND EXAMPLE_SOURCE_FILES
 	examples/grdecl2vtu.cpp
 	examples/finitevolume/finitevolume.cc
+	examples/mirror_grid.cpp
 	)
 
 # programs listed here will not only be compiled, but also marked for
 # installation
 list (APPEND PROGRAM_SOURCE_FILES
 	examples/grdecl2vtu.cpp
+	examples/mirror_grid.cpp
 	)
 
 # originally generated with the command:
