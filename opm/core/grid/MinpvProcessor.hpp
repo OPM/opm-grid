@@ -62,8 +62,8 @@ namespace Opm
     };
 
     inline MinpvProcessor::MinpvProcessor(const int nx, const int ny, const int nz) :
-        dims_( {nx,ny,nz} ),
-        delta_( {1 , 2*nx , 4*nx*ny} )
+        dims_( {{nx,ny,nz}} ),
+        delta_( {{1 , 2*nx , 4*nx*ny}} )
     { }
 
 
