@@ -66,12 +66,15 @@ namespace Opm
 	    double secsSinceStart();
 
 	private:
-	    enum StopWatchState { UnStarted, Running, Stopped };
+	    enum class State { UnStarted, Running, Stopped };
+            using TimePoint = boost::posix_time::ptime;
 
-	    StopWatchState state_;
-	    boost::posix_time::ptime start_time_;
-	    boost::posix_time::ptime last_time_;
-	    boost::posix_time::ptime stop_time_;
+            TimePoint currentTime() const;
+
+	    State state_;
+	    TimePoint start_time_;
+	    TimePoint last_time_;
+	    TimePoint stop_time_;
 	};
 
     } // namespace time
