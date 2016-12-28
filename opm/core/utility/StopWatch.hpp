@@ -35,7 +35,7 @@
 #ifndef OPM_STOPWATCH_HEADER
 #define OPM_STOPWATCH_HEADER
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 
 namespace Opm
 {
@@ -67,7 +67,7 @@ namespace Opm
 
 	private:
 	    enum class State { UnStarted, Running, Stopped };
-            using TimePoint = boost::posix_time::ptime;
+            using TimePoint = std::chrono::high_resolution_clock::time_point;
 
             TimePoint currentTime() const;
 

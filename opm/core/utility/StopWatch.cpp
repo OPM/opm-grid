@@ -44,7 +44,7 @@ namespace Opm
 
     namespace time
     {
-        using Duration = boost::posix_time::time_duration;
+        using Duration = std::chrono::duration<double>;
 
 	StopWatch::StopWatch()
 	    : state_(State::UnStarted)
@@ -81,7 +81,7 @@ namespace Opm
 	    }
 	    Duration dur = run_time - last_time_;
 	    last_time_ = run_time;
-	    return double(dur.total_microseconds())/1000000.0;
+	    return dur.count();
 	}
 
 	double StopWatch::secsSinceStart()
@@ -96,12 +96,12 @@ namespace Opm
 		OPM_THROW(std::runtime_error, "Called secsSinceStart() on a StopWatch that had not been started.");
 	    }
 	    Duration dur = run_time - start_time_;
-	    return double(dur.total_microseconds())/1000000.0;
+	    return dur.count();
 	}
 
         StopWatch::TimePoint StopWatch::currentTime() const
         {
-            return boost::posix_time::microsec_clock::local_time();
+            return std::chrono::high_resolution_clock::now();
         }
 
     } // namespace time
