@@ -44,59 +44,65 @@ namespace Opm
 
     namespace time
     {
+        using Duration = std::chrono::duration<double>;
 
 	StopWatch::StopWatch()
-	    : state_(UnStarted)
+	    : state_(State::UnStarted)
 	{
 	}
 
 
 	void StopWatch::start()
 	{
-	    start_time_ = boost::posix_time::microsec_clock::local_time();
+	    start_time_ = currentTime();
 	    last_time_ = start_time_;
-	    state_ = Running;
+	    state_ = State::Running;
 	}
 
 	void StopWatch::stop()
 	{
-	    if (state_ != Running) {
+	    if (state_ != State::Running) {
 		OPM_THROW(std::runtime_error, "Called stop() on a StopWatch that was not running.");
 	    }
-	    stop_time_ = boost::posix_time::microsec_clock::local_time();
-	    state_ = Stopped;
+	    stop_time_ = currentTime();
+	    state_ = State::Stopped;
 	}
 
 	double StopWatch::secsSinceLast()
 	{
-	    boost::posix_time::ptime run_time;
-	    if (state_ == Running) {
-		run_time = boost::posix_time::microsec_clock::local_time();
-	    } else if (state_ == Stopped) {
+	    TimePoint run_time;
+	    if (state_ == State::Running) {
+		run_time = currentTime();
+	    } else if (state_ == State::Stopped) {
 		run_time = stop_time_;
 	    } else {
-		assert(state_ == UnStarted);
+		assert(state_ == State::UnStarted);
 		OPM_THROW(std::runtime_error, "Called secsSinceLast() on a StopWatch that had not been started.");
 	    }
-	    boost::posix_time::time_duration dur = run_time - last_time_;
+	    Duration dur = run_time - last_time_;
 	    last_time_ = run_time;
-	    return double(dur.total_microseconds())/1000000.0;
+	    return dur.count();
 	}
 
 	double StopWatch::secsSinceStart()
 	{
-	    boost::posix_time::ptime run_time;
-	    if (state_ == Running) {
-		run_time = boost::posix_time::microsec_clock::local_time();
-	    } else if (state_ == Stopped) {
+	    TimePoint run_time;
+	    if (state_ == State::Running) {
+		run_time = currentTime();
+	    } else if (state_ == State::Stopped) {
 		run_time = stop_time_;
 	    } else {
-		assert(state_ == UnStarted);
+		assert(state_ == State::UnStarted);
 		OPM_THROW(std::runtime_error, "Called secsSinceStart() on a StopWatch that had not been started.");
 	    }
-	    boost::posix_time::time_duration dur = run_time - start_time_;
-	    return double(dur.total_microseconds())/1000000.0;
+	    Duration dur = run_time - start_time_;
+	    return dur.count();
 	}
+
+        StopWatch::TimePoint StopWatch::currentTime() const
+        {
+            return std::chrono::high_resolution_clock::now();
+        }
 
     } // namespace time
 

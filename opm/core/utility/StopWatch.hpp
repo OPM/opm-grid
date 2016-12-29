@@ -35,7 +35,7 @@
 #ifndef OPM_STOPWATCH_HEADER
 #define OPM_STOPWATCH_HEADER
 
-#include <boost/date_time/posix_time/posix_time.hpp>
+#include <chrono>
 
 namespace Opm
 {
@@ -66,12 +66,15 @@ namespace Opm
 	    double secsSinceStart();
 
 	private:
-	    enum StopWatchState { UnStarted, Running, Stopped };
+	    enum class State { UnStarted, Running, Stopped };
+            using TimePoint = std::chrono::high_resolution_clock::time_point;
 
-	    StopWatchState state_;
-	    boost::posix_time::ptime start_time_;
-	    boost::posix_time::ptime last_time_;
-	    boost::posix_time::ptime stop_time_;
+            TimePoint currentTime() const;
+
+	    State state_;
+	    TimePoint start_time_;
+	    TimePoint last_time_;
+	    TimePoint stop_time_;
 	};
 
     } // namespace time
