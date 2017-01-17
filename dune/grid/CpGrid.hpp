@@ -59,6 +59,7 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
+#include "common/Volumes.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 
@@ -819,6 +820,149 @@ namespace Dune
             }
             return zz/nv;
         }
+
+        const Vector faceCenterEcl(int cell_index, int faceTag) const
+        {
+            // This method is an alternative to the method faceCentroid(...).
+            // The face center is computed as a raw average of cell corners.
+            // For faulted cells this gives different results then average of face nodes
+            // that seems to agree more with eclipse.
+            // This assumes the cell nodes are ordered
+            // 0--1
+            // |  |
+            // 2--3
+            //   4--5
+            //   |  |
+            //   6--7
+
+            assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
+            Vector center(0.0);
+            switch(faceTag)
+            {
+            case 0: // X neg
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
+            }
+                break;
+            case 1: // X pos
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
+            }
+                break;
+            case 2: // Y neg
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
+            }
+                break;
+            case 3: // Y pos
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
+            }
+                break;
+            case 4: // z neg
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
+            }
+                break;
+            case 5: // z pos
+            {
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
+                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
+            }
+                break;
+            }
+
+            int nd = 3;
+            for (int i=0; i<nd; ++i) {
+                center[i] /= 4;
+            }
+            return center;
+
+        }
+
+        const Vector faceAreaNormalEcl(int face) const
+        {
+            // same implementation as ResInsight
+            Vector areaNormal(0.0);
+            int nd = areaNormal.size();
+            const int nv =  numFaceVertices(face);
+            switch (nv)
+            {
+            case 0:
+            case 1:
+            case 2:
+                {
+                    return areaNormal;
+                }
+                break;
+            case 3:
+                {
+                Vector a = vertexPosition(current_view_data_->face_to_point_[face][0]) - vertexPosition(current_view_data_->face_to_point_[face][2]);
+                Vector b = vertexPosition(current_view_data_->face_to_point_[face][1]) - vertexPosition(current_view_data_->face_to_point_[face][2]);
+                Vector areaNormal = cross(a,b);
+                for (int i=0; i<nd; ++i) {
+                    areaNormal[i] /= 2;
+                }
+                return areaNormal;
+            }
+                                break;
+            case 4:
+                {
+                Vector a = vertexPosition(current_view_data_->face_to_point_[face][0]) - vertexPosition(current_view_data_->face_to_point_[face][2]);
+                Vector b = vertexPosition(current_view_data_->face_to_point_[face][1]) - vertexPosition(current_view_data_->face_to_point_[face][3]);
+                Vector areaNormal = cross(a,b);
+                for (int i=0; i<nd; ++i) {
+                    areaNormal[i] /= 2;
+                }
+                return areaNormal;
+                }
+                break;
+            default:
+                {
+                    int h = (nv - 1)/2;
+                    int k = (nv % 2) ? 0 : nv - 1;
+
+                    // First quads
+                    for (int i = 1; i < h; ++i)
+                    {
+                        Vector a = vertexPosition(current_view_data_->face_to_point_[face][2*i]) - vertexPosition(current_view_data_->face_to_point_[face][0]);
+                        Vector b = vertexPosition(current_view_data_->face_to_point_[face][2*i+1]) - vertexPosition(current_view_data_->face_to_point_[face][2*i-1]);
+                        Vector areaNormal = cross(a,b);
+                        for (int i=0; i<nd; ++i) {
+                            areaNormal[i] /= 2;
+                        }
+                    }
+
+                    // Last triangle or quad
+                    Vector a = vertexPosition(current_view_data_->face_to_point_[face][2*h]) - vertexPosition(current_view_data_->face_to_point_[face][0]);
+                    Vector b = vertexPosition(current_view_data_->face_to_point_[face][k]) - vertexPosition(current_view_data_->face_to_point_[face][2*h-1]);
+                    Vector areaNormal = cross(a,b);
+                    for (int i=0; i<nd; ++i) {
+                        areaNormal[i] /= 2;
+                    }
+                    return areaNormal;
+                }
+
+            }
+        }
+
         // Geometry
         /// \brief Get the Position of a vertex.
         /// \param cell The index identifying the cell.

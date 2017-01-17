@@ -381,6 +381,8 @@ struct CellCentroidTraits<Dune::CpGrid>
     typedef const double* ValueType;
 };
 
+typedef Dune::FieldVector<double, 3> Vector;
+
 /// \brief Get the number of cells of a grid.
 int numCells(const Dune::CpGrid& grid);
 
@@ -425,6 +427,22 @@ const double* cellCentroid(const Dune::CpGrid& grid, int cell_index);
 /// \brief grid The grid.
 /// \brief cell_index The index of the specific cell.
 double cellCenterDepth(const Dune::CpGrid& grid, int cell_index);
+
+
+/// \brief Get a coordinate of a specific face center.
+/// \brief calculated as the raw average of the cell corners
+/// \param grid The grid.
+/// \param cell_index The index of the specific cell.
+/// \param face_tag The logical cartesian index of the face
+Vector faceCenterEcl(const Dune::CpGrid& grid, int cell_index, int face_tag);
+
+/// \brief Get a area weighted normal vector of a specific face.
+/// \brief calculated without introducing a center point
+/// \brief For cornerpoint grids this is supposed to give
+/// \brief values closer to Ecl.
+/// \param grid The grid.
+/// \param face_index The index of the specific face.
+Vector faceAreaNormalEcl(const Dune::CpGrid& grid, int face_index);
 
 /// \brief Get the volume of a cell.
 /// \param grid The grid the cell belongs to.

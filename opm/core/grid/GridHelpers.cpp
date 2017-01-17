@@ -19,6 +19,8 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 #include "config.h"
+#include <iostream>
+
 #include <opm/core/grid/GridHelpers.hpp>
 namespace Opm
 {
@@ -76,6 +78,185 @@ double cellCenterDepth(const UnstructuredGrid& grid, int cell_index)
         }
     }
     return zz/nv;
+}
+
+std::vector<double> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, int face_tag)
+{
+    // This method is an alternative to the method faceCentroid(...) below.
+    // The face center is computed as a raw average of cell corners.
+    // For faulted cells this gives different results then average of face nodes
+    // that seems to agree more with eclipse.
+    // This assumes that the top and bottom face nodes are ordered
+    // 0--1
+    // |  |
+    // 3--2
+
+    assert(grid.dimensions == 3);
+    const int nd = 3; // Assuming 3-dimensional grid ...
+    const int nv = 4; // Assuming 4 vertices ...
+    std::vector<double> center(3,0.0);
+    //Vector center(0.0);
+    // Traverse the bottom and top cell-face
+    for (int i=grid.cell_facepos[cell_index+1]-2; i<grid.cell_facepos[cell_index+1]; ++i) {
+        // Traverse the vertices associated with each face
+        assert(grid.face_nodepos[grid.cell_faces[i]+1] - grid.face_nodepos[grid.cell_faces[i]] == nv);
+
+        int start = grid.face_nodepos[grid.cell_faces[i]];
+
+        // pick the right nodes. See order assumption above
+        switch(face_tag) {
+        case 0: {
+            for (int indx = 0; indx < nd; ++indx) {
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[indx];
+            }
+        }
+            break;
+        case 1: {
+            for (int indx = 0; indx < nd; ++indx) {
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[indx];
+            }
+        }
+            break;
+        case 2: {
+            for (int indx = 0; indx < nd; ++indx) {
+
+
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[indx];
+
+            }
+        }
+            break;
+        case 3: {
+            for (int indx = 0; indx < nd; ++indx) {
+
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[indx];
+
+            }
+        }
+            break;
+        case 4: {
+            if (i == grid.cell_facepos[cell_index+1]-2) {
+                for (int indx = 0; indx < nd; ++indx) {
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[indx];
+                }
+            }
+        }
+            break;
+        case 5: {
+            if (i == grid.cell_facepos[cell_index+1]-1) {
+                for (int indx = 0; indx < nd; ++indx) {
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[indx];
+                center[indx] += (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[indx];
+                }
+            }
+        }
+            break;
+        }
+    }
+    for (int indx = 0; indx < nd; ++indx) {
+        center[indx] /= nv;
+    }
+
+    return center;
+}
+
+
+std::vector<double> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_index)
+{
+    // This method is an alternative to the method faceNormal(...) below.
+    // The face Normal area is computed based on the face corners without introducing
+    // a center point.
+    // For cornerpoint grids, this is likely to give slightly different depths that seem
+    // to agree with eclipse.
+    assert(grid.dimensions == 3);
+    const int nd = 3; // Assuming 3-dimensional grid ...
+    const int nv = grid.face_nodepos[face_index+1] - grid.face_nodepos[face_index];
+    const int start = grid.face_nodepos[face_index];
+    std::vector<double> areaNormal(nd,0.0);
+    switch (nv)
+    {
+    case 0:
+    case 1:
+    case 2:
+        {
+            return areaNormal;
+        }
+        break;
+    case 3:
+        {
+
+        double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        areaNormal[0] = (a[1]*b[2] - a[2]*b[1])/2;
+        areaNormal[1] = (a[2]*b[0] - a[0]*b[2])/2;
+        areaNormal[2] = (a[0]*b[1] - a[1]*b[0])/2;
+        return areaNormal;
+        }
+        break;
+    case 4:
+        {
+        double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[0] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[1] ,
+                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[2] };
+
+        areaNormal[0] = (a[1]*b[2] - a[2]*b[1])/2;
+        areaNormal[1] = (a[2]*b[0] - a[0]*b[2])/2;
+        areaNormal[2] = (a[0]*b[1] - a[1]*b[0])/2;
+        return areaNormal;
+        }
+        break;
+    default:
+        {
+            int h = (nv - 1)/2;
+            int k = (nv % 2) ? 0 : nv - 1;
+
+            // First quads
+            for (int i = 1; i < h; ++i)
+            {
+                double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
+                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
+                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
+                double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[0] ,
+                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[1] ,
+                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[2] };
+
+                areaNormal[0] += (a[1]*b[2] - a[2]*b[1])/2;
+                areaNormal[1] += (a[2]*b[0] - a[0]*b[2])/2;
+                areaNormal[2] += (a[0]*b[1] - a[1]*b[0])/2;
+            }
+
+            // Last triangle or quad
+            double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
+                            (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
+                            (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
+            double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[0] ,
+                            (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[1] ,
+                            (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[2] };
+
+            areaNormal[0] += (a[1]*b[2] - a[2]*b[1])/2;
+            areaNormal[1] += (a[2]*b[0] - a[0]*b[2])/2;
+            areaNormal[2] += (a[0]*b[1] - a[1]*b[0])/2;
+
+            return areaNormal;
+        }
+    }
+
 }
 
 double cellCentroidCoordinate(const UnstructuredGrid& grid, int cell_index,
