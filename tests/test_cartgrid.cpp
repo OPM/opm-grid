@@ -20,10 +20,11 @@
 
 #include "config.h"
 
+#define HAVE_DYNAMIC_BOOST_TEST 1
+
 /* --- Boost.Test boilerplate --- */
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 
 #define NVERBOSE  // Suppress own messages when throw()ing
 
@@ -34,7 +35,7 @@
 /* --- our own headers --- */
 #include <opm/core/grid/cart_grid.h>
 #include <opm/core/grid.h>
-#include <stdio.h>
+#include <cstdio>
 
 BOOST_AUTO_TEST_SUITE ()
 
@@ -56,3 +57,7 @@ BOOST_AUTO_TEST_CASE (facenumbers)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST
+

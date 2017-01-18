@@ -21,7 +21,8 @@
 #ifndef DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 #define DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/common/WellConnections.hpp>
 

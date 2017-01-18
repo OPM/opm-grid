@@ -22,11 +22,12 @@
 #define OPM_CORE_GRIDHELPERS_HEADER_INCLUDED
 
 #include <opm/core/grid.h>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <boost/range/iterator_range.hpp>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 namespace Opm
@@ -73,14 +74,14 @@ public:
         assert(row<=size());
         return row_type(data_ + offset_[row], data_ + offset_[row+1]);
     }
-    
+
     /// \brief Get the size of the table.
     /// \return the number rows.
     std::size_t size() const
     {
         return size_;
     }
-    
+
     /// \brief Get the number of non-zero entries.
     std::size_t noEntries() const
     {
@@ -90,7 +91,7 @@ public:
 private:
     /// \brief The array with data of the table.
     const int* data_;
-    /// \brief offset The offsets of the rows. 
+    /// \brief offset The offsets of the rows.
     ///
     /// Row i starts at offset[i] and ends a offset[i+1]
     const int* offset_;
@@ -205,10 +206,11 @@ struct CellVolumeIteratorTraits<UnstructuredGrid>
        correctly represented in the EclipseGrid created by this
        method.
     */
-
+#if HAVE_OPM_PARSER
 /// \brief Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actnum from the dune UnstructuredGrid.
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid );
+#endif
 
 /// \brief Get an iterator over the cell volumes of a grid positioned at the first cell.
 const double* beginCellVolumes(const UnstructuredGrid& grid);
@@ -292,11 +294,11 @@ struct Face2VerticesTraits<UnstructuredGrid>
 };
 
 /// \brief Get the cell to faces mapping of a grid.
-Cell2FacesTraits<UnstructuredGrid>::Type 
+Cell2FacesTraits<UnstructuredGrid>::Type
 cell2Faces(const UnstructuredGrid& grid);
 
 /// \brief Get the face to vertices mapping of a grid.
-Face2VerticesTraits<UnstructuredGrid>::Type 
+Face2VerticesTraits<UnstructuredGrid>::Type
 face2Vertices(const UnstructuredGrid& grid);
 
 /// \brief Get the coordinates of a vertex of the grid.

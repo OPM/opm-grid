@@ -1,7 +1,7 @@
 #include <config.h>
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/unused.hh>
 #include <dune/grid/CpGrid.hpp>
@@ -15,11 +15,9 @@
 #endif
 
 // Re-enable warnings.
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <iostream>
 
@@ -153,27 +151,38 @@ int main(int argc, char** argv )
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
 
+#if HAVE_OPM_PARSER
     Opm::Parser parser;
     Opm::ParseContext parseContext;
     const auto deck = parser.parseString(deckString , parseContext);
     std::vector<double> porv;
+#endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+#if HAVE_OPM_PARSER
       Grid grid(deck, porv);
+#else
+      UnstructuredGrid ug;
+      Grid grid( ug );
+#endif
       testGrid( grid, "polyhedralgrid" );
     }
 
     // test CpGrid
     {
       Dune::CpGrid grid;
+#if HAVE_OPM_PARSER
       const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
       Opm::EclipseGrid ecl_grid(deck , actnum);
 
       grid.processEclipseFormat(ecl_grid, false, false, false, porv);
+#endif
       testGrid( grid, "cpgrid" );
+#if HAVE_OPM_PARSER
       Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
+#endif
     }
     return 0;
 }

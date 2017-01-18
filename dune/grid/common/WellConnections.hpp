@@ -25,14 +25,15 @@
 #include <vector>
 
 #ifdef HAVE_MPI
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
 #include <dune/common/parallel/mpicollectivecommunication.hh>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
 namespace Dune
 {
 namespace cpgrid
@@ -46,6 +47,7 @@ namespace cpgrid
 /// that the well perforates.
 class WellConnections
 {
+
 public:
     /// \brief The const iterator type.
     typedef std::vector<std::set<int> >::const_iterator const_iterator;
@@ -61,7 +63,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    WellConnections(const Opm::EclipseState& eclipseState,
+    WellConnections(const OpmEclipseStateType& eclipseState,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
@@ -71,7 +73,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    void init(const Opm::EclipseState& eclipseState,
+    void init(const OpmEclipseStateType& eclipseState,
               const std::array<int, 3>& cartesianSize,
               const std::vector<int>& cartesian_to_compressed);
 
@@ -117,7 +119,7 @@ private:
 /// \param no_procs The number of processes.
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const Opm::EclipseState& eclipseState,
+                                const OpmEclipseStateType& eclipseState,
                                 const WellConnections& well_connections,
                                 std::size_t no_procs);
 
@@ -130,7 +132,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 ///             information.
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const Opm::EclipseState& eclipseState,
+                        const OpmEclipseStateType& eclipseState,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root);
 #endif

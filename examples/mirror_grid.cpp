@@ -20,12 +20,7 @@
 
 #include "config.h"
 
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Deck/DeckItem.hpp>
-#include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/parser/eclipse/Deck/DeckRecord.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <algorithm>
 #include <iostream>
@@ -34,12 +29,12 @@
 /**
  * @file mirror_grid.cpp
  * @brief Mirror grid taken from grdecl file
- * 
+ *
  * The input grid is mirrored in either the x- or y-direction, resulting in a periodic grid.
  *
  */
 
-
+#if HAVE_OPM_PARSER
 /// Print init message in new grid filename
 void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {
     std::ifstream infile;
@@ -62,7 +57,7 @@ void printInitMessage(std::ofstream& out, const char* origfilename, std::string 
             break;
         }
     }
-    out << std::endl;   
+    out << std::endl;
 }
 
 /// Write keyword values to file
@@ -72,7 +67,7 @@ void printKeywordValues(std::ofstream& out, std::string keyword, std::vector<T> 
     int col = 0;
     typename std::vector<T>::iterator iter;
     for (iter = values.begin(); iter != values.end(); ++iter) {
-        out << *iter << " ";            
+        out << *iter << " ";
         ++col;
         // Break line for every nCols entry.
         if (col == nCols) {
@@ -230,7 +225,7 @@ void mirror_zcorn(const Opm::Deck& deck, std::string direction, std::ofstream& o
         const int entries_per_layer = dimensions[0]*dimensions[1]*4;
         std::vector<double>::iterator it_new = zcorn_mirrored.begin();
         std::vector<double>::iterator it_orig = zcorn.begin();
-        // Loop through each layer and copy old corner-points and add new (which are the old reordered) 
+        // Loop through each layer and copy old corner-points and add new (which are the old reordered)
         for ( ; it_orig != zcorn.end(); it_orig += entries_per_layer) {
             // Copy old corner-points
             copy(it_orig, it_orig + entries_per_layer, it_new);
@@ -316,7 +311,7 @@ void mirror_celldata(std::string keyword, const Opm::Deck& deck, std::string dir
         typename std::vector<T>::iterator it_new = values_mirrored.begin();
         // Entries per layer
         const int entries_per_layer = dimensions[0]*dimensions[1];
-        // Loop through each layer and copy old cell data and add new (which are the old reordered) 
+        // Loop through each layer and copy old cell data and add new (which are the old reordered)
         for ( ; it_orig != values.end(); it_orig += entries_per_layer) {
             // Copy old cell data
             copy(it_orig, it_orig + entries_per_layer, it_new);
@@ -358,7 +353,7 @@ int main(int argc, char** argv)
     const char* eclipsefilename = argv[1];
     std::string direction(argv[2]);
     if ( ! ((direction == "x") || (direction == "y")) ) {
-        std::cerr << "Unrecognized input parameter for direction: '" << direction 
+        std::cerr << "Unrecognized input parameter for direction: '" << direction
                   << "'. Should be either x or y (maybe also z later)." << std::endl;
         exit(1);
     }
@@ -388,7 +383,7 @@ int main(int argc, char** argv)
 
     // Print init message
     printInitMessage(outfile, eclipsefilename, direction);
-    
+
     // Mirror keywords
     mirror_mapaxes(deck, direction, outfile);
     mirror_specgrid(deck, direction, outfile);
@@ -404,3 +399,6 @@ int main(int argc, char** argv)
     mirror_celldata<double>("SWCR", deck, direction, outfile);
     mirror_celldata<double>("SOWCR", deck, direction, outfile);
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_OPM_PARSER

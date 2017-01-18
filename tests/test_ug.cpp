@@ -5,9 +5,8 @@
 #include <config.h>
 
 /* --- Boost.Test boilerplate --- */
-#if HAVE_DYNAMIC_BOOST_TEST
+#if HAVE_DYNAMIC_BOOST_TEST && HAVE_OPM_PARSER
 #define BOOST_TEST_DYN_LINK
-#endif
 
 #define NVERBOSE  // Suppress own messages when throw()ing
 
@@ -23,13 +22,8 @@
 #include <opm/core/grid/GridManager.hpp>  /* compute_geometry */
 #include <opm/core/grid/GridHelpers.hpp>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Deck/DeckItem.hpp>
-#include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/parser/eclipse/Deck/DeckRecord.hpp>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 using namespace std;
 
@@ -54,7 +48,7 @@ BOOST_AUTO_TEST_CASE(Equal) {
         "100*0.25 /\n"
         "EDIT\n"
         "\n";
-    
+
     Opm::Parser parser;
 
     Opm::Deck deck1 = parser.parseFile( filename1 , parseContext);
@@ -62,16 +56,16 @@ BOOST_AUTO_TEST_CASE(Equal) {
 
     Opm::Deck deck2 = parser.parseString( deck2Data , parseContext);
     Opm::EclipseState es2(deck2, parseContext);
-    
+
     BOOST_CHECK( deck1.hasKeyword("ZCORN") );
     BOOST_CHECK( deck1.hasKeyword("COORD") );
-    
+
     Opm::GridManager grid1(es1.getInputGrid());
     Opm::GridManager grid2(es2.getInputGrid());
-    
+
     const UnstructuredGrid* cgrid1 = grid1.c_grid();
     const UnstructuredGrid* cgrid2 = grid2.c_grid();
-    
+
 
 
     BOOST_CHECK( grid_equal( cgrid1 , cgrid1 ));
@@ -99,7 +93,7 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
         const auto& coord = deck.getKeyword("COORD");
         const auto& zcorn = deck.getKeyword("ZCORN");
         const auto& actnum = deck.getKeyword("ACTNUM");
-        
+
         g.dims[0] = dimens.getRecord(0).getItem("NX").get< int >(0);
         g.dims[1] = dimens.getRecord(0).getItem("NY").get< int >(0);
         g.dims[2] = dimens.getRecord(0).getItem("NZ").get< int >(0);
@@ -108,14 +102,14 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
         g.zcorn  = zcorn.getSIDoubleData().data();
         g.actnum = actnum.getIntData().data();
         g.mapaxes = NULL;
-    
-        
+
+
         cgrid2 = create_grid_cornerpoint(&g , 0.0);
-        if (!cgrid2) 
+        if (!cgrid2)
             throw std::runtime_error("Failed to construct grid.");
     }
-    
-    
+
+
     BOOST_CHECK( grid_equal( cgrid1 , cgrid2 ));
     destroy_grid( cgrid2 );
 }
@@ -175,3 +169,7 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
 
     Opm::EclipseGrid grid = Opm::UgGridHelpers::createEclipseGrid( *cgrid1 , es1.getInputGrid( ) );
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST
+

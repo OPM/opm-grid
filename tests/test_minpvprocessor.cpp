@@ -20,9 +20,10 @@
 
 #include <config.h>
 
+#define HAVE_DYNAMIC_BOOST_TEST 1
+
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 #define NVERBOSE // to suppress our messages when throwing
 
 #define BOOST_TEST_MODULE MinpvProcessorTest
@@ -34,19 +35,19 @@ BOOST_AUTO_TEST_CASE(Processing)
 {
     std::vector<double> zcorn = { 0, 0, 0, 0,
                                   1, 1, 1, 1,
-                                  1, 1, 1, 1, 
+                                  1, 1, 1, 1,
                                   3, 3, 3, 3,
                                   3, 3, 3, 3,
                                   6, 6, 6, 6 };
     std::vector<double> zcorn2after = { 0, 0, 0, 0,
                                         0, 0, 0, 0,
-                                        0, 0, 0, 0, 
+                                        0, 0, 0, 0,
                                         3, 3, 3, 3,
                                         3, 3, 3, 3,
                                         6, 6, 6, 6 };
     std::vector<double> zcorn3after = { 0, 0, 0, 0,
                                         0, 0, 0, 0,
-                                        0, 0, 0, 0, 
+                                        0, 0, 0, 0,
                                         0, 0, 0, 0,
                                         0, 0, 0, 0,
                                         6, 6, 6, 6  };
@@ -92,3 +93,7 @@ BOOST_AUTO_TEST_CASE(Processing)
     mp5.process(pv, 2.5, actnum, !fill_removed_cells, z5.data());
     BOOST_CHECK_EQUAL_COLLECTIONS(z5.begin(), z5.end(), zcorn5after.begin(), zcorn5after.end());
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST
+

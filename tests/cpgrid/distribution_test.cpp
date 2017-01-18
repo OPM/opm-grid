@@ -4,7 +4,6 @@
 
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 #define BOOST_TEST_MODULE DistributedCpGridTests
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
@@ -13,7 +12,7 @@
 
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
@@ -31,7 +30,7 @@
 
 #endif
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 #if HAVE_MPI
@@ -375,3 +374,6 @@ int main(int argc, char** argv)
     boost::unit_test::unit_test_main(&init_unit_test_func,
                                      argc, argv);
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST

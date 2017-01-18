@@ -42,16 +42,16 @@
 #include <map>
 #include <array>
 #include <unordered_set>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include "cpgrid/Intersection.hpp"
 #include "cpgrid/Entity.hpp"
@@ -60,11 +60,10 @@
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <iostream>
-
-
 
 namespace Dune
 {
@@ -207,6 +206,10 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
+
+        // defined in OpmParserIncludes in case opm-parser is not available
+        typedef cpgrid::OpmEclipseStateType  OpmEclipseStateType;
+
     public:
 
         // --- Typedefs ---
@@ -236,6 +239,7 @@ namespace Dune
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
 
+#if HAVE_OPM_PARSER
         /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -246,6 +250,7 @@ namespace Dune
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
         void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>());
+#endif
 
         /// Read the Eclipse grid format ('grdecl').
         /// \param input_data the data in grdecl format, declared in preprocess.h.
@@ -580,6 +585,18 @@ namespace Dune
             }
         }
 
+
+        // loadbalance is not part of the grid interface therefore we skip it.
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        bool loadBalance(int overlapLayers=1)
+        {
+            using std::get;
+            return get<0>(scatterGrid(nullptr, nullptr, overlapLayers ));
+        }
+
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
@@ -593,22 +610,11 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(const Opm::EclipseState* ecl,
+        loadBalance(const OpmEclipseStateType* ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
             return scatterGrid(ecl, transmissibilities, overlapLayers);
-        }
-
-        // loadbalance is not part of the grid interface therefore we skip it.
-
-        /// \brief Distributes this grid over the available nodes in a distributed machine
-        /// \param The number of layers of cells of the overlap region (default: 1).
-        /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=1)
-        {
-            using std::get;
-            return get<0>(scatterGrid(nullptr, nullptr, overlapLayers ));
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -627,7 +633,7 @@ namespace Dune
         template<class DataHandle>
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
-                    const Opm::EclipseState* ecl,
+                    const OpmEclipseStateType* ecl,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
@@ -1149,7 +1155,7 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(const Opm::EclipseState* ecl, const double* transmissibilities,
+        scatterGrid(const OpmEclipseStateType* ecl, const double* transmissibilities,
                     int overlapLayers);
 
         /** @brief The data stored in the grid.

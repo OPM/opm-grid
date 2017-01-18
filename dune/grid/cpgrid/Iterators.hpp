@@ -38,7 +38,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <dune/grid/common/gridenums.hh>
 #include "PartitionIteratorRule.hpp"
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
 namespace Dune
 {

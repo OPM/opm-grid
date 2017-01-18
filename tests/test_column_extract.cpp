@@ -3,7 +3,6 @@
 
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 #define NVERBOSE // to suppress our messages when throwing
 
 #define BOOST_TEST_MODULE ColumnExtractTest
@@ -11,9 +10,7 @@
 #include <opm/core/grid/ColumnExtract.hpp>
 #include <opm/core/grid/GridManager.hpp>
 
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <cstddef>
 #include <iostream>
@@ -131,6 +128,7 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
     correct_answer[4].resize(1);
     correct_answer[9].resize(1);
 
+#if HAVE_OPM_PARSER
     Opm::ParseContext parseContext;
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(grdecl , parseContext);
@@ -163,4 +161,9 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
         BOOST_CHECK_EQUAL_COLLECTIONS((*xb).begin(), (*xb).end(),
                                       (*cb).begin(), (*cb).end());
     }
+#endif
 }
+#else
+int main () { return 0; }
+#endif // # if HAVE_DYNAMIC_BOOST_TEST
+

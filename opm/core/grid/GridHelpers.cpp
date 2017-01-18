@@ -51,13 +51,13 @@ const int* cartDims(const UnstructuredGrid& grid)
 {
     return grid.cartdims;
 }
-                    
+
 const double* beginCellCentroids(const UnstructuredGrid& grid)
 {
     return grid.cell_centroids;
 }
 
-double cellCenterDepth(const UnstructuredGrid& grid, int cell_index) 
+double cellCenterDepth(const UnstructuredGrid& grid, int cell_index)
 {
     // This method is an alternative to the method cellCentroidCoordinate(...) below.
     // The cell center depth is computed as a raw average of cell corner depths.
@@ -151,6 +151,7 @@ FaceCellTraits<UnstructuredGrid>::Type faceCells(const UnstructuredGrid& grid)
 }
 
 
+#if HAVE_OPM_PARSER
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid ) {
     const int * dims = UgGridHelpers::cartDims( grid );
 
@@ -172,6 +173,7 @@ Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::Ecli
         throw std::invalid_argument("Size mismatch - dimensions of inputGrid argument and current UnstructuredGrid instance disagree");
     }
 }
+#endif
 
 }
 }

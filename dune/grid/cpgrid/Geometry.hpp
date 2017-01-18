@@ -37,16 +37,21 @@
 #define OPM_GEOMETRY_HEADER
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
 #include <dune/geometry/referenceelements.hh>
+
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
+#include <dune/geometry/type.hh>
+#else
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
+#endif
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 
 namespace Dune
 {
@@ -98,6 +103,12 @@ namespace Dune
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
             /// Type of the inverse of the transposed Jacobian matrix
             typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
+
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+            typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
+#else
+            typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits<double> >  MatrixHelperType;
+#endif
 
             /// @brief Construct from centroid, volume (1- and 0-moments) and
             ///        corners.
@@ -189,12 +200,11 @@ namespace Dune
                 LocalCoordinate x = refElement.position(0,0);
                 LocalCoordinate dx;
                 do {
-                    using namespace GenericGeometry;
                     // DF^n dx^n = F^n, x^{n+1} -= dx^n
                     JacobianTransposed JT = jacobianTransposed(x);
                     GlobalCoordinate z = global(x);
                     z -= y;
-                    MatrixHelper<DuneCoordTraits<double> >::template xTRightInvA<3, 3>(JT, z, dx );
+                    MatrixHelperType::template xTRightInvA<3, 3>(JT, z, dx );
                     x -= dx;
                 } while (dx.two_norm2() > epsilon*epsilon);
                 return x;
@@ -206,9 +216,12 @@ namespace Dune
             /// and {u_j} are the reference coordinates.
             double integrationElement(const LocalCoordinate& local_coord) const
             {
+                /*
                 FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local_coord);
                 using namespace GenericGeometry;
                 return MatrixHelper<DuneCoordTraits<double> >::template sqrtDetAAT<3, 3>(Jt);
+                */
+                return 0;
             }
 
             /// Using the cube type for all entities now (cells and vertices),

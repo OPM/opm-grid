@@ -7,7 +7,7 @@
 #include <vector>
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 //- dune-common includes
 #include <dune/common/version.hh>
@@ -31,9 +31,9 @@
 #include <dune/grid/polyhedralgrid/idset.hh>
 
 // Re-enable warnings.
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include <opm/core/grid.h>
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/GridManager.hpp>
@@ -301,6 +301,7 @@ namespace Dune
     /** \name Construction and Destruction
      *  \{ */
 
+#if HAVE_OPM_PARSER
     /** \brief constructor
      *
      *  \param[in]  deck         Opm Eclipse deck
@@ -317,6 +318,7 @@ namespace Dune
     {
       init();
     }
+#endif
 
     /** \brief constructor
      *
@@ -792,6 +794,8 @@ namespace Dune
     }
 
   protected:
+
+#if HAVE_OPM_PARSER
     UnstructuredGridType* createGrid( const Opm::Deck& deck, const std::vector< double >& poreVolumes ) const
     {
         const int* rawactnum = deck.hasKeyword("ACTNUM")
@@ -836,7 +840,7 @@ namespace Dune
         }
         return cgrid;
     }
-
+#endif
 
   public:
     using Base::getRealImplementation;

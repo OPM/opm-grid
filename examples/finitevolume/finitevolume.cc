@@ -6,7 +6,7 @@
 
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/parametertreeparser.hh>
 #include <dune/grid/common/mcmgmapper.hh> // mapper class
@@ -21,7 +21,7 @@
 // checks for defined gridtype and inlcudes appropriate dgfparser implementation
 //#include <dune/grid/io/file/dgfparser/dgfgridtype.hh>
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include "vtkout.hh"
 // #include"transportproblem2.hh"
@@ -30,8 +30,7 @@
 
 #include "dune/grid/CpGrid.hpp"
 
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 
 typedef Dune::CpGrid GridType;
@@ -111,7 +110,9 @@ void initGrid(const Dune::ParameterTree &param, GridType& grid)
     if (fileformat == "sintef_legacy") {
         std::string grid_prefix = param.get<std::string>("grid_prefix");
         grid.readSintefLegacyFormat(grid_prefix);
-    } else if (fileformat == "eclipse") {
+    }
+#if HAVE_OPM_PARSER
+    else if (fileformat == "eclipse") {
         std::string filename = param.get<std::string>("filename");
         if (param.hasKey("z_tolerance")) {
             std::cerr << "****** Warning: z_tolerance parameter is obsolete, use PINCH in deck input instead\n";
@@ -126,7 +127,9 @@ void initGrid(const Dune::ParameterTree &param, GridType& grid)
         Opm::EclipseGrid ecl_grid(deck , actnum);
 
         grid.processEclipseFormat(ecl_grid, periodic_extension, turn_normals);
-    } else if (fileformat == "cartesian") {
+    }
+#endif
+    else if (fileformat == "cartesian") {
         std::array<int, 3> dims = {{ param.get<int>("nx", 1),
                                 param.get<int>("ny", 1),
                                 param.get<int>("nz", 1) }};
