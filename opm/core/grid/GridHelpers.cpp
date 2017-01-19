@@ -198,13 +198,11 @@ Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int 
         break;
     case 3:
         {
-
-        Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
-        Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        Vector a, b;
+        for (int i = 0; i < 3; ++i) {
+            a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[i];
+            b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[i];
+        }
         Vector areaNormal  = cross( a, b);
         areaNormal *= 0.5;
         return areaNormal;
@@ -212,14 +210,12 @@ Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int 
         break;
     case 4:
         {
-        Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
-        Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[0] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[1] ,
-                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[2] };
-
-        Vector areaNormal  = cross( a, b);
+        Vector a, b;
+        for (int i = 0; i < 3; ++i) {
+            a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[i];
+            b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[i];
+        }
+        Vector areaNormal  = Dune::cross( a, b);
         areaNormal *= 0.5;
         return areaNormal;
         }
@@ -230,30 +226,23 @@ Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int 
             int k = (nv % 2) ? 0 : nv - 1;
 
             Vector areaNormal ( 0 );
+            Vector a, b;
             // First quads
             for (int i = 1; i < h; ++i)
             {
-                Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
-                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
-                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
-                Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[0] ,
-                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[1] ,
-                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[2] };
-
-                Vector areaN = cross( a , b );
-                areaNormal += areaN ;
+                for (int i = 0; i < 3; ++i) {
+                    a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*i] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[i];
+                    b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[i];
+                }
+                areaNormal += cross( a , b ) ;
             }
 
             // Last triangle or quad
-            Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
-                         (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
-                         (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
-            Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[0] ,
-                         (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[1] ,
-                         (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[2] };
-
-            Vector areaN = cross( a , b );
-            areaNormal += areaN ;
+            for (int i = 0; i < 3; ++i) {
+                a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*h] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[i];
+                b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[i];
+            }
+            areaNormal += cross( a , b ) ;
             areaNormal *= 0.5;
             return areaNormal;
         }
