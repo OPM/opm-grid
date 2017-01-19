@@ -828,69 +828,31 @@ namespace Dune
             // For faulted cells this gives different results then average of face nodes
             // that seems to agree more with eclipse.
             // This assumes the cell nodes are ordered
-            // 0--1
-            // |  |
-            // 2--3
-            //   4--5
-            //   |  |
-            //   6--7
+            // 6---7
+            // | T |
+            // 4---5
+            //   2---3
+            //   | B |
+            //   0---1
+
+            // this follows the DUNE reference cube
+            static const int faceVxMap[ 6 ][ 4 ] = { {0, 2, 4, 6}, // face 0
+                                                     {1, 3, 5, 7}, // face 1
+                                                     {0, 1, 4, 5}, // face 2
+                                                     {2, 3, 6, 7}, // face 3
+                                                     {0, 1, 2, 3}, // face 4
+                                                     {4, 5, 6, 7}  // face 5
+                                                   };
+
 
             assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
             Vector center(0.0);
-            switch(faceTag)
+            for( int i=0; i<4; ++i )
             {
-            case 0: // X neg
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
-            }
-                break;
-            case 1: // X pos
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
-            }
-                break;
-            case 2: // Y neg
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
-            }
-                break;
-            case 3: // Y pos
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
-            }
-                break;
-            case 4: // z neg
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][0]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][1]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][2]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][3]);
-            }
-                break;
-            case 5: // z pos
-            {
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][4]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][5]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][6]);
-                center += vertexPosition(current_view_data_->cell_to_point_[cell_index][7]);
-            }
-                break;
+               center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMap[ faceTag ][ i ] ]);
             }
 
-            int nd = 3;
-            for (int i=0; i<nd; ++i) {
+            for (int i=0; i<3; ++i) {
                 center[i] /= 4;
             }
             return center;
@@ -928,9 +890,7 @@ namespace Dune
                 Vector a = vertexPosition(current_view_data_->face_to_point_[face][0]) - vertexPosition(current_view_data_->face_to_point_[face][2]);
                 Vector b = vertexPosition(current_view_data_->face_to_point_[face][1]) - vertexPosition(current_view_data_->face_to_point_[face][3]);
                 Vector areaNormal = cross(a,b);
-                for (int i=0; i<nd; ++i) {
-                    areaNormal[i] /= 2;
-                }
+                areaNormal *= 0.5;
                 return areaNormal;
                 }
                 break;
