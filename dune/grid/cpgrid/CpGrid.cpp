@@ -58,7 +58,8 @@ namespace Dune
     CpGrid::CpGrid()
         : data_( new cpgrid::CpGridData(*this)),
           current_view_data_(data_.get()),
-          distributed_data_()
+          distributed_data_(),
+          cell_scatter_gather_interfaces_(new InterfaceMap)
     {}
 
 
