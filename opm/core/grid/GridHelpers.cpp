@@ -21,7 +21,10 @@
 #include "config.h"
 #include <iostream>
 
+
 #include <opm/core/grid/GridHelpers.hpp>
+#include <dune/grid/common/Volumes.hpp>
+
 namespace Opm
 {
 namespace UgGridHelpers
@@ -53,13 +56,13 @@ const int* cartDims(const UnstructuredGrid& grid)
 {
     return grid.cartdims;
 }
-                    
+
 const double* beginCellCentroids(const UnstructuredGrid& grid)
 {
     return grid.cell_centroids;
 }
 
-double cellCenterDepth(const UnstructuredGrid& grid, int cell_index) 
+double cellCenterDepth(const UnstructuredGrid& grid, int cell_index)
 {
     // This method is an alternative to the method cellCentroidCoordinate(...) below.
     // The cell center depth is computed as a raw average of cell corner depths.
@@ -80,7 +83,7 @@ double cellCenterDepth(const UnstructuredGrid& grid, int cell_index)
     return zz/nv;
 }
 
-std::vector<double> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, int face_tag)
+Dune::FieldVector<double,3> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, int face_tag)
 {
     // This method is an alternative to the method faceCentroid(...) below.
     // The face center is computed as a raw average of cell corners.
@@ -94,7 +97,7 @@ std::vector<double> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, 
     assert(grid.dimensions == 3);
     const int nd = 3; // Assuming 3-dimensional grid ...
     const int nv = 4; // Assuming 4 vertices ...
-    std::vector<double> center(3,0.0);
+    Dune::FieldVector<double,3> center(0.0);
     //Vector center(0.0);
     // Traverse the bottom and top cell-face
     for (int i=grid.cell_facepos[cell_index+1]-2; i<grid.cell_facepos[cell_index+1]; ++i) {
@@ -170,7 +173,7 @@ std::vector<double> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, 
 }
 
 
-std::vector<double> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_index)
+Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_index)
 {
     // This method is an alternative to the method faceNormal(...) below.
     // The face Normal area is computed based on the face corners without introducing
@@ -181,43 +184,43 @@ std::vector<double> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_ind
     const int nd = 3; // Assuming 3-dimensional grid ...
     const int nv = grid.face_nodepos[face_index+1] - grid.face_nodepos[face_index];
     const int start = grid.face_nodepos[face_index];
-    std::vector<double> areaNormal(nd,0.0);
+
+    typedef Dune::FieldVector<double,3> Vector;
+
     switch (nv)
     {
     case 0:
     case 1:
     case 2:
         {
-            return areaNormal;
+            return Vector( 0 );
         }
         break;
     case 3:
         {
 
-        double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
-        double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
-        areaNormal[0] = (a[1]*b[2] - a[2]*b[1])/2;
-        areaNormal[1] = (a[2]*b[0] - a[0]*b[2])/2;
-        areaNormal[2] = (a[0]*b[1] - a[1]*b[0])/2;
+        Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        Vector areaNormal  = cross( a, b);
+        areaNormal *= 0.5;
         return areaNormal;
         }
         break;
     case 4:
         {
-        double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
-        double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[0] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[1] ,
-                        (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[2] };
+        Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[0] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[1] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+2]))[2] };
+        Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+3]))[0] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[1] ,
+                     (grid.node_coordinates+nd*(grid.face_nodes[start+1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 3]))[2] };
 
-        areaNormal[0] = (a[1]*b[2] - a[2]*b[1])/2;
-        areaNormal[1] = (a[2]*b[0] - a[0]*b[2])/2;
-        areaNormal[2] = (a[0]*b[1] - a[1]*b[0])/2;
+        Vector areaNormal  = cross( a, b);
+        areaNormal *= 0.5;
         return areaNormal;
         }
         break;
@@ -226,33 +229,32 @@ std::vector<double> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_ind
             int h = (nv - 1)/2;
             int k = (nv % 2) ? 0 : nv - 1;
 
+            Vector areaNormal ( 0 );
             // First quads
             for (int i = 1; i < h; ++i)
             {
-                double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
-                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
-                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
-                double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[0] ,
-                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[1] ,
-                                (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[2] };
+                Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
+                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
+                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
+                Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[0] ,
+                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[1] ,
+                             (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[2] };
 
-                areaNormal[0] += (a[1]*b[2] - a[2]*b[1])/2;
-                areaNormal[1] += (a[2]*b[0] - a[0]*b[2])/2;
-                areaNormal[2] += (a[0]*b[1] - a[1]*b[0])/2;
+                Vector areaN = cross( a , b );
+                areaNormal += areaN ;
             }
 
             // Last triangle or quad
-            double a[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
-                            (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
-                            (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
-            double b[3] = { (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[0] ,
-                            (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[1] ,
-                            (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[2] };
+            Vector a = { (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[0] ,
+                         (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[1] ,
+                         (grid.node_coordinates+nd*(grid.face_nodes[start+2*h ] ))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[2] };
+            Vector b = { (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[0] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[0] ,
+                         (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[1] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[1] ,
+                         (grid.node_coordinates+nd*(grid.face_nodes[start+k]))[2] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*h-1]))[2] };
 
-            areaNormal[0] += (a[1]*b[2] - a[2]*b[1])/2;
-            areaNormal[1] += (a[2]*b[0] - a[0]*b[2])/2;
-            areaNormal[2] += (a[0]*b[1] - a[1]*b[0])/2;
-
+            Vector areaN = cross( a , b );
+            areaNormal += areaN ;
+            areaNormal *= 0.5;
             return areaNormal;
         }
     }

@@ -890,9 +890,7 @@ namespace Dune
                 Vector a = vertexPosition(current_view_data_->face_to_point_[face][0]) - vertexPosition(current_view_data_->face_to_point_[face][2]);
                 Vector b = vertexPosition(current_view_data_->face_to_point_[face][1]) - vertexPosition(current_view_data_->face_to_point_[face][3]);
                 Vector areaNormal = cross(a,b);
-                for (int i=0; i<nd; ++i) {
-                    areaNormal[i] /= 2;
-                }
+                areaNormal *= 0.5;
                 return areaNormal;
                 }
                 break;
