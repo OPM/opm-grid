@@ -1137,6 +1137,9 @@ namespace Dune
         //@{
         ///
         /// \brief Moves data from the global (all data on process) view to the distributed view.
+        ///
+        /// This method does not do communication but assumes that the global grid
+        /// is present on every process and simply copies data to the distributed view.
         /// \tparam DataHandle The type of the data handle describing the data and responsible for
         ///         gathering and scattering the data.
         /// \param handle The data handle describing the data and responsible for
@@ -1171,6 +1174,19 @@ namespace Dune
             // Suppress warnings for unused argument.
             (void) handle;
 #endif
+        }
+
+        /// \brief The type of the map describing communication interfaces.
+        typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+
+        /// \brief Get an interface for gathering/scattering data with communication.
+        ///
+        /// The interface can be used with VariableSizeCommunicator and a custom
+        /// index based data handle to scatter (forward direction of the communicator)
+        // and gather data (backward direction of the communicator).
+        const InterfaceMap& cellScatterGatherInterface()
+        {
+            return *cell_scatter_gather_interfaces_;
         }
 
         /// \brief Switch to the global view.
@@ -1263,6 +1279,12 @@ namespace Dune
         cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::shared_ptr<cpgrid::CpGridData> distributed_data_;
+        /**
+         * @brief Interface for scattering and gathering cell data.
+         *
+         * @warning Will only update owner cells
+         */
+        std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
     }; // end Class CpGrid
 
 

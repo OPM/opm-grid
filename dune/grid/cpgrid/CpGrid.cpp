@@ -150,6 +150,51 @@ CpGrid::scatterGrid(const Opm::EclipseState* ecl,
                                                 overlapLayers);
         std::cout << "After loadbalancing process " << my_num << " has " <<
             distributed_data_->cell_to_face_.size() << " cells." << std::endl;
+
+        // add an interface for gathering/scattering data with communication
+        // forward direction will be scatter and backward gather
+        cell_scatter_gather_interfaces_.reset(new InterfaceMap);
+
+        auto rank = distributed_data_->ccobj_.rank();
+
+        if ( rank == 0)
+        {
+            std::map<int, std::size_t> proc_to_no_cells;
+            for(auto cell_owner = cell_part.begin(); cell_owner != cell_part.end();
+                ++cell_owner)
+            {
+                ++proc_to_no_cells[*cell_owner];
+            }
+
+            for(const auto& proc_no_cells : proc_to_no_cells)
+            {
+                (*cell_scatter_gather_interfaces_)[proc_no_cells.first]
+                    .first.reserve(proc_no_cells.second);
+            }
+
+            std::size_t cell_index = 0;
+
+            for(auto cell_owner = cell_part.begin(); cell_owner != cell_part.end();
+                ++cell_owner, ++cell_index)
+            {
+                auto& indices = (*cell_scatter_gather_interfaces_)[*cell_owner];
+                indices.first.add(cell_index);
+            }
+
+        }
+
+        (*cell_scatter_gather_interfaces_)[0].second
+            .reserve(distributed_data_->cell_indexset_.size());
+
+        for( auto& index: distributed_data_->cell_indexset_)
+        {
+            typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+            if ( index.local().attribute() == AttributeSet::owner)
+            {
+                auto& indices = (*cell_scatter_gather_interfaces_)[0];
+                indices.second.add(index.local());
+            }
+        }
     }
     current_view_data_ = distributed_data_.get();
     return std::make_pair(true, defunct_wells);
