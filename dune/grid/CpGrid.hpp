@@ -899,24 +899,22 @@ namespace Dune
                     int h = (nv - 1)/2;
                     int k = (nv % 2) ? 0 : nv - 1;
 
+                    Vector areaNormal(0.0);
                     // First quads
                     for (int i = 1; i < h; ++i)
                     {
                         Vector a = vertexPosition(current_view_data_->face_to_point_[face][2*i]) - vertexPosition(current_view_data_->face_to_point_[face][0]);
                         Vector b = vertexPosition(current_view_data_->face_to_point_[face][2*i+1]) - vertexPosition(current_view_data_->face_to_point_[face][2*i-1]);
-                        Vector areaNormal = cross(a,b);
-                        for (int i=0; i<nd; ++i) {
-                            areaNormal[i] /= 2;
-                        }
+                        areaNormal += cross(a,b);
                     }
 
                     // Last triangle or quad
                     Vector a = vertexPosition(current_view_data_->face_to_point_[face][2*h]) - vertexPosition(current_view_data_->face_to_point_[face][0]);
                     Vector b = vertexPosition(current_view_data_->face_to_point_[face][k]) - vertexPosition(current_view_data_->face_to_point_[face][2*h-1]);
-                    Vector areaNormal = cross(a,b);
-                    for (int i=0; i<nd; ++i) {
-                        areaNormal[i] /= 2;
-                    }
+                    areaNormal += cross(a,b);
+
+                    areaNormal *= 0.5;
+
                     return areaNormal;
                 }
 
