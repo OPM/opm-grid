@@ -54,7 +54,7 @@ public:
             return cellMapping_;
         if(codim==1)
             return faceMapping_;
-            return pointMapping_;
+        return pointMapping_;
     }
 
     /// \brief Get the vector with the mappings for a codimension
@@ -68,7 +68,7 @@ public:
             return cellMapping_;
         if(codim==1)
             return faceMapping_;
-            return pointMapping_;
+        return pointMapping_;
     }
 protected:
     /// \brief A vector containing the global id of cell with index i at position i.
