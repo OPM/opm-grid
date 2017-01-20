@@ -21,6 +21,8 @@
 #ifndef OPM_CORE_GRIDHELPERS_HEADER_INCLUDED
 #define OPM_CORE_GRIDHELPERS_HEADER_INCLUDED
 
+#include <dune/common/fvector.hh>
+
 #include <opm/core/grid.h>
 #include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
@@ -73,14 +75,14 @@ public:
         assert(row<=size());
         return row_type(data_ + offset_[row], data_ + offset_[row+1]);
     }
-    
+
     /// \brief Get the size of the table.
     /// \return the number rows.
     std::size_t size() const
     {
         return size_;
     }
-    
+
     /// \brief Get the number of non-zero entries.
     std::size_t noEntries() const
     {
@@ -90,7 +92,7 @@ public:
 private:
     /// \brief The array with data of the table.
     const int* data_;
-    /// \brief offset The offsets of the rows. 
+    /// \brief offset The offsets of the rows.
     ///
     /// Row i starts at offset[i] and ends a offset[i+1]
     const int* offset_;
@@ -148,6 +150,21 @@ beginCellCentroids(const UnstructuredGrid& grid);
 /// \brief grid The grid.
 /// \brief cell_index The index of the specific cell.
 double cellCenterDepth(const UnstructuredGrid& grid, int cell_index);
+
+/// \brief Get a coordinate of a specific face center.
+/// \brief calculated as the raw average of the cell corners
+/// \param grid The grid.
+/// \param cell_index The index of the specific cell.
+/// \param face_tag The logical cartesian index of the face
+Dune::FieldVector<double,3> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, int face_tag);
+
+/// \brief Get a area weighted normal vector of a specific face.
+/// \brief calculated without introducing a center point
+/// \brief For cornerpoint grids this is supposed to give
+/// \brief values closer to Ecl.
+/// \param grid The grid.
+/// \param face_index The index of the specific face.
+Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_index);
 
 
 /// \brief Get a coordinate of a specific cell centroid.
@@ -292,11 +309,11 @@ struct Face2VerticesTraits<UnstructuredGrid>
 };
 
 /// \brief Get the cell to faces mapping of a grid.
-Cell2FacesTraits<UnstructuredGrid>::Type 
+Cell2FacesTraits<UnstructuredGrid>::Type
 cell2Faces(const UnstructuredGrid& grid);
 
 /// \brief Get the face to vertices mapping of a grid.
-Face2VerticesTraits<UnstructuredGrid>::Type 
+Face2VerticesTraits<UnstructuredGrid>::Type
 face2Vertices(const UnstructuredGrid& grid);
 
 /// \brief Get the coordinates of a vertex of the grid.
