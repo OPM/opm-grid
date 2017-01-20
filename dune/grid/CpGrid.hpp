@@ -47,6 +47,12 @@
 // Warning suppression for Dune includes.
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
+#include <dune/common/version.hh>
+
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#include <dune/common/parallel/variablesizecommunicator.hh>
+#endif
+
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
@@ -1175,9 +1181,16 @@ namespace Dune
             (void) handle;
 #endif
         }
-
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
         /// \brief The type of the map describing communication interfaces.
         typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+#else
+        // bogus definition for the non parallel type. VariableSizeCommunicator not
+        // availabe
+
+        /// \brief The type of the map describing communication interfaces.
+        typedef std::map<int, std::list<int> > InterfaceMap;
+#endif
 
         /// \brief Get an interface for gathering/scattering data with communication.
         ///

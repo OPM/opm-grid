@@ -398,9 +398,11 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
                                                 grid.globalCell());
     auto gather_handle = CheckGlobalCellHandle(grid.globalCell(),
                                                global_grid.globalCell());
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
     Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface());
     scatter_gather_comm.forward(scatter_handle);
     scatter_gather_comm.backward(gather_handle);
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(intersectionOverlap)
