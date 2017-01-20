@@ -1194,9 +1194,32 @@ namespace Dune
 
         /// \brief Get an interface for gathering/scattering data with communication.
         ///
+        /// Scattering means sending data from the indices of the global grid on
+        /// process 0 to the distributed grid on all ranks independent of the grid.
+        /// Gathering is the other way around.
         /// The interface can be used with VariableSizeCommunicator and a custom
         /// index based data handle to scatter (forward direction of the communicator)
-        // and gather data (backward direction of the communicator).
+        /// and gather data (backward direction of the communicator).
+        /// Here is a small example that prints the received values when scattering:
+        /// \code
+        /// struct Handle{
+        ///   typedef int DataType;
+        ///   const std::vector<int>& vals;
+        ///   bool fixedsize() { return true; }
+        ///   size_t size() { return 1; }
+        ///   void gather(auto& B buf, size_t i)[ buf.write(vals[i]); }
+        ///   void scatter(auto& B buf, size_t i) {
+        ///     int val;
+        ///     buf.read(val);
+        ///     cout<<i<<": "<<val<<" "; }
+        /// };
+        ///
+        /// Handle handle;
+        /// handle.vals.resize(grid.size(0), -1);
+        /// Dune::VariableSizeCommunicator<> comm(grid.comm(),
+        ///                                       grid.cellScatterGatherInterface());
+        /// comm.forward(handle);
+        /// \endcode
         const InterfaceMap& cellScatterGatherInterface()
         {
             return *cell_scatter_gather_interfaces_;
