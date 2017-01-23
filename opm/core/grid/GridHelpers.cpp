@@ -228,11 +228,11 @@ Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int 
             Vector areaNormal ( 0 );
             Vector a, b;
             // First quads
-            for (int i = 1; i < h; ++i)
+            for (int j = 1; j < h; ++j)
             {
                 for (int i = 0; i < 3; ++i) {
-                    a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*i] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[i];
-                    b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*i + 1]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*i-1]))[i];
+                    a[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*j] ))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start]))[i];
+                    b[i] = (grid.node_coordinates+nd*(grid.face_nodes[start+2*j + 1]))[i] - (grid.node_coordinates+nd*(grid.face_nodes[start+ 2*j-1]))[i];
                 }
                 areaNormal += cross( a , b ) ;
             }
