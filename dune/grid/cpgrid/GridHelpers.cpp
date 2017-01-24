@@ -105,6 +105,26 @@ double cellCenterDepth(const Dune::CpGrid& grid, int cell_index)
     return grid.cellCenterDepth(cell_index);
 }
 
+Vector faceCenterEcl(const Dune::CpGrid& grid, int cell_index, int face_tag)
+{
+    // This method is an alternative to the method faceCentroid(...) below.
+    // The face center is computed as a raw average of cell corners.
+    // For faulted grids, this is likely to give slightly different depths that seem
+    // to agree with eclipse.
+    return grid.faceCenterEcl(cell_index, face_tag);
+}
+
+
+Vector faceAreaNormalEcl(const Dune::CpGrid& grid, int face_index)
+{
+    // This method is an alternative to the method faceNormal(...) below.
+    // The face Normal area is computed based on the face corners without introducing
+    // a center point.
+    // For cornerpoint grids, this is likely to give slightly different depths that seem
+    // to agree with eclipse.
+    return grid.faceAreaNormalEcl(face_index);
+}
+
 FaceCentroidTraits<Dune::CpGrid>::IteratorType
 beginFaceCentroids(const Dune::CpGrid& grid)
 {

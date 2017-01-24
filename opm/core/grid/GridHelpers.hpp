@@ -21,6 +21,8 @@
 #ifndef OPM_CORE_GRIDHELPERS_HEADER_INCLUDED
 #define OPM_CORE_GRIDHELPERS_HEADER_INCLUDED
 
+#include <dune/common/fvector.hh>
+
 #include <opm/core/grid.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
@@ -149,6 +151,21 @@ beginCellCentroids(const UnstructuredGrid& grid);
 /// \brief grid The grid.
 /// \brief cell_index The index of the specific cell.
 double cellCenterDepth(const UnstructuredGrid& grid, int cell_index);
+
+/// \brief Get a coordinate of a specific face center.
+/// \brief calculated as the raw average of the cell corners
+/// \param grid The grid.
+/// \param cell_index The index of the specific cell.
+/// \param face_tag The logical cartesian index of the face
+Dune::FieldVector<double,3> faceCenterEcl(const UnstructuredGrid& grid, int cell_index, int face_tag);
+
+/// \brief Get a area weighted normal vector of a specific face.
+/// \brief calculated without introducing a center point
+/// \brief For cornerpoint grids this is supposed to give
+/// \brief values closer to Ecl.
+/// \param grid The grid.
+/// \param face_index The index of the specific face.
+Dune::FieldVector<double,3> faceAreaNormalEcl(const UnstructuredGrid& grid, int face_index);
 
 
 /// \brief Get a coordinate of a specific cell centroid.
