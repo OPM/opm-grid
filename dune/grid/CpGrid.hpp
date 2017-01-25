@@ -1220,7 +1220,7 @@ namespace Dune
         ///                                       grid.cellScatterGatherInterface());
         /// comm.forward(handle);
         /// \endcode
-        const InterfaceMap& cellScatterGatherInterface()
+        const InterfaceMap& cellScatterGatherInterface() const
         {
             return *cell_scatter_gather_interfaces_;
         }
