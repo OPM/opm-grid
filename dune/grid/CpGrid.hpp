@@ -1206,9 +1206,9 @@ namespace Dune
         ///   typedef int DataType;
         ///   const std::vector<int>& vals;
         ///   bool fixedsize() { return true; }
-        ///   size_t size() { return 1; }
+        ///   size_t size(std::size_t) { return 1; }
         ///   void gather(auto& B buf, size_t i)[ buf.write(vals[i]); }
-        ///   void scatter(auto& B buf, size_t i) {
+        ///   void scatter(auto& B buf, size_t i, std::size_t) {
         ///     int val;
         ///     buf.read(val);
         ///     cout<<i<<": "<<val<<" "; }
