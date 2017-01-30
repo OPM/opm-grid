@@ -133,7 +133,7 @@ public:
         buffer.write(sendindex_[i]);
     }
     template<class B>
-    void scatter(B& buffer, const std::size_t& i, std::size_t size)
+    void scatter(B& buffer, const std::size_t& i, std::size_t)
     {
         int gid;
         buffer.read(gid);
@@ -385,10 +385,6 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     typedef Dune::CpGrid::LeafGridView GridView;
     GridView gridView(grid.leafGridView());
     enum{dimWorld = GridView::dimensionworld};
-    typedef typename GridView::ctype CoordScalar;
-    typedef Dune::FieldVector<CoordScalar,dimWorld> GlobalPosition;
-    typedef GridView::Codim<0>::Iterator ElementIterator;
-    typedef typename GridView::IntersectionIterator IntersectionIterator;
 
     grid.loadBalance();
     auto global_grid = grid;
@@ -402,6 +398,9 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface());
     scatter_gather_comm.forward(scatter_handle);
     scatter_gather_comm.backward(gather_handle);
+#else
+    (void) scatter_handle;
+    (void) gather_handle;
 #endif
 }
 
