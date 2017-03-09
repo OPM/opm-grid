@@ -44,12 +44,16 @@
 
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
+#include <opm/core/grid/RepairZCORN.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 
+#include <cstddef>
 #include <fstream>
 #include <iostream>
+#include <initializer_list>
+#include <utility>
 
 namespace Dune
 {
@@ -99,11 +103,51 @@ namespace cpgrid
         std::vector<double> coordData;
         ecl_grid.exportCOORD(coordData);
 
-        std::vector<double> zcornData;
-        ecl_grid.exportZCORN(zcornData);
-
         std::vector<int> actnumData;
         ecl_grid.exportACTNUM(actnumData);
+
+        std::vector<double> zcornData;
+        {
+            ecl_grid.exportZCORN(zcornData);
+
+            auto repair = ::Opm::UgGridHelpers::RepairZCORN {
+                std::move(zcornData), actnumData,
+                std::vector<int>{ ecl_grid.getNX() ,
+                                  ecl_grid.getNY() ,
+                                  ecl_grid.getNZ() }
+            };
+
+            zcornData = repair.destructivelyGrabSanitizedValues();
+
+            if (repair.switchedToDepth()) {
+                std::cout << "ZCORN Values Switched from Elevation to "
+                          << "Depth (Sign Reversal)\n";
+            }
+
+            {
+                const auto& statTBB = repair.statTopBelowBottom();
+
+                if (statTBB.cells > std::size_t{0}) {
+                    std::cout << "ZCORN Changes From Top Not Below Bottom:\n"
+                              << "  - Number of Cells Changed:   "
+                              << statTBB.cells << '\n'
+                              << "  - Number of Corners Changed: "
+                              << statTBB.corners << '\n';
+                }
+            }
+
+            {
+                const auto& statBBLT = repair.statBottomBelowLowerTop();
+
+                if (statBBLT.cells > std::size_t{0}) {
+                    std::cout << "ZCORN Changes From Bottom Not Below Lower Top:\n"
+                              << "  - Number of Cells Changed:   "
+                              << statBBLT.cells << '\n'
+                              << "  - Number of Corners Changed: "
+                              << statBBLT.corners << '\n';
+                }
+            }
+        }
 
         // Make input struct for processing code.
         grdecl g;
