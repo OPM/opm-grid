@@ -17,6 +17,7 @@
 
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>
+#include <dune/common/parallel/variablesizecommunicator.hh>
 #if HAVE_DUNE_GRID_CHECKS
 // The header below are not installed for dune-grid
 // Therefore we need to deactivate testing, if they
@@ -102,6 +103,45 @@ private:
     const Dune::CpGrid& grid_;
     std::vector<int>& dist_point_ids_;
     std::vector<int>& dist_cell_ids_;
+};
+
+/// \brief A data handle to use with CpGrid::.cellScatterGatherInterface()
+/// that checks the correctness of the global cell index at the receiving
+/// end.
+class CheckGlobalCellHandle
+{
+public:
+    CheckGlobalCellHandle(const std::vector<int>& sendindex,
+                          const std::vector<int>& recvindex)
+        : sendindex_(sendindex), recvindex_(recvindex)
+    {}
+
+    typedef int DataType;
+    bool fixedsize()
+    {
+        return true;
+    }
+
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        buffer.write(sendindex_[i]);
+    }
+    template<class B>
+    void scatter(B& buffer, const std::size_t& i, std::size_t)
+    {
+        int gid;
+        buffer.read(gid);
+        BOOST_REQUIRE(gid==recvindex_[i]);
+    }
+private:
+    const std::vector<int>& sendindex_;
+    const std::vector<int>& recvindex_;
 };
 
 class GatherGlobalIdDataHandle
@@ -330,6 +370,38 @@ BOOST_AUTO_TEST_CASE(distribute)
         grid.gatherData(gather_gid_set_data);
 
     }
+}
+
+// A small test that gathers/scatter the global cell indices.
+// On the sending side these are sent and on the receiving side
+// these are check with the globalCell values.
+BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
+{
+
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    grid.createCartesian(dims, size);
+    typedef Dune::CpGrid::LeafGridView GridView;
+    GridView gridView(grid.leafGridView());
+    enum{dimWorld = GridView::dimensionworld};
+
+    grid.loadBalance();
+    auto global_grid = grid;
+    global_grid.switchToGlobalView();
+
+    auto scatter_handle = CheckGlobalCellHandle(global_grid.globalCell(),
+                                                grid.globalCell());
+    auto gather_handle = CheckGlobalCellHandle(grid.globalCell(),
+                                               global_grid.globalCell());
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+    Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface());
+    scatter_gather_comm.forward(scatter_handle);
+    scatter_gather_comm.backward(gather_handle);
+#else
+    (void) scatter_handle;
+    (void) gather_handle;
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(intersectionOverlap)
