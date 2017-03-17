@@ -62,6 +62,10 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+        std::vector<double>
+        getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
+                          const ::std::vector<int>& actnum);
+
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
 
@@ -106,48 +110,8 @@ namespace cpgrid
         std::vector<int> actnumData;
         ecl_grid.exportACTNUM(actnumData);
 
-        std::vector<double> zcornData;
-        {
-            ecl_grid.exportZCORN(zcornData);
-
-            auto repair = ::Opm::UgGridHelpers::RepairZCORN {
-                std::move(zcornData), actnumData,
-                std::vector<int>{ ecl_grid.getNX() ,
-                                  ecl_grid.getNY() ,
-                                  ecl_grid.getNZ() }
-            };
-
-            zcornData = repair.destructivelyGrabSanitizedValues();
-
-            if (repair.switchedToDepth()) {
-                std::cout << "ZCORN Values Switched from Elevation to "
-                          << "Depth (Sign Reversal)\n";
-            }
-
-            {
-                const auto& statTBB = repair.statTopBelowBottom();
-
-                if (statTBB.cells > std::size_t{0}) {
-                    std::cout << "ZCORN Changes From Top Not Below Bottom:\n"
-                              << "  - Number of Cells Changed:   "
-                              << statTBB.cells << '\n'
-                              << "  - Number of Corners Changed: "
-                              << statTBB.corners << '\n';
-                }
-            }
-
-            {
-                const auto& statBBLT = repair.statBottomBelowLowerTop();
-
-                if (statBBLT.cells > std::size_t{0}) {
-                    std::cout << "ZCORN Changes From Bottom Not Below Lower Top:\n"
-                              << "  - Number of Cells Changed:   "
-                              << statBBLT.cells << '\n'
-                              << "  - Number of Corners Changed: "
-                              << statBBLT.corners << '\n';
-                }
-            }
-        }
+        // Mutable because grdecl::zcorn is non-const.
+        auto zcornData = getSanitizedZCORN(ecl_grid, actnumData);
 
         // Make input struct for processing code.
         grdecl g;
@@ -157,10 +121,7 @@ namespace cpgrid
         g.coord = &coordData[0];
         g.zcorn = &zcornData[0];
 
-        if (actnumData.size() == 0)
-            g.actnum = NULL;
-        else
-            g.actnum = &actnumData[0];
+        g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
 
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
@@ -300,6 +261,53 @@ namespace cpgrid
 
     namespace
     {
+        std::vector<double>
+        getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
+                          const ::std::vector<int>& actnumData)
+        {
+            std::vector<double> zcornData;
+            ecl_grid.exportZCORN(zcornData);
+
+            auto repair = ::Opm::UgGridHelpers::RepairZCORN {
+                std::move(zcornData), actnumData,
+                std::vector<std::size_t>{ ecl_grid.getNX() ,
+                                          ecl_grid.getNY() ,
+                                          ecl_grid.getNZ() }
+            };
+
+            zcornData = repair.destructivelyGrabSanitizedValues();
+
+            if (repair.switchedToDepth()) {
+                std::cout << "ZCORN Values Switched from Elevation to "
+                          << "Depth (Sign Reversal)\n";
+            }
+
+            {
+                const auto& statTBB = repair.statTopBelowBottom();
+
+                if (statTBB.cells > std::size_t{0}) {
+                    std::cout << "ZCORN Changes From Top Not Below Bottom:\n"
+                              << "  - Number of Cells Changed:   "
+                              << statTBB.cells << '\n'
+                              << "  - Number of Corners Changed: "
+                              << statTBB.corners << '\n';
+                }
+            }
+
+            {
+                const auto& statBBLT = repair.statBottomBelowLowerTop();
+
+                if (statBBLT.cells > std::size_t{0}) {
+                    std::cout << "ZCORN Changes From Bottom Not Below Lower Top:\n"
+                              << "  - Number of Cells Changed:   "
+                              << statBBLT.cells << '\n'
+                              << "  - Number of Corners Changed: "
+                              << statBBLT.corners << '\n';
+                }
+            }
+
+            return zcornData;
+        }
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
