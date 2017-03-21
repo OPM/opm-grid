@@ -599,10 +599,19 @@ namespace Opm { namespace UgGridHelpers {
                 all_signs.push_back(this->getZCornSign(globCell));
             }
 
+            // Ignore twisted cells (i.e., cells of indeterminate signs).
             const int ignore = 0;
 
-            // Elevation == ZCORN decreasing => all non-ignored cell signs
-            // negative.
+            // Elevation implies that ZCORN values are decreasing which
+            // means that the signs in all non-twisted cells equal -1.
+            //
+            // Note: This check is *NOT* equivalent to
+            //
+            //    allEqual(all_signs, ignore, -1)
+            //
+            // because that check returns \c true if ALL cells are ignored
+            // whereas first()==-1 ensures that there is at least ONE cell
+            // of determinate sign.
             return (first(all_signs, ignore) == -1)
                 && allEqual(all_signs, ignore, -1);
         }
@@ -663,8 +672,9 @@ namespace Opm { namespace UgGridHelpers {
             return this->allEqual(coll, ignore, ignore);
         }
 
-        /// Check whether or not all elements of a vector are equal, while
-        /// ignoring particular element value.
+        /// Check whether or not all elements of a vector are equal to each
+        /// other or a user-specified value, while ignoring particular
+        /// element value.
         ///
         /// \param[in] coll Sequence of elements.
         ///
