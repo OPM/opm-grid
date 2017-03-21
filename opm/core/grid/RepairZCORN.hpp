@@ -242,7 +242,7 @@ namespace Opm { namespace UgGridHelpers {
             ///    such cell exists, e.g., because the input cell is in the
             ///    bottom layer of the model or all cells below it are
             ///    explicitly deactivated, then function neighbourBelow()
-            ///    returns \code static_cast<std::size_t>(-1) \endcode.
+            ///    returns \code >= numGlobalCells() \endcode.
             std::size_t neighbourBelow(IndexTuple ijk) const
             {
                 if (ijk[2] >= nz_ - 1) {
@@ -286,6 +286,9 @@ namespace Opm { namespace UgGridHelpers {
             /// \param[in] Cartesian cell position.  Lateral positions (I,J)
             ///    assumed to be in valid range \code [0 .. nx_-1] \endcode
             ///    and \code [0 .. ny-1] \endcode respectively.
+            ///
+            /// \return global cell ID of cell \p ijk.  If no such cell
+            ///    exists, returns \code >= numGlobalCells() \endcode.
             std::size_t globalCellIdx(const IndexTuple& ijk) const
             {
                 if (ijk[2] > nz_ - 1) { return -1; }
