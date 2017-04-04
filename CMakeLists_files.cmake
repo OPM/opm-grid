@@ -87,6 +87,7 @@ list (APPEND TEST_SOURCE_FILES
 	tests/test_gridutilities.cpp
 	tests/test_minpvprocessor.cpp
 	tests/test_quadratures.cpp
+	tests/test_repairzcorn.cpp
 	tests/test_ug.cpp
 	)
 
@@ -169,6 +170,7 @@ list (APPEND PUBLIC_HEADER_FILES
         opm/core/grid/GridUtilities.hpp
         opm/core/grid/MinpvProcessor.hpp
         opm/core/grid/PinchProcessor.hpp
+	opm/core/grid/RepairZCORN.hpp
         opm/core/grid/cart_grid.h
         opm/core/grid/cornerpoint_grid.h
         opm/core/grid/cpgpreprocess/facetopology.h
