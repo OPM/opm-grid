@@ -77,7 +77,7 @@ namespace Dune
     template< class Entity >
     std::vector< double > &parameter ( const Entity &entity )
     {
-        static std::vector dummy;
+        static std::vector<double> dummy;
         return dummy;
     }
 
