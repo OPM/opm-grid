@@ -71,24 +71,25 @@ list (APPEND ATTIC_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
-  tests/cpgrid/entityrep_test.cpp
-  tests/cpgrid/entity_test.cpp
-  tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/geometry_test.cpp
-  tests/cpgrid/orientedentitytable_test.cpp
-  tests/cpgrid/partition_iterator_test.cpp
-  tests/cpgrid/zoltan_test.cpp
-  tests/grid_test.cc
-  tests/p2pcommunicator_test.cc
-  tests/test_sparsetable.cpp
-  tests/test_cartgrid.cpp
-  tests/test_column_extract.cpp
-  tests/test_geom2d.cpp
-  tests/test_gridutilities.cpp
-  tests/test_minpvprocessor.cpp
-  tests/test_quadratures.cpp
-  tests/test_ug.cpp
-  )
+	tests/cpgrid/entityrep_test.cpp
+	tests/cpgrid/entity_test.cpp
+	tests/cpgrid/facetag_test.cpp
+	tests/cpgrid/geometry_test.cpp
+	tests/cpgrid/orientedentitytable_test.cpp
+	tests/cpgrid/partition_iterator_test.cpp
+	tests/cpgrid/zoltan_test.cpp
+	tests/grid_test.cc
+	tests/p2pcommunicator_test.cc
+	tests/test_sparsetable.cpp
+	tests/test_cartgrid.cpp
+	tests/test_column_extract.cpp
+	tests/test_geom2d.cpp
+	tests/test_gridutilities.cpp
+	tests/test_minpvprocessor.cpp
+	tests/test_quadratures.cpp
+	tests/test_repairzcorn.cpp
+	tests/test_ug.cpp
+	)
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
@@ -169,6 +170,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/core/grid/GridUtilities.hpp
   opm/core/grid/MinpvProcessor.hpp
   opm/core/grid/PinchProcessor.hpp
+  opm/core/grid/RepairZCORN.hpp
   opm/core/grid/cart_grid.h
   opm/core/grid/cornerpoint_grid.h
   opm/core/grid/cpgpreprocess/facetopology.h

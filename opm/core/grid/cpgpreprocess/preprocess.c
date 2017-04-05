@@ -670,7 +670,7 @@ vert_size(const struct grdecl *in,
 
 /* ---------------------------------------------------------------------- */
 static int
-is_lefthanded(const struct grdecl *in)
+is_lefthanded(const struct grdecl *in, const double sign)
 /* ---------------------------------------------------------------------- */
 {
     int           active, searching;
@@ -722,7 +722,7 @@ is_lefthanded(const struct grdecl *in)
 
     /* Compute vector triple product to distinguish left-handed (<0)
      * from right-handed (>0) coordinate systems. */
-    triple = dz * (dx[0]*dy[1] - dx[1]*dy[0]);
+    triple = sign * dz * (dx[0]*dy[1] - dx[1]*dy[0]);
 
     assert (fabs(triple) > 0.0);
 
@@ -849,7 +849,7 @@ void process_grdecl(const struct grdecl   *in,
     free (actnum);
 
     /* Determine if coordinate system is left handed or not. */
-    left_handed = is_lefthanded(in);
+    left_handed = is_lefthanded(in, sign);
     if (left_handed) {
         /* Reflect Y coordinates about XZ plane to create right-handed
          * coordinate system whilst processing intersections. */

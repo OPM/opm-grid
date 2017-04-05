@@ -47,6 +47,12 @@
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
+#include <dune/common/version.hh>
+
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#include <dune/common/parallel/variablesizecommunicator.hh>
+#endif
+
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/grid.hh>
 #include <dune/grid/common/gridenums.hh>
@@ -1143,6 +1149,9 @@ namespace Dune
         //@{
         ///
         /// \brief Moves data from the global (all data on process) view to the distributed view.
+        ///
+        /// This method does not do communication but assumes that the global grid
+        /// is present on every process and simply copies data to the distributed view.
         /// \tparam DataHandle The type of the data handle describing the data and responsible for
         ///         gathering and scattering the data.
         /// \param handle The data handle describing the data and responsible for
@@ -1177,6 +1186,49 @@ namespace Dune
             // Suppress warnings for unused argument.
             (void) handle;
 #endif
+        }
+#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+        /// \brief The type of the map describing communication interfaces.
+        typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+#else
+        // bogus definition for the non parallel type. VariableSizeCommunicator not
+        // availabe
+
+        /// \brief The type of the map describing communication interfaces.
+        typedef std::map<int, std::list<int> > InterfaceMap;
+#endif
+
+        /// \brief Get an interface for gathering/scattering data with communication.
+        ///
+        /// Scattering means sending data from the indices of the global grid on
+        /// process 0 to the distributed grid on all ranks independent of the grid.
+        /// Gathering is the other way around.
+        /// The interface can be used with VariableSizeCommunicator and a custom
+        /// index based data handle to scatter (forward direction of the communicator)
+        /// and gather data (backward direction of the communicator).
+        /// Here is a small example that prints the received values when scattering:
+        /// \code
+        /// struct Handle{
+        ///   typedef int DataType;
+        ///   const std::vector<int>& vals;
+        ///   bool fixedsize() { return true; }
+        ///   size_t size(std::size_t) { return 1; }
+        ///   void gather(auto& B buf, size_t i)[ buf.write(vals[i]); }
+        ///   void scatter(auto& B buf, size_t i, std::size_t) {
+        ///     int val;
+        ///     buf.read(val);
+        ///     cout<<i<<": "<<val<<" "; }
+        /// };
+        ///
+        /// Handle handle;
+        /// handle.vals.resize(grid.size(0), -1);
+        /// Dune::VariableSizeCommunicator<> comm(grid.comm(),
+        ///                                       grid.cellScatterGatherInterface());
+        /// comm.forward(handle);
+        /// \endcode
+        const InterfaceMap& cellScatterGatherInterface() const
+        {
+            return *cell_scatter_gather_interfaces_;
         }
 
         /// \brief Switch to the global view.
@@ -1269,6 +1321,12 @@ namespace Dune
         cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::shared_ptr<cpgrid::CpGridData> distributed_data_;
+        /**
+         * @brief Interface for scattering and gathering cell data.
+         *
+         * @warning Will only update owner cells
+         */
+        std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
     }; // end Class CpGrid
 
 
