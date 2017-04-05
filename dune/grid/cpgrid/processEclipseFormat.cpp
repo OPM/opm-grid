@@ -62,9 +62,11 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+#if HAVE_OPM_PARSER
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
+#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
@@ -263,6 +265,7 @@ namespace cpgrid
 
     namespace
     {
+#if HAVE_OPM_PARSER
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)
@@ -310,6 +313,7 @@ namespace cpgrid
 
             return zcornData;
         }
+#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
