@@ -29,14 +29,13 @@ namespace Dune
 
     explicit DGFGridFactory ( std::istream &input,
                               MPICommunicator comm = MPIHelper::getCommunicator() )
-    : grid_( 0 )
+    : grid_( nullptr )
     {
     }
 
     explicit DGFGridFactory ( const std::string &filename,
                               MPICommunicator comm = MPIHelper::getCommunicator() )
-    : dgfHostFactory_( filename, comm ),
-      grid_( 0 )
+    : grid_( nullptr )
     {
     }
 
