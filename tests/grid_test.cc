@@ -9,6 +9,9 @@
 #include <dune/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
+#include <dune/grid/cpgrid/dgfparser.hh>
+#include <dune/grid/polyhedralgrid/dgfparser.hh>
+
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/test/gridcheck.hh>
@@ -151,6 +154,15 @@ int main(int argc, char** argv )
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
 
+    std::stringstream dgfFile;
+    // create unit cube with 8 cells in each direction
+    dgfFile << "DGF" << std::endl;
+    dgfFile << "Interval" << std::endl;
+    dgfFile << "0 0 0" << std::endl;
+    dgfFile << "1 1 1" << std::endl;
+    dgfFile << "8 8 8" << std::endl;
+    dgfFile << "#" << std::endl;
+
 #if HAVE_OPM_PARSER
     Opm::Parser parser;
     Opm::ParseContext parseContext;
@@ -163,26 +175,28 @@ int main(int argc, char** argv )
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
 #if HAVE_OPM_PARSER
       Grid grid(deck, porv);
-#else
-      UnstructuredGrid ug;
-      Grid grid( ug );
-#endif
       testGrid( grid, "polyhedralgrid" );
+#endif
+      //Dune::GridPtr< Grid > gridPtr( dgfFile );
+      //testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
 
     // test CpGrid
     {
-      Dune::CpGrid grid;
+      typedef Dune::CpGrid Grid;
 #if HAVE_OPM_PARSER
+      Grid grid;
       const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
       Opm::EclipseGrid ecl_grid(deck , actnum);
 
       grid.processEclipseFormat(ecl_grid, false, false, false, porv);
-#endif
       testGrid( grid, "cpgrid" );
-#if HAVE_OPM_PARSER
+
       Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
+      testGrid( grid, "cpgrid2" );
 #endif
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      //testGrid( *gridPtr, "cpgrid-dgf" );
     }
     return 0;
 }
