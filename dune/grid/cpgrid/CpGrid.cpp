@@ -189,7 +189,7 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
 
         for( auto& index: distributed_data_->cell_indexset_)
         {
-            typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+            typedef typename cpgrid::CpGridData::AttributeSet AttributeSet;
             if ( index.local().attribute() == AttributeSet::owner)
             {
                 auto& indices = (*cell_scatter_gather_interfaces_)[0];
