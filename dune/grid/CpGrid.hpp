@@ -868,8 +868,7 @@ namespace Dune
         const Vector faceAreaNormalEcl(int face) const
         {
             // same implementation as ResInsight
-            Vector areaNormal(0.0);
-            int nd = areaNormal.size();
+            const int nd = Vector::dimension;
             const int nv =  numFaceVertices(face);
             switch (nv)
             {
@@ -877,7 +876,7 @@ namespace Dune
             case 1:
             case 2:
                 {
-                    return areaNormal;
+                    return Vector(0.0);
                 }
                 break;
             case 3:

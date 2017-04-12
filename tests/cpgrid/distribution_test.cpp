@@ -383,7 +383,6 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
     grid.createCartesian(dims, size);
     typedef Dune::CpGrid::LeafGridView GridView;
-    GridView gridView(grid.leafGridView());
     enum{dimWorld = GridView::dimensionworld};
 
     grid.loadBalance();
