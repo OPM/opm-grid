@@ -39,8 +39,8 @@ BOOST_AUTO_TEST_CASE(facetag)
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
     Dune::CpGrid grid;
-    std::array<int, 3>    dims     = { 3, 3, 3 };
-    std::array<double, 3> cellsize = { 1., 1., 1. };
+    std::array<int, 3>    dims     = {{ 3, 3, 3 }};
+    std::array<double, 3> cellsize = {{ 1., 1., 1. }};
     grid.createCartesian(dims, cellsize);
     Dune::cpgrid::Cell2FacesContainer c2f(&grid);
     
