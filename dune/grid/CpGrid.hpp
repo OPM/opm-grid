@@ -49,7 +49,7 @@
 
 #include <dune/common/version.hh>
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 #include <dune/common/parallel/variablesizecommunicator.hh>
 #endif
 
@@ -1152,7 +1152,7 @@ namespace Dune
         template<class DataHandle>
         void scatterData(DataHandle& handle)
         {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
             distributed_data_->scatterData(handle, data_.get(), distributed_data_.get());
@@ -1171,7 +1171,7 @@ namespace Dune
         template<class DataHandle>
         void gatherData(DataHandle& handle)
         {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
             distributed_data_->gatherData(handle, data_.get(), distributed_data_.get());
@@ -1180,7 +1180,7 @@ namespace Dune
             (void) handle;
 #endif
         }
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
         /// \brief The type of the map describing communication interfaces.
         typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
 #else
@@ -1236,35 +1236,8 @@ namespace Dune
             current_view_data_=distributed_data_.get();
         }
         //@}
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 
-        /// \name backward compatibility with dune-grid-2.2
-        //@{
-        //! View for a grid level
-        template<PartitionIteratorType pitype>
-        typename Partition<pitype>::LevelGridView levelGridView(int level) const {
-          return this->template levelView<pitype>(level);
-        }
-
-        //! View for the leaf grid
-        template<PartitionIteratorType pitype>
-        typename Partition<pitype>::LeafGridView leafGridView() const {
-          return this->template leafView<pitype>();
-        }
-
-        //! View for a grid level for All_Partition
-        LevelGridView levelGridView(int level) const {
-          return this->levelView(level);
-        }
-
-        //! View for the leaf grid for All_Partition
-        LeafGridView leafGridView() const {
-          return this->leafView();
-        }
-        //@}
-#endif
-
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
         /// \brief The type of the parallel index set
         typedef cpgrid::CpGridData::ParallelIndexSet ParallelIndexSet;
         /// \brief The type of the remote indices information

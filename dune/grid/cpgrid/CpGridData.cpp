@@ -31,9 +31,7 @@ CpGridData::CpGridData(const CpGridData& g)
 {
 #if HAVE_MPI
     ccobj_=CollectiveCommunication(MPI_COMM_SELF);
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
-#endif
+    cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
 
@@ -44,19 +42,17 @@ CpGridData::CpGridData()
 {
 #if HAVE_MPI
     ccobj_=CollectiveCommunication(MPI_COMM_SELF);
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
-#endif
+    cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 CpGridData::CpGridData(MPI_Comm comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
 {
-    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
+    cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 }
 #endif
 
@@ -67,9 +63,7 @@ CpGridData::CpGridData(CpGrid&)
 {
 #if HAVE_MPI
     ccobj_=CollectiveCommunication(MPI_COMM_SELF);
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
-    cell_interfaces_=make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
-#endif
+    cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
 
@@ -86,20 +80,20 @@ void freeInterfaces(InterfaceMap& map)
 }
 
 template<class InterfaceMap>
-void freeInterfaces(tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+void freeInterfaces(std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
                     interfaces)
 {
-    freeInterfaces(get<0>(interfaces));
-    freeInterfaces(get<1>(interfaces));
-    freeInterfaces(get<2>(interfaces));
-    freeInterfaces(get<3>(interfaces));
-    freeInterfaces(get<4>(interfaces));
+    freeInterfaces(std::get<0>(interfaces));
+    freeInterfaces(std::get<1>(interfaces));
+    freeInterfaces(std::get<2>(interfaces));
+    freeInterfaces(std::get<3>(interfaces));
+    freeInterfaces(std::get<4>(interfaces));
 }
 #endif
 
 CpGridData::~CpGridData()
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     // code deactivated, because users cannot access face indices and therefore
     // communication on faces makes no sense!
     //freeInterfaces(face_interfaces_);
@@ -146,7 +140,7 @@ int CpGridData::size(int codim) const
     }
 }
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 
  // A functor that counts existent entries and renumbers them.
 struct CountExistent
@@ -329,11 +323,11 @@ struct InterfaceTupleFunctor
 
     void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
     {
-        get<0>(t_)(rank, index, mine, other);
-        get<1>(t_)(rank, index, mine, other);
-        get<2>(t_)(rank, index, mine, other);
-        get<3>(t_)(rank, index, mine, other);
-        get<4>(t_)(rank, index, mine, other);
+        std::get<0>(t_)(rank, index, mine, other);
+        std::get<1>(t_)(rank, index, mine, other);
+        std::get<2>(t_)(rank, index, mine, other);
+        std::get<3>(t_)(rank, index, mine, other);
+        std::get<4>(t_)(rank, index, mine, other);
     }
     Tuple& t_;
 };
@@ -347,10 +341,10 @@ struct Converter
     typedef Combine<Interior,Border> InteriorBorder;
     typedef Combine<Overlap,Front> OverlapFront;
 
-    typedef tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap,
-                  AllSet<PartitionType> > SourceTuple;
-    typedef tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
-                  AllSet<PartitionType> > DestinationTuple;
+    typedef std::tuple<InteriorBorder, InteriorBorder,        Overlap     , Overlap,
+                       AllSet<PartitionType> > SourceTuple;
+    typedef std::tuple<InteriorBorder, AllSet<PartitionType>, OverlapFront, AllSet<PartitionType>,
+                       AllSet<PartitionType> > DestinationTuple;
 };
 
 /**
@@ -361,12 +355,12 @@ struct Converter
  */
 template<std::size_t i, class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
-             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
     typedef typename std::map<int,std::pair<std::size_t,std::size_t> >::const_iterator Iter;
     const std::map<int,std::pair<std::size_t,std::size_t> >& sizeMap=sizes[i];
-    InterfaceMap& interfaceMap=get<i>(interfaces);
+    InterfaceMap& interfaceMap=std::get<i>(interfaces);
 
     for(Iter iter=sizeMap.begin(), end =sizeMap.end(); iter!=end; ++iter)
     {
@@ -383,7 +377,7 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
  */
 template<class InterfaceMap>
 void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> > >& sizes,
-             tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+             std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
              interfaces)
 {
     reserve<0>(sizes, interfaces);
@@ -400,12 +394,12 @@ void reserve(const std::vector<std::map<int,std::pair<std::size_t,std::size_t> >
 template<std::size_t i>
 struct SizeFunctor :
     public InterfaceFunctor<std::size_t, InterfaceIncrementor,
-                            typename tuple_element<i,typename Converter::SourceTuple>::type,
-                            typename tuple_element<i,typename Converter::DestinationTuple>::type>
+                            typename std::tuple_element<i,typename Converter::SourceTuple>::type,
+                            typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
 {
     typedef InterfaceFunctor<std::size_t, InterfaceIncrementor,
-                             typename tuple_element<i,typename Converter::SourceTuple>::type,
-                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
+                             typename std::tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
     SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
         :Base(m)
@@ -419,12 +413,12 @@ struct SizeFunctor :
 template<std::size_t i>
 struct AddFunctor :
     public InterfaceFunctor<InterfaceInformation, InterfaceAdder,
-                             typename tuple_element<i,typename Converter::SourceTuple>::type,
-                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
+                             typename std::tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
 {
     typedef InterfaceFunctor<InterfaceInformation, InterfaceAdder,
-                             typename tuple_element<i,typename Converter::SourceTuple>::type,
-                             typename tuple_element<i,typename Converter::DestinationTuple>::type>
+                             typename std::tuple_element<i,typename Converter::SourceTuple>::type,
+                             typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
     AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
         : Base(m)
@@ -486,38 +480,39 @@ void iterate_over_attributes(std::vector<std::map<int,char> >& attributes,
 template<class InterfaceMap,class T>
 void createInterfaces(std::vector<std::map<int,char> >& attributes,
                       T partition_type_iterator,
-                      tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
+                      std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>&
                       interfaces)
 {
     // calculate sizes
     std::vector<std::map<int,std::pair<std::size_t,std::size_t> > > sizes(5);
-    typedef tuple<SizeFunctor<0>,SizeFunctor<1>,SizeFunctor<2>,SizeFunctor<3>,
-                  SizeFunctor<4> > SizeTuple;
+    typedef std::tuple<SizeFunctor<0>,SizeFunctor<1>,SizeFunctor<2>,SizeFunctor<3>,
+                       SizeFunctor<4> > SizeTuple;
+
     SizeTuple
-        size_functor_tuple = make_tuple(SizeFunctor<0>(sizes[0]),
-                                        SizeFunctor<1>(sizes[1]),
-                                        SizeFunctor<2>(sizes[2]),
-                                        SizeFunctor<3>(sizes[3]),
-                                        SizeFunctor<4>(sizes[4]));
+    size_functor_tuple = std::make_tuple(SizeFunctor<0>(sizes[0]),
+                                         SizeFunctor<1>(sizes[1]),
+                                         SizeFunctor<2>(sizes[2]),
+                                         SizeFunctor<3>(sizes[3]),
+                                         SizeFunctor<4>(sizes[4]));
     InterfaceTupleFunctor<SizeTuple> size_functor(size_functor_tuple);
     iterate_over_attributes(attributes, partition_type_iterator, size_functor);
     // reserve space
     reserve(sizes, interfaces);
     // add indices to the interface
-    typedef tuple<AddFunctor<0>,AddFunctor<1>,AddFunctor<2>,AddFunctor<3>,
-                  AddFunctor<4> > AddTuple;
+    typedef std::tuple<AddFunctor<0>,AddFunctor<1>,AddFunctor<2>,AddFunctor<3>,
+                       AddFunctor<4> > AddTuple;
     AddTuple
-        add_functor_tuple(AddFunctor<0>(get<0>(interfaces)),
-                          AddFunctor<1>(get<1>(interfaces)),
-                          AddFunctor<2>(get<2>(interfaces)),
-                          AddFunctor<3>(get<3>(interfaces)),
-                          AddFunctor<4>(get<4>(interfaces)));
+        add_functor_tuple(AddFunctor<0>(std::get<0>(interfaces)),
+                          AddFunctor<1>(std::get<1>(interfaces)),
+                          AddFunctor<2>(std::get<2>(interfaces)),
+                          AddFunctor<3>(std::get<3>(interfaces)),
+                          AddFunctor<4>(std::get<4>(interfaces)));
     InterfaceTupleFunctor<AddTuple> add_functor(add_functor_tuple);
     iterate_over_attributes(attributes, partition_type_iterator, add_functor);
 
 }
 
-#endif // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#endif // #if HAVE_MPI
 
 
 void CpGridData::distributeGlobalGrid(const CpGrid& grid,
@@ -525,7 +520,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                                       const std::vector<int>& cell_part,
                                       int overlap_layers)
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     Dune::CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& ccobj=ccobj_;
     int my_rank=ccobj.rank();
 #if 0
@@ -936,21 +931,21 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
 
     // Compute the interface information for cells
-    get<InteriorBorder_All_Interface>(cell_interfaces_)
+    std::get<InteriorBorder_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
-    get<Overlap_OverlapFront_Interface>(cell_interfaces_)
+    std::get<Overlap_OverlapFront_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
                EnumItem<AttributeSet, AttributeSet::copy>());
-    get<Overlap_All_Interface>(cell_interfaces_)
+    std::get<Overlap_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
                                  AllSet<AttributeSet>());
-    get<All_All_Interface>(cell_interfaces_)
+    std::get<All_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, AllSet<AttributeSet>(), AllSet<AttributeSet>());
 
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.
-    Dune::VariableSizeCommunicator<> comm(get<All_All_Interface>(cell_interfaces_));
+    Dune::VariableSizeCommunicator<> comm(std::get<All_All_Interface>(cell_interfaces_));
     /*
       // code deactivated, because users cannot access face indices and therefore
       // communication on faces makes no sense!
@@ -959,7 +954,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         face_handle(ccobj_.rank(), *partition_type_indicator_,
                     face_attributes, static_cast<Opm::SparseTable<EntityRep<1> >&>(cell_to_face_),
                     *this);
-    if( get<All_All_Interface>(cell_interfaces_).interfaces().size() )
+    if( std::get<All_All_Interface>(cell_interfaces_).interfaces().size() )
     {
         comm.forward(face_handle);
     }
@@ -971,14 +966,14 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     AttributeDataHandle<std::vector<std::array<int,8> > >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
                      point_attributes, cell_to_point_, *this);
-    if( static_cast<const Dune::Interface&>(get<All_All_Interface>(cell_interfaces_))
+    if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
         .interfaces().size() )
     {
         comm.forward(point_handle);
     }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
-#else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
     static_cast<void>(cell_part);

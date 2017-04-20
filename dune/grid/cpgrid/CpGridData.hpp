@@ -51,33 +51,24 @@
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/mpihelper.hh>
-#else
-#include <dune/common/mpihelper.hh>
-#endif
 #ifdef HAVE_DUNE_ISTL
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
 #include <dune/common/parallel/collectivecommunication.hh>
-#else
-#include <dune/common/collectivecommunication.hh>
-#endif
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/variablesizecommunicator.hh>
-#endif
 #include <dune/grid/common/gridenums.hh>
-#include <dune/common/tuples.hh>
 
 #include <opm/common/utility/platform_dependent/reenable_warnings.h>
 
 
 #include <array>
+#include <tuple>
+
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
@@ -121,7 +112,7 @@ public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
@@ -266,7 +257,7 @@ public:
 
 private:
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 
     /// \brief Gather data on a global grid representation.
     /// \param data A data handle for getting or setting the data
@@ -409,7 +400,7 @@ private:
     enum AttributeSet{owner, overlap, copy};
 #endif
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 
     /// \brief The type of the parallel index set
     typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet>,512> ParallelIndexSet;
@@ -424,16 +415,16 @@ private:
     RemoteIndices cell_remote_indices_;
 
     /// \brief Communication interface for the cells.
-    tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
+    std::tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
     /*
     // code deactivated, because users cannot access face indices and therefore
     // communication on faces makes no sense!
     /// \brief Interface from interior and border to interior and border for the faces.
-    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
+    std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     face_interfaces_;
     */
     /// \brief Interface from interior and border to interior and border for the faces.
-    tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
+    std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     point_interfaces_;
     /// \brief Interface for gathering and scattering cell data.
     InterfaceMap cell_gather_scatter_interface;
@@ -457,7 +448,7 @@ private:
     friend class PartitionTypeIndicator;
 };
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 
 namespace
 {
@@ -467,20 +458,20 @@ namespace
 /// \param interfaces A tuple with the values order by interface type.
 template<class T>
 T& getInterface(InterfaceType iftype,
-                Dune::tuple<T,T,T,T,T>& interfaces)
+                std::tuple<T,T,T,T,T>& interfaces)
 {
     switch(iftype)
     {
     case 0:
-        return get<0>(interfaces);
+        return std::get<0>(interfaces);
     case 1:
-        return get<1>(interfaces);
+        return std::get<1>(interfaces);
     case 2:
-        return get<2>(interfaces);
+        return std::get<2>(interfaces);
     case 3:
-        return get<3>(interfaces);
+        return std::get<3>(interfaces);
     case 4:
-        return get<4>(interfaces);
+        return std::get<4>(interfaces);
     }
     OPM_THROW(std::runtime_error, "Invalid Interface type was used during communication");
 }
@@ -518,7 +509,7 @@ template<class DataHandle>
 void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
                              CommunicationDirection dir)
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     if(data.contains(3,0))
         communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
     if(data.contains(3,3))
@@ -532,7 +523,7 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
 }
 }}
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
 #include <dune/grid/cpgrid/Entity.hpp>
 #include <dune/grid/cpgrid/Indexsets.hpp>
 
@@ -663,7 +654,7 @@ template<class DataHandle>
 void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data)
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     if(data.contains(3,0))
        scatterCodimData<0>(data, global_data, distributed_data);
     if(data.contains(3,3))
@@ -752,7 +743,7 @@ template<class DataHandle>
 void CpGridData::gatherData(DataHandle& data, CpGridData* global_data,
                             CpGridData* distributed_data)
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     if(data.contains(3,0))
        gatherCodimData<0>(data, global_data, distributed_data);
     if(data.contains(3,3))
@@ -764,7 +755,7 @@ template<int codim, class DataHandle>
 void CpGridData::gatherCodimData(DataHandle& data, CpGridData* global_data,
                                  CpGridData* distributed_data)
 {
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     // Get the mapping to global index from  the global id set
     const std::vector<int>& mapping =
         distributed_data->global_id_set_->getMapping<codim>();

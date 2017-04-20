@@ -12,11 +12,7 @@
 #include <dune/grid/common/mcmgmapper.hh> // mapper class
 
 #include <dune/common/version.hh>
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
 #include <dune/common/parallel/mpihelper.hh> // include mpi helper class
-#else
-#include <dune/common/mpihelper.hh> // include mpi helper class
-#endif
 
 // checks for defined gridtype and inlcudes appropriate dgfparser implementation
 //#include <dune/grid/io/file/dgfparser/dgfgridtype.hh>
