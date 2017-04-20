@@ -216,12 +216,8 @@ namespace Dune
             /// and {u_j} are the reference coordinates.
             double integrationElement(const LocalCoordinate& local_coord) const
             {
-                /*
-                FieldMatrix<ctype, coorddimension, mydimension> Jt = jacobianTransposed(local_coord);
-                using namespace GenericGeometry;
-                return MatrixHelper<DuneCoordTraits<double> >::template sqrtDetAAT<3, 3>(Jt);
-                */
-                return 0;
+                JacobianTransposed Jt = jacobianTransposed(local_coord);
+                return MatrixHelperType::template sqrtDetAAT<3, 3>(Jt);
             }
 
             /// Using the cube type for all entities now (cells and vertices),
@@ -263,11 +259,12 @@ namespace Dune
             /// J^T_{ij} = (dg_j/du_i)
             /// where g is the mapping from the reference domain,
             /// and {u_i} are the reference coordinates.
-            const FieldMatrix<ctype, mydimension, coorddimension>
+            const JacobianTransposed
             jacobianTransposed(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
                 static_assert(coorddimension == 3, "");
+
                 // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
                 LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local_coord };
                 uvw[0] -= local_coord;
@@ -280,7 +277,7 @@ namespace Dune
                                         { 1, 0, 1 },
                                         { 0, 1, 1 },
                                         { 1, 1, 1 } };
-                FieldMatrix<ctype, mydimension, coorddimension> Jt(0.0);
+                JacobianTransposed  Jt(0.0);
                 for (int i = 0; i < 8; ++i) {
                     for (int deriv = 0; deriv < 3; ++deriv) {
                         // This part contributing to dg/du_{deriv}
@@ -298,10 +295,10 @@ namespace Dune
             }
 
             /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-            const FieldMatrix<ctype, coorddimension, mydimension>
+            const JacobianInverseTransposed
             jacobianInverseTransposed(const LocalCoordinate& local_coord) const
             {
-                FieldMatrix<ctype, coorddimension, mydimension> Jti = jacobianTransposed(local_coord);
+                JacobianInverseTransposed Jti = jacobianTransposed(local_coord);
                 Jti.invert();
                 return Jti;
             }
