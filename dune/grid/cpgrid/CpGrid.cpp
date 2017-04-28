@@ -74,7 +74,7 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
     static_cast<void>(ecl);
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     if(distributed_data_)
     {
         std::cerr<<"There is already a distributed version of the grid."
@@ -86,12 +86,12 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
 
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
-    auto part_and_wells = cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, transmissibilities,
-                                                       cc, 0);
+    auto part_and_wells =
+        cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, transmissibilities, cc, 0);
     int num_parts = cc.size();
     using std::get;
-    auto cell_part = get<0>(part_and_wells);
-    auto defunct_wells = get<1>(part_and_wells);
+    auto cell_part = std::get<0>(part_and_wells);
+    auto defunct_wells = std::get<1>(part_and_wells);
 #else
     std::vector<int> cell_part(current_view_data_->global_cell_.size());
     int  num_parts=-1;
@@ -200,7 +200,7 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
     current_view_data_ = distributed_data_.get();
     return std::make_pair(true, defunct_wells);
 
-#else // #if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#else // #if HAVE_MPI
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";

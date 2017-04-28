@@ -270,13 +270,8 @@ BOOST_AUTO_TEST_CASE(distribute)
         for (LeafIterator it = gridView.begin<0>();
              it != gridView.end<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
                 Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#else
-            const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-                Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#endif
 
             cell_indices.push_back(ix.index(*it));
             cell_centers.push_back(it->geometry().center());
@@ -306,11 +301,11 @@ BOOST_AUTO_TEST_CASE(distribute)
         grid.getIJK(0, ijk);
     }
 
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     // Dune::CpGrid::loadBalance() is non-trivial only if we have MPI
     // *and* if the target Dune platform is sufficiently recent.
     BOOST_REQUIRE(grid.comm()!=MPI_COMM_SELF||MPI_COMM_WORLD==MPI_COMM_SELF);
-#endif // HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#endif // HAVE_MPI
 
     if(procs==1)
     {
@@ -322,20 +317,15 @@ BOOST_AUTO_TEST_CASE(distribute)
         int cell_index=0, face_index=0, point_index=0;
 
         const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
         BOOST_REQUIRE(&ix!=&ix1);
 #endif
 
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             Dune::GeometryType gt = it->type () ;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
             const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
                 Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#else
-            const Dune::GenericReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-                Dune::GenericReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#endif
 
             BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
             BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
@@ -392,7 +382,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
                                                 grid.globalCell());
     auto gather_handle = CheckGlobalCellHandle(grid.globalCell(),
                                                global_grid.globalCell());
-#if HAVE_MPI && DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
+#if HAVE_MPI
     Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface());
     scatter_gather_comm.forward(scatter_handle);
     scatter_gather_comm.backward(gather_handle);
