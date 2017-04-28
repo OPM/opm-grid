@@ -71,7 +71,7 @@ namespace Dune
     const typename DGFBoundaryParameter::type &
     boundaryParameter ( const Intersection &intersection ) const
     {
-        return 0.0;
+        return DGFBoundaryParameter::defaultValue();
     }
 
     template< class Entity >
