@@ -37,7 +37,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #define OPM_INDEXSETS_HEADER
 
 #include <dune/geometry/type.hh>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 

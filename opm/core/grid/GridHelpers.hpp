@@ -24,11 +24,12 @@
 #include <dune/common/fvector.hh>
 
 #include <opm/core/grid.h>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <boost/range/iterator_range.hpp>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 namespace Opm
@@ -222,10 +223,11 @@ struct CellVolumeIteratorTraits<UnstructuredGrid>
        correctly represented in the EclipseGrid created by this
        method.
     */
-
+#if HAVE_OPM_PARSER
 /// \brief Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actnum from the dune UnstructuredGrid.
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid );
+#endif
 
 /// \brief Get an iterator over the cell volumes of a grid positioned at the first cell.
 const double* beginCellVolumes(const UnstructuredGrid& grid);

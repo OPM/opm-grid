@@ -46,9 +46,9 @@
 //
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <dune/common/fvector.hh>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {
@@ -69,7 +69,7 @@ namespace Dune
 
 
 //#include <opm/core/utility/SparseTable.hpp>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include <climits>
 //#include <boost/algorithm/minmax_element.hpp>
 #include <vector>

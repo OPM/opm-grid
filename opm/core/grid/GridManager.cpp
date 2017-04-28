@@ -25,11 +25,9 @@
 #include <opm/core/grid/cart_grid.h>
 #include <opm/core/grid/cornerpoint_grid.h>
 #include <opm/core/grid/MinpvProcessor.hpp>
-#include <opm/common/ErrorMacros.hpp>
-#include <opm/parser/eclipse/Deck/DeckItem.hpp>
-#include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/parser/eclipse/Deck/DeckRecord.hpp>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <array>
 #include <algorithm>
@@ -38,6 +36,7 @@
 namespace Opm
 {
 
+#if HAVE_OPM_PARSER
     /// Construct a 3d corner-point grid from a deck.
     GridManager::GridManager(const Opm::EclipseGrid& inputGrid)
         : ug_(0)
@@ -52,6 +51,7 @@ namespace Opm
     {
         initFromEclipseGrid(inputGrid, poreVolumes);
     }
+#endif
 
 
     /// Construct a 2d cartesian grid with cells of unit size.
@@ -127,7 +127,7 @@ namespace Opm
 
 
 
-
+#if HAVE_OPM_PARSER
     // Construct corner-point grid from EclipseGrid.
     void GridManager::initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                           const std::vector<double>& poreVolumes)
@@ -224,6 +224,7 @@ namespace Opm
             grdecl.mapaxes = NULL;
 
     }
+#endif
 
 
 

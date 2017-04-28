@@ -25,15 +25,13 @@
 #include <iostream>
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <dune/grid/CpGrid.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 using namespace Dune;
 
@@ -55,9 +53,10 @@ using namespace Dune;
 /**
    A function to (conditionally) write a double-field from the grdecl-file to vtk-format
 */
+template <class OpmDeck>
 void condWriteDoubleField(std::vector<double>& fieldvector,
                           const std::string& fieldname,
-                          const Opm::Deck& deck,
+                          const OpmDeck& deck,
                           const std::vector<int>& global_cell,
                           const std::array<size_t, 3>& dims,
                           VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
@@ -79,10 +78,12 @@ void condWriteDoubleField(std::vector<double>& fieldvector,
     }
 
 }
+
 // Now repeat for Integers. I should learn C++ templating...
+template <class OpmDeck>
 void condWriteIntegerField(std::vector<double>& fieldvector,
                            const std::string& fieldname,
-                           const Opm::Deck& deck,
+                           const OpmDeck& deck,
                            const std::vector<int>& global_cell,
                            const std::array<size_t, 3>& dims,
                            VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
@@ -118,8 +119,9 @@ try
         exit(1);
     }
 
-    Opm::ParseContext parseContext;
     const char* eclipsefilename = argv[1];
+#if HAVE_OPM_PARSER
+    Opm::ParseContext parseContext;
     Opm::Parser parser;
     auto deck = parser.parseFile(eclipsefilename, parseContext);
 
@@ -144,9 +146,13 @@ try
         Opm::EclipseGrid ecl_grid(deck , actnum);
         grid.processEclipseFormat(ecl_grid, false);
     }
-    const std::vector<int>& global_cell = grid.globalCell();
+#endif
 
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
+
+#if HAVE_OPM_PARSER
+    const std::vector<int>& global_cell = grid.globalCell();
+
     std::vector<double> poros;
     condWriteDoubleField(poros, "PORO", deck, global_cell, dims, vtkwriter);
 
@@ -169,6 +175,7 @@ try
 
     std::vector<double> swats;
     condWriteDoubleField(swats, "SWAT", deck, global_cell, dims, vtkwriter);
+#endif // #if HAVE_OPM_PARSER
 
     std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));

@@ -23,13 +23,15 @@
 
 
 #include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/grid/CpGrid.hpp>
 #include <dune/common/iteratorfacades.hh>
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 namespace Dune
 {
@@ -404,9 +406,11 @@ const int* cartDims(const Dune::CpGrid& grid);
 /// in the underlying structured grid.
 const int*  globalCell(const Dune::CpGrid&);
 
+#if HAVE_OPM_PARSER
 /// Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actum from the dune CPGrid
 EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid);
+#endif
 
 CellCentroidTraits<Dune::CpGrid>::IteratorType
 beginCellCentroids(const Dune::CpGrid& grid);

@@ -1,3 +1,7 @@
+#include <config.h>
+
+#if HAVE_OPM_PARSER
+
 #include <string.h>  // C string.h to get memcmp()
 
 #include <opm/common/util/numeric/cmp.hpp>
@@ -74,3 +78,5 @@ grid_equal(const struct UnstructuredGrid * grid1 , const struct UnstructuredGrid
     } else
         return false;
 }
+
+#endif // #if HAVE_OPM_PARSER

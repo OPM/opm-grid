@@ -1,7 +1,7 @@
 #include <config.h>
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/unused.hh>
 #include <dune/grid/CpGrid.hpp>
@@ -9,17 +9,18 @@
 #include <dune/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
+#include <dune/grid/cpgrid/dgfparser.hh>
+#include <dune/grid/polyhedralgrid/dgfparser.hh>
+
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/test/gridcheck.hh>
 #endif
 
 // Re-enable warnings.
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <iostream>
 
@@ -153,27 +154,49 @@ int main(int argc, char** argv )
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
 
+    std::stringstream dgfFile;
+    // create unit cube with 8 cells in each direction
+    dgfFile << "DGF" << std::endl;
+    dgfFile << "Interval" << std::endl;
+    dgfFile << "0 0 0" << std::endl;
+    dgfFile << "1 1 1" << std::endl;
+    dgfFile << "8 8 8" << std::endl;
+    dgfFile << "#" << std::endl;
+
+#if HAVE_OPM_PARSER
     Opm::Parser parser;
     Opm::ParseContext parseContext;
     const auto deck = parser.parseString(deckString , parseContext);
     std::vector<double> porv;
+#endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+#if HAVE_OPM_PARSER
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
+#endif
+      //Dune::GridPtr< Grid > gridPtr( dgfFile );
+      //testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
 
     // test CpGrid
     {
-      Dune::CpGrid grid;
+      typedef Dune::CpGrid Grid;
+#if HAVE_OPM_PARSER
+      Grid grid;
       const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
       Opm::EclipseGrid ecl_grid(deck , actnum);
 
       grid.processEclipseFormat(ecl_grid, false, false, false, porv);
       testGrid( grid, "cpgrid" );
+
       Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
+      testGrid( grid, "cpgrid2" );
+#endif
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      //testGrid( *gridPtr, "cpgrid-dgf" );
     }
     return 0;
 }

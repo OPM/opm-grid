@@ -36,14 +36,13 @@
 
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 #define NVERBOSE // to suppress our messages when throwing
 
 
 #define BOOST_TEST_MODULE EntityRepTests
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <boost/test/unit_test.hpp>
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <dune/grid/cpgrid/EntityRep.hpp>
 
@@ -113,3 +112,6 @@ BOOST_AUTO_TEST_CASE(entity_variable)
     BOOST_CHECK_EQUAL(svar[e3], array[1]);
     BOOST_CHECK_EQUAL(svar[e4], -array[1]);
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST

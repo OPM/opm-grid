@@ -38,9 +38,9 @@
 
 
 #if HAVE_MPI
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include "mpi.h"
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
 #include "../CpGrid.hpp"
@@ -67,7 +67,7 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(const Opm::EclipseState* ecl,
+CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
@@ -189,7 +189,7 @@ CpGrid::scatterGrid(const Opm::EclipseState* ecl,
 
         for( auto& index: distributed_data_->cell_indexset_)
         {
-            typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+            typedef typename cpgrid::CpGridData::AttributeSet AttributeSet;
             if ( index.local().attribute() == AttributeSet::owner)
             {
                 auto& indices = (*cell_scatter_gather_interfaces_)[0];
@@ -261,6 +261,7 @@ CpGrid::scatterGrid(const Opm::EclipseState* ecl,
     }
 
 
+#if HAVE_OPM_PARSER
     void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
@@ -270,6 +271,7 @@ CpGrid::scatterGrid(const Opm::EclipseState* ecl,
                                                  turn_normals, clip_z,
                                                  poreVolume);
     }
+#endif
 
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)

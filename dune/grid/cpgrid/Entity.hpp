@@ -182,7 +182,7 @@ namespace Dune
             /// The count of subentities of codimension cc
             unsigned int subEntities ( const unsigned int cc ) const
             {
-                static_assert(codim == 0, "");
+                // static_assert(codim == 0, "");
                 if (cc == 0) {
                     return 1;
                 } else if (cc == 3) {

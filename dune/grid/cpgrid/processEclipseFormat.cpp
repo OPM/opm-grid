@@ -47,7 +47,7 @@
 #include <opm/core/grid/RepairZCORN.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 
-#include <opm/parser/eclipse/Deck/Deck.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <cstddef>
 #include <fstream>
@@ -62,9 +62,11 @@ namespace Dune
     // Forward declarations.
     namespace
     {
+#if HAVE_OPM_PARSER
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
+#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
@@ -101,6 +103,7 @@ namespace Dune
 namespace cpgrid
 {
 
+#if HAVE_OPM_PARSER
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {
@@ -196,7 +199,7 @@ namespace cpgrid
             processEclipseFormat(g, z_tolerance, false, turn_normals);
         }
     }
-
+#endif // #if HAVE_OPM_PARSER
 
 
 
@@ -254,6 +257,7 @@ namespace cpgrid
     } // end namespace cpgrid
 
 
+
     // ---- Implementation details below ----
 
 
@@ -261,6 +265,7 @@ namespace cpgrid
 
     namespace
     {
+#if HAVE_OPM_PARSER
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)
@@ -308,6 +313,7 @@ namespace cpgrid
 
             return zcornData;
         }
+#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
@@ -478,7 +484,7 @@ namespace cpgrid
             // Build output.
             new_coord.swap(coord);
             new_zcorn.swap(zcorn);
-            new_actnum.swap(actnum);        
+            new_actnum.swap(actnum);
             output.dims[0] = new_n[0];
             output.dims[1] = new_n[1];
             output.dims[2] = new_n[2];

@@ -21,7 +21,7 @@
 #define OPM_CELLQUADRATURE_HEADER_INCLUDED
 
 #include <opm/core/grid.h>
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include <algorithm>
 #include <cmath>
 

@@ -29,14 +29,13 @@ namespace Dune
 
     explicit DGFGridFactory ( std::istream &input,
                               MPICommunicator comm = MPIHelper::getCommunicator() )
-    : grid_( 0 )
+    : grid_( nullptr )
     {
     }
 
     explicit DGFGridFactory ( const std::string &filename,
                               MPICommunicator comm = MPIHelper::getCommunicator() )
-    : dgfHostFactory_( filename, comm ),
-      grid_( 0 )
+    : grid_( nullptr )
     {
     }
 
@@ -78,7 +77,7 @@ namespace Dune
     template< class Entity >
     std::vector< double > &parameter ( const Entity &entity )
     {
-        static std::vector dummy;
+        static std::vector<double> dummy;
         return dummy;
     }
 

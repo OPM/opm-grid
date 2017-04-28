@@ -20,8 +20,7 @@
 #ifndef OPM_GRIDMANAGER_HEADER_INCLUDED
 #define OPM_GRIDMANAGER_HEADER_INCLUDED
 
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <string>
 
@@ -41,6 +40,8 @@ namespace Opm
     class GridManager
     {
     public:
+
+#if HAVE_OPM_PARSER
         /// Construct a grid from an EclipseState::EclipseGrid instance.
         explicit GridManager(const Opm::EclipseGrid& inputGrid);
 
@@ -51,6 +52,7 @@ namespace Opm
         /// \input[in] poreVolumes    one element per logical cartesian grid element
         GridManager(const Opm::EclipseGrid& inputGrid,
                     const std::vector<double>& poreVolumes);
+#endif
 
         /// Construct a 2d cartesian grid with cells of unit size.
         GridManager(int nx, int ny);
@@ -78,16 +80,20 @@ namespace Opm
         /// to make it clear that we are returning a C-compatible struct.
         const UnstructuredGrid* c_grid() const;
 
+#if HAVE_OPM_PARSER
         static void createGrdecl(const Opm::Deck& deck, struct grdecl &grdecl);
+#endif
 
     private:
         // Disable copying and assignment.
         GridManager(const GridManager& other);
         GridManager& operator=(const GridManager& other);
 
+#if HAVE_OPM_PARSER
         // Construct corner-point grid from EclipseGrid.
         void initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                  const std::vector<double>& poreVolumes);
+#endif
 
         // The managed UnstructuredGrid.
         UnstructuredGrid* ug_;

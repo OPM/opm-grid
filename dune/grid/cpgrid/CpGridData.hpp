@@ -48,7 +48,7 @@
 #define OPM_CPGRIDDATA_HEADER
 
 // Warning suppression for Dune includes.
-#include <opm/common/utility/platform_dependent/disable_warnings.h>
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 3)
@@ -74,15 +74,16 @@
 #include <dune/grid/common/gridenums.hh>
 #include <dune/common/tuples.hh>
 
-#include <opm/common/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 #include <array>
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
 #include "Entity2IndexDataHandle.hpp"
 #include "GlobalIdMapping.hpp"
 
@@ -160,6 +161,7 @@ public:
     ///        side. That is, i- faces will match i+ faces etc.
     void readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals = false);
 
+#if HAVE_OPM_PARSER
     /// Read the Eclipse grid format ('grdecl').
     /// \param deck the parsed deck from opm-parser (which is a low-level object)
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -181,6 +183,7 @@ public:
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
     void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                               const std::vector<double>& poreVolume = std::vector<double>());
+#endif
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param input_data the data in grdecl format, declared in preprocess.h.

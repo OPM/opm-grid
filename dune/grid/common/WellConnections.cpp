@@ -25,24 +25,24 @@
 
 #include <dune/grid/common/WellConnections.hpp>
 
-#include <opm/parser/eclipse/EclipseState/Schedule/CompletionSet.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 namespace Dune
 {
 namespace cpgrid
 {
-WellConnections::WellConnections(const Opm::EclipseState& eclipseState,
+WellConnections::WellConnections(const OpmEclipseStateType& eclipseState,
                                  const std::array<int, 3>& cartesianSize,
                                  const std::vector<int>& cartesian_to_compressed)
 {
     init(eclipseState, cartesianSize, cartesian_to_compressed);
 }
 
-void WellConnections::init(const Opm::EclipseState& eclipseState,
+void WellConnections::init(const OpmEclipseStateType& eclipseState,
                            const std::array<int, 3>& cartesianSize,
                            const std::vector<int>& cartesian_to_compressed)
 {
+#if HAVE_OPM_PARSER
     std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
     int last_time_step = eclipseState.getSchedule().getTimeMap().size()-1;
     well_indices_.resize(wells.size());
@@ -66,17 +66,20 @@ void WellConnections::init(const Opm::EclipseState& eclipseState,
         }
         ++index;
     }
+#endif
 }
 
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const Opm::EclipseState& eclipseState,
+                                const OpmEclipseStateType& eclipseState,
                                 const WellConnections& well_connections,
                                 std::size_t no_procs)
 {
-    std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
+
+#if HAVE_OPM_PARSER
+    std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
 
     if( ! well_connections.size() )
     {
@@ -128,6 +131,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         well_indices_on_proc[owner].push_back(well_index);
         ++well_index;
     }
+#endif
+
     return well_indices_on_proc;
 
 }
@@ -135,10 +140,14 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 #ifdef HAVE_MPI
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const Opm::EclipseState& eclipseState,
+                        const OpmEclipseStateType& eclipseState,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root)
 {
+    // We need to use well names as only they are consistent.
+    std::unordered_set<std::string> defunct_well_names;
+
+#if HAVE_OPM_PARSER
     std::vector<const Opm::Well*>  wells  = eclipseState.getSchedule().getWells();
     std::vector<int> my_well_indices;
     const int well_information_tag = 267553;
@@ -179,9 +188,6 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
         defunct_wells[well_index] = false;
     }
 
-    // We need to use well names as only they are consistent.
-    std::unordered_set<std::string> defunct_well_names;
-
     for(auto defunct = defunct_wells.begin(); defunct != defunct_wells.end(); ++defunct)
     {
         if ( *defunct )
@@ -189,6 +195,7 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
             defunct_well_names.insert(wells[defunct-defunct_wells.begin()]->name());
         }
     }
+#endif
 
     return defunct_well_names;
 }

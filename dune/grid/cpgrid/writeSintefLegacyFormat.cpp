@@ -41,7 +41,7 @@
 #include <fstream>
 #include <vector>
 
-#include <opm/common/ErrorMacros.hpp>
+#include <opm/grid/utility/ErrorMacros.hpp>
 #include "CpGridData.hpp"
 
 namespace Dune

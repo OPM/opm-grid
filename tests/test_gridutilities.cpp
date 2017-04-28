@@ -22,7 +22,6 @@
 
 #if HAVE_DYNAMIC_BOOST_TEST
 #define BOOST_TEST_DYN_LINK
-#endif
 #define NVERBOSE // to suppress our messages when throwing
 
 #define BOOST_TEST_MODULE GridUtilitiesTest
@@ -79,3 +78,7 @@ BOOST_AUTO_TEST_CASE(cartesian_2d_orderCounterClockwise)
         BOOST_CHECK_EQUAL_COLLECTIONS(vnb[c].begin(), vnb[c].end(), truth[c].begin(), truth[c].end());
     }
 }
+#else
+int main () { return 0; }
+#endif // #if HAVE_DYNAMIC_BOOST_TEST
+

@@ -323,6 +323,7 @@ FaceCellTraits<UnstructuredGrid>::Type faceCells(const UnstructuredGrid& grid)
 }
 
 
+#if HAVE_OPM_PARSER
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid ) {
     const int * dims = UgGridHelpers::cartDims( grid );
 
@@ -344,6 +345,7 @@ Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::Ecli
         throw std::invalid_argument("Size mismatch - dimensions of inputGrid argument and current UnstructuredGrid instance disagree");
     }
 }
+#endif
 
 }
 }

@@ -22,15 +22,14 @@
 #include <config.h>
 #endif
 #include <limits>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/CompletionSet.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/TimeMap.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
+
 #include <dune/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
+
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
-#include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
+
 namespace Dune
 {
 namespace cpgrid
