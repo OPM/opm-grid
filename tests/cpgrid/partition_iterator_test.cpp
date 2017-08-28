@@ -17,6 +17,9 @@
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #include <dune/grid/test/checkpartition.hh>
 #else
+// checkpartition.cc in dune-grid uses dune_static_assert but never includes
+// the header in version 2.3.1
+#include <dune/common/static_assert.hh>
 #include <dune/grid/test/checkpartition.cc>
 #endif
 
