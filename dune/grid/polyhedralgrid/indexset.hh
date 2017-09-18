@@ -28,7 +28,7 @@ namespace Dune
     typedef PolyhedralGridIndexSet< dim, dimworld > This;
       typedef IndexSet< GridType, This, int > Base;
 
-    typedef typename remove_const< GridType >::type::Traits Traits;
+    typedef typename std::remove_const< GridType >::type::Traits Traits;
 
   public:
     static const int dimension = Traits::dimension;

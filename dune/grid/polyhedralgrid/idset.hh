@@ -17,7 +17,7 @@ namespace Dune
   {
   public:
     typedef PolyhedralGrid<  dim, dimworld > Grid;
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename std::remove_const< Grid >::type::Traits Traits;
     typedef typename Traits::Index  IdType;
 
     typedef PolyhedralGridIdSet< dim, dimworld > This;

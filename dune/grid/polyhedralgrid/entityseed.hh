@@ -16,7 +16,7 @@ namespace Dune
   template< int codim, class Grd >
   class PolyhedralGridEntitySeed
   {
-    typedef typename remove_const< Grd >::type::Traits Traits;
+    typedef typename std::remove_const< Grd >::type::Traits Traits;
 
   public:
     static const int codimension = codim;
