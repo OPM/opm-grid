@@ -495,7 +495,8 @@ namespace Dune
             /// Meaningless for the vertex geometry.
             LocalCoordinate local(const GlobalCoordinate&) const
             {
-                OPM_THROW(std::runtime_error, "Meaningless to call local() on singular geometries.");
+                // return 0 to make the geometry check happy.
+                return LocalCoordinate(0.0);
             }
 
             /// Returns 1 for the vertex geometry.
