@@ -23,7 +23,7 @@ namespace Dune
   class PolyhedralGridEntityBasic
   {
   protected:
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename std::remove_const< Grid >::type::Traits Traits;
 
   public:
     /** \name Attributes
@@ -152,7 +152,7 @@ namespace Dune
   {
     typedef PolyhedralGridEntityBasic< codim, dim, Grid > Base ;
   protected:
-    typedef typename remove_const< Grid >::type::Traits Traits;
+    typedef typename std::remove_const< Grid >::type::Traits Traits;
 
   protected:
     // type of extra data, e.g. a pointer to grid (here empty)
