@@ -180,24 +180,7 @@ namespace Dune
             }
 
             /// The count of subentities of codimension cc
-            unsigned int subEntities ( const unsigned int cc ) const
-            {
-                // static_assert(codim == 0, "");
-                if (cc == 0) {
-                    return 1;
-                } else if (cc == 3) {
-                    return 8;
-                } else {
-                    return 0;
-                }
-//              if (cc == 0) {
-//                  return 1;
-//              } else if (cc == 1) {
-//                  return pgrid_->cell_to_face_[*this].size();
-//              } else {
-//                  return pgrid_->cell_to_point_[*this].size();
-//              }
-            }
+            unsigned int subEntities ( const unsigned int cc ) const;
 
             /// The count of subentities of codimension cc
             template <int cc>
@@ -410,6 +393,22 @@ namespace Dune
 
 namespace Dune {
 namespace cpgrid {
+
+template<int codim>
+unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
+{
+    // static_assert(codim == 0, "");
+    if (cc == 0) {
+        return 1;
+    } else if ( codim == 0 ){
+        if ( cc == 1 ) {
+            return pgrid_->cell_to_face_[*this].size();
+        } else if ( cc == 3 ) {
+            return 8;
+        }
+    }
+    return 0;
+}
 
 template <int codim>
 const typename Entity<codim>::Geometry& Entity<codim>::geometry() const
