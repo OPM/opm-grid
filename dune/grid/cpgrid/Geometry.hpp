@@ -540,19 +540,22 @@ namespace Dune
             }
 
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, mydimension, coorddimension>&
+            FieldMatrix<ctype, mydimension, coorddimension>
             jacobianTransposed(const LocalCoordinate& /* local */) const
             {
-                OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
+                
+                // Meaningless to call jacobianTransposed() on singular geometries. But we need to make DUNE happy.
+                return FieldMatrix<ctype, mydimension, coorddimension>();
             }
-
+            
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, coorddimension, mydimension>&
+            FieldMatrix<ctype, coorddimension, mydimension>
             jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
             {
-                OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
+                // Meaningless to call jacobianInverseTransposed() on singular geometries. But we need to make DUNE happy.
+                return FieldMatrix<ctype, coorddimension, mydimension>();
             }
-
+            
             /// The mapping implemented by this geometry is constant, therefore affine.
             bool affine() const
             {
