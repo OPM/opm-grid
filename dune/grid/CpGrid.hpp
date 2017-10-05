@@ -214,9 +214,6 @@ namespace Dune
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
 
-        // defined in OpmParserIncludes in case opm-parser is not available
-        typedef cpgrid::OpmEclipseStateType  OpmEclipseStateType;
-
     public:
 
         // --- Typedefs ---
@@ -617,11 +614,11 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(const OpmEclipseStateType* ecl,
+        loadBalance(const std::vector<const cpgrid::OpmWellType *> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            return scatterGrid(ecl, transmissibilities, overlapLayers);
+            return scatterGrid(wells, transmissibilities, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -640,11 +637,11 @@ namespace Dune
         template<class DataHandle>
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
-                    const OpmEclipseStateType* ecl,
+                    const std::vector<const cpgrid::OpmWellType *> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            auto ret = loadBalance(ecl, transmissibilities, overlapLayers);
+            auto ret = loadBalance(wells, transmissibilities, overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1281,7 +1278,8 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(const OpmEclipseStateType* ecl, const double* transmissibilities,
+        scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
+                    const double* transmissibilities,
                     int overlapLayers);
 
         /** @brief The data stored in the grid.

@@ -26,14 +26,12 @@
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/CompletionSet.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Schedule.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/TimeMap.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well.hpp>
 
 namespace Dune {
     namespace cpgrid {
+        typedef Opm::Well OpmWellType;
         typedef Opm::EclipseState OpmEclipseStateType;
     }
 }
@@ -41,6 +39,7 @@ namespace Dune {
 
 namespace Dune {
     namespace cpgrid {
+        typedef int OpmWellType;
         typedef int OpmEclipseStateType;
     }
 }

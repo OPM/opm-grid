@@ -49,10 +49,10 @@ namespace cpgrid
 ///         simulation.
 std::pair<std::vector<int>,std::unordered_set<std::string> >
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
-                                    const Opm::EclipseState* eclipseState,
-                                    const double* transmissibilities,
-                                    const CollectiveCommunication<MPI_Comm>& cc,
-                                    int root);
+                               const std::vector<const OpmWellType*> * wells,
+                               const double* transmissibilities,
+                               const CollectiveCommunication<MPI_Comm>& cc,
+                               int root);
 }
 }
 #endif // HAVE_ZOLTAN
