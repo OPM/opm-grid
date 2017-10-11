@@ -41,11 +41,7 @@
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 3)
 #include <dune/common/math.hh>
-#else
-#include <dune/common/misc.hh>
-#endif
 #include <dune/common/fvector.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
