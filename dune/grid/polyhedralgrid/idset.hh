@@ -5,6 +5,8 @@
 
 #include <dune/grid/common/indexidset.hh>
 
+#include <type_traits>
+
 namespace Dune
 {
 

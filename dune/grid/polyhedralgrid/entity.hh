@@ -3,11 +3,10 @@
 #ifndef DUNE_POLYHEDRALGRID_ENTITY_HH
 #define DUNE_POLYHEDRALGRID_ENTITY_HH
 
-//- dune-common includes
-#include <dune/common/typetraits.hh>
-
 //- dune-grid includes
 #include <dune/grid/common/entity.hh>
+
+#include <type_traits>
 
 namespace Dune
 {

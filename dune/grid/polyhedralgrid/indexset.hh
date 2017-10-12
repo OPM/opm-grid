@@ -4,8 +4,7 @@
 #define DUNE_POLYHEDRALGRID_INDEXSET_HH
 
 #include <vector>
-
-#include <dune/common/typetraits.hh>
+#include <type_traits>
 
 #include <dune/grid/common/gridenums.hh>
 #include <dune/grid/common/indexidset.hh>

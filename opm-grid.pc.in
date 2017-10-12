@@ -8,8 +8,8 @@ DEPENDENCIES=@REQUIRES@
 
 Name: @PACKAGE_NAME@
 Version: @VERSION@
-Description: DUNE module supporting grids in a corner-point format
-URL: https://github.com/OPM/opm-grid.git
+Description: The opm-grid module
+URL: http://www.opm-project.org/
 Requires: ${DEPENDENCIES}
-Libs: -L${libdir} -lopmgrid
+Libs: -L${libdir}
 Cflags: -I${includedir}
