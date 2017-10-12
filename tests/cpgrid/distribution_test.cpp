@@ -21,13 +21,8 @@
 // The header below are not installed for dune-grid
 // Therefore we need to deactivate testing, if they
 // not available
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #include <dune/grid/test/checkpartition.hh>
 #include <dune/grid/test/checkcommunicate.hh>
-#else
-#include <dune/grid/test/checkpartition.cc>
-#include <dune/grid/test/checkcommunicate.cc>
-#endif
 
 #endif
 

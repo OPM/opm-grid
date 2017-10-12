@@ -14,11 +14,7 @@
 
 #if HAVE_DUNE_GRID_CHECKS
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
 #include <dune/grid/test/checkpartition.hh>
-#else
-#include <dune/grid/test/checkpartition.cc>
-#endif
 
 #endif
 
