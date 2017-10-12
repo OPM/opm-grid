@@ -7,8 +7,8 @@ Module: opm-grid
 Description: DUNE module supporting grids in a corner-point format
 Version: 2018.04-pre
 Label: 2018.04-pre
-Maintainer: atgeirr@sintef.no
-MaintainerName: Atgeirr F. Rasmussen
+Maintainer: opm@opm-project.org
+MaintainerName: The Open Porous Media Project
 Url: http://opm-project.org
-Depends: dune-common (>= 2.4) dune-geometry (>= 2.4) dune-grid (>= 2.4)
-Suggests: dune-istl (>= 2.4) opm-common opm-parser
+Depends: dune-common (>= 2.4) dune-geometry (>= 2.4) dune-grid (>= 2.4) opm-common
+Suggests: dune-istl (>= 2.4) opm-parser
