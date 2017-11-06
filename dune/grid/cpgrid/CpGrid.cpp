@@ -67,11 +67,11 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
+CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
-    static_cast<void>(ecl);
+    static_cast<void>(wells);
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
 #if HAVE_MPI
@@ -87,7 +87,7 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
     auto part_and_wells =
-        cpgrid::zoltanGraphPartitionGridOnRoot(*this, ecl, transmissibilities, cc, 0);
+        cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, 0);
     int num_parts = cc.size();
     using std::get;
     auto cell_part = std::get<0>(part_and_wells);
@@ -108,19 +108,19 @@ CpGrid::scatterGrid(const OpmEclipseStateType* ecl,
 
     std::unordered_set<std::string> defunct_wells;
 
-    if ( ecl )
+    if ( wells )
     {
-        cpgrid::WellConnections well_connections(*ecl,
+        cpgrid::WellConnections well_connections(*wells,
                                                  cpgdim,
                                                  cartesian_to_compressed);
 
         auto wells_on_proc =
             cpgrid::postProcessPartitioningForWells(cell_part,
-                                                    *ecl,
+                                                    *wells,
                                                     well_connections,
                                                     cc.size());
         defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
-                                                        *ecl,
+                                                        *wells,
                                                         cc,
                                                         0);
     }
