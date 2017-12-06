@@ -6,10 +6,10 @@
 
 namespace Dune
 {
-    template< int dim, int dimworld >
-    class CartesianIndexMapper< PolyhedralGrid< dim, dimworld > >
+    template< int dim, int dimworld, typename coord_t >
+    class CartesianIndexMapper< PolyhedralGrid< dim, dimworld, coord_t > >
     {
-        typedef PolyhedralGrid< dim, dimworld >  Grid;
+        typedef PolyhedralGrid< dim, dimworld, coord_t >  Grid;
 
         const Grid& grid_;
         const int cartesianSize_;

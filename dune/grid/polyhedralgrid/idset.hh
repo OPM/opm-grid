@@ -11,17 +11,17 @@ namespace Dune
   // PolyhedralGridIdSet
   // -----------
 
-  template< int dim, int dimworld >
+  template< int dim, int dimworld, typename coord_t >
   class PolyhedralGridIdSet
-      : public IdSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIdSet< dim, dimworld >, /*IdType=*/int >
+      : public IdSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIdSet< dim, dimworld, coord_t >, /*IdType=*/int >
   {
   public:
-    typedef PolyhedralGrid<  dim, dimworld > Grid;
+    typedef PolyhedralGrid<  dim, dimworld, coord_t > Grid;
     typedef typename std::remove_const< Grid >::type::Traits Traits;
     typedef typename Traits::Index  IdType;
 
-    typedef PolyhedralGridIdSet< dim, dimworld > This;
-    typedef IdSet< Grid, PolyhedralGridIdSet< dim, dimworld >, IdType > Base;
+    typedef PolyhedralGridIdSet< dim, dimworld, coord_t > This;
+    typedef IdSet< Grid, This, IdType > Base;
 
     PolyhedralGridIdSet (const Grid& grid)
         : grid_(grid)
@@ -37,15 +37,6 @@ namespace Dune
       else
         return index;
     }
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    //! id meethod for entity and specific codim
-    template< int codim >
-    IdType id ( const typename Traits::template Codim< codim >::EntityPointer &entityPointer ) const
-    {
-      return id( *entityPointer );
-    }
-#endif
 
     //! id method of all entities
     template< class Entity >
@@ -68,9 +59,9 @@ namespace Dune
       if( codim == 0 )
         return id( entity );
       else if ( codim == 1 )
-        return id( entity.template subEntity< 1 >( i ) );
+        return id( Grid::getRealImplementation( entity ).template subEntity< 1 > ( i ) );
       else if ( codim == dim )
-        return id( entity.template subEntity< dim >( i ) );
+        return id( Grid::getRealImplementation( entity ).template subEntity< dim > ( i ) );
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");

@@ -10,7 +10,7 @@
 #include <dune/grid/common/capabilities.hh>
 #include <dune/grid/common/gridview.hh>
 
-//- dune-metagrid includes
+//- polyhedralgrid includes
 #include <dune/grid/polyhedralgrid/indexset.hh>
 #include <dune/grid/polyhedralgrid/intersection.hh>
 #include <dune/grid/polyhedralgrid/intersectioniterator.hh>
@@ -22,23 +22,23 @@ namespace Dune
   // Internal Forward Declarations
   // -----------------------------
 
-  template< int dim, int dimworld, PartitionIteratorType defaultpitype >
+  template< int dim, int dimworld, typename coord_t, PartitionIteratorType defaultpitype >
   class PolyhedralGridView;
 
-  template< int dim, int dimworld, PartitionIteratorType ptype >
+  template< int dim, int dimworld, typename coord_t, PartitionIteratorType ptype >
   struct PolyhedralGridViewTraits;
 
 
   // PolyhedralGridView
-  // ----------
+  // ------------------
 
-  template< int dim, int dimworld, PartitionIteratorType defaultpitype >
+  template< int dim, int dimworld, typename coord_t, PartitionIteratorType defaultpitype >
   class PolyhedralGridView
   {
-    typedef PolyhedralGridView< dim, dimworld, defaultpitype > This;
+    typedef PolyhedralGridView< dim, dimworld, coord_t, defaultpitype > This;
 
   public:
-    typedef PolyhedralGridViewTraits< dim, dimworld, defaultpitype > Traits;
+    typedef PolyhedralGridViewTraits< dim, dimworld, coord_t, defaultpitype > Traits;
 
     typedef typename Traits::Grid Grid;
     typedef typename Traits::IndexSet IndexSet;
@@ -146,16 +146,16 @@ namespace Dune
   };
 
   // PolyhedralGridViewTraits
-  // ----------------
+  // ------------------------
 
-  template< int dim, int dimworld, PartitionIteratorType ptype >
+  template< int dim, int dimworld, typename coord_t, PartitionIteratorType ptype >
   struct PolyhedralGridViewTraits
   {
-    typedef PolyhedralGrid< dim, dimworld > Grid;
+    typedef PolyhedralGrid< dim, dimworld, coord_t > Grid;
     static const PartitionIteratorType pitype = ptype;
 
-    typedef PolyhedralGridView< dim, dimworld, pitype > GridViewImp;
-    typedef PolyhedralGridIndexSet< Grid::dimension, Grid::dimensionworld > IndexSet;
+    typedef PolyhedralGridView< dim, dimworld, coord_t, pitype > GridViewImp;
+    typedef PolyhedralGridIndexSet< Grid::dimension, Grid::dimensionworld, coord_t > IndexSet;
 
     typedef PolyhedralGridIntersection< const Grid > IntersectionImpl;
     typedef PolyhedralGridIntersectionIterator< const Grid > IntersectionIteratorImpl;

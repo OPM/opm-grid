@@ -6,7 +6,7 @@
 namespace Dune
 {
 
-  template< int dim, int dimworld >
+  template< int dim, int dimworld, typename coord_t = double >
   class PolyhedralGrid;
 
 } // namespace Dune
