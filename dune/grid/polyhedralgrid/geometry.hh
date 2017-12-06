@@ -42,16 +42,16 @@ namespace Dune
     typedef Dune::FieldVector< ctype, mydimension >    LocalCoordinate;
 
     //! type of jacobian inverse transposed
-    typedef FieldMatrix<ctype,cdim,mydim> JacobianInverseTransposed;
+    typedef FieldMatrix< ctype, cdim, mydim > JacobianInverseTransposed;
 
     //! type of jacobian transposed
     typedef FieldMatrix< ctype, mydim, cdim > JacobianTransposed;
 
 
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
-    typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
+    typedef Dune::Impl::FieldMatrixHelper< ctype >  MatrixHelperType;
 #else
-    typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits<double> >  MatrixHelperType;
+    typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits< ctype > >  MatrixHelperType;
 #endif
 
     typedef typename Grid::Traits::ExtraData  ExtraData;
@@ -140,13 +140,8 @@ namespace Dune
         // This code is modified from dune/grid/genericgeometry/mapping.hh
         // \todo: Implement direct computation.
         const ctype epsilon = 1e-12;
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
         const ReferenceElement< ctype , mydimension > & refElement =
           ReferenceElements< ctype, mydimension >::general(type());
-#else
-        const GenericReferenceElement< ctype , mydimension > & refElement =
-          GenericReferenceElements< ctype, mydimension >::general(type());
-#endif
 
         LocalCoordinate x = refElement.position(0,0);
         LocalCoordinate dx;

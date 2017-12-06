@@ -18,14 +18,14 @@ namespace Dune
   // PolyhedralGridIndexSet
   // --------------
 
-  template< int dim, int dimworld >
+  template< int dim, int dimworld, typename coord_t >
   class PolyhedralGridIndexSet
-      : public IndexSet< PolyhedralGrid< dim, dimworld >, PolyhedralGridIndexSet< dim, dimworld >, int >
+      : public IndexSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIndexSet< dim, dimworld, coord_t >, int >
   {
-    typedef PolyhedralGrid<dim, dimworld> GridType;
+    typedef PolyhedralGrid<dim, dimworld, coord_t > GridType;
 
   protected:
-    typedef PolyhedralGridIndexSet< dim, dimworld > This;
+    typedef PolyhedralGridIndexSet< dim, dimworld, coord_t > This;
       typedef IndexSet< GridType, This, int > Base;
 
     typedef typename std::remove_const< GridType >::type::Traits Traits;
@@ -51,14 +51,6 @@ namespace Dune
     {
       return grid().getRealImplementation(entity).index();
     }
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    template< int cd >
-    IndexType index ( const typename Traits::template Codim< cd >::EntityPointer &entityPointer ) const
-    {
-      return index( *entityPointer );
-    }
-#endif
 
     template< class Entity >
     IndexType subIndex ( const Entity &entity, int i, unsigned int codim ) const

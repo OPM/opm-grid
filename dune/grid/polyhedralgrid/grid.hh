@@ -15,11 +15,7 @@
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
-#if DUNE_VERSION_NEWER(DUNE_COMMON,2,3)
 #include <dune/common/parallel/collectivecommunication.hh>
-#else
-#include <dune/common/collectivecommunication.hh>
-#endif
 
 //- polyhedralgrid includes
 #include <dune/grid/polyhedralgrid/capabilities.hh>
@@ -42,19 +38,17 @@
 
 namespace Dune
 {
-
-
   // PolyhedralGridFamily
   // ------------
 
-  template< int dim, int dimworld >
+  template< int dim, int dimworld, typename coord_t >
   struct PolyhedralGridFamily
   {
     struct Traits
     {
-      typedef PolyhedralGrid< dim, dimworld > Grid;
+      typedef PolyhedralGrid< dim, dimworld, coord_t > Grid;
 
-      typedef double ctype;
+      typedef coord_t ctype;
 
       // type of data passed to entities, intersections, and iterators
       // for PolyhedralGrid this is just an empty place holder
@@ -125,10 +119,10 @@ namespace Dune
         typedef typename Partition< All_Partition >::LevelIterator LevelIterator;
       };
 
-      typedef PolyhedralGridIndexSet< dim, dimworld > LeafIndexSet;
-      typedef PolyhedralGridIndexSet< dim, dimworld > LevelIndexSet;
+      typedef PolyhedralGridIndexSet< dim, dimworld, ctype > LeafIndexSet;
+      typedef PolyhedralGridIndexSet< dim, dimworld, ctype > LevelIndexSet;
 
-      typedef PolyhedralGridIdSet< dim, dimworld > GlobalIdSet;
+      typedef PolyhedralGridIdSet< dim, dimworld, ctype > GlobalIdSet;
       typedef GlobalIdSet  LocalIdSet;
 
       typedef Dune::CollectiveCommunication< Grid > CollectiveCommunication;
@@ -136,8 +130,8 @@ namespace Dune
       template< PartitionIteratorType pitype >
       struct Partition
       {
-        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LeafGridView;
-        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, pitype > > LevelGridView;
+        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, ctype, pitype > > LeafGridView;
+        typedef Dune::GridView< PolyhedralGridViewTraits< dim, dimworld, ctype, pitype > > LevelGridView;
       };
 
       typedef typename Partition<All_Partition>::LevelGridView LevelGridView;
@@ -147,9 +141,8 @@ namespace Dune
   };
 
 
-
   // PolyhedralGrid
-  // ------
+  // --------------
 
   /** \class PolyhedralGrid
    *  \brief identical grid wrapper
@@ -159,17 +152,17 @@ namespace Dune
    *
    *  \nosubgrouping
    */
-  template < int dim, int dimworld >
+  template < int dim, int dimworld, typename coord_t >
   class PolyhedralGrid
   /** \cond */
   : public GridDefaultImplementation
-      < dim, dimworld, double, PolyhedralGridFamily< dim, dimworld > >
+      < dim, dimworld, coord_t, PolyhedralGridFamily< dim, dimworld, coord_t > >
   /** \endcond */
   {
     typedef PolyhedralGrid< dim, dimworld > Grid;
 
     typedef GridDefaultImplementation
-      < dim, dimworld, double, PolyhedralGridFamily< dim, dimworld > > Base;
+      < dim, dimworld, coord_t, PolyhedralGridFamily< dim, dimworld, coord_t > > Base;
 
     typedef UnstructuredGrid  UnstructuredGridType;
 
@@ -182,7 +175,7 @@ namespace Dune
     };
   public:
     /** \cond */
-    typedef PolyhedralGridFamily< dim, dimworld > GridFamily;
+    typedef PolyhedralGridFamily< dim, dimworld, coord_t > GridFamily;
     /** \endcond */
 
     /** \name Traits
@@ -1283,9 +1276,9 @@ namespace Dune
   // PolyhedralGrid::Codim
   // -------------
 
-  template< int dim, int dimworld >
+  template< int dim, int dimworld, typename coord_t >
   template< int codim >
-  struct PolyhedralGrid< dim, dimworld >::Codim
+  struct PolyhedralGrid< dim, dimworld, coord_t >::Codim
   : public Base::template Codim< codim >
   {
     /** \name Entity and Entity Pointer Types
