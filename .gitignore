@@ -37,7 +37,6 @@ CTestTestfile.cmake
 DartConfiguration.tcl
 Testing/
 *install.cmake
-*-config*.cmake
 *.pc
 install_manifest.txt
 
@@ -51,7 +50,6 @@ aclocal.m4
 am
 autom4te.cache
 configure
-config.*
 dependencies.m4
 depcomp
 install-sh

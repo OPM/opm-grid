@@ -31,7 +31,7 @@ using namespace std;
 
 BOOST_AUTO_TEST_CASE(Equal) {
     Opm::ParseContext parseContext;
-    const std::string filename1 = "CORNERPOINT_ACTNUM.DATA";
+    const std::string filename1 = "tests/CORNERPOINT_ACTNUM.DATA";
     const char *deck2Data =
         "RUNSPEC\n"
         "\n"
@@ -77,7 +77,7 @@ BOOST_AUTO_TEST_CASE(Equal) {
 
 // TODO This method might be obsolete after using EclipseState to generate grid
 BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
-    const std::string filename = "CORNERPOINT_ACTNUM.DATA";
+    const std::string filename = "tests/CORNERPOINT_ACTNUM.DATA";
     Opm::Parser parser;
     Opm::ParseContext parseContext;
     Opm::Deck deck = parser.parseFile( filename , parseContext);
