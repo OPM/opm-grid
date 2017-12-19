@@ -15,7 +15,7 @@
 ###########################################################################
 
 # Mandatory call to project
-project(opm-grid CXX)
+project(opm-grid C CXX)
 
 cmake_minimum_required (VERSION 2.8)
 # project information is in dune.module. Read this file and set variables.
