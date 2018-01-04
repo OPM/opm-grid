@@ -1,4 +1,4 @@
-# Preparing the Sources [![Build Status](https://travis-ci.org/OPM/opm-grid.svg?branch=master)](https://travis-ci.org/OPM/opm-grid)
+# Preparing the Sources
 
 
 Additional to the software mentioned in README you'll need the
