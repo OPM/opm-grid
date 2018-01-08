@@ -344,7 +344,7 @@ private:
     /** @brief Container for the lookup of the points for each face. */
     Opm::SparseTable<int>             face_to_point_;
     /** @brief Vector that contains an arrays of the points of each cell*/
-    std::vector< array<int,8> >       cell_to_point_;
+    std::vector< std::array<int,8> >       cell_to_point_;
     /** @brief The size of the underlying logical cartesian grid.
      *
      * In a Eclipse a cornerpoint grid has the same number of cells

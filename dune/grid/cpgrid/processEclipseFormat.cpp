@@ -85,11 +85,11 @@ namespace Dune
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
                        Opm::SparseTable<int>& f2p,
-                       std::vector<array<int,8> >& c2p,
+                       std::vector<std::array<int,8> >& c2p,
                        std::vector<int>& face_to_output_face);
         void buildGeom(const processed_grid& output,
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
-                       const std::vector<array<int,8> >& c2p,
+                       const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
                        cpgrid::DefaultGeometryPolicy& gpol,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
@@ -637,7 +637,7 @@ namespace cpgrid
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
                        Opm::SparseTable<int>& f2p,
-                       std::vector<array<int,8> >& c2p,
+                       std::vector<std::array<int,8> >& c2p,
                        std::vector<int>& face_to_output_face)
         {
             // Map local to global cell index.
@@ -698,14 +698,14 @@ namespace cpgrid
                 assert(output.face_ptr[top_face + 1] - tfbegin == 4);
                 // We want the corners in 'x fastest, then y, then z' order,
                 // so we need to take the face_nodes in noncyclic order: 0 1 3 2.
-                array<int,8> corners = {{ output.face_nodes[bfbegin],
-                                          output.face_nodes[bfbegin + 1],
-                                          output.face_nodes[bfbegin + 3],
-                                          output.face_nodes[bfbegin + 2],
-                                          output.face_nodes[tfbegin],
-                                          output.face_nodes[tfbegin + 1],
-                                          output.face_nodes[tfbegin + 3],
-                                          output.face_nodes[tfbegin + 2] }};
+                std::array<int,8> corners = {{ output.face_nodes[bfbegin],
+                                               output.face_nodes[bfbegin + 1],
+                                               output.face_nodes[bfbegin + 3],
+                                               output.face_nodes[bfbegin + 2],
+                                               output.face_nodes[tfbegin],
+                                               output.face_nodes[tfbegin + 1],
+                                               output.face_nodes[tfbegin + 3],
+                                               output.face_nodes[tfbegin + 2] }};
                 c2p.push_back(corners);
             }
 #ifndef NDEBUG
@@ -770,7 +770,7 @@ namespace cpgrid
             }
             cpgrid::Geometry<3, 3> operator()(const FieldVector<double, 3>& pos,
                                                       double vol,
-                                                      const array<int,8>& corner_indices)
+                                                      const std::array<int,8>& corner_indices)
             {
                 return cpgrid::Geometry<3, 3>(pos, vol, allcorners_, &corner_indices[0]);
             }
@@ -790,7 +790,7 @@ namespace cpgrid
 
         void buildGeom(const processed_grid& output,
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
-                       const std::vector<array<int,8> >& c2p,
+                       const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
                        cpgrid::DefaultGeometryPolicy& gpol,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,

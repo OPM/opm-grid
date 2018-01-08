@@ -274,8 +274,8 @@ namespace Dune
         /// Create a cartesian grid.
         /// \param dims the number of cells in each cartesian direction.
         /// \param cellsize the size of each cell in each dimension.
-        void createCartesian(const array<int, 3>& dims,
-                             const array<double, 3>& cellsize);
+        void createCartesian(const std::array<int, 3>& dims,
+                             const std::array<double, 3>& cellsize);
 
         /// The logical cartesian size of the global grid.
         /// This function is not part of the Dune grid interface,
