@@ -209,8 +209,8 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
 }
 
 
-    void CpGrid::createCartesian(const array<int, 3>& dims,
-                                 const array<double, 3>& cellsize)
+    void CpGrid::createCartesian(const std::array<int, 3>& dims,
+                                 const std::array<double, 3>& cellsize)
     {
         // Make the grdecl format arrays.
         // Pillar coords.

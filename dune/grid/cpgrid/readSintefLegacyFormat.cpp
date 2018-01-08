@@ -52,7 +52,7 @@ namespace Dune
         void readTopo(std::istream& topo,
                       cpgrid::OrientedEntityTable<0, 1>& c2f,
                       cpgrid::OrientedEntityTable<1, 0>& f2c,
-                      std::vector<array<int,8> >& c2p);
+                      std::vector<std::array<int,8> >& c2p);
         void readGeom(std::istream& geom,
                       cpgrid::DefaultGeometryPolicy& gpol,
                       cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals);
@@ -108,7 +108,7 @@ namespace Dune
         void readTopo(std::istream& topo,
                       cpgrid::OrientedEntityTable<0, 1>& c2f,
                       cpgrid::OrientedEntityTable<1, 0>& f2c,
-                      std::vector<array<int,8> >& c2p)
+                      std::vector<std::array<int,8> >& c2p)
         {
             // Check header
             std::string topo_header;
