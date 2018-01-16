@@ -53,7 +53,12 @@ list (APPEND MAIN_SOURCE_FILES
   opm/core/grid/cpgpreprocess/uniquepoints.c
   opm/core/grid/grid.c
   opm/core/grid/grid_equal.cpp
+  opm/core/pressure/tpfa/trans_tpfa.c
+  opm/core/utility/compressedToCartesian.cpp
+  opm/core/utility/extractPvtTableIndex.cpp
+  opm/core/utility/VelocityInterpolation.cpp
   opm/core/utility/StopWatch.cpp
+  opm/core/utility/WachspressCoord.cpp
   )
 
 # originally generated with the command:
@@ -70,31 +75,34 @@ list (APPEND ATTIC_FILES
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
+  tests/test_cartgrid.cpp
+  tests/test_compressedpropertyaccess.cpp
+  tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
-	tests/cpgrid/entityrep_test.cpp
-	tests/cpgrid/entity_test.cpp
-	tests/cpgrid/facetag_test.cpp
-	tests/cpgrid/geometry_test.cpp
-	tests/cpgrid/orientedentitytable_test.cpp
-	tests/cpgrid/partition_iterator_test.cpp
-	tests/cpgrid/zoltan_test.cpp
+  tests/cpgrid/entityrep_test.cpp
+  tests/cpgrid/entity_test.cpp
+  tests/cpgrid/facetag_test.cpp
+  tests/cpgrid/geometry_test.cpp
+  tests/cpgrid/orientedentitytable_test.cpp
+  tests/cpgrid/partition_iterator_test.cpp
+  tests/cpgrid/zoltan_test.cpp
+  tests/test_geom2d.cpp
+  tests/test_gridutilities.cpp
+  tests/test_minpvprocessor.cpp
 #	tests/grid_test.cc
-	tests/p2pcommunicator_test.cc
-	tests/test_sparsetable.cpp
-	tests/test_cartgrid.cpp
-	tests/test_column_extract.cpp
-	tests/test_geom2d.cpp
-	tests/test_gridutilities.cpp
-	tests/test_minpvprocessor.cpp
-	tests/test_quadratures.cpp
-	tests/test_repairzcorn.cpp
-	tests/test_ug.cpp
+  tests/p2pcommunicator_test.cc
+  tests/test_regionmapping.cpp
+  tests/test_repairzcorn.cpp
+  tests/test_sparsetable.cpp
+  tests/test_ug.cpp
+  tests/test_quadratures.cpp
 	)
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_DATA_FILES
      tests/CORNERPOINT_ACTNUM.DATA
+     tests/compressed_gridproperty.data
   )
 
 # originally generated with the command:
@@ -177,8 +185,17 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/core/grid/cpgpreprocess/geometry.h
   opm/core/grid/cpgpreprocess/preprocess.h
   opm/core/grid/cpgpreprocess/uniquepoints.h
+  opm/core/pressure/tpfa/trans_tpfa.h
+  opm/core/pressure/tpfa/TransTpfa.hpp
+  opm/core/pressure/tpfa/TransTpfa_impl.hpp
+  opm/core/utility/CompressedPropertyAccess.hpp
+  opm/core/utility/compressedToCartesian.hpp
+  opm/core/utility/extractPvtTableIndex.hpp
+  opm/core/utility/RegionMapping.hpp
   opm/core/utility/SparseTable.hpp
   opm/core/utility/StopWatch.hpp
+  opm/core/utility/VelocityInterpolation.hpp
+  opm/core/utility/WachspressCoord.hpp
   opm/grid/utility/ErrorMacros.hpp
   opm/grid/utility/OpmParserIncludes.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
