@@ -19,7 +19,6 @@ fi
 declare -a downstreams
 downstreams=(opm-material
              opm-output
-             opm-core
              ewoms
              opm-simulators
              opm-upscaling)
@@ -27,7 +26,6 @@ downstreams=(opm-material
 declare -A downstreamRev
 downstreamRev[opm-material]=master
 downstreamRev[opm-output]=master
-downstreamRev[opm-core]=master
 downstreamRev[ewoms]=master
 downstreamRev[opm-simulators]=master
 downstreamRev[opm-upscaling]=master
