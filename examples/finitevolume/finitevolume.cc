@@ -35,6 +35,7 @@ typedef Dune::CpGrid GridType;
 // the time loop function working for all types of grids
 //===============================================================
 
+#if ! DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
 //! Parameter for mapper class
 template<int dim>
 struct P0Layout
@@ -44,13 +45,18 @@ struct P0Layout
         return gt.dim() == dim;
     }
 };
+#endif
 
 template<class G>
 void timeloop(const G& grid, double tend)
 {
     // make a mapper for codim 0 entities in the leaf grid
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+    Dune::LeafMultipleCodimMultipleGeomTypeMapper<G> mapper(grid, Dune::mcmgElementLayout());
+#else
     Dune::LeafMultipleCodimMultipleGeomTypeMapper<G,P0Layout>
     mapper(grid);
+#endif
 
     // allocate a vector for the concentration
     std::vector<double> c(mapper.size());
