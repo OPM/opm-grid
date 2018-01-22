@@ -3,6 +3,7 @@
 #ifndef DUNE_POLYHEDRALGRID_GRID_HH
 #define DUNE_POLYHEDRALGRID_GRID_HH
 
+#include <array>
 #include <set>
 #include <vector>
 
@@ -11,7 +12,6 @@
 
 //- dune-common includes
 #include <dune/common/version.hh>
-#include <dune/common/array.hh>
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
@@ -1109,7 +1109,7 @@ namespace Dune
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
-        typedef Dune::array<int, 3> KeyType;
+        typedef std::array<int, 3> KeyType;
         std::map< const KeyType, const int > vertexFaceTags;
         const int vertexFacePattern [8][3] = {
                                 { 0, 2, 4 }, // vertex 0
