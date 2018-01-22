@@ -219,9 +219,13 @@ namespace Dune
             /// but we use the singular type for intersections.
             GeometryType type() const
             {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+                return Dune::GeometryTypes::cube(mydimension);
+#else
                 GeometryType t;
                 t.makeCube(mydimension);
                 return t;
+#endif
             }
 
             /// The number of corners of this convex polytope.
@@ -383,9 +387,13 @@ namespace Dune
             /// We use the singular type (None) for intersections.
             GeometryType type() const
             {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+                return Dune::GeometryTypes::none(mydimension);
+#else
                 GeometryType t;
                 t.makeNone(mydimension);
                 return t;
+#endif
             }
 
             /// The number of corners of this convex polytope.
@@ -510,9 +518,13 @@ namespace Dune
             /// Using the cube type for vertices.
             GeometryType type() const
             {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+                return Dune::GeometryTypes::cube(mydimension);
+#else
                 GeometryType t;
                 t.makeCube(mydimension);
                 return t;
+#endif
             }
 
             /// A vertex is defined by a single corner.
