@@ -190,8 +190,12 @@ namespace Dune
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
                 // \todo: Implement direct computation.
                 const ctype epsilon = 1e-12;
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+                auto refElement = Dune::ReferenceElements<ctype, 3>::cube();
+#else
                 const ReferenceElement< ctype , 3 > & refElement =
                     ReferenceElements< ctype, 3 >::general(type());
+#endif
                 LocalCoordinate x = refElement.position(0,0);
                 LocalCoordinate dx;
                 do {
