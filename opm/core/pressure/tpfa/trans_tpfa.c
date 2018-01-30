@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <opm/core/linalg/blas_lapack.h>
+#include <opm/common/utility/numeric/blas_lapack.h>
 #include <opm/core/pressure/tpfa/trans_tpfa.h>
 
 

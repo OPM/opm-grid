@@ -20,7 +20,7 @@
 #include "config.h"
 #include <opm/core/utility/VelocityInterpolation.hpp>
 #include <opm/core/grid.h>
-#include <opm/core/linalg/blas_lapack.h>
+#include <opm/common/utility/numeric/blas_lapack.h>
 
 #include <iostream>
 
