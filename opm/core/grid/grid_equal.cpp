@@ -4,7 +4,7 @@
 
 #include <string.h>  // C string.h to get memcmp()
 
-#include <opm/common/util/numeric/cmp.hpp>
+#include <opm/common/utility/numeric/cmp.hpp>
 
 #include <opm/core/grid.h>
 
