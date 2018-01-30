@@ -55,11 +55,14 @@ list (APPEND MAIN_SOURCE_FILES
   opm/core/grid/grid_equal.cpp
   opm/core/pressure/tpfa/trans_tpfa.c
   opm/core/utility/compressedToCartesian.cpp
-  opm/core/utility/extractPvtTableIndex.cpp
   opm/core/utility/VelocityInterpolation.cpp
   opm/core/utility/StopWatch.cpp
   opm/core/utility/WachspressCoord.cpp
   )
+
+if(opm-parser_FOUND)
+  list(APPEND MAIN_SOURCE_FILES opm/core/utility/extractPvtTableIndex.cpp)
+endif()
 
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
@@ -76,7 +79,6 @@ list (APPEND ATTIC_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
-  tests/test_compressedpropertyaccess.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -97,6 +99,10 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_ug.cpp
   tests/test_quadratures.cpp
 	)
+
+if(opm-parser_FOUND)
+  list(APPEND TEST_SOURCE_FILES tests/test_compressedpropertyaccess.cpp)
+endif()
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
