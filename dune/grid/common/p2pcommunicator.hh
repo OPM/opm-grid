@@ -101,6 +101,15 @@ public:
       std::copy_n( reinterpret_cast<const char *> (&value), tsize, buffer_.data()+pos );
     }
 
+    void write( const std::string& str)
+    {
+        int size = str.size();
+        write(size);
+        for (int k = 0; k < size; ++k) {
+            write(str[k]);
+        }
+    }
+
     /** \brief read value from buffer, value must implement the operator= correctly (i.e. no internal pointers etc.) */
     template <class T>
     void read( T& value ) const
@@ -110,6 +119,16 @@ public:
       assert( pos_ + tsize <= buffer_.size() );
       std::copy_n( buffer_.data()+pos_, tsize, reinterpret_cast<char *> (&value) );
       pos_ += tsize;
+    }
+
+    void read( std::string& str) const
+    {
+        int size = 0;
+        read(size);
+        str.resize(size);
+        for (int k = 0; k < size; ++k) {
+            read(str[k]);
+        }
     }
 
     /** \brief return pointer to buffer and size for use with MPI functions */
