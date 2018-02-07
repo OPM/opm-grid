@@ -56,6 +56,13 @@ namespace Dune
             /// @todo Doc me!
             typedef int IndexType;
 
+            /** \brief Export the type of the entity used as parameter in the index(...) method */
+            template <int cc>
+            struct Codim
+            {
+              typedef cpgrid::Entity< cc > Entity;
+            };
+
             /// @brief
             /// @todo Doc me!
             typedef std::vector<GeometryType> Types;
