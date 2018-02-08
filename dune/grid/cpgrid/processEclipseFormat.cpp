@@ -45,7 +45,7 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>
 #include <opm/grid/RepairZCORN.hpp>
-#include <opm/core/utility/StopWatch.hpp>
+#include <opm/grid/utility/StopWatch.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

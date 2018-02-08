@@ -31,7 +31,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 
-#include <opm/core/utility/CompressedPropertyAccess.hpp>
+#include <opm/grid/utility/CompressedPropertyAccess.hpp>
 
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>

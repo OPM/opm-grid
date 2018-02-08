@@ -20,7 +20,7 @@
 #ifndef OPM_VELOCITYINTERPOLATION_HEADER_INCLUDED
 #define OPM_VELOCITYINTERPOLATION_HEADER_INCLUDED
 
-#include <opm/core/utility/WachspressCoord.hpp>
+#include <opm/grid/utility/WachspressCoord.hpp>
 #include <vector>
 
 struct UnstructuredGrid;

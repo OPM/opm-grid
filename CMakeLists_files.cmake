@@ -54,14 +54,14 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/UnstructuredGrid.c
   opm/grid/grid_equal.cpp
   opm/grid/transmissibility/trans_tpfa.c
-  opm/core/utility/compressedToCartesian.cpp
-  opm/core/utility/VelocityInterpolation.cpp
-  opm/core/utility/StopWatch.cpp
-  opm/core/utility/WachspressCoord.cpp
+  opm/grid/utility/compressedToCartesian.cpp
+  opm/grid/utility/VelocityInterpolation.cpp
+  opm/grid/utility/StopWatch.cpp
+  opm/grid/utility/WachspressCoord.cpp
   )
 
 if(opm-parser_FOUND)
-  list(APPEND MAIN_SOURCE_FILES opm/core/utility/extractPvtTableIndex.cpp)
+  list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
 endif()
 
 # originally generated with the command:
@@ -194,14 +194,14 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/trans_tpfa.h
   opm/grid/transmissibility/TransTpfa.hpp
   opm/grid/transmissibility/TransTpfa_impl.hpp
-  opm/core/utility/CompressedPropertyAccess.hpp
-  opm/core/utility/compressedToCartesian.hpp
-  opm/core/utility/extractPvtTableIndex.hpp
-  opm/core/utility/RegionMapping.hpp
-  opm/core/utility/SparseTable.hpp
-  opm/core/utility/StopWatch.hpp
-  opm/core/utility/VelocityInterpolation.hpp
-  opm/core/utility/WachspressCoord.hpp
+  opm/grid/utility/CompressedPropertyAccess.hpp
+  opm/grid/utility/compressedToCartesian.hpp
+  opm/grid/utility/extractPvtTableIndex.hpp
+  opm/grid/utility/RegionMapping.hpp
+  opm/grid/utility/SparseTable.hpp
+  opm/grid/utility/StopWatch.hpp
+  opm/grid/utility/VelocityInterpolation.hpp
+  opm/grid/utility/WachspressCoord.hpp
   opm/grid/utility/ErrorMacros.hpp
   opm/grid/utility/OpmParserIncludes.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h

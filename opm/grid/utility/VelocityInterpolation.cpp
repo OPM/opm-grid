@@ -18,7 +18,7 @@
 */
 
 #include "config.h"
-#include <opm/core/utility/VelocityInterpolation.hpp>
+#include <opm/grid/utility/VelocityInterpolation.hpp>
 #include <opm/grid/UnstructuredGrid.h>
 #include <opm/common/utility/numeric/blas_lapack.h>
 

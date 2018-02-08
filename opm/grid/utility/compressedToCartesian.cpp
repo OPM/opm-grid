@@ -18,7 +18,7 @@
 */
 
 
-#include <opm/core/utility/compressedToCartesian.hpp>
+#include <opm/grid/utility/compressedToCartesian.hpp>
 #include <numeric>
 
 namespace Opm
