@@ -1238,6 +1238,18 @@ namespace Dune
         {
             current_view_data_=distributed_data_.get();
         }
+
+        /// \brief return the curent view
+        cpgrid::CpGridData* const currentView() const
+        {
+            return current_view_data_;
+        }
+
+        /// \brief set the the view
+        void setView(cpgrid::CpGridData* const view)
+        {
+            current_view_data_ = view;
+        }
         //@}
 
 #if HAVE_MPI
