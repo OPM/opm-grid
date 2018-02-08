@@ -43,7 +43,7 @@
 #include <boost/test/unit_test.hpp>
 #include <sstream>
 
-#include <dune/grid/cpgrid/OrientedEntityTable.hpp>
+#include <opm/grid/cpgrid/OrientedEntityTable.hpp>
 
 using namespace Dune;
 

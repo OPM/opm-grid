@@ -7,7 +7,7 @@
 #include <boost/test/unit_test.hpp>
 
 #include <dune/common/version.hh>
-#include <dune/grid/CpGrid.hpp>
+#include <opm/grid/CpGrid.hpp>
 #include <dune/grid/common/gridenums.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/common/fvector.hh>

@@ -26,8 +26,8 @@
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 
-#include <dune/grid/CpGrid.hpp>
-#include <dune/grid/common/ZoltanGraphFunctions.hpp>
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>

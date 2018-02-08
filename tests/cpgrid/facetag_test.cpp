@@ -27,8 +27,8 @@
 #define BOOST_TEST_MODULE FaceTagTests
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
-#include <dune/grid/CpGrid.hpp>
-#include <dune/grid/cpgrid/GridHelpers.hpp>
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/GridHelpers.hpp>
 
 #include <array>
 

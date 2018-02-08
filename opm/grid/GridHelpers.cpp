@@ -23,7 +23,7 @@
 
 
 #include <opm/grid/GridHelpers.hpp>
-#include <dune/grid/common/Volumes.hpp>
+#include <opm/grid/common/Volumes.hpp>
 
 namespace Opm
 {

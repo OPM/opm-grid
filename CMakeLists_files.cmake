@@ -29,19 +29,19 @@
 # originally generated with the command:
 # find dune -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND MAIN_SOURCE_FILES
-  dune/grid/cpgrid/Intersection.cpp
-  dune/grid/cpgrid/CpGridData.cpp
-  dune/grid/cpgrid/CpGrid.cpp
-  dune/grid/cpgrid/GridHelpers.cpp
-  dune/grid/cpgrid/PartitionTypeIndicator.cpp
-  dune/grid/cpgrid/processEclipseFormat.cpp
-  dune/grid/cpgrid/readSintefLegacyFormat.cpp
-  dune/grid/cpgrid/writeSintefLegacyFormat.cpp
-  dune/grid/common/GeometryHelpers.cpp
-  dune/grid/common/GridPartitioning.cpp
-  dune/grid/common/WellConnections.cpp
-  dune/grid/common/ZoltanGraphFunctions.cpp
-  dune/grid/common/ZoltanPartition.cpp
+  opm/grid/cpgrid/Intersection.cpp
+  opm/grid/cpgrid/CpGridData.cpp
+  opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/GridHelpers.cpp
+  opm/grid/cpgrid/PartitionTypeIndicator.cpp
+  opm/grid/cpgrid/processEclipseFormat.cpp
+  opm/grid/cpgrid/readSintefLegacyFormat.cpp
+  opm/grid/cpgrid/writeSintefLegacyFormat.cpp
+  opm/grid/common/GeometryHelpers.cpp
+  opm/grid/common/GridPartitioning.cpp
+  opm/grid/common/WellConnections.cpp
+  opm/grid/common/ZoltanGraphFunctions.cpp
+  opm/grid/common/ZoltanPartition.cpp
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp
@@ -129,53 +129,53 @@ list (APPEND PROGRAM_SOURCE_FILES
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
 list (APPEND PUBLIC_HEADER_FILES
-  dune/grid/common/GeometryHelpers.hpp
-  dune/grid/common/GridAdapter.hpp
-  dune/grid/common/GridPartitioning.hpp
-  dune/grid/common/Volumes.hpp
-  dune/grid/common/p2pcommunicator.hh
-  dune/grid/common/p2pcommunicator_impl.hh
-  dune/grid/cpgrid/CartesianIndexMapper.hpp
-  dune/grid/cpgrid/CpGridData.hpp
-  dune/grid/cpgrid/DefaultGeometryPolicy.hpp
-  dune/grid/cpgrid/dgfparser.hh
-  dune/grid/cpgrid/Entity2IndexDataHandle.hpp
-  dune/grid/cpgrid/Entity.hpp
-  dune/grid/cpgrid/EntityRep.hpp
-  dune/grid/cpgrid/Geometry.hpp
-  dune/grid/cpgrid/GlobalIdMapping.hpp
-  dune/grid/cpgrid/GridHelpers.hpp
-  dune/grid/CpGrid.hpp
-  dune/grid/cpgrid/Indexsets.hpp
-  dune/grid/cpgrid/Intersection.hpp
-  dune/grid/cpgrid/Iterators.hpp
-  dune/grid/cpgrid/OrientedEntityTable.hpp
-  dune/grid/cpgrid/PartitionIteratorRule.hpp
-  dune/grid/cpgrid/PartitionTypeIndicator.hpp
-  dune/grid/cpgrid/PersistentContainer.hpp
-  dune/grid/common/CartesianIndexMapper.hpp
-  dune/grid/common/WellConnections.hpp
-  dune/grid/common/ZoltanGraphFunctions.hpp
-  dune/grid/common/ZoltanPartition.hpp
-  dune/grid/polyhedralgrid/capabilities.hh
-  dune/grid/polyhedralgrid/cartesianindexmapper.hh
-  dune/grid/polyhedralgrid/declaration.hh
-  dune/grid/polyhedralgrid/dgfparser.hh
-  dune/grid/polyhedralgrid/entity.hh
-  dune/grid/polyhedralgrid/entitypointer.hh
-  dune/grid/polyhedralgrid/entityseed.hh
-  dune/grid/polyhedralgrid/geometry.hh
-  dune/grid/polyhedralgrid/gridhelpers.hh
-  dune/grid/polyhedralgrid/grid.hh
-  dune/grid/polyhedralgrid/gridview.hh
-  dune/grid/polyhedralgrid.hh
-  dune/grid/polyhedralgrid/idset.hh
-  dune/grid/polyhedralgrid/indexset.hh
-  dune/grid/polyhedralgrid/intersection.hh
-  dune/grid/polyhedralgrid/intersectioniterator.hh
-  dune/grid/polyhedralgrid/iterator.hh
-  dune/grid/polyhedralgrid/persistentcontainer.hh
-  opm/UnstructuredGrid.h
+  opm/grid/common/GeometryHelpers.hpp
+  opm/grid/common/GridAdapter.hpp
+  opm/grid/common/GridPartitioning.hpp
+  opm/grid/common/Volumes.hpp
+  opm/grid/common/p2pcommunicator.hh
+  opm/grid/common/p2pcommunicator_impl.hh
+  opm/grid/cpgrid/CartesianIndexMapper.hpp
+  opm/grid/cpgrid/CpGridData.hpp
+  opm/grid/cpgrid/DefaultGeometryPolicy.hpp
+  opm/grid/cpgrid/dgfparser.hh
+  opm/grid/cpgrid/Entity2IndexDataHandle.hpp
+  opm/grid/cpgrid/Entity.hpp
+  opm/grid/cpgrid/EntityRep.hpp
+  opm/grid/cpgrid/Geometry.hpp
+  opm/grid/cpgrid/GlobalIdMapping.hpp
+  opm/grid/cpgrid/GridHelpers.hpp
+  opm/grid/CpGrid.hpp
+  opm/grid/cpgrid/Indexsets.hpp
+  opm/grid/cpgrid/Intersection.hpp
+  opm/grid/cpgrid/Iterators.hpp
+  opm/grid/cpgrid/OrientedEntityTable.hpp
+  opm/grid/cpgrid/PartitionIteratorRule.hpp
+  opm/grid/cpgrid/PartitionTypeIndicator.hpp
+  opm/grid/cpgrid/PersistentContainer.hpp
+  opm/grid/common/CartesianIndexMapper.hpp
+  opm/grid/common/WellConnections.hpp
+  opm/grid/common/ZoltanGraphFunctions.hpp
+  opm/grid/common/ZoltanPartition.hpp
+  opm/grid/polyhedralgrid/capabilities.hh
+  opm/grid/polyhedralgrid/cartesianindexmapper.hh
+  opm/grid/polyhedralgrid/declaration.hh
+  opm/grid/polyhedralgrid/dgfparser.hh
+  opm/grid/polyhedralgrid/entity.hh
+  opm/grid/polyhedralgrid/entitypointer.hh
+  opm/grid/polyhedralgrid/entityseed.hh
+  opm/grid/polyhedralgrid/geometry.hh
+  opm/grid/polyhedralgrid/gridhelpers.hh
+  opm/grid/polyhedralgrid/grid.hh
+  opm/grid/polyhedralgrid/gridview.hh
+  opm/grid/polyhedralgrid.hh
+  opm/grid/polyhedralgrid/idset.hh
+  opm/grid/polyhedralgrid/indexset.hh
+  opm/grid/polyhedralgrid/intersection.hh
+  opm/grid/polyhedralgrid/intersectioniterator.hh
+  opm/grid/polyhedralgrid/iterator.hh
+  opm/grid/polyhedralgrid/persistentcontainer.hh
+  opm/grid/UnstructuredGrid.h
   opm/grid/CellQuadrature.hpp
   opm/grid/ColumnExtract.hpp
   opm/grid/FaceQuadrature.hpp

@@ -24,7 +24,7 @@
 #define BOOST_TEST_MODULE GeometryTests
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
-#include <dune/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/Geometry.hpp>
 
 #include <sstream>
 #include <iostream>
