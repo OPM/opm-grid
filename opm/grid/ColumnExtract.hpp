@@ -1,4 +1,4 @@
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 #include <vector>
 #include <map>
 #include <algorithm>

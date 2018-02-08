@@ -17,11 +17,11 @@
 /* --- our own headers --- */
 #include <algorithm>
 #include <vector>
-#include <opm/core/grid.h>
-#include <opm/core/grid/cornerpoint_grid.h>  /* compute_geometry */
-#include <opm/core/grid/GridManager.hpp>  /* compute_geometry */
-#include <opm/core/grid/GridHelpers.hpp>
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cornerpoint_grid.h>  /* compute_geometry */
+#include <opm/grid/GridManager.hpp>  /* compute_geometry */
+#include <opm/grid/GridHelpers.hpp>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

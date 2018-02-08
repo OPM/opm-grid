@@ -25,7 +25,7 @@
  * Routines to assist in the calculation of two-point transmissibilities.
  */
 
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 
 #ifdef __cplusplus
 extern "C" {

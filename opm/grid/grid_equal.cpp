@@ -6,7 +6,7 @@
 
 #include <opm/common/utility/numeric/cmp.hpp>
 
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 
 /*
    The grid_equal() function is separated out into a separate file to

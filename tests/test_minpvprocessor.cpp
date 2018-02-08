@@ -29,7 +29,7 @@
 #define BOOST_TEST_MODULE MinpvProcessorTest
 #include <boost/test/unit_test.hpp>
 
-#include <opm/core/grid/MinpvProcessor.hpp>
+#include <opm/grid/MinpvProcessor.hpp>
 
 BOOST_AUTO_TEST_CASE(Processing)
 {

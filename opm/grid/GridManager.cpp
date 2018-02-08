@@ -19,12 +19,12 @@
 
 #include "config.h"
 
-#include <opm/core/grid/GridHelpers.hpp>
-#include <opm/core/grid/GridManager.hpp>
-#include <opm/core/grid.h>
-#include <opm/core/grid/cart_grid.h>
-#include <opm/core/grid/cornerpoint_grid.h>
-#include <opm/core/grid/MinpvProcessor.hpp>
+#include <opm/grid/GridHelpers.hpp>
+#include <opm/grid/GridManager.hpp>
+#include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cart_grid.h>
+#include <opm/grid/cornerpoint_grid.h>
+#include <opm/grid/MinpvProcessor.hpp>
 #include <opm/grid/utility/ErrorMacros.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>

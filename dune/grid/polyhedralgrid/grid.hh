@@ -30,11 +30,11 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/grid/utility/ErrorMacros.hpp>
-#include <opm/core/grid.h>
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/core/grid/GridManager.hpp>
-#include <opm/core/grid/cornerpoint_grid.h>
-#include <opm/core/grid/MinpvProcessor.hpp>
+#include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/GridManager.hpp>
+#include <opm/grid/cornerpoint_grid.h>
+#include <opm/grid/MinpvProcessor.hpp>
 
 namespace Dune
 {

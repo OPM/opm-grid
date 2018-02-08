@@ -22,7 +22,7 @@
 #include <iostream>
 
 
-#include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/GridHelpers.hpp>
 #include <dune/grid/common/Volumes.hpp>
 
 namespace Opm

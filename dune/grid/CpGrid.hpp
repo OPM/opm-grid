@@ -66,7 +66,7 @@
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
 #include "common/Volumes.hpp"
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

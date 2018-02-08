@@ -34,7 +34,7 @@
 
 /* --- our own headers --- */
 
-#include <opm/core/grid/RepairZCORN.hpp>
+#include <opm/grid/RepairZCORN.hpp>
 
 #include <algorithm>
 #include <cstddef>

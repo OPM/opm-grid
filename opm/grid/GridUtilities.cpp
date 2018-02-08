@@ -17,8 +17,8 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#include <opm/core/grid/GridUtilities.hpp>
-#include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/GridUtilities.hpp>
+#include <opm/grid/GridHelpers.hpp>
 
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 #include <boost/math/constants/constants.hpp>

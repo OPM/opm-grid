@@ -15,10 +15,10 @@
 #include <assert.h>
 #include <stdlib.h>
 
-#include <opm/core/grid/cornerpoint_grid.h>
-#include <opm/core/grid/cpgpreprocess/geometry.h>
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/core/grid.h>
+#include <opm/grid/cornerpoint_grid.h>
+#include <opm/grid/cpgpreprocess/geometry.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/UnstructuredGrid.h>
 
 
 static int

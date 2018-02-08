@@ -16,8 +16,8 @@
 /* --- our own headers --- */
 #include <algorithm>
 #include <vector>
-#include <opm/core/grid.h>
-#include <opm/core/grid/cornerpoint_grid.h>  /* compute_geometry */
+#include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cornerpoint_grid.h>  /* compute_geometry */
 
 using namespace std;
 

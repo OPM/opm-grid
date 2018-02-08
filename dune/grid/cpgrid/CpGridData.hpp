@@ -71,7 +71,7 @@
 
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

@@ -21,7 +21,7 @@
 #define OPM_PINCHPROCESSOR_HEADER_INCLUDED
 
 #include <opm/grid/utility/ErrorMacros.hpp>
-#include <opm/core/grid/GridHelpers.hpp>
+#include <opm/grid/GridHelpers.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/NNC.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/FaceDir.hpp>
 #include <opm/parser/eclipse/EclipseState/Grid/PinchMode.hpp>

@@ -42,17 +42,17 @@ list (APPEND MAIN_SOURCE_FILES
   dune/grid/common/WellConnections.cpp
   dune/grid/common/ZoltanGraphFunctions.cpp
   dune/grid/common/ZoltanPartition.cpp
-  opm/core/grid/GridHelpers.cpp
-  opm/core/grid/GridManager.cpp
-  opm/core/grid/GridUtilities.cpp
-  opm/core/grid/cart_grid.c
-  opm/core/grid/cornerpoint_grid.c
-  opm/core/grid/cpgpreprocess/facetopology.c
-  opm/core/grid/cpgpreprocess/geometry.c
-  opm/core/grid/cpgpreprocess/preprocess.c
-  opm/core/grid/cpgpreprocess/uniquepoints.c
-  opm/core/grid/grid.c
-  opm/core/grid/grid_equal.cpp
+  opm/grid/GridHelpers.cpp
+  opm/grid/GridManager.cpp
+  opm/grid/GridUtilities.cpp
+  opm/grid/cart_grid.c
+  opm/grid/cornerpoint_grid.c
+  opm/grid/cpgpreprocess/facetopology.c
+  opm/grid/cpgpreprocess/geometry.c
+  opm/grid/cpgpreprocess/preprocess.c
+  opm/grid/cpgpreprocess/uniquepoints.c
+  opm/grid/UnstructuredGrid.c
+  opm/grid/grid_equal.cpp
   opm/core/pressure/tpfa/trans_tpfa.c
   opm/core/utility/compressedToCartesian.cpp
   opm/core/utility/VelocityInterpolation.cpp
@@ -175,22 +175,22 @@ list (APPEND PUBLIC_HEADER_FILES
   dune/grid/polyhedralgrid/intersectioniterator.hh
   dune/grid/polyhedralgrid/iterator.hh
   dune/grid/polyhedralgrid/persistentcontainer.hh
-  opm/core/grid.h
-  opm/core/grid/CellQuadrature.hpp
-  opm/core/grid/ColumnExtract.hpp
-  opm/core/grid/FaceQuadrature.hpp
-  opm/core/grid/GridHelpers.hpp
-  opm/core/grid/GridManager.hpp
-  opm/core/grid/GridUtilities.hpp
-  opm/core/grid/MinpvProcessor.hpp
-  opm/core/grid/PinchProcessor.hpp
-  opm/core/grid/RepairZCORN.hpp
-  opm/core/grid/cart_grid.h
-  opm/core/grid/cornerpoint_grid.h
-  opm/core/grid/cpgpreprocess/facetopology.h
-  opm/core/grid/cpgpreprocess/geometry.h
-  opm/core/grid/cpgpreprocess/preprocess.h
-  opm/core/grid/cpgpreprocess/uniquepoints.h
+  opm/UnstructuredGrid.h
+  opm/grid/CellQuadrature.hpp
+  opm/grid/ColumnExtract.hpp
+  opm/grid/FaceQuadrature.hpp
+  opm/grid/GridHelpers.hpp
+  opm/grid/GridManager.hpp
+  opm/grid/GridUtilities.hpp
+  opm/grid/MinpvProcessor.hpp
+  opm/grid/PinchProcessor.hpp
+  opm/grid/RepairZCORN.hpp
+  opm/grid/cart_grid.h
+  opm/grid/cornerpoint_grid.h
+  opm/grid/cpgpreprocess/facetopology.h
+  opm/grid/cpgpreprocess/geometry.h
+  opm/grid/cpgpreprocess/preprocess.h
+  opm/grid/cpgpreprocess/uniquepoints.h
   opm/core/pressure/tpfa/trans_tpfa.h
   opm/core/pressure/tpfa/TransTpfa.hpp
   opm/core/pressure/tpfa/TransTpfa_impl.hpp

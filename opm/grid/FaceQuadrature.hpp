@@ -21,7 +21,7 @@
 #define OPM_FACEQUADRATURE_HEADER_INCLUDED
 
 #include <opm/grid/utility/ErrorMacros.hpp>
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 #include <cmath>
 
 namespace Opm

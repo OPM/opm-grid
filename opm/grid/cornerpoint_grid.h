@@ -40,8 +40,8 @@
  * specification.
  */
 
-#include <opm/core/grid.h>
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 
 #ifdef __cplusplus
 extern "C" {

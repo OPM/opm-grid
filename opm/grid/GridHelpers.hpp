@@ -23,7 +23,7 @@
 
 #include <dune/common/fvector.hh>
 
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

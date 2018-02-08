@@ -18,7 +18,7 @@
 */
 
 #include "config.h"
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 
 #include <assert.h>
 #include <errno.h>

@@ -19,7 +19,7 @@
 
 #include "config.h"
 #include <opm/core/utility/WachspressCoord.hpp>
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 #include <cmath>
 #include <map>
 #include <set>

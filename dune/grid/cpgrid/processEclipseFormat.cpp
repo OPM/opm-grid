@@ -42,9 +42,9 @@
 
 #include <dune/grid/common/GeometryHelpers.hpp>
 
-#include <opm/core/grid/cpgpreprocess/preprocess.h>
-#include <opm/core/grid/MinpvProcessor.hpp>
-#include <opm/core/grid/RepairZCORN.hpp>
+#include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/MinpvProcessor.hpp>
+#include <opm/grid/RepairZCORN.hpp>
 #include <opm/core/utility/StopWatch.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>

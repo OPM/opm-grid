@@ -7,8 +7,8 @@
 
 #define BOOST_TEST_MODULE ColumnExtractTest
 #include <boost/test/unit_test.hpp>
-#include <opm/core/grid/ColumnExtract.hpp>
-#include <opm/core/grid/GridManager.hpp>
+#include <opm/grid/ColumnExtract.hpp>
+#include <opm/grid/GridManager.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
