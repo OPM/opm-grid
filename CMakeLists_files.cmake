@@ -53,7 +53,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgpreprocess/uniquepoints.c
   opm/grid/UnstructuredGrid.c
   opm/grid/grid_equal.cpp
-  opm/core/pressure/tpfa/trans_tpfa.c
+  opm/grid/transmissibility/trans_tpfa.c
   opm/core/utility/compressedToCartesian.cpp
   opm/core/utility/VelocityInterpolation.cpp
   opm/core/utility/StopWatch.cpp
@@ -191,9 +191,9 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgpreprocess/geometry.h
   opm/grid/cpgpreprocess/preprocess.h
   opm/grid/cpgpreprocess/uniquepoints.h
-  opm/core/pressure/tpfa/trans_tpfa.h
-  opm/core/pressure/tpfa/TransTpfa.hpp
-  opm/core/pressure/tpfa/TransTpfa_impl.hpp
+  opm/grid/transmissibility/trans_tpfa.h
+  opm/grid/transmissibility/TransTpfa.hpp
+  opm/grid/transmissibility/TransTpfa_impl.hpp
   opm/core/utility/CompressedPropertyAccess.hpp
   opm/core/utility/compressedToCartesian.hpp
   opm/core/utility/extractPvtTableIndex.hpp

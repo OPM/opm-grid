@@ -5,7 +5,7 @@
 #include <string.h>
 
 #include <opm/common/utility/numeric/blas_lapack.h>
-#include <opm/core/pressure/tpfa/trans_tpfa.h>
+#include <opm/grid/transmissibility/trans_tpfa.h>
 
 
 #ifdef __cplusplus
