@@ -48,9 +48,9 @@
 #include <sstream>
 
 #include "config.h"
-#include <dune/grid/cpgrid/Intersection.hpp>
-#include <dune/grid/cpgrid/Entity.hpp>
-#include <dune/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/Intersection.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
+#include <opm/grid/CpGrid.hpp>
 
 using namespace Dune;
 

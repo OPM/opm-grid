@@ -33,8 +33,8 @@
 #include <boost/test/floating_point_comparison.hpp>
 
 /* --- our own headers --- */
-#include <opm/core/grid/cart_grid.h>
-#include <opm/core/grid.h>
+#include <opm/grid/cart_grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 #include <cstdio>
 
 BOOST_AUTO_TEST_SUITE ()

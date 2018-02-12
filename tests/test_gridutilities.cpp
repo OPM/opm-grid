@@ -27,8 +27,8 @@
 #define BOOST_TEST_MODULE GridUtilitiesTest
 #include <boost/test/unit_test.hpp>
 
-#include <opm/core/grid/GridUtilities.hpp>
-#include <opm/core/grid/GridManager.hpp>
+#include <opm/grid/GridUtilities.hpp>
+#include <opm/grid/GridManager.hpp>
 
 using namespace Opm;
 

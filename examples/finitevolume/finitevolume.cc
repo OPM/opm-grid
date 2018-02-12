@@ -24,7 +24,7 @@
 #include "initialize.hh"
 #include "evolve.hh"
 
-#include "dune/grid/CpGrid.hpp"
+#include "opm/grid/CpGrid.hpp"
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

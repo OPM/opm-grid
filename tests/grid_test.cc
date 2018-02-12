@@ -6,10 +6,10 @@
 #include <dune/common/unused.hh>
 #include <dune/grid/CpGrid.hpp>
 #include <dune/grid/polyhedralgrid.hh>
-#include <dune/grid/cpgrid/GridHelpers.hpp>
+#include <opm/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
-#include <dune/grid/cpgrid/dgfparser.hh>
+#include <opm/grid/cpgrid/dgfparser.hh>
 #include <dune/grid/polyhedralgrid/dgfparser.hh>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1

@@ -27,10 +27,10 @@
 #define BOOST_TEST_MODULE QuadratureTest
 #include <boost/test/unit_test.hpp>
 
-#include <opm/core/grid/CellQuadrature.hpp>
-#include <opm/core/grid/FaceQuadrature.hpp>
-#include <opm/core/grid/GridManager.hpp>
-#include <opm/core/grid.h>
+#include <opm/grid/CellQuadrature.hpp>
+#include <opm/grid/FaceQuadrature.hpp>
+#include <opm/grid/GridManager.hpp>
+#include <opm/grid/UnstructuredGrid.h>
 #include <cmath>
 
 using namespace Opm;

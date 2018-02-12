@@ -34,7 +34,7 @@
 
 /* --- our own headers --- */
 
-#include <opm/core/utility/RegionMapping.hpp>
+#include <opm/grid/utility/RegionMapping.hpp>
 
 #include <algorithm>
 #include <map>
