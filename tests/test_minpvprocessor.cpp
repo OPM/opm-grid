@@ -20,10 +20,6 @@
 
 #include <config.h>
 
-#define HAVE_DYNAMIC_BOOST_TEST 1
-
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
 #define NVERBOSE // to suppress our messages when throwing
 
 #define BOOST_TEST_MODULE MinpvProcessorTest
@@ -93,7 +89,3 @@ BOOST_AUTO_TEST_CASE(Processing)
     mp5.process(pv, 2.5, actnum, !fill_removed_cells, z5.data());
     BOOST_CHECK_EQUAL_COLLECTIONS(z5.begin(), z5.end(), zcorn5after.begin(), zcorn5after.end());
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST
-

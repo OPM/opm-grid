@@ -2,8 +2,6 @@
 
 #include <dune/common/version.hh>
 
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
 #define BOOST_TEST_MODULE DistributedCpGridTests
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
@@ -438,6 +436,3 @@ int main(int argc, char** argv)
     boost::unit_test::unit_test_main(&init_unit_test_func,
                                      argc, argv);
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST

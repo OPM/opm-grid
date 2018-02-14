@@ -34,8 +34,6 @@
 */
 #include <config.h>
 
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
 #define NVERBOSE // to suppress our messages when throwing
 
 
@@ -112,6 +110,3 @@ BOOST_AUTO_TEST_CASE(entity_variable)
     BOOST_CHECK_EQUAL(svar[e3], array[1]);
     BOOST_CHECK_EQUAL(svar[e4], -array[1]);
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST

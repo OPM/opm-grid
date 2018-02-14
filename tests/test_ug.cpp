@@ -4,10 +4,6 @@
 
 #include <config.h>
 
-/* --- Boost.Test boilerplate --- */
-#if HAVE_DYNAMIC_BOOST_TEST && HAVE_OPM_PARSER
-#define BOOST_TEST_DYN_LINK
-
 #define NVERBOSE  // Suppress own messages when throw()ing
 
 #define BOOST_TEST_MODULE TEST_UG
@@ -169,7 +165,3 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
 
     Opm::EclipseGrid grid = Opm::UgGridHelpers::createEclipseGrid( *cgrid1 , es1.getInputGrid( ) );
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST
-

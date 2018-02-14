@@ -19,8 +19,6 @@
 */
 #include <config.h>
 
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
 #define NVERBOSE // to suppress our messages when throwing
 
 
@@ -107,6 +105,3 @@ int main(int argc, char** argv)
     boost::unit_test::unit_test_main(&init_unit_test_func,
                                      argc, argv);
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST
