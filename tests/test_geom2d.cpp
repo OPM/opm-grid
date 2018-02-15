@@ -3,10 +3,6 @@
 */
 #include <config.h>
 
-/* --- Boost.Test boilerplate --- */
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
-
 #define NVERBOSE  // Suppress own messages when throw()ing
 
 #define BOOST_TEST_MODULE CompGeo2DTest
@@ -192,7 +188,3 @@ BOOST_AUTO_TEST_CASE(cellCenters)
 }
 
 BOOST_AUTO_TEST_SUITE_END()
-#else
-int main () { return 0; }
-#endif // # if HAVE_DYNAMIC_BOOST_TEST
-

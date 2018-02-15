@@ -20,8 +20,6 @@
 
 #include <config.h>
 
-#if HAVE_DYNAMIC_BOOST_TEST
-#define BOOST_TEST_DYN_LINK
 #define NVERBOSE // to suppress our messages when throwing
 
 #define BOOST_TEST_MODULE QuadratureTest
@@ -202,7 +200,3 @@ BOOST_AUTO_TEST_CASE(test_quadratures)
     cart2d::test();
     cart3d::test();
 }
-#else
-int main () { return 0; }
-#endif // #if HAVE_DYNAMIC_BOOST_TEST
-
