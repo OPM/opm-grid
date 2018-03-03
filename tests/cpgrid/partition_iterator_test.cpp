@@ -40,12 +40,12 @@ void testPartitionIteratorsBasic(const Dune::CpGrid& grid, bool parallel)
 template<int codim>
 void testPartitionIteratorsOnSequentialGrid(const Dune::CpGrid& grid)
 {
-    typename Dune::CpGrid::Traits::template Codim<codim>::
-        template Partition<Dune::Interior_Partition>::LeafIterator iit=grid.leafbegin<codim,Dune::Interior_Partition>();
-    typename Dune::CpGrid::Traits::template Codim<codim>::
-        template Partition<Dune::InteriorBorder_Partition>::LeafIterator ibit=grid.leafbegin<codim,Dune::InteriorBorder_Partition>();
-    typename Dune::CpGrid::Traits::template Codim<codim>::
-        template Partition<Dune::All_Partition>::LeafIterator ait=grid.leafbegin<codim,Dune::All_Partition>();
+    typedef typename Dune::CpGrid::Traits::template Codim<codim>::template Partition<Dune::Interior_Partition>::LeafIterator ILeafIterator;
+    typedef typename Dune::CpGrid::Traits::template Codim<codim>::template Partition<Dune::InteriorBorder_Partition>::LeafIterator IBLeafIterator;
+    typedef typename Dune::CpGrid::Traits::template Codim<codim>::template Partition<Dune::All_Partition>::LeafIterator ALeafIterator;
+    ILeafIterator iit=grid.leafbegin<codim,Dune::Interior_Partition>();
+    IBLeafIterator ibit=grid.leafbegin<codim,Dune::InteriorBorder_Partition>();
+    ALeafIterator ait=grid.leafbegin<codim,Dune::All_Partition>();
     while(iit!=grid.leafend<codim,Dune::Interior_Partition>())
     {
         BOOST_REQUIRE((*iit==*ibit));
