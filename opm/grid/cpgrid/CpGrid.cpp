@@ -261,7 +261,7 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
     }
 
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,

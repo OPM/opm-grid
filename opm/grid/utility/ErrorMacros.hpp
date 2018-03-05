@@ -21,8 +21,7 @@
 #ifndef OPM_GRID_ERRORMACROS_HEADER_INCLUDED
 #define OPM_GRID_ERRORMACROS_HEADER_INCLUDED
 
-// if we have the parser we also have opm-common
-#if HAVE_OPM_PARSER
+#if HAVE_OPM_COMMON
 #include <opm/common/ErrorMacros.hpp>
 #else
 
@@ -74,6 +73,6 @@
 // throw an exception if a condition is true
 #define OPM_ERROR_IF(condition, message) do {if(condition){ OPM_THROW(std::logic_error, message);}} while(false)
 
-#endif // #if HAVE_OPM_PARSER
+#endif // #if HAVE_OPM_COMMON
 
 #endif // OPM_ERRORMACROS_HPP

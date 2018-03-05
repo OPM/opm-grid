@@ -19,8 +19,7 @@
 #ifndef OPM_GRID_UTILITY_DISABLE_WARNINGS_HEADER_INCLUDED
 #define OPM_GRID_UTILITY_DISABLE_WARNINGS_HEADER_INCLUDED
 
-// if we have the parser we also have opm-common
-#if HAVE_OPM_PARSER
+#if HAVE_OPM_COMMON
 #include <opm/common/utility/platform_dependent/disable_warnings.h>
 #endif
 

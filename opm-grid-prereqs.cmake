@@ -12,7 +12,8 @@ set (opm-grid_CONFIG_VAR
   HAVE_DUNE_ISTL
   HAVE_MPI
   HAVE_ZOLTAN
-  HAVE_OPM_PARSER
+  HAVE_OPM_COMMON
+  HAVE_ECL_INPUT
   )
 
 # dependencies
@@ -29,8 +30,8 @@ set (opm-grid_DEPS
   "dune-grid REQUIRED"
   "dune-istl"
   "opm-common REQUIRED"
-  "opm-parser"
   "ZOLTAN"
+  "ecl REQUIRED"
   )
 
 find_package_deps(opm-grid)

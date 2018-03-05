@@ -30,7 +30,7 @@ namespace Opm
 namespace UgGridHelpers
 {
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid)
 {
     const int * dims = cartDims( grid );

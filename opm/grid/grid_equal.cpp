@@ -1,6 +1,6 @@
 #include <config.h>
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 
 #include <string.h>  // C string.h to get memcmp()
 
@@ -79,4 +79,4 @@ grid_equal(const struct UnstructuredGrid * grid1 , const struct UnstructuredGrid
         return false;
 }
 
-#endif // #if HAVE_OPM_PARSER
+#endif // #if HAVE_ECL_INPUT

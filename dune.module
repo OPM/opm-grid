@@ -11,4 +11,4 @@ Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
 Depends: dune-common (>= 2.4) dune-geometry (>= 2.4) dune-grid (>= 2.4)
-Suggests: dune-istl (>= 2.4) opm-common opm-parser
+Suggests: dune-istl (>= 2.4) opm-common

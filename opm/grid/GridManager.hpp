@@ -41,7 +41,7 @@ namespace Opm
     {
     public:
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         /// Construct a grid from an EclipseState::EclipseGrid instance.
         explicit GridManager(const Opm::EclipseGrid& inputGrid);
 
@@ -80,7 +80,7 @@ namespace Opm
         /// to make it clear that we are returning a C-compatible struct.
         const UnstructuredGrid* c_grid() const;
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         static void createGrdecl(const Opm::Deck& deck, struct grdecl &grdecl);
 #endif
 
@@ -89,7 +89,7 @@ namespace Opm
         GridManager(const GridManager& other);
         GridManager& operator=(const GridManager& other);
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         // Construct corner-point grid from EclipseGrid.
         void initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                  const std::vector<double>& poreVolumes);

@@ -126,7 +126,7 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
     correct_answer[4].resize(1);
     correct_answer[9].resize(1);
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     Opm::ParseContext parseContext;
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(grdecl , parseContext);
