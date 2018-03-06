@@ -36,7 +36,7 @@
 namespace Opm
 {
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /// Construct a 3d corner-point grid from a deck.
     GridManager::GridManager(const Opm::EclipseGrid& inputGrid)
         : ug_(0)
@@ -127,7 +127,7 @@ namespace Opm
 
 
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     // Construct corner-point grid from EclipseGrid.
     void GridManager::initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                           const std::vector<double>& poreVolumes)

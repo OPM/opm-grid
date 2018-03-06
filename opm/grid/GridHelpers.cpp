@@ -323,7 +323,7 @@ FaceCellTraits<UnstructuredGrid>::Type faceCells(const UnstructuredGrid& grid)
 }
 
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid ) {
     const int * dims = UgGridHelpers::cartDims( grid );
 

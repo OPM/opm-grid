@@ -19,7 +19,7 @@
 #ifndef OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
 #define OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 #include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
@@ -35,7 +35,7 @@ namespace Dune {
         typedef Opm::EclipseState OpmEclipseStateType;
     }
 }
-#else // #if HAVE_OPM_PARSER
+#else // #if HAVE_ECL_INPUT
 
 namespace Dune {
     namespace cpgrid {
@@ -44,6 +44,6 @@ namespace Dune {
     }
 }
 
-#endif // #if HAVE_OPM_PARSER
+#endif // #if HAVE_ECL_INPUT
 
 #endif // #ifndef OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED

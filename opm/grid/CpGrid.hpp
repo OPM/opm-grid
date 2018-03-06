@@ -243,7 +243,7 @@ namespace Dune
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that

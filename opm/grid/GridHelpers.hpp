@@ -223,7 +223,7 @@ struct CellVolumeIteratorTraits<UnstructuredGrid>
        correctly represented in the EclipseGrid created by this
        method.
     */
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
 /// \brief Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actnum from the dune UnstructuredGrid.
 Opm::EclipseGrid createEclipseGrid(const UnstructuredGrid& grid, const Opm::EclipseGrid& inputGrid );

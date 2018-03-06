@@ -152,7 +152,7 @@ public:
     ///        side. That is, i- faces will match i+ faces etc.
     void readEclipseFormat(const std::string& filename, bool periodic_extension, bool turn_normals = false);
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /// Read the Eclipse grid format ('grdecl').
     /// \param deck the parsed deck from opm-parser (which is a low-level object)
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that

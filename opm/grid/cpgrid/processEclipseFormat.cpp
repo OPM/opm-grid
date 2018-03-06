@@ -62,7 +62,7 @@ namespace Dune
     // Forward declarations.
     namespace
     {
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
@@ -103,7 +103,7 @@ namespace Dune
 namespace cpgrid
 {
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume)
     {
@@ -199,7 +199,7 @@ namespace cpgrid
             processEclipseFormat(g, z_tolerance, false, turn_normals);
         }
     }
-#endif // #if HAVE_OPM_PARSER
+#endif // #if HAVE_ECL_INPUT
 
 
 
@@ -265,7 +265,7 @@ namespace cpgrid
 
     namespace
     {
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)

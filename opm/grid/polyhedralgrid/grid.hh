@@ -294,7 +294,7 @@ namespace Dune
     /** \name Construction and Destruction
      *  \{ */
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     /** \brief constructor
      *
      *  \param[in]  deck         Opm Eclipse deck
@@ -788,7 +788,7 @@ namespace Dune
 
   protected:
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
     UnstructuredGridType* createGrid( const Opm::Deck& deck, const std::vector< double >& poreVolumes ) const
     {
         const int* rawactnum = deck.hasKeyword("ACTNUM")

@@ -60,7 +60,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/utility/WachspressCoord.cpp
   )
 
-if(opm-parser_FOUND)
+if(HAVE_ECL_INPUT)
   list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
 endif()
 

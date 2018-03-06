@@ -17,7 +17,7 @@ BuildRequires:  git suitesparse-devel doxygen bc ecl-devel opm-common-devel
 BuildRequires:  tinyxml-devel dune-istl-devel dune-grid-devel
 %{?el6:BuildRequires: cmake3 boost148-devel}
 %{!?el6:BuildRequires: cmake boost-devel}
-BuildRequires:  opm-parser-devel opm-material-devel opm-output-devel
+BuildRequires:  opm-material-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires:       libopm-grid1 = %{version}
 
