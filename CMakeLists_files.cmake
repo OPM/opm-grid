@@ -53,12 +53,16 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgpreprocess/uniquepoints.c
   opm/grid/UnstructuredGrid.c
   opm/grid/grid_equal.cpp
-  opm/grid/transmissibility/trans_tpfa.c
   opm/grid/utility/compressedToCartesian.cpp
-  opm/grid/utility/VelocityInterpolation.cpp
   opm/grid/utility/StopWatch.cpp
   opm/grid/utility/WachspressCoord.cpp
   )
+
+if (opm-common_FOUND)
+  list(APPEND MAIN_SOURCE_FILES
+		opm/grid/utility/VelocityInterpolation.cpp
+		opm/grid/transmissibility/trans_tpfa.c)
+endif()
 
 if(HAVE_ECL_INPUT)
   list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
@@ -93,15 +97,17 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_minpvprocessor.cpp
 #	tests/grid_test.cc
   tests/p2pcommunicator_test.cc
-  tests/test_regionmapping.cpp
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
-  tests/test_ug.cpp
   tests/test_quadratures.cpp
 	)
 
-if(opm-parser_FOUND)
-  list(APPEND TEST_SOURCE_FILES tests/test_compressedpropertyaccess.cpp)
+if(HAVE_ECL_INPUT)
+  list(APPEND TEST_SOURCE_FILES
+		tests/test_regionmapping.cpp
+		tests/test_ug.cpp
+		tests/test_compressedpropertyaccess.cpp
+	)
 endif()
 
 # originally generated with the command:
