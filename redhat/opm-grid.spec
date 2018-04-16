@@ -5,7 +5,7 @@
 %define tag rc1
 
 Name:           opm-grid
-Version:        2017.10
+Version:        2018.04
 Release:        0
 Summary:        Cornerpoint grid management module for OPM
 License:        GPL-3.0
