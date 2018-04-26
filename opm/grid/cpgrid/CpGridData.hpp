@@ -68,6 +68,7 @@
 
 #include <array>
 #include <tuple>
+#include <algorithm>
 
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
@@ -500,7 +501,21 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         return;
     }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
-    VariableSizeCommunicator<> comm(ccobj_, interface);
+    std::size_t max_entries = 0;
+    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
+    // buffer cannot hold all data that needs to be send.
+    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
+    // For this we calculate an upper barrier of the number of
+    // data items to be send manually and use it to construct a
+    // VariableSizeCommunicator with sufficient buffer.
+    for (const auto& pair: interface )
+    {
+        using std::max;
+        max_entries = max(max_entries, pair.second.first.size());
+        max_entries = max(max_entries, pair.second.second.size());
+    }
+    VariableSizeCommunicator<> comm(ccobj_, interface,
+                                    max_entries*16); // 16 should be big enough.
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
     else
