@@ -111,6 +111,21 @@ private:
     CpGridData(const CpGridData& g);
 
 public:
+    enum{
+#ifndef MAX_DATA_COMMUNICATED_PER_ENTITY
+        /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
+        ///
+        /// Due to a bug in DUNE < 2.5.2 we need to limit this when
+        /// communicating. 16 should be big enough for OPM
+        MAX_DATA_PER_CELL = 16
+#else
+        /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
+        ///
+        /// Due to a bug in DUNE < 2.5.2 we need to limit this when
+        /// communicating. Uses the define MAX_DATA_COMMUNICATED_PER_ENTITY.
+        MAX_DATA_PER_CELL = MAX_DATA_COMMUNICATED_PER_ENTITY
+#endif
+    };
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
@@ -515,7 +530,9 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         max_entries = max(max_entries, pair.second.second.size());
     }
     VariableSizeCommunicator<> comm(ccobj_, interface,
-                                    max_entries*16); // 16 should be big enough.
+                                    max_entries * MAX_DATA_PER_CELL);
+#endif
+
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
     else
