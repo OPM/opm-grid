@@ -68,6 +68,7 @@
 
 #include <array>
 #include <tuple>
+#include <algorithm>
 
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
@@ -110,6 +111,21 @@ private:
     CpGridData(const CpGridData& g);
 
 public:
+    enum{
+#ifndef MAX_DATA_COMMUNICATED_PER_ENTITY
+        /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
+        ///
+        /// Due to a bug in DUNE < 2.5.2 we need to limit this when
+        /// communicating. 16 should be big enough for OPM
+        MAX_DATA_PER_CELL = 16
+#else
+        /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
+        ///
+        /// Due to a bug in DUNE < 2.5.2 we need to limit this when
+        /// communicating. Uses the define MAX_DATA_COMMUNICATED_PER_ENTITY.
+        MAX_DATA_PER_CELL = MAX_DATA_COMMUNICATED_PER_ENTITY
+#endif
+    };
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
@@ -500,7 +516,79 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         return;
     }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
+    std::size_t max_interface_entries = 0;
+
+#if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
     VariableSizeCommunicator<> comm(ccobj_, interface);
+#else
+    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
+    // buffer cannot hold all data that needs to be send.
+    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
+    // For this we calculate an upper barrier of the number of
+    // data items to be send manually and use it to construct a
+    // VariableSizeCommunicator with sufficient buffer.
+#ifndef NDEBUG
+    std::size_t max_items = 0;
+#endif
+
+    for (const auto& pair: interface )
+    {
+        using std::max;
+        max_interface_entries = max(max_interface_entries, pair.second.first.size());
+        max_interface_entries = max(max_interface_entries, pair.second.second.size());
+
+#ifndef NDEBUG
+        if ( data.fixedsize(3, codim) )
+        {
+            const auto& interface_send = pair.second.first;
+
+            if ( interface_send.size() )
+            {
+                max_items = std::max(max_items, data.size(interface_send[0]));
+            }
+
+            const auto& interface_recv = pair.second.second;
+
+            if ( interface_recv.size() )
+            {
+                max_items = std::max(max_items, data.size(interface_recv[0]));
+            }
+        }
+        else
+        {
+            const auto& interface_send = pair.second.first;
+
+            for ( std::size_t i = 0, end = interface_send.size(); i < end; ++i)
+            {
+                max_items = std::max(max_items, data.size(interface_send[i]));
+            }
+
+            const auto& interface_recv = pair.second.second;
+
+            for ( std::size_t i = 0, end = interface_recv.size(); i < end; ++i)
+            {
+                max_items = std::max(max_items, data.size(interface_recv[i]));
+            }
+        }
+#endif
+    }
+
+#ifndef NDEBUG
+    max_items = ccobj_.max(max_items);
+
+    if ( max_items > MAX_DATA_PER_CELL)
+    {
+        OPM_THROW(std::logic_error,
+                  "You triggered a bug in the communication of DUNE"
+                   << " as you tried to send more than " << MAX_DATA_PER_CELL
+                   << " values per cell/point. Please define MAX_DATA_COMMUNICATED_PER_ENTITY"
+                   << " to a high enough value when compiling.");
+    }
+#endif
+    VariableSizeCommunicator<> comm(ccobj_, interface,
+                                    max_interface_entries * MAX_DATA_PER_CELL);
+#endif
+
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
     else
