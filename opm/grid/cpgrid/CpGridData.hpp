@@ -580,8 +580,8 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
     {
         OPM_THROW(std::logic_error,
                   "You triggered a bug in the communication of DUNE"
-                   << " as yu tried to send more than " << MAX_DATA_PER_CELL
-                   << " values per cell/point. PLease define MAX_DATA_COMMUNICATED_PER_ENTITY"
+                   << " as you tried to send more than " << MAX_DATA_PER_CELL
+                   << " values per cell/point. Please define MAX_DATA_COMMUNICATED_PER_ENTITY"
                    << " to a high enough value when compiling.");
     }
 #endif
