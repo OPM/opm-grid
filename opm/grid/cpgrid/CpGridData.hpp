@@ -516,7 +516,7 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         return;
     }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
-    std::size_t max_entries = 0;
+    std::size_t max_interface_entries = 0;
     // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
     // buffer cannot hold all data that needs to be send.
     // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
@@ -526,11 +526,11 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
     for (const auto& pair: interface )
     {
         using std::max;
-        max_entries = max(max_entries, pair.second.first.size());
-        max_entries = max(max_entries, pair.second.second.size());
+        max_interface_entries = max(max_interface_entries, pair.second.first.size());
+        max_interface_entries = max(max_interface_entries, pair.second.second.size());
     }
     VariableSizeCommunicator<> comm(ccobj_, interface,
-                                    max_entries * MAX_DATA_PER_CELL);
+                                    max_interface_entries * MAX_DATA_PER_CELL);
 #endif
 
     if(dir==ForwardCommunication)
