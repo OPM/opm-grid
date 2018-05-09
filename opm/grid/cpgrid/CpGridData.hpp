@@ -116,8 +116,9 @@ public:
         /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
         ///
         /// Due to a bug in DUNE < 2.5.2 we need to limit this when
-        /// communicating. 16 should be big enough for OPM
-        MAX_DATA_PER_CELL = 16
+        /// communicating. 1 is big enough for OPM as we always use
+        /// one block for all unknowns.
+        MAX_DATA_PER_CELL = 1
 #else
         /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
         ///
