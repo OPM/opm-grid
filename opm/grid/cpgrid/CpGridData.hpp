@@ -544,14 +544,14 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
 
             if ( interface_send.size() )
             {
-                max_items = std::max(max_items, data.size(interface_send[0]));
+                max_items = std::max(max_items, data_wrapper.size(interface_send[0]));
             }
 
             const auto& interface_recv = pair.second.second;
 
             if ( interface_recv.size() )
             {
-                max_items = std::max(max_items, data.size(interface_recv[0]));
+                max_items = std::max(max_items, data_wrapper.size(interface_recv[0]));
             }
         }
         else
@@ -560,14 +560,14 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
 
             for ( std::size_t i = 0, end = interface_send.size(); i < end; ++i)
             {
-                max_items = std::max(max_items, data.size(interface_send[i]));
+                max_items = std::max(max_items, data_wrapper.size(interface_send[i]));
             }
 
             const auto& interface_recv = pair.second.second;
 
             for ( std::size_t i = 0, end = interface_recv.size(); i < end; ++i)
             {
-                max_items = std::max(max_items, data.size(interface_recv[i]));
+                max_items = std::max(max_items, data_wrapper.size(interface_recv[i]));
             }
         }
 #endif
