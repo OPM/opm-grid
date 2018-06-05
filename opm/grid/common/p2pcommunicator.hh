@@ -19,6 +19,7 @@
 #ifndef DUNE_COMMUNICATOR_HEADER_INCLUDED
 #define DUNE_COMMUNICATOR_HEADER_INCLUDED
 
+#include <cassert>
 #include <algorithm>
 #include <vector>
 #include <set>
