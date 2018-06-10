@@ -49,15 +49,15 @@ void WellConnections::init(const std::vector<const OpmWellType*>& wells,
     int index=0;
     for (const auto well : wells) {
         std::set<int>& well_indices = well_indices_[index];
-        const auto& completionSet = well->getCompletions( );
-        for (size_t c=0; c<completionSet.size(); c++) {
-            const auto& completion = completionSet.get(c);
-            int i = completion.getI();
-            int j = completion.getJ();
-            int k = completion.getK();
+        const auto& connectionSet = well->getConnections( );
+        for (size_t c=0; c<connectionSet.size(); c++) {
+            const auto& connection = connectionSet.get(c);
+            int i = connection.getI();
+            int j = connection.getJ();
+            int k = connection.getK();
             int cart_grid_idx = i + cartesianSize[0]*(j + cartesianSize[1]*k);
             int compressed_idx = cartesian_to_compressed[cart_grid_idx];
-            if ( compressed_idx >= 0 ) // Ignore completions in inactive cells.
+            if ( compressed_idx >= 0 ) // Ignore connections in inactive cells.
             {
                 well_indices.insert(compressed_idx);
             }
@@ -89,26 +89,26 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         well_indices.reserve(wells.size());
     }
 
-    // Check that all completions of a well have ended up on one process.
+    // Check that all connections of a well have ended up on one process.
     // If that is not the case for well then move them manually to the
-    // process that already has the most completions on it.
+    // process that already has the most connections on it.
     int well_index = 0;
 
     for (const auto* well: wells) {
-        const auto& well_completions = well_connections[well_index];
-        std::map<int,std::size_t> no_completions_on_proc;
-        for ( auto completion_index: well_completions )
+        const auto& connections = well_connections[well_index];
+        std::map<int,std::size_t> no_connections_on_proc;
+        for ( auto connection_index: connections )
         {
-            ++no_completions_on_proc[parts[completion_index]];
+            ++no_connections_on_proc[parts[connection_index]];
         }
 
-        int owner = no_completions_on_proc.begin()->first;
+        int owner = no_connections_on_proc.begin()->first;
 
-        if ( no_completions_on_proc.size() > 1 )
+        if ( no_connections_on_proc.size() > 1 )
         {
-            // partition with the most completions on it becomes new owner
-            int new_owner = std::max_element(no_completions_on_proc.begin(),
-                                             no_completions_on_proc.end(),
+            // partition with the most connections on it becomes new owner
+            int new_owner = std::max_element(no_connections_on_proc.begin(),
+                                             no_connections_on_proc.end(),
                                              [](const std::pair<int,std::size_t>& p1,
                                                 const std::pair<int,std::size_t>& p2){
                                                  return ( p1.second > p2.second );
@@ -116,9 +116,9 @@ postProcessPartitioningForWells(std::vector<int>& parts,
             std::cout << "Manually moving well " << well->name() << " to partition "
                       << new_owner << std::endl;
 
-            for ( auto completion_cell : well_completions )
+            for ( auto connection_cell : connections )
             {
-                parts[completion_cell] = new_owner;
+                parts[connection_cell] = new_owner;
             }
 
             owner = new_owner;
