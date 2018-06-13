@@ -34,4 +34,5 @@ set (opm-grid_DEPS
   "ecl REQUIRED"
   )
 
+include(OpmPackage)
 find_package_deps(opm-grid)
