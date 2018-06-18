@@ -186,6 +186,54 @@ private:
     std::vector<int>& dist_cell_ids_;
 };
 
+/// \brief A data handle to use with CpGrid::cellScatterGatherInterface()
+/// that checks the correctness of the unique boundary ids at the receiving
+/// end.
+class CheckBoundaryIdHandle
+{
+public:
+    CheckBoundaryIdHandle(const Dune::CpGrid& sendGrid,
+                          const Dune::CpGrid& recvGrid)
+        : sendGrid_(sendGrid),
+          recvGrid_(recvGrid)
+    {}
+
+    typedef int DataType;
+    bool fixedsize()
+    {
+        return false;
+    }
+
+    template<class T>
+    std::size_t size(const T& i)
+    {
+        return sendGrid_.numCellFaces(i);
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        auto nofaces = sendGrid_.numCellFaces(i);
+        for(int j = 0; j < nofaces; ++j)
+        {
+            buffer.write(sendGrid_.boundaryId(sendGrid_.cellFace(i, j)));
+        }
+    }
+    template<class B>
+    void scatter(B& buffer, const std::size_t& i, std::size_t n)
+    {
+        BOOST_REQUIRE(n == recvGrid_.numCellFaces(i));
+        for(std::size_t j = 0; j < n; ++j)
+        {
+            int id;
+            buffer.read(id);
+            BOOST_REQUIRE(id == recvGrid_.boundaryId(recvGrid_.cellFace(i, j)));
+        }
+    }
+private:
+    const Dune::CpGrid& sendGrid_;
+    const Dune::CpGrid& recvGrid_;
+};
+
 class DummyDataHandle
 {
 public:
@@ -381,12 +429,15 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
 
     auto scatter_handle = CheckGlobalCellHandle(global_grid.globalCell(),
                                                 grid.globalCell());
-    auto gather_handle = CheckGlobalCellHandle(grid.globalCell(),
-                                               global_grid.globalCell());
+    auto gather_handle  = CheckGlobalCellHandle(grid.globalCell(),
+                                                global_grid.globalCell());
+    auto bid_handle     = CheckBoundaryIdHandle(global_grid, grid);
+
 #if HAVE_MPI
-    Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface());
+    Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface(), 8*4*2*8);
     scatter_gather_comm.forward(scatter_handle);
     scatter_gather_comm.backward(gather_handle);
+    scatter_gather_comm.forward(bid_handle);
 #else
     (void) scatter_handle;
     (void) gather_handle;
@@ -399,6 +450,7 @@ BOOST_AUTO_TEST_CASE(intersectionOverlap)
     std::array<int, 3> dims={{8, 4, 2}};
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
     grid.createCartesian(dims, size);
+    grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     typedef Dune::CpGrid::LeafGridView GridView;
     GridView gridView(grid.leafGridView());
     enum{dimWorld = GridView::dimensionworld};
