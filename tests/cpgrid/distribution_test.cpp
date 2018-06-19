@@ -485,6 +485,9 @@ init_unit_test_func()
 int main(int argc, char** argv)
 {
     Dune::MPIHelper::instance(argc, argv);
+    MPI_Errhandler errhandler;
+    MPI_Comm_create_errhandler(MPI_err_handler, &errhandler);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, errhandler);
     boost::unit_test::unit_test_main(&init_unit_test_func,
                                      argc, argv);
 }
