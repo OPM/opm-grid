@@ -189,6 +189,8 @@ private:
 /// \brief A data handle to use with CpGrid::cellScatterGatherInterface()
 /// that checks the correctness of the unique boundary ids at the receiving
 /// end.
+///
+/// We used fixedsize for the message as there is a bug in DUNE up to 2.6.0
 class CheckBoundaryIdHandle
 {
 public:
@@ -201,33 +203,47 @@ public:
     typedef int DataType;
     bool fixedsize()
     {
-        return false;
+        // We used fixedsize for the message as there is a bug in DUNE
+        // up to 2.6.0
+        return true;
+        //return false;
     }
 
     template<class T>
     std::size_t size(const T& i)
     {
-        return sendGrid_.numCellFaces(i);
+        return 6;
+        //return sendGrid_.numCellFaces(i);
     }
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
         auto nofaces = sendGrid_.numCellFaces(i);
-        for(int j = 0; j < nofaces; ++j)
+        int j=0;
+        for(; j < nofaces; ++j)
         {
             buffer.write(sendGrid_.boundaryId(sendGrid_.cellFace(i, j)));
         }
+        // We used fixedsize for the message as there is a bug in DUNE
+        // up to 2.6.0. Fill the buffer with bogus numbers
+        for(; j < 6; ++j)
+            buffer.write(-1);
     }
     template<class B>
     void scatter(B& buffer, const std::size_t& i, std::size_t n)
     {
-        BOOST_REQUIRE(n == recvGrid_.numCellFaces(i));
-        for(std::size_t j = 0; j < n; ++j)
+        BOOST_REQUIRE(static_cast<int>(n) == recvGrid_.numCellFaces(i));
+        std::size_t j = 0;
+        int id;
+        for(; j < n; ++j)
         {
-            int id;
             buffer.read(id);
             BOOST_REQUIRE(id == recvGrid_.boundaryId(recvGrid_.cellFace(i, j)));
         }
+        // We used fixedsize for the message as there is a bug in DUNE
+        // up to 2.6.0. read the bogus numbers from buffer.
+        for(;j<6; ++j)
+            buffer.read(id);
     }
 private:
     const Dune::CpGrid& sendGrid_;
