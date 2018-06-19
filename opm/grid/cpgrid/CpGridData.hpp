@@ -117,8 +117,9 @@ public:
         ///
         /// Due to a bug in DUNE < 2.5.2 we need to limit this when
         /// communicating. 1 is big enough for OPM as we always use
-        /// one block for all unknowns.
-        MAX_DATA_PER_CELL = 1
+        /// one block for all unknowns, but some DUNE's grid checks
+        /// actually need 2. So 2 it is.
+        MAX_DATA_PER_CELL = 2
 #else
         /// \brief The maximum data items allowed per cell (DUNE < 2.5.2)
         ///
