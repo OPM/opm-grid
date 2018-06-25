@@ -879,18 +879,16 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
     // - unique_boundary_ids_ : extract the ones that correspond existent faces
-    EntityVariable<int, 1> unique_boundary_ids;
-
     if(view_data.unique_boundary_ids_.size())
     {
         // Unique boundary ids are inherited from the global grid.
         auto id=view_data.unique_boundary_ids_.begin();
-        unique_boundary_ids.reserve(view_data.face_to_cell_.size());
+        unique_boundary_ids_.reserve(view_data.face_to_cell_.size());
         for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f, ++id)
         {
             if(*f<std::numeric_limits<int>::max())
             {
-                unique_boundary_ids.push_back(*id);
+                unique_boundary_ids_.push_back(*id);
             }
         }
     }
