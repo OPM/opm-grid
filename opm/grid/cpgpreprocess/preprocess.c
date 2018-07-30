@@ -892,11 +892,16 @@ void process_grdecl(const struct grdecl   *in,
     */
     global_cell_index = malloc(nc * sizeof *global_cell_index);
     cellnum = 0;
-    for (i = 0; i < nc; ++i) {
-        if (out->local_cell_index[i] != -1) {
-            global_cell_index[cellnum] = (int) i;
-            out->local_cell_index[i]   = cellnum;
-            cellnum++;
+    for (int i = 0; i < nx; ++i) {
+        for(int j = 0; j < ny; ++j) {
+            for(int k = 0; k < nz; ++k) {
+                int idx = linearindex(in->dims, i,j,k);
+                if (out->local_cell_index[idx] != -1) {
+                    global_cell_index[cellnum] = (int) idx;
+                    out->local_cell_index[idx]   = cellnum;
+                    cellnum++;
+                }
+            }
         }
     }
 
