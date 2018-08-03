@@ -253,7 +253,7 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
