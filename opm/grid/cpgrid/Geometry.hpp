@@ -262,7 +262,7 @@ namespace Dune
             /// J^T_{ij} = (dg_j/du_i)
             /// where g is the mapping from the reference domain,
             /// and {u_i} are the reference coordinates.
-            const JacobianTransposed
+            JacobianTransposed
             jacobianTransposed(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
@@ -298,7 +298,7 @@ namespace Dune
             }
 
             /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-            const JacobianInverseTransposed
+            JacobianInverseTransposed
             jacobianInverseTransposed(const LocalCoordinate& local_coord) const
             {
                 JacobianInverseTransposed Jti = jacobianTransposed(local_coord);
