@@ -22,8 +22,9 @@
 
 
 #include <opm/grid/utility/ErrorMacros.hpp>
-#include <array>
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 
+#include <array>
 
 namespace Opm
 {
@@ -38,6 +39,8 @@ namespace Opm
         /// \param[in]   nz   logical cartesian number of cells in K-direction
         MinpvProcessor(const int nx, const int ny, const int nz);
         /// Change zcorn so that it respects the minpv property.
+        /// \param[in]       thickness thickness of the cell
+        /// \param[in]       z_tolerance cells with thickness below z_tolerance will be bypassed in the minpv process.
         /// \param[in]       pv       pore volumes of all logical cartesian cells
         /// \param[in]       minpv    minimum pore volume to accept a cell
         /// \param[in]       actnum   active cells, inactive cells are not considered
@@ -48,7 +51,10 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
-        int process(const std::vector<double>& pv,
+        std::map<int,int> process(
+                    const std::vector<double>& thickness,
+                    const double z_tolerance,
+                    const std::vector<double>& pv,
                     const double minpv,
                     const std::vector<int>& actnum,
                     const bool mergeMinPVCells,
@@ -68,7 +74,10 @@ namespace Opm
 
 
 
-    inline int MinpvProcessor::process(const std::vector<double>& pv,
+    inline std::map<int,int> MinpvProcessor::process(
+                                        const std::vector<double>& thickness,
+                                        const double z_tolerance,
+                                        const std::vector<double>& pv,
                                         const double minpv,
                                         const std::vector<int>& actnum,
                                         const bool mergeMinPVCells,
@@ -81,11 +90,21 @@ namespace Opm
         //    pv[c] is less than minpv.
         // 3. If below the minpv threshold, move the lower four
         //    zcorn associated with the cell c to coincide with
-        //    the upper four (so it becomes degenerate). If mergeMinPVcells
+        //    the upper four (so it becomes degenerate).
+        // 4. Look for the next active cell by skipping
+        //    inactive cells with thickness below the z_tolerance.
+        // 5. If mergeMinPVcells:
         //    is true, the higher four zcorn associated with the cell below
         //    is moved to these values (so it gains the deleted volume).
+        //    is false, a nnc is created between the cell above the removed
+        //    cell and the cell below it. Note that the connection is only
+        //    created if the cell below and above are active
+        //    Inactive cells with thickness below z_tolerance and cells with porv<minpv
+        //    are bypassed.
 
-        int cells_modified = 0;
+
+        // return a list of the non-neighbor connection.
+        std::map<int,int> nnc;
 
         // Check for sane input sizes.
         const size_t log_size = dims_[0] * dims_[1] * dims_[2];
@@ -103,31 +122,84 @@ namespace Opm
                     const int c = ii + dims_[0] * (jj + dims_[1] * kk);
                     if (pv[c] < minpv && (actnum.empty() || actnum[c])) {
                         // Move deeper (higher k) coordinates to lower k coordinates.
+                        // i.e remove the cell
                         std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
                         for (int count = 0; count < 4; ++count) {
                             cz[count + 4] = cz[count];
                         }
                         setCellZcorn(ii, jj, kk, cz, zcorn);
 
+                        // Find the next cell
+                        int kk_iter = kk + 1;
+                        if (kk_iter == dims_[2]) // we are at the end of the pillar.
+                            continue;
 
-                        // optionally add removed volume to the cell below.
-                        if (mergeMinPVCells) {
-                            // Check if there is a cell below.
-                            if (pv[c] > 0.0 && kk < dims_[2] - 1) {
-                                // Set lower k coordinates of cell below to upper cells's coordinates.
-                                std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk + 1, zcorn);
-                                for (int count = 0; count < 4; ++count) {
-                                    cz_below[count] = cz[count];
-                                }
-                                setCellZcorn(ii, jj, kk + 1, cz_below, zcorn);
-                            }
+                        int c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
+                        // bypass inactive cells with thickness less then the tolerance
+                        while ( ((actnum.empty() || !actnum[c_below]) && (thickness[c_below] <= z_tolerance))  ){
+                            // move these cell to the posistion of the first cell to make the
+                            // coordinates strictly sorted
+                            setCellZcorn(ii, jj, kk_iter, cz, zcorn);
+                            kk_iter ++;
+                            if (kk_iter == dims_[2])
+                                break;
+
+                            c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
                         }
-                        ++cells_modified;
+
+                        if (kk_iter == dims_[2]) // we have come to the end of the pillar.
+                            continue;
+
+                        // create nnc if false or merge the cells if true
+                        if (!mergeMinPVCells) {
+
+                            // We are at the top, so no nnc is created.
+                            if (kk == 0)
+                                continue;
+
+                            int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
+
+                            // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpv) ) {
+                                for (int topk = kk - 2; topk > 0; --topk) {
+                                    c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
+                                    if ( ((actnum.empty() || actnum[c_above]) && pv[c_above] > minpv) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpv) ) {
+                                for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
+                                    c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
+                                    if ( ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpv) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Add a connection if the cell above and below is active and has porv > minpv
+                            if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpv && pv[c_below] > minpv) {
+                                nnc.insert(std::make_pair(c_above, c_below));
+                            }
+                        } else {
+
+                            // Set lower k coordinates of cell below to upper cells's coordinates.
+                            // i.e fill the void using the cell below
+                            std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
+                            for (int count = 0; count < 4; ++count) {
+                                cz_below[count] = cz[count];
+                            }
+                            setCellZcorn(ii, jj, kk_iter, cz_below, zcorn);
+                        }
+
                     }
                 }
+
             }
         }
-        return cells_modified;
+        return nnc;
     }
 
 

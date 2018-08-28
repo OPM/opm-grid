@@ -133,7 +133,6 @@ namespace Opm
                                           const std::vector<double>& poreVolumes)
     {
         struct grdecl g;
-        int cells_modified = 0;
         std::vector<int> actnum;
         std::vector<double> coord;
         std::vector<double> zcorn;
@@ -156,10 +155,16 @@ namespace Opm
         if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != MinpvMode::ModeEnum::Inactive)) {
             MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const double minpv_value  = inputGrid.getMinpvValue();
-            // Currently the pinchProcessor is not used and only opmfil is supported
-            //bool opmfil = inputGrid.getMinpvMode() == MinpvMode::OpmFIL;
-            bool opmfil = true;
-            cells_modified = mp.process(poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
+            const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
+            std::vector<double> thickness(cartGridSize);
+            for (size_t i = 0; i < cartGridSize; ++i) {
+                thickness[i] = inputGrid.getCellThicknes(i);
+            }
+
+            // The legacy code only supports the opmfil option
+            bool opmfil = true; //inputGrid.getMinpvMode() == MinpvMode::OpmFIL;
+            const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
+            mp.process(thickness, z_tolerance, poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
         }
 
         const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
@@ -168,9 +173,8 @@ namespace Opm
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
 
-        if (cells_modified > 0) {
-            attach_zcorn_copy( ug_ , zcorn.data() );
-        }
+        attach_zcorn_copy( ug_ , zcorn.data() );
+
     }
 
 
