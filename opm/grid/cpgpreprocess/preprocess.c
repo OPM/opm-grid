@@ -760,7 +760,8 @@ reverse_face_nodes(struct processed_grid *out)
 */
 void process_grdecl(const struct grdecl   *in,
                     double                tolerance,
-                    struct processed_grid *out)
+                    struct processed_grid *out,
+                    int                   reorder_k_fastest)
 {
     struct grdecl g;
 
@@ -892,17 +893,39 @@ void process_grdecl(const struct grdecl   *in,
     */
     global_cell_index = malloc(nc * sizeof *global_cell_index);
     cellnum = 0;
-    for (int i = 0; i < nx; ++i) {
-        for(int j = 0; j < ny; ++j) {
-            for(int k = 0; k < nz; ++k) {
-                int idx = linearindex(in->dims, i,j,k);
-                if (out->local_cell_index[idx] != -1) {
-                    global_cell_index[cellnum] = (int) idx;
-                    out->local_cell_index[idx]   = cellnum;
-                    cellnum++;
+    if ( reorder_k_fastest )
+    {
+        for (int i = 0; i < nx; ++i) {
+            for(int j = 0; j < ny; ++j) {
+                for(int k = 0; k < nz; ++k) {
+                    int idx = linearindex(in->dims, i,j,k);
+                    if (out->local_cell_index[idx] != -1) {
+                        global_cell_index[cellnum] = (int) idx;
+                        out->local_cell_index[idx]   = cellnum;
+                        cellnum++;
+                    }
                 }
             }
         }
+        out->output_reordering_index = malloc( cellnum * sizeof *out->output_reordering_index);
+        cellnum = 0; // reordered local index
+        for (i = 0; i < nc; ++i) {
+            if (out->local_cell_index[i] != -1) {
+                out->output_reordering_index[cellnum] = out->local_cell_index[i];
+                ++cellnum;
+            }
+        }
+    }
+    else
+    {
+        for (i = 0; i < nc; ++i) {
+            if (out->local_cell_index[i] != -1) {
+                global_cell_index[cellnum] = (int) i;
+                out->local_cell_index[i]   = cellnum;
+                cellnum++;
+            }
+        }
+        out->output_reordering_index = NULL;
     }
 
     /* Remap out->face_neighbors */
@@ -953,6 +976,7 @@ void free_processed_grid(struct processed_grid *g)
         free ( g->face_neighbors   );
         free ( g->node_coordinates );
         free ( g->local_cell_index );
+        free ( g->output_reordering_index );
     }
 }
 

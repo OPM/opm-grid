@@ -265,18 +265,23 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
     void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume)
+                                      const std::vector<double>& poreVolume,
+                                      bool reorder_k_fastest)
     {
         current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
                                                  turn_normals, clip_z,
-                                                 poreVolume);
+                                                 poreVolume,
+                                                 reorder_k_fastest);
     }
 #endif
 
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
-                                      bool remove_ij_boundary, bool turn_normals)
+                                      bool remove_ij_boundary, bool turn_normals,
+                                      bool reorder_k_fastest)
     {
-        current_view_data_->processEclipseFormat(input_data, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->processEclipseFormat(input_data, z_tolerance,
+                                                 remove_ij_boundary, turn_normals,
+                                                 reorder_k_fastest);
     }
 
 } // namespace Dune

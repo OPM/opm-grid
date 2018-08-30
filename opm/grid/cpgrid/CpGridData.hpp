@@ -180,7 +180,8 @@ public:
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
     void processEclipseFormat(const Opm::Deck& deck, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                              const std::vector<double>& poreVolume = std::vector<double>());
+                              const std::vector<double>& poreVolume = std::vector<double>(),
+                              bool reorder_k_fastest=false);
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
@@ -191,7 +192,8 @@ public:
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
     void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                              const std::vector<double>& poreVolume = std::vector<double>());
+                              const std::vector<double>& poreVolume = std::vector<double>(),
+                              bool reorder_k_fastest=false);
 #endif
 
     /// Read the Eclipse grid format ('grdecl').
@@ -199,7 +201,9 @@ public:
     /// \param z_tolerance points along a pillar that are closer together in z
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-    void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+    void processEclipseFormat(const grdecl& input_data, double z_tolerance,
+                              bool remove_ij_boundary, bool turn_normals = false,
+                              bool reorder_k_fastest=false);
 
 
     /// @brief
@@ -413,6 +417,12 @@ private:
     /// the zcorn values will typically be modified, and we retain a
     /// copy here to be able to create an EclipseGrid for output.
     std::vector<double> zcorn;
+
+    /// This index is for looking up the correct cell indices during
+    /// eclipse output in the case that i is not the fastest running
+    /// index in ijk for our cell ordering. If size is 0 then no
+    /// reordering is needed.
+    std::vector<int> output_reordering_index_;
 
 #ifdef HAVE_DUNE_ISTL
     typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;

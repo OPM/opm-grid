@@ -105,7 +105,8 @@ namespace cpgrid
 
 #if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume)
+                                          const std::vector<double>& poreVolume,
+                                          bool reorder_k_fastest)
     {
         std::vector<double> coordData;
         ecl_grid.exportCOORD(coordData);
@@ -193,10 +194,12 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, z_tolerance, true, turn_normals);
+            processEclipseFormat(new_g, z_tolerance, true, turn_normals,
+                                 reorder_k_fastest);
         } else {
             // Make the grid.
-            processEclipseFormat(g, z_tolerance, false, turn_normals);
+            processEclipseFormat(g, z_tolerance, false, turn_normals,
+                                 reorder_k_fastest);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -205,14 +208,15 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+void CpGridData::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
+                                      bool reorder_k_fastest)
     {
         // Process.
 #ifdef VERBOSE
         std::cout << "Processing eclipse data." << std::endl;
 #endif
         processed_grid output;
-        process_grdecl(&input_data, z_tolerance, &output);
+        process_grdecl(&input_data, z_tolerance, &output, reorder_k_fastest);
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
@@ -249,6 +253,15 @@ namespace cpgrid
 
         computeUniqueBoundaryIds();
 
+        // Compute reordering needed for correct eclipse output.
+        // it needs index i running fastest, then j and k.
+        // But when reordering it is k that runs fastest.
+        if ( reorder_k_fastest )
+        {
+            output_reordering_index_.resize(size(0));
+            output_reordering_index_.assign(output.output_reordering_index,
+                                            output.output_reordering_index+size(0));
+        }
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
 #endif

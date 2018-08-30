@@ -104,6 +104,12 @@ extern "C" {
         int    number_of_cells;   /**< Number of active grid cells. */
         int    *local_cell_index; /**< Deceptively named local-to-global cell
                                        index mapping. */
+        int    *output_reordering_index; /**< In the case that i is not the
+                                              fastest running index this is
+                                              for reordering when doing output
+                                              that needs i running fastest, then j
+                                              and finally k. NULL if no
+                                              reordering is needed. */
     };
 
 
@@ -128,7 +134,8 @@ extern "C" {
      */
     void process_grdecl(const struct grdecl   *g  ,
                         double                 tol,
-                        struct processed_grid *out);
+                        struct processed_grid *out,
+                        int                   reorder_k_fastest);
 
     /**
      * Release memory resources acquired in previous grid processing using

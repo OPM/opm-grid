@@ -253,7 +253,8 @@ namespace Dune
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
         void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                                  const std::vector<double>& poreVolume = std::vector<double>());
+                                  const std::vector<double>& poreVolume = std::vector<double>(),
+                                  bool reorder_k_fastest = false);
 #endif
 
         /// Read the Eclipse grid format ('grdecl').
@@ -261,7 +262,8 @@ namespace Dune
         /// \param z_tolerance points along a pillar that are closer together in z
         ///        coordinate than this parameter, will be replaced by a single point.
         /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-        void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+        void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false,
+                                  bool reorder_k_fastest = false);
 
         //@}
 
@@ -323,6 +325,16 @@ namespace Dune
         void setUniqueBoundaryIds(bool uids)
         {
             current_view_data_->setUniqueBoundaryIds(uids);
+        }
+
+        /// \brief Get the lookup needed for eclipse output.
+        ///
+        /// This vector is empty if no reordering is needed
+        /// (i is the fastest index for the current ordering,
+        /// then j and then k).
+        const std::vector<int>& eclipseOuputIndexLookup()
+        {
+            return current_view_data_->output_reordering_index_;
         }
 
         // --- Dune interface below ---
