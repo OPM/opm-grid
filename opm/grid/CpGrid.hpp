@@ -332,7 +332,7 @@ namespace Dune
         /// This vector is empty if no reordering is needed
         /// (i is the fastest index for the current ordering,
         /// then j and then k).
-        const std::vector<int>& eclipseOuputIndexLookup()
+        const std::vector<int>& eclipseOuputIndexLookup() const
         {
             return current_view_data_->output_reordering_index_;
         }
