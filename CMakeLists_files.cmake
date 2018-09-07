@@ -120,7 +120,6 @@ list (APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND EXAMPLE_SOURCE_FILES
-  examples/grdecl2vtu.cpp
   examples/finitevolume/finitevolume.cc
   examples/mirror_grid.cpp
   )
@@ -128,9 +127,12 @@ list (APPEND EXAMPLE_SOURCE_FILES
 # programs listed here will not only be compiled, but also marked for
 # installation
 list (APPEND PROGRAM_SOURCE_FILES
-  examples/grdecl2vtu.cpp
   examples/mirror_grid.cpp
   )
+if(HAVE_ECL_INPUT)
+  list(APPEND EXAMPLE_SOURCE_FILES examples/grdecl2vtu.cpp)
+  list(APPEND PROGRAM_SOURCE_FILES examples/grdecl2vtu.cpp)
+endif()
 
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
