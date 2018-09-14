@@ -120,7 +120,6 @@ try
     }
 
     const char* eclipsefilename = argv[1];
-#if HAVE_OPM_PARSER
     Opm::ParseContext parseContext;
     Opm::Parser parser;
     auto deck = parser.parseFile(eclipsefilename, parseContext);
@@ -146,11 +145,9 @@ try
         Opm::EclipseGrid ecl_grid(deck , actnum);
         grid.processEclipseFormat(ecl_grid, false);
     }
-#endif
 
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());
 
-#if HAVE_OPM_PARSER
     const std::vector<int>& global_cell = grid.globalCell();
 
     std::vector<double> poros;
@@ -175,7 +172,6 @@ try
 
     std::vector<double> swats;
     condWriteDoubleField(swats, "SWAT", deck, global_cell, dims, vtkwriter);
-#endif // #if HAVE_OPM_PARSER
 
     std::string fname(eclipsefilename);
     std::string fnamebase = fname.substr(0, fname.find_last_of('.'));
