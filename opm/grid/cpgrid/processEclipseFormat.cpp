@@ -81,6 +81,7 @@ namespace Dune
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
+                       const std::map<int,int>& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -125,15 +126,21 @@ namespace cpgrid
         g.zcorn = &zcornData[0];
 
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
+        std::map<int,int> nnc;
 
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            // Currently the pinchProcessor is not used and only opmfil is supported
-            //bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
-            bool opmfil = true;
-            size_t cells_modified = mp.process(poreVolume, ecl_grid.getMinpvValue(), actnumData, opmfil, zcornData.data());
-            if (cells_modified > 0) {
+            // Currently PINCH is always assumed to be active
+            bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
+            std::vector<double> thickness(cartGridSize);
+            for (size_t i = 0; i < cartGridSize; ++i) {
+                thickness[i] = ecl_grid.getCellThicknes(i);
+            }
+            const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
+            nnc = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvValue(), actnumData, opmfil, zcornData.data());
+            if (opmfil || nnc.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
@@ -193,10 +200,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, z_tolerance, true, turn_normals);
+            processEclipseFormat(new_g, nnc, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, z_tolerance, false, turn_normals);
+            processEclipseFormat(g, nnc, z_tolerance, false, turn_normals);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -205,7 +212,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, std::map<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         // Process.
 #ifdef VERBOSE
@@ -223,7 +230,7 @@ namespace cpgrid
         std::cout << "Building topology." << std::endl;
 #endif
         std::vector<int> face_to_output_face;
-        buildTopo(output, global_cell_, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, face_to_output_face);
+        buildTopo(output, nnc, global_cell_, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, face_to_output_face);
         std::copy(output.dimensions, output.dimensions + 3, logical_cartesian_size_.begin());
 
 #ifdef VERBOSE
@@ -633,6 +640,7 @@ namespace cpgrid
 
 
         void buildTopo(const processed_grid& output,
+                       const std::map<int,int>& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -643,6 +651,20 @@ namespace cpgrid
             // Map local to global cell index.
             global_cell.assign(output.local_cell_index,
                                output.local_cell_index + output.number_of_cells);
+
+            std::vector<int> global_to_local;
+            if (nnc.size() > 0) {
+                int cart_size = 1;
+                int num_dims = sizeof(output.dimensions)/ sizeof(*output.dimensions);
+                for (int idx = 0; idx < num_dims ; ++idx) {
+                    cart_size *= output.dimensions[idx];
+                }
+                // create the inverse map of global_cell
+                global_to_local.resize(cart_size, -1);
+                for (size_t idx = 0; idx < global_cell.size(); ++idx) {
+                    global_to_local[global_cell[idx]] = idx;
+                }
+            }
 
             // Build face to cell.
             f2c.clear();
@@ -659,6 +681,18 @@ namespace cpgrid
                 if (fnc[1] != -1) {
                     cells[cellcount].setValue(fnc[1], false);
                     ++cellcount;
+                }
+
+                if (output.face_tag[i] == TOP ) {
+                    // add the NNC created from the minpv processs
+                    // at the bottom of the cell
+                    if (fnc[1] == -1 ) {
+                        auto it = nnc.find(global_cell[fnc[0]]);
+                        if (it != nnc.end()) {
+                            cells[cellcount].setValue(global_to_local[it->second], false);
+                            ++cellcount;
+                        }
+                    }
                 }
                 // Assertation below is no longer true, due to periodic_extension etc.
                 // Instead, the appendRow() is put inside an if test.
@@ -717,10 +751,6 @@ namespace cpgrid
             assert(f2c == f2c_again);
 #endif
         }
-
-
-
-
 
         /// Encapsulate a vector<T>, and a permutation array used for access.
         template <typename T>
