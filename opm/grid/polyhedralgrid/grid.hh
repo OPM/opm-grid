@@ -818,7 +818,7 @@ namespace Dune
 
         if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            const double minpv_value  = eclipseGrid->getMinpvValue();
+            const std::vector<double>& minpvv  = eclipseGrid->getMinpvVector();
             // Currently the pinchProcessor is not used and only opmfil is supported
             // The polyhedralgrid only only supports the opmfil option
             //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
@@ -829,7 +829,7 @@ namespace Dune
                 thickness[i] = eclipseGrid->getCellThicknes(i);
             }
             const double z_tolerance = eclipseGrid->isPinchActive() ? eclipseGrid->getPinchThresholdThickness() : 0.0;
-            mp.process(thickness, z_tolerance, poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
+            mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
         }
 
         const double z_tolerance = eclipseGrid->isPinchActive() ?
