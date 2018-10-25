@@ -42,7 +42,7 @@ namespace Opm
         /// \param[in]       thickness thickness of the cell
         /// \param[in]       z_tolerance cells with thickness below z_tolerance will be bypassed in the minpv process.
         /// \param[in]       pv       pore volumes of all logical cartesian cells
-        /// \param[in]       minpv    minimum pore volume to accept a cell
+        /// \param[in]       minpvv   minimum pore volume to accept a cell
         /// \param[in]       actnum   active cells, inactive cells are not considered
         /// \param[in]       mergeMinPVCells flag to determine whether cells below minpv
         /// should be included in the cell below
@@ -51,11 +51,10 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
-        std::map<int,int> process(
-                    const std::vector<double>& thickness,
+        std::map<int,int> process(const std::vector<double>& thickness,
                     const double z_tolerance,
                     const std::vector<double>& pv,
-                    const double minpv,
+                    const std::vector<double>& minpvv,
                     const std::vector<int>& actnum,
                     const bool mergeMinPVCells,
                     double* zcorn) const;
@@ -78,7 +77,7 @@ namespace Opm
                                         const std::vector<double>& thickness,
                                         const double z_tolerance,
                                         const std::vector<double>& pv,
-                                        const double minpv,
+                                        const std::vector<double>& minpvv,
                                         const std::vector<int>& actnum,
                                         const bool mergeMinPVCells,
                                         double* zcorn) const
@@ -87,7 +86,7 @@ namespace Opm
         // 1. Process each column of cells (with same i and j
         //    coordinates) from top (low k) to bottom (high k).
         // 2. For each cell 'c' visited, check if its pore volume
-        //    pv[c] is less than minpv.
+        //    pv[c] is less than minpvv[c] .
         // 3. If below the minpv threshold, move the lower four
         //    zcorn associated with the cell c to coincide with
         //    the upper four (so it becomes degenerate).
@@ -120,7 +119,7 @@ namespace Opm
             for (int jj = 0; jj < dims_[1]; ++jj) {
                 for (int ii = 0; ii < dims_[0]; ++ii) {
                     const int c = ii + dims_[0] * (jj + dims_[1] * kk);
-                    if (pv[c] < minpv && (actnum.empty() || actnum[c])) {
+                    if (pv[c] < minpvv[c] && (actnum.empty() || actnum[c])) {
                         // Move deeper (higher k) coordinates to lower k coordinates.
                         // i.e remove the cell
                         std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
@@ -160,27 +159,27 @@ namespace Opm
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpv) ) {
+                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpvv[c_above]) ) {
                                 for (int topk = kk - 2; topk > 0; --topk) {
                                     c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
-                                    if ( ((actnum.empty() || actnum[c_above]) && pv[c_above] > minpv) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
+                                    if ( ((actnum.empty() || actnum[c_above]) && pv[c_above] > minpvv[c_above]) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
                                         break;
                                     }
                                 }
                             }
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpv) ) {
+                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpvv[c]) ) {
                                 for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
                                     c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
-                                    if ( ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpv) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
+                                    if ( ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpvv[c_below]) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
                                         break;
                                     }
                                 }
                             }
 
                             // Add a connection if the cell above and below is active and has porv > minpv
-                            if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpv && pv[c_below] > minpv) {
+                            if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                                 nnc.insert(std::make_pair(c_above, c_below));
                             }
                         } else {
