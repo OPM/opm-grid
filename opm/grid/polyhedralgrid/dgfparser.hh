@@ -7,7 +7,7 @@
 
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 
-#include <dune/grid/polyhedralgrid/grid.hh>
+#include <opm/grid/polyhedralgrid/grid.hh>
 
 namespace Dune
 {
