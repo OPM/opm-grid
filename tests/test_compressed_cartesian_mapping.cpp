@@ -43,11 +43,13 @@ BOOST_AUTO_TEST_CASE(mapping)
     BOOST_CHECK_EQUAL(cartesian_to_compressed.at(8), 6);
     BOOST_CHECK_EQUAL(cartesian_to_compressed.at(9), 7);
 
+    const int non_existing_index = 1829;
+    BOOST_CHECK_THROW(cartesian_to_compressed.at(non_existing_index), std::out_of_range);
+
     const std::vector<int> compressed_to_cartesian = Opm::compressedToCartesian(num_cells,  global_cell.data());
 
-    for (int i = 0; i < num_cells; ++i) {
-        BOOST_CHECK_EQUAL(compressed_to_cartesian[i], global_cell[i]);
-    }
+    BOOST_CHECK_EQUAL_COLLECTIONS(compressed_to_cartesian.begin(), compressed_to_cartesian.end(),
+                                  global_cell.begin(),             global_cell.end());
 }
 
 BOOST_AUTO_TEST_CASE(nullmapping)
