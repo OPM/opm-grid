@@ -54,6 +54,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/UnstructuredGrid.c
   opm/grid/grid_equal.cpp
   opm/grid/utility/compressedToCartesian.cpp
+  opm/grid/utility/cartesianToCompressed.cpp
   opm/grid/utility/StopWatch.cpp
   opm/grid/utility/WachspressCoord.cpp
   )
@@ -100,6 +101,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
   tests/test_quadratures.cpp
+  tests/test_compressed_cartesian_mapping.cpp
 	)
 
 if(HAVE_ECL_INPUT)
@@ -204,6 +206,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/TransTpfa_impl.hpp
   opm/grid/utility/CompressedPropertyAccess.hpp
   opm/grid/utility/compressedToCartesian.hpp
+  opm/grid/utility/cartesianToCompressed.hpp
   opm/grid/utility/extractPvtTableIndex.hpp
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
