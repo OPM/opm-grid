@@ -26,7 +26,6 @@ using namespace std;
 
 
 BOOST_AUTO_TEST_CASE(Equal) {
-    Opm::ParseContext parseContext;
     const std::string filename1 = "CORNERPOINT_ACTNUM.DATA";
     const char *deck2Data =
         "RUNSPEC\n"
@@ -47,11 +46,11 @@ BOOST_AUTO_TEST_CASE(Equal) {
 
     Opm::Parser parser;
 
-    Opm::Deck deck1 = parser.parseFile( filename1 , parseContext);
-    Opm::EclipseState es1(deck1, parseContext);
+    Opm::Deck deck1 = parser.parseFile( filename1);
+    Opm::EclipseState es1(deck1);
 
-    Opm::Deck deck2 = parser.parseString( deck2Data , parseContext);
-    Opm::EclipseState es2(deck2, parseContext);
+    Opm::Deck deck2 = parser.parseString( deck2Data);
+    Opm::EclipseState es2(deck2);
 
     BOOST_CHECK( deck1.hasKeyword("ZCORN") );
     BOOST_CHECK( deck1.hasKeyword("COORD") );
@@ -75,9 +74,8 @@ BOOST_AUTO_TEST_CASE(Equal) {
 BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
     const std::string filename = "CORNERPOINT_ACTNUM.DATA";
     Opm::Parser parser;
-    Opm::ParseContext parseContext;
-    Opm::Deck deck = parser.parseFile( filename , parseContext);
-    Opm::EclipseState es(deck, parseContext);
+    Opm::Deck deck = parser.parseFile( filename);
+    Opm::EclipseState es(deck);
     auto grid = es.getInputGrid();
 
     Opm::GridManager gridM(es.getInputGrid());
@@ -148,12 +146,11 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
         "\n";
 
     Opm::Parser parser;
-    Opm::ParseContext parseContext;
-    const Opm::Deck& deck1 = parser.parseString(deck1Data, parseContext);
-    const Opm::Deck& deck2 = parser.parseString(deck2Data, parseContext);
+    const Opm::Deck& deck1 = parser.parseString(deck1Data);
+    const Opm::Deck& deck2 = parser.parseString(deck2Data);
 
-    Opm::EclipseState es1(deck1, parseContext);
-    Opm::EclipseState es2(deck2, parseContext);
+    Opm::EclipseState es1(deck1);
+    Opm::EclipseState es2(deck2);
 
     Opm::GridManager gridM1(es1.getInputGrid());
     Opm::GridManager gridM2(es2.getInputGrid());

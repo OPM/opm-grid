@@ -20,7 +20,6 @@
 #define OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
 
 #if HAVE_ECL_INPUT
-#include <opm/parser/eclipse/Parser/ParseContext.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Deck/DeckItem.hpp>

@@ -120,9 +120,8 @@ try
     }
 
     const char* eclipsefilename = argv[1];
-    Opm::ParseContext parseContext;
     Opm::Parser parser;
-    auto deck = parser.parseFile(eclipsefilename, parseContext);
+    auto deck = parser.parseFile(eclipsefilename);
 
     // Get logical cartesian grid dimensions.
     std::array<size_t, 3> dims;
