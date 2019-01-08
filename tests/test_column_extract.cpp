@@ -127,9 +127,8 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
     correct_answer[9].resize(1);
 
 #if HAVE_ECL_INPUT
-    Opm::ParseContext parseContext;
     Opm::Parser parser;
-    Opm::Deck deck = parser.parseString(grdecl , parseContext);
+    Opm::Deck deck = parser.parseString(grdecl);
     Opm::EclipseGrid ep = Opm::EclipseGrid(deck);
     std::vector<int> actnum;
     for (size_t i = 1; i <= (3 * 3 * 3); i++)

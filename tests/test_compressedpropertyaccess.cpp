@@ -39,7 +39,7 @@
 
 struct SetupSimple {
     SetupSimple() :
-        deck( Opm::Parser{}.parseFile( "compressed_gridproperty.data", Opm::ParseContext{} ) ),
+        deck( Opm::Parser{}.parseFile( "compressed_gridproperty.data" ) ),
         ecl( deck )
     {}
 
