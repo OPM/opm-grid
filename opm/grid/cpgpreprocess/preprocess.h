@@ -65,9 +65,10 @@ extern "C" {
      * Connection taxonomy.
      */
     enum face_tag {
-        LEFT,        /**< Connection topologically parallel to J-K plane. */
-        BACK,        /**< Connection topologically parallel to I-K plane. */
-        TOP          /**< Connection topologically parallel to I-J plane. */
+        I_FACE,        /**< Connection topologically normal to J-K plane. */
+        J_FACE,        /**< Connection topologically normal to I-K plane. */
+        K_FACE,        /**< Connection topologically normal to I-J plane. */
+        NNC_FACE       /**< Arbitrary non-neighbouring connection. */
     };
 
 
