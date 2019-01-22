@@ -266,11 +266,12 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
     void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume)
+                                      const std::vector<double>& poreVolume,
+                                      const Opm::NNC& nncs)
     {
         current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
                                                  turn_normals, clip_z,
-                                                 poreVolume);
+                                                 poreVolume, nncs);
     }
 #endif
 
