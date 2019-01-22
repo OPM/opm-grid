@@ -254,7 +254,7 @@ namespace cpgrid
         for (int i = 0; i < nf; ++i) {
             const int output_face = face_to_output_face[i];
             if (output_face == -1) {
-                temp_tags[i] = static_cast<face_tag>(-1); // TODO temporary value until enum is expanded.
+                temp_tags[i] = NNC_FACE;
             } else {
                 temp_tags[i] = output.face_tag[output_face];
             }

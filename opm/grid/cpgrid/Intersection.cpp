@@ -58,6 +58,10 @@ int Intersection::boundaryId() const
                             //                   TOP  : BOTTOM
                             ret = normal_is_in ? 5    : 6; // min(K) : max(K)
                             break;
+                        case NNC_FACE:
+                            // This should not be possible, as NNC "faces" always
+                            // have two cell neighbours and thus are not on the boundary.
+                            OPM_THROW(std::logic_error, "NNC face at boundary. This should never happen!");
                         }
                     }
                 }
@@ -127,6 +131,11 @@ int Intersection::indexInInside() const
         return normal_is_in ? 2 : 3; // min(J) : max(J)
     case K_FACE:
         return normal_is_in ? 4 : 5; // min(K) : max(K)
+    case NNC_FACE:
+        // For nnc faces we return the otherwise unused value -1.
+        // The Dune grid interface is essentially meaningless
+        // for non-neighbouring "intersections".
+        return -1;
     default:
         OPM_THROW(std::runtime_error, "Unhandled face tag: " << tag);
     }

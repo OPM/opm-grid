@@ -1066,6 +1066,10 @@ namespace Dune
                         //                   TOP  : BOTTOM
                         ret = normal_is_in ? 5    : 6; // min(K) : max(K)
                         break;
+                    case NNC_FACE:
+                        // This should not be possible, as NNC "faces" always
+                        // have two cell neighbours.
+                        OPM_THROW(std::logic_error, "NNC face at boundary. This should never happen!");
                     }
                 }
             }
@@ -1083,7 +1087,7 @@ namespace Dune
         faceTag(const Cell2FacesRowIterator& cell_face) const
         {
             // Note that this relies on the following implementation detail:
-            // The grid is always construct such that the interior faces constructed
+            // The grid is always constructed such that the interior faces constructed
             // with orientation set to true are
             // oriented along the positive IJK direction. Oriented means that
             // the first cell attached to face has the lower index.
@@ -1119,15 +1123,16 @@ namespace Dune
             case I_FACE:
                 //                    LEFT : RIGHT
                 return normal_is_in ? 0    : 1; // min(I) : max(I)
-
             case J_FACE:
                 //                    BACK : FRONT
                 return normal_is_in ? 2    : 3; // min(J) : max(J)
-
             case K_FACE:
                 // Note: TOP at min(K) as 'z' measures *depth*.
                 //                    TOP  : BOTTOM
                 return normal_is_in ? 4    : 5; // min(K) : max(K)
+            case NNC_FACE:
+                // For nnc faces we return the otherwise unused value -1.
+                return -1;
             default:
                 OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
             }
