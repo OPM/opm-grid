@@ -903,9 +903,14 @@ namespace cpgrid
                 if (output_face == cpgrid::NNCFace) {
                     // NNC faces are purely topological constructs,
                     // and do not have any embedded geometry.
+                    // However, since the ewoms code will multiply and
+                    // divide by the face area even if not necessary
+                    // for the cell-centered FV discretization (because
+                    // it wants to deal with velocities rather than fluxes),
+                    // we have to set the areas to 1 to avoid trouble.
                     face_normals.push_back({-1e100, -1e100, -1e100});
                     face_centroids.push_back({-1e100, -1e100, -1e100});
-                    face_areas.push_back(-1e100);
+                    face_areas.push_back(1.0);
                 } else {
                     IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
                     point_t avg = average(face_pts);
