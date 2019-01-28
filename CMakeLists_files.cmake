@@ -109,6 +109,7 @@ if(HAVE_ECL_INPUT)
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
 		tests/test_compressedpropertyaccess.cpp
+                tests/cpgrid/grid_nnc.cpp
 	)
 endif()
 
