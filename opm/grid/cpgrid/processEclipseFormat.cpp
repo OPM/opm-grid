@@ -146,10 +146,16 @@ namespace cpgrid
         }
 
         // Add explicit NNCs to the NNC map.
-        if (nncs.hasNNC()) {
-            for (const auto single_nnc : nncs.nncdata()) {
-                nnc_cells.insert({single_nnc.cell1, single_nnc.cell2});
-            }
+        for (const auto single_nnc : nncs.nncdata()) {
+            // Repeated NNCs will only exist in the map once
+            // (repeated insertions have no effect), and we make
+            // sure NNCs specified using either order of cells
+            // end up with the same {low, high} pair.
+            // The code that computes the transmissibilities is responsible
+            // for ensuring repeated NNC transmissibilities are added.
+            auto low = std::min(single_nnc.cell1, single_nnc.cell2);
+            auto high = std::max(single_nnc.cell1, single_nnc.cell2);
+            nnc_cells.insert({low, high});
         }
 
         // this variable is only required because getCellZvals() needs
@@ -685,12 +691,50 @@ namespace cpgrid
             // Add nnc connections first, to preserve the
             // property that top and bottom faces come last
             // (per cell) in the cell-face mapping.
-            for (const auto& nncpair : nnc) {
+            // A complicating factor is that an NNC could be specified
+            // for a connection that is also appearing as a face in
+            // the geometry-based grid processing. In that case we
+            // should ensure we do not add it twice.
+            std::map<int, int> filtered_nnc;
+            {
+                const int num_faces = output.number_of_faces;
+                std::vector<std::pair<int, int>> face_cells(num_faces);
+                // Sort all face->cell mappings so that lowest cell number comes first.
+                for (int f = 0; f < num_faces; ++f) {
+                    const int c1 = output.face_neighbors[2*f];
+                    const int c2 = output.face_neighbors[2*f + 1];
+                    if (c1 < c2) {
+                        face_cells[f] = { c1, c2 };
+                    } else {
+                        face_cells[f] = { c2, c1 };
+                    }
+                }
+                // Sort face->cell mappings according to first, then second cell.
+                std::sort(face_cells.begin(), face_cells.end());
+                for (const auto& nncpair : nnc) {
+                    const int c1 = global_to_local[nncpair.first];
+                    const int c2 = global_to_local[nncpair.second];
+                    if (c1 < 0 || c2 < 0) {
+                        Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
+                        continue;
+                    }
+                    auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
+                    auto end = std::upper_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1 + 1, -1));
+                    bool found_same_connection = false;
+                    for (auto it = beg; it < end; ++it) {
+                        if (it->second == c2) {
+                            found_same_connection = true;
+                            break;
+                        }
+                    }
+                    if (!found_same_connection) {
+                        filtered_nnc.insert(nncpair);
+                    }
+                }
+            }
+            for (const auto& nncpair : filtered_nnc) {
                 const int c1 = global_to_local[nncpair.first];
                 const int c2 = global_to_local[nncpair.second];
-                if (c1 < 0 || c2 < 0) {
-                    OPM_THROW(std::runtime_error, "NNC connection requested between inactive cells.");
-                }
                 cells[0].setValue(c1, true);
                 cells[1].setValue(c2, false);
                 std::sort(cells, cells + 2);
@@ -743,6 +787,7 @@ namespace cpgrid
             for (int face = 0; face < num_faces; ++face) {
                 int output_face = face_to_output_face[face];
                 if (output_face == cpgrid::NNCFace) {
+                    // Add an empty row, i.e. no points are associated with the NNC face.
                     f2p.appendRow(fn, fn);
                 } else {
                     f2p.appendRow(fn + fp[output_face], fn + fp[output_face+1]);
