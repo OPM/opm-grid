@@ -661,86 +661,95 @@ namespace cpgrid
 
 
 
-        void buildTopo(const processed_grid& output,
-                       const std::multimap<int,int>& nnc,
-                       std::vector<int>& global_cell,
-                       cpgrid::OrientedEntityTable<0, 1>& c2f,
-                       cpgrid::OrientedEntityTable<1, 0>& f2c,
-                       Opm::SparseTable<int>& f2p,
-                       std::vector<std::array<int,8> >& c2p,
-                       std::vector<int>& face_to_output_face)
+        std::vector<int> createGlobalToLocal(const processed_grid& output,
+                                             const std::vector<int>& global_cell)
         {
-            // Map local to global cell index.
-            global_cell.assign(output.local_cell_index,
-                               output.local_cell_index + output.number_of_cells);
-
             std::vector<int> global_to_local;
-            if (nnc.size() > 0) {
-                int cart_size = 1;
-                int num_dims = sizeof(output.dimensions)/ sizeof(*output.dimensions);
-                for (int idx = 0; idx < num_dims ; ++idx) {
-                    cart_size *= output.dimensions[idx];
-                }
-                // create the inverse map of global_cell
-                global_to_local.resize(cart_size, -1);
-                for (size_t idx = 0; idx < global_cell.size(); ++idx) {
-                    global_to_local[global_cell[idx]] = idx;
+            int cart_size = 1;
+            const int num_dims = sizeof(output.dimensions)/sizeof(*output.dimensions);
+            for (int idx = 0; idx < num_dims ; ++idx) {
+                cart_size *= output.dimensions[idx];
+            }
+            // create the inverse map of global_cell
+            global_to_local.resize(cart_size, -1);
+            for (size_t idx = 0; idx < global_cell.size(); ++idx) {
+                global_to_local[global_cell[idx]] = idx;
+            }
+            return global_to_local;
+        }
+
+
+
+
+
+        std::multimap<int, int> filterNNCs(const processed_grid& output,
+                                           const std::multimap<int,int>& nnc,
+                                           const std::vector<int>& global_to_local)
+        {
+            std::multimap<int, int> filtered_nnc;
+            const int num_faces = output.number_of_faces;
+            std::vector<std::pair<int, int>> face_cells(num_faces);
+            // Sort all face->cell mappings so that lowest cell number comes first.
+            for (int f = 0; f < num_faces; ++f) {
+                const int c1 = output.face_neighbors[2*f];
+                const int c2 = output.face_neighbors[2*f + 1];
+                if (c1 < c2) {
+                    face_cells[f] = { c1, c2 };
+                } else {
+                    face_cells[f] = { c2, c1 };
                 }
             }
+            // Sort face->cell mappings according to first, then second cell.
+            std::sort(face_cells.begin(), face_cells.end());
+            // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
+            for (const auto& nncpair : nnc) {
+                if (nncpair.first >= global_to_local.size() || nncpair.second >= global_to_local.size()) {
+                    Opm::OpmLog::warning("nnc_invalid", "NNC connection requested between invalid cells.");
+                    continue;
+                }
+                const int c1 = global_to_local[nncpair.first];
+                const int c2 = global_to_local[nncpair.second];
+                if (c1 < 0 || c2 < 0) {
+                    Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
+                    continue;
+                }
+                auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
+                auto end = std::upper_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1 + 1, -1));
+                bool found_same_connection = false;
+                for (auto it = beg; it < end; ++it) {
+                    if (it->second == c2) {
+                        found_same_connection = true;
+                        break;
+                    }
+                }
+                if (!found_same_connection) {
+                    filtered_nnc.insert(nncpair);
+                }
+            }
+            return filtered_nnc;
+        }
 
-            // Build face to cell.
-            f2c.clear();
-            cpgrid::EntityRep<0> cells[2];
-            face_to_output_face.clear();
+
+
+
+
+        void buildFaceToCellNNC(const processed_grid& output,
+                                const std::multimap<int,int>& nnc,
+                                const std::vector<int>& global_cell,
+                                cpgrid::OrientedEntityTable<1, 0>& f2c,
+                                std::vector<int>& face_to_output_face)
+        {
+            const std::vector<int> global_to_local = createGlobalToLocal(output, global_cell);
             // Add nnc connections first, to preserve the
             // property that top and bottom faces come last
             // (per cell) in the cell-face mapping.
             // A complicating factor is that an NNC could be specified
             // for a connection that is also appearing as a face in
             // the geometry-based grid processing. In that case we
-            // should ensure we do not add it twice.
-            std::multimap<int, int> filtered_nnc;
-            {
-                const int num_faces = output.number_of_faces;
-                std::vector<std::pair<int, int>> face_cells(num_faces);
-                // Sort all face->cell mappings so that lowest cell number comes first.
-                for (int f = 0; f < num_faces; ++f) {
-                    const int c1 = output.face_neighbors[2*f];
-                    const int c2 = output.face_neighbors[2*f + 1];
-                    if (c1 < c2) {
-                        face_cells[f] = { c1, c2 };
-                    } else {
-                        face_cells[f] = { c2, c1 };
-                    }
-                }
-                // Sort face->cell mappings according to first, then second cell.
-                std::sort(face_cells.begin(), face_cells.end());
-                // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
-                for (const auto& nncpair : nnc) {
-                    if (nncpair.first >= global_to_local.size() || nncpair.second >= global_to_local.size()) {
-                        Opm::OpmLog::warning("nnc_invalid", "NNC connection requested between invalid cells.");
-                        continue;
-                    }
-                    const int c1 = global_to_local[nncpair.first];
-                    const int c2 = global_to_local[nncpair.second];
-                    if (c1 < 0 || c2 < 0) {
-                        Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
-                        continue;
-                    }
-                    auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
-                    auto end = std::upper_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1 + 1, -1));
-                    bool found_same_connection = false;
-                    for (auto it = beg; it < end; ++it) {
-                        if (it->second == c2) {
-                            found_same_connection = true;
-                            break;
-                        }
-                    }
-                    if (!found_same_connection) {
-                        filtered_nnc.insert(nncpair);
-                    }
-                }
-            }
+            // should ensure we do not add it twice, and therefore we
+            // filter them out first.
+            std::multimap<int, int> filtered_nnc = filterNNCs(output, nnc, global_to_local);
+            cpgrid::EntityRep<0> cells[2];
             for (const auto& nncpair : filtered_nnc) {
                 const int c1 = global_to_local[nncpair.first];
                 const int c2 = global_to_local[nncpair.second];
@@ -750,7 +759,27 @@ namespace cpgrid
                 f2c.appendRow(cells, cells + 2);
                 face_to_output_face.push_back(cpgrid::NNCFace);
             }
+        }
+
+
+
+
+
+        void buildFaceToCell(const processed_grid& output,
+                             const std::multimap<int,int>& nnc,
+                             const std::vector<int>& global_cell,
+                             cpgrid::OrientedEntityTable<1, 0>& f2c,
+                             std::vector<int>& face_to_output_face)
+        {
+            f2c.clear();
+            face_to_output_face.clear();
+            // Reserve to save allocation time. True required size may be smaller.
+            face_to_output_face.reserve(output.number_of_faces + nnc.size());
+            if (!nnc.empty()) {
+                buildFaceToCellNNC(output, nnc, global_cell, f2c, face_to_output_face);
+            }
             int nf = output.number_of_faces;
+            cpgrid::EntityRep<0> cells[2];
             for (int i = 0; i < nf; ++i) {
                 const int* fnc = output.face_neighbors + 2*i;
                 int cellcount = 0;
@@ -784,6 +813,27 @@ namespace cpgrid
                     face_to_output_face.push_back(i);
                 }
             }
+        }
+
+
+
+
+
+        void buildTopo(const processed_grid& output,
+                       const std::multimap<int,int>& nnc,
+                       std::vector<int>& global_cell,
+                       cpgrid::OrientedEntityTable<0, 1>& c2f,
+                       cpgrid::OrientedEntityTable<1, 0>& f2c,
+                       Opm::SparseTable<int>& f2p,
+                       std::vector<std::array<int,8> >& c2p,
+                       std::vector<int>& face_to_output_face)
+        {
+            // Map local to global cell index.
+            global_cell.assign(output.local_cell_index,
+                               output.local_cell_index + output.number_of_cells);
+
+            // Build face to cell mapping.
+            buildFaceToCell(output, nnc, global_cell, f2c, face_to_output_face);
             int num_faces = f2c.size();
 
             // Build cell to face.
