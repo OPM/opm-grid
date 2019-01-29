@@ -81,7 +81,7 @@ namespace Dune
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
-                       const std::map<int,int>& nnc,
+                       const std::multimap<int,int>& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -126,7 +126,7 @@ namespace cpgrid
         g.zcorn = &zcornData[0];
 
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
-        std::map<int,int> nnc_cells;
+        std::map<int,int> nnc_cells_pinch;
 
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
@@ -139,12 +139,16 @@ namespace cpgrid
                 thickness[i] = ecl_grid.getCellThicknes(i);
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            nnc_cells = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
-            if (opmfil || nnc_cells.size() > 0) {
+            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
+            if (opmfil || nnc_cells_pinch.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
 
+        std::multimap<int, int> nnc_cells;
+        for (const auto& p : nnc_cells_pinch) {
+            nnc_cells.insert(p);
+        }
         // Add explicit NNCs to the NNC map.
         for (const auto single_nnc : nncs.nncdata()) {
             // Repeated NNCs will only exist in the map once
@@ -226,7 +230,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const std::map<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, const std::multimap<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         // Process.
 #ifdef VERBOSE
@@ -658,7 +662,7 @@ namespace cpgrid
 
 
         void buildTopo(const processed_grid& output,
-                       const std::map<int,int>& nnc,
+                       const std::multimap<int,int>& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -695,7 +699,7 @@ namespace cpgrid
             // for a connection that is also appearing as a face in
             // the geometry-based grid processing. In that case we
             // should ensure we do not add it twice.
-            std::map<int, int> filtered_nnc;
+            std::multimap<int, int> filtered_nnc;
             {
                 const int num_faces = output.number_of_faces;
                 std::vector<std::pair<int, int>> face_cells(num_faces);
@@ -711,7 +715,12 @@ namespace cpgrid
                 }
                 // Sort face->cell mappings according to first, then second cell.
                 std::sort(face_cells.begin(), face_cells.end());
+                // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
                 for (const auto& nncpair : nnc) {
+                    if (nncpair.first >= global_to_local.size() || nncpair.second >= global_to_local.size()) {
+                        Opm::OpmLog::warning("nnc_invalid", "NNC connection requested between invalid cells.");
+                        continue;
+                    }
                     const int c1 = global_to_local[nncpair.first];
                     const int c2 = global_to_local[nncpair.second];
                     if (c1 < 0 || c2 < 0) {

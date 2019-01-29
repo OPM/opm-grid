@@ -248,7 +248,7 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
         g.coord = &coord[0];
         g.zcorn = &zcorn[0];
         g.actnum = &actnum[0];
-        std::map<int,int> nnc;
+        std::multimap<int,int> nnc;
         current_view_data_->processEclipseFormat(g, nnc, 0.0, false, false);
     }
 
@@ -278,7 +278,7 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)
     {
-        std::map<int,int> nnc;
+        std::multimap<int,int> nnc;
         current_view_data_->processEclipseFormat(input_data, nnc, z_tolerance, remove_ij_boundary, turn_normals);
     }
 
