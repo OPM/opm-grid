@@ -118,6 +118,8 @@ endif()
 list (APPEND TEST_DATA_FILES
      tests/CORNERPOINT_ACTNUM.DATA
      tests/compressed_gridproperty.data
+     tests/FIVE.DATA
+     tests/FIVE_ACTNUM.DATA
   )
 
 # originally generated with the command:
