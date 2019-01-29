@@ -60,11 +60,16 @@ struct Fixture
                   const int ex_elemcount,
                   const int ex_intercount,
                   const int ex_bdycount,
-                  const std::vector<std::pair<int, int>>& ex_nb)
+                  const std::vector<std::pair<int, int>>& ex_nb,
+                  const bool use_deck_porv = false)
     {
         Opm::EclipseState es(parser.parseFile(filename));
+        std::vector<double> porv;
+        if (use_deck_porv) {
+            porv = es.get3DProperties().getDoubleGridProperty("PORV").getData();
+        }
         Dune::CpGrid grid;
-        grid.processEclipseFormat(es.getInputGrid(), false, false, false, {}, nnc);
+        grid.processEclipseFormat(es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
         ElementMapper elmap(gv);
         int elemcount = 0;
@@ -171,6 +176,23 @@ BOOST_FIXTURE_TEST_CASE(ActnumNNCAtSeveralFaces, Fixture)
     nnc.addNNC(999, 2, 1.0); // invalid
     nnc.addNNC(-1, 2, 1.0);  // invalid
     testCase("FIVE_ACTNUM.DATA", nnc, 4, 24 + 4, 20, { {0,1}, {1,2}, {1,3}, {2,3} });
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCH, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 2, 20, { {0,1}, {1,2}, {2,3} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
+{
+    Opm::NNC nnc;
+    nnc.addNNC(2, 4, 1.0);   // new connection
+    nnc.addNNC(3, 4, 1.0);
+    nnc.addNNC(0, 2, 1.0);   // connection added from pinchout already
+    nnc.addNNC(999, 2, 1.0); // invalid
+    nnc.addNNC(-1, 2, 1.0);  // invalid
+    testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 4, 20, { {0,1}, {1,2}, {1,3}, {2,3} }, true);
 }
 
 

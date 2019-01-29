@@ -120,6 +120,7 @@ list (APPEND TEST_DATA_FILES
      tests/compressed_gridproperty.data
      tests/FIVE.DATA
      tests/FIVE_ACTNUM.DATA
+     tests/FIVE_PINCH.DATA
   )
 
 # originally generated with the command:
