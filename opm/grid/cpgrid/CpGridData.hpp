@@ -69,6 +69,7 @@
 #include <array>
 #include <tuple>
 #include <algorithm>
+#include <set>
 
 #include "OrientedEntityTable.hpp"
 #include "DefaultGeometryPolicy.hpp"
@@ -199,7 +200,7 @@ public:
     /// \param z_tolerance points along a pillar that are closer together in z
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-    void processEclipseFormat(const grdecl& input_data, const std::multimap<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+    void processEclipseFormat(const grdecl& input_data, const std::set<std::pair<int, int>>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
 
 
     /// @brief

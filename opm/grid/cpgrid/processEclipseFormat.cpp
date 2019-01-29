@@ -53,10 +53,13 @@
 #include <fstream>
 #include <iostream>
 #include <initializer_list>
+#include <set>
 #include <utility>
 
 namespace Dune
 {
+
+    using NNCMap = std::set<std::pair<int, int>>;
 
 
     // Forward declarations.
@@ -81,7 +84,7 @@ namespace Dune
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
-                       const std::multimap<int,int>& nnc,
+                       const NNCMap& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -145,7 +148,7 @@ namespace cpgrid
             }
         }
 
-        std::multimap<int, int> nnc_cells;
+        NNCMap nnc_cells;
         for (const auto& p : nnc_cells_pinch) {
             nnc_cells.insert(p);
         }
@@ -230,7 +233,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const std::multimap<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMap& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         // Process.
 #ifdef VERBOSE
@@ -682,11 +685,11 @@ namespace cpgrid
 
 
 
-        std::multimap<int, int> filterNNCs(const processed_grid& output,
-                                           const std::multimap<int,int>& nnc,
-                                           const std::vector<int>& global_to_local)
+        NNCMap filterNNCs(const processed_grid& output,
+                          const NNCMap& nnc,
+                          const std::vector<int>& global_to_local)
         {
-            std::multimap<int, int> filtered_nnc;
+            NNCMap filtered_nnc;
             const int num_faces = output.number_of_faces;
             std::vector<std::pair<int, int>> face_cells(num_faces);
             // Sort all face->cell mappings so that lowest cell number comes first.
@@ -734,7 +737,7 @@ namespace cpgrid
 
 
         void buildFaceToCellNNC(const processed_grid& output,
-                                const std::multimap<int,int>& nnc,
+                                const NNCMap& nnc,
                                 const std::vector<int>& global_cell,
                                 cpgrid::OrientedEntityTable<1, 0>& f2c,
                                 std::vector<int>& face_to_output_face)
@@ -748,7 +751,7 @@ namespace cpgrid
             // the geometry-based grid processing. In that case we
             // should ensure we do not add it twice, and therefore we
             // filter them out first.
-            std::multimap<int, int> filtered_nnc = filterNNCs(output, nnc, global_to_local);
+            NNCMap filtered_nnc = filterNNCs(output, nnc, global_to_local);
             cpgrid::EntityRep<0> cells[2];
             for (const auto& nncpair : filtered_nnc) {
                 const int c1 = global_to_local[nncpair.first];
@@ -766,7 +769,7 @@ namespace cpgrid
 
 
         void buildFaceToCell(const processed_grid& output,
-                             const std::multimap<int,int>& nnc,
+                             const NNCMap& nnc,
                              const std::vector<int>& global_cell,
                              cpgrid::OrientedEntityTable<1, 0>& f2c,
                              std::vector<int>& face_to_output_face)
@@ -820,7 +823,7 @@ namespace cpgrid
 
 
         void buildTopo(const processed_grid& output,
-                       const std::multimap<int,int>& nnc,
+                       const NNCMap& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
