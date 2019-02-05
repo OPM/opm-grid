@@ -60,6 +60,9 @@ namespace Dune
 {
 
     using NNCMap = std::set<std::pair<int, int>>;
+    using NNCMaps = std::array<NNCMap, 2>;
+    enum NNCMapsIndex { PinchNNC = 0,
+                        ExplicitNNC = 1 };
 
 
     // Forward declarations.
@@ -84,7 +87,7 @@ namespace Dune
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
-                       const NNCMap& nnc,
+                       const NNCMaps& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -148,11 +151,14 @@ namespace cpgrid
             }
         }
 
-        NNCMap nnc_cells;
+        NNCMaps nnc_cells;
+        // Add PINCH NNCs.
         for (const auto& p : nnc_cells_pinch) {
-            nnc_cells.insert(p);
+            auto low = std::min(p.first, p.second);
+            auto high = std::max(p.first, p.second);
+            nnc_cells[PinchNNC].insert({low, high});
         }
-        // Add explicit NNCs to the NNC map.
+        // Add explicit NNCs.
         for (const auto single_nnc : nncs.nncdata()) {
             // Repeated NNCs will only exist in the map once
             // (repeated insertions have no effect), and we make
@@ -162,7 +168,7 @@ namespace cpgrid
             // for ensuring repeated NNC transmissibilities are added.
             auto low = std::min(single_nnc.cell1, single_nnc.cell2);
             auto high = std::max(single_nnc.cell1, single_nnc.cell2);
-            nnc_cells.insert({low, high});
+            nnc_cells[ExplicitNNC].insert({low, high});
         }
 
         // this variable is only required because getCellZvals() needs
@@ -233,7 +239,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMap& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         // Process.
 #ifdef VERBOSE
@@ -738,11 +744,10 @@ namespace cpgrid
 
         void buildFaceToCellNNC(const processed_grid& output,
                                 const NNCMap& nnc,
-                                const std::vector<int>& global_cell,
+                                const std::vector<int>& global_to_local,
                                 cpgrid::OrientedEntityTable<1, 0>& f2c,
                                 std::vector<int>& face_to_output_face)
         {
-            const std::vector<int> global_to_local = createGlobalToLocal(output, global_cell);
             // Add nnc connections first, to preserve the
             // property that top and bottom faces come last
             // (per cell) in the cell-face mapping.
@@ -769,17 +774,18 @@ namespace cpgrid
 
 
         void buildFaceToCell(const processed_grid& output,
-                             const NNCMap& nnc,
+                             const NNCMaps& nnc,
                              const std::vector<int>& global_cell,
                              cpgrid::OrientedEntityTable<1, 0>& f2c,
                              std::vector<int>& face_to_output_face)
         {
+            const std::vector<int> global_to_local = createGlobalToLocal(output, global_cell);
             f2c.clear();
             face_to_output_face.clear();
             // Reserve to save allocation time. True required size may be smaller.
             face_to_output_face.reserve(output.number_of_faces + nnc.size());
             if (!nnc.empty()) {
-                buildFaceToCellNNC(output, nnc, global_cell, f2c, face_to_output_face);
+                buildFaceToCellNNC(output, nnc[ExplicitNNC], global_to_local, f2c, face_to_output_face);
             }
             int nf = output.number_of_faces;
             cpgrid::EntityRep<0> cells[2];
@@ -794,19 +800,18 @@ namespace cpgrid
                     cells[cellcount].setValue(fnc[1], false);
                     ++cellcount;
                 }
-                /*
-                if (output.face_tag[i] == TOP ) {
+                if (output.face_tag[i] == K_FACE ) {
                     // add the NNC created from the minpv processs
                     // at the bottom of the cell
                     if (fnc[1] == -1 ) {
-                        auto it = nnc.find(global_cell[fnc[0]]);
-                        if (it != nnc.end()) {
+                        auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
+                        if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
                             cells[cellcount].setValue(global_to_local[it->second], false);
                             ++cellcount;
                         }
                     }
                 }
-                */
+
                 // Assertation below is no longer true, due to periodic_extension etc.
                 // Instead, the appendRow() is put inside an if test.
                 // assert(cellcount == 1 || cellcount == 2);
@@ -823,7 +828,7 @@ namespace cpgrid
 
 
         void buildTopo(const processed_grid& output,
-                       const NNCMap& nnc,
+                       const NNCMaps& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
