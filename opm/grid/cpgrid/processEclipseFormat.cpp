@@ -789,6 +789,7 @@ namespace cpgrid
             }
             int nf = output.number_of_faces;
             cpgrid::EntityRep<0> cells[2];
+            int next_skip_zmin_face = -1;
             for (int i = 0; i < nf; ++i) {
                 const int* fnc = output.face_neighbors + 2*i;
                 int cellcount = 0;
@@ -801,13 +802,25 @@ namespace cpgrid
                     ++cellcount;
                 }
                 if (output.face_tag[i] == K_FACE ) {
-                    // add the NNC created from the minpv processs
-                    // at the bottom of the cell
                     if (fnc[1] == -1 ) {
+                        // Add the NNC created from the minpv processs
+                        // at the bottom of the cell.
                         auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
                         if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
-                            cells[cellcount].setValue(global_to_local[it->second], false);
+                            const int other_cell = global_to_local[it->second];
+                            cells[cellcount].setValue(other_cell, false);
                             ++cellcount;
+                            // Now we must ensure that the face connecting
+                            // the second cell to the boundary is skipped,
+                            // it is considered replaced by the connection
+                            // added here.
+                            next_skip_zmin_face = other_cell;
+                        }
+                    } else if (fnc[0] == -1) {
+                        // Check if this is a cell we should skip.
+                        if (fnc[1] == next_skip_zmin_face) {
+                            next_skip_zmin_face = -1;
+                            continue; // Do not add this face to f2c.
                         }
                     }
                 }
