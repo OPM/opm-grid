@@ -783,8 +783,8 @@ namespace cpgrid
             f2c.clear();
             face_to_output_face.clear();
             // Reserve to save allocation time. True required size may be smaller.
-            face_to_output_face.reserve(output.number_of_faces + nnc.size());
-            if (!nnc.empty()) {
+            face_to_output_face.reserve(output.number_of_faces + nnc[ExplicitNNC].size());
+            if (!nnc[ExplicitNNC].empty()) {
                 buildFaceToCellNNC(output, nnc[ExplicitNNC], global_to_local, f2c, face_to_output_face);
             }
             int nf = output.number_of_faces;
