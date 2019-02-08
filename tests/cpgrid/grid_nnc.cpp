@@ -181,7 +181,7 @@ BOOST_FIXTURE_TEST_CASE(ActnumNNCAtSeveralFaces, Fixture)
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCH, Fixture)
 {
     Opm::NNC nnc;
-    testCase("FIVE_PINCH.DATA", nnc, 4, 24, 18, { {0,1}, {1,2}, {2,3} }, true);
+    testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 1, 18 + 1, { {0,1}, {1,2}, {2,3} }, true);
 }
 
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
@@ -194,7 +194,7 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
     // nnc.addNNC(0, 2, 1.0);   // connection added from pinchout already
     nnc.addNNC(999, 2, 1.0); // invalid
     nnc.addNNC(-1, 2, 1.0);  // invalid
-    testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 2, 18, { {0,1}, {1,2}, {1,3}, {2,3} }, true);
+    testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 2 + 1, 18 + 1, { {0,1}, {1,2}, {1,3}, {2,3} }, true);
 }
 
 
