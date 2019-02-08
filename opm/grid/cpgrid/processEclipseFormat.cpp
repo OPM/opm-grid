@@ -789,7 +789,7 @@ namespace cpgrid
             }
             int nf = output.number_of_faces;
             cpgrid::EntityRep<0> cells[2];
-            int next_skip_zmin_face = -1;
+            // int next_skip_zmin_face = -1; // Not currently used, see comments further down.
             for (int i = 0; i < nf; ++i) {
                 const int* fnc = output.face_neighbors + 2*i;
                 int cellcount = 0;
@@ -814,7 +814,8 @@ namespace cpgrid
                             // the second cell to the boundary is skipped,
                             // it is considered replaced by the connection
                             // added here.
-                            next_skip_zmin_face = other_cell;
+                            // Note: not done anymore, see comment below.
+                            // next_skip_zmin_face = other_cell;
                         }
                     } else if (fnc[0] == -1) {
                         // This block has been disabled, as removing the original top face
