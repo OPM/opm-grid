@@ -722,16 +722,11 @@ namespace cpgrid
                     Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
                     continue;
                 }
-                auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
-                auto end = std::upper_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1 + 1, -1));
-                bool found_same_connection = false;
-                for (auto it = beg; it < end; ++it) {
-                    if (it->second == c2) {
-                        found_same_connection = true;
-                        break;
-                    }
-                }
-                if (!found_same_connection) {
+                const auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
+                const auto end = std::find_if(beg, face_cells.end(), [c1](const std::pair<int, int>& p){ return p.first > c1; });
+                const auto it = std::find_if(beg, end, [c2](const std::pair<int, int>& p){ return p.second == c2; });
+                if (it == end) {
+                    // The connection (c1, c2) was not found in the face->cell mapping.
                     filtered_nnc.insert(nncpair);
                 }
             }
