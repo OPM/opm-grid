@@ -817,11 +817,19 @@ namespace cpgrid
                             next_skip_zmin_face = other_cell;
                         }
                     } else if (fnc[0] == -1) {
+                        // This block has been disabled, as removing the original top face
+                        // of a cell changed the cell corners, thereby changing TRANX and TRANY
+                        // for example. With the block disabled, cells that receive a PINCH
+                        // connection face from above will retain their original top face, in addition
+                        // to the new one. A typical such cell will therefore have 7 faces rather than
+                        // the usual 6 (away from faults).
+                        /*
                         // Check if this is a cell we should skip.
                         if (fnc[1] == next_skip_zmin_face) {
                             next_skip_zmin_face = -1;
                             continue; // Do not add this face to f2c.
                         }
+                        */
                     }
                 }
 
