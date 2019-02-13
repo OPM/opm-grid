@@ -712,7 +712,8 @@ namespace cpgrid
             std::sort(face_cells.begin(), face_cells.end());
             // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
             for (const auto& nncpair : nnc) {
-                if (nncpair.first >= static_cast<int>(global_to_local.size()) ||
+                if (nncpair.first < 0 || nncpair.second < 0 ||
+                    nncpair.first >= static_cast<int>(global_to_local.size()) ||
                     nncpair.second >= static_cast<int>(global_to_local.size())) {
                     Opm::OpmLog::warning("nnc_invalid", "NNC connection requested between invalid cells.");
                     continue;
