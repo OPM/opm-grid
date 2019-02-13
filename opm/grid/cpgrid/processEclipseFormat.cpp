@@ -776,7 +776,10 @@ namespace cpgrid
                              cpgrid::OrientedEntityTable<1, 0>& f2c,
                              std::vector<int>& face_to_output_face)
         {
-            const std::vector<int> global_to_local = createGlobalToLocal(output, global_cell);
+            std::vector<int> global_to_local;
+            if (!nnc[ExplicitNNC].empty() || !nnc[PinchNNC].empty())
+                global_to_local = createGlobalToLocal(output, global_cell);
+
             f2c.clear();
             face_to_output_face.clear();
             // Reserve to save allocation time. True required size may be smaller.
