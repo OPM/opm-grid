@@ -210,6 +210,10 @@ namespace Dune
             int indexInOutside() const
             {
                 int in_inside = indexInInside();
+                if (in_inside == -1) {
+                    // NNC face, return -1 here as well.
+                    return -1;
+                }
                 return in_inside + ((in_inside % 2) ? -1 : 1);
             }
 

@@ -53,10 +53,16 @@
 #include <fstream>
 #include <iostream>
 #include <initializer_list>
+#include <set>
 #include <utility>
 
 namespace Dune
 {
+
+    using NNCMap = std::set<std::pair<int, int>>;
+    using NNCMaps = std::array<NNCMap, 2>;
+    enum NNCMapsIndex { PinchNNC = 0,
+                        ExplicitNNC = 1 };
 
 
     // Forward declarations.
@@ -81,7 +87,7 @@ namespace Dune
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
-                       const std::map<int,int>& nnc,
+                       const NNCMaps& nnc,
                        std::vector<int>& global_cell,
                        cpgrid::OrientedEntityTable<0, 1>& c2f,
                        cpgrid::OrientedEntityTable<1, 0>& f2c,
@@ -106,7 +112,7 @@ namespace cpgrid
 
 #if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume)
+                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
         std::vector<double> coordData;
         ecl_grid.exportCOORD(coordData);
@@ -126,7 +132,7 @@ namespace cpgrid
         g.zcorn = &zcornData[0];
 
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
-        std::map<int,int> nnc;
+        std::map<int,int> nnc_cells_pinch;
 
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
@@ -139,10 +145,30 @@ namespace cpgrid
                 thickness[i] = ecl_grid.getCellThicknes(i);
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            nnc = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
-            if (opmfil || nnc.size() > 0) {
+            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
+            if (opmfil || nnc_cells_pinch.size() > 0) {
                 this->zcorn = zcornData;
             }
+        }
+
+        NNCMaps nnc_cells;
+        // Add PINCH NNCs.
+        for (const auto& p : nnc_cells_pinch) {
+            auto low = std::min(p.first, p.second);
+            auto high = std::max(p.first, p.second);
+            nnc_cells[PinchNNC].insert({low, high});
+        }
+        // Add explicit NNCs.
+        for (const auto single_nnc : nncs.nncdata()) {
+            // Repeated NNCs will only exist in the map once
+            // (repeated insertions have no effect), and we make
+            // sure NNCs specified using either order of cells
+            // end up with the same {low, high} pair.
+            // The code that computes the transmissibilities is responsible
+            // for ensuring repeated NNC transmissibilities are added.
+            auto low = std::min(single_nnc.cell1, single_nnc.cell2);
+            auto high = std::max(single_nnc.cell1, single_nnc.cell2);
+            nnc_cells[ExplicitNNC].insert({low, high});
         }
 
         // this variable is only required because getCellZvals() needs
@@ -200,19 +226,20 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, nnc, z_tolerance, true, turn_normals);
+            processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, nnc, z_tolerance, false, turn_normals);
+            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
         }
     }
 #endif // #if HAVE_ECL_INPUT
 
 
+    enum { NNCFace = -1 };
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, std::map<int,int>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         // Process.
 #ifdef VERBOSE
@@ -244,7 +271,12 @@ namespace cpgrid
         int nf = face_to_output_face.size();
         std::vector<enum face_tag> temp_tags(nf);
         for (int i = 0; i < nf; ++i) {
-            temp_tags[i] = output.face_tag[face_to_output_face[i]];
+            const int output_face = face_to_output_face[i];
+            if (output_face == -1) {
+                temp_tags[i] = NNC_FACE;
+            } else {
+                temp_tags[i] = output.face_tag[output_face];
+            }
         }
         face_tag_.assign(temp_tags.begin(), temp_tags.end());
 
@@ -638,39 +670,126 @@ namespace cpgrid
 
 
 
-
-        void buildTopo(const processed_grid& output,
-                       const std::map<int,int>& nnc,
-                       std::vector<int>& global_cell,
-                       cpgrid::OrientedEntityTable<0, 1>& c2f,
-                       cpgrid::OrientedEntityTable<1, 0>& f2c,
-                       Opm::SparseTable<int>& f2p,
-                       std::vector<std::array<int,8> >& c2p,
-                       std::vector<int>& face_to_output_face)
+        std::vector<int> createGlobalToLocal(const processed_grid& output,
+                                             const std::vector<int>& global_cell)
         {
-            // Map local to global cell index.
-            global_cell.assign(output.local_cell_index,
-                               output.local_cell_index + output.number_of_cells);
-
             std::vector<int> global_to_local;
-            if (nnc.size() > 0) {
-                int cart_size = 1;
-                int num_dims = sizeof(output.dimensions)/ sizeof(*output.dimensions);
-                for (int idx = 0; idx < num_dims ; ++idx) {
-                    cart_size *= output.dimensions[idx];
-                }
-                // create the inverse map of global_cell
-                global_to_local.resize(cart_size, -1);
-                for (size_t idx = 0; idx < global_cell.size(); ++idx) {
-                    global_to_local[global_cell[idx]] = idx;
+            int cart_size = 1;
+            const int num_dims = sizeof(output.dimensions)/sizeof(*output.dimensions);
+            for (int idx = 0; idx < num_dims ; ++idx) {
+                cart_size *= output.dimensions[idx];
+            }
+            // create the inverse map of global_cell
+            global_to_local.resize(cart_size, -1);
+            for (size_t idx = 0; idx < global_cell.size(); ++idx) {
+                global_to_local[global_cell[idx]] = idx;
+            }
+            return global_to_local;
+        }
+
+
+
+
+
+        NNCMap filterNNCs(const processed_grid& output,
+                          const NNCMap& nnc,
+                          const std::vector<int>& global_to_local)
+        {
+            NNCMap filtered_nnc;
+            const int num_faces = output.number_of_faces;
+            std::vector<std::pair<int, int>> face_cells(num_faces);
+            // Sort all face->cell mappings so that lowest cell number comes first.
+            for (int f = 0; f < num_faces; ++f) {
+                const int c1 = output.face_neighbors[2*f];
+                const int c2 = output.face_neighbors[2*f + 1];
+                if (c1 < c2) {
+                    face_cells[f] = { c1, c2 };
+                } else {
+                    face_cells[f] = { c2, c1 };
                 }
             }
+            // Sort face->cell mappings according to first, then second cell.
+            std::sort(face_cells.begin(), face_cells.end());
+            // For each nnc, add it to filtered_nnc only if not found in face->cell mappings.
+            for (const auto& nncpair : nnc) {
+                if (nncpair.first < 0 || nncpair.second < 0 ||
+                    nncpair.first >= static_cast<int>(global_to_local.size()) ||
+                    nncpair.second >= static_cast<int>(global_to_local.size())) {
+                    Opm::OpmLog::warning("nnc_invalid", "NNC connection requested between invalid cells.");
+                    continue;
+                }
+                const int c1 = global_to_local[nncpair.first];
+                const int c2 = global_to_local[nncpair.second];
+                if (c1 < 0 || c2 < 0) {
+                    Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
+                    continue;
+                }
+                const auto beg = std::lower_bound(face_cells.begin(), face_cells.end(), std::make_pair(c1, -1));
+                const auto end = std::find_if(beg, face_cells.end(), [c1](const std::pair<int, int>& p){ return p.first > c1; });
+                const auto it = std::find_if(beg, end, [c2](const std::pair<int, int>& p){ return p.second == c2; });
+                if (it == end) {
+                    // The connection (c1, c2) was not found in the face->cell mapping.
+                    filtered_nnc.insert(nncpair);
+                }
+            }
+            return filtered_nnc;
+        }
 
-            // Build face to cell.
+
+
+
+
+        void buildFaceToCellNNC(const processed_grid& output,
+                                const NNCMap& nnc,
+                                const std::vector<int>& global_to_local,
+                                cpgrid::OrientedEntityTable<1, 0>& f2c,
+                                std::vector<int>& face_to_output_face)
+        {
+            // Add nnc connections first, to preserve the
+            // property that top and bottom faces come last
+            // (per cell) in the cell-face mapping.
+            // A complicating factor is that an NNC could be specified
+            // for a connection that is also appearing as a face in
+            // the geometry-based grid processing. In that case we
+            // should ensure we do not add it twice, and therefore we
+            // filter them out first.
+            NNCMap filtered_nnc = filterNNCs(output, nnc, global_to_local);
+            cpgrid::EntityRep<0> cells[2];
+            for (const auto& nncpair : filtered_nnc) {
+                const int c1 = global_to_local[nncpair.first];
+                const int c2 = global_to_local[nncpair.second];
+                cells[0].setValue(c1, true);
+                cells[1].setValue(c2, false);
+                std::sort(cells, cells + 2);
+                f2c.appendRow(cells, cells + 2);
+                face_to_output_face.push_back(cpgrid::NNCFace);
+            }
+        }
+
+
+
+
+
+        void buildFaceToCell(const processed_grid& output,
+                             const NNCMaps& nnc,
+                             const std::vector<int>& global_cell,
+                             cpgrid::OrientedEntityTable<1, 0>& f2c,
+                             std::vector<int>& face_to_output_face)
+        {
+            std::vector<int> global_to_local;
+            if (!nnc[ExplicitNNC].empty() || !nnc[PinchNNC].empty())
+                global_to_local = createGlobalToLocal(output, global_cell);
+
             f2c.clear();
+            face_to_output_face.clear();
+            // Reserve to save allocation time. True required size may be smaller.
+            face_to_output_face.reserve(output.number_of_faces + nnc[ExplicitNNC].size());
+            if (!nnc[ExplicitNNC].empty()) {
+                buildFaceToCellNNC(output, nnc[ExplicitNNC], global_to_local, f2c, face_to_output_face);
+            }
             int nf = output.number_of_faces;
             cpgrid::EntityRep<0> cells[2];
-            face_to_output_face.clear();
+            // int next_skip_zmin_face = -1; // Not currently used, see comments further down.
             for (int i = 0; i < nf; ++i) {
                 const int* fnc = output.face_neighbors + 2*i;
                 int cellcount = 0;
@@ -682,18 +801,39 @@ namespace cpgrid
                     cells[cellcount].setValue(fnc[1], false);
                     ++cellcount;
                 }
-
-                if (output.face_tag[i] == TOP ) {
-                    // add the NNC created from the minpv processs
-                    // at the bottom of the cell
+                if (output.face_tag[i] == K_FACE ) {
                     if (fnc[1] == -1 ) {
-                        auto it = nnc.find(global_cell[fnc[0]]);
-                        if (it != nnc.end()) {
-                            cells[cellcount].setValue(global_to_local[it->second], false);
+                        // Add the NNC created from the minpv processs
+                        // at the bottom of the cell.
+                        auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
+                        if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
+                            const int other_cell = global_to_local[it->second];
+                            cells[cellcount].setValue(other_cell, false);
                             ++cellcount;
+                            // Now we must ensure that the face connecting
+                            // the second cell to the boundary is skipped,
+                            // it is considered replaced by the connection
+                            // added here.
+                            // Note: not done anymore, see comment below.
+                            // next_skip_zmin_face = other_cell;
                         }
+                    } else if (fnc[0] == -1) {
+                        // This block has been disabled, as removing the original top face
+                        // of a cell changed the cell corners, thereby changing TRANX and TRANY
+                        // for example. With the block disabled, cells that receive a PINCH
+                        // connection face from above will retain their original top face, in addition
+                        // to the new one. A typical such cell will therefore have 7 faces rather than
+                        // the usual 6 (away from faults).
+                        /*
+                        // Check if this is a cell we should skip.
+                        if (fnc[1] == next_skip_zmin_face) {
+                            next_skip_zmin_face = -1;
+                            continue; // Do not add this face to f2c.
+                        }
+                        */
                     }
                 }
+
                 // Assertation below is no longer true, due to periodic_extension etc.
                 // Instead, the appendRow() is put inside an if test.
                 // assert(cellcount == 1 || cellcount == 2);
@@ -703,6 +843,27 @@ namespace cpgrid
                     face_to_output_face.push_back(i);
                 }
             }
+        }
+
+
+
+
+
+        void buildTopo(const processed_grid& output,
+                       const NNCMaps& nnc,
+                       std::vector<int>& global_cell,
+                       cpgrid::OrientedEntityTable<0, 1>& c2f,
+                       cpgrid::OrientedEntityTable<1, 0>& f2c,
+                       Opm::SparseTable<int>& f2p,
+                       std::vector<std::array<int,8> >& c2p,
+                       std::vector<int>& face_to_output_face)
+        {
+            // Map local to global cell index.
+            global_cell.assign(output.local_cell_index,
+                               output.local_cell_index + output.number_of_cells);
+
+            // Build face to cell mapping.
+            buildFaceToCell(output, nnc, global_cell, f2c, face_to_output_face);
             int num_faces = f2c.size();
 
             // Build cell to face.
@@ -714,7 +875,12 @@ namespace cpgrid
             const int* fp = output.face_ptr;
             for (int face = 0; face < num_faces; ++face) {
                 int output_face = face_to_output_face[face];
-                f2p.appendRow(fn + fp[output_face], fn + fp[output_face+1]);
+                if (output_face == cpgrid::NNCFace) {
+                    // Add an empty row, i.e. no points are associated with the NNC face.
+                    f2p.appendRow(fn, fn);
+                } else {
+                    f2p.appendRow(fn + fp[output_face], fn + fp[output_face+1]);
+                }
             }
 
             // Build cell to point
@@ -868,14 +1034,27 @@ namespace cpgrid
                 // Computations in this loop could be speeded up
                 // by doing more of them simultaneously.
                 int output_face = face_to_output_face[face];
-                IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
-                point_t avg = average(face_pts);
-                point_t centroid = polygonCentroid(face_pts, avg);
-                point_t normal = polygonNormal(face_pts, centroid);
-                double area = polygonArea(face_pts, centroid);
-                face_normals.push_back(normal);
-                face_centroids.push_back(centroid);
-                face_areas.push_back(area);
+                if (output_face == cpgrid::NNCFace) {
+                    // NNC faces are purely topological constructs,
+                    // and do not have any embedded geometry.
+                    // However, since the ewoms code will multiply and
+                    // divide by the face area even if not necessary
+                    // for the cell-centered FV discretization (because
+                    // it wants to deal with velocities rather than fluxes),
+                    // we have to set the areas to 1 to avoid trouble.
+                    face_normals.push_back({-1e100, -1e100, -1e100});
+                    face_centroids.push_back({-1e100, -1e100, -1e100});
+                    face_areas.push_back(1.0);
+                } else {
+                    IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
+                    point_t avg = average(face_pts);
+                    point_t centroid = polygonCentroid(face_pts, avg);
+                    point_t normal = polygonNormal(face_pts, centroid);
+                    double area = polygonArea(face_pts, centroid);
+                    face_normals.push_back(normal);
+                    face_centroids.push_back(centroid);
+                    face_areas.push_back(area);
+                }
             }
 #ifdef VERBOSE
             std::cout << "Faces:              " << clock.secsSinceLast() << std::endl;
@@ -897,6 +1076,10 @@ namespace cpgrid
                 for (int local_index = 0; local_index < cf.size(); ++local_index) {
                     int face = cf[local_index].index();
                     int output_face = face_to_output_face[face];
+                    if (output_face == cpgrid::NNCFace) {
+                        // Skip NNC face, do not contribute to cell geometry.
+                        continue;
+                    }
                     IndirectArray<point_t> face_pts(points, fn + fp[output_face], fn + fp[output_face+1]);
                     double small_vol = polygonCellVolume(face_pts, face_centroids[face], cell_avg);
                     tot_cell_vol += small_vol;

@@ -253,7 +253,8 @@ namespace Dune
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
         void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                                  const std::vector<double>& poreVolume = std::vector<double>());
+                                  const std::vector<double>& poreVolume = std::vector<double>(),
+                                  const Opm::NNC& = Opm::NNC());
 #endif
 
         /// Read the Eclipse grid format ('grdecl').
@@ -1052,19 +1053,23 @@ namespace Dune
                         !(current_view_data_->face_to_cell_[f][0].orientation());
                     enum face_tag tag = current_view_data_->face_tag_[f];
                     switch (tag) {
-                    case LEFT:
+                    case I_FACE:
                         //                   LEFT : RIGHT
                         ret = normal_is_in ? 1    : 2; // min(I) : max(I)
                         break;
-                    case BACK:
+                    case J_FACE:
                         //                   BACK : FRONT
                         ret = normal_is_in ? 3    : 4; // min(J) : max(J)
                         break;
-                    case TOP:
+                    case K_FACE:
                         // Note: TOP at min(K) as 'z' measures *depth*.
                         //                   TOP  : BOTTOM
                         ret = normal_is_in ? 5    : 6; // min(K) : max(K)
                         break;
+                    case NNC_FACE:
+                        // This should not be possible, as NNC "faces" always
+                        // have two cell neighbours.
+                        OPM_THROW(std::logic_error, "NNC face at boundary. This should never happen!");
                     }
                 }
             }
@@ -1082,7 +1087,7 @@ namespace Dune
         faceTag(const Cell2FacesRowIterator& cell_face) const
         {
             // Note that this relies on the following implementation detail:
-            // The grid is always construct such that the interior faces constructed
+            // The grid is always constructed such that the interior faces constructed
             // with orientation set to true are
             // oriented along the positive IJK direction. Oriented means that
             // the first cell attached to face has the lower index.
@@ -1115,18 +1120,19 @@ namespace Dune
             const bool normal_is_in = ! f2c[inside_cell].orientation();
 
             switch (tag) {
-            case LEFT:
+            case I_FACE:
                 //                    LEFT : RIGHT
                 return normal_is_in ? 0    : 1; // min(I) : max(I)
-
-            case BACK:
+            case J_FACE:
                 //                    BACK : FRONT
                 return normal_is_in ? 2    : 3; // min(J) : max(J)
-
-            case TOP:
+            case K_FACE:
                 // Note: TOP at min(K) as 'z' measures *depth*.
                 //                    TOP  : BOTTOM
                 return normal_is_in ? 4    : 5; // min(K) : max(K)
+            case NNC_FACE:
+                // For nnc faces we return the otherwise unused value -1.
+                return -1;
             default:
                 OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
             }

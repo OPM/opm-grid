@@ -109,6 +109,7 @@ if(HAVE_ECL_INPUT)
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
 		tests/test_compressedpropertyaccess.cpp
+                tests/cpgrid/grid_nnc.cpp
 	)
 endif()
 
@@ -117,6 +118,9 @@ endif()
 list (APPEND TEST_DATA_FILES
      tests/CORNERPOINT_ACTNUM.DATA
      tests/compressed_gridproperty.data
+     tests/FIVE.DATA
+     tests/FIVE_ACTNUM.DATA
+     tests/FIVE_PINCH.DATA
   )
 
 # originally generated with the command:

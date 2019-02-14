@@ -210,7 +210,7 @@ process_vertical_faces(int direction,
     int *cornerpts[4];
     int d[3];
     int f;
-    enum face_tag tag[] = { LEFT, BACK };
+    enum face_tag tag[] = { I_FACE, J_FACE };
     int *tmp;
     int nx = out->dimensions[0];
     int ny = out->dimensions[1];
@@ -366,7 +366,7 @@ process_horizontal_faces(int **intersections,
                         *f++ = c[3][k];
                         *f++ = c[1][k];
 
-                        out->face_tag[  out->number_of_faces] = TOP;
+                        out->face_tag[  out->number_of_faces] = K_FACE;
                         out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                         thiscell = linearindex(out->dimensions, i,j,(k-1)/2);
@@ -384,7 +384,7 @@ process_horizontal_faces(int **intersections,
                             *f++ = c[3][k];
                             *f++ = c[1][k];
 
-                            out->face_tag[  out->number_of_faces] = TOP;
+                            out->face_tag[  out->number_of_faces] = K_FACE;
                             out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                             *n++ = prevcell;
