@@ -21,7 +21,7 @@
 #define DUNE_CPGRID_DGFPARSER_HH
 
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
-#include <dune/grid/CpGrid.hpp>
+#include <opm/grid/CpGrid.hpp>
 
 namespace Dune
 {

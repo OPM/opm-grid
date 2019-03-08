@@ -4,13 +4,15 @@
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/unused.hh>
-#include <dune/grid/CpGrid.hpp>
-#include <dune/grid/polyhedralgrid.hh>
+#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #include <opm/grid/cpgrid/dgfparser.hh>
-#include <dune/grid/polyhedralgrid/dgfparser.hh>
+#include <opm/grid/polyhedralgrid/dgfparser.hh>
+
+#include <opm/grid/verteq/topsurf.hpp>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
@@ -116,6 +118,7 @@ void testGrid(Grid& grid, const std::string& name)
       std::cerr << "Warning: " << e.what() << std::endl;
     }
 #endif
+    std::cout << name << std::endl;
 
     testGridIteration( grid.leafGridView() );
 
@@ -126,11 +129,11 @@ void testGrid(Grid& grid, const std::string& name)
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
     if (mapper.size() != 27) {
         std::cout << "Wrong size of vertex mapper. Expected 27!\n";
-        std::abort();
+        //std::abort();
     }
 
     // VTKWriter does not work with geometry type none at the moment
-    if( grid.geomTypes( 0 )[ 0 ].isCube() )
+    if( true || grid.geomTypes( 0 )[ 0 ].isCube() )
     {
       std::cout << "create vtkWriter\n";
       typedef Dune::VTKWriter<GridView> VtkWriter;
@@ -165,8 +168,7 @@ int main(int argc, char** argv )
 
 #if HAVE_ECL_INPUT
     Opm::Parser parser;
-    Opm::ParseContext parseContext;
-    const auto deck = parser.parseString(deckString , parseContext);
+    const auto deck = parser.parseString(deckString);
     std::vector<double> porv;
 #endif
 
@@ -176,7 +178,21 @@ int main(int argc, char** argv )
 #if HAVE_ECL_INPUT
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
+      Opm::TopSurf* ts;
+      ts = Opm::TopSurf::create (grid);
+      std::cout << ts->dimensions << std::endl;
+      std::cout << ts->number_of_cells <<" " << ts->number_of_faces << " " << ts->number_of_nodes << " " << std::endl;
+      //for (int i = 0; i < ts->number_of_nodes*ts->dimensions; ++i)
+      //  std::cout << ts->node_coordinates[i] << std::endl;
+      typedef Dune::PolyhedralGrid< 2, 2 > Grid2D;
+      std::cout << "tsDune før " << std::endl;
+      Grid2D tsDune (*ts);
+      std::cout << "tsDune etter " << std::endl;
+      testGrid ( tsDune, "ts");
+
 #endif
+
+
       //Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
@@ -194,6 +210,7 @@ int main(int argc, char** argv )
 
       Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
       testGrid( grid, "cpgrid2" );
+
 #endif
       Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "cpgrid-dgf" );
