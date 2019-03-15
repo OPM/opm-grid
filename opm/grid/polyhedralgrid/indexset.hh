@@ -52,6 +52,20 @@ namespace Dune
       return grid().getRealImplementation(entity).index();
     }
 
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+    template< int cd >
+    IndexType index ( const typename Traits::template Codim< cd >::EntityPointer &entityPointer ) const
+    {
+      return index( *entityPointer );
+    }
+#endif
+
+    template< int cd >
+    IndexType subIndex ( const typename Traits::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
+    {
+      return subIndex( entity, i, codim );
+    }
+
     template< class Entity >
     IndexType subIndex ( const Entity &entity, int i, unsigned int codim ) const
     {

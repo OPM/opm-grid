@@ -24,7 +24,8 @@ namespace Dune
     typedef IdSet< Grid, This, IdType > Base;
 
     PolyhedralGridIdSet (const Grid& grid)
-        : grid_(grid)
+        : grid_( grid ),
+          globalCellPtr_( grid_.globalCellPtr() )
     {}
 
     //! id meethod for entity and specific codim
@@ -32,11 +33,21 @@ namespace Dune
     IdType id ( const typename Traits::template Codim< codim >::Entity &entity ) const
     {
       const int index = entity.seed().index();
-      if (codim == 0)
-        return grid_.globalCell()[ index ];
+      // in case
+      if (codim == 0 && globalCellPtr_ )
+        return globalCellPtr_[ index ];
       else
         return index;
     }
+
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+    //! id meethod for entity and specific codim
+    template< int codim >
+    IdType id ( const typename Traits::template Codim< codim >::EntityPointer &entityPointer ) const
+    {
+      return id( *entityPointer );
+    }
+#endif
 
     //! id method of all entities
     template< class Entity >
@@ -59,9 +70,9 @@ namespace Dune
       if( codim == 0 )
         return id( entity );
       else if ( codim == 1 )
-        return id( Grid::getRealImplementation( entity ).template subEntity< 1 > ( i ) );
+        return id( entity.template subEntity< 1 >( i ) );
       else if ( codim == dim )
-        return id( Grid::getRealImplementation( entity ).template subEntity< dim > ( i ) );
+        return id( entity.template subEntity< dim >( i ) );
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");
@@ -71,6 +82,7 @@ namespace Dune
 
   protected:
     const Grid& grid_;
+    const int* globalCellPtr_;
   };
 
 } // namespace Dune

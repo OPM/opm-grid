@@ -97,7 +97,7 @@ namespace Dune
      */
     GeometryType type () const
     {
-      return data()->geomTypes(codimension)[0];
+      return data()->cellGeometryType(seed_);
     }
 
     /** \brief obtain the level of this entity */

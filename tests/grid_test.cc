@@ -185,18 +185,17 @@ int main(int argc, char** argv )
       //for (int i = 0; i < ts->number_of_nodes*ts->dimensions; ++i)
       //  std::cout << ts->node_coordinates[i] << std::endl;
       typedef Dune::PolyhedralGrid< 2, 2 > Grid2D;
-      std::cout << "tsDune før " << std::endl;
+      std::cout << "tsDune for " << std::endl;
       Grid2D tsDune (*ts);
-      std::cout << "tsDune etter " << std::endl;
+      std::cout << "tsDune after " << std::endl;
       testGrid ( tsDune, "ts");
 
 #endif
-
-
-      //Dune::GridPtr< Grid > gridPtr( dgfFile );
-      //testGrid( *gridPtr, "polyhedralgrid-dgf" );
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
 
+    /*
     // test CpGrid
     {
       typedef Dune::CpGrid Grid;
@@ -212,8 +211,9 @@ int main(int argc, char** argv )
       testGrid( grid, "cpgrid2" );
 
 #endif
-      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      //Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "cpgrid-dgf" );
     }
+    */
     return 0;
 }
