@@ -9,6 +9,8 @@
 #include <dune/common/typetraits.hh>
 #include <dune/common/version.hh>
 
+#include <dune/geometry/referenceelements.hh>
+
 #include <dune/grid/common/gridfactory.hh>
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 
@@ -217,7 +219,7 @@ namespace Dune
   private:
     int readVertices ( std::istream &input, std::vector< std::vector< double > > &vertices )
     {
-      int dimWorld = 3;
+      int dimWorld = Grid::dimensionworld ;
       dgf::VertexBlock vtxBlock( input, dimWorld );
       if( !vtxBlock.isactive() )
         DUNE_THROW( DGFException, "Vertex block not found" );
@@ -270,22 +272,120 @@ namespace Dune
 
     void generate ( std::istream &input )
     {
-      if( !DuneGridFormatParser::isDuneGridFormat( input ) )
+      DuneGridFormatParser dgf( 0, 1 );
+
+      dgf.element = DuneGridFormatParser::General;
+      dgf.dimgrid = dim;
+      dgf.dimw    = dimworld;
+
+      if( !dgf.isDuneGridFormat( input ) )
       {
         DUNE_THROW( DGFException, "Not in DGF format" );
       }
 
+      if( !dgf.readDuneGrid( input, dim, dimworld ) )
+        DUNE_THROW( InvalidStateException, "DGF file not recognized on second call." );
+
       typedef std::vector< std::vector< double > > CoordinateVectorType;
       CoordinateVectorType nodes;
-      const int vtxOfs = readVertices( input, nodes );
 
       typedef std::vector< std::vector< int > > IndexVectorType;
-      IndexVectorType faces = readPolygons ( input, nodes.size(), vtxOfs );
-      IndexVectorType cells = readPolyhedra( input, faces.size() );
+      IndexVectorType faces;
+      IndexVectorType cells;
 
-      if( cells.empty() )
+      if( dgf.nofelements == 0 )
       {
-        DUNE_THROW( DGFException, "Polyhedron block not found" );
+        const int vtxOfs = readVertices( input, nodes );
+
+        faces = readPolygons ( input, nodes.size(), vtxOfs );
+        cells = readPolyhedra( input, faces.size() );
+
+        if( cells.empty() )
+        {
+          DUNE_THROW( DGFException, "Polyhedron block not found" );
+        }
+      }
+      else // convert dgf input to polyhedral
+      {
+        nodes.resize( dgf.nofvtx );
+        // copy vertices
+        std::copy( dgf.vtx.begin(), dgf.vtx.end(), nodes.begin() );
+
+        for( const auto& node : nodes )
+        {
+          for( size_t i=0; i<node.size(); ++i )
+            std::cout << node[i] << " ";
+          std::cout << std::endl;
+        }
+
+        const unsigned int nVx = dgf.elements[ 0 ].size();
+
+        typedef std::vector< int > face_t;
+        std::map< face_t, int > tmpFaces;
+
+        const int nFaces = (nVx == dim+1) ? dim+1 : 2*dim;
+
+        Dune::GeometryType type( (nVx == dim+1) ?
+            Impl :: SimplexTopology< dim > :: type :: id :
+            Impl :: CubeTopology   < dim > :: type :: id,
+            dim );
+
+        const auto& refElem = Dune::referenceElement< typename Grid::ctype, dim >( type );
+
+        cells.resize( dgf.nofelements );
+
+        face_t face;
+        int faceNo = 0;
+        for( int n = 0; n < dgf.nofelements; ++n )
+        {
+          const auto& elem = dgf.elements[ n ];
+          auto& cell = cells[ n ];
+          assert( elem.size() == nVx );
+          cell.resize( nFaces );
+          for(int f=0; f<nFaces; ++f )
+          {
+            const int nFaceVx = refElem.size(f, 1, dim);
+            face.resize( nFaceVx );
+            for( int j=0; j<nFaceVx; ++j )
+            {
+              face[ j ] = elem[ refElem.subEntity(f, 1, j , dim) ];
+            }
+            std::sort( face.begin(), face.end() );
+            auto it = tmpFaces.find( face );
+            int myFaceNo = -1;
+            if( it == tmpFaces.end() )
+            {
+              myFaceNo = faceNo++;
+              tmpFaces.insert( std::make_pair( face, myFaceNo ) );
+            }
+            else
+              myFaceNo = it->second;
+
+            cell[ f ] = myFaceNo;
+          }
+
+          /*
+          for( const auto& c : cell )
+          {
+            std::cout << c << " ";
+          }
+          std::cout << std::endl;
+          */
+        }
+
+        faces.clear();
+        faces.resize( tmpFaces.size() );
+        for( const auto& face : tmpFaces )
+        {
+          faces[ face.second ] = face.first ;
+          /*
+          for( const auto& f : face.first  )
+          {
+            std::cout << f << " ";
+          }
+          std::cout << std::endl;
+          */
+        }
       }
 
       typedef GridFactory< Grid > GridFactoryType;

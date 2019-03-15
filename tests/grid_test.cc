@@ -163,7 +163,9 @@ int main(int argc, char** argv )
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
     dgfFile << "1 1 1" << std::endl;
-    dgfFile << "8 8 8" << std::endl;
+    dgfFile << "2 2 2" << std::endl;
+    dgfFile << "#" << std::endl;
+    dgfFile << "Simplex" << std::endl;
     dgfFile << "#" << std::endl;
 
 #if HAVE_ECL_INPUT
@@ -175,6 +177,7 @@ int main(int argc, char** argv )
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+      /*
 #if HAVE_ECL_INPUT
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
@@ -191,6 +194,7 @@ int main(int argc, char** argv )
       testGrid ( tsDune, "ts");
 
 #endif
+      */
       Dune::GridPtr< Grid > gridPtr( dgfFile );
       testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }

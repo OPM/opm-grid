@@ -1410,8 +1410,8 @@ namespace Dune
               normal[ d ] = grid_.face_normals[ face*dim + d ];
             }
 
-            if( normal.two_norm() < 1e-10 )
-              std::abort();
+            //if( normal.two_norm() < 1e-10 )
+            //  std::abort();
 
             if( centerDiff.two_norm() < 1e-10 )
               std::abort();
