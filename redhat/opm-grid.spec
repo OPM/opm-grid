@@ -20,7 +20,6 @@ BuildRequires:  mpich-devel trilinos-mpich-devel ptscotch-mpich-devel zlib-devel
 BuildRequires:  opm-common-openmpi-devel opm-common-mpich-devel
 %{?el6:BuildRequires: cmake3 boost148-devel}
 %{!?el6:BuildRequires: cmake boost-devel}
-BuildRequires:  opm-material-devel opm-material-openmpi-devel opm-material-mpich-devel
 BuildRoot:      %{_tmppath}/%{name}-%{version}-build
 Requires:       libopm-grid1 = %{version}
 
