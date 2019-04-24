@@ -32,6 +32,7 @@
 #include <opm/grid/utility/ErrorMacros.hpp>
 
 #include <opm/grid/UnstructuredGrid.h>
+#include <opm/grid/cart_grid.h>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/GridManager.hpp>
 #include <opm/grid/cornerpoint_grid.h>
@@ -159,8 +160,10 @@ namespace Dune
     typedef GridDefaultImplementation
       < dim, dimworld, coord_t, PolyhedralGridFamily< dim, dimworld, coord_t > > Base;
 
+  public:
     typedef UnstructuredGrid  UnstructuredGridType;
 
+  protected:
     struct UnstructuredGridDeleter
     {
       inline void operator () ( UnstructuredGridType* grdPtr )
@@ -334,6 +337,23 @@ namespace Dune
 
     /** \brief constructor
      *
+     *  \param[in]  deck         Opm Eclipse deck
+     *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
+     */
+    explicit PolyhedralGrid ( const std::vector< int >& n,
+                              const std::vector< double >& dx )
+    : gridPtr_( createGrid( n, dx ) ),
+      grid_( *gridPtr_ ),
+      comm_( *this ),
+      leafIndexSet_( *this ),
+      globalIdSet_( *this ),
+      localIdSet_( *this )
+    {
+      init();
+    }
+
+    /** \brief constructor
+     *
      *  \note The grid will take ownership of the supplied grid pointer.
      *
      *  \param[in]  ug  pointer to UnstructuredGrid
@@ -341,7 +361,7 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
-      polyhedralMesh_( grid_ ),
+      //polyhedralMesh_( grid_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -412,7 +432,24 @@ namespace Dune
      */
     int size ( int codim ) const
     {
-      return polyhedralMesh_.size( codim );
+      //return polyhedralMesh_.size( codim );
+      if( codim == 0 )
+      {
+        return grid_.number_of_cells;
+      }
+      else if ( codim == 1 )
+      {
+        return grid_.number_of_faces;
+      }
+      else if ( codim == dim )
+      {
+        return grid_.number_of_nodes;
+      }
+      else
+      {
+        std::cerr << "Warning: codimension " << codim << " not available in PolyhedralGrid" << std::endl;
+        return 0;
+      }
     }
 
     /** \brief obtain number of entites on a level
@@ -879,6 +916,24 @@ namespace Dune
     }
 #endif
 
+    UnstructuredGridType* createGrid( const std::vector< int >& n, const std::vector< double >& dx ) const
+    {
+        UnstructuredGridType* cgrid = nullptr ;
+        assert( int(n.size()) == dim );
+        if( dim == 2 )
+        {
+          cgrid = create_grid_cart2d( n[ 0 ], n[ 1 ], dx[ 0 ], dx[ 1 ] );
+        }
+        else if ( dim == 3 )
+        {
+          cgrid = create_grid_hexa3d( n[ 0 ], n[ 1 ], n[ 2 ], dx[ 0 ], dx[ 1 ], dx[ 2 ] );
+        }
+
+        if (!cgrid) {
+            OPM_THROW(std::runtime_error, "Failed to construct grid.");
+        }
+        return cgrid;
+    }
 
   public:
     using Base::getRealImplementation;
@@ -899,7 +954,7 @@ namespace Dune
           }
         case 1:
           {
-            return 0;//grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+            return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
           }
         case dim:
           {
@@ -917,6 +972,27 @@ namespace Dune
       switch (codim)
       {
         case 0:
+          {
+            const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
+            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+          }
+        case 1:
+          {
+            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i];
+            return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+          }
+        case dim:
+          {
+            const int coordIndex = GlobalCoordinate :: dimension * seed.index();
+            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+          }
+      }
+
+      /*
+      const int codim = EntitySeed :: codimension;
+      switch (codim)
+      {
+        case 0:
         case 1:
           {
             const int vxIndex = polyhedralMesh_.subEntity( seed.index(), i, codim );
@@ -927,6 +1003,7 @@ namespace Dune
             return polyhedralMesh_.coordinate( seed.index() );
           }
       }
+      */
       return GlobalCoordinate( 0 );
     }
 
@@ -1130,12 +1207,6 @@ namespace Dune
       if( ! seed.isValid() )
         return GlobalCoordinate( 0 );
 
-      const int index = seed.index();
-      const int codim = EntitySeed::codimension;
-      assert( index >= 0 && index < size( codim ) );
-      return polyhedralMesh_.center( index, codim );
-
-      /*
       const int index = GlobalCoordinate :: dimension * seed.index();
       const int codim = EntitySeed::codimension;
       assert( index >= 0 && index < size( codim ) * GlobalCoordinate :: dimension );
@@ -1157,7 +1228,6 @@ namespace Dune
         DUNE_THROW(InvalidStateException,"codimension not implemented");
         return GlobalCoordinate( 0 );
       }
-      */
     }
 
     GlobalCoordinate copyToGlobalCoordinate( const double* coords ) const
@@ -1173,19 +1243,36 @@ namespace Dune
     template <class EntitySeed>
     double volumes( const EntitySeed& seed ) const
     {
-      const int codim = EntitySeed::codimension;
+      static const int codim = EntitySeed::codimension;
       if( codim == dim || ! seed.isValid() )
       {
         return 1.0;
       }
       else
       {
-        const int index = seed.index();
         assert( seed.isValid() );
-        return polyhedralMesh_.volume( index, codim );
+
+        if( codim == 0 )
+        {
+          return grid_.cell_volumes[ seed.index() ];
+        }
+        else if ( codim == 1 )
+        {
+          return grid_.face_areas[ seed.index() ];
+        }
+        else
+        {
+          DUNE_THROW(InvalidStateException,"codimension not implemented");
+          return 0.0;
+        }
+
+        //const int index = seed.index();
+        //assert( seed.isValid() );
+        //return polyhedralMesh_.volume( index, codim );
       }
     }
 
+  protected:
     void init()
     {
       // copy Cartesian dimensions
@@ -1196,6 +1283,7 @@ namespace Dune
 
       // setup list of cell vertices
       const int numCells = size( 0 );
+
       cellVertices_.resize( numCells );
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
@@ -1461,7 +1549,28 @@ namespace Dune
 
          unitOuterNormals_[ face ] = normal;
       }
+
+      //print( std::cout, grid_ );
     }
+
+    void print( std::ostream& out, const UnstructuredGridType& grid ) const
+    {
+      const int numCells = grid.number_of_cells;
+      for( int c=0; c<numCells; ++c )
+      {
+        std::cout << "cell " << c << " : ";
+        for (int hf=grid.cell_facepos[ c ]; hf < grid.cell_facepos[c+1]; ++hf)
+        {
+           int f = grid_.cell_faces[ hf ];
+           const int* fnbeg = grid_.face_nodes + grid_.face_nodepos[f];
+           const int* fnend = grid_.face_nodes + grid_.face_nodepos[f+1];
+           std::cout << f << " " ;
+        }
+        std::cout << std::endl;
+      }
+
+    }
+
 
   protected:
     UnstructuredGridPtr gridPtr_;

@@ -162,11 +162,11 @@ int main(int argc, char** argv )
     dgfFile << "DGF" << std::endl;
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
-    dgfFile << "1 1 1" << std::endl;
+    dgfFile << "2 2 2" << std::endl;
     dgfFile << "2 2 2" << std::endl;
     dgfFile << "#" << std::endl;
-    dgfFile << "Simplex" << std::endl;
-    dgfFile << "#" << std::endl;
+    //dgfFile << "Simplex" << std::endl;
+    //dgfFile << "#" << std::endl;
 
 #if HAVE_ECL_INPUT
     Opm::Parser parser;

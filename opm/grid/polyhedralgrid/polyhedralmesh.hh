@@ -132,6 +132,15 @@ namespace Dune
       return std::make_pair( topologyPos_[ codim ][ en+1 ] - topologyPos_[ codim ][ en ], topology_[ codim ].data() + topologyPos_[ codim ][ en ] );
     }
 
+    /** \brief return number of sub entities, i.e. corners of a face or element
+     *  \param entity entity index, such as face number or element number
+     *  \param codim  codimension of the entity
+     * */
+    Index subEntities( const Index entity, const int codim ) const
+    {
+      return topologyPos_[ codim ][ entity+1 ] - topologyPos_[ codim ][ entity ];
+    }
+
     /** \brief return sub entities, i.e. corners of a face or element
      *  \param entity entity index, such as face number or element number
      *  \param i      i-th vertex requested
