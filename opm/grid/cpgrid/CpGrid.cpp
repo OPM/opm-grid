@@ -67,7 +67,7 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
+CpGrid::scatterGrid(const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.

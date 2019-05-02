@@ -331,7 +331,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                                             const std::vector<const OpmWellType*> * wells,
+                                             const std::vector<OpmWellType> * wells,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid)
     : grid_(grid), transmissibilities_(transmissibilities)

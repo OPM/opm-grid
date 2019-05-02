@@ -615,7 +615,7 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(const std::vector<const cpgrid::OpmWellType *> * wells,
+        loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
@@ -638,7 +638,7 @@ namespace Dune
         template<class DataHandle>
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(DataHandle& data,
-                    const std::vector<const cpgrid::OpmWellType *> * wells,
+                    const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
@@ -1284,7 +1284,7 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
+        scatterGrid(const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
 
