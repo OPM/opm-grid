@@ -1285,9 +1285,11 @@ namespace Dune
       const int numCells = size( 0 );
 
       cellVertices_.resize( numCells );
+
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
+     std::cout << "facetag" << std::endl;
         typedef std::array<int, 3> KeyType;
         std::map< const KeyType, const int > vertexFaceTags;
         const int vertexFacePattern [8][3] = {
@@ -1311,6 +1313,8 @@ namespace Dune
 
           vertexFaceTags.insert( std::make_pair( key, i ) );
         }
+
+     std::cout << "cells before" << std::endl;
 
         for (int c = 0; c < numCells; ++c)
         {
@@ -1339,15 +1343,20 @@ namespace Dune
               }
             }
           }
+     std::cout << "face node done" << std::endl;
+        std::cout << cell_pts.size() << std::endl;
 
           typedef std::map< int, std::set<int> > vertexlist_t;
           vertexlist_t vertexList;
 
           for( int faceTag = 0; faceTag<dim*2; ++faceTag )
           {
+            std::cout << "ft " << faceTag << std::endl;
             for( iterator it = cell_pts[ faceTag ].begin(),
                  end = cell_pts[ faceTag ].end(); it != end; ++it )
             {
+
+              //std::cout << (*it).second << std::endl;
               // only consider vertices with one appearance
               if( (*it).second == 1 )
               {
@@ -1355,6 +1364,8 @@ namespace Dune
               }
             }
           }
+
+     std::cout << "face tag done" << std::endl;
 
           assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
 
@@ -1375,7 +1386,9 @@ namespace Dune
               cellVertices_[ c ][ (*vx).second ] = (*it).first ;
             }
           }
+     std::cout << "vertex list done" << std::endl;
         }
+     std::cout << "cells done" << std::endl;
         // if face_tag is available we assume that the elements follow a cube-like structure
         geomTypes_.resize(dim + 1);
         GeometryType tmp;
@@ -1387,6 +1400,7 @@ namespace Dune
       }
       else // if ( grid_.cell_facetag )
       {
+
         int maxVx = 0 ;
         int minVx = std::numeric_limits<int>::max();
 
