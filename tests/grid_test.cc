@@ -177,7 +177,6 @@ int main(int argc, char** argv )
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
-      /*
 #if HAVE_ECL_INPUT
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
@@ -194,7 +193,6 @@ int main(int argc, char** argv )
       testGrid ( tsDune, "ts");
 
 #endif
-      */
       Dune::GridPtr< Grid > gridPtr( dgfFile );
       testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
