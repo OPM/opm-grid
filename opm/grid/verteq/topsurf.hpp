@@ -5,7 +5,7 @@
 // This file is licensed under the GNU General Public License v3.0
 
 #ifndef OPM_GRID_HEADER_INCLUDED
-#include <opm/core/grid.h>
+#include <opm/grid/UnstructuredGrid.h>
 #endif
 
 namespace Opm {
