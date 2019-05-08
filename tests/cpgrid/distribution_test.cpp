@@ -210,7 +210,7 @@ public:
     }
 
     template<class T>
-    std::size_t size(const T& i)
+    std::size_t size(const T& )
     {
         return 6;
         //return sendGrid_.numCellFaces(i);
