@@ -511,13 +511,6 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-    if ( interface.empty() )
-    {
-        // The communication interface is empty, do nothing.
-        // Otherwise we will produce a memory error in
-        // VariableSizeCommunicator prior to DUNE 2.4
-        return;
-    }
     Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
 
 #if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
