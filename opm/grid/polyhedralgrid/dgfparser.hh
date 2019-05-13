@@ -368,7 +368,12 @@ namespace Dune
         }
         //cells.swap( IndexVectorType() );
 
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
         gridPtr_ = gridFactory.createGrid();
+#else
+        gridPtr_.reset( gridFactory.createGrid() );
+#endif
+
       } // end else branch
 
      // alternative conversion to polyhedral format that does not work yet.

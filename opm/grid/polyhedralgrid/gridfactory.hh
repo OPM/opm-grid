@@ -37,7 +37,7 @@ namespace Dune
     typedef Dune::FieldVector<ctype,dimensionworld> CoordinateType;
     typedef CoordinateType  Coordinate;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     typedef ToUniquePtr<Grid>       UniquePtrType;
 #else // #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
     typedef Grid*  UniquePtrType;
