@@ -413,6 +413,7 @@ namespace Dune
       globalIdSet_( *this ),
       localIdSet_( *this )
     {
+      std::cout << "Creating TopSurfaceGrid" <<  topSurfaceGrid_ << std::endl;
       init();
     }
 

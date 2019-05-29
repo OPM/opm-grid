@@ -77,9 +77,9 @@ namespace Dune
     {
       if( topSurfaceGrid_ )
       {
-        const int colIdx = topSurfaceGrid_->col_cells[ entity.impl().index() ];
-        return IteratorType( topSurfaceGrid_,
-                             topSurfaceGrid_->col_cellpos[ colIdx ] );
+        const int colIdx = topSurfaceGrid_->col_cellpos[ entity.impl().index() ];
+        std::cout << "begin " << colIdx << std::endl;
+        return IteratorType( topSurfaceGrid_, colIdx );
       }
       else
         return end( entity );
@@ -89,12 +89,15 @@ namespace Dune
     {
       if( topSurfaceGrid_ )
       {
-        const int colIdx = topSurfaceGrid_->col_cells[ entity.impl().index() ];
-        return IteratorType( topSurfaceGrid_,
-                             topSurfaceGrid_->col_cellpos[ colIdx+1 ] );
+        const int colIdx = topSurfaceGrid_->col_cellpos[ entity.impl().index()+1 ];
+        std::cout << "end " << colIdx << std::endl;
+        return IteratorType( topSurfaceGrid_, colIdx );
       }
       else
+      {
+        std::cout << "end no top surf " << std::endl;
         return IteratorType( nullptr, -1 );
+      }
     }
   };
 

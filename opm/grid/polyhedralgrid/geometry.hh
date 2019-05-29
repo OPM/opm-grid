@@ -77,7 +77,7 @@ namespace Dune
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
       const GeometryType geomType = type();
-      if( geomType.isCube() )
+      if( geomType.isHexahedron() )
       {
         assert( mydimension == 3 );
         assert( coorddimension == 3 );
@@ -118,7 +118,7 @@ namespace Dune
         }
         return xyz;
       }
-      else if ( geomType.isNone() )
+      else if ( geomType.isNone() || geomType.isCube() )
       {
         // if no geometry type return the center of the element
         return center();
