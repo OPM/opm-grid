@@ -38,6 +38,10 @@
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
 
+#include <opm/grid/verteq/topsurf.hpp>
+
+#include <opm/grid/verteq/topsurf.hpp>
+
 namespace Dune
 {
 
@@ -162,6 +166,7 @@ namespace Dune
 
   public:
     typedef UnstructuredGrid  UnstructuredGridType;
+    typedef Opm::TopSurf      TopSurfaceGridType;
 
   protected:
     struct UnstructuredGridDeleter
@@ -326,6 +331,7 @@ namespace Dune
                               const std::vector<double>& poreVolumes = std::vector<double> ())
     : gridPtr_( createGrid( deck, poreVolumes ) ),
       grid_( *gridPtr_ ),
+      topSurfaceGrid_( nullptr ),
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -344,6 +350,7 @@ namespace Dune
                               const std::vector< double >& dx )
     : gridPtr_( createGrid( n, dx ) ),
       grid_( *gridPtr_ ),
+      topSurfaceGrid_( nullptr ),
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -361,6 +368,7 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
+      topSurfaceGrid_( nullptr ),
       //polyhedralMesh_( grid_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
@@ -380,6 +388,26 @@ namespace Dune
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),
       grid_( grid ),
+      topSurfaceGrid_( nullptr ),
+      comm_( *this ),
+      leafIndexSet_( *this ),
+      globalIdSet_( *this ),
+      localIdSet_( *this )
+    {
+      init();
+    }
+
+    /** \brief constructor
+     *
+     *  The references to ug are stored in the grid.
+     *  Therefore, they must remain valid until the grid is destroyed.
+     *
+     *  \param[in]  ug    UnstructuredGrid reference
+     */
+    explicit PolyhedralGrid ( const TopSurfaceGridType& topSurf )
+    : gridPtr_(),
+      grid_( static_cast< UnstructuredGridType > ( topSurf ) ),
+      topSurfaceGrid_( &topSurf ),
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -395,6 +423,8 @@ namespace Dune
     operator const UnstructuredGridType& () const { return grid_; }
 
     /** \} */
+
+    const TopSurfaceGridType* topSurfaceGrid() const { return topSurfaceGrid_; }
 
     /** \name Size Methods
      *  \{ */
@@ -1576,10 +1606,11 @@ namespace Dune
 
     }
 
-
   protected:
     UnstructuredGridPtr gridPtr_;
     const UnstructuredGridType& grid_;
+
+    const TopSurfaceGridType* topSurfaceGrid_;
 
     PolyhedralMeshType polyhedralMesh_;
 
@@ -1695,5 +1726,6 @@ namespace Dune
 #include <opm/grid/polyhedralgrid/persistentcontainer.hh>
 #include <opm/grid/polyhedralgrid/cartesianindexmapper.hh>
 #include <opm/grid/polyhedralgrid/gridhelpers.hh>
+#include <opm/grid/polyhedralgrid/verteqcolumnutility.hh>
 
 #endif // #ifndef DUNE_POLYHEDRALGRID_GRID_HH

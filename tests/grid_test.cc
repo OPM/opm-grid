@@ -14,6 +14,8 @@
 
 #include <opm/grid/verteq/topsurf.hpp>
 
+#include <opm/grid/common/VerteqColumnUtility.hpp>
+
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
 #include <dune/grid/test/gridcheck.hh>
@@ -54,6 +56,7 @@ void testGridIteration( const GridView& gridView )
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
+    /*
     for (; elemIt != elemEndIt; ++elemIt) {
         const Geometry& elemGeom = elemIt->geometry();
         if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
@@ -95,15 +98,42 @@ void testGridIteration( const GridView& gridView )
             }
         }
 
-        if (numIs != 6)
+        if (numIs != 2 * GridView::dimension )
             std::cout << "number of intersections is wrong for element " << numElem << "\n";
 
         ++ numElem;
     }
+            */
 
     if (numElem != 2*2*2)
         std::cout << "number of elements is wrong: " << numElem << "\n";
 }
+
+template <class Grid>
+void testVerteq(const Grid& grid)
+{
+    typedef typename Grid::LeafGridView GridView;
+    GridView gv = grid.leafGridView();
+
+    Dune::VerteqColumnUtility< Grid > verteqUtil ( grid );
+
+    std::cout << "Start checking vertical equilibirum utility." << std::endl;
+
+    const auto end = gv.template end< 0 > ();
+    for( auto it = gv.template begin< 0 > (); it != end; ++it )
+    {
+      const auto& entity = *it ;
+      const auto endCol = verteqUtil.end( entity );
+      for( auto col = verteqUtil.begin( entity ); col != endCol; ++col )
+      {
+        const auto& collCell = *col;
+        std::cout << "Column cell [ " << collCell.index()
+                  << " ]: h = " << collCell.h()
+                  << " dz = "   << collCell.dz() << std::endl;
+      }
+    }
+}
+
 
 template <class Grid>
 void testGrid(Grid& grid, const std::string& name)
@@ -150,6 +180,7 @@ void testGrid(Grid& grid, const std::string& name)
       vtkWriter.write(name, Dune::VTK::ascii);
     }
 
+    testVerteq( grid );
 }
 
 int main(int argc, char** argv )
