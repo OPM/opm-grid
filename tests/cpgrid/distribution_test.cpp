@@ -457,6 +457,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
 #else
     (void) scatter_handle;
     (void) gather_handle;
+    (void) bid_handle;
 #endif
 }
 
