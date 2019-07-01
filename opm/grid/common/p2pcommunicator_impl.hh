@@ -579,7 +579,11 @@ namespace Dune
   template <class MsgBuffer>
   inline void
   Point2PointCommunicator< MsgBuffer >::
-  exchange( DataHandleInterface& handle ) const
+#if HAVE_MPI
+  exchange( DataHandleInterface& handle) const
+#else
+  exchange( DataHandleInterface&) const
+#endif
   {
     assert( _recvBufferSizes.empty () );
 #if HAVE_MPI
@@ -609,7 +613,11 @@ namespace Dune
   template <class MsgBuffer>
   inline void
   Point2PointCommunicator< MsgBuffer >::
+#if HAVE_MPI
   exchangeCached( DataHandleInterface& handle ) const
+#else
+  exchangeCached( DataHandleInterface&) const
+#endif
   {
 #if HAVE_MPI
     if( ! _recvBufferSizesComputed )
