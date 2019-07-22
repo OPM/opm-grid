@@ -155,8 +155,8 @@ public:
 
     double logTransmissibilityWeights(int face_index) const
     {
-	double trans = transmissibilities_[face_index]; 
-	return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
+        double trans = transmissibilities_[face_index]; 
+        return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
     }
 
     const WellConnections& getWellConnections() const

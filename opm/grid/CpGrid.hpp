@@ -193,9 +193,9 @@ namespace Dune
     /// \brief enum for choosing Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
     ////
     /// uniform methods means all edges have weight 1. defaultTrans uses transmissibility as weights.
-    /// logTrans uses the logarithm of the transmissibility. 
-    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut, 
-    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact 
+    /// logTrans uses the logarithm of the transmissibility.
+    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut,
+    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact
     /// on parallel linear solver performance is negative.
     enum EdgeWeightMethod {
         /// \brief All edge have a uniform weight of 1
@@ -640,14 +640,14 @@ namespace Dune
             return scatterGrid(defaultTransEdgeWgt, wells, transmissibilities, overlapLayers);
         }
 
-	// loadbalance is not part of the grid interface therefore we skip it.
+        // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
         ///
         /// This will construct the corresponding graph to the grid and use the transmissibilities
         /// specified to calculate the  weights associated with its edges. The graph will be passed
         ///  to the load balancer.
-	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
         /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
@@ -1322,7 +1322,7 @@ namespace Dune
 
     private:
         /// \brief Scatter a global grid to all processors.
-	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
         /// \param ecl Pointer to the eclipse state information. Default: null
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
@@ -1331,8 +1331,8 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(EdgeWeightMethod method, 
-		    const std::vector<cpgrid::OpmWellType> * wells,
+        scatterGrid(EdgeWeightMethod method,
+                    const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
 

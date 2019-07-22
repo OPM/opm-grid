@@ -356,7 +356,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     addCompletionSetToGraph();
 
     if (edgeWeightsMethod == logTransEdgeWgt)
-	findMaxMinTrans();
+        findMaxMinTrans();
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
