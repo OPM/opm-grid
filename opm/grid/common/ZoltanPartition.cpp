@@ -34,7 +34,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
-                               int root)
+                               int edgeWeightsMethod, int root)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -50,7 +50,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
     }
-
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
     Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
     Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
     Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
@@ -75,7 +75,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         grid_and_wells.reset(new CombinedGridWellGraph(cpgrid,
                                                        wells,
                                                        transmissibilities,
-                                                       partitionIsEmpty));
+                                                       partitionIsEmpty,
+						       edgeWeightsMethod));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     partitionIsEmpty);
     }

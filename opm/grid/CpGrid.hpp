@@ -190,7 +190,13 @@ namespace Dune
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
     };
 
-
+    /// Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
+    /// uniform methods means all edges have weight 1. defaultTrans uses transmissibility as weights.
+    /// logTrans uses the logarithm of the transmissibility. 
+    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut, 
+    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact 
+    /// on parallel linear solver performance is negative.
+    enum EdgeWeightMethod {uniformEdgeWgt=0, defaultTransEdgeWgt=1, logTransEdgeWgt=2};
 
     ////////////////////////////////////////////////////////////////////////
     //
@@ -599,7 +605,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1)
         {
             using std::get;
-            return get<0>(scatterGrid(nullptr, nullptr, overlapLayers ));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, nullptr, nullptr, overlapLayers ));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -619,7 +625,28 @@ namespace Dune
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            return scatterGrid(wells, transmissibilities, overlapLayers);
+            return scatterGrid(defaultTransEdgeWgt, wells, transmissibilities, overlapLayers);
+        }
+
+	// loadbalance is not part of the grid interface therefore we skip it.
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///            If this is not null then complete well information of
+        ///            of the last scheduler step of the eclipse state will be
+        ///            used to make sure that all the possible completion cells
+        ///            of each well are stored on one process. This done by
+        ///            adding an edge with a very high edge weight for all
+        ///            possible pairs of cells in the completion set of a well.
+        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        std::pair<bool, std::unordered_set<std::string> >
+        loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
+                    const double* transmissibilities = nullptr,
+                    int overlapLayers=1)
+        {
+            return scatterGrid(method, wells, transmissibilities, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -646,6 +673,7 @@ namespace Dune
             scatterData(data);
             return ret;
         }
+
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
@@ -1276,6 +1304,7 @@ namespace Dune
 
     private:
         /// \brief Scatter a global grid to all processors.
+	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
         /// \param ecl Pointer to the eclipse state information. Default: null
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
@@ -1284,7 +1313,8 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(const std::vector<cpgrid::OpmWellType> * wells,
+        scatterGrid(EdgeWeightMethod method, 
+		    const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
 
