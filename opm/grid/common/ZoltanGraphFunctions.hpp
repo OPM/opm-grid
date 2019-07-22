@@ -127,8 +127,10 @@ public:
 
     /// \brief Create a graph representing a grid together with the wells.
     /// \param grid The grid.
-    /// \param eclipseState The eclipse state to extract the well information from.
+    /// \param wells The wells used or null.
+    /// \param transmissibilities The transmissibilities associated with the faces
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
+    /// \param edgeWeightsMethod The method used to calculated the edge weights.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
                           const std::vector<OpmWellType> * wells,
                           const double* transmissibilities,

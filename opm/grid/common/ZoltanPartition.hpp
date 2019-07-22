@@ -38,10 +38,13 @@ namespace cpgrid
 /// will nevertheless only use the information on the root process
 /// to partition it as Zoltan cannot identify this situation.
 /// @param grid The grid to partition
-/// @param eclipseState The eclipse state  to extract the well
-///                     information from. If null wells will be neglected.
+/// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param transmissibilities The transmissibilities associated with the
+///             faces
 /// @paramm cc  The MPI communicator to use for the partitioning.
 ///             The will be partitioned among the partiticipating processes.
+/// @param edgeWeightMethod The method used to calculate the weights associated
+///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @return A pair consisting of a vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning,
