@@ -34,7 +34,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
-                               int edgeWeightsMethod, int root)
+                               EdgeWeightMethod edgeWeightsMethod, int root)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
