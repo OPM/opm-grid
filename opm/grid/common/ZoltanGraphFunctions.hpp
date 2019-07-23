@@ -127,13 +127,15 @@ public:
 
     /// \brief Create a graph representing a grid together with the wells.
     /// \param grid The grid.
-    /// \param eclipseState The eclipse state to extract the well information from.
+    /// \param wells The wells used or null.
+    /// \param transmissibilities The transmissibilities associated with the faces
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
+    /// \param edgeWeightsMethod The method used to calculated the edge weights.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
                           const std::vector<OpmWellType> * wells,
                           const double* transmissibilities,
                           bool pretendEmptyGrid,
-			  int edgeWeightsMethod);
+			  EdgeWeightMethod edgeWeightsMethod);
 
     /// \brief Access the grid.
     const Dune::CpGrid& getGrid() const
@@ -153,8 +155,8 @@ public:
 
     double logTransmissibilityWeights(int face_index) const
     {
-	double trans = transmissibilities_[face_index]; 
-	return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
+        double trans = transmissibilities_[face_index]; 
+        return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
     }
 
     const WellConnections& getWellConnections() const
@@ -164,14 +166,14 @@ public:
 
     double edgeWeight(int face_index) const
     {
-	if (edgeWeightsMethod_ == 0)
-	    return 1.0;
-	else if (edgeWeightsMethod_ == 1)
-	    return transmissibility(face_index);
-	else if (edgeWeightsMethod_ == 2)
-	    return logTransmissibilityWeights(face_index);
-	else
-	    return 1.0;
+        if (edgeWeightsMethod_ == uniformEdgeWgt)
+            return 1.0;
+        else if (edgeWeightsMethod_ == defaultTransEdgeWgt)
+            return transmissibility(face_index);
+        else if (edgeWeightsMethod_ == logTransEdgeWgt)
+            return logTransmissibilityWeights(face_index);
+        else
+            return 1.0;
     }
 private:
 

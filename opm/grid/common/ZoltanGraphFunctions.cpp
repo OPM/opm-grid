@@ -333,8 +333,8 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const std::vector<OpmWellType> * wells,
                                              const double* transmissibilities,
-                                             bool pretendEmptyGrid, 
-					     int edgeWeightsMethod)
+                                             bool pretendEmptyGrid,
+                                             EdgeWeightMethod edgeWeightsMethod)
     : grid_(grid), transmissibilities_(transmissibilities), edgeWeightsMethod_(edgeWeightsMethod)
 {
     if ( pretendEmptyGrid )
@@ -355,8 +355,8 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     std::vector<int>().swap(cartesian_to_compressed); // free memory.
     addCompletionSetToGraph();
 
-    if (edgeWeightsMethod == 2)
-	findMaxMinTrans();
+    if (edgeWeightsMethod == logTransEdgeWgt)
+        findMaxMinTrans();
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,

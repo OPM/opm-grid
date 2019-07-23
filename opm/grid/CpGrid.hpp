@@ -190,13 +190,21 @@ namespace Dune
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
     };
 
-    /// Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
+    /// \brief enum for choosing Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
+    ////
     /// uniform methods means all edges have weight 1. defaultTrans uses transmissibility as weights.
-    /// logTrans uses the logarithm of the transmissibility. 
-    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut, 
-    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact 
+    /// logTrans uses the logarithm of the transmissibility.
+    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut,
+    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact
     /// on parallel linear solver performance is negative.
-    enum EdgeWeightMethod {uniformEdgeWgt=0, defaultTransEdgeWgt=1, logTransEdgeWgt=2};
+    enum EdgeWeightMethod {
+        /// \brief All edge have a uniform weight of 1
+        uniformEdgeWgt=0,
+        /// \brief Use the transmissibilities as edge weights
+        defaultTransEdgeWgt=1,
+        /// \brief Use the log of the transmissibilities as edge weights
+        logTransEdgeWgt=2
+    };
 
     ////////////////////////////////////////////////////////////////////////
     //
@@ -600,7 +608,7 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
-        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         bool loadBalance(int overlapLayers=1)
         {
@@ -611,14 +619,18 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
-        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///
+        /// This will construct the corresponding graph to the grid and use the transmissibilities
+        /// specified as weights associated with its edges. The graph will be passed to the load balancer.
+        /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
         ///            used to make sure that all the possible completion cells
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \param transmissibilities The transmissibilities used as the edge weights.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
@@ -628,17 +640,22 @@ namespace Dune
             return scatterGrid(defaultTransEdgeWgt, wells, transmissibilities, overlapLayers);
         }
 
-	// loadbalance is not part of the grid interface therefore we skip it.
+        // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
-	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
-        /// \param ecl Pointer to the eclipse state information. Default: null
+        ///
+        /// This will construct the corresponding graph to the grid and use the transmissibilities
+        /// specified to calculate the  weights associated with its edges. The graph will be passed
+        ///  to the load balancer.
+        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
         ///            used to make sure that all the possible completion cells
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
@@ -651,13 +668,14 @@ namespace Dune
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
-        /// \param ecl Pointer to the eclipse state information. Default: null
+        /// \param wells The wells of the eclipse  Default: null
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
         ///            used to make sure that all the possible completion cells
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
@@ -1304,7 +1322,7 @@ namespace Dune
 
     private:
         /// \brief Scatter a global grid to all processors.
-	/// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
         /// \param ecl Pointer to the eclipse state information. Default: null
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
@@ -1313,8 +1331,8 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
-        scatterGrid(EdgeWeightMethod method, 
-		    const std::vector<cpgrid::OpmWellType> * wells,
+        scatterGrid(EdgeWeightMethod method,
+                    const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
 
