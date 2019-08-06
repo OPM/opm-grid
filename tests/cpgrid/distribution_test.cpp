@@ -306,7 +306,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
     grid.createCartesian(dims, size);
 #if HAVE_MPI
-    BOOST_REQUIRE(grid.comm()==MPI_COMM_SELF);
+    BOOST_REQUIRE(grid.comm()==MPI_COMM_WORLD);
 #endif
     std::vector<int> cell_indices, face_indices, point_indices;
     std::vector<Dune::CpGrid::Traits::Codim<0>::Geometry::GlobalCoordinate > cell_centers, face_centers, point_centers;

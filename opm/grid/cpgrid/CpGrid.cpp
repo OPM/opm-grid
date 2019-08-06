@@ -219,6 +219,15 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     void CpGrid::createCartesian(const std::array<int, 3>& dims,
                                  const std::array<double, 3>& cellsize)
     {
+        if ( current_view_data_->ccobj_.rank() != 0 )
+        {
+            grdecl g;
+            g.dims[0] = g.dims[1] = g.dims[2] = 0;
+            current_view_data_->processEclipseFormat(g, {}, 0.0, false, false);
+            // global grid only on rank 0
+            return;
+        }
+
         // Make the grdecl format arrays.
         // Pillar coords.
         std::vector<double> coord;
@@ -261,10 +270,16 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
     {
         current_view_data_->readSintefLegacyFormat(grid_prefix);
+        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                             current_view_data_->logical_cartesian_size_.size(),
+                                             0);
     }
     void CpGrid::writeSintefLegacyFormat(const std::string& grid_prefix) const
     {
         current_view_data_->writeSintefLegacyFormat(grid_prefix);
+        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                             current_view_data_->logical_cartesian_size_.size(),
+                                             0);
     }
 
 
@@ -278,6 +293,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
                                                  turn_normals, clip_z,
                                                  poreVolume, nncs);
+        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                             current_view_data_->logical_cartesian_size_.size(),
+                                             0);
     }
 #endif
 
@@ -285,6 +303,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
                                       bool remove_ij_boundary, bool turn_normals)
     {
         current_view_data_->processEclipseFormat(input_data, {}, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                             current_view_data_->logical_cartesian_size_.size(),
+                                             0);
     }
 
 } // namespace Dune

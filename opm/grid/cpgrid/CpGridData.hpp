@@ -279,6 +279,9 @@ public:
 
 private:
 
+    /// \brief Adds entries to the parallel index set of the cells during grid construction
+    void populateGlobalCellIndexSet();
+
 #if HAVE_MPI
 
     /// \brief Gather data on a global grid representation.

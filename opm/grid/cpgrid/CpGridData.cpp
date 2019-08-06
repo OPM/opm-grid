@@ -62,7 +62,7 @@ CpGridData::CpGridData(CpGrid&)
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
-    ccobj_=CollectiveCommunication(MPI_COMM_SELF);
+    //ccobj_=CollectiveCommunication(MPI_COMM_SELF);
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
@@ -103,6 +103,16 @@ CpGridData::~CpGridData()
     delete local_id_set_;
     delete global_id_set_;
     delete partition_type_indicator_;
+}
+
+void CpGridData::populateGlobalCellIndexSet()
+{
+    cell_indexset_.beginResize();
+    for (int index = 0, end = size(0); index != end ; ++index){
+        cell_indexset_.add(global_id_set_->id(EntityRep<0>(index, true)),
+                           ParallelIndexSet::LocalIndex(index, AttributeSet::owner, true));
+    }
+    cell_indexset_.endResize();
 }
 
 void CpGridData::computeUniqueBoundaryIds()
