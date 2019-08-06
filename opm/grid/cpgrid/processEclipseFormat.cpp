@@ -116,8 +116,12 @@ namespace cpgrid
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
-        std::vector<double> coordData = ecl_grid.getCOORD();
+        if (ccobj_.rank() != 0 ) {
+            // Store global grid only on rank 0
+            return;
+        }
 
+        std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 
         // Mutable because grdecl::zcorn is non-const.
@@ -241,6 +245,11 @@ namespace cpgrid
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
+        if( ccobj_.rank() != 0 )
+        {
+            // We do not store any grid information
+            return;
+        }
         // Process.
 #ifdef VERBOSE
         std::cout << "Processing eclipse data." << std::endl;
@@ -290,6 +299,8 @@ namespace cpgrid
 
         computeUniqueBoundaryIds();
 
+        if(ccobj_.size()>1)
+            populateGlobalCellIndexSet();
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
 #endif
