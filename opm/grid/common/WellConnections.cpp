@@ -27,6 +27,8 @@
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
+#include <dune/common/parallel/mpitraits.hh>
+
 namespace Dune
 {
 namespace cpgrid
@@ -145,6 +147,7 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
 
 #if HAVE_ECL_INPUT
     std::vector<int> my_well_indices;
+    std::vector<std::string> globalWellNames;
     const int well_information_tag = 267553;
 
     if( root == cc.rank() )
@@ -163,6 +166,31 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
         }
         std::vector<MPI_Status> stats(reqs.size());
         MPI_Waitall(reqs.size(), reqs.data(), stats.data());
+        // Broadcast well names
+        // 1. Compute packed size and broadcast
+        std::size_t sizes[2] = {wells.size(),0};
+        int wellMessageSize = 0;
+        MPI_Pack_size(2, MPITraits<std::size_t>::getType(), cc, &wellMessageSize);
+        for(const auto& well: wells)
+        {
+            int size;
+            MPI_Pack_size(well.name().size() + 1, MPI_CHAR, cc, &size); // +1 for '\0' delimiter
+            sizes[1] += well.name().size() + 1;
+            wellMessageSize += size;
+        }
+        MPI_Bcast(&wellMessageSize, 1, MPI_INT, root, cc);
+        // 2. Send number of wells and their names in one message
+        globalWellNames.resize(wells.size());
+        std::vector<char> buffer(wellMessageSize);
+        int pos = 0;
+        MPI_Pack(&sizes, 2, MPITraits<std::size_t>::getType(), buffer.data(), wellMessageSize, &pos, cc);
+        for(const auto& well: wells)
+        {
+            MPI_Pack(well.name().c_str(), well.name().size()+1, MPI_CHAR, buffer.data(),
+                     wellMessageSize, &pos, cc); // +1 for '\0' delimiter
+            globalWellNames.push_back(well.name());
+        }
+        MPI_Bcast(buffer.data(), wellMessageSize, MPI_PACKED, root, cc);
     }
     else
     {
@@ -173,6 +201,27 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
         my_well_indices.resize(msg_size);
         MPI_Recv(my_well_indices.data(), msg_size, MPI_INT, root,
                  well_information_tag, cc, &stat);
+
+        // 1. receive broadcasted message Size
+        int wellMessageSize;
+        MPI_Bcast(&wellMessageSize, 1, MPI_PACKED, root, cc);
+
+        // 2. Receive number of wells and their names in one message
+        globalWellNames.resize(wells.size());
+        std::vector<char> buffer(wellMessageSize);
+        MPI_Bcast(buffer.data(), wellMessageSize, MPI_PACKED, root, cc);
+        std::size_t sizes[2];
+        int pos = 0;
+        MPI_Unpack(buffer.data(), wellMessageSize, &pos, &sizes, 2, MPITraits<std::size_t>::getType(), cc);
+        // unpack all string at once
+        std::vector<char> cstr(sizes[1]);
+        MPI_Unpack(buffer.data(), wellMessageSize, &pos, cstr.data(), sizes[1], MPI_CHAR, cc);
+        pos = 0;
+        for(std::size_t i = 0; i < sizes[0]; ++i)
+        {
+            globalWellNames.emplace_back(cstr.data()+pos);
+            pos += globalWellNames.back().size() + 1; // +1 because of '\0' delimiter
+        }
     }
 
     // Compute defunct wells in parallel run.
@@ -187,7 +236,7 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
     {
         if ( *defunct )
         {
-            defunct_well_names.insert(wells[defunct-defunct_wells.begin()].name());
+            defunct_well_names.insert(globalWellNames[defunct-defunct_wells.begin()]);
         }
     }
 #endif
