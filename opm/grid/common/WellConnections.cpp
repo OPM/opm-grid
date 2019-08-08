@@ -28,6 +28,30 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <dune/common/parallel/mpitraits.hh>
+#include <dune/istl/owneroverlapcopy.hh>
+
+namespace
+{
+
+struct Less
+{
+    template<typename T>
+    bool operator()( const T& t1, const T& t2 )
+    {
+        return std::get<0>(t1) < std::get<0>(t2);
+    }
+    template<typename T>
+    bool operator()( const T& t, int i )
+    {
+        return std::get<0>(t) < i;
+    }
+    template<typename T>
+    bool operator()( int i, const T& t )
+    {
+        return i < std::get<0>(t);
+    }
+};
+}
 
 namespace Dune
 {
@@ -69,65 +93,230 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 #endif
 }
 
+#ifdef HAVE_MPI
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
+                                const std::vector<int>& globalCell,
                                 const std::vector<OpmWellType>& wells,
                                 const WellConnections& well_connections,
-                                std::size_t no_procs)
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                const CollectiveCommunication<MPI_Comm>& cc)
 {
+    auto no_procs = cc.size();
+    auto noCells = parts.size();
+    std::vector<std::size_t> cellsPerProc(no_procs);
+    auto mpiType =  MPITraits<std::size_t>::getType();
+    MPI_Alltoall(&noCells, 1, mpiType, cellsPerProc.data(), 1, mpiType, cc);
+
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
 #if HAVE_ECL_INPUT
-    if( ! well_connections.size() )
-    {
-        // No wells to be processed
-        return well_indices_on_proc;
-    }
+    std::map<int, std::vector<int>> addCells, removeCells;
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 
-    // prevent memory allocation
-    for(auto& well_indices : well_indices_on_proc)
-    {
-        well_indices.reserve(wells.size());
-    }
+    if (noCells && well_connections.size()) {
 
-    // Check that all connections of a well have ended up on one process.
-    // If that is not the case for well then move them manually to the
-    // process that already has the most connections on it.
-    int well_index = 0;
-
-    for (const auto& well: wells) {
-        const auto& connections = well_connections[well_index];
-        std::map<int,std::size_t> no_connections_on_proc;
-        for ( auto connection_index: connections )
-        {
-            ++no_connections_on_proc[parts[connection_index]];
+        // prevent memory allocation
+        for (auto &well_indices : well_indices_on_proc) {
+            well_indices.reserve(wells.size());
         }
 
-        int owner = no_connections_on_proc.begin()->first;
+        // Check that all connections of a well have ended up on one process.
+        // If that is not the case for well then move them manually to the
+        // process that already has the most connections on it.
+        int well_index = 0;
 
-        if ( no_connections_on_proc.size() > 1 )
-        {
-            // partition with the most connections on it becomes new owner
-            int new_owner = std::max_element(no_connections_on_proc.begin(),
-                                             no_connections_on_proc.end(),
-                                             [](const std::pair<int,std::size_t>& p1,
-                                                const std::pair<int,std::size_t>& p2){
-                                                 return ( p1.second > p2.second );
-                                             })->first;
-            std::cout << "Manually moving well " << well.name() << " to partition "
-                      << new_owner << std::endl;
-
-            for ( auto connection_cell : connections )
-            {
-                parts[connection_cell] = new_owner;
+        for (const auto &well : wells) {
+            const auto &connections = well_connections[well_index];
+            std::map<int, std::size_t> no_connections_on_proc;
+            for (auto connection_index : connections) {
+                ++no_connections_on_proc[parts[connection_index]];
             }
 
-            owner = new_owner;
-        }
+            int owner = no_connections_on_proc.begin()->first;
 
-        well_indices_on_proc[owner].push_back(well_index);
-        ++well_index;
+            if (no_connections_on_proc.size() > 1) {
+                // partition with the most connections on it becomes new owner
+                int new_owner =
+                    std::max_element(no_connections_on_proc.begin(),
+                                     no_connections_on_proc.end(),
+                                     [](const std::pair<int, std::size_t> &p1,
+                                        const std::pair<int, std::size_t> &p2) {
+                                         return (p1.second > p2.second);
+                                     })
+                    ->first;
+                std::cout << "Manually moving well " << well.name()
+                          << " to partition " << new_owner << std::endl;
+
+                std::vector<int> globalConnections;
+                globalConnections.reserve(connections.size());
+                std::map<int, std::vector<int>> tmpRemove;
+                auto &add = addCells[new_owner];
+                auto oldEnd = add.end();
+                std::vector<int> myConnections;
+                myConnections.reserve(connections.size());
+                for (auto connection_cell : connections) {
+                    const auto &global = globalCell[connection_cell];
+                    auto old_owner = parts[connection_cell];
+                    if (old_owner != cc.rank()) //otherwise there is not entry
+                        removeCells[old_owner].push_back(global);
+                    else
+                        myConnections.push_back(global);
+                    parts[connection_cell] = new_owner;
+                    if (new_owner != cc.rank()) // no entry assumed for rank
+                        add.push_back(global);
+                }
+                std::sort(myConnections.begin(), myConnections.end());
+                std::sort(oldEnd, add.end());
+                exportList.reserve(exportList.size()+myConnections.size()); // We might store new entries
+                auto start  = exportList.begin();
+                auto middle = exportList.end();
+
+                for (auto movedCell = oldEnd; oldEnd != add.end(); ++movedCell) {
+                    auto myCandidate = std::lower_bound(myConnections.begin(), myConnections.end(), *movedCell);
+                    if (myCandidate == myConnections.end()){
+                        auto candidate = std::lower_bound(start, middle, *movedCell, Less());
+                        assert(candidate != exportList.end());
+                        std::get<1>(*candidate) = new_owner;
+                        start = candidate;
+                    } else {
+                        // entry was not yet in the list. add it at the end.
+                        exportList.emplace_back(*movedCell, new_owner, AttributeSet::owner);
+                    }
+                }
+                std::sort(middle, exportList.end(), Less());
+                std::inplace_merge(exportList.begin(), middle, exportList.end(), Less());
+            }
+
+            well_indices_on_proc[owner].push_back(well_index);
+            ++well_index;
+        }
+        auto sorter = [](std::pair<const int, std::vector<int>> &pair) {
+                          auto &vec = pair.second;
+                          std::sort(vec.begin(), vec.end());
+                      };
+        std::for_each(addCells.begin(), addCells.end(), sorter);
+        std::for_each(removeCells.begin(), removeCells.end(), sorter);
+    }
+
+    // setup receives for each process that owns cells of the original grid
+    auto noSource = std::count_if(cellsPerProc.begin(), cellsPerProc.end(),
+                                  [](const std::size_t &i) { return i > 0; }) -
+        (parts.size() > 0);
+    std::vector<MPI_Request> requests(noSource);
+    std::vector<std::vector<int>> sizeBuffers(cc.size());
+    auto begin = cellsPerProc.begin();
+    auto req = requests.begin();
+    int tag = 782372873;
+    auto rank = cc.rank();
+
+    for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
+        auto rank = it - begin;
+        if (it - begin != rank) {
+            sizeBuffers[rank].resize(2);
+            MPI_Irecv(sizeBuffers[rank].data(), 2, mpiType, rank, tag, cc, &(*req));
+            ++req;
+        }
+    }
+
+    // Send the sizes
+    if (parts.size()) {
+        for (int i = 0; i < cc.size(); ++i)
+            if (i != rank) {
+                int sizes[2] = {0, 0};
+                auto candidate = addCells.find(rank);
+                if (candidate != addCells.end())
+                    sizes[0] = candidate->second.size();
+
+                candidate = removeCells.find(rank);
+                if (candidate != removeCells.end())
+                    sizes[1] = candidate->second.size();
+                MPI_Send(sizes, 2, MPI_INT, rank, tag, cc);
+            }
+    }
+    std::vector<MPI_Status> statuses(requests.size());
+    MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+    auto messages = std::count_if(
+                                  sizeBuffers.begin(), sizeBuffers.end(),
+                                  [](const std::vector<int> &v) { return v.size() ? v[0] + v[1] : 0; });
+    requests.resize(messages);
+    ++tag;
+
+    req = requests.begin();
+    std::vector<std::vector<int>> cellIndexBuffers;
+
+    for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
+        auto rank = it - begin;
+        const auto &buffer = sizeBuffers[rank];
+        if (buffer.size() && (buffer[0] + buffer[1])) {
+            auto &cellIndexBuffer = cellIndexBuffers[rank];
+            cellIndexBuffer.resize(buffer[0] + buffer[1]);
+            MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, rank, tag, cc,
+                      &(*req));
+            ++req;
+        }
+    }
+
+    // Send data if we have cells.
+    if (parts.size()) {
+        for (int i = 0; i < cc.size(); ++i)
+            if (i != rank) {
+                std::vector<std::size_t> buffer;
+                auto candidate = addCells.find(rank);
+                if (candidate != addCells.end())
+                    buffer.insert(buffer.end(), candidate->second.begin(),
+                                  candidate->second.end());
+
+                candidate = removeCells.find(rank);
+                if (candidate != removeCells.end())
+                    buffer.insert(buffer.end(), candidate->second.begin(),
+                                  candidate->second.end());
+
+                if (buffer.size()) {
+                    MPI_Send(buffer.data(), buffer.size(), MPI_INT, rank, tag, cc);
+                }
+            }
+    }
+    statuses.resize(messages);
+    // Wait for the messages
+    MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+    // unpack data
+    rank = 0;
+    for (const auto &cellIndexBuffer : cellIndexBuffers) {
+        if (cellIndexBuffer.size()) {
+            // add cells that moved here
+            auto noAdded = sizeBuffers[rank][0];
+            importList.reserve(importList.size() + noAdded);
+            auto middle = importList.end();
+            std::vector<std::tuple<int, int, char>> addToImport;
+            int offset = 0;
+            for (; offset != noAdded; ++offset)
+                importList.emplace_back(cellIndexBuffer[offset], rank,
+                                        AttributeSet::owner, -1);
+            auto compare = [](const std::tuple<int, int, char, int> &t1,
+                              const std::tuple<int, int, char, int> &t2) {
+                               return std::get<0>(t1) < std::get<0>(t2);
+                           };
+            std::inplace_merge(importList.begin(), middle, importList.end(),
+                               compare);
+
+            // remove cells that moved to another process
+            auto noRemoved = sizeBuffers[rank][1];
+            if (noRemoved) {
+                std::vector<std::tuple<int, int, char, int>> tmp(importList.size());
+                auto newEnd =
+                    std::set_difference(importList.begin(), importList.end(),
+                                        cellIndexBuffer.begin() + noAdded,
+                                        cellIndexBuffer.end(), tmp.begin(), Less());
+                tmp.resize(newEnd - tmp.begin());
+                importList.swap(tmp);
+            }
+        }
+        ++rank;
     }
 #endif
 
@@ -135,7 +324,6 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
 }
 
-#ifdef HAVE_MPI
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
                         const std::vector<OpmWellType>& wells,
