@@ -50,7 +50,9 @@ namespace cpgrid
 ///         the number of the process that owns it after repartitioning,
 ///         and a set of names of wells that should be defunct in a parallel
 ///         simulation.
-std::pair<std::vector<int>,std::unordered_set<std::string> >
+std::tuple<std::vector<int>,std::unordered_set<std::string>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >  >
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
