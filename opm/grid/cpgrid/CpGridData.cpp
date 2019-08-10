@@ -666,8 +666,9 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // We use std::numeric_limits<int>::max() to indicate non-existent entities.
     std::vector<int> face_indicator(view_data.geometry_.geomVector<1>().size(),
                                     std::numeric_limits<int>::max());
-    std::vector<int> point_indicator(view_data.geometry_.geomVector<3>().size(),
-                                     std::numeric_limits<int>::max());
+    std::vector<int> map2GlobalPointId;
+    map2GlobalPointId.reserve(8*cell_indexset_.size());
+
     for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
     {
@@ -687,22 +688,28 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     pend=view_data.face_to_point_[findex].end(); p!=pend; ++p)
             {
                 assert(*p >= 0);
-                --point_indicator[*p];
+                map2GlobalPointId.push_back(*p);
             }
         }
     }
 
+    std::sort(map2GlobalPointId.begin(),map2GlobalPointId.end());
+    auto newEnd = std::unique(map2GlobalPointId.begin(),map2GlobalPointId.end());
+    map2GlobalPointId.resize(newEnd - map2GlobalPointId.begin());
+    auto noExistingPoints = map2GlobalPointId.size();
 
     // renumber  face and point indicators
     std::for_each(face_indicator.begin(), face_indicator.end(), AssignAndIncrement());
-    std::for_each(point_indicator.begin(), point_indicator.end(), AssignAndIncrement());
+    std::map<int,int> point_indicator;
+    auto current_global = map2GlobalPointId.begin();
+    int pi = 0;
+    std::generate_n(std::inserter(point_indicator, point_indicator.begin()),
+                    newEnd - current_global,
+                    [&pi, &current_global](){ return std::make_pair(*(current_global++), pi++); });
 
     std::vector<int> map2GlobalFaceId;
     int noExistingFaces = setupAndCountGlobalIds<1>(face_indicator, map2GlobalFaceId,
                                                     *view_data.local_id_set_);
-    std::vector<int> map2GlobalPointId;
-    int noExistingPoints = setupAndCountGlobalIds<3>(point_indicator, map2GlobalPointId,
-                                                     *view_data.local_id_set_);
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
     for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
@@ -710,6 +717,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
     }
 
+    auto func = [&view_data](int i){
+                    return view_data.local_id_set_->id(EntityRep<3>(i, true));
+                };
+    std::transform(map2GlobalPointId.begin(), map2GlobalPointId.end(), map2GlobalPointId.begin(),
+                   func);
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
     // Create the topology information. This is stored in sparse matrix like data structures.
@@ -805,7 +817,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             new_row.reserve(old_row.size());
             for(auto point = old_row.begin(), pend=old_row.end(); point!=pend; ++point)
             {
-                assert(point_indicator[*point]<std::numeric_limits<int>::max());
                 new_row.push_back(point_indicator[*point]);
             }
             face_to_point_.appendRow(new_row.begin(), new_row.end());
@@ -821,13 +832,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     point_geom.reserve(noExistingPoints);
 
     // Now copy the point geometries that do exist.
-    for (auto begin = point_indicator.begin(), pi = begin,  end = point_indicator.end(); pi != end;
+    for(auto pi = point_indicator.begin(), end = point_indicator.end(); pi != end;
         ++pi)
     {
-        if (*pi < std::numeric_limits<int>::max())
-        {
-            point_geom.emplace_back(global_point_geom[pi - begin]);
-        }
+        assert(pi->second == (int) point_geom.size());
+        point_geom.emplace_back(global_point_geom[pi->first]);
     }
 
 
