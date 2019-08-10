@@ -664,10 +664,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Now we need to compute the existing faces and points. Either exist
     // if they are reachable from an existing cell.
     // We use std::numeric_limits<int>::max() to indicate non-existent entities.
-    std::vector<int> face_indicator(view_data.geometry_.geomVector<1>().size(),
-                                    std::numeric_limits<int>::max());
+    std::vector<int> map2GlobalFaceId;
     std::vector<int> map2GlobalPointId;
     map2GlobalPointId.reserve(8*cell_indexset_.size());
+    map2GlobalFaceId.reserve((6*cell_indexset_.size())*1.1);
 
     for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
             i!=end; ++i)
@@ -682,7 +682,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
             f!=fend; ++f)
         {
             int findex=f->index();
-            --face_indicator[findex];
+            map2GlobalFaceId.push_back(findex);
             // points reachable from a cell exist, too.
             for(auto p=view_data.face_to_point_[findex].begin(),
                     pend=view_data.face_to_point_[findex].end(); p!=pend; ++p)
@@ -697,19 +697,25 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     auto newEnd = std::unique(map2GlobalPointId.begin(),map2GlobalPointId.end());
     map2GlobalPointId.resize(newEnd - map2GlobalPointId.begin());
     auto noExistingPoints = map2GlobalPointId.size();
+    std::sort(map2GlobalFaceId.begin(),map2GlobalFaceId.end());
+    auto newFaceEnd = std::unique(map2GlobalFaceId.begin(),map2GlobalFaceId.end());
+    map2GlobalFaceId.resize(newFaceEnd - map2GlobalFaceId.begin());
+    auto noExistingFaces = map2GlobalFaceId.size();
 
     // renumber  face and point indicators
-    std::for_each(face_indicator.begin(), face_indicator.end(), AssignAndIncrement());
+    std::map<int,int> face_indicator;
+    auto current_global_face = map2GlobalFaceId.begin();
+    int localId = 0;
+    std::generate_n(std::inserter(face_indicator, face_indicator.begin()),
+                    newFaceEnd - current_global_face,
+                    [&localId, &current_global_face](){ return std::make_pair(*(current_global_face++), localId++); });
     std::map<int,int> point_indicator;
     auto current_global = map2GlobalPointId.begin();
-    int pi = 0;
+    localId = 0;
     std::generate_n(std::inserter(point_indicator, point_indicator.begin()),
                     newEnd - current_global,
-                    [&pi, &current_global](){ return std::make_pair(*(current_global++), pi++); });
+                    [&localId, &current_global](){ return std::make_pair(*(current_global++), localId++); });
 
-    std::vector<int> map2GlobalFaceId;
-    int noExistingFaces = setupAndCountGlobalIds<1>(face_indicator, map2GlobalFaceId,
-                                                    *view_data.local_id_set_);
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
     for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
         i!=end; ++i)
@@ -717,11 +723,17 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
     }
 
+    // Turn local face/point ids into global ones
     auto func = [&view_data](int i){
                     return view_data.local_id_set_->id(EntityRep<3>(i, true));
                 };
     std::transform(map2GlobalPointId.begin(), map2GlobalPointId.end(), map2GlobalPointId.begin(),
                    func);
+    auto ffunc = [&view_data](int i){
+                    return view_data.local_id_set_->id(EntityRep<1>(i, true));
+                };
+    std::transform(map2GlobalFaceId.begin(), map2GlobalFaceId.end(), map2GlobalFaceId.begin(),
+                   ffunc);
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
     // Create the topology information. This is stored in sparse matrix like data structures.
@@ -761,9 +773,8 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // To speed things up, we only use an upper limit here.
     data_size=0;
     const Opm::SparseTable<EntityRep<0> >& f2c=view_data.face_to_cell_;
-    for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f)
-        if(*f<std::numeric_limits<int>::max())
-            data_size += f2c.rowSize(*f);
+    for(const auto& f: face_indicator)
+        data_size += f2c.rowSize(f.first);
 
     face_to_cell_.reserve(noExistingFaces, data_size);
 
@@ -773,54 +784,42 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
         cell_indicator[i->global()]=i->local();
 
-    for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
+    for(const auto& f: face_indicator)
     {
-        if(*f<std::numeric_limits<int>::max())
+        // face does exist
+        std::vector<EntityRep<0> > new_row;
+        auto old_row = f2c[f.first];
+        new_row.reserve(old_row.size());
+        // push back connected existent cells.
+        // for those cells we use the new cell_indicator and copy the
+        // orientation of the old cell.
+        for(auto cell = old_row.begin(), cend=old_row.end(); cell != cend; ++cell)
         {
-            // face does exist
-            std::vector<EntityRep<0> > new_row;
-            auto old_row = f2c[f-begin];
-            new_row.reserve(old_row.size());
-            // push back connected existent cells.
-            // for those cells we use the new cell_indicator and copy the
-            // orientation of the old cell.
-            for(auto cell = old_row.begin(), cend=old_row.end();cell!=cend; ++cell)
-            {
-                // The statement below results in all faces having two neighbours
-                // except for those at the domain boundary.
-                // Note that along the front partition there are invalid neighbours
-                // marked with index std::numeric_limits<int>::max()
-                // Still they inherit the orientation to make CpGrid::faceCell happy
-                new_row.push_back(EntityRep<0>(cell_indicator[cell->index()],
-                                                   cell->orientation()));
-            }
-            face_to_cell_.appendRow(new_row.begin(), new_row.end());
+            // The statement below results in all faces having two neighbours
+            // except for those at the domain boundary.
+            // Note that along the front partition there are invalid neighbours
+            // marked with index std::numeric_limits<int>::max()
+            // Still they inherit the orientation to make CpGrid::faceCell happy
+            new_row.push_back(EntityRep<0>(cell_indicator[cell->index()],
+                                           cell->orientation()));
         }
+        face_to_cell_.appendRow(new_row.begin(), new_row.end());
     }
-
-    // Compute the number of non zeros of the face_to_point matrix.
-    data_size=0;
-    for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f)
-        if(*f<std::numeric_limits<int>::max())
-            data_size += view_data.face_to_point_.rowSize(*f);
 
     face_to_point_.reserve(noExistingFaces, data_size);
 
     //- face_to_point__ : extract row associated with existing faces_
-    for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
+    for(const auto& f: face_indicator)
     {
-        if(*f<std::numeric_limits<int>::max())
+        // face does exist
+        std::vector<int> new_row;
+        auto old_row = view_data.face_to_point_[f.first];
+        new_row.reserve(old_row.size());
+        for(auto point = old_row.begin(), pend=old_row.end(); point!=pend; ++point)
         {
-            // face does exist
-            std::vector<int> new_row;
-            auto old_row = view_data.face_to_point_[f-begin];
-            new_row.reserve(old_row.size());
-            for(auto point = old_row.begin(), pend=old_row.end(); point!=pend; ++point)
-            {
-                new_row.push_back(point_indicator[*point]);
-            }
-            face_to_point_.appendRow(new_row.begin(), new_row.end());
+            new_row.push_back(point_indicator[*point]);
         }
+        face_to_point_.appendRow(new_row.begin(), new_row.end());
     }
 
     logical_cartesian_size_=view_data.logical_cartesian_size_;
@@ -870,13 +869,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     for (auto begin = face_indicator.begin(), fi = begin,  end = face_indicator.end(); fi != end;
         ++fi)
     {
-        if (*fi < std::numeric_limits<int>::max())
-        {
-            face_geom.push_back(global_face_geom[fi-begin]);
-            *ft=global_face_tag[fi-begin];
-            *fn=global_face_normals[fi-begin];
-            ++ft; ++fn;
-        }
+        assert(fi->second == (int) face_geom.size());
+        face_geom.push_back(global_face_geom[fi->first]);
+        *ft=global_face_tag[fi->first];
+        *fn=global_face_normals[fi->first];
+        ++ft; ++fn;
     }
     static_cast<std::vector<PointType>&>(face_normals_).swap(tmp_face_normals);
     static_cast<std::vector<enum face_tag>&>(face_tag_).swap(tmp_face_tag);
@@ -885,14 +882,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     if(view_data.unique_boundary_ids_.size())
     {
         // Unique boundary ids are inherited from the global grid.
-        auto id=view_data.unique_boundary_ids_.begin();
         unique_boundary_ids_.reserve(view_data.face_to_cell_.size());
-        for(auto f=face_indicator.begin(), fend=face_indicator.end(); f!=fend; ++f, ++id)
+        for(const auto& f: face_indicator)
         {
-            if(*f<std::numeric_limits<int>::max())
-            {
-                unique_boundary_ids_.push_back(*id);
-            }
+            unique_boundary_ids_.push_back(view_data.unique_boundary_ids_[EntityRep<1>(f.first, true)]);
         }
     }
     // Compute the partition type for cell
