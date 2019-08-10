@@ -765,7 +765,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         if(*f<std::numeric_limits<int>::max())
             data_size += f2c.rowSize(*f);
 
-    face_to_cell_.reserve(f2c.size(), data_size);
+    face_to_cell_.reserve(noExistingFaces, data_size);
 
     //- face_to cell_ : extract rows that connect to an existent cell
     std::vector<int> cell_indicator(view_data.cell_to_face_.size(),
@@ -804,7 +804,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         if(*f<std::numeric_limits<int>::max())
             data_size += view_data.face_to_point_.rowSize(*f);
 
-    face_to_point_.reserve(view_data.face_to_point_.size(), data_size);
+    face_to_point_.reserve(noExistingFaces, data_size);
 
     //- face_to_point__ : extract row associated with existing faces_
     for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
