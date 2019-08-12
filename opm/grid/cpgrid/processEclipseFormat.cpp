@@ -41,6 +41,7 @@
 #include "CpGridData.hpp"
 
 #include <opm/grid/common/GeometryHelpers.hpp>
+#include <opm/grid/cpgrid/EntityRep.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>
@@ -98,7 +99,9 @@ namespace Dune
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
-                       cpgrid::DefaultGeometryPolicy& gpol,
+                       cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+                       cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
+                       cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
                        std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals);
@@ -263,7 +266,9 @@ namespace cpgrid
 #ifdef VERBOSE
         std::cout << "Building geometry." << std::endl;
 #endif
-        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_, face_normals_, allcorners_, turn_normals);
+        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_.geomVector(std::integral_constant<int,0>()),
+                  geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
+                  face_normals_, allcorners_, turn_normals);
 
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
@@ -988,7 +993,9 @@ namespace cpgrid
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
-                       cpgrid::DefaultGeometryPolicy& gpol,
+                       cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+                       cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
+                       cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
                        std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals)
@@ -1109,32 +1116,25 @@ namespace cpgrid
             // C) slow
             // D) copied from readSintefLegacyFormat.cpp
             // Cells
-            cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0> cellgeom;
-            std::vector<cpgrid::Geometry<3, 3> > cg;
-            cg.reserve(nc);
+            cell_geom.reserve(nc);
             MakeGeometry<3> mcellg(&allcorners[0]);
 //             std::transform(cell_centroids.begin(), cell_centroids.end(),
 //                            cell_volumes.begin(),
-//                            std::back_inserter(cg), mcellg);
+//                            std::back_inserter(cell_geom, mcellg);
             for (int c = 0;  c < nc; ++c) {
-                cg.push_back(mcellg(cell_centroids[c], cell_volumes[c], c2p[c]));
+                cell_geom.push_back(mcellg(cell_centroids[c], cell_volumes[c], c2p[c]));
             }
-            cellgeom.assign(cg.begin(), cg.end());
             // Faces
-            cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1> facegeom;
-            std::vector<cpgrid::Geometry<2, 3> > fg;
+            face_geom.reserve(face_centroids.size());
             MakeGeometry<2> mfaceg;
             std::transform(face_centroids.begin(), face_centroids.end(),
                            face_areas.begin(),
-                           std::back_inserter(fg), mfaceg);
-            facegeom.assign(fg.begin(), fg.end());
+                           std::back_inserter(face_geom), mfaceg);
             // Points
-            cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pointgeom;
-            std::vector<cpgrid::Geometry<0, 3> > pg;
+            point_geom.reserve(points.size());
             MakeGeometry<0> mpointg;
             std::transform(points.begin(), points.end(),
-                           std::back_inserter(pg), mpointg);
-            pointgeom.assign(pg.begin(), pg.end());
+                           std::back_inserter(point_geom), mpointg);
 #ifdef VERBOSE
             std::cout << "Transforms/copies:  " << clock.secsSinceLast() << std::endl;
 #endif
@@ -1146,8 +1146,6 @@ namespace cpgrid
                     face_normals[i] *= -1.0;
                 }
             }
-            cpgrid::DefaultGeometryPolicy gp(cellgeom, facegeom, pointgeom);
-            gpol = gp;
             normals.assign(face_normals.begin(), face_normals.end());
 #ifdef VERBOSE
             std::cout << "Final construction: " << clock.secsSinceLast() << std::endl;

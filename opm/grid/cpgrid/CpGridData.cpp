@@ -712,22 +712,21 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
     // Set up the new topology arrays
-    EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom;
+    EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom = geometry_.geomVector(std::integral_constant<int,0>());
     std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(cell_indexset_.size());
     auto global_cell_geom=view_data.geomVector<0>();
     global_cell_.resize(cell_indexset_.size());
-
+    cell_geom.resize(cell_indexset_.size());
     // Copy the existing cells.
     for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
     {
-        tmp_cell_geom[i->local()]=static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(global_cell_geom)[i->global()];
+        cell_geom.get(i->local())=global_cell_geom.get(i->global());
         global_cell_[i->local()]=view_data.global_cell_[i->global()];
     }
-    static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(cell_geom).swap(tmp_cell_geom);
 
     // count the existing faces, renumber, and allocate space.
-    EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom;
-    std::vector<cpgrid::Geometry<2, 3> > tmp_face_geom(noExistingFaces);
+    EntityVariable<cpgrid::Geometry<2, 3>, 1>&  face_geom = geometry_.geomVector(std::integral_constant<int,1>());
+    face_geom.reserve(noExistingFaces);
     std::vector<enum face_tag> tmp_face_tag(noExistingFaces);
     std::vector<PointType> tmp_face_normals(noExistingFaces);
     const std::vector<cpgrid::Geometry<2, 3> >& global_face_geom=view_data.geomVector<1>();
@@ -735,7 +734,6 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     const std::vector<PointType>& global_face_normals=view_data.face_normals_;
 
     // Now copy the face geometries that do exist.
-    auto fg = tmp_face_geom.begin();
     auto ft = tmp_face_tag.begin();
     auto fn = tmp_face_normals.begin();
     for(auto begin=face_indicator.begin(), fi=begin,  end=face_indicator.end(); fi!=end;
@@ -743,38 +741,29 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     {
         if(*fi<std::numeric_limits<int>::max())
         {
-            *fg=global_face_geom[fi-begin];
+            face_geom.push_back(global_face_geom[fi-begin]);
             *ft=global_face_tag[fi-begin];
             *fn=global_face_normals[fi-begin];
-            ++fg; ++ft; ++fn;
+            ++ft; ++fn;
         }
     }
     static_cast<std::vector<PointType>&>(face_normals_).swap(tmp_face_normals);
-    static_cast<std::vector<cpgrid::Geometry<2, 3> >&>(face_geom).swap(tmp_face_geom);
     static_cast<std::vector<enum face_tag>&>(face_tag_).swap(tmp_face_tag);
 
     // Count the existing points and allocate space
-    std::vector<cpgrid::Geometry<0, 3> > tmp_point_geom(noExistingPoints);
-    EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom;
+    EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom = geometry_.geomVector(std::integral_constant<int,3>());
     const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
+    point_geom.reserve(noExistingPoints);
 
     // Now copy the point geometries that do exist.
-    auto pt = tmp_point_geom.begin();
     for(auto begin=point_indicator.begin(), pi=begin,  end=point_indicator.end(); pi!=end;
         ++pi)
     {
         if(*pi<std::numeric_limits<int>::max())
         {
-            *pt=global_point_geom[pi-begin];
-            ++pt;
+            point_geom.emplace_back(global_point_geom[pi-begin]);
         }
     }
-    // swap the underlying vectors to get data into point_geom
-    static_cast<std::vector<cpgrid::Geometry<0, 3> >&>(point_geom).swap(tmp_point_geom);
-
-    // Copy the vectors to geometry. There is no other way currently.
-    geometry_=cpgrid::DefaultGeometryPolicy(cell_geom, face_geom,
-                                            point_geom);
 
     // Create the topology information. This is stored in sparse matrix like data structures.
     // First conunt the size of the nonzeros of the cell_to_face data.
