@@ -103,7 +103,6 @@ namespace Dune
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
-                       std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals);
     } // anon namespace
 
@@ -268,7 +267,7 @@ namespace cpgrid
 #endif
         buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_.geomVector(std::integral_constant<int,0>()),
                   geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
-                  face_normals_, allcorners_, turn_normals);
+                  face_normals_, turn_normals);
 
 #ifdef VERBOSE
         std::cout << "Assigning face tags." << std::endl;
@@ -964,8 +963,8 @@ namespace cpgrid
         template <>
         struct MakeGeometry<3>
         {
-            const FieldVector<double, 3>* allcorners_;
-            MakeGeometry(const FieldVector<double, 3>* allcorners)
+            const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners_;
+            MakeGeometry(const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners)
                 : allcorners_(allcorners)
             {
             }
@@ -997,11 +996,10 @@ namespace cpgrid
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
-                       std::vector<FieldVector<double, 3> >& allcorners,
                        bool turn_normals)
         {
             typedef FieldVector<double, 3> point_t;
-            std::vector<point_t>& points = allcorners;
+            std::vector<point_t> points;
             std::vector<point_t> face_normals;
             std::vector<point_t> face_centroids;
             std::vector<double>  face_areas;
@@ -1115,9 +1113,15 @@ namespace cpgrid
             // B) wordy,
             // C) slow
             // D) copied from readSintefLegacyFormat.cpp
+            // Points
+            // Points
+            point_geom.reserve(points.size());
+            MakeGeometry<0> mpointg;
+            std::transform(points.begin(), points.end(),
+                           std::back_inserter(point_geom), mpointg);
             // Cells
             cell_geom.reserve(nc);
-            MakeGeometry<3> mcellg(&allcorners[0]);
+            MakeGeometry<3> mcellg(point_geom);
 //             std::transform(cell_centroids.begin(), cell_centroids.end(),
 //                            cell_volumes.begin(),
 //                            std::back_inserter(cell_geom, mcellg);
@@ -1130,11 +1134,6 @@ namespace cpgrid
             std::transform(face_centroids.begin(), face_centroids.end(),
                            face_areas.begin(),
                            std::back_inserter(face_geom), mfaceg);
-            // Points
-            point_geom.reserve(points.size());
-            MakeGeometry<0> mpointg;
-            std::transform(points.begin(), points.end(),
-                           std::back_inserter(point_geom), mpointg);
 #ifdef VERBOSE
             std::cout << "Transforms/copies:  " << clock.secsSinceLast() << std::endl;
 #endif

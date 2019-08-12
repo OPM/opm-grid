@@ -386,8 +386,6 @@ private:
     typedef FieldVector<double, 3> PointType;
     /** @brief The face normals of the grid. */
     cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
-    /** @brief All corners of the grid. */
-    std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve by removing it.
     /** @brief The boundary ids. */
     cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
     /** @brief The index set of the grid (level). */

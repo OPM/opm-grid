@@ -22,6 +22,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/floating_point_comparison.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/EntityRep.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -116,8 +117,13 @@ BOOST_AUTO_TEST_CASE(cellgeom)
 //     for (int i = 0; i < 8; ++i) {
 //         std::cout << corners[i] << std::endl;
 //     }
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    pg.reserve(8);
+    for(const auto& c : corners)
+        pg.push_back(cpgrid::Geometry<0, 3>(c));
+
     int cor_idx[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-    Geometry g(c, v, corners, cor_idx);
+    Geometry g(c, v, pg, cor_idx);
 
     // Verification of properties.
     BOOST_CHECK(g.type().isCube());
@@ -162,7 +168,12 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     v = 0.5;
     corners[5][2] = 0.0;
     corners[7][2] = 0.0;
-    g = Geometry(c, v, corners, cor_idx);
+    
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg1;
+    pg1.reserve(8);
+    for(const auto& c : corners)
+        pg1.push_back(cpgrid::Geometry<0, 3>(c));
+    g = Geometry(c, v, pg1, cor_idx);
 
     // Verification of properties.
     BOOST_CHECK(g.type().isCube());
