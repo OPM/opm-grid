@@ -534,7 +534,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     std::vector<std::set<int> > overlap;
 
     overlap.resize(cell_part.size());
-    addOverlapLayer(grid, cell_part, overlap, my_rank, false, overlap_layers);
+    addOverlapLayer(grid, cell_part, overlap, my_rank, overlap_layers, false);
     // count number of cells
     struct CellCounter
     {
