@@ -82,6 +82,25 @@ namespace Dune
                           std::vector<std::set<int> >& cell_overlap,
                           int mypart, int overlapLayers, bool all=false);
 
+/// \brief Marks cells of my_rank as either overlap or ghost/overlap cells and creates a natural ordering of local cells.
+/// \param[in]  overlap a vector of sets that contains for each cell all the partition numbers that it is an overlap cell of.
+/// \param[in]  cell_part a vector containing each cells partition number.
+/// \param[in]  my_rank integer rank id of process.
+/// \param[out] naturalOrder vector that on return has size equal to number of cells on process my_rank. Contains
+///             global id of the local cells.
+/// \param[out] partitionType vector of ints with size equal to total number of cells. On return it contains the partition
+///             type of cell with global id gid in partitionType[gid]. There are three types: exterior=0, interior=2 and overlap=1.
+    void findInteriorAndOverlapCells(std::vector<std::set<int>>& overlap, const std::vector<int>& cell_part, int my_rank,
+                                     std::vector<int>& naturalOrder, std::vector<int>& partitionType);
+
+/// \brief Reorder the local cells, so that ghost/overlap cells come after interior cells
+/// \param[in] naturalOrder vector that contains global id of the local cells.
+/// \param[in] pType vector that contains partition type of cell with global id gid in pType[gid]. 
+/// \param[in] reorderMethod if 0 do not reorder. If 1 reorder.
+/// \return vector containing new ordering of local cells.
+    std::vector<int> reorderLocalCells(const std::vector<int>& naturalOrder, const std::vector<int>& pType,
+                                       int reorderMethod);
+
 } // namespace Dune
 
 

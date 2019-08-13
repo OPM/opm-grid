@@ -535,6 +535,17 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 
     overlap.resize(cell_part.size());
     addOverlapLayer(grid, cell_part, overlap, my_rank, overlap_layers, false);
+
+    // Determine local to global mapping of cells on my_rank and find 
+    // partition type of all cells with respect to my_rank
+    std::vector<int> naturalOrder;
+    std::vector<int> pType;
+    findInteriorAndOverlapCells(overlap, cell_part, my_rank, naturalOrder, pType);
+
+    // Reorder local cells such that ghost cells come after interior cells.
+    // This is achived by reshuffeling the naturalOrder vector.
+    std::vector<int> l2g = reorderLocalCells(naturalOrder, pType, 1);
+
     // count number of cells
     struct CellCounter
     {
@@ -544,35 +555,31 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         std::set<int> neighbors;
         typedef Dune::ParallelLocalIndex<AttributeSet> Index;
         ParallelIndexSet* indexset;
-        std::vector<int> global2local;
         /**
          * @brief Adds an index with flag owner to the index set.
          *
          * An index is added if the rank is our rank.
          * @param i The global index
-         * @param rank The rank that owns the index.
+         * @param owner Does myrank own this index.
          */
-        void operator() (int i, int rank)
+        void operator() (int i, bool owner)
         {
-            if(rank==myrank)
+            if(owner)
             {
-                global2local.push_back(count);
                 indexset->add(i, Index(count++, AttributeSet::owner, true));
-            }else
-                global2local.push_back(std::numeric_limits<int>::max());
+            }
         }
         /**
          * @brief Adds an index that is present on more than one processor to the index set.
          * @param i The global index.
          * @param ov The set of ranks where the index is in the overlap
          * region.
-         * @param rank The rank that owns this index.
+         * @param owner Does myrank own this index.
          */
-        void operator() (int i, const std::set<int>& ov, int rank)
+        void operator() (int i, const std::set<int>& ov, bool owner)
         {
-            if(rank==myrank)
+            if(owner)
             {
-                global2local.push_back(count);
                 indexset->add(i, Index(count++, AttributeSet::owner, true));
                 neighbors.insert(ov.begin(), ov.end());
             }
@@ -582,40 +589,40 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                     ov.find(myrank);
                 if(iter!=ov.end())
                 {
-                    global2local.push_back(count);
                     indexset->add(i, Index(count++, AttributeSet::copy, true));
                     neighbors.insert(ov.begin(), iter);
                     neighbors.insert(++iter, ov.end());
                 }
-                else
-                    global2local.push_back(std::numeric_limits<int>::max());
             }
         }
     } cell_counter;
     cell_counter.myrank=my_rank;
     cell_counter.count=0;
-    cell_counter.global2local.reserve(cell_part.size());
     cell_counter.indexset=&cell_indexset_;
+
     // set up the index set.
     cell_counter.indexset->beginResize();
-    typedef std::vector<std::set<int> >::const_iterator OIterator;
-    std::vector<int>::const_iterator ci=cell_part.begin();
-    for(OIterator end=overlap.end(), begin=overlap.begin(), i=begin; i!=end; ++i, ++ci)
-    {
-        if(i->size())
+
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) {
+        int gid = l2g[lid];
+        auto nabHelp = overlap[gid];
+        bool owner = pType[gid] == 2;
+        if(nabHelp.size()) {
             // Cell is shared between different processors
-            cell_counter(i-begin, *i, *ci);
+            cell_counter(gid, nabHelp, owner);
+        }
         else
             // cell is not shared
-            cell_counter(i-begin, *ci);
+            cell_counter(gid, owner);
     }
+    
     cell_counter.indexset->endResize();
+    
     // setup the remote indices.
     typedef RemoteIndexListModifier<RemoteIndices::ParallelIndexSet, RemoteIndices::Allocator,
                                     false> Modifier;
     typedef RemoteIndices::RemoteIndex RemoteIndex;
     cell_remote_indices_.setIndexSets(cell_indexset_, cell_indexset_, ccobj_);
-
 
     // Create a map of ListModifiers
     if(cell_counter.neighbors.size()){ //extra scope to call destructor of the Modifiers
@@ -667,12 +674,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     std::vector<int> face_indicator(view_data.geometry_.geomVector<1>().size(),
                                     std::numeric_limits<int>::max());
     std::vector<int> point_indicator(view_data.geometry_.geomVector<3>().size(),
-                                     std::numeric_limits<int>::max());
-    for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-            i!=end; ++i)
+                                         std::numeric_limits<int>::max());
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) 
     {
         typedef boost::iterator_range<const EntityRep<1>*>::iterator RowIter;
-        int row_index=i->global();
+        int row_index=l2g[lid];
         // Somehow g++-4.4 does not find functions of father even if we
         // change inheritance of OrientedEntityTable to public.
         // Therfore we use an ugly cast to base class here.
@@ -692,22 +698,20 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         }
     }
 
-
     // renumber  face and point indicators
     std::for_each(face_indicator.begin(), face_indicator.end(), AssignAndIncrement());
     std::for_each(point_indicator.begin(), point_indicator.end(), AssignAndIncrement());
 
     std::vector<int> map2GlobalFaceId;
     int noExistingFaces = setupAndCountGlobalIds<1>(face_indicator, map2GlobalFaceId,
-                                                    *view_data.local_id_set_);
+                                                        *view_data.local_id_set_);
     std::vector<int> map2GlobalPointId;
     int noExistingPoints = setupAndCountGlobalIds<3>(point_indicator, map2GlobalPointId,
                                                      *view_data.local_id_set_);
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
-    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) 
     {
-        map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
+        map2GlobalCellId[lid]=view_data.local_id_set_->id(EntityRep<0>(l2g[lid], true));
     }
 
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
@@ -718,10 +722,11 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     global_cell_.resize(cell_indexset_.size());
 
     // Copy the existing cells.
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) 
     {
-        tmp_cell_geom[i->local()]=static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(global_cell_geom)[i->global()];
-        global_cell_[i->local()]=view_data.global_cell_[i->global()];
+        int gid = l2g[lid];
+        tmp_cell_geom[lid]=static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(global_cell_geom)[gid];
+        global_cell_[lid]=view_data.global_cell_[gid];
     }
     static_cast<std::vector<cpgrid::Geometry<3, 3> >&>(cell_geom).swap(tmp_cell_geom);
 
@@ -779,11 +784,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Create the topology information. This is stored in sparse matrix like data structures.
     // First conunt the size of the nonzeros of the cell_to_face data.
     int data_size=0;
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) 
     {
         const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
-        data_size+=c2f.rowSize(i->global());
+        data_size+=c2f.rowSize(l2g[lid]);
     }
 
     //- cell_to_face_ : extract owner/overlap rows from cell_to_face_
@@ -791,13 +795,12 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     //OrientedEntityTable<0, 1> cell_to_face;
     cell_to_face_.reserve(cell_indexset_.size(), data_size);
     cell_to_point_.resize(cell_indexset_.size());
-
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
-    {
+    
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) {
+        int gid = l2g[lid];
         typedef boost::iterator_range<const EntityRep<1>*>::const_iterator RowIter;
         const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
-        auto row=c2f[i->global()];
+        auto row=c2f[gid];
         // create the new row, i.e. copy orientation and use new face indicator.
         std::vector<EntityRep<1> > new_row(row.size());
         std::vector<EntityRep<1> >::iterator  nface=new_row.begin();
@@ -806,7 +809,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
         // Append the new row to the matrix
         cell_to_face_.appendRow(new_row.begin(), new_row.end());
         for(int j=0; j<8; ++j)
-            cell_to_point_[i->local()][j]=point_indicator[view_data.cell_to_point_[i->global()][j]];
+            cell_to_point_[lid][j] = point_indicator[view_data.cell_to_point_[gid][j]];
     }
 
     // Calculate the number of nonzeros needed for the face_to_cell sparse matrix
@@ -822,8 +825,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     //- face_to cell_ : extract rows that connect to an existent cell
     std::vector<int> cell_indicator(view_data.cell_to_face_.size(),
                                     std::numeric_limits<int>::max());
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
-        cell_indicator[i->global()]=i->local();
+
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) {
+        cell_indicator[l2g[lid]] = lid;
+    }
 
     for(auto begin=face_indicator.begin(), f=begin, fend=face_indicator.end(); f!=fend; ++f)
     {
@@ -844,7 +849,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                 // marked with index std::numeric_limits<int>::max()
                 // Still they inherit the orientation to make CpGrid::faceCell happy
                 new_row.push_back(EntityRep<0>(cell_indicator[cell->index()],
-                                                   cell->orientation()));
+                                               cell->orientation()));
             }
             face_to_cell_.appendRow(new_row.begin(), new_row.end());
         }
@@ -894,11 +899,9 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     }
     // Compute the partition type for cell
     partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
-    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-            i!=end; ++i)
+    for (unsigned lid = 0; lid < l2g.size(); ++lid) 
     {
-        partition_type_indicator_->cell_indicator_[i->local()]=
-            i->local().attribute()==AttributeSet::owner?
+        partition_type_indicator_->cell_indicator_[lid] = pType[l2g[lid]]==2?
             InteriorEntity:OverlapEntity;
     }
 
@@ -937,7 +940,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
                EnumItem<AttributeSet, AttributeSet::copy>());
     std::get<Overlap_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
-                                 AllSet<AttributeSet>());
+               AllSet<AttributeSet>());
     std::get<All_All_Interface>(cell_interfaces_)
         .build(cell_remote_indices_, AllSet<AttributeSet>(), AllSet<AttributeSet>());
 

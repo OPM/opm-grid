@@ -325,6 +325,66 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             }
             addOverlapLayer(grid, index, *it, owner, cell_part, cell_overlap, layers-1);
         }
-}
-} // namespace Dune
+    }
 
+    void findInteriorAndOverlapCells(std::vector<std::set<int>>& overlap, const std::vector<int>& cell_part, int my_rank,
+                                     std::vector<int>& naturalOrder, std::vector<int>& partitionType)
+    {
+        auto ci = cell_part.begin();
+        auto begin = overlap.begin();
+        partitionType.resize(cell_part.size(), 0);
+
+        int gid = 0;
+        for (auto i = begin; i != overlap.end(); ++i, ++ci, ++gid) {
+            if (i->size()) {
+                if (*ci == my_rank) {
+                    naturalOrder.push_back(gid);
+                    partitionType[gid] = 2;
+                }
+                else {
+                    auto isO = i->find(my_rank);
+                    if (isO != i->end()) {
+                        naturalOrder.push_back(gid);
+                        partitionType[gid] = 1;
+                    }
+                }
+            }
+            else {
+                if (*ci == my_rank) {
+                    naturalOrder.push_back(gid);
+                    partitionType[gid] = 2;
+                }
+            }
+        }
+    }
+
+    std::vector<int> reorderLocalCells(const std::vector<int>& naturalOrder, const std::vector<int>& pType,
+                                       int reorderMethod)
+    {
+        if ( reorderMethod == 0 )
+            return naturalOrder;
+        else if ( reorderMethod == 1 ) {
+            int partSize = naturalOrder.size();
+            std::vector<int> l2g(partSize, 0);
+            int lid = 0;
+            // Loop over local cells and insert interior cells in l2g
+            for (int i = 0; i < partSize; ++i) {
+                int gid = naturalOrder[i];
+                if (pType[gid] == 2) {
+                    l2g[lid] = gid;
+                    lid++;
+                }
+            }
+            // Loop over local cells and insert ghost/overlap cells in l2g
+            for (int i = 0; i < partSize; ++i) {
+                int gid = naturalOrder[i];
+                if (pType[gid] == 1) {
+                    l2g[lid] = gid;
+                    lid++;
+                }
+            }
+            return l2g;
+        }
+    }
+
+} // namespace Dune
