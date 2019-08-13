@@ -74,6 +74,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     static_cast<void>(wells);
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
+    static_cast<void>(method);
 #if HAVE_MPI
     if(distributed_data_)
     {
