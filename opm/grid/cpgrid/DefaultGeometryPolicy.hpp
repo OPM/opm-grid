@@ -47,6 +47,7 @@ namespace Dune
         /// @todo Doc me!
         class DefaultGeometryPolicy
         {
+            friend class CpGridData;
         public:
             /// @brief
             /// @todo Doc me
@@ -82,9 +83,18 @@ namespace Dune
             {
                 return cell_geom_;
             }
-
+            /// \brief Get cell geometry
+            EntityVariable<cpgrid::Geometry<3, 3>, 0>& geomVector(const std::integral_constant<int, 0>&)
+            {
+                return cell_geom_;
+            }
             /// \brief Get face geometry
             const EntityVariable<cpgrid::Geometry<2, 3>, 1>& geomVector(const std::integral_constant<int, 1>&) const
+            {
+                return face_geom_;
+            }
+            /// \brief Get face geometry
+            EntityVariable<cpgrid::Geometry<2, 3>, 1>& geomVector(const std::integral_constant<int, 1>&)
             {
                 return face_geom_;
             }
@@ -92,6 +102,12 @@ namespace Dune
             /// \brief Get point geometry
             template<int codim>
             const EntityVariable<cpgrid::Geometry<0, 3>, 3>& geomVector(const std::integral_constant<int, codim>&) const
+            {
+                static_assert(codim==3, "Codim has to be 3");
+                return point_geom_;
+            }/// \brief Get point geometry
+            template<int codim>
+            EntityVariable<cpgrid::Geometry<0, 3>, 3>& geomVector(const std::integral_constant<int, codim>&)
             {
                 static_assert(codim==3, "Codim has to be 3");
                 return point_geom_;

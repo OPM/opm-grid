@@ -49,6 +49,7 @@
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
 #endif
 
+#include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/grid/utility/ErrorMacros.hpp>
@@ -69,6 +70,137 @@ namespace Dune
         template <int mydim, int cdim>
         class Geometry
         {
+        };
+
+
+
+
+        /// Specialization for 0 dimensional geometries, i.e. vertices.
+        template <int cdim> // GridImp arg never used
+        class Geometry<0, cdim>
+        {
+            static_assert(cdim == 3, "");
+        public:
+            /// Dimension of underlying grid.
+            enum { dimension = 3 };
+            /// Dimension of domain space of \see global().
+            enum { mydimension = 0};
+            /// Dimension of range space of \see global().
+            enum { coorddimension = cdim };
+            /// World dimension of underlying grid.
+            enum { dimensionworld = 3 };
+
+            /// Coordinate element type.
+            typedef double ctype;
+
+            /// Domain type of \see global().
+            typedef FieldVector<ctype, mydimension> LocalCoordinate;
+            /// Range type of \see global().
+            typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
+
+            /// Type of Jacobian matrix.
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
+            /// Type of transposed Jacobian matrix.
+            typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
+            /// Type of the inverse of the transposed Jacobian matrix
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
+
+
+            /// @brief Construct from vertex position
+            /// @param pos the position of the vertex
+            Geometry(const GlobalCoordinate& pos)
+                : pos_(pos)
+            {
+            }
+
+            /// Default constructor, giving a non-valid geometry.
+            Geometry()
+                : pos_(0.0)
+            {
+            }
+
+            /// Returns the position of the vertex.
+            const GlobalCoordinate& global(const LocalCoordinate&) const
+            {
+                return pos_;
+            }
+
+            /// Meaningless for the vertex geometry.
+            LocalCoordinate local(const GlobalCoordinate&) const
+            {
+                // return 0 to make the geometry check happy.
+                return LocalCoordinate(0.0);
+            }
+
+            /// Returns 1 for the vertex geometry.
+            double integrationElement(const LocalCoordinate&) const
+            {
+                return volume();
+            }
+
+            /// Using the cube type for vertices.
+            GeometryType type() const
+            {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+                return Dune::GeometryTypes::cube(mydimension);
+#else
+                GeometryType t;
+                t.makeCube(mydimension);
+                return t;
+#endif
+            }
+
+            /// A vertex is defined by a single corner.
+            int corners() const
+            {
+                return 1;
+            }
+
+            /// Returns the single corner: the vertex itself.
+            GlobalCoordinate corner(int cor) const
+            {
+                static_cast<void>(cor);
+                assert(cor == 0);
+                return pos_;
+            }
+
+            /// Volume of vertex is arbitrarily set to 1.
+            ctype volume() const
+            {
+                return 1.0;
+            }
+
+            /// Returns the centroid of the geometry.
+            const GlobalCoordinate& center() const
+            {
+                return pos_;
+            }
+
+            /// This method is meaningless for singular geometries.
+            FieldMatrix<ctype, mydimension, coorddimension>
+            jacobianTransposed(const LocalCoordinate& /* local */) const
+            {
+
+                // Meaningless to call jacobianTransposed() on singular geometries. But we need to make DUNE happy.
+                return FieldMatrix<ctype, mydimension, coorddimension>();
+            }
+
+            /// This method is meaningless for singular geometries.
+            FieldMatrix<ctype, coorddimension, mydimension>
+            jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
+            {
+                // Meaningless to call jacobianInverseTransposed() on singular geometries. But we need to make DUNE happy.
+                return FieldMatrix<ctype, coorddimension, mydimension>();
+            }
+
+            /// The mapping implemented by this geometry is constant, therefore affine.
+            bool affine() const
+            {
+                return true;
+            }
+
+        private:
+            GlobalCoordinate pos_;
         };
 
 
@@ -120,11 +252,11 @@ namespace Dune
             ///                       by (kji), i.e. i running fastest.
             Geometry(const GlobalCoordinate& pos,
                      ctype vol,
-                     const GlobalCoordinate* allcorners,
+                     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners,
                      const int* corner_indices)
-                : pos_(pos), vol_(vol), allcorners_(allcorners), cor_idx_(corner_indices)
+                : pos_(pos), vol_(vol), allcorners_(allcorners.data()), cor_idx_(corner_indices)
             {
-                assert(allcorners && corner_indices);
+                assert(allcorners_ && corner_indices);
             }
 
             /// @brief Construct from centroid and volume (1- and
@@ -243,7 +375,7 @@ namespace Dune
             GlobalCoordinate corner(int cor) const
             {
                 assert(allcorners_ && cor_idx_);
-                return allcorners_[cor_idx_[cor]];
+                return allcorners_[cor_idx_[cor]].center();
             }
 
             /// Cell volume.
@@ -315,7 +447,7 @@ namespace Dune
         private:
             GlobalCoordinate pos_;
             double vol_;
-            const GlobalCoordinate* allcorners_; // For dimension 3 only
+            const cpgrid::Geometry<0, 3>* allcorners_; // For dimension 3 only
             const int* cor_idx_;               // For dimension 3 only
         };
 
@@ -451,137 +583,6 @@ namespace Dune
         private:
             GlobalCoordinate pos_;
             ctype vol_;
-        };
-
-
-
-
-        /// Specialization for 0 dimensional geometries, i.e. vertices.
-        template <int cdim> // GridImp arg never used
-        class Geometry<0, cdim>
-        {
-            static_assert(cdim == 3, "");
-        public:
-            /// Dimension of underlying grid.
-            enum { dimension = 3 };
-            /// Dimension of domain space of \see global().
-            enum { mydimension = 0};
-            /// Dimension of range space of \see global().
-            enum { coorddimension = cdim };
-            /// World dimension of underlying grid.
-            enum { dimensionworld = 3 };
-
-            /// Coordinate element type.
-            typedef double ctype;
-
-            /// Domain type of \see global().
-            typedef FieldVector<ctype, mydimension> LocalCoordinate;
-            /// Range type of \see global().
-            typedef FieldVector<ctype, coorddimension> GlobalCoordinate;
-
-            /// Type of Jacobian matrix.
-            typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
-            /// Type of transposed Jacobian matrix.
-            typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
-            /// Type of the inverse of the transposed Jacobian matrix
-            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
-
-
-            /// @brief Construct from vertex position
-            /// @param pos the position of the vertex
-            Geometry(const GlobalCoordinate& pos)
-                : pos_(pos)
-            {
-            }
-
-            /// Default constructor, giving a non-valid geometry.
-            Geometry()
-                : pos_(0.0)
-            {
-            }
-
-            /// Returns the position of the vertex.
-            const GlobalCoordinate& global(const LocalCoordinate&) const
-            {
-                return pos_;
-            }
-
-            /// Meaningless for the vertex geometry.
-            LocalCoordinate local(const GlobalCoordinate&) const
-            {
-                // return 0 to make the geometry check happy.
-                return LocalCoordinate(0.0);
-            }
-
-            /// Returns 1 for the vertex geometry.
-            double integrationElement(const LocalCoordinate&) const
-            {
-                return volume();
-            }
-
-            /// Using the cube type for vertices.
-            GeometryType type() const
-            {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
-                return Dune::GeometryTypes::cube(mydimension);
-#else
-                GeometryType t;
-                t.makeCube(mydimension);
-                return t;
-#endif
-            }
-
-            /// A vertex is defined by a single corner.
-            int corners() const
-            {
-                return 1;
-            }
-
-            /// Returns the single corner: the vertex itself.
-            GlobalCoordinate corner(int cor) const
-            {
-                static_cast<void>(cor);
-                assert(cor == 0);
-                return pos_;
-            }
-
-            /// Volume of vertex is arbitrarily set to 1.
-            ctype volume() const
-            {
-                return 1.0;
-            }
-
-            /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
-            {
-                return pos_;
-            }
-
-            /// This method is meaningless for singular geometries.
-            FieldMatrix<ctype, mydimension, coorddimension>
-            jacobianTransposed(const LocalCoordinate& /* local */) const
-            {
-                
-                // Meaningless to call jacobianTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, mydimension, coorddimension>();
-            }
-            
-            /// This method is meaningless for singular geometries.
-            FieldMatrix<ctype, coorddimension, mydimension>
-            jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
-            {
-                // Meaningless to call jacobianInverseTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, coorddimension, mydimension>();
-            }
-            
-            /// The mapping implemented by this geometry is constant, therefore affine.
-            bool affine() const
-            {
-                return true;
-            }
-
-        private:
-            GlobalCoordinate pos_;
         };
 
 

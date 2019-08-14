@@ -213,6 +213,7 @@ namespace Dune
         class EntityVariableBase : private std::vector<T>
         {
             friend class CpGridData;
+            using std::vector<T>::operator[];
         public:
             typedef std::vector<T> V;
             typedef typename std::vector<T>::iterator iterator;
@@ -222,6 +223,11 @@ namespace Dune
             using V::size;
             using V::assign;
             using V::begin;
+            using V::end;
+            using V::value_type;
+            using V::reserve;
+            using V::push_back;
+            using V::data;
 
             /// Default constructor.
             EntityVariableBase()
@@ -232,6 +238,12 @@ namespace Dune
             {
                 return V::operator[](i);
             }
+
+            T& get(int i)
+            {
+                return V::operator[](i);
+            }
+
         };
 
 
