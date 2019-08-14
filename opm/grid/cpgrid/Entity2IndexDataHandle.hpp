@@ -54,7 +54,10 @@ public:
     typedef typename DataHandle::DataType DataType;
 
     Entity2IndexDataHandle(const CpGridData& grid, DataHandle& data)
-        : grid_(grid), data_(data)
+        : fromGrid_(grid), toGrid_(grid), data_(data)
+    {}
+    Entity2IndexDataHandle(const CpGridData& fromGrid, const CpGridData& toGrid, DataHandle& data)
+        : fromGrid_(fromGrid), toGrid_(toGrid), data_(data)
     {}
     bool fixedsize()
     {
@@ -62,20 +65,21 @@ public:
     }
     std::size_t size(std::size_t i)
     {
-        return data_.size(Entity<codim>(grid_, i, true));
+        return data_.size(Entity<codim>(fromGrid_, i, true));
     }
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
-        data_.gather(buffer, Entity<codim>(grid_, i, true));
+        data_.gather(buffer, Entity<codim>(fromGrid_, i, true));
     }
     template<class B>
     void scatter(B& buffer, std::size_t i, std::size_t s)
     {
-        data_.scatter(buffer, Entity<codim>(grid_, i, true), s);
+        data_.scatter(buffer, Entity<codim>(toGrid_, i, true), s);
     }
 private:
-    const CpGridData& grid_;
+    const CpGridData& fromGrid_;
+    const CpGridData& toGrid_;
     DataHandle& data_;
 
 };
