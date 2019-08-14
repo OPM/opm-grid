@@ -37,10 +37,14 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#include <dune/istl/owneroverlapcopy.hh>
 #include "GridPartitioning.hpp"
 #include <opm/grid/CpGrid.hpp>
 #include <stack>
 
+#ifdef HAVE_MPI
+#include "mpi.h"
+#endif
 namespace Dune
 {
 
@@ -325,6 +329,135 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             }
             addOverlapLayer(grid, index, *it, owner, cell_part, cell_overlap, layers-1);
         }
-}
+    }
+
+    void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
+                         const int owner, const std::vector<int>& cell_part,
+                         std::vector<std::tuple<int,int,char>>& exportList,
+                         int recursion_deps)
+    {
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+        for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
+            if ( iit->neighbor() ) {
+                int nb_index = ix.index(*(iit->outside()));
+                if ( cell_part[nb_index]!=owner )
+                {
+                    // Note: multiple adds for same process are possible
+                    exportList.emplace_back(nb_index, owner, AttributeSet::overlap);
+                    exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::overlap);
+                    if ( recursion_deps>0 )
+                    {
+                        // Add another layer
+                        addOverlapLayer(grid, nb_index, *(iit->outside()), owner,
+                                        cell_part, exportList, recursion_deps-1);
+                    }
+                }
+            }
+        }
+    }
+
+    int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
+                        std::vector<std::tuple<int,int,char>>& exportList,
+                        std::vector<std::tuple<int,int,char,int>>& importList,
+                        const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
+                        int layers)
+    {
+#ifdef HAVE_MPI
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        auto ownerSize = exportList.size();
+        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+        std::map<int,int> exportProcs, importProcs;
+
+        for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
+             it != grid.leafend<0>(); ++it) {
+            int index = ix.index(*it);
+            auto owner = cell_part[index];
+            exportProcs.insert(std::make_pair(owner, 0));
+            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
+        }
+        // remove multiple entries
+        auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
+                       {
+                           return (std::get<0>(t1) < std::get<0>(t2)) ||
+                                                    ( ! (std::get<0>(t2) < std::get<0>(t1))
+                                                      && (std::get<1>(t1) < std::get<1>(t2)) );
+                       };
+
+        auto ownerEnd = exportList.begin() + ownerSize;
+        std::sort(ownerEnd, exportList.end(), compare);
+
+        auto newEnd = std::unique(ownerEnd, exportList.end());
+        exportList.resize(newEnd - exportList.begin());
+
+        for(const auto& entry: importList)
+            importProcs.insert(std::make_pair(std::get<1>(entry), 0));
+        //count entries to send
+        std::for_each(ownerEnd, exportList.end(),
+                      [&exportProcs](const std::tuple<int,int,char>& t){ ++exportProcs[std::get<1>(t)];});
+
+        // communicate number of entries
+        std::vector<MPI_Request> requests(importProcs.size());
+        auto req = requests.begin();
+        int tag = 23872949;
+        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        {
+            MPI_Irecv(&(proc->second), 1, MPI_INT, proc->first, tag, cc, &(*req));
+            ++req;
+        }
+
+        for(auto proc = exportProcs.begin(); proc != exportProcs.end(); ++proc)
+        {
+            MPI_Send(&(proc->second), 1, MPI_INT, proc->first, tag, cc);
+        }
+        std::vector<MPI_Status> statuses(requests.size());
+        MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+        // Communicate overlap entries
+        ++tag;
+        std::vector<std::vector<int> > receiveBuffers(importProcs.size());
+        auto buffer = receiveBuffers.begin();
+        req = requests.begin();
+
+        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        {
+            buffer->resize(proc->second);
+            MPI_Irecv(buffer->data(), proc->second, MPI_INT, proc->first, tag, cc, &(*req));
+            ++req; ++buffer;
+        }
+
+        for(auto proc = exportProcs.begin(); proc != exportProcs.end(); ++proc)
+        {
+            std::vector<int> sendBuffer;
+            sendBuffer.reserve(proc->second);
+            std::for_each(ownerEnd, exportList.end(),
+                          [&sendBuffer, &proc](const std::tuple<int,int,char>& t)
+                          {
+                              if ( std::get<1>(t) == proc->first )
+                                  sendBuffer.push_back(std::get<0>(t));
+                          });
+            MPI_Send(sendBuffer.data(), proc->second, MPI_INT, proc->first, tag, cc);
+        }
+
+        MPI_Waitall(requests.size(), requests.data(), statuses.data());
+        buffer = receiveBuffers.begin();
+        auto importOwnerSize = importList.size();
+
+        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        {
+            for(const auto& index: *buffer)
+                importList.emplace_back(index, proc->first, AttributeSet::overlap, -1);
+            ++buffer;
+        }
+        std::sort(importList.begin() + importOwnerSize, importList.end(),
+                  [](const std::tuple<int,int,char,int>& t1, const std::tuple<int,int,char,int>& t2)
+                  { return std::get<0>(t1) < std::get<0>(t2);});
+        return importOwnerSize;
+#else
+        DUNE_THROW(InvalidStateException, "MPI is missing from the system");
+
+        return 0;
+#endif
+    }
 } // namespace Dune
 
