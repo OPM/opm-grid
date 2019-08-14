@@ -94,37 +94,38 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     auto cell_part = std::get<0>(part_and_wells);
     auto defunct_wells = std::get<1>(part_and_wells);
 #else
-    std::vector<int> cell_part(current_view_data_->global_cell_.size());
-    int  num_parts=-1;
-    std::array<int, 3> initial_split;
-    initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
-    initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
-    partition(*this, initial_split, num_parts, cell_part, false, false);
-    const auto& cpgdim =  logicalCartesianSize();
-    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    for( int i=0; i < numCells(); ++i )
-    {
-        cartesian_to_compressed[globalCell()[i]] = i;
-    }
+    OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN. Please install!");
+    // std::vector<int> cell_part(current_view_data_->global_cell_.size());
+    // int  num_parts=-1;
+    // std::array<int, 3> initial_split;
+    // initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
+    // initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
+    // partition(*this, initial_split, num_parts, cell_part, false, false);
+    // const auto& cpgdim =  logicalCartesianSize();
+    // std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    // for( int i=0; i < numCells(); ++i )
+    // {
+    //     cartesian_to_compressed[globalCell()[i]] = i;
+    // }
 
-    std::unordered_set<std::string> defunct_wells;
+    // std::unordered_set<std::string> defunct_wells;
 
-    if ( wells )
-    {
-        cpgrid::WellConnections well_connections(*wells,
-                                                 cpgdim,
-                                                 cartesian_to_compressed);
+    // if ( wells )
+    // {
+    //     cpgrid::WellConnections well_connections(*wells,
+    //                                              cpgdim,
+    //                                              cartesian_to_compressed);
 
-        auto wells_on_proc =
-            cpgrid::postProcessPartitioningForWells(cell_part,
-                                                    *wells,
-                                                    well_connections,
-                                                    cc.size());
-        defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
-                                                        *wells,
-                                                        cc,
-                                                        0);
-    }
+    //     auto wells_on_proc =
+    //         cpgrid::postProcessPartitioningForWells(cell_part,
+    //                                                 *wells,
+    //                                                 well_connections,
+    //                                                 cc.size());
+    //     defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
+    //                                                     *wells,
+    //                                                     cc,
+    //                                                     0);
+    // }
 #endif
 
     MPI_Comm new_comm = MPI_COMM_NULL;
