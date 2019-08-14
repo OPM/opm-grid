@@ -448,10 +448,6 @@ private:
     /// \brief Interface from interior and border to interior and border for the faces.
     std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     point_interfaces_;
-    /// \brief Interface for gathering and scattering cell data.
-    InterfaceMap cell_gather_scatter_interface;
-    /// \brief Interface for gathering and scattering point data.
-    InterfaceMap point_gather_scatter_interface;
 
 #endif
 
