@@ -213,7 +213,6 @@ namespace Dune
         class EntityVariableBase : private std::vector<T>
         {
             friend class CpGridData;
-            using std::vector<T>::operator[];
         public:
             typedef std::vector<T> V;
             typedef typename std::vector<T>::iterator iterator;

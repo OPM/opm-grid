@@ -814,19 +814,19 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
 
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
-        // Set up the new topology arrays
+    // Set up the new topology arrays
     // Count the existing points and allocate space
     EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom = geometry_.geomVector(std::integral_constant<int,3>());
     const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
     point_geom.reserve(noExistingPoints);
 
     // Now copy the point geometries that do exist.
-    for(auto begin=point_indicator.begin(), pi=begin,  end=point_indicator.end(); pi!=end;
+    for (auto begin = point_indicator.begin(), pi = begin,  end = point_indicator.end(); pi != end;
         ++pi)
     {
-        if(*pi<std::numeric_limits<int>::max())
+        if (*pi < std::numeric_limits<int>::max())
         {
-            point_geom.emplace_back(global_point_geom[pi-begin]);
+            point_geom.emplace_back(global_point_geom[pi - begin]);
         }
     }
 
@@ -837,7 +837,7 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     global_cell_.resize(cell_indexset_.size());
     cell_geom.resize(cell_indexset_.size());
     // Copy the existing cells.
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
+    for (auto i = cell_indexset_.begin(), end = cell_indexset_.end(); i != end; ++i)
     {
         const auto& geom = global_cell_geom.get(i->global());
         cell_geom.get(i->local()) = Geometry<3,3>(geom.center(), geom.volume(),
@@ -858,10 +858,10 @@ void CpGridData::distributeGlobalGrid(const CpGrid& grid,
     // Now copy the face geometries that do exist.
     auto ft = tmp_face_tag.begin();
     auto fn = tmp_face_normals.begin();
-    for(auto begin=face_indicator.begin(), fi=begin,  end=face_indicator.end(); fi!=end;
+    for (auto begin = face_indicator.begin(), fi = begin,  end = face_indicator.end(); fi != end;
         ++fi)
     {
-        if(*fi<std::numeric_limits<int>::max())
+        if (*fi < std::numeric_limits<int>::max())
         {
             face_geom.push_back(global_face_geom[fi-begin]);
             *ft=global_face_tag[fi-begin];
