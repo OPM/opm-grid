@@ -119,9 +119,9 @@ BOOST_AUTO_TEST_CASE(cellgeom)
 //     }
     cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
     pg.reserve(8);
-    for (const auto& c : corners)
+    for (const auto& crn : corners)
     {
-        pg.push_back(cpgrid::Geometry<0, 3>(c));
+        pg.push_back(cpgrid::Geometry<0, 3>(crn));
     }
 
     int cor_idx[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -173,9 +173,9 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     
     cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg1;
     pg1.reserve(8);
-    for (const auto& c : corners)
+    for (const auto& crn : corners)
     {
-        pg1.push_back(cpgrid::Geometry<0, 3>(c));
+        pg1.push_back(cpgrid::Geometry<0, 3>(crn));
     }
     g = Geometry(c, v, pg1, cor_idx);
 
