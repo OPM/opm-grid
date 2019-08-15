@@ -223,7 +223,7 @@ namespace Dune
             using V::assign;
             using V::begin;
             using V::end;
-            using V::value_type;
+            using typename V::value_type;
             using V::reserve;
             using V::push_back;
             using V::data;
