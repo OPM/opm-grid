@@ -110,3 +110,11 @@ endmacro (tests_hook)
 
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
+
+# Additional parallel tests
+if(MPI_FOUND)
+  if(NOT MPIEXEC_EXECUTABLE)
+    set(MPIEXEC_EXECUTABLE ${MPIEXEC})
+  endif()
+  add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
+endif()
