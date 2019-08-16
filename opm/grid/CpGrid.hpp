@@ -1210,7 +1210,7 @@ namespace Dune
 #if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get());
+            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
