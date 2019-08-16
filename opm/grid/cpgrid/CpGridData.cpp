@@ -236,6 +236,105 @@ int getIndex(T i)
     return i->index();
 }
 
+struct Cell2PointsDataHandle
+{
+    using DataType = int;
+    using Vector = std::vector<std::array<int,8> >;
+    Cell2PointsDataHandle(const Vector& globalCell2Points,
+                         Vector& localCell2Points)
+        : globalCell2Points_(globalCell2Points), localCell2Points_(localCell2Points)
+    {}
+    bool fixedsize()
+    {
+        return true;
+    }
+    std::size_t size()
+    {
+        return 8;
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        const auto& points = globalCell2Points_[i];
+        std::for_each(points.begin(), points.end(), [&buffer](const int& i){buffer.write(i);});
+    }
+    template<class B>
+    void scatter(B& buffer, std::size_t i)
+    {
+        auto& points = localCell2Points_[i];
+        std::for_each(points.begin(), points.end(), [&buffer](int& i){buffer.read(i);});
+    }
+private:
+    const Vector& globalCell2Points_;
+    Vector& localCell2Points_;
+};
+
+template<int from, int to>
+struct RowSizeDataHandle
+{
+    using DataType = int;
+    using Table = OrientedEntityTable<from, to>;
+    RowSizeDataHandle(const Table& global,
+                      std::vector<int>& noEntries)
+        : global_(global), noEntries_(noEntries)
+    {}
+    bool fixedsize()
+    {
+        return true;
+    }
+    std::size_t size()
+    {
+        return 1;
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        buffer.write(global_.rowSize(EntityRep<from>(i, true)));
+    }
+    template<class B>
+    void scatter(B& buffer, std::size_t i)
+    {
+        buffer.read(noEntries_[i]);
+    }
+private:
+    const Table& global_;
+    std::vector<int>& noEntries_;
+};
+
+template<int from, int to>
+struct OrientedEntityTableDataHandle
+{
+    using DataType = int;
+    using Table = OrientedEntityTable<from, to>;
+    OrientedEntityTableDataHandle(const Table& global,
+                                  Table& local)
+        : global_(global), local_(local)
+    {}
+    bool fixedsize()
+    {
+        return false;
+    }
+    std::size_t size(int i)
+    {
+        return global_.rowSize(EntityRep<from>(i, true));
+    }
+    template<class B>
+    void gather(B& buffer, std::size_t i)
+    {
+        const auto& entries = global_[EntityRep<0>(i, true)];
+        std::for_each(entries.begin(), entries.end(), [&buffer](const int& i){buffer.write(i);});
+    }
+    template<class B>
+    void scatter(B& buffer, std::size_t i)
+    {
+        auto& entries = local_[i];
+        std::for_each(entries.begin(), entries.end(), [&buffer](int& i){buffer.read(i);});
+    }
+private:
+    const Table& global_;
+    Table local_;
+};
+
 template<class T>
 struct AttributeDataHandle
 {
