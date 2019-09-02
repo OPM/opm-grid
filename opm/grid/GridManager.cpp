@@ -142,10 +142,10 @@ namespace Opm
         g.dims[1] = inputGrid.getNY();
         g.dims[2] = inputGrid.getNZ();
 
-        inputGrid.exportMAPAXES( mapaxes );
-        inputGrid.exportCOORD( coord );
-        inputGrid.exportZCORN( zcorn );
-        inputGrid.exportACTNUM( actnum );
+        mapaxes = inputGrid.exportMAPAXES( );
+        coord = inputGrid.exportCOORD( );
+        zcorn = inputGrid.exportZCORN( );
+        actnum = inputGrid.exportACTNUM(  );
 
         g.coord = coord.data();
         g.zcorn = zcorn.data();

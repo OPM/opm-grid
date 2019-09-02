@@ -117,10 +117,10 @@ namespace cpgrid
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
         std::vector<double> coordData;
-        ecl_grid.exportCOORD(coordData);
+        coordData = ecl_grid.exportCOORD();
 
         std::vector<int> actnumData;
-        ecl_grid.exportACTNUM(actnumData);
+        actnumData = ecl_grid.exportACTNUM();
 
         // Mutable because grdecl::zcorn is non-const.
         auto zcornData = getSanitizedZCORN(ecl_grid, actnumData);
@@ -314,7 +314,7 @@ namespace cpgrid
                           const ::std::vector<int>& actnumData)
         {
             std::vector<double> zcornData;
-            ecl_grid.exportZCORN(zcornData);
+            zcornData = ecl_grid.exportZCORN();
 
             auto repair = ::Opm::UgGridHelpers::RepairZCORN {
                 std::move(zcornData), actnumData,
