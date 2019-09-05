@@ -264,7 +264,7 @@ public:
     /// \brief Redistribute a global grid.
     ///
     /// The whole grid must be available on all processors.
-    void distributeGlobalGrid(const CpGrid& grid,
+    void distributeGlobalGrid(CpGrid& grid,
                               const CpGridData& view_data,
                               const std::vector<int>& cell_part);
 
