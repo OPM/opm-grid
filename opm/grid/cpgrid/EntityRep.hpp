@@ -128,6 +128,11 @@ namespace Dune
                 return entityrep_ < 0 ? ~entityrep_ : entityrep_;
             }
 
+            /// @brief The signed index that also tells us the orientation
+            int signedIndex() const
+            {
+                return entityrep_;
+            }
             /// @brief Returns true if the entity has positive orientation.
             /// Not a Dune interface method.
             ///

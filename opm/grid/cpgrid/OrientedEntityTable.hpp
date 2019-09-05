@@ -88,6 +88,43 @@ namespace Dune
         };
 
 
+        /// @brief A class used as a row type for  OrientedEntityTable.
+        /// @tparam codim_to Codimension.
+        template <int codim_to>
+        class MutableOrientedEntityRange : private Opm::SparseTable< EntityRep<codim_to> >::mutable_row_type
+        {
+        public:
+            typedef EntityRep<codim_to> ToType;
+            typedef ToType* ToTypePtr;
+            typedef typename Opm::SparseTable<ToType>::mutable_row_type R;
+
+            /// @brief Default constructor yielding an empty range.
+            MutableOrientedEntityRange()
+                : R(ToTypePtr(0), ToTypePtr(0)), orientation_(true)
+            {
+            }
+            /// @brief Constructor taking a row type and an orientation.
+            /// @param R Row type
+            /// @param orientation True if positive orientation.
+            MutableOrientedEntityRange(const R& r, bool orientation)
+                : R(r), orientation_(orientation)
+            {
+            }
+            int size () const { return R::size(); }
+            using R::empty;
+            using R::begin;
+            using R::end;
+            /// @brief Random access operator.
+            /// @param subindex Column index.
+            /// @return Entity representation.
+            ToType operator[](int subindex) const
+            {
+                ToType erep = R::operator[](subindex);
+                return orientation_ ? erep : erep.opposite();
+            }
+        private:
+            bool orientation_;
+        };
 
 
         /// @brief Represents the topological relationships between
@@ -106,6 +143,7 @@ namespace Dune
             typedef EntityRep<codim_from> FromType;
             typedef EntityRep<codim_to> ToType;
             typedef OrientedEntityRange<codim_to> row_type; // ??? doxygen henter doc fra Opm::SparseTable
+            typedef MutableOrientedEntityRange<codim_to> mutable_row_type;
             typedef Opm::SparseTable<ToType> super_t;
 
             /// Default constructor.
@@ -136,6 +174,7 @@ namespace Dune
             using super_t::dataSize;
             using super_t::clear;
             using super_t::appendRow;
+            using super_t::allocate;
 
             /// @brief Given an entity e of codimension codim_from,
             /// returns the number of neighbours of codimension codim_to.
@@ -156,6 +195,15 @@ namespace Dune
                 return row_type(super_t::operator[](e.index()), e.orientation());
             }
 
+            /// @brief Given an entity e of codimension codim_from, returns a
+            /// row (an indirect container) containing its neighbour
+            /// entities of codimension codim_to.
+            /// @param e Entity representation.
+            /// @return A row of the table.
+            mutable_row_type row(const FromType& e)
+            {
+                return mutable_row_type(super_t::operator[](e.index()), e.orientation());
+            }
             /// @brief Elementwise equality.
             /// @param other The other element
             /// @return Returns true if \b this and the \b other element are equal.

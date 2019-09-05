@@ -293,23 +293,33 @@ struct RowSizeDataHandle
                       std::vector<int>& noEntries)
         : global_(global), noEntries_(noEntries)
     {}
-    bool fixedsize()
+    bool fixedsize(int, int)
     {
         return true;
     }
-    std::size_t size()
+    template<class T>
+    std::size_t size(const T&)
     {
         return 1;
     }
-    template<class B>
-    void gather(B& buffer, std::size_t i)
+    bool contains(std::size_t dim, std::size_t codim)
     {
-        buffer.write(global_.rowSize(EntityRep<from>(i, true)));
+        return dim==3 && codim == from;
+    }
+    template<class B, class T>
+    void gather(B&, const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
     }
     template<class B>
-    void scatter(B& buffer, std::size_t i)
+    void gather(B& buffer, const EntityRep<from>& t)
     {
-        buffer.read(noEntries_[i]);
+        buffer.write(global_.rowSize(t));
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t)
+    {
+        buffer.read(noEntries_[t.index()]);
     }
 private:
     const Table& global_;
@@ -322,32 +332,71 @@ struct OrientedEntityTableDataHandle
     using DataType = int;
     using Table = OrientedEntityTable<from, to>;
     OrientedEntityTableDataHandle(const Table& global,
-                                  Table& local)
-        : global_(global), local_(local)
+                                  Table& local,
+                                  std::vector<int> unsignedGlobalFaceIds)
+        : global_(global), local_(local),
+          unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
     {}
-    bool fixedsize()
+    bool fixedsize(int, int)
     {
         return false;
     }
-    std::size_t size(int i)
+    bool contains(std::size_t dim, std::size_t codim)
     {
-        return global_.rowSize(EntityRep<from>(i, true));
+        return dim==3 && codim == from;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
+        return 0;
+    }
+    using ToEntity = typename Table::ToType;
+    using FromEntity = typename Table::FromType;
+    std::size_t size(const FromEntity& t)
+    {
+        return global_.rowSize(t);
+    }
+    template<class B, class T>
+    void gather(B&, const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
     }
     template<class B>
-    void gather(B& buffer, std::size_t i)
+    void gather(B& buffer, const FromEntity& t)
     {
-        const auto& entries = global_[EntityRep<0>(i, true)];
-        std::for_each(entries.begin(), entries.end(), [&buffer](const int& i){buffer.write(i);});
+        const auto& entries = global_.row(t);
+        std::for_each(entries.begin(), entries.end(), [&buffer](const ToEntity& i){buffer.write(i.signedIndex());});
     }
-    template<class B>
-    void scatter(B& buffer, std::size_t i)
+    template<class B, class T>
+    void scatter(B&, const T&, std::size_t)
     {
-        auto& entries = local_[i];
-        std::for_each(entries.begin(), entries.end(), [&buffer](int& i){buffer.read(i);});
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const FromEntity& t, std::size_t s)
+    {
+        auto& entries = local_.row(t);
+        int i{};
+        for (auto&& entry : entries)
+        {
+            buffer.read(i);
+            if ( i < 0 )
+            {
+                entry = ToEntity(~i, false);
+                unsignedGlobalFaceIds_.push_back(~i);
+            }
+            else
+            {
+                entry = ToEntity(i, true);
+                unsignedGlobalFaceIds_.push_back(i);
+            }
+        }
     }
 private:
     const Table& global_;
     Table local_;
+    std::vector<int> unsignedGlobalFaceIds_;
 };
 
 template<class T>
@@ -638,6 +687,52 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 #endif // #if HAVE_MPI
 
+std::map<int,int> computeCell2Face(CpGrid& grid,
+                                    const OrientedEntityTable<0, 1>& globalCell2Faces,
+                                    OrientedEntityTable<0, 1>& cell2Faces,
+                                    std::vector<int>& map2Global,
+                                    std::size_t noCells)
+{
+    std::vector<int> rowSizes(noCells);
+    RowSizeDataHandle<0,1> rowSizeHandle(globalCell2Faces, rowSizes);
+    grid.scatterData(rowSizeHandle);
+    cell2Faces.allocate(rowSizes.begin(), rowSizes.end());
+    map2Global.reserve((noCells*6)*1.1);
+    OrientedEntityTableDataHandle<0,1> handle(globalCell2Faces, cell2Faces,
+                                 map2Global);
+    grid.scatterData(handle);
+    // make map2Global a map from local to global
+    std::sort(map2Global.begin(),map2Global.end());
+    auto newEnd = std::unique(map2Global.begin(),map2Global.end());
+    map2Global.resize(newEnd - map2Global.begin());
+    // Convert face ids to local ones
+    std::map<int, int> map2Local;
+    auto current_global = map2Global.begin();
+    int localId = 0;
+    // \todo improve since we are inserting values by sorted keys.
+    std::generate_n(std::inserter(map2Local, map2Local.begin()),
+                    newEnd - current_global,
+                    [&localId, &current_global](){ return std::make_pair(*(current_global++), localId++); });
+    // translate global to local ids
+    for (int row = 0, size = cell2Faces.size(); row < size; ++row)
+    {
+        for (auto&& face : cell2Faces.row(EntityRep<0>(row, true)))
+        {
+            auto index = face.signedIndex();
+            if (index < 0 )
+            {
+                face = EntityRep<1>(map2Local[~index], false);
+            }
+            else
+            {
+                face = EntityRep<1>(map2Local[index], true);
+            }
+        }
+    }
+    return map2Local;
+}
+
+
 std::map<int,int> computeCell2Point(CpGrid& grid,
                                     const std::vector<std::array<int,8> >& globalCell2Points,
                                     std::vector<std::array<int,8> >& cell2Points,
@@ -671,6 +766,7 @@ std::map<int,int> computeCell2Point(CpGrid& grid,
     return map2Local;
 }
 
+
 void CpGridData::distributeGlobalGrid(CpGrid& grid,
                                       const CpGridData& view_data,
                                       const std::vector<int>& cell_part)
@@ -689,39 +785,12 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     std::map<int,int> point_indicator =
         computeCell2Point(grid, view_data.cell_to_point_, cell_to_point_,
                           map2GlobalPointId, cell_indexset_.size());
-
-    map2GlobalFaceId.reserve((6*cell_indexset_.size())*1.1);
-
-    for(ParallelIndexSet::iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-            i!=end; ++i)
-    {
-        typedef boost::iterator_range<const EntityRep<1>*>::iterator RowIter;
-        int row_index=i->global();
-        // Somehow g++-4.4 does not find functions of father even if we
-        // change inheritance of OrientedEntityTable to public.
-        // Therfore we use an ugly cast to base class here.
-        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
-        for(RowIter f=c2f[row_index].begin(), fend=c2f[row_index].end();
-            f!=fend; ++f)
-        {
-            int findex=f->index();
-            map2GlobalFaceId.push_back(findex);
-        }
-    }
+    std::map<int,int> face_indicator =
+        computeCell2Face(grid, view_data.cell_to_face_, cell_to_face_,
+                         map2GlobalFaceId, cell_indexset_.size());
 
     auto noExistingPoints = map2GlobalPointId.size();
-    std::sort(map2GlobalFaceId.begin(),map2GlobalFaceId.end());
-    auto newFaceEnd = std::unique(map2GlobalFaceId.begin(),map2GlobalFaceId.end());
-    map2GlobalFaceId.resize(newFaceEnd - map2GlobalFaceId.begin());
     auto noExistingFaces = map2GlobalFaceId.size();
-
-    // renumber  face and point indicators
-    std::map<int,int> face_indicator;
-    auto current_global_face = map2GlobalFaceId.begin();
-    int localId = 0;
-    std::generate_n(std::inserter(face_indicator, face_indicator.begin()),
-                    newFaceEnd - current_global_face,
-                    [&localId, &current_global_face](){ return std::make_pair(*(current_global_face++), localId++); });
 
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
     for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
@@ -743,41 +812,10 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
                    ffunc);
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
-    // Create the topology information. This is stored in sparse matrix like data structures.
-    // First conunt the size of the nonzeros of the cell_to_face data.
-    int data_size=0;
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
-    {
-        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
-        data_size+=c2f.rowSize(i->global());
-    }
-
-    //- cell_to_face_ : extract owner/overlap rows from cell_to_face_
-    // Construct the sparse matrix like data structure.
-    //OrientedEntityTable<0, 1> cell_to_face;
-    cell_to_face_.reserve(cell_indexset_.size(), data_size);
-
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
-    {
-        typedef boost::iterator_range<const EntityRep<1>*>::const_iterator RowIter;
-        const Opm::SparseTable<EntityRep<1> >& c2f=view_data.cell_to_face_;
-        auto row=c2f[i->global()];
-        // create the new row, i.e. copy orientation and use new face indicator.
-        std::vector<EntityRep<1> > new_row(row.size());
-        std::vector<EntityRep<1> >::iterator  nface=new_row.begin();
-        for(RowIter face=row.begin(), fend=row.end(); face!=fend; ++face, ++nface)
-            nface->setValue(face_indicator[face->index()], face->orientation());
-        // Append the new row to the matrix
-        cell_to_face_.appendRow(new_row.begin(), new_row.end());
-        for(int j=0; j<8; ++j)
-            cell_to_point_[i->local()][j]=point_indicator[view_data.cell_to_point_[i->global()][j]];
-    }
 
     // Calculate the number of nonzeros needed for the face_to_cell sparse matrix
     // To speed things up, we only use an upper limit here.
-    data_size=0;
+    std::size_t data_size=0;
     const Opm::SparseTable<EntityRep<0> >& f2c=view_data.face_to_cell_;
     for(const auto& f: face_indicator)
         data_size += f2c.rowSize(f.first);
