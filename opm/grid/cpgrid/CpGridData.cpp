@@ -399,6 +399,77 @@ private:
     std::vector<int> unsignedGlobalFaceIds_;
 };
 
+/// \brief A data handle to send the row size of face_to_cell
+///        OrientedEntityTable's row size via communication with
+///        communicating data attached to the cells.
+///
+///       For each cell it will send all the rows attached to faces
+///       of the cell.
+struct F2CViaCellRowSizeHandle
+{
+    using DataType = int;
+    using F2CTable = OrientedEntityTable<1, 0>;
+    using C2FTable = OrientedEntityTable<0, 1>;
+
+    F2CViaCellRowSizeHandle(const F2CTable& global,
+                      const C2FTable& c2fGlobal,
+                      const C2FTable& c2f,
+                      std::vector<int>& noEntries)
+        : global_(global), c2fGlobal_(c2fGlobal), c2f_(c2f), noEntries_(noEntries)
+    {}
+    bool fixedsize(int, int)
+    {
+        return false; // as the faces per cell differ
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw! Only know sizes of cells");
+        return 1;
+    }
+    std::size_t size(const EntityRep<0>& t)
+    {
+        return c2f_.rowSize(t);
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 0;
+    }
+    template<class B, class T>
+    void gather(B&, const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
+    template<class B>
+    void gather(B& buffer, const EntityRep<0>& t)
+    {
+        const auto& faces = c2fGlobal_[t];
+        for (const auto& face : faces)
+        {
+            buffer.write(global_.rowSize(face));
+        }
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t)
+    {
+        OPM_THROW(std::logic_error, "Entity with wrong codim. This should never happen!");
+    }
+    template<class B>
+    void scatter(B& buffer, const EntityRep<0>& t, std::size_t)
+    {
+        const auto& faces = c2f_[t];
+        for (const auto& face : faces)
+        {
+            buffer.read(noEntries_[face.index()]);
+        }
+    }
+private:
+    const F2CTable& global_;
+    const C2FTable& c2fGlobal_, c2f_;
+    std::vector<int>& noEntries_;
+};
+
+
 template<class T>
 struct AttributeDataHandle
 {
