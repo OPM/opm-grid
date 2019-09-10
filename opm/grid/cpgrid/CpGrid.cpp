@@ -127,7 +127,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
     static_cast<void>(method);
-#if HAVE_MPI
     if(distributed_data_)
     {
         std::cerr<<"There is already a distributed version of the grid."
@@ -135,111 +134,121 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         return std::make_pair(false, std::unordered_set<std::string>());
     }
 
+#if HAVE_MPI
     auto& cc = data_->ccobj_;
-    int my_num=cc.rank();
+
+    if (cc.size() > 1)
+    {
+        int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
-    auto part_and_wells =
-        cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
-    using std::get;
-    auto cell_part = std::get<0>(part_and_wells);
-    auto defunct_wells = std::get<1>(part_and_wells);
-    auto exportList = std::get<2>(part_and_wells);
-    auto importList = std::get<3>(part_and_wells);
+        auto part_and_wells =
+            cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
+        using std::get;
+        auto cell_part = std::get<0>(part_and_wells);
+        auto defunct_wells = std::get<1>(part_and_wells);
+        auto exportList = std::get<2>(part_and_wells);
+        auto importList = std::get<3>(part_and_wells);
 #else
-    OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN. Please install!");
-    // std::vector<int> cell_part(current_view_data_->global_cell_.size());
-    // int  num_parts=-1;
-    // std::array<int, 3> initial_split;
-    // initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
-    // initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
-    // partition(*this, initial_split, num_parts, cell_part, false, false);
-    // const auto& cpgdim =  logicalCartesianSize();
-    // std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
-    // for( int i=0; i < numCells(); ++i )
-    // {
-    //     cartesian_to_compressed[globalCell()[i]] = i;
-    // }
+        OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN. Please install!");
+        // std::vector<int> cell_part(current_view_data_->global_cell_.size());
+        // int  num_parts=-1;
+        // std::array<int, 3> initial_split;
+        // initial_split[1]=initial_split[2]=std::pow(cc.size(), 1.0/3.0);
+        // initial_split[0]=cc.size()/(initial_split[1]*initial_split[2]);
+        // partition(*this, initial_split, num_parts, cell_part, false, false);
+        // const auto& cpgdim =  logicalCartesianSize();
+        // std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+        // for( int i=0; i < numCells(); ++i )
+        // {
+        //     cartesian_to_compressed[globalCell()[i]] = i;
+        // }
 
-    // std::unordered_set<std::string> defunct_wells;
+        // std::unordered_set<std::string> defunct_wells;
 
-    // if ( wells )
-    // {
-    //     cpgrid::WellConnections well_connections(*wells,
-    //                                              cpgdim,
-    //                                              cartesian_to_compressed);
+        // if ( wells )
+        // {
+        //     cpgrid::WellConnections well_connections(*wells,
+        //                                              cpgdim,
+        //                                              cartesian_to_compressed);
 
-    //     auto wells_on_proc =
-    //         cpgrid::postProcessPartitioningForWells(cell_part,
-    //                                                 *wells,
-    //                                                 well_connections,
-    //                                                 cc.size());
-    //     defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
-    //                                                     *wells,
-    //                                                     cc,
-    //                                                     0);
-    // }
+        //     auto wells_on_proc =
+        //         cpgrid::postProcessPartitioningForWells(cell_part,
+        //                                                 *wells,
+        //                                                 well_connections,
+        //                                                 cc.size());
+        //     defunct_wells = cpgrid::computeDefunctWellNames(wells_on_proc,
+        //                                                     *wells,
+        //                                                     cc,
+        //                                                     0);
+        // }
 #endif
 
-    bool ownersFirst = false;
+        bool ownersFirst = false;
 
-    // first create the overlap
-    // map from process to global cell indices in overlap
-    std::map<int,std::set<int> > overlap;
-    auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc);
-    // importList contains all the indices that will be here.
-    auto compareImport = [](const std::tuple<int,int,char,int>& t1,
-                            const std::tuple<int,int,char,int>&t2)
-                         {
-                             return std::get<0>(t1) < std::get<0>(t2);
-                         };
+        // first create the overlap
+        // map from process to global cell indices in overlap
+        std::map<int,std::set<int> > overlap;
+        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc);
+        // importList contains all the indices that will be here.
+        auto compareImport = [](const std::tuple<int,int,char,int>& t1,
+                                const std::tuple<int,int,char,int>&t2)
+                             {
+                                 return std::get<0>(t1) < std::get<0>(t2);
+                             };
 
-    if ( ! ownersFirst )
+        if ( ! ownersFirst )
+        {
+            // merge owner and overlap sorted by global index
+            std::inplace_merge(importList.begin(), importList.begin()+noImportedOwner,
+                               importList.end(), compareImport);
+        }
+        // assign local indices
+        int localIndex = 0;
+        for(auto&& entry: importList)
+            std::get<3>(entry) = localIndex++;
+
+        if ( ownersFirst )
+        {
+            // merge owner and overlap sorted by global index
+            std::inplace_merge(importList.begin(), importList.begin()+noImportedOwner,
+                               importList.end(), compareImport);
+        }
+
+        distributed_data_.reset(new cpgrid::CpGridData(cc));
+        // Create indexset
+        distributed_data_->cell_indexset_.beginResize();
+        for(const auto& entry: importList)
+        {
+            distributed_data_->cell_indexset_.add(std::get<0>(entry), ParallelIndexSet::LocalIndex(std::get<3>(entry), AttributeSet(std::get<2>(entry)), true));
+        }
+        distributed_data_->cell_indexset_.endResize();
+        // add an interface for gathering/scattering data with communication
+        // forward direction will be scatter and backward gather
+        cell_scatter_gather_interfaces_.reset(new InterfaceMap);
+
+        // Interface will communicate from owner to all
+        setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
+        setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
+
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+        int num_cells = distributed_data_->cell_to_face_.size();
+        std::ostringstream message;
+        message << "After loadbalancing process " << my_num << " has " << num_cells << " cells.";
+        if (num_cells == 0) {
+            throw std::runtime_error(message.str() + " Aborting.");
+        } else {
+            std::cout << message.str() << "\n";
+        }
+
+        current_view_data_ = distributed_data_.get();
+        return std::make_pair(true, defunct_wells);
+    }
+    else
     {
-        // merge owner and overlap sorted by global index
-        std::inplace_merge(importList.begin(), importList.begin()+noImportedOwner,
-                           importList.end(), compareImport);
+        std::cerr << "CpGrid::scatterGrid() only makes sense in a parallel run. "
+                  << "This run only uses one process.\n";
+        return std::make_pair(false, std::unordered_set<std::string>());
     }
-    // assign local indices
-    int localIndex = 0;
-    for(auto&& entry: importList)
-        std::get<3>(entry) = localIndex++;
-
-    if ( ownersFirst )
-    {
-        // merge owner and overlap sorted by global index
-        std::inplace_merge(importList.begin(), importList.begin()+noImportedOwner,
-                           importList.end(), compareImport);
-    }
-
-    distributed_data_.reset(new cpgrid::CpGridData(cc));
-    // Create indexset
-    distributed_data_->cell_indexset_.beginResize();
-    for(const auto& entry: importList)
-    {
-        distributed_data_->cell_indexset_.add(std::get<0>(entry), ParallelIndexSet::LocalIndex(std::get<3>(entry), AttributeSet(std::get<2>(entry)), true));
-    }
-    distributed_data_->cell_indexset_.endResize();
-    // add an interface for gathering/scattering data with communication
-    // forward direction will be scatter and backward gather
-    cell_scatter_gather_interfaces_.reset(new InterfaceMap);
-
-    // Interface will communicate from owner to all
-    setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
-    setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
-
-    distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
-    int num_cells = distributed_data_->cell_to_face_.size();
-    std::ostringstream message;
-    message << "After loadbalancing process " << my_num << " has " << num_cells << " cells.";
-    if (num_cells == 0) {
-        throw std::runtime_error(message.str() + " Aborting.");
-    } else {
-        std::cout << message.str() << "\n";
-    }
-
-    current_view_data_ = distributed_data_.get();
-    return std::make_pair(true, defunct_wells);
-
 #else // #if HAVE_MPI
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
