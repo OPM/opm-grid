@@ -275,6 +275,13 @@ namespace Dune
             {
                 return EntityVariableBase<T>::get(e.index());
             }
+            /// @brief Random access to the variable through an EntityRep.
+            /// @param e Entity representation.
+            /// @return a mutable reference to the varable, at e.
+            T& operator[](const EntityRep<codim>& e)
+            {
+                return EntityVariableBase<T>::get(e.index());
+            }
         };
 
 

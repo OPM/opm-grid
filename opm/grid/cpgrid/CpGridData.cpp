@@ -238,6 +238,163 @@ int getIndex(T i)
     return i->index();
 }
 
+struct PointGeometryHandle
+{
+    using DataType = double;
+    using Container = EntityVariable<cpgrid::Geometry<0, 3>, 3>;
+
+    PointGeometryHandle(const Container& gatherCont, Container& scatterCont)
+        : gatherPoints_(gatherCont), scatterPoints_(scatterCont)
+    {}
+    bool fixedsize(int, int)
+    {
+        return true;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 3;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 3;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        auto& geom = gatherPoints_[t];
+        for (int i = 0; i < 3; i++)
+            buffer.write(geom.center()[i]);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t )
+    {
+        using Vector = typename Geometry<0, 3>::GlobalCoordinate;
+        Vector pos;
+
+        for (int i = 0; i < 3; i++)
+            buffer.read(pos[i]);
+        scatterPoints_[t] = Geometry<0, 3>(pos);
+    }
+private:
+    const Container& gatherPoints_;
+    Container& scatterPoints_;
+};
+
+struct FaceGeometryHandle
+{
+    using DataType = double;
+    using Geom = Geometry<2, 3>;
+    using Container = EntityVariable<Geom, 1>;
+
+    FaceGeometryHandle(const Container& gatherCont, Container& scatterCont)
+        : gatherPoints_(gatherCont), scatterPoints_(scatterCont)
+    {}
+    bool fixedsize(int, int)
+    {
+        return true;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 1;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 4; // 3 coordinates + 1 volume
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        auto& geom = gatherPoints_[t];
+        for (int i = 0; i < 3; i++)
+            buffer.write(geom.center()[i]);
+        buffer.write(geom.volume());
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t )
+    {
+        using Vector = typename Geom::GlobalCoordinate;
+        Vector pos;
+        double vol;
+
+        for (int i = 0; i < 3; i++)
+            buffer.read(pos[i]);
+
+        buffer.read(vol);
+        scatterPoints_[t] = Geom(pos, vol);
+    }
+private:
+    const Container& gatherPoints_;
+    Container& scatterPoints_;
+};
+
+
+struct CellGeometryHandle
+{
+    using DataType = double;
+    using Geom = Geometry<3, 3>;
+    using Container = EntityVariable<Geom, 0>;
+
+    CellGeometryHandle(const Container& gatherCont, Container& scatterCont,
+                       const EntityVariable<cpgrid::Geometry<0, 3>, 3>& pointGeom,
+                       const std::vector< std::array<int,8> >& cell2Points)
+        : gatherCont_(gatherCont), scatterCont_(scatterCont), pointGeom_(pointGeom),
+          cell2Points_(cell2Points)
+    {}
+    bool fixedsize(int, int)
+    {
+        return true;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 0;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 4; // 3 coordinates + 1 volume
+    }
+    template<class B, class T>
+    typename std::enable_if<T::codimension != 0, void>::type
+    gather(B&, const T&)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
+    template<class B>
+    void gather(B& buffer, const EntityRep<0>& t)
+    {
+        auto& geom = gatherCont_[t];
+        for (int i = 0; i < 3; i++)
+            buffer.write(geom.center()[i]);
+        buffer.write(geom.volume());
+    }
+    template<class B, class T>
+    typename std::enable_if<T::codimension != 0, void>::type
+    scatter(B&, const T&, std::size_t)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
+    template<class B>
+    void scatter(B& buffer, const EntityRep<0>& t, std::size_t )
+    {
+        using Vector = typename Geom::GlobalCoordinate;
+        Vector pos;
+        double vol;
+
+        for (int i = 0; i < 3; i++)
+            buffer.read(pos[i]);
+
+        buffer.read(vol);
+        scatterCont_[t] = Geom(pos, vol, pointGeom_, cell2Points_[t.index()].data());
+    }
+private:
+    const Container& gatherCont_;
+    Container& scatterCont_;
+    const EntityVariable<cpgrid::Geometry<0, 3>, 3>& pointGeom_;
+    const std::vector< std::array<int,8> >& cell2Points_;
+};
+
 struct Cell2PointsDataHandle
 {
     using DataType = int;
@@ -839,6 +996,33 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 #endif // #if HAVE_MPI
 
+void CpGridData::computeGeometry(CpGrid& grid,
+                                 const DefaultGeometryPolicy&  globalGeometry,
+                                 const OrientedEntityTable<0, 1>& globalCell2Faces,
+                                 const std::vector< std::array<int,8> >& globalCell2Points,
+                                 DefaultGeometryPolicy& geometry,
+                                 const OrientedEntityTable<0, 1>& cell2Faces,
+                                 const std::vector< std::array<int,8> >& cell2Points)
+{
+    FaceGeometryHandle faceGeomHandle(globalGeometry.geomVector(std::integral_constant<int,1>()),
+                                      geometry.geomVector(std::integral_constant<int,1>()));
+    FaceViaCellHandleWrapper<FaceGeometryHandle>
+        wrappedFaceGeomHandle(faceGeomHandle, globalCell2Faces, cell2Faces);
+    grid.scatterData(wrappedFaceGeomHandle);
+
+    PointGeometryHandle pointGeomHandle(globalGeometry.geomVector(std::integral_constant<int,3>()),
+                                             geometry.geomVector(std::integral_constant<int,3>()));
+    PointViaCellHandleWrapper<PointGeometryHandle>
+        wrappedPointGeomHandle(pointGeomHandle, globalCell2Points, cell2Points);
+    grid.scatterData(wrappedPointGeomHandle);
+
+    CellGeometryHandle cellGeomHandle(globalGeometry.geomVector(std::integral_constant<int,0>()),
+                                      geometry.geomVector(std::integral_constant<int,0>()),
+                                      geometry.geomVector(std::integral_constant<int,3>()),
+                                      cell2Points);
+    grid.scatterData(cellGeomHandle);
+}
+
 void computeFace2Point(CpGrid& grid,
                        const OrientedEntityTable<0, 1>& globalCell2Faces,
                        const GlobalIdSet& globalIds,
@@ -1042,41 +1226,24 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
     // Set up the new topology arrays
-    // Count the existing points and allocate space
-    EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom = geometry_.geomVector(std::integral_constant<int,3>());
-    const std::vector<cpgrid::Geometry<0, 3> >& global_point_geom=view_data.geomVector<3>();
-    point_geom.reserve(noExistingPoints);
+    geometry_.geomVector(std::integral_constant<int,1>()).resize(noExistingFaces);
+    geometry_.geomVector(std::integral_constant<int,0>()).resize(cell_to_face_.size());
+    geometry_.geomVector(std::integral_constant<int,3>()).resize(noExistingPoints);
 
-    // Now copy the point geometries that do exist.
-    for(auto pi = point_indicator.begin(), end = point_indicator.end(); pi != end;
-        ++pi)
-    {
-        assert(pi->second == (int) point_geom.size());
-        point_geom.emplace_back(global_point_geom[pi->first]);
-    }
+    computeGeometry(grid, view_data.geometry_, view_data.cell_to_face_, view_data.cell_to_point_,
+                    geometry_, cell_to_face_, cell_to_point_);
 
-
-    EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom = geometry_.geomVector(std::integral_constant<int,0>());
-    std::vector<cpgrid::Geometry<3, 3> > tmp_cell_geom(cell_indexset_.size());
-    auto global_cell_geom=view_data.geomVector<0>();
     global_cell_.resize(cell_indexset_.size());
-    cell_geom.resize(cell_indexset_.size());
+
     // Copy the existing cells.
     for (auto i = cell_indexset_.begin(), end = cell_indexset_.end(); i != end; ++i)
     {
-        const auto& geom = global_cell_geom.get(i->global());
-        cell_geom.get(i->local()) = Geometry<3,3>(geom.center(), geom.volume(),
-                                                  point_geom,
-                                                  cell_to_point_[i->local()].data());
         global_cell_[i->local()]=view_data.global_cell_[i->global()];
     }
 
     // count the existing faces, renumber, and allocate space.
-    EntityVariable<cpgrid::Geometry<2, 3>, 1>&  face_geom = geometry_.geomVector(std::integral_constant<int,1>());
-    face_geom.reserve(noExistingFaces);
     std::vector<enum face_tag> tmp_face_tag(noExistingFaces);
     std::vector<PointType> tmp_face_normals(noExistingFaces);
-    const std::vector<cpgrid::Geometry<2, 3> >& global_face_geom=view_data.geomVector<1>();
     const std::vector<enum face_tag>& global_face_tag=view_data.face_tag_;
     const std::vector<PointType>& global_face_normals=view_data.face_normals_;
 
@@ -1086,8 +1253,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     for (auto begin = face_indicator.begin(), fi = begin,  end = face_indicator.end(); fi != end;
         ++fi)
     {
-        assert(fi->second == (int) face_geom.size());
-        face_geom.push_back(global_face_geom[fi->first]);
         *ft=global_face_tag[fi->first];
         *fn=global_face_normals[fi->first];
         ++ft; ++fn;
