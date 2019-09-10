@@ -238,6 +238,116 @@ int getIndex(T i)
     return i->index();
 }
 
+/// \brief Handle for face tag, normal and boundary id
+struct FaceTagNormalBIdHandle
+{
+    using DataType = std::tuple<face_tag,FieldVector<double, 3>,int>;
+    using TagContainer = EntityVariable<enum face_tag, 1>;
+    using BIdContainer = EntityVariable<int, 1>;
+    using NormalContainer = SignedEntityVariable<FieldVector<double, 3>, 1>;
+
+    FaceTagNormalBIdHandle(const TagContainer& gatherTags, const NormalContainer& gatherNormals, const BIdContainer& gatherBIds,
+                           TagContainer& scatterTags,  NormalContainer& scatterNormals, BIdContainer& scatterBIds)
+        : gatherTags_(gatherTags), gatherNormals_(gatherNormals), gatherBIds_(gatherBIds),
+          scatterTags_(scatterTags), scatterNormals_(scatterNormals), scatterBIds_(scatterBIds)
+    {}
+    bool fixedsize(int, int)
+    {
+        return true;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 1;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        if ( t.orientation() )
+        {
+            buffer.write(DataType(gatherTags_[t], gatherNormals_[t],
+                                  gatherBIds_[t]));
+        }
+        else
+        {
+            auto normal = -gatherNormals_[t];
+            buffer.write(DataType(gatherTags_[t], normal,
+                                  gatherBIds_[t]));
+        }
+    }
+    template<class B, class T>
+    void scatter(B& buffer, T& t, std::size_t )
+    {
+        DataType tmp;
+        buffer.read(tmp);
+        scatterTags_[t]=std::get<0>(tmp);
+        scatterNormals_.get(t.index()) = std::get<1>(tmp);
+        scatterBIds_[t] = std::get<2>(tmp);
+    }
+private:
+    const TagContainer& gatherTags_;
+    const NormalContainer& gatherNormals_;
+    const BIdContainer& gatherBIds_;
+    TagContainer& scatterTags_;
+    NormalContainer& scatterNormals_;
+    BIdContainer& scatterBIds_;
+};
+/// \brief Handle for face tag, normal and boundary id
+struct FaceTagNormalHandle
+{
+    using DataType = std::tuple<face_tag,FieldVector<double, 3> >;
+    using TagContainer = EntityVariable<enum face_tag, 1>;
+    using NormalContainer = SignedEntityVariable<FieldVector<double, 3>, 1>;
+
+    FaceTagNormalHandle(const TagContainer& gatherTags, const NormalContainer& gatherNormals,
+                        TagContainer& scatterTags,  NormalContainer& scatterNormals)
+        : gatherTags_(gatherTags), gatherNormals_(gatherNormals),
+          scatterTags_(scatterTags), scatterNormals_(scatterNormals)
+    {}
+    bool fixedsize(int, int)
+    {
+        return true;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == 1;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 4; // 3 coordinates + 1 volume
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        if ( t.orientation() )
+        {
+            buffer.write(std::make_tuple(gatherTags_[t], gatherNormals_[t]));
+        }
+        else
+        {
+            auto normal = - gatherNormals_[t];
+            buffer.write(std::make_tuple(gatherTags_[t], normal));
+        }
+    }
+    template<class B, class T>
+    void scatter(B& buffer, T& t, std::size_t )
+    {
+        DataType tmp;
+        buffer.read(tmp);
+        scatterTags_[t]=std::get<0>(tmp);
+        scatterNormals_.get(t.index()) = std::get<1>(tmp);
+    }
+private:
+    const TagContainer& gatherTags_;
+    const NormalContainer& gatherNormals_;
+    TagContainer& scatterTags_;
+    NormalContainer& scatterNormals_;
+};
 struct PointGeometryHandle
 {
     using DataType = double;
@@ -1241,35 +1351,29 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         global_cell_[i->local()]=view_data.global_cell_[i->global()];
     }
 
-    // count the existing faces, renumber, and allocate space.
-    std::vector<enum face_tag> tmp_face_tag(noExistingFaces);
-    std::vector<PointType> tmp_face_normals(noExistingFaces);
-    const std::vector<enum face_tag>& global_face_tag=view_data.face_tag_;
-    const std::vector<PointType>& global_face_normals=view_data.face_normals_;
+    // Scatter face tags, normals, and boundary ids.
+    bool hasBids = ccobj_.max(view_data.unique_boundary_ids_.size());
+    face_tag_.resize(noExistingFaces);
+    face_normals_.resize(noExistingFaces);
 
-    // Now copy the face geometries that do exist.
-    auto ft = tmp_face_tag.begin();
-    auto fn = tmp_face_normals.begin();
-    for (auto begin = face_indicator.begin(), fi = begin,  end = face_indicator.end(); fi != end;
-        ++fi)
+    if (hasBids)
     {
-        *ft=global_face_tag[fi->first];
-        *fn=global_face_normals[fi->first];
-        ++ft; ++fn;
+        unique_boundary_ids_.resize(noExistingFaces);
+        FaceTagNormalBIdHandle faceHandle(view_data.face_tag_, view_data.face_normals_, view_data.unique_boundary_ids_,
+                                          face_tag_, face_normals_, unique_boundary_ids_);
+        FaceViaCellHandleWrapper<FaceTagNormalBIdHandle>
+        wrappedFaceHandle(faceHandle, view_data.cell_to_face_, cell_to_face_);
+        grid.scatterData(wrappedFaceHandle);
     }
-    static_cast<std::vector<PointType>&>(face_normals_).swap(tmp_face_normals);
-    static_cast<std::vector<enum face_tag>&>(face_tag_).swap(tmp_face_tag);
+    else
+    {
+        FaceTagNormalHandle faceHandle(view_data.face_tag_, view_data.face_normals_,
+                                       face_tag_, face_normals_);
+        FaceViaCellHandleWrapper<FaceTagNormalHandle>
+        wrappedFaceHandle(faceHandle, view_data.cell_to_face_, cell_to_face_);
+        grid.scatterData(wrappedFaceHandle);
+    }
 
-    // - unique_boundary_ids_ : extract the ones that correspond existent faces
-    if(view_data.unique_boundary_ids_.size())
-    {
-        // Unique boundary ids are inherited from the global grid.
-        unique_boundary_ids_.reserve(view_data.face_to_cell_.size());
-        for(const auto& f: face_indicator)
-        {
-            unique_boundary_ids_.push_back(view_data.unique_boundary_ids_[EntityRep<1>(f.first, true)]);
-        }
-    }
     // Compute the partition type for cell
     partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
     for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
