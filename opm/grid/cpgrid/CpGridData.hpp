@@ -758,7 +758,11 @@ void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
     }
     if(data.contains(3,3))
     {
-        scatterCodimData<3>(data, global_data, distributed_data);
+        using CellHandle = PointViaCellHandleWrapper<DataHandle>;
+        using IndexHandle = Entity2IndexDataHandle<CellHandle, 0>;
+        CellHandle cellHandle(data, global_data->cell_to_point_, distributed_data->cell_to_point_);
+        IndexHandle indexHandle(*global_data, *distributed_data, cellHandle);
+        communicateCodim<0>(indexHandle, ForwardCommunication, inf);
     }
 #endif
 }
