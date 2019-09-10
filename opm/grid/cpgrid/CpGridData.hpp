@@ -351,7 +351,17 @@ private:
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                           const InterfaceMap& interface);
+
 #endif
+
+    void computeGeometry(CpGrid& grid,
+                         const DefaultGeometryPolicy&  globalGeometry,
+                         const OrientedEntityTable<0, 1>& globalCell2Faces,
+                         const std::vector< std::array<int,8> >& globalCell2Points,
+                         DefaultGeometryPolicy& geometry,
+                         const OrientedEntityTable<0, 1>& cell2Faces,
+                         const std::vector< std::array<int,8> >& cell2Points);
+
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
