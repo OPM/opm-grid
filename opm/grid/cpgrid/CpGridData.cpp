@@ -3,6 +3,7 @@
 #include <map>
 #include <vector>
 #include"CpGridData.hpp"
+#include"DataHandleWrappers.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
 #include"OrientedEntityTable.hpp"
@@ -549,76 +550,6 @@ public:
 private:
     const IndexSet& global2Local_;
 };
-
-/// \brief A data handle to send data attached to faces via cell communication
-template<class Handle>
-struct FaceViaCellHandleWrapper
-{
-    using DataType = typename Handle::DataType;
-    using C2FTable = OrientedEntityTable<0, 1>;
-
-    FaceViaCellHandleWrapper(Handle& handle,
-                             const C2FTable& c2fGlobal,
-                             const C2FTable& c2f)
-        : handle_(handle), c2fGlobal_(c2fGlobal), c2f_(c2f)
-    {}
-    bool fixedsize(int, int)
-    {
-        return false; // as the faces per cell differ
-    }
-    template<class T>
-    std::size_t size(const T&)
-    {
-        OPM_THROW(std::logic_error, "This should never throw! Only know sizes of cells");
-        return 1;
-    }
-    std::size_t size(const EntityRep<0>& t)
-    {
-        const auto& faces = c2fGlobal_[t];
-        std::size_t size{};
-        for (const auto& face : faces)
-        {
-            size += handle_.size(face);
-        }
-        return size;
-    }
-    bool contains(std::size_t dim, std::size_t codim)
-    {
-        return dim==3 && codim == 0;
-    }
-    template<class B, class T>
-    void gather(B&, const T&)
-    {
-        OPM_THROW(std::logic_error, "This should never throw!");
-    }
-    template<class B>
-    void gather(B& buffer, const EntityRep<0>& t)
-    {
-        const auto& faces = c2fGlobal_[t];
-        for (const auto& face : faces)
-        {
-            handle_.gather(buffer, face);
-        }
-    }
-    template<class B, class T>
-    void scatter(B&, const T&, std::size_t)
-    {
-        OPM_THROW(std::logic_error, "Entity with wrong codim. This should never happen!");
-    }
-    template<class B>
-    void scatter(B& buffer, const EntityRep<0>& t, std::size_t)
-    {
-        const auto& faces = c2f_[t];
-        for (const auto& face : faces)
-        {
-            handle_.gather(buffer, face);
-        }
-    }
-private:
-    const Handle& handle_;
-    const C2FTable& c2fGlobal_, c2f_;
-};
-
 
 template<class T>
 struct AttributeDataHandle

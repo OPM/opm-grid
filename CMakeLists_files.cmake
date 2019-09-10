@@ -151,6 +151,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/p2pcommunicator_impl.hh
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
+  opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
   opm/grid/cpgrid/dgfparser.hh
   opm/grid/cpgrid/Entity2IndexDataHandle.hpp
