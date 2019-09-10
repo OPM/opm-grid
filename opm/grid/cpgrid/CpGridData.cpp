@@ -331,11 +331,11 @@ struct OrientedEntityTableDataHandle
 {
     using DataType = int;
     using Table = OrientedEntityTable<from, to>;
+    using ToEntity = typename Table::ToType;
+    using FromEntity = typename Table::FromType;
     OrientedEntityTableDataHandle(const Table& global,
-                                  Table& local,
-                                  std::vector<int> unsignedGlobalFaceIds)
-        : global_(global), local_(local),
-          unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
+                                  Table& local)
+        : global_(global), local_(local)
     {}
     bool fixedsize(int, int)
     {
@@ -351,8 +351,6 @@ struct OrientedEntityTableDataHandle
         OPM_THROW(std::logic_error, "This should never throw!");
         return 0;
     }
-    using ToEntity = typename Table::ToType;
-    using FromEntity = typename Table::FromType;
     std::size_t size(const FromEntity& t)
     {
         return global_.rowSize(t);
@@ -373,7 +371,21 @@ struct OrientedEntityTableDataHandle
     {
         OPM_THROW(std::logic_error, "This should never throw!");
     }
-    template<class B, class T>
+private:
+    const Table& global_;
+    Table local_;
+};
+
+class C2FDataHandle
+    : public OrientedEntityTableDataHandle<0,1>
+{
+public:
+    C2FDataHandle(const Table& global, Table& local,
+                  std::vector<int>& unsignedGlobalFaceIds)
+        : OrientedEntityTableDataHandle<0,1>(global, local),
+          unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
+    {}
+    template<class B>
     void scatter(B& buffer, const FromEntity& t, std::size_t s)
     {
         auto& entries = local_.row(t);
@@ -393,29 +405,77 @@ struct OrientedEntityTableDataHandle
             }
         }
     }
+    template<class B, class T>
+    void scatter(B&, const T&, std::size_t)
+    {
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
 private:
-    const Table& global_;
-    Table local_;
-    std::vector<int> unsignedGlobalFaceIds_;
+    std::vector<int>& unsignedGlobalFaceIds_;
 };
 
-/// \brief A data handle to send the row size of face_to_cell
-///        OrientedEntityTable's row size via communication with
-///        communicating data attached to the cells.
-///
-///       For each cell it will send all the rows attached to faces
-///       of the cell.
-struct F2CViaCellRowSizeHandle
+template<class IndexSet>
+class F2CDataHandle
+    : public OrientedEntityTableDataHandle<1,0>
 {
-    using DataType = int;
-    using F2CTable = OrientedEntityTable<1, 0>;
+public:
+    F2CDataHandle(const Table& global, Table& local,
+                  const IndexSet& global2Local)
+        : OrientedEntityTableDataHandle<1,0>(global, local),
+          global2Local_(global2Local)
+    {}
+    template<class B>
+    void scatter(B& buffer, const FromEntity& t, std::size_t s)
+    {
+        auto& entries = local_.row(t);
+        int i{};
+        for (auto&& entry : entries)
+        {
+            buffer.read(i);
+            if (entry.index() != std::numeric_limits<int>::max())
+            {
+                // face already processed, continue to save map lookup
+                continue;
+            }
+            bool orientation = true;
+            if ( i < 0 )
+            {
+                i = ~i;
+                orientation = false;
+            }
+            using IndexPair = typename IndexSet::IndexPair;
+            auto candidate = std::lower_bound(global2Local_.begin(), global2Local_.end(),
+                                          IndexPair(i),
+                                          [](const IndexPair& p1,
+                                             const IndexPair& p2){
+                                              return p1.global() < p2.global();});
+            if (candidate == global2Local_.end() || i != candidate->global())
+            {
+                // mark cell as being stored elsewhere
+                i = std::numeric_limits<int>::max();
+            }
+            else
+            {
+                i = candidate->local();
+            }
+            entry = ToEntity(i, orientation);
+        }
+    }
+private:
+    const IndexSet& global2Local_;
+};
+
+/// \brief A data handle to send data attached to faces via cell communication
+template<class Handle>
+struct FaceViaCellHandleWrapper
+{
+    using DataType = typename Handle::DataType;
     using C2FTable = OrientedEntityTable<0, 1>;
 
-    F2CViaCellRowSizeHandle(const F2CTable& global,
-                      const C2FTable& c2fGlobal,
-                      const C2FTable& c2f,
-                      std::vector<int>& noEntries)
-        : global_(global), c2fGlobal_(c2fGlobal), c2f_(c2f), noEntries_(noEntries)
+    FaceViaCellHandleWrapper(Handle& handle,
+                             const C2FTable& c2fGlobal,
+                             const C2FTable& c2f)
+        : handle_(handle), c2fGlobal_(c2fGlobal), c2f_(c2f)
     {}
     bool fixedsize(int, int)
     {
@@ -429,7 +489,13 @@ struct F2CViaCellRowSizeHandle
     }
     std::size_t size(const EntityRep<0>& t)
     {
-        return c2f_.rowSize(t);
+        const auto& faces = c2fGlobal_[t];
+        std::size_t size{};
+        for (const auto& face : faces)
+        {
+            size += handle_.size(face);
+        }
+        return size;
     }
     bool contains(std::size_t dim, std::size_t codim)
     {
@@ -446,11 +512,11 @@ struct F2CViaCellRowSizeHandle
         const auto& faces = c2fGlobal_[t];
         for (const auto& face : faces)
         {
-            buffer.write(global_.rowSize(face));
+            handle_.gather(buffer, face);
         }
     }
     template<class B, class T>
-    void scatter(B& buffer, const T& t, std::size_t)
+    void scatter(B&, const T&, std::size_t)
     {
         OPM_THROW(std::logic_error, "Entity with wrong codim. This should never happen!");
     }
@@ -460,13 +526,12 @@ struct F2CViaCellRowSizeHandle
         const auto& faces = c2f_[t];
         for (const auto& face : faces)
         {
-            buffer.read(noEntries_[face.index()]);
+            handle_.gather(buffer, face);
         }
     }
 private:
-    const F2CTable& global_;
+    const Handle& handle_;
     const C2FTable& c2fGlobal_, c2f_;
-    std::vector<int>& noEntries_;
 };
 
 
@@ -758,6 +823,46 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 #endif // #if HAVE_MPI
 
+template<class IndexSet>
+void computeFace2Cell(CpGrid& grid,
+                      const OrientedEntityTable<0, 1>& globalCell2Faces,
+                      const OrientedEntityTable<0, 1>& cell2Faces,
+                      const OrientedEntityTable<1, 0>& globalFace2Cells,
+                      OrientedEntityTable<1, 0>& face2Cells,
+                      IndexSet& global2local)
+{
+    std::vector<int> rowSizes(global2local.size());
+    RowSizeDataHandle<1,0> rowSizeHandle(globalFace2Cells, rowSizes);
+    FaceViaCellHandleWrapper<RowSizeDataHandle<1,0> > wrappedSizeHandle(rowSizeHandle,
+                                                                        globalCell2Faces, cell2Faces);
+    grid.scatterData(wrappedSizeHandle);
+    face2Cells.allocate(rowSizes.begin(), rowSizes.end());
+    // Use entity with index INT_MAX to mark unprocessed row entries
+    for (int row = 0, size = face2Cells.size(); row < size; ++row)
+    {
+        for (auto&& face : face2Cells.row(EntityRep<1>(row, true)))
+        {
+            face = EntityRep<0>(std::numeric_limits<int>::max(), true);
+        }
+    }
+    F2CDataHandle<IndexSet> entryHandle(globalFace2Cells, face2Cells, global2local);
+    FaceViaCellHandleWrapper<F2CDataHandle<IndexSet> > wrappedEntryHandle(entryHandle,
+                                                                          globalCell2Faces, cell2Faces);
+    grid.scatterData(wrappedEntryHandle);
+#ifndef NDEBUG
+    for (int row = 0, size = face2Cells.size(); row < size; ++row)
+    {
+        bool oneValid = false;
+        for (auto&& face : face2Cells.row(EntityRep<1>(row, true)))
+        {
+            oneValid = oneValid || face.index() != std::numeric_limits<int>::max();
+        }
+        assert(oneValid);
+    }
+#endif
+}
+
+
 std::map<int,int> computeCell2Face(CpGrid& grid,
                                     const OrientedEntityTable<0, 1>& globalCell2Faces,
                                     OrientedEntityTable<0, 1>& cell2Faces,
@@ -769,8 +874,8 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
     grid.scatterData(rowSizeHandle);
     cell2Faces.allocate(rowSizes.begin(), rowSizes.end());
     map2Global.reserve((noCells*6)*1.1);
-    OrientedEntityTableDataHandle<0,1> handle(globalCell2Faces, cell2Faces,
-                                 map2Global);
+    C2FDataHandle handle(globalCell2Faces, cell2Faces,
+                         map2Global);
     grid.scatterData(handle);
     // make map2Global a map from local to global
     std::sort(map2Global.begin(),map2Global.end());
@@ -860,6 +965,9 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         computeCell2Face(grid, view_data.cell_to_face_, cell_to_face_,
                          map2GlobalFaceId, cell_indexset_.size());
 
+    computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
+                     view_data.face_to_cell_, face_to_cell_, cell_indexset_);
+
     auto noExistingPoints = map2GlobalPointId.size();
     auto noExistingFaces = map2GlobalFaceId.size();
 
@@ -883,43 +991,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
                    ffunc);
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
-
-    // Calculate the number of nonzeros needed for the face_to_cell sparse matrix
-    // To speed things up, we only use an upper limit here.
-    std::size_t data_size=0;
-    const Opm::SparseTable<EntityRep<0> >& f2c=view_data.face_to_cell_;
-    for(const auto& f: face_indicator)
-        data_size += f2c.rowSize(f.first);
-
-    face_to_cell_.reserve(noExistingFaces, data_size);
-
-    //- face_to cell_ : extract rows that connect to an existent cell
-    std::vector<int> cell_indicator(view_data.cell_to_face_.size(),
-                                    std::numeric_limits<int>::max());
-    for(auto i=cell_indexset_.begin(), end=cell_indexset_.end(); i!=end; ++i)
-        cell_indicator[i->global()]=i->local();
-
-    for(const auto& f: face_indicator)
-    {
-        // face does exist
-        std::vector<EntityRep<0> > new_row;
-        auto old_row = f2c[f.first];
-        new_row.reserve(old_row.size());
-        // push back connected existent cells.
-        // for those cells we use the new cell_indicator and copy the
-        // orientation of the old cell.
-        for(auto cell = old_row.begin(), cend=old_row.end(); cell != cend; ++cell)
-        {
-            // The statement below results in all faces having two neighbours
-            // except for those at the domain boundary.
-            // Note that along the front partition there are invalid neighbours
-            // marked with index std::numeric_limits<int>::max()
-            // Still they inherit the orientation to make CpGrid::faceCell happy
-            new_row.push_back(EntityRep<0>(cell_indicator[cell->index()],
-                                           cell->orientation()));
-        }
-        face_to_cell_.appendRow(new_row.begin(), new_row.end());
-    }
 
     face_to_point_.reserve(noExistingFaces, data_size);
 
