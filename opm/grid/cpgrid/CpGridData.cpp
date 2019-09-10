@@ -242,10 +242,11 @@ struct Cell2PointsDataHandle
     using DataType = int;
     using Vector = std::vector<std::array<int,8> >;
     Cell2PointsDataHandle(const Vector& globalCell2Points,
+                          const GlobalIdSet& globalIds,
                           Vector& localCell2Points,
                           std::vector<int>& flatGlobalPoints)
-        : globalCell2Points_(globalCell2Points), localCell2Points_(localCell2Points),
-          flatGlobalPoints_(flatGlobalPoints)
+        : globalCell2Points_(globalCell2Points), globalIds_(globalIds),
+          localCell2Points_(localCell2Points), flatGlobalPoints_(flatGlobalPoints)
     {}
     bool fixedsize(int, int)
     {
@@ -265,7 +266,7 @@ struct Cell2PointsDataHandle
     {
         auto i = t.index();
         const auto& points = globalCell2Points_[i];
-        std::for_each(points.begin(), points.end(), [&buffer](const int& i){buffer.write(i);});
+        std::for_each(points.begin(), points.end(), [&buffer, this](const int& i){buffer.write(globalIds_.id(EntityRep<3>(i, true)));});
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t )
@@ -280,6 +281,7 @@ struct Cell2PointsDataHandle
     }
 private:
     const Vector& globalCell2Points_;
+    const GlobalIdSet& globalIds_;
     Vector& localCell2Points_;
     std::vector<int>& flatGlobalPoints_;
 };
@@ -346,9 +348,10 @@ struct SparseTableDataHandle
     using DataType = int;
     static constexpr int from = 1;
     SparseTableDataHandle(const Table& global,
+                          const GlobalIdSet& globalIds,
                           Table& local,
                           const std::map<int,int>& global2Local)
-        : global_(global), local_(local), global2Local_(global2Local)
+        : global_(global), globalIds_(globalIds), local_(local), global2Local_(global2Local)
     {}
     bool fixedsize(int, int)
     {
@@ -367,7 +370,7 @@ struct SparseTableDataHandle
     void gather(B& buffer, const T& t)
     {
         const auto& entries = global_[t.index()];
-        std::for_each(entries.begin(), entries.end(), [&buffer](const DataType& i){buffer.write(i);});
+        std::for_each(entries.begin(), entries.end(), [&buffer, this](const DataType& i){buffer.write(globalIds_.id(EntityRep<3>(i, true)));});
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t )
@@ -388,8 +391,9 @@ struct SparseTableDataHandle
         }
         OPM_THROW(std::logic_error, "This should never throw!");
     }
-private:
+    private:
     const Table& global_;
+    const GlobalIdSet& globalIds_;
     Table& local_;
     const std::map<int,int>& global2Local_;
 };
@@ -401,9 +405,9 @@ struct OrientedEntityTableDataHandle
     using Table = OrientedEntityTable<from, to>;
     using ToEntity = typename Table::ToType;
     using FromEntity = typename Table::FromType;
-    OrientedEntityTableDataHandle(const Table& global,
-                                  Table& local)
-        : global_(global), local_(local)
+    OrientedEntityTableDataHandle(const Table& global, Table& local,
+                                  const GlobalIdSet* globalIds = nullptr)
+        : global_(global), local_(local), globalIds_(globalIds)
     {}
     bool fixedsize(int, int)
     {
@@ -432,7 +436,19 @@ struct OrientedEntityTableDataHandle
     void gather(B& buffer, const FromEntity& t)
     {
         const auto& entries = global_.row(t);
-        std::for_each(entries.begin(), entries.end(), [&buffer](const ToEntity& i){buffer.write(i.signedIndex());});
+        if (globalIds_)
+        {
+            std::for_each(entries.begin(), entries.end(),
+                          [&buffer, this](const ToEntity& i){
+                              int id = globalIds_->id(i);
+                              if (!i.orientation())
+                                  id = ~id;
+                              buffer.write(id);});
+        }
+        else
+        {
+            std::for_each(entries.begin(), entries.end(), [&buffer](const ToEntity& i){buffer.write(i.signedIndex());});
+        }
     }
     template<class B, class T>
     void scatter(B&, const T&, std::size_t)
@@ -442,15 +458,16 @@ struct OrientedEntityTableDataHandle
 private:
     const Table& global_;
     Table local_;
+    const GlobalIdSet* globalIds_;
 };
 
 class C2FDataHandle
     : public OrientedEntityTableDataHandle<0,1>
 {
 public:
-    C2FDataHandle(const Table& global, Table& local,
+    C2FDataHandle(const Table& global, const GlobalIdSet& globalIds, Table& local,
                   std::vector<int>& unsignedGlobalFaceIds)
-        : OrientedEntityTableDataHandle<0,1>(global, local),
+        : OrientedEntityTableDataHandle<0,1>(global, local, &globalIds),
           unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
     {}
     template<class B>
@@ -893,6 +910,7 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 void computeFace2Point(CpGrid& grid,
                        const OrientedEntityTable<0, 1>& globalCell2Faces,
+                       const GlobalIdSet& globalIds,
                        const OrientedEntityTable<0, 1>& cell2Faces,
                        const Opm::SparseTable<int>& globalFace2Points,
                        Opm::SparseTable<int>& face2Points,
@@ -916,7 +934,7 @@ void computeFace2Point(CpGrid& grid,
             point = std::numeric_limits<int>::max();
         }
     }
-    SparseTableDataHandle handle(globalFace2Points, face2Points, global2local);
+    SparseTableDataHandle handle(globalFace2Points, globalIds, face2Points, global2local);
     FaceViaCellHandleWrapper<SparseTableDataHandle>
         wrappedHandle(handle, globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedHandle);
@@ -965,6 +983,7 @@ void computeFace2Cell(CpGrid& grid,
 
 std::map<int,int> computeCell2Face(CpGrid& grid,
                                     const OrientedEntityTable<0, 1>& globalCell2Faces,
+                                    const GlobalIdSet& globalIds,
                                     OrientedEntityTable<0, 1>& cell2Faces,
                                     std::vector<int>& map2Global,
                                     std::size_t noCells)
@@ -975,10 +994,10 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
     grid.scatterData(rowSizeHandle);
     cell2Faces.allocate(rowSizes.begin(), rowSizes.end());
     map2Global.reserve((noCells*6)*1.1);
-    C2FDataHandle handle(globalCell2Faces, cell2Faces,
+    C2FDataHandle handle(globalCell2Faces, globalIds, cell2Faces,
                          map2Global);
     grid.scatterData(handle);
-    // make map2Global a map from local to global
+    // make map2Global a map from local index to global id
     std::sort(map2Global.begin(),map2Global.end());
     auto newEnd = std::unique(map2Global.begin(),map2Global.end());
     map2Global.resize(newEnd - map2Global.begin());
@@ -1012,16 +1031,17 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
 
 std::map<int,int> computeCell2Point(CpGrid& grid,
                                     const std::vector<std::array<int,8> >& globalCell2Points,
+                                    const GlobalIdSet& globalIds,
                                     std::vector<std::array<int,8> >& cell2Points,
                                     std::vector<int>& map2Global,
                                     std::size_t noCells)
 {
     cell2Points.resize(noCells);
     map2Global.reserve(noCells*8);
-    Cell2PointsDataHandle handle(globalCell2Points, cell2Points,
+    Cell2PointsDataHandle handle(globalCell2Points, globalIds, cell2Points,
                                  map2Global);
     grid.scatterData(handle);
-    // make map2Global a map from local to global
+    // make map2Global a map from local index to global id
     std::sort(map2Global.begin(),map2Global.end());
     auto newEnd = std::unique(map2Global.begin(),map2Global.end());
     map2Global.resize(newEnd - map2Global.begin());
@@ -1060,40 +1080,33 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     std::vector<int> map2GlobalFaceId;
     std::vector<int> map2GlobalPointId;
     std::map<int,int> point_indicator =
-        computeCell2Point(grid, view_data.cell_to_point_, cell_to_point_,
+        computeCell2Point(grid, view_data.cell_to_point_, *view_data.global_id_set_, cell_to_point_,
                           map2GlobalPointId, cell_indexset_.size());
+
+    // create global ids array for cells. The parallel index set uses the global id
+    // as the global index.
+    std::vector<int> map2GlobalCellId(cell_indexset_.size());
+    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
+        i!=end; ++i)
+    {
+        map2GlobalCellId[i->local()]=i->global();
+    }
+
     std::map<int,int> face_indicator =
-        computeCell2Face(grid, view_data.cell_to_face_, cell_to_face_,
+        computeCell2Face(grid, view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                          map2GlobalFaceId, cell_indexset_.size());
 
     auto noExistingPoints = map2GlobalPointId.size();
     auto noExistingFaces = map2GlobalFaceId.size();
 
+    global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
+
     computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
                      view_data.face_to_cell_, face_to_cell_, cell_indexset_);
-    computeFace2Point(grid,  view_data.cell_to_face_, cell_to_face_,
+    computeFace2Point(grid,  view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                       view_data.face_to_point_, face_to_point_, point_indicator,
                       noExistingFaces);
 
-    std::vector<int> map2GlobalCellId(cell_indexset_.size());
-    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
-    {
-        map2GlobalCellId[i->local()]=view_data.local_id_set_->id(EntityRep<0>(i->global(), true));
-    }
-
-    // Turn local face/point ids into global ones
-    auto func = [&view_data](int i){
-                    return view_data.local_id_set_->id(EntityRep<3>(i, true));
-                };
-    std::transform(map2GlobalPointId.begin(), map2GlobalPointId.end(), map2GlobalPointId.begin(),
-                   func);
-    auto ffunc = [&view_data](int i){
-                    return view_data.local_id_set_->id(EntityRep<1>(i, true));
-                };
-    std::transform(map2GlobalFaceId.begin(), map2GlobalFaceId.end(), map2GlobalFaceId.begin(),
-                   ffunc);
-    global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
