@@ -290,7 +290,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
                     if ( wellEdges.find(otherCell) == wellEdges.end() )
                     {
                         nborGID[idx] = globalID[otherCell];
-                        ewgts[idx++] = graph.transmissibility(face);
+                        ewgts[idx++] = graph.edgeWeight(face);
                     }
                     continue;
                 }
@@ -298,7 +298,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
             if ( wellEdges.find(otherCell) == wellEdges.end() )
             {
                 nborGID[idx] = globalID[otherCell];
-                ewgts[idx++] = graph.transmissibility(face);
+                ewgts[idx++] = graph.edgeWeight(face);
             }
         }
 #ifndef NDEBUG
@@ -331,10 +331,11 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 }
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
-                                             const std::vector<const OpmWellType*> * wells,
+                                             const std::vector<OpmWellType> * wells,
                                              const double* transmissibilities,
-                                             bool pretendEmptyGrid)
-    : grid_(grid), transmissibilities_(transmissibilities)
+                                             bool pretendEmptyGrid,
+                                             EdgeWeightMethod edgeWeightsMethod)
+    : grid_(grid), transmissibilities_(transmissibilities), edgeWeightsMethod_(edgeWeightsMethod)
 {
     if ( pretendEmptyGrid )
     {
@@ -353,6 +354,9 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     well_indices_.init(*wells, cpgdim, cartesian_to_compressed);
     std::vector<int>().swap(cartesian_to_compressed); // free memory.
     addCompletionSetToGraph();
+
+    if (edgeWeightsMethod == logTransEdgeWgt)
+        findMaxMinTrans();
 }
 
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,

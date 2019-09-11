@@ -301,6 +301,9 @@ private:
     void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
 
+    /// \brief The type of the interface map for communication.
+    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
     /// \param data A data handle for getting or setting the data
@@ -309,7 +312,7 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
     void scatterData(DataHandle& data, CpGridData* global_data,
-                  CpGridData* distributed_data);
+                     CpGridData* distributed_data, const InterfaceMap& inf);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
     /// to a distributed representation of the same grid.
@@ -322,9 +325,6 @@ private:
     void scatterCodimData(DataHandle& data, CpGridData* global_data,
                           CpGridData* distributed_data);
 
-    /// \brief The type of the interface map for communication.
-    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
-
     /// \brief Communicates data of a given codimension
     /// \tparam codim The codimension
     /// \tparam DataHandle The type of the data handle describing, gathering,
@@ -334,7 +334,7 @@ private:
     /// \param dir The direction of the communication.
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
-    void communicateCodim(DataHandle& data, CommunicationDirection dir,
+    void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                           const Interface& interface);
 
     /// \brief Communicates data of a given codimension
@@ -346,7 +346,7 @@ private:
     /// \param dir The direction of the communication.
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
-    void communicateCodim(DataHandle& data, CommunicationDirection dir,
+    void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                           const InterfaceMap& interface);
 #endif
     // Representing the topology
@@ -386,8 +386,6 @@ private:
     typedef FieldVector<double, 3> PointType;
     /** @brief The face normals of the grid. */
     cpgrid::SignedEntityVariable<PointType, 1> face_normals_;
-    /** @brief All corners of the grid. */
-    std::vector<PointType> allcorners_; // Yes, this is already stored in the point geometries. \TODO Improve by removing it.
     /** @brief The boundary ids. */
     cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
     /** @brief The index set of the grid (level). */
@@ -448,10 +446,6 @@ private:
     /// \brief Interface from interior and border to interior and border for the faces.
     std::tuple<InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap,InterfaceMap>
     point_interfaces_;
-    /// \brief Interface for gathering and scattering cell data.
-    InterfaceMap cell_gather_scatter_interface;
-    /// \brief Interface for gathering and scattering point data.
-    InterfaceMap point_gather_scatter_interface;
 
 #endif
 
@@ -501,14 +495,14 @@ T& getInterface(InterfaceType iftype,
 } // end unnamed namespace
 
 template<int codim, class DataHandle>
-void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
+void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                                   const Interface& interface)
 {
     this->template communicateCodim<codim>(data, dir, interface.interfaces());
 }
 
 template<int codim, class DataHandle>
-void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
+void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
     if ( interface.empty() )
@@ -518,7 +512,6 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         // VariableSizeCommunicator prior to DUNE 2.4
         return;
     }
-    Entity2IndexDataHandle<DataHandle, codim> data_wrapper(*this, data);
 
 #if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
     VariableSizeCommunicator<> comm(ccobj_, interface);
@@ -541,7 +534,7 @@ void CpGridData::communicateCodim(DataHandle& data, CommunicationDirection dir,
         max_interface_entries = max(max_interface_entries, pair.second.second.size());
 
 #ifndef NDEBUG
-        if ( data.fixedsize(3, codim) )
+        if ( data_wrapper.fixedsize() )
         {
             const auto& interface_send = pair.second.first;
 
@@ -605,9 +598,15 @@ void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
 {
 #if HAVE_MPI
     if(data.contains(3,0))
-        communicateCodim<0>(data, dir, getInterface(iftype, cell_interfaces_));
+    {
+        Entity2IndexDataHandle<DataHandle, 0> data_wrapper(*this, data);
+        communicateCodim<0>(data_wrapper, dir, getInterface(iftype, cell_interfaces_));
+    }
     if(data.contains(3,3))
-        communicateCodim<3>(data, dir, getInterface(iftype, point_interfaces_));
+    {
+        Entity2IndexDataHandle<DataHandle, 3> data_wrapper(*this, data);
+        communicateCodim<3>(data_wrapper, dir, getInterface(iftype, point_interfaces_));
+    }
 #else
     // Suppress warnings for unused arguments.
     (void) data;
@@ -746,13 +745,18 @@ struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 
 template<class DataHandle>
 void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
-                          CpGridData* distributed_data)
+                             CpGridData* distributed_data, const InterfaceMap& inf)
 {
 #if HAVE_MPI
     if(data.contains(3,0))
-       scatterCodimData<0>(data, global_data, distributed_data);
+    {
+        Entity2IndexDataHandle<DataHandle, 0> data_wrapper(*global_data, *distributed_data, data);
+        communicateCodim<0>(data_wrapper, ForwardCommunication, inf);
+    }
     if(data.contains(3,3))
-       scatterCodimData<3>(data, global_data, distributed_data);
+    {
+        scatterCodimData<3>(data, global_data, distributed_data);
+    }
 #endif
 }
 

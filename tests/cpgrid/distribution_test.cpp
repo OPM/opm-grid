@@ -210,7 +210,7 @@ public:
     }
 
     template<class T>
-    std::size_t size(const T& i)
+    std::size_t size(const T& )
     {
         return 6;
         //return sendGrid_.numCellFaces(i);
@@ -457,6 +457,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
 #else
     (void) scatter_handle;
     (void) gather_handle;
+    (void) bid_handle;
 #endif
 }
 

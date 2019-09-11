@@ -57,7 +57,7 @@ namespace Dune
     PolyhedralGridView ( const Grid &grid, const int level = 0 )
     : grid_( &grid )
     {
-      static_cast<const void>(level);
+      static_cast<const void*>(&level);
     }
 
     const Grid &grid () const

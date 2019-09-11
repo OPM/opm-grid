@@ -67,13 +67,14 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
+CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
+    static_cast<void>(method);
 #if HAVE_MPI
     if(distributed_data_)
     {
@@ -87,7 +88,7 @@ CpGrid::scatterGrid(const std::vector<const cpgrid::OpmWellType *> * wells,
     int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
     auto part_and_wells =
-        cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, 0);
+        cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
     int num_parts = cc.size();
     using std::get;
     auto cell_part = std::get<0>(part_and_wells);

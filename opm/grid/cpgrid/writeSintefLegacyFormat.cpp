@@ -62,7 +62,7 @@ namespace Dune
         void writeMap(std::ostream& map,
                       const cpgrid::CpGridData& g);
         void writeVtkVolumes(std::ostream& vtk,
-                             const std::vector<Dune::FieldVector<double, 3> > points,
+                             const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> points,
                              const std::vector<std::array<int, 8> >& cell_to_point);
     } // anon namespace
 
@@ -77,7 +77,7 @@ namespace Dune
             if (!file) {
                 OPM_THROW(std::runtime_error, "Could not open file " << topofilename);
             }
-            writeTopo(file, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, allcorners_.size());
+            writeTopo(file, cell_to_face_, face_to_cell_, face_to_point_, cell_to_point_, size(3));
         }
         std::string geomfilename = grid_prefix + "-geom.dat";
         {
@@ -101,7 +101,7 @@ namespace Dune
             if (!file) {
                 OPM_THROW(std::runtime_error, "Could not open file " << vtkfilename);
             }
-            writeVtkVolumes(file, allcorners_, cell_to_point_);
+            writeVtkVolumes(file, geometry_.geomVector(std::integral_constant<int,3>()), cell_to_point_);
         }
     }
 
@@ -244,7 +244,7 @@ namespace Dune
 
 
         void writeVtkVolumes(std::ostream& vtk,
-                             const std::vector<Dune::FieldVector<double, 3> > points,
+                             const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> points,
                              const std::vector<std::array<int, 8> >& cell_to_point)
         {
             // Header.
@@ -257,8 +257,9 @@ namespace Dune
             // Points.
             vtk.precision(15);
             vtk << "POINTS " << points.size() << " float\n";
-            std::copy(points.begin(), points.end(),
-                      std::ostream_iterator<Dune::FieldVector<double, 3> >(vtk, "\n"));
+            std::transform(points.begin(), points.end(),
+                           std::ostream_iterator<Dune::FieldVector<double, 3> >(vtk, "\n"),
+                           [](const cpgrid::Geometry<0, 3>& g){return g.center();});
 
             // Cell nodes.
             int nc = cell_to_point.size();

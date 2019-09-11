@@ -87,6 +87,10 @@ macro (config_hook)
 	list (APPEND ${project}_CONFIG_IMPL_VARS
 		HAVE_DUNE_GRID_CHECKS
 		)
+	if(NOT ZOLTAN_FOUND AND MPI_C_FOUND)
+		message(SEND_ERROR "opm-grid with MPI support requires the package ZOLTAN."
+			"Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)")
+	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND)
 endmacro (config_hook)
 
 macro (prereqs_hook)
@@ -106,3 +110,11 @@ endmacro (tests_hook)
 
 # all setup common to the OPM library modules is done here
 include (OpmLibMain)
+
+# Additional parallel tests
+if(MPI_FOUND)
+  if(NOT MPIEXEC_EXECUTABLE)
+    set(MPIEXEC_EXECUTABLE ${MPIEXEC})
+  endif()
+  add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
+endif()

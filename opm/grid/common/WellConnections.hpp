@@ -63,7 +63,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    WellConnections(const std::vector<const OpmWellType*>& wells,
+    WellConnections(const std::vector<OpmWellType>& wells,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
@@ -73,7 +73,7 @@ public:
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
-    void init(const std::vector<const OpmWellType*>& wells,
+    void init(const std::vector<OpmWellType>& wells,
               const std::array<int, 3>& cartesianSize,
               const std::vector<int>& cartesian_to_compressed);
 
@@ -119,7 +119,7 @@ private:
 /// \param no_procs The number of processes.
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const std::vector<const OpmWellType*>&  wells,
+                                const std::vector<OpmWellType>&  wells,
                                 const WellConnections& well_connections,
                                 std::size_t no_procs);
 
@@ -132,7 +132,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 ///             information.
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const std::vector<const OpmWellType*>&  wells,
+                        const std::vector<OpmWellType>&  wells,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root);
 #endif

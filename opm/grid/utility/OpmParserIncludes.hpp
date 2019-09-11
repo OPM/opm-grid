@@ -26,11 +26,11 @@
 #include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well/WellConnections.hpp>
-#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
+#include <opm/parser/eclipse/EclipseState/Schedule/Well/Well2.hpp>
 
 namespace Dune {
     namespace cpgrid {
-        typedef Opm::Well OpmWellType;
+        typedef Opm::Well2 OpmWellType;
         typedef Opm::EclipseState OpmEclipseStateType;
     }
 }

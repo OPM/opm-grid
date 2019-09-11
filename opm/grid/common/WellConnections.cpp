@@ -31,14 +31,14 @@ namespace Dune
 {
 namespace cpgrid
 {
-WellConnections::WellConnections(const std::vector<const OpmWellType*>& wells,
+WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
                                  const std::array<int, 3>& cartesianSize,
                                  const std::vector<int>& cartesian_to_compressed)
 {
     init(wells, cartesianSize, cartesian_to_compressed);
 }
 
-void WellConnections::init(const std::vector<const OpmWellType*>& wells,
+void WellConnections::init(const std::vector<OpmWellType>& wells,
                            const std::array<int, 3>& cartesianSize,
                            const std::vector<int>& cartesian_to_compressed)
 {
@@ -49,7 +49,7 @@ void WellConnections::init(const std::vector<const OpmWellType*>& wells,
     int index=0;
     for (const auto well : wells) {
         std::set<int>& well_indices = well_indices_[index];
-        const auto& connectionSet = well->getConnections( );
+        const auto& connectionSet = well.getConnections( );
         for (size_t c=0; c<connectionSet.size(); c++) {
             const auto& connection = connectionSet.get(c);
             int i = connection.getI();
@@ -69,7 +69,7 @@ void WellConnections::init(const std::vector<const OpmWellType*>& wells,
 
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const std::vector<const OpmWellType*>& wells,
+                                const std::vector<OpmWellType>& wells,
                                 const WellConnections& well_connections,
                                 std::size_t no_procs)
 {
@@ -94,7 +94,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // process that already has the most connections on it.
     int well_index = 0;
 
-    for (const auto* well: wells) {
+    for (const auto& well: wells) {
         const auto& connections = well_connections[well_index];
         std::map<int,std::size_t> no_connections_on_proc;
         for ( auto connection_index: connections )
@@ -113,7 +113,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                                 const std::pair<int,std::size_t>& p2){
                                                  return ( p1.second > p2.second );
                                              })->first;
-            std::cout << "Manually moving well " << well->name() << " to partition "
+            std::cout << "Manually moving well " << well.name() << " to partition "
                       << new_owner << std::endl;
 
             for ( auto connection_cell : connections )
@@ -136,7 +136,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 #ifdef HAVE_MPI
 std::unordered_set<std::string>
 computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const std::vector<const OpmWellType*>& wells,
+                        const std::vector<OpmWellType>& wells,
                         const CollectiveCommunication<MPI_Comm>& cc,
                         int root)
 {
@@ -187,7 +187,7 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
     {
         if ( *defunct )
         {
-            defunct_well_names.insert(wells[defunct-defunct_wells.begin()]->name());
+            defunct_well_names.insert(wells[defunct-defunct_wells.begin()].name());
         }
     }
 #endif
