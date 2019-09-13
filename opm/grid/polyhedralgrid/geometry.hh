@@ -9,6 +9,7 @@
 
 #if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
 #include <dune/geometry/type.hh>
+#include <dune/geometry/multilineargeometry.hh>
 #else
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
@@ -41,6 +42,68 @@ namespace Dune
     typedef Dune::FieldVector< ctype, coorddimension > GlobalCoordinate;
     typedef Dune::FieldVector< ctype, mydimension >    LocalCoordinate;
 
+    typedef typename Grid::Traits::ExtraData  ExtraData;
+    typedef typename Grid::Traits::template Codim<codimension>::EntitySeed EntitySeed;
+
+    template< class ct >
+    struct PolyhedralMultiLinearGeometryTraits
+      : public Dune::MultiLinearGeometryTraits< ct >
+    {
+      struct Storage
+      {
+        struct Iterator
+          : public Dune::ForwardIteratorFacade< Iterator, GlobalCoordinate, GlobalCoordinate >
+        {
+          const Storage* data_;
+          int count_;
+          explicit Iterator( const Storage* ptr, int count ) : data_( ptr ), count_( count ) {}
+
+          GlobalCoordinate dereference() const { return data_->corner( count_ ); }
+          void increment() { ++count_; }
+
+          bool equals( const Iterator& other ) const { return count_ == other.count_; }
+        };
+
+        ExtraData  data_;
+        // host geometry object
+        EntitySeed seed_;
+
+        Storage( ExtraData data, EntitySeed seed )
+          : data_( data ), seed_( seed )
+        {}
+
+        Storage( ExtraData data )
+          : data_( data ), seed_()
+        {}
+
+        ExtraData data() const { return data_; }
+        bool isValid () const { return seed_.isValid(); }
+
+        GlobalCoordinate operator [] (const int i) const { return corner( i ); }
+
+        Iterator begin() const { return Iterator(this, 0); }
+        Iterator end ()  const { return Iterator(this, corners()); }
+
+        int corners () const { return data()->corners( seed_ ); }
+        GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
+        GlobalCoordinate center () const { return data()->centroids( seed_ ); }
+
+        ctype volume() const { return data()->volumes( seed_ ); }
+      };
+
+      template <int mdim, int cordim>
+      struct CornerStorage
+      {
+        typedef Storage Type;
+      };
+    };
+
+    typedef Dune::MultiLinearGeometry< ctype, mydimension, coorddimension, PolyhedralMultiLinearGeometryTraits<ctype> >
+      MultiLinearGeometryType;
+
+    typedef typename PolyhedralMultiLinearGeometryTraits< ctype > ::template
+      CornerStorage<mydimension, coorddimension >::Type CornerStorageType;
+
     //! type of jacobian inverse transposed
     typedef FieldMatrix< ctype, cdim, mydim > JacobianInverseTransposed;
 
@@ -54,137 +117,105 @@ namespace Dune
     typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits< ctype > >  MatrixHelperType;
 #endif
 
-    typedef typename Grid::Traits::ExtraData  ExtraData;
-    typedef typename Grid::Traits::template Codim<codimension>::EntitySeed EntitySeed;
-
     explicit PolyhedralGridBasicGeometry ( ExtraData data )
-    : data_( data ),
-      seed_( )
+    : storage_( data )
     {}
 
     PolyhedralGridBasicGeometry ( ExtraData data, const EntitySeed& seed )
-    : data_( data ),
-      seed_( seed )
-    {}
+    : storage_( data, seed )
+    {
+      GeometryType myType = type();
+      if( ! myType.isNone() && storage_.isValid() )
+      {
+        if( myType.isLine() && storage_.corners() != 2 )
+        {
+          std::cout << myType << "  " << storage_.corners() << std::endl;
+          std::abort();
+        }
+
+        //std::cout << myType << "  " << storage_.corners() << std::endl;
+        geometryImpl_.reset( new MultiLinearGeometryType(myType, storage_) );
+      }
+    }
 
     GeometryType type () const { return data()->geomTypes(codimension)[0]; }
-    bool affine () const { return false; }
+    bool affine () const { return (geometryImpl_) ? geometryImpl_->affine() : false; }
 
-    int corners () const { return data()->corners( seed_ ); }
-    GlobalCoordinate corner ( const int i ) const { return data()->corner( seed_, i ); }
-    GlobalCoordinate center () const { return data()->centroids( seed_ ); }
+    int corners () const { return storage_.corners(); }
+    GlobalCoordinate corner ( const int i ) const { return storage_.corner( i ); }
+    GlobalCoordinate center () const { return storage_.center(); }
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
-      const GeometryType geomType = type();
-      if( geomType.isHexahedron() )
+      if( geometryImpl_ )
       {
-        assert( mydimension == 3 );
-        assert( coorddimension == 3 );
-
-        // uvw = { (1-u, 1-v, 1-w), (u, v, w) }
-        LocalCoordinate uvw[2] = { LocalCoordinate(1.0), local };
-        uvw[0] -= local;
-
-        //const ReferenceElement< ctype , mydimension > & refElement =
-        //  ReferenceElements< ctype, mydimension >::general( type() );
-
-        // Access pattern for uvw matching ordering of corners.
-        const int pat[8][3] = { { 0, 0, 0 },
-                                { 1, 0, 0 },
-                                { 0, 1, 0 },
-                                { 1, 1, 0 },
-                                { 0, 0, 1 },
-                                { 1, 0, 1 },
-                                { 0, 1, 1 },
-                                { 1, 1, 1 } };
-
-        const int nCorners = corners();
-        //refElement.size( mydimension );
-
-        GlobalCoordinate xyz(0.0);
-        for (int i = 0; i < nCorners ; ++i)
-        {
-          GlobalCoordinate cornerContrib = corner(i);
-          //LocalCoordinate  refCorner = refElement.position(i,mydimension);
-          double factor = 1.0;
-          for (int j = 0; j < mydimension; ++j)
-          {
-            //factor *= uvw[ refCorner[ j ] ][ j ];
-            factor *= uvw[ pat[ i ][ j ] ][ j ];
-          }
-          cornerContrib *= factor;
-          xyz += cornerContrib;
-        }
-        return xyz;
+        return geometryImpl_->global( local );
       }
-      else if ( geomType.isNone() || geomType.isCube() )
-      {
-        // if no geometry type return the center of the element
-        return center();
-      }
-      else
-      {
-        DUNE_THROW(NotImplemented,"global for geometry type " << geomType << " is not  supported!");
-        return GlobalCoordinate( 0 );
-      }
+
+      return center();
     }
 
     /// Mapping from the cell to the reference domain.
     /// May be slow.
-    LocalCoordinate local(const GlobalCoordinate& y) const
+    LocalCoordinate local(const GlobalCoordinate& global) const
     {
-      const GeometryType geomType = type();
-      if( geomType.isCube() )
+      if( geometryImpl_ )
       {
-        // This code is modified from dune/grid/genericgeometry/mapping.hh
-        // \todo: Implement direct computation.
-        const ctype epsilon = 1e-12;
-        const ReferenceElement< ctype , mydimension > & refElement =
-          ReferenceElements< ctype, mydimension >::general(type());
+        return geometryImpl_->local( global );
+      }
 
-        LocalCoordinate x = refElement.position(0,0);
-        LocalCoordinate dx;
-        do {
-          // DF^n dx^n = F^n, x^{n+1} -= dx^n
-          JacobianTransposed JT = jacobianTransposed(x);
-          GlobalCoordinate z = global(x);
-          z -= y;
-          MatrixHelperType::template xTRightInvA<mydimension,coorddimension>(JT, z, dx );
-          x -= dx;
-        } while (dx.two_norm2() > epsilon*epsilon);
-        return x;
-      }
-      else if ( geomType.isNone() )
-      {
-        // if no geometry type return a vector filled with 1
-        return LocalCoordinate( 1 );
-      }
-      else
-      {
-        DUNE_THROW(NotImplemented,"local for geometry type " << geomType << " is not  supported!");
-        return LocalCoordinate( 0 );
-      }
+      // if no geometry type return a vector filled with 1
+      return LocalCoordinate( 1 );
     }
 
-    ctype integrationElement ( const LocalCoordinate & ) const { return volume(); }
-    ctype volume () const { return data()->volumes( seed_ ); }
+    ctype integrationElement ( const LocalCoordinate &local ) const
+    {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->integrationElement( local );
+      }
+      return volume();
+    }
+
+    ctype volume () const
+    {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->volume();
+      }
+      return storage_.volume();
+    }
 
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    JacobianTransposed jacobianTransposed ( const LocalCoordinate & ) const
+    JacobianTransposed jacobianTransposed ( const LocalCoordinate & local ) const
     {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->jacobianTransposed( local );
+      }
+
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
       return JacobianTransposed( 0 );
     }
 
-    JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate & ) const
+    JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate & local ) const
     {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->jacobianInverseTransposed( local );
+      }
+
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
 #else
     const JacobianTransposed& jacobianTransposed ( const LocalCoordinate &local ) const
     {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->jacobianTransposed( local );
+      }
+
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
       static const JacobianTransposed jac( 0 );
       return jac;
@@ -192,18 +223,22 @@ namespace Dune
 
     const JacobianInverseTransposed& jacobianInverseTransposed ( const LocalCoordinate &local ) const
     {
+      if( geometryImpl_ )
+      {
+        return geometryImpl_->jacobianInverseTransposed( local );
+      }
+
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       static const JacobianInverseTransposed jac( 0 );
       return jac;
     }
 #endif
 
-    ExtraData data() const { return data_; }
+    ExtraData data() const { return storage_.data(); }
 
   protected:
-    ExtraData  data_;
-    // host geometry object
-    EntitySeed seed_;
+    CornerStorageType storage_;
+    std::shared_ptr< MultiLinearGeometryType > geometryImpl_;
   };
 
 

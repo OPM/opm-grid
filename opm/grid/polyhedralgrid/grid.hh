@@ -985,7 +985,8 @@ namespace Dune
           }
         case 1:
           {
-            return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+            //return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+            return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
           }
         case dim:
           {
@@ -1009,7 +1010,7 @@ namespace Dune
           }
         case 1:
           {
-            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i];
+            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i ];
             return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
           }
         case dim:

@@ -8,6 +8,7 @@
 #include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
+#include <dune/grid/test/gridcheck.hh>
 
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
@@ -44,7 +45,7 @@ const char *deckString =
     "4*100.0 /\n";
 
 template <class GridView>
-void testGridIteration( const GridView& gridView )
+void testGridIteration( const GridView& gridView, const int nElem )
 {
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
@@ -103,10 +104,11 @@ void testGridIteration( const GridView& gridView )
         ++ numElem;
     }
 
-    if (numElem != 2*2*2)
-        std::cout << "number of elements is wrong: " << numElem << "\n";
+    if (numElem != nElem )
+        std::cout << "number of elements is wrong: " << numElem << ", expected " << nElem << std::endl;
 }
 
+/*
 template <class Grid>
 void testVerteq(const Grid& grid)
 {
@@ -133,12 +135,13 @@ void testVerteq(const Grid& grid)
     }
     std::cout << "Finished checking vertical equilibirum utility." << std::endl;
 }
+*/
 
 
 template <class Grid>
-void testGrid(Grid& grid, const std::string& name)
+void testGrid(Grid& grid, const std::string& name, const size_t nElem, const size_t nVertices)
 {
-    testVerteq( grid );
+    //testVerteq( grid );
 
     typedef typename Grid::LeafGridView GridView;
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
@@ -152,15 +155,15 @@ void testGrid(Grid& grid, const std::string& name)
 #endif
     std::cout << name << std::endl;
 
-    testGridIteration( grid.leafGridView() );
+    testGridIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
                                               Dune::MCMGVertexLayout> mapper(grid.leafGridView());
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (mapper.size() != 27) {
-        std::cout << "Wrong size of vertex mapper. Expected 27!\n";
+    if (mapper.size() != nVertices ) {
+        std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
         //std::abort();
     }
 
@@ -201,17 +204,20 @@ int main(int argc, char** argv )
     //dgfFile << "#" << std::endl;
 
 #if HAVE_ECL_INPUT
+    /*
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
     std::vector<double> porv;
+    */
 #endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
 #if HAVE_ECL_INPUT
+      /*
       Grid grid(deck, porv);
-      testGrid( grid, "polyhedralgrid" );
+      testGrid( grid, "polyhedralgrid", 8, 27 );
       Opm::TopSurf* ts;
       ts = Opm::TopSurf::create (grid);
       std::cout << ts->dimensions << std::endl;
@@ -223,12 +229,35 @@ int main(int argc, char** argv )
       std::cout << "tsDune for " << std::endl;
       Grid2D tsDune (*ts);
       std::cout << "tsDune after " << std::endl;
-      testGrid ( tsDune, "ts");
-      return 0;
-
+      testGrid ( tsDune, "ts", 27 );
+      */
 #endif
-      Dune::GridPtr< Grid > gridPtr( dgfFile );
-      testGrid( *gridPtr, "polyhedralgrid-dgf" );
+      /*
+      {
+        std::cout <<"Check 3d grid" << std::endl;
+        Dune::GridPtr< Grid > gridPtr( dgfFile );
+        testGrid( *gridPtr, "polyhedralgrid-dgf", std::pow(3, Grid::dimension) );
+      }
+      */
+
+      {
+        std::cout <<"Check 2d grid" << std::endl;
+        std::stringstream dgfFile;
+        // create unit cube with 8 cells in each direction
+        dgfFile << "DGF" << std::endl;
+        dgfFile << "Interval" << std::endl;
+        dgfFile << "0 0" << std::endl;
+        dgfFile << "2 2" << std::endl;
+        dgfFile << "2 2" << std::endl;
+        dgfFile << "#" << std::endl;
+        typedef Dune::PolyhedralGrid< 2, 2 > Grid;
+        Dune::GridPtr< Grid > gridPtr( dgfFile );
+
+        std::cout << "Grididm = " << int(Grid::dimension) << std::endl;
+        size_t nVx = 9; //std::pow(int(3), int(Grid::dimension));
+        testGrid( *gridPtr, "polyhedralgrid-dgf", 4, nVx);
+        gridcheck( *gridPtr );
+      }
     }
 
     /*
