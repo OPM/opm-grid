@@ -100,7 +100,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
   tests/test_minpvprocessor.cpp
-  tests/grid_test.cc
+	#tests/grid_test.cc
   tests/p2pcommunicator_test.cc
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
@@ -132,6 +132,7 @@ list (APPEND TEST_DATA_FILES
 list (APPEND EXAMPLE_SOURCE_FILES
   examples/finitevolume/finitevolume.cc
   examples/mirror_grid.cpp
+	tests/grid_test.cc
   )
 
 # programs listed here will not only be compiled, but also marked for

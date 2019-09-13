@@ -1050,6 +1050,7 @@ namespace Dune
           case 0:
             return 1;
           case 1:
+            //std::cout << "Subent codim 1 " << grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ] << std::endl;
             return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
           case dim:
             return cellVertices_[ index ].size();
