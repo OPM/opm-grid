@@ -44,7 +44,7 @@ EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& input
             updatedACTNUM[global_cell[c]] = 1;
         }
 
-        return Opm::EclipseGrid( inputGrid, grid.zcornData( ) , updatedACTNUM );
+        return Opm::EclipseGrid( inputGrid, grid.zcornData( ).data() , updatedACTNUM );
     } else {
         // This will throw up if the clip_z option has been used in the
         // processEclipseFormat() method to extend the grid in the z
