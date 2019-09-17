@@ -84,6 +84,8 @@ void setupSendInterface(const std::vector<std::tuple<int, int, char> >& list, Du
     for(const auto& entry: list)
     {
         auto index = std::get<0>(entry);
+        assert(oldIndex == std::numeric_limits<int>::max() || index >= oldIndex);
+
         if (index != oldIndex )
         {
             oldIndex = index;

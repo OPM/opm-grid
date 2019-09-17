@@ -439,6 +439,8 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             MPI_Send(sendBuffer.data(), proc->second, MPI_INT, proc->first, tag, cc);
         }
 
+        std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
+
         MPI_Waitall(requests.size(), requests.data(), statuses.data());
         buffer = receiveBuffers.begin();
         auto importOwnerSize = importList.size();
