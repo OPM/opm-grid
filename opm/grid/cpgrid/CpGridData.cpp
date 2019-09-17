@@ -1352,7 +1352,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     }
 
     // Scatter face tags, normals, and boundary ids.
-    bool hasBids = ccobj_.max(view_data.unique_boundary_ids_.size());
+    auto noBids = view_data.unique_boundary_ids_.size();
+    bool hasBids = ccobj_.max(noBids);
     face_tag_.resize(noExistingFaces);
     face_normals_.resize(noExistingFaces);
 
