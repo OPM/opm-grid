@@ -532,9 +532,12 @@ struct Cell2PointsDataHandle
     template<class B, class T>
     void gather(B& buffer, const T& t)
     {
-        auto i = t.index();
+        std::size_t i = t.index();
+        assert(i < globalCell2Points_.size());
         const auto& points = globalCell2Points_[i];
-        std::for_each(points.begin(), points.end(), [&buffer, this](const int& i){buffer.write(globalIds_.id(EntityRep<3>(i, true)));});
+        std::for_each(points.begin(), points.end(),
+                      [&buffer, this](const int& point){
+                          buffer.write(globalIds_.id(EntityRep<3>(point, true)));});
     }
     template<class B, class T>
     void scatter(B& buffer, const T& t, std::size_t )
@@ -542,9 +545,9 @@ struct Cell2PointsDataHandle
         auto i = t.index();
         auto& points = localCell2Points_[i];
         std::for_each(points.begin(), points.end(),
-                      [&buffer, this](int& i){
-                          buffer.read(i);
-                          this->flatGlobalPoints_.push_back(i);
+                      [&buffer, this](int& point){
+                          buffer.read(point);
+                          this->flatGlobalPoints_.push_back(point);
                       });
     }
 private:
@@ -1291,7 +1294,7 @@ std::map<int,int> computeCell2Point(CpGrid& grid,
 
 void CpGridData::distributeGlobalGrid(CpGrid& grid,
                                       const CpGridData& view_data,
-                                      const std::vector<int>& cell_part)
+                                      const std::vector<int>& /* cell_part */)
 {
 #if HAVE_MPI
     // setup the remote indices.

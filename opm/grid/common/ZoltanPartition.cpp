@@ -133,6 +133,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         }
     }
 
+    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
+    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
     // free space allocated for zoltan.
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
