@@ -660,7 +660,6 @@ struct SparseTableDataHandle
             assert(candidate != global2Local_.end());
             point = candidate->second;
         }
-        OPM_THROW(std::logic_error, "This should never throw!");
     }
     private:
     const Table& global_;
@@ -689,7 +688,8 @@ struct OrientedEntityTableDataHandle
         return dim==3 && codim == from;
     }
     template<class T>
-    std::size_t size(const T&)
+    typename std::enable_if<T::codimension != 0, std::size_t>::type
+    size(const T&)
     {
         OPM_THROW(std::logic_error, "This should never throw!");
         return 0;
@@ -699,14 +699,15 @@ struct OrientedEntityTableDataHandle
         return global_.rowSize(t);
     }
     template<class B, class T>
-    void gather(B&, const T&)
+    typename std::enable_if<T::codimension != 0, void>::type
+    gather(B&, const T&)
     {
         OPM_THROW(std::logic_error, "This should never throw!");
     }
     template<class B>
     void gather(B& buffer, const FromEntity& t)
     {
-        const auto& entries = global_.row(t);
+        const auto& entries = global_[t];
         if (globalIds_)
         {
             std::for_each(entries.begin(), entries.end(),
@@ -722,11 +723,12 @@ struct OrientedEntityTableDataHandle
         }
     }
     template<class B, class T>
-    void scatter(B&, const T&, std::size_t)
+    typename std::enable_if<T::codimension != 0, void>::type
+    scatter(B&, const T&, std::size_t)
     {
         OPM_THROW(std::logic_error, "This should never throw!");
     }
-private:
+protected:
     const Table& global_;
     Table local_;
     const GlobalIdSet* globalIds_;
@@ -742,9 +744,9 @@ public:
           unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
     {}
     template<class B>
-    void scatter(B& buffer, const FromEntity& t, std::size_t s)
+    void scatter(B& buffer, const FromEntity& t, std::size_t)
     {
-        auto& entries = local_.row(t);
+        auto entries = local_.row(t);
         int i{};
         for (auto&& entry : entries)
         {
@@ -762,7 +764,8 @@ public:
         }
     }
     template<class B, class T>
-    void scatter(B&, const T&, std::size_t)
+    typename std::enable_if<T::codimension != 0, void>::type
+    scatter(B&, const T&, std::size_t)
     {
         OPM_THROW(std::logic_error, "This should never throw!");
     }
@@ -783,7 +786,7 @@ public:
     template<class B>
     void scatter(B& buffer, const FromEntity& t, std::size_t s)
     {
-        auto& entries = local_.row(t);
+        auto entries = local_.row(t);
         int i{};
         for (auto&& entry : entries)
         {

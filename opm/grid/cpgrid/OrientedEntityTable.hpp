@@ -143,8 +143,8 @@ namespace Dune
             typedef EntityRep<codim_from> FromType;
             typedef EntityRep<codim_to> ToType;
             typedef OrientedEntityRange<codim_to> row_type; // ??? doxygen henter doc fra Opm::SparseTable
-            typedef MutableOrientedEntityRange<codim_to> mutable_row_type;
             typedef Opm::SparseTable<ToType> super_t;
+            typedef typename super_t::mutable_row_type mutable_row_type;
 
             /// Default constructor.
             OrientedEntityTable()
@@ -202,7 +202,7 @@ namespace Dune
             /// @return A row of the table.
             mutable_row_type row(const FromType& e)
             {
-                return mutable_row_type(super_t::operator[](e.index()), e.orientation());
+                return super_t::operator[](e.index());
             }
             /// @brief Elementwise equality.
             /// @param other The other element
