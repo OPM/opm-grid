@@ -238,6 +238,42 @@ int getIndex(T i)
     return i->index();
 }
 
+template<class C>
+struct DefaultContainerHandle
+{
+    using DataType = typename C::value_type;
+
+    DefaultContainerHandle(const C& gather, C& scatter)
+        : gatherCont_(gather), scatterCont_(scatter)
+    {}
+    bool fixedsize(std::size_t, std::size_t)
+    {
+        return true;
+    }
+    bool contains(std::size_t, std::size_t codim)
+    {
+        return codim == 0;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(gatherCont_[t.index()]);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t)
+    {
+        buffer.read(scatterCont_[t.index()]);
+    }
+private:
+    const C& gatherCont_;
+    C& scatterCont_;
+};
+
 /// \brief Handle for face tag, normal and boundary id
 struct FaceTagNormalBIdHandle
 {
@@ -1351,11 +1387,9 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     global_cell_.resize(cell_indexset_.size());
 
-    // Copy the existing cells.
-    for (auto i = cell_indexset_.begin(), end = cell_indexset_.end(); i != end; ++i)
-    {
-        global_cell_[i->local()]=view_data.global_cell_[i->global()];
-    }
+    // communicate global cell
+    DefaultContainerHandle<std::vector<int> > indexHandle(view_data.global_cell_, global_cell_);
+    grid.scatterData(indexHandle);
 
     // Scatter face tags, normals, and boundary ids.
     auto noBids = view_data.unique_boundary_ids_.size();
