@@ -284,11 +284,10 @@ private:
     std::vector<int>& flatGlobalPoints_;
 };
 
-template<int from, int to>
+template<class Table, int from>
 struct RowSizeDataHandle
 {
     using DataType = int;
-    using Table = OrientedEntityTable<from, to>;
     RowSizeDataHandle(const Table& global,
                       std::vector<int>& noEntries)
         : global_(global), noEntries_(noEntries)
@@ -307,9 +306,10 @@ struct RowSizeDataHandle
         return dim==3 && codim == from;
     }
     template<class B, class T>
-    void gather(B&, const T&)
+    typename std::enable_if<T::codimension != from, void>::type
+    gather(B&, const T&)
     {
-        OPM_THROW(std::logic_error, "This should never throw!");
+        OPM_THROW(std::logic_error, "This should never throw. Only available for other codims.");
     }
     template<class B>
     void gather(B& buffer, const EntityRep<from>& t)
@@ -324,6 +324,74 @@ struct RowSizeDataHandle
 private:
     const Table& global_;
     std::vector<int>& noEntries_;
+};
+
+template<int from>
+struct SparseTableEntity
+{
+    SparseTableEntity(const Opm::SparseTable<int>& table)
+        : table_(table)
+    {}
+    int rowSize(const EntityRep<from>& index) const
+    {
+        return table_.rowSize(index.index());
+    }
+private:
+    const Opm::SparseTable<int>& table_;
+};
+
+struct SparseTableDataHandle
+{
+    using Table = Opm::SparseTable<int>;
+    using DataType = int;
+    static constexpr int from = 1;
+    SparseTableDataHandle(const Table& global,
+                          Table& local,
+                          const std::map<int,int>& global2Local)
+        : global_(global), local_(local), global2Local_(global2Local)
+    {}
+    bool fixedsize(int, int)
+    {
+        return false;
+    }
+    bool contains(std::size_t dim, std::size_t codim)
+    {
+        return dim==3 && codim == from;
+    }
+    template<class T>
+    std::size_t size(const T& t)
+    {
+        return global_.rowSize(t.index());
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        const auto& entries = global_[t.index()];
+        std::for_each(entries.begin(), entries.end(), [&buffer](const DataType& i){buffer.write(i);});
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t )
+    {
+        const auto& entries = local_[t.index()];
+        for (auto&& point : entries)
+        {
+            int i{};
+            buffer.read(i);
+            if ( point != std::numeric_limits<int>::max() )
+            {
+                // face already processed
+                continue;
+            }
+            auto candidate = global2Local_.find(i);
+            assert(candidate != global2Local_.end());
+            point = candidate->second;
+        }
+        OPM_THROW(std::logic_error, "This should never throw!");
+    }
+private:
+    const Table& global_;
+    Table& local_;
+    const std::map<int,int>& global2Local_;
 };
 
 template<int from, int to>
@@ -823,6 +891,37 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 #endif // #if HAVE_MPI
 
+void computeFace2Point(CpGrid& grid,
+                       const OrientedEntityTable<0, 1>& globalCell2Faces,
+                       const OrientedEntityTable<0, 1>& cell2Faces,
+                       const Opm::SparseTable<int>& globalFace2Points,
+                       Opm::SparseTable<int>& face2Points,
+                       const std::map<int,int>& global2local,
+                       std::size_t noFaces)
+{
+    std::vector<int> rowSizes(noFaces);
+    using EntityTable = SparseTableEntity<1>;
+    using RowSizeDataHandle = RowSizeDataHandle<EntityTable, 1>;
+    EntityTable wrappedGlobal(globalFace2Points);
+    RowSizeDataHandle rowSizeHandle(wrappedGlobal, rowSizes);
+    FaceViaCellHandleWrapper<RowSizeDataHandle>
+        wrappedSizeHandle(rowSizeHandle, globalCell2Faces, cell2Faces);
+    grid.scatterData(wrappedSizeHandle);
+    face2Points.allocate(rowSizes.begin(), rowSizes.end());
+    // Use entity with index INT_MAX to mark unprocessed row entries
+    for (int row = 0, size = face2Points.size(); row < size; ++row)
+    {
+        for (auto&& point : face2Points[row])
+        {
+            point = std::numeric_limits<int>::max();
+        }
+    }
+    SparseTableDataHandle handle(globalFace2Points, face2Points, global2local);
+    FaceViaCellHandleWrapper<SparseTableDataHandle>
+        wrappedHandle(handle, globalCell2Faces, cell2Faces);
+    grid.scatterData(wrappedHandle);
+}
+
 template<class IndexSet>
 void computeFace2Cell(CpGrid& grid,
                       const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -832,8 +931,9 @@ void computeFace2Cell(CpGrid& grid,
                       IndexSet& global2local)
 {
     std::vector<int> rowSizes(global2local.size());
-    RowSizeDataHandle<1,0> rowSizeHandle(globalFace2Cells, rowSizes);
-    FaceViaCellHandleWrapper<RowSizeDataHandle<1,0> > wrappedSizeHandle(rowSizeHandle,
+    using Table = OrientedEntityTable<1,0>;
+    RowSizeDataHandle<Table,1> rowSizeHandle(globalFace2Cells, rowSizes);
+    FaceViaCellHandleWrapper<RowSizeDataHandle<Table,1> > wrappedSizeHandle(rowSizeHandle,
                                                                         globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedSizeHandle);
     face2Cells.allocate(rowSizes.begin(), rowSizes.end());
@@ -870,7 +970,8 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
                                     std::size_t noCells)
 {
     std::vector<int> rowSizes(noCells);
-    RowSizeDataHandle<0,1> rowSizeHandle(globalCell2Faces, rowSizes);
+    using Table = OrientedEntityTable<0,1>;
+    RowSizeDataHandle<Table,0> rowSizeHandle(globalCell2Faces, rowSizes);
     grid.scatterData(rowSizeHandle);
     cell2Faces.allocate(rowSizes.begin(), rowSizes.end());
     map2Global.reserve((noCells*6)*1.1);
@@ -965,11 +1066,14 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         computeCell2Face(grid, view_data.cell_to_face_, cell_to_face_,
                          map2GlobalFaceId, cell_indexset_.size());
 
-    computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
-                     view_data.face_to_cell_, face_to_cell_, cell_indexset_);
-
     auto noExistingPoints = map2GlobalPointId.size();
     auto noExistingFaces = map2GlobalFaceId.size();
+
+    computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
+                     view_data.face_to_cell_, face_to_cell_, cell_indexset_);
+    computeFace2Point(grid,  view_data.cell_to_face_, cell_to_face_,
+                      view_data.face_to_point_, face_to_point_, point_indicator,
+                      noExistingFaces);
 
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
     for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
@@ -990,23 +1094,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     std::transform(map2GlobalFaceId.begin(), map2GlobalFaceId.end(), map2GlobalFaceId.begin(),
                    ffunc);
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
-
-
-    face_to_point_.reserve(noExistingFaces, data_size);
-
-    //- face_to_point__ : extract row associated with existing faces_
-    for(const auto& f: face_indicator)
-    {
-        // face does exist
-        std::vector<int> new_row;
-        auto old_row = view_data.face_to_point_[f.first];
-        new_row.reserve(old_row.size());
-        for(auto point = old_row.begin(), pend=old_row.end(); point!=pend; ++point)
-        {
-            new_row.push_back(point_indicator[*point]);
-        }
-        face_to_point_.appendRow(new_row.begin(), new_row.end());
-    }
 
     logical_cartesian_size_=view_data.logical_cartesian_size_;
 
