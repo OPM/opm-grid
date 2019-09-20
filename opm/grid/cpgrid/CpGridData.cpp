@@ -109,12 +109,14 @@ CpGridData::~CpGridData()
 
 void CpGridData::populateGlobalCellIndexSet()
 {
+#if HAVE_MPI
     cell_indexset_.beginResize();
     for (int index = 0, end = size(0); index != end ; ++index){
         cell_indexset_.add(global_id_set_->id(EntityRep<0>(index, true)),
                            ParallelIndexSet::LocalIndex(index, AttributeSet::owner, true));
     }
     cell_indexset_.endResize();
+#endif
 }
 
 void CpGridData::computeUniqueBoundaryIds()
@@ -1169,8 +1171,6 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 }
 
-#endif // #if HAVE_MPI
-
 void CpGridData::computeGeometry(CpGrid& grid,
                                  const DefaultGeometryPolicy&  globalGeometry,
                                  const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -1356,6 +1356,7 @@ std::map<int,int> computeCell2Point(CpGrid& grid,
     return map2Local;
 }
 
+#endif // #if HAVE_MPI
 
 void CpGridData::distributeGlobalGrid(CpGrid& grid,
                                       const CpGridData& view_data,
@@ -1540,8 +1541,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 #else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
-    static_cast<void>(cell_part);
-    static_cast<void>(overlap_layers);
 #endif
 }
 
