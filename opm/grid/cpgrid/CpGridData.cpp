@@ -704,7 +704,7 @@ struct SparseTableDataHandle
     const std::map<int,int>& global2Local_;
 };
 
-template<int from, int to>
+template<class IdSet, int from, int to>
 struct OrientedEntityTableDataHandle
 {
     using DataType = int;
@@ -712,7 +712,7 @@ struct OrientedEntityTableDataHandle
     using ToEntity = typename Table::ToType;
     using FromEntity = typename Table::FromType;
     OrientedEntityTableDataHandle(const Table& global, Table& local,
-                                  const GlobalIdSet* globalIds = nullptr)
+                                  const IdSet* globalIds = nullptr)
         : global_(global), local_(local), globalIds_(globalIds)
     {}
     bool fixedsize(int, int)
@@ -766,17 +766,17 @@ struct OrientedEntityTableDataHandle
     }
 protected:
     const Table& global_;
-    Table local_;
-    const GlobalIdSet* globalIds_;
+    Table& local_;
+    const IdSet* globalIds_;
 };
 
 class C2FDataHandle
-    : public OrientedEntityTableDataHandle<0,1>
+    : public OrientedEntityTableDataHandle<GlobalIdSet,0,1>
 {
 public:
     C2FDataHandle(const Table& global, const GlobalIdSet& globalIds, Table& local,
                   std::vector<int>& unsignedGlobalFaceIds)
-        : OrientedEntityTableDataHandle<0,1>(global, local, &globalIds),
+        : OrientedEntityTableDataHandle<GlobalIdSet,0,1>(global, local, &globalIds),
           unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
     {}
     template<class B>
@@ -810,19 +810,42 @@ private:
 };
 
 template<class IndexSet>
+struct IndexSet2IdSet
+{
+    IndexSet2IdSet(const IndexSet& indexSet)
+    {
+        map_.resize(indexSet.size());
+        for (const auto& entry: indexSet)
+            map_[entry.local()] = entry.global();
+    }
+    template<class T>
+    int id(const T& t) const
+    {
+        return map_[t.index()];
+    }
+
+    std::vector<int> map_;
+};
+
+template<class IndexSet>
 class F2CDataHandle
-    : public OrientedEntityTableDataHandle<1,0>
+    : public OrientedEntityTableDataHandle<IndexSet2IdSet<IndexSet>,1,0>
 {
 public:
+    using Table = typename OrientedEntityTableDataHandle<IndexSet2IdSet<IndexSet>,1,0>::Table;
+    using FromEntity = typename OrientedEntityTableDataHandle<IndexSet2IdSet<IndexSet>,1,0>::FromEntity;
+    using ToEntity = typename OrientedEntityTableDataHandle<IndexSet2IdSet<IndexSet>,1,0>::ToEntity;
+
     F2CDataHandle(const Table& global, Table& local,
+                  const IndexSet2IdSet<IndexSet>& gatherLocal2Global,
                   const IndexSet& global2Local)
-        : OrientedEntityTableDataHandle<1,0>(global, local),
+        : OrientedEntityTableDataHandle<IndexSet2IdSet<IndexSet>,1,0>(global, local, &gatherLocal2Global),
           global2Local_(global2Local)
     {}
     template<class B>
-    void scatter(B& buffer, const FromEntity& t, std::size_t s)
+    void scatter(B& buffer, const FromEntity& t, std::size_t )
     {
-        auto entries = local_.row(t);
+        auto entries = this->local_.row(t);
         int i{};
         for (auto&& entry : entries)
         {
@@ -1213,9 +1236,11 @@ void computeFace2Cell(CpGrid& grid,
                       const OrientedEntityTable<0, 1>& cell2Faces,
                       const OrientedEntityTable<1, 0>& globalFace2Cells,
                       OrientedEntityTable<1, 0>& face2Cells,
-                      IndexSet& global2local)
+                      const IndexSet& global2local,
+                      const IndexSet& globalIndexSet,
+                      std::size_t noFaces)
 {
-    std::vector<int> rowSizes(global2local.size());
+    std::vector<int> rowSizes(noFaces);
     using Table = OrientedEntityTable<1,0>;
     RowSizeDataHandle<Table,1> rowSizeHandle(globalFace2Cells, rowSizes);
     FaceViaCellHandleWrapper<RowSizeDataHandle<Table,1> > wrappedSizeHandle(rowSizeHandle,
@@ -1230,7 +1255,8 @@ void computeFace2Cell(CpGrid& grid,
             face = EntityRep<0>(std::numeric_limits<int>::max(), true);
         }
     }
-    F2CDataHandle<IndexSet> entryHandle(globalFace2Cells, face2Cells, global2local);
+    IndexSet2IdSet<IndexSet> local2Global(globalIndexSet);
+    F2CDataHandle<IndexSet> entryHandle(globalFace2Cells, face2Cells, local2Global, global2local);
     FaceViaCellHandleWrapper<F2CDataHandle<IndexSet> > wrappedEntryHandle(entryHandle,
                                                                           globalCell2Faces, cell2Faces);
     grid.scatterData(wrappedEntryHandle);
@@ -1369,7 +1395,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
     computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
-                     view_data.face_to_cell_, face_to_cell_, cell_indexset_);
+                     view_data.face_to_cell_, face_to_cell_, cell_indexset_, view_data.cell_indexset_, noExistingFaces);
     computeFace2Point(grid,  view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                       view_data.face_to_point_, face_to_point_, point_indicator,
                       noExistingFaces);
