@@ -55,6 +55,8 @@
 namespace
 {
 
+#if HAVE_MPI
+
 using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 
 template<typename Tuple, bool first>
@@ -104,6 +106,7 @@ void setupRecvInterface(const std::vector<std::tuple<int, int, char, int> >& lis
         interface[std::get<1>(entry)].second.add(index);
     }
 }
+#endif // HAVE_MPI
 }
 
 namespace Dune
