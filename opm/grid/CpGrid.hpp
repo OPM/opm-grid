@@ -50,7 +50,11 @@
 #include <dune/common/version.hh>
 
 #if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#else
+#include <opm/grid/utility/VariableSizeCommunicator.hpp>
+#endif
 #endif
 
 #include <dune/grid/common/capabilities.hh>
@@ -1236,8 +1240,13 @@ namespace Dune
 #endif
         }
 #if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
         /// \brief The type of the map describing communication interfaces.
-        typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+        using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
+#else
+        /// \brief The type of the map describing communication interfaces.
+        using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
+#endif
 #else
         // bogus definition for the non parallel type. VariableSizeCommunicator not
         // availabe

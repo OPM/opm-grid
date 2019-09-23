@@ -1495,22 +1495,13 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     // are also present on other processes and with what attribute.
     const auto& all_all_cell_interface = std::get<All_All_Interface>(cell_interfaces_);
 
-    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
-    // buffer cannot hold all data that needs to be send.
-    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
-    // For this we calculate an upper barrier of the number of
-    // data items to be send manually and use it to construct a
-    // VariableSizeCommunicator with sufficient buffer.
-    std::size_t max_entries = 0;
-    for (const auto& pair: all_all_cell_interface.interfaces() )
-    {
-        using std::max;
-        max_entries = max(max_entries, pair.second.first.size());
-        max_entries = max(max_entries, pair.second.second.size());
-    }
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     Dune::VariableSizeCommunicator<> comm(all_all_cell_interface.communicator(),
-                                          all_all_cell_interface.interfaces(),
-                                          max_entries*8*sizeof(int));
+                                          all_all_cell_interface.interfaces());
+#else
+    Opm::VariableSizeCommunicator<> comm(all_all_cell_interface.communicator(),
+                                         all_all_cell_interface.interfaces());
+#endif
     /*
       // code deactivated, because users cannot access face indices and therefore
       // communication on faces makes no sense!
