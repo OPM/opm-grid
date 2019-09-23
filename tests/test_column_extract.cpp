@@ -133,7 +133,7 @@ BOOST_AUTO_TEST_CASE(DisjointColumn)
     std::vector<int> actnum;
     for (size_t i = 1; i <= (3 * 3 * 3); i++)
         actnum.push_back(i != 14); // ACTNUM 13*1 0 13* 1
-    ep.resetACTNUM(actnum.data());
+    ep.resetACTNUM(actnum);
     Opm::GridManager manager(ep);
 
     VVI columns;

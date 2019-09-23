@@ -133,19 +133,15 @@ namespace Opm
                                           const std::vector<double>& poreVolumes)
     {
         struct grdecl g;
-        std::vector<int> actnum;
-        std::vector<double> coord;
-        std::vector<double> zcorn;
-        std::vector<double> mapaxes;
 
         g.dims[0] = inputGrid.getNX();
         g.dims[1] = inputGrid.getNY();
         g.dims[2] = inputGrid.getNZ();
 
-        inputGrid.exportMAPAXES( mapaxes );
-        inputGrid.exportCOORD( coord );
-        inputGrid.exportZCORN( zcorn );
-        inputGrid.exportACTNUM( actnum );
+        std::vector<double> mapaxes = inputGrid.getMAPAXES( );
+        std::vector<double> coord = inputGrid.getCOORD( );
+        std::vector<double> zcorn = inputGrid.getZCORN( );
+        std::vector<int> actnum = inputGrid.getACTNUM(  );
 
         g.coord = coord.data();
         g.zcorn = zcorn.data();
@@ -158,7 +154,7 @@ namespace Opm
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
-                thickness[i] = inputGrid.getCellThicknes(i);
+                thickness[i] = inputGrid.getCellThickness(i);
             }
 
             // The legacy code only supports the opmfil option
