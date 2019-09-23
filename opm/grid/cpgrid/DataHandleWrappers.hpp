@@ -34,6 +34,7 @@
 
 #include <array>
 #include <vector>
+#include <iostream>
 
 #include "OrientedEntityTable.hpp"
 #include "EntityRep.hpp"
@@ -52,6 +53,8 @@ namespace cpgrid
 ///
 /// \tparam Handle The type of the data handle to wrap. It must gather and scatter
 ///         only for codim-1 entities.
+/// \warning The wrapped data handle must not used the last argument of
+/// its' scatter method since this numer will be incorrect in most cases!
 template<class Handle>
 struct FaceViaCellHandleWrapper
 {
@@ -115,17 +118,37 @@ struct FaceViaCellHandleWrapper
         OPM_THROW(std::logic_error, "This should never throw! We can only gather cell values and indicate that");
     }
     template<class B>
-    void scatter(B& buffer, const EntityRep<0>& t, std::size_t s)
+    void scatter(B& buffer, const EntityRep<0>& t, std::size_t)
     {
         const auto& faces = c2f_[t];
         for (const auto& face : faces)
         {
-            handle_.scatter(buffer, face, s);
+            // Note that the size (last parameter) is not correct here.
+            // Therefore this handle needs to know how many data items
+            // to expect. Not usable outside of CpGrid.
+            handle_.scatter(buffer, face, 1);
         }
     }
 private:
     Handle& handle_;
     const C2FTable& c2fGather_, c2f_;
+};
+
+struct PointViaCellWarner
+{
+    static bool printWarn;
+    void warn()
+    {
+        if (printWarn)
+        {
+            std::cerr << "Communication of variable data attached to points is "
+                      << "not fully supported. Your code/hanlde must not use the"
+                      << "last parameter of "
+                      << "DataHandle::scatter(B& buffer, E& entity, int size) "
+                      << "as it will not be correct!";
+            printWarn =false;
+        }
+    }
 };
 
 /// \brief A data handle to send data attached to points via cell communication
@@ -138,7 +161,7 @@ private:
 /// \tparam Handle The type of the data handle to wrap. It must gather and scatter
 ///         only for codim-3 entities.
 template<class Handle>
-struct PointViaCellHandleWrapper
+struct PointViaCellHandleWrapper : public PointViaCellWarner
 {
     using DataType = typename Handle::DataType;
     using C2PTable = std::vector< std::array<int,8> >;
@@ -153,9 +176,13 @@ struct PointViaCellHandleWrapper
                              const C2PTable& c2p)
         : handle_(handle), c2pGather_(c2pGather), c2p_(c2p)
     {}
-    bool fixedsize(int, int)
+    bool fixedsize(int i, int j)
     {
-        return false; // as the faces per cell differ
+        if( ! handle_.fixedsize(i, j))
+        {
+            this->warn();
+        }
+        return handle_.fixedsize(i, j);
     }
     template<class T>
     typename std::enable_if<T::codimension != 0, std::size_t>::type
@@ -205,7 +232,7 @@ struct PointViaCellHandleWrapper
         const auto& points = c2p_[t.index()];
         for (const auto& point : points)
         {
-            handle_.scatter(buffer, EntityRep<3>(point, true), s);
+            handle_.scatter(buffer, EntityRep<3>(point, true), s/8);
         }
     }
 private:
