@@ -216,6 +216,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp
+  opm/grid/utility/VariableSizeCommunicator.hpp
   opm/grid/utility/VelocityInterpolation.hpp
   opm/grid/utility/WachspressCoord.hpp
   opm/grid/utility/ErrorMacros.hpp

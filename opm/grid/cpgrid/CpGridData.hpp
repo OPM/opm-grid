@@ -60,7 +60,11 @@
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#else
+#include <opm/grid/utility/VariableSizeCommunicator.hpp>
+#endif
 #include <dune/grid/common/gridenums.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -304,8 +308,14 @@ private:
     void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
 
-    /// \brief The type of the interface map for communication.
-    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    /// \brief The type of the map describing communication interfaces.
+    using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
+#else
+    /// \brief The type of the map describing communication interfaces.
+    using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
+#endif
+
 
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
@@ -518,86 +528,11 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-    if ( interface.empty() )
-    {
-        // The communication interface is empty, do nothing.
-        // Otherwise we will produce a memory error in
-        // VariableSizeCommunicator prior to DUNE 2.4
-        return;
-    }
-
-#if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     VariableSizeCommunicator<> comm(ccobj_, interface);
 #else
-    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
-    // buffer cannot hold all data that needs to be send.
-    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
-    // For this we calculate an upper barrier of the number of
-    // data items to be send manually and use it to construct a
-    // VariableSizeCommunicator with sufficient buffer.
-    std::size_t max_interface_entries = 0;
-#ifndef NDEBUG
-    std::size_t max_items = 0;
+    Opm::VariableSizeCommunicator<> comm(ccobj_, interface);
 #endif
-
-    for (const auto& pair: interface )
-    {
-        using std::max;
-        max_interface_entries = max(max_interface_entries, pair.second.first.size());
-        max_interface_entries = max(max_interface_entries, pair.second.second.size());
-
-#ifndef NDEBUG
-        if ( data_wrapper.fixedsize() )
-        {
-            const auto& interface_send = pair.second.first;
-
-            if ( interface_send.size() )
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_send[0]));
-            }
-
-            const auto& interface_recv = pair.second.second;
-
-            if ( interface_recv.size() )
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_recv[0]));
-            }
-        }
-        else
-        {
-            const auto& interface_send = pair.second.first;
-
-            for ( std::size_t i = 0, end = interface_send.size(); i < end; ++i)
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_send[i]));
-            }
-
-            const auto& interface_recv = pair.second.second;
-
-            for ( std::size_t i = 0, end = interface_recv.size(); i < end; ++i)
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_recv[i]));
-            }
-        }
-#endif
-    }
-
-#ifndef NDEBUG
-    max_items = ccobj_.max(max_items);
-
-    if ( max_items > MAX_DATA_PER_CELL)
-    {
-        OPM_THROW(std::logic_error,
-                  "You triggered a bug in the communication of DUNE"
-                   << " as you tried to send more than " << MAX_DATA_PER_CELL
-                   << " values per cell/point. Please define MAX_DATA_COMMUNICATED_PER_ENTITY"
-                   << " to a high enough value when compiling.");
-    }
-#endif
-    VariableSizeCommunicator<> comm(ccobj_, interface,
-                                    max_interface_entries * MAX_DATA_PER_CELL);
-#endif
-
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
     else
