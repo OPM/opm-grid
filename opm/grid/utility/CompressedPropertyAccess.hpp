@@ -333,7 +333,7 @@ namespace Opm {
                 operator[](const size_type i) const
                 {
                     if (x_) {
-                        return x_->iget(i);
+                        return x_->getData()[i];
                     }
                     else {
                         return dflt_;
