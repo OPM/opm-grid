@@ -173,57 +173,6 @@ namespace Opm
 
     }
 
-
-    void GridManager::createGrdecl(const Opm::Deck& deck, struct grdecl &grdecl)
-    {
-        // Extract data from deck.
-        const std::vector<double>& zcorn = deck.getKeyword("ZCORN").getSIDoubleData();
-        const std::vector<double>& coord = deck.getKeyword("COORD").getSIDoubleData();
-        const int* actnum = NULL;
-        if (deck.hasKeyword("ACTNUM")) {
-            actnum = &(deck.getKeyword("ACTNUM").getIntData()[0]);
-        }
-
-        std::array<int, 3> dims;
-        if (deck.hasKeyword("DIMENS")) {
-            const auto& dimensKeyword = deck.getKeyword("DIMENS");
-            dims[0] = dimensKeyword.getRecord(0).getItem(0).get< int >(0);
-            dims[1] = dimensKeyword.getRecord(0).getItem(1).get< int >(0);
-            dims[2] = dimensKeyword.getRecord(0).getItem(2).get< int >(0);
-        } else if (deck.hasKeyword("SPECGRID")) {
-            const auto& specgridKeyword = deck.getKeyword("SPECGRID");
-            dims[0] = specgridKeyword.getRecord(0).getItem(0).get< int >(0);
-            dims[1] = specgridKeyword.getRecord(0).getItem(1).get< int >(0);
-            dims[2] = specgridKeyword.getRecord(0).getItem(2).get< int >(0);
-        } else {
-            OPM_THROW(std::runtime_error, "Deck must have either DIMENS or SPECGRID.");
-        }
-
-        // Collect in input struct for preprocessing.
-
-        grdecl.zcorn = &zcorn[0];
-        grdecl.coord = &coord[0];
-        grdecl.actnum = actnum;
-        grdecl.dims[0] = dims[0];
-        grdecl.dims[1] = dims[1];
-        grdecl.dims[2] = dims[2];
-
-        if (deck.hasKeyword("MAPAXES")) {
-            const auto& mapaxesKeyword = deck.getKeyword("MAPAXES");
-            const auto& mapaxesRecord = mapaxesKeyword.getRecord(0);
-
-            // memleak alert: here we need to make sure that C code
-            // can properly take ownership of the grdecl.mapaxes
-            // object. if it is not freed, it will result in a
-            // memleak...
-            double *cWtfMapaxes = static_cast<double*>(malloc(sizeof(double)*mapaxesRecord.size()));
-            for (unsigned i = 0; i < mapaxesRecord.size(); ++i)
-                cWtfMapaxes[i] = mapaxesRecord.getItem(i).getSIDouble(0);
-            grdecl.mapaxes = cWtfMapaxes;
-        } else
-            grdecl.mapaxes = NULL;
-
-    }
 #endif
 
 
