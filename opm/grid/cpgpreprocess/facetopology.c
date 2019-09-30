@@ -47,7 +47,9 @@
 #define MIN(i,j) ((i)<(j) ? (i) : (j))
 #define MAX(i,j) ((i)>(j) ? (i) : (j))
 
-#define DEBUG 1
+#if defined(DEBUGBUILD)
+#define SELF_DEBUG 1
+#endif
 
 /*------------------------------------------------------*/
 /*                                                      */
@@ -78,7 +80,7 @@ computeFaceTopology(const int *a1, const int *a2,
     if (a2[0] > b2[0]){ mask[4] = a2[0]; } else { mask[4] = b2[0]; }
     if (a1[0] > b1[0]){ mask[6] = a1[0]; } else { mask[6] = b1[0]; }
 
-#if DEBUG
+#if SELF_DEBUG
     /* Illegal situations */
     if (mask [0] == mask[2] ||
         mask [0] == mask[4] ||
@@ -145,7 +147,7 @@ computeFaceTopology(const int *a1, const int *a2,
         }
     }
 
-#if DEBUG>1
+#if SELF_DEBUG>1
     /* Check for repeated nodes:*/
     int i;
     fprintf(stderr, "face: ");

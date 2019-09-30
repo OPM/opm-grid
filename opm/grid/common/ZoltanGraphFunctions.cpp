@@ -221,7 +221,7 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     {
         nborProc[i] = myrank;
     }
-#if defined(DEBUG) && false // The index set will not be initialized here!
+#if defined(DEBUGBUILD) && false // The index set will not be initialized here!
     // The above relies heavily on the grid not being distributed already.
     // Therefore we check here that all cells are owned by us.
     GlobalLookupIndexSet<Dune::CpGrid::ParallelIndexSet>
@@ -313,7 +313,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
     {
         nborProc[i] = myrank;
     }
-#if defined(DEBUG) && false // The index set will not be initialized here!
+#if defined(DEBUGBUILD) && false // The index set will not be initialized here!
     // The above relies heavily on the grid not being distributed already.
     // Therefore we check here that all cells are owned by us.
     GlobalLookupIndexSet<Dune::CpGrid::ParallelIndexSet>
