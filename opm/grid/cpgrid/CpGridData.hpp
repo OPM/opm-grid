@@ -137,12 +137,12 @@ public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
-#if HAVE_MPI
+
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
-    CpGridData(MPI_Comm comm);
-#endif
+    explicit CpGridData(MPIHelper::MPICommunicator comm);
+
     /// Constructor
     CpGridData();
     /// Destructor

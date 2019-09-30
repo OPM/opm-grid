@@ -248,6 +248,8 @@ namespace Dune
         /// Default constructor
         CpGrid();
 
+        CpGrid(MPIHelper::MPICommunicator comm);
+
         /// \name IO routines
         //@{
         /// Read the Sintef legacy grid format ('topogeom').
