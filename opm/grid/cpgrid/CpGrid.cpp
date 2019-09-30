@@ -228,6 +228,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         }
 
         distributed_data_.reset(new cpgrid::CpGridData(cc));
+        distributed_data_->setUniqueBoundaryIds(data_->uniqueBoundaryIds());
+        // Just to be sure we assume that only master knows
+        cc.broadcast(&distributed_data_->use_unique_boundary_ids_, 1, 0);
+
         // Create indexset
         distributed_data_->cell_indexset_.beginResize();
         for(const auto& entry: importList)
