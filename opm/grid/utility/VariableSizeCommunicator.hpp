@@ -85,6 +85,7 @@ public:
    */
   void write(const T& data)
   {
+    assert(position_<size_);
     buffer_[position_++]=data;
   }
 
@@ -94,6 +95,7 @@ public:
    */
   void read(T& data)
   {
+    assert(position_<size_);
     data=buffer_[position_++];
   }
 
@@ -132,6 +134,10 @@ public:
   std::size_t size() const
   {
     return size_;
+  }
+  std::size_t position() const
+  {
+    return position_;
   }
   /**
    * @brief Converts the buffer to a C array.
@@ -670,8 +676,11 @@ struct PackEntries
       while(!tracker.finished())
         if(buffer.hasSpaceForItems(handle.size(tracker.index())))
         {
+          assert(std::size_t(packed) == buffer.position());
           handle.gather(buffer, tracker.index());
           packed+=handle.size(tracker.index());
+          assert(std::size_t(packed) <= buffer.size());
+          assert(std::size_t(packed) == buffer.position());
           tracker.moveToNextIndex();
         }
         else
@@ -810,8 +819,11 @@ struct SetupSendRequest{
     while(!tracker.finished() &&  !handle.size(tracker.index()))
       tracker.moveToNextIndex();
     if(size)
+    {
+      assert(std::size_t(size) <= buffer.size());
       MPI_Issend(buffer, size, Dune::MPITraits<typename DataHandle::DataType>::getType(),
                  tracker.rank(), 933399, comm, &request);
+    }
   }
 };
 
