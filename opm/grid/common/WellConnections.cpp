@@ -105,9 +105,9 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 {
     auto no_procs = cc.size();
     auto noCells = parts.size();
+    const auto& mpiType =  MPITraits<std::size_t>::getType();
     std::vector<std::size_t> cellsPerProc(no_procs);
-    auto mpiType =  MPITraits<std::size_t>::getType();
-    MPI_Alltoall(&noCells, 1, mpiType, cellsPerProc.data(), 1, mpiType, cc);
+    cc.allgather(&noCells, 1, cellsPerProc.data());
 
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
@@ -205,35 +205,35 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     auto noSource = std::count_if(cellsPerProc.begin(), cellsPerProc.end(),
                                   [](const std::size_t &i) { return i > 0; }) -
         (parts.size() > 0);
-    std::vector<MPI_Request> requests(noSource);
-    std::vector<std::vector<int>> sizeBuffers(cc.size());
+    std::vector<MPI_Request> requests(noSource, MPI_REQUEST_NULL);
+    std::vector<std::vector<std::size_t>> sizeBuffers(cc.size());
     auto begin = cellsPerProc.begin();
     auto req = requests.begin();
     int tag = 782372873;
-    auto rank = cc.rank();
+    auto myRank = cc.rank();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
-        auto rank = it - begin;
-        if (it - begin != rank) {
-            sizeBuffers[rank].resize(2);
-            MPI_Irecv(sizeBuffers[rank].data(), 2, mpiType, rank, tag, cc, &(*req));
+        auto otherRank = it - begin;
+        if (otherRank != myRank && *it > 0 ) {
+            sizeBuffers[otherRank].resize(2);
+            MPI_Irecv(sizeBuffers[otherRank].data(), 2, mpiType, otherRank, tag, cc, &(*req));
             ++req;
         }
     }
 
     // Send the sizes
     if (parts.size()) {
-        for (int i = 0; i < cc.size(); ++i)
-            if (i != rank) {
-                int sizes[2] = {0, 0};
-                auto candidate = addCells.find(rank);
+        for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
+            if (otherRank != myRank) {
+                std::size_t sizes[2] = {0, 0};
+                auto candidate = addCells.find(myRank);
                 if (candidate != addCells.end())
                     sizes[0] = candidate->second.size();
 
-                candidate = removeCells.find(rank);
+                candidate = removeCells.find(myRank);
                 if (candidate != removeCells.end())
                     sizes[1] = candidate->second.size();
-                MPI_Send(sizes, 2, MPI_INT, rank, tag, cc);
+                MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
             }
     }
     std::vector<MPI_Status> statuses(requests.size());
@@ -241,20 +241,20 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
     auto messages = std::count_if(
                                   sizeBuffers.begin(), sizeBuffers.end(),
-                                  [](const std::vector<int> &v) { return v.size() ? v[0] + v[1] : 0; });
+                                  [](const std::vector<std::size_t> &v) { return v.size() ? v[0] + v[1] : 0; });
     requests.resize(messages);
     ++tag;
 
     req = requests.begin();
-    std::vector<std::vector<int>> cellIndexBuffers;
+    std::vector<std::vector<std::size_t>> cellIndexBuffers; // receive buffers for indices of each rank.
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
-        auto rank = it - begin;
-        const auto &buffer = sizeBuffers[rank];
-        if (buffer.size() && (buffer[0] + buffer[1])) {
-            auto &cellIndexBuffer = cellIndexBuffers[rank];
+        auto otherRank = it - begin;
+        const auto &buffer = sizeBuffers[otherRank];
+        if ( otherRank != myRank && buffer.size() && (buffer[0] + buffer[1])) {
+            auto &cellIndexBuffer = cellIndexBuffers[otherRank];
             cellIndexBuffer.resize(buffer[0] + buffer[1]);
-            MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, rank, tag, cc,
+            MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, otherRank, tag, cc,
                       &(*req));
             ++req;
         }
@@ -262,21 +262,21 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
     // Send data if we have cells.
     if (parts.size()) {
-        for (int i = 0; i < cc.size(); ++i)
-            if (i != rank) {
+        for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
+            if (otherRank != myRank) {
                 std::vector<std::size_t> buffer;
-                auto candidate = addCells.find(rank);
+                auto candidate = addCells.find(otherRank);
                 if (candidate != addCells.end())
                     buffer.insert(buffer.end(), candidate->second.begin(),
                                   candidate->second.end());
 
-                candidate = removeCells.find(rank);
+                candidate = removeCells.find(otherRank);
                 if (candidate != removeCells.end())
                     buffer.insert(buffer.end(), candidate->second.begin(),
                                   candidate->second.end());
 
                 if (buffer.size()) {
-                    MPI_Send(buffer.data(), buffer.size(), MPI_INT, rank, tag, cc);
+                    MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
                 }
             }
     }
@@ -285,17 +285,17 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
 
     // unpack data
-    rank = 0;
+    int otherRank = 0;
     for (const auto &cellIndexBuffer : cellIndexBuffers) {
         if (cellIndexBuffer.size()) {
             // add cells that moved here
-            auto noAdded = sizeBuffers[rank][0];
+            auto noAdded = sizeBuffers[otherRank][0];
             importList.reserve(importList.size() + noAdded);
             auto middle = importList.end();
             std::vector<std::tuple<int, int, char>> addToImport;
-            int offset = 0;
+            std::size_t offset = 0;
             for (; offset != noAdded; ++offset)
-                importList.emplace_back(cellIndexBuffer[offset], rank,
+                importList.emplace_back(cellIndexBuffer[offset], otherRank,
                                         AttributeSet::owner, -1);
             auto compare = [](const std::tuple<int, int, char, int> &t1,
                               const std::tuple<int, int, char, int> &t2) {
@@ -305,7 +305,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                compare);
 
             // remove cells that moved to another process
-            auto noRemoved = sizeBuffers[rank][1];
+            auto noRemoved = sizeBuffers[otherRank][1];
             if (noRemoved) {
                 std::vector<std::tuple<int, int, char, int>> tmp(importList.size());
                 auto newEnd =
@@ -316,7 +316,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 importList.swap(tmp);
             }
         }
-        ++rank;
+        ++otherRank;
     }
 #endif
 
@@ -368,7 +368,7 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
         }
         MPI_Bcast(&wellMessageSize, 1, MPI_INT, root, cc);
         // 2. Send number of wells and their names in one message
-        globalWellNames.resize(wells.size());
+        globalWellNames.reserve(wells.size());
         std::vector<char> buffer(wellMessageSize);
         int pos = 0;
         MPI_Pack(&sizes, 2, MPITraits<std::size_t>::getType(), buffer.data(), wellMessageSize, &pos, cc);
@@ -392,10 +392,10 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
 
         // 1. receive broadcasted message Size
         int wellMessageSize;
-        MPI_Bcast(&wellMessageSize, 1, MPI_PACKED, root, cc);
+        MPI_Bcast(&wellMessageSize, 1, MPI_INT, root, cc);
 
         // 2. Receive number of wells and their names in one message
-        globalWellNames.resize(wells.size());
+        globalWellNames.reserve(wells.size());
         std::vector<char> buffer(wellMessageSize);
         MPI_Bcast(buffer.data(), wellMessageSize, MPI_PACKED, root, cc);
         std::size_t sizes[2];
