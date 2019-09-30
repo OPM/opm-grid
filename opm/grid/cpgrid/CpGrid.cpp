@@ -121,6 +121,13 @@ namespace Dune
     {}
 
 
+    CpGrid::CpGrid(MPIHelper::MPICommunicator  comm)
+        : data_( new cpgrid::CpGridData(comm)),
+          current_view_data_(data_.get()),
+          distributed_data_(),
+          cell_scatter_gather_interfaces_(new InterfaceMap),
+          point_scatter_gather_interfaces_(new InterfaceMap)
+    {}
 
 
 

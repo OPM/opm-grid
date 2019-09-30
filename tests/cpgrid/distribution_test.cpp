@@ -286,6 +286,92 @@ public:
         return dim==3 && (codim<=1 || codim==3);
     }
 };
+BOOST_AUTO_TEST_CASE(compareWithSequential)
+{
+#if HAVE_MPI
+    Dune::CpGrid grid;
+    Dune::CpGrid seqGrid(MPI_COMM_SELF);
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+    seqGrid.setUniqueBoundaryIds(true);
+    grid.createCartesian(dims, size);
+    grid.loadBalance();
+    seqGrid.createCartesian(dims, size);
+
+    auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
+
+    using GridView = Dune::CpGrid::LeafGridView;
+    using ElementIterator = GridView::Codim<0>::Iterator;
+    GridView gridView(grid.leafGridView());
+    GridView seqGridView(seqGrid.leafGridView());
+
+    ElementIterator endEIt = gridView.end<0>();
+    ElementIterator seqEndEIt = seqGridView.end<0>();
+    ElementIterator seqEIt = seqGridView.begin<0>();
+    int i{}, seqI{};
+
+    for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
+        // find corresponding cell in global grid
+        auto id = idSet.id(*eIt);
+        while (seqIdSet.id(*seqEIt) < id && seqEIt != seqEndEIt)
+        {
+            ++seqI;
+            ++seqEIt;
+        }
+        assert(id == seqIdSet.id(seqEIt));
+        const auto& geom = eIt->geometry();
+        const auto& seqGeom = seqEIt-> geometry();
+        BOOST_REQUIRE(geom.center() == seqGeom.center());
+        BOOST_REQUIRE(geom.volume() == seqGeom.volume());
+
+        int ii{};
+
+        for (auto iit=gridView.ibegin(*eIt), siit = seqGridView.ibegin(*seqEIt),
+                 endiit = gridView.iend(*eIt); iit!=endiit; ++iit, ++siit, ++ii)
+            {
+                if (iit.boundary())
+                {
+                    BOOST_REQUIRE(iit.boundarySegmentIndex() == siit.boundarySegmentIndex());
+                    BOOST_REQUIRE(iit.boundaryId() == siit.boundaryId());
+                }
+                BOOST_REQUIRE(iit->geometry().center() == siit->geometry().center());
+                BOOST_REQUIRE(iit->geometry().volume() == siit->geometry().volume());
+                BOOST_REQUIRE(iit.boundary() == siit.boundary());
+                BOOST_REQUIRE(iit.outerNormal({0, 0}) == siit.outerNormal({0, 0}));
+                BOOST_REQUIRE(idSet.id(*iit.inside()) == seqIdSet.id(*siit.inside()));
+                if (iit->neighbor())
+                {
+                    assert(siit->neighbor());
+                    BOOST_REQUIRE(idSet.id(*iit.outside()) == seqIdSet.id(*siit.outside()));
+                }
+            }
+
+        // to reach all points we need to loop over subentities
+        int faces = grid.numCellFaces(eIt->index());
+        BOOST_REQUIRE(faces == seqGrid.numCellFaces(seqEIt.index()));
+        for (int f = 0; f < faces; ++f)
+        {
+            using namespace Dune::cpgrid;
+            auto face = grid.cellFace(eIt->index(), f);
+            auto seqFace = seqGrid.cellFace(seqEIt->index(), f);
+            BOOST_REQUIRE(idSet.id(EntityRep<1>(face, true)) ==
+                          seqIdSet.id(EntityRep<1>(seqFace, true)));
+            int vertices = grid.numFaceVertices(face);
+            BOOST_REQUIRE(vertices == seqGrid.numFaceVertices(seqFace));
+            for (int v = 0; v < vertices; ++v)
+            {
+                auto vertex = grid.faceVertex(face, v);
+                auto seqVertex = seqGrid.faceVertex(seqFace, v);
+                BOOST_REQUIRE(idSet.id(EntityRep<3>(vertex, true)) ==
+                              seqIdSet.id(EntityRep<3>(seqVertex, true)));
+                BOOST_REQUIRE(grid.vertexPosition(vertex) ==
+                              seqGrid.vertexPosition(seqVertex));
+            }
+        }
+    }
+#endif
+}
 
 BOOST_AUTO_TEST_CASE(distribute)
 {

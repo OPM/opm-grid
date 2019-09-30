@@ -48,15 +48,16 @@ CpGridData::CpGridData()
 #endif
 }
 
-#if HAVE_MPI
-CpGridData::CpGridData(MPI_Comm comm)
+CpGridData::CpGridData(MPIHelper::MPICommunicator comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
       global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
 {
+#if HAVE_MPI
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
-}
 #endif
+}
+
 
 CpGridData::CpGridData(CpGrid&)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
