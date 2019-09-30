@@ -325,7 +325,8 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
     void scatterData(DataHandle& data, CpGridData* global_data,
-                     CpGridData* distributed_data, const InterfaceMap& inf);
+                     CpGridData* distributed_data, const InterfaceMap& cell_inf,
+                     const InterfaceMap& point_inf);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
     /// to a distributed representation of the same grid.
@@ -367,7 +368,6 @@ private:
     void computeGeometry(CpGrid& grid,
                          const DefaultGeometryPolicy&  globalGeometry,
                          const OrientedEntityTable<0, 1>& globalCell2Faces,
-                         const std::vector< std::array<int,8> >& globalCell2Points,
                          DefaultGeometryPolicy& geometry,
                          const OrientedEntityTable<0, 1>& cell2Faces,
                          const std::vector< std::array<int,8> >& cell2Points);
@@ -693,21 +693,19 @@ struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 
 template<class DataHandle>
 void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
-                             CpGridData* distributed_data, const InterfaceMap& inf)
+                             CpGridData* distributed_data, const InterfaceMap& cell_inf,
+                             const InterfaceMap& point_inf)
 {
 #if HAVE_MPI
     if(data.contains(3,0))
     {
         Entity2IndexDataHandle<DataHandle, 0> data_wrapper(*global_data, *distributed_data, data);
-        communicateCodim<0>(data_wrapper, ForwardCommunication, inf);
+        communicateCodim<0>(data_wrapper, ForwardCommunication, cell_inf);
     }
     if(data.contains(3,3))
     {
-        using CellHandle = PointViaCellHandleWrapper<DataHandle>;
-        using IndexHandle = Entity2IndexDataHandle<CellHandle, 0>;
-        CellHandle cellHandle(data, global_data->cell_to_point_, distributed_data->cell_to_point_);
-        IndexHandle indexHandle(*global_data, *distributed_data, cellHandle);
-        communicateCodim<0>(indexHandle, ForwardCommunication, inf);
+        Entity2IndexDataHandle<DataHandle, 3> data_wrapper(*global_data, *distributed_data, data);
+        communicateCodim<3>(data_wrapper, ForwardCommunication, point_inf);
     }
 #endif
 }
