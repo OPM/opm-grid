@@ -231,6 +231,7 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
+        friend class cpgrid::CpGridData;
 
     public:
 
@@ -1214,7 +1215,8 @@ namespace Dune
 #if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface());
+            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface(),
+                                           pointScatterGatherInterface());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
@@ -1255,7 +1257,7 @@ namespace Dune
         typedef std::map<int, std::list<int> > InterfaceMap;
 #endif
 
-        /// \brief Get an interface for gathering/scattering data with communication.
+        /// \brief Get an interface for gathering/scattering data attached to cells with communication.
         ///
         /// Scattering means sending data from the indices of the global grid on
         /// process 0 to the distributed grid on all ranks independent of the grid.
@@ -1286,6 +1288,13 @@ namespace Dune
         const InterfaceMap& cellScatterGatherInterface() const
         {
             return *cell_scatter_gather_interfaces_;
+        }
+
+        /// \brief Get an interface for gathering/scattering data attached to points with communication.
+        /// \see cellScatterGatherInterface
+        const InterfaceMap& pointScatterGatherInterface() const
+        {
+            return *point_scatter_gather_interfaces_;
         }
 
         /// \brief Switch to the global view.
@@ -1360,6 +1369,12 @@ namespace Dune
          * @warning Will only update owner cells
          */
         std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
+        /*
+         * @brief Interface for scattering and gathering point data.
+         *
+         * @warning Will only update owner cells
+         */
+        std::shared_ptr<InterfaceMap> point_scatter_gather_interfaces_;
     }; // end Class CpGrid
 
 

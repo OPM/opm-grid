@@ -116,7 +116,8 @@ namespace Dune
         : data_( new cpgrid::CpGridData(*this)),
           current_view_data_(data_.get()),
           distributed_data_(),
-          cell_scatter_gather_interfaces_(new InterfaceMap)
+          cell_scatter_gather_interfaces_(new InterfaceMap),
+          point_scatter_gather_interfaces_(new InterfaceMap)
     {}
 
 
@@ -229,8 +230,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         distributed_data_->cell_indexset_.endResize();
         // add an interface for gathering/scattering data with communication
         // forward direction will be scatter and backward gather
-        cell_scatter_gather_interfaces_.reset(new InterfaceMap);
-
         // Interface will communicate from owner to all
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
