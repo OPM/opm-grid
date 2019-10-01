@@ -1302,12 +1302,16 @@ namespace Dune
         /// \brief Switch to the global view.
         void switchToGlobalView()
         {
+            if (comm().rank() != 0)
+                OPM_THROW(std::logic_error, "Global view will be empty on this process.");
             current_view_data_=data_.get();
         }
 
         /// \brief Switch to the distributed view.
         void switchToDistributedView()
         {
+            if (! distributed_data_)
+                OPM_THROW(std::logic_error, "No distributed view available in grid");
             current_view_data_=distributed_data_.get();
         }
         //@}
