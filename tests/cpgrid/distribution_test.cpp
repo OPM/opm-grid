@@ -286,6 +286,74 @@ public:
         return dim==3 && (codim<=1 || codim==3);
     }
 };
+
+class CopyCellValues
+{
+public:
+    CopyCellValues(std::vector<int>& cont)
+        : cont_(cont)
+    {}
+
+    typedef int DataType;
+    bool fixedsize(int /*dim*/, int /*codim*/)
+    {
+        return true;
+    }
+
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(cont_[t.index()]);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        for(std::size_t i=0; i<s; ++i)
+        {
+            buffer.read(cont_[t.index()]);
+        }
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim==3 && codim==0;
+    }
+private:
+    std::vector<int>& cont_;
+};
+
+BOOST_AUTO_TEST_CASE(testDistributedComm)
+{
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+    grid.createCartesian(dims, size);
+    grid.loadBalance();
+#ifdef HAVE_DUNE_ISTL
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+#else
+    /// \brief The type of the set of the attributes
+    enum AttributeSet{owner, overlap, copy};
+#endif
+    std::vector<int> cont(grid.size(0), 1);
+    const auto& indexSet = grid.getCellIndexSet();
+    for ( const auto index: indexSet)
+        if (index.local().attribute() != AttributeSet::owner )
+            cont[index.local()] = -1;
+
+    CopyCellValues handle(cont);
+    grid.communicate(handle, Dune::InteriorBorder_All_Interface,
+                     Dune::ForwardCommunication);
+
+    for ( const auto index: indexSet)
+        BOOST_REQUIRE(cont[index.local()] == 1);
+}
+
 BOOST_AUTO_TEST_CASE(compareWithSequential)
 {
 #if HAVE_MPI
@@ -309,7 +377,10 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     ElementIterator endEIt = gridView.end<0>();
     ElementIterator seqEndEIt = seqGridView.end<0>();
     ElementIterator seqEIt = seqGridView.begin<0>();
+    const auto& gc = grid.globalCell();
+    const auto& seqGc = seqGrid.globalCell();
     int i{}, seqI{};
+    BOOST_REQUIRE(gc.size() == std::size_t(grid.size(0)));
 
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
         // find corresponding cell in global grid
@@ -319,7 +390,8 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
             ++seqI;
             ++seqEIt;
         }
-        assert(id == seqIdSet.id(seqEIt));
+        BOOST_REQUIRE(id == seqIdSet.id(seqEIt));
+        BOOST_REQUIRE(gc[eIt->index()] == seqGc[seqEIt->index()]);
         const auto& geom = eIt->geometry();
         const auto& seqGeom = seqEIt-> geometry();
         BOOST_REQUIRE(geom.center() == seqGeom.center());
