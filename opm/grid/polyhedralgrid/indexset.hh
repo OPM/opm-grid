@@ -74,7 +74,10 @@ namespace Dune
       else if ( codim == 1 )
         return index( grid().getRealImplementation( entity ).template subEntity< 1 > ( i ) );
       else if ( codim == dimension )
+      {
+        std::cout << "Return vertex number " << std::endl;
         return index( grid().getRealImplementation( entity ).template subEntity< dimension > ( i ) );
+      }
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");

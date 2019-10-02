@@ -1322,6 +1322,7 @@ namespace Dune
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
+        std::cout << "Sort vertices " << std::endl;
         typedef std::array<int, 3> KeyType;
         std::map< const KeyType, const int > vertexFaceTags;
         const int vertexFacePattern [8][3] = {
@@ -1410,6 +1411,11 @@ namespace Dune
               // store node number on correct local position
               cellVertices_[ c ][ (*vx).second ] = (*it).first ;
             }
+          }
+
+          for( int c=0; c<numCells; ++c )
+          {
+            // sort face_nodes according to reference element
           }
         }
 
