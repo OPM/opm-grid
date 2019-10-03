@@ -112,6 +112,21 @@ namespace Dune
 namespace cpgrid
 {
 
+namespace {
+
+void assert_active_cells(const grdecl& grdecl_grid, const Opm::EclipseGrid& ecl_grid) {
+// #ifndef NDEBUG
+    const auto& ecl_actnum = ecl_grid.getACTNUM();
+    for (std::size_t g = 0; g < ecl_grid.getCartesianSize(); g++) {
+        if (ecl_actnum[g] != grdecl_grid.actnum[g])
+            throw std::logic_error("Cells have been deactivated in the grid processing - should not happen");
+    }
+// #endif
+}
+
+}
+
+
 #if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
@@ -227,10 +242,13 @@ namespace cpgrid
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
             processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
+            assert_active_cells(new_g, ecl_grid);
         } else {
             // Make the grid.
             processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
+            assert_active_cells(g, ecl_grid);
         }
+
     }
 #endif // #if HAVE_ECL_INPUT
 
