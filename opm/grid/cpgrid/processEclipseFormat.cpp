@@ -129,7 +129,7 @@ void assert_active_cells(const grdecl& grdecl_grid, const Opm::EclipseGrid& ecl_
 
 #if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs)
+                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs, bool allow_deactivate_cells)
     {
         std::vector<double> coordData = ecl_grid.getCOORD();
 
@@ -242,11 +242,15 @@ void assert_active_cells(const grdecl& grdecl_grid, const Opm::EclipseGrid& ecl_
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
             processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
-            assert_active_cells(new_g, ecl_grid);
+            if (!allow_deactivate_cells) {
+                assert_active_cells(new_g, ecl_grid);
+            }
         } else {
             // Make the grid.
             processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
-            assert_active_cells(g, ecl_grid);
+            if (!allow_deactivate_cells) {
+                assert_active_cells(g, ecl_grid);
+            }
         }
 
     }
