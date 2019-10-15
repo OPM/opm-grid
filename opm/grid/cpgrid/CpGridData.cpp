@@ -246,8 +246,8 @@ struct DefaultContainerHandle
 {
     using DataType = typename C::value_type;
 
-    DefaultContainerHandle(const C& gather, C& scatter)
-        : gatherCont_(gather), scatterCont_(scatter)
+    DefaultContainerHandle(const C& gatherCont, C& scatterCont)
+        : gatherCont_(gatherCont), scatterCont_(scatterCont)
     {}
     bool fixedsize(std::size_t, std::size_t)
     {
