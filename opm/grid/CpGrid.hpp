@@ -1302,8 +1302,6 @@ namespace Dune
         /// \brief Switch to the global view.
         void switchToGlobalView()
         {
-            if (comm().rank() != 0)
-                OPM_THROW(std::logic_error, "Global view will be empty on this process.");
             current_view_data_=data_.get();
         }
 
