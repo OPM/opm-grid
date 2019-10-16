@@ -797,19 +797,15 @@ namespace Dune
         const auto eclipseGrid = std::make_shared<Opm::EclipseGrid>(deck, rawactnum);
 
         struct grdecl g;
-        std::vector<int> actnum;
-        std::vector<double> coord;
-        std::vector<double> zcorn;
-        std::vector<double> mapaxes;
 
         g.dims[0] = eclipseGrid->getNX();
         g.dims[1] = eclipseGrid->getNY();
         g.dims[2] = eclipseGrid->getNZ();
-
-        eclipseGrid->exportMAPAXES( mapaxes );
-        eclipseGrid->exportCOORD( coord );
-        eclipseGrid->exportZCORN( zcorn );
-        eclipseGrid->exportACTNUM( actnum );
+        
+        std::vector<double> mapaxes = eclipseGrid->getMAPAXES( );
+        std::vector<double> coord = eclipseGrid->getCOORD( );
+        std::vector<double> zcorn = eclipseGrid->getZCORN( );
+        std::vector<int> actnum = eclipseGrid->getACTNUM(  );
 
         g.coord = coord.data();
         g.zcorn = zcorn.data();
@@ -826,7 +822,7 @@ namespace Dune
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
-                thickness[i] = eclipseGrid->getCellThicknes(i);
+                thickness[i] = eclipseGrid->getCellThickness(i);
             }
             const double z_tolerance = eclipseGrid->isPinchActive() ? eclipseGrid->getPinchThresholdThickness() : 0.0;
             mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
