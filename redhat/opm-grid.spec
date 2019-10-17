@@ -13,7 +13,7 @@ Group:          Development/Libraries/C and C++
 Url:            http://www.opm-project.org/
 Source0:        https://github.com/OPM/%{name}/archive/release/%{version}/%{tag}.tar.gz#/%{name}-%{version}.tar.gz
 BuildRequires: blas-devel lapack-devel dune-common-devel devtoolset-6-toolchain
-BuildRequires:  git suitesparse-devel doxygen bc ecl-devel opm-common-devel
+BuildRequires:  git suitesparse-devel doxygen bc opm-common-devel
 BuildRequires:  tinyxml-devel dune-istl-devel dune-geometry-devel dune-grid-devel
 BuildRequires:  openmpi-devel trilinos-openmpi-devel ptscotch-openmpi-devel scotch-devel
 BuildRequires:  mpich-devel trilinos-mpich-devel ptscotch-mpich-devel zlib-devel

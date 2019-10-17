@@ -1,12 +1,10 @@
 #!/bin/bash
 
 declare -a upstreams
-upstreams=(libecl
-           opm-common)
+upstreams=(opm-common)
 
 declare -A upstreamRev
 upstreamRev[opm-common]=master
-upstreamRev[libecl]=master
 
 if grep -q "opm-common=" <<< $ghprbCommentBody
 then

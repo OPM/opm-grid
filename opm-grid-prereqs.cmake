@@ -31,7 +31,6 @@ set (opm-grid_DEPS
   "dune-istl"
   "opm-common REQUIRED"
   "ZOLTAN"
-  "ecl REQUIRED"
   )
 
 find_package_deps(opm-grid)
