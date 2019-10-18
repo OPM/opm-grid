@@ -109,8 +109,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     // List entry: process to import from, global index, attribute here, local index
     // (determined later)
     std::vector<std::tuple<int,int,char,int>>myImportList(numImport);
-    myExportList.reserve(.2*myExportList.size());
-    myImportList.reserve(.2*myImportList.size());
+    myExportList.reserve(1.2*myExportList.size());
+    myImportList.reserve(1.2*myImportList.size());
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 
     for ( int i=0; i < numExport; ++i )
