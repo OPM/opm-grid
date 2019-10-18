@@ -1369,21 +1369,12 @@ std::vector<std::set<int> > computeAdditionalFacePoints(const std::vector<std::a
 }
 
 template<bool send, class Map2Global, class Map2Local>
-void createInterfaceList(
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-                         const typename VariableSizeCommunicator<>::InterfaceMap::value_type& procCellLists,
-#else
-                         const typename Opm::VariableSizeCommunicator<>::InterfaceMap::value_type& procCellLists,
-#endif
+void createInterfaceList(const typename CpGridData::InterfaceMap::value_type& procCellLists,
                          const std::vector<std::array<int,8> >& cell2Points,
                          const std::vector<std::set<int> >& additionalPoints,
                          const Map2Global& local2Global,
                          Map2Local& map2Local,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-                         const typename VariableSizeCommunicator<>::InterfaceMap::mapped_type& pintLists
-#else
-                         typename Opm::VariableSizeCommunicator<>::InterfaceMap::mapped_type& pointLists
-#endif
+                         typename CpGridData::InterfaceMap::mapped_type& pointLists
 )
 {
     const auto& cellList = send? procCellLists.second.first : procCellLists.second.second;
@@ -1429,13 +1420,8 @@ std::map<int,int> computeCell2Point(CpGrid& grid,
                                     std::vector<std::array<int,8> >& cell2Points,
                                     std::vector<int>& map2Global,
                                     std::size_t noCells,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-                                    const typename VariableSizeCommunicator<>::InterfaceMap& cellInterfaces,
-                                    typename VariableSizeCommunicator<>::InterfaceMap& pointInterfaces
-#else
-                                    const typename Opm::VariableSizeCommunicator<>::InterfaceMap& cellInterfaces,
-                                    typename Opm::VariableSizeCommunicator<>::InterfaceMap& pointInterfaces
-#endif
+                                    const typename CpGridData::InterfaceMap& cellInterfaces,
+                                    typename CpGridData::InterfaceMap& pointInterfaces
                                     )
 {
     cell2Points.resize(noCells);
@@ -1524,10 +1510,9 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     // create global ids array for cells. The parallel index set uses the global id
     // as the global index.
     std::vector<int> map2GlobalCellId(cell_indexset_.size());
-    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-        i!=end; ++i)
+    for(const auto& i: cell_indexset_)
     {
-        map2GlobalCellId[i->local()]=i->global();
+        map2GlobalCellId[i.local()]=i.global();
     }
 
     std::map<int,int> face_indicator =
@@ -1588,11 +1573,10 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute the partition type for cell
     partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
-    for(ParallelIndexSet::const_iterator i=cell_indexset_.begin(), end=cell_indexset_.end();
-            i!=end; ++i)
+    for(const auto i: cell_indexset_)
     {
-        partition_type_indicator_->cell_indicator_[i->local()]=
-            i->local().attribute()==AttributeSet::owner?
+        partition_type_indicator_->cell_indicator_[i.local()]=
+            i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
     }
 
@@ -1639,13 +1623,9 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     // are also present on other processes and with what attribute.
     const auto& all_all_cell_interface = std::get<All_All_Interface>(cell_interfaces_);
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    Dune::VariableSizeCommunicator<> comm(all_all_cell_interface.communicator(),
-                                          all_all_cell_interface.interfaces());
-#else
-    Opm::VariableSizeCommunicator<> comm(all_all_cell_interface.communicator(),
-                                         all_all_cell_interface.interfaces());
-#endif
+    Communicator comm(all_all_cell_interface.communicator(),
+                     all_all_cell_interface.interfaces());
+
     /*
       // code deactivated, because users cannot access face indices and therefore
       // communication on faces makes no sense!

@@ -400,15 +400,15 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         std::vector<MPI_Request> requests(importProcs.size());
         auto req = requests.begin();
         int tag = 23872949;
-        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        for(auto&& proc : importProcs)
         {
-            MPI_Irecv(&(proc->second), 1, MPI_INT, proc->first, tag, cc, &(*req));
+            MPI_Irecv(&(proc.second), 1, MPI_INT, proc.first, tag, cc, &(*req));
             ++req;
         }
 
-        for(auto proc = exportProcs.begin(); proc != exportProcs.end(); ++proc)
+        for(const auto& proc: exportProcs)
         {
-            MPI_Send(&(proc->second), 1, MPI_INT, proc->first, tag, cc);
+            MPI_Send(&(proc.second), 1, MPI_INT, proc.first, tag, cc);
         }
         std::vector<MPI_Status> statuses(requests.size());
         MPI_Waitall(requests.size(), requests.data(), statuses.data());
@@ -419,24 +419,24 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         auto buffer = receiveBuffers.begin();
         req = requests.begin();
 
-        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        for(auto&& proc: importProcs)
         {
-            buffer->resize(proc->second);
-            MPI_Irecv(buffer->data(), proc->second, MPI_INT, proc->first, tag, cc, &(*req));
+            buffer->resize(proc.second);
+            MPI_Irecv(buffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
             ++req; ++buffer;
         }
 
-        for(auto proc = exportProcs.begin(); proc != exportProcs.end(); ++proc)
+        for(const auto& proc: exportProcs)
         {
             std::vector<int> sendBuffer;
-            sendBuffer.reserve(proc->second);
+            sendBuffer.reserve(proc.second);
             std::for_each(ownerEnd, exportList.end(),
                           [&sendBuffer, &proc](const std::tuple<int,int,char>& t)
                           {
-                              if ( std::get<1>(t) == proc->first )
+                              if ( std::get<1>(t) == proc.first )
                                   sendBuffer.push_back(std::get<0>(t));
                           });
-            MPI_Send(sendBuffer.data(), proc->second, MPI_INT, proc->first, tag, cc);
+            MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
         }
 
         std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
@@ -445,10 +445,10 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         buffer = receiveBuffers.begin();
         auto importOwnerSize = importList.size();
 
-        for(auto proc = importProcs.begin(); proc != importProcs.end(); ++proc)
+        for(const auto& proc: importProcs)
         {
             for(const auto& index: *buffer)
-                importList.emplace_back(index, proc->first, AttributeSet::overlap, -1);
+                importList.emplace_back(index, proc.first, AttributeSet::overlap, -1);
             ++buffer;
         }
         std::sort(importList.begin() + importOwnerSize, importList.end(),

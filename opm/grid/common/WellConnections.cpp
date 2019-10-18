@@ -222,7 +222,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     }
 
     // Send the sizes
-    if (parts.size()) {
+    if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
             if (otherRank != myRank) {
                 std::size_t sizes[2] = {0, 0};
@@ -251,7 +251,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
         const auto &buffer = sizeBuffers[otherRank];
-        if ( otherRank != myRank && buffer.size() && (buffer[0] + buffer[1])) {
+        if ( otherRank != myRank && buffer.size() >= 2 && (buffer[0] + buffer[1])) {
             auto &cellIndexBuffer = cellIndexBuffers[otherRank];
             cellIndexBuffer.resize(buffer[0] + buffer[1]);
             MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, otherRank, tag, cc,
@@ -261,7 +261,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     }
 
     // Send data if we have cells.
-    if (parts.size()) {
+    if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
             if (otherRank != myRank) {
                 std::vector<std::size_t> buffer;
@@ -275,7 +275,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                     buffer.insert(buffer.end(), candidate->second.begin(),
                                   candidate->second.end());
 
-                if (buffer.size()) {
+                if (!buffer.empty()) {
                     MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
                 }
             }
@@ -287,7 +287,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // unpack data
     int otherRank = 0;
     for (const auto &cellIndexBuffer : cellIndexBuffers) {
-        if (cellIndexBuffer.size()) {
+        if (!cellIndexBuffer.empty()) {
             // add cells that moved here
             auto noAdded = sizeBuffers[otherRank][0];
             importList.reserve(importList.size() + noAdded);
