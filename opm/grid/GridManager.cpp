@@ -25,7 +25,7 @@
 #include <opm/grid/cart_grid.h>
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
