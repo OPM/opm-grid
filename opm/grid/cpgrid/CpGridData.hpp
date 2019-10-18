@@ -281,6 +281,19 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+#if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    /// \brief The type of the  Communicator.
+    using Communicator = VariableSizeCommunicator<>;
+#else
+    /// \brief The type of the Communicator.
+    using Communicator = Opm::VariableSizeCommunicator<>;
+#endif
+
+    /// \brief The type of the map describing communication interfaces.
+    using InterfaceMap = Communicator::InterfaceMap;
+#endif
+
 private:
 
     /// \brief Adds entries to the parallel index set of the cells during grid construction
@@ -307,15 +320,6 @@ private:
     template<int codim, class DataHandle>
     void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
-
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    /// \brief The type of the map describing communication interfaces.
-    using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
-#else
-    /// \brief The type of the map describing communication interfaces.
-    using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
-#endif
-
 
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
@@ -528,11 +532,8 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    VariableSizeCommunicator<> comm(ccobj_, interface);
-#else
-    Opm::VariableSizeCommunicator<> comm(ccobj_, interface);
-#endif
+    Communicator comm(ccobj_, interface);
+
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
     else

@@ -104,7 +104,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int                         rank  = cc.rank();
     std::vector<int>            parts(size, rank);
     std::vector<std::vector<int> > wells_on_proc;
-    // List entry: process to exort to, (global) index, attribute there (not needed?)
+    // List entry: process to export to, (global) index, attribute there (not needed?)
     std::vector<std::tuple<int,int,char>> myExportList(numExport);
     // List entry: process to import from, global index, attribute here, local index
     // (determined later)
