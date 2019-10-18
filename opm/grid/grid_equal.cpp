@@ -1,7 +1,5 @@
 #include <config.h>
 
-#if HAVE_ECL_INPUT
-
 #include <string.h>  // C string.h to get memcmp()
 
 #include <opm/common/utility/numeric/cmp.hpp>
@@ -78,5 +76,3 @@ grid_equal(const struct UnstructuredGrid * grid1 , const struct UnstructuredGrid
     } else
         return false;
 }
-
-#endif // #if HAVE_ECL_INPUT

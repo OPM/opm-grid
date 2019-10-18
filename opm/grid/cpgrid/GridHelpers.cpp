@@ -30,7 +30,6 @@ namespace Opm
 namespace UgGridHelpers
 {
 
-#if HAVE_ECL_INPUT
 EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& inputGrid)
 {
     const int * dims = cartDims( grid );
@@ -52,7 +51,6 @@ EclipseGrid createEclipseGrid(const Dune::CpGrid& grid, const EclipseGrid& input
         throw std::invalid_argument("Size mismatch - dimensions of inputGrid argument and current Dune CpGrid instance disagree");
     }
 }
-#endif
 
 int numCells(const Dune::CpGrid& grid)
 {

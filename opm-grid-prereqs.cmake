@@ -12,8 +12,6 @@ set (opm-grid_CONFIG_VAR
   HAVE_DUNE_ISTL
   HAVE_MPI
   HAVE_ZOLTAN
-  HAVE_OPM_COMMON
-  HAVE_ECL_INPUT
   )
 
 # dependencies

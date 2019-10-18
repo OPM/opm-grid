@@ -21,58 +21,6 @@
 #ifndef OPM_GRID_ERRORMACROS_HEADER_INCLUDED
 #define OPM_GRID_ERRORMACROS_HEADER_INCLUDED
 
-#if HAVE_OPM_COMMON
 #include <opm/common/ErrorMacros.hpp>
-#else
-
-// reimplementation of OPM macro when opm-common is not present
-
-#include <string>
-#include <sstream>
-#include <exception>
-#include <stdexcept>
-#include <cassert>
-
-// macros for reporting to stderr
-#ifdef OPM_VERBOSE // Verbose mode
-# include <iostream>
-# define OPM_REPORT do { std::cerr << "[" << __FILE__ << ":" << __LINE__ << "] " } while (false)
-# define OPM_MESSAGE(x) do { OPM_REPORT; std::cerr << x << "\n"; } while (false)
-# define OPM_MESSAGE_IF(cond, m) do {if(cond) OPM_MESSAGE(m);} while (false)
-#else // non-verbose mode (default)
-# define OPM_REPORT do {} while (false)
-# define OPM_MESSAGE(x) do {} while (false)
-# define OPM_MESSAGE_IF(cond, m) do {} while (false)
-#endif
-
-// Macro to throw an exception. NOTE: For this macro to work, the
-// exception class must exhibit a constructor with the signature
-// (const std::string &message). Since this condition is not fulfilled
-// for the std::exception, you should use this macro with some
-// exception class derived from either std::logic_error or
-// std::runtime_error.
-//
-// Usage: OPM_THROW(ExceptionClass, "Error message " << value);
-#define OPM_THROW(Exception, message)                                   \
-    do {                                                                \
-        std::ostringstream oss__;                                       \
-        oss__ << "[" << __FILE__ << ":" << __LINE__ << "] " << message; \
-        throw Exception(oss__.str());                                   \
-    } while (false)
-
-// Same as OPM_THROW, except for not making an OpmLog::error() call.
-//
-// Usage: OPM_THROW_NOLOG(ExceptionClass, "Error message " << value);
-#define OPM_THROW_NOLOG(Exception, message)                             \
-    do {                                                                \
-        std::ostringstream oss__;                                       \
-        oss__ << "[" << __FILE__ << ":" << __LINE__ << "] " << message; \
-        throw Exception(oss__.str());                                   \
-    } while (false)
-
-// throw an exception if a condition is true
-#define OPM_ERROR_IF(condition, message) do {if(condition){ OPM_THROW(std::logic_error, message);}} while(false)
-
-#endif // #if HAVE_OPM_COMMON
 
 #endif // OPM_ERRORMACROS_HPP

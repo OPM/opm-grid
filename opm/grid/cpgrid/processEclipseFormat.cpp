@@ -69,11 +69,9 @@ namespace Dune
     // Forward declarations.
     namespace
     {
-#if HAVE_ECL_INPUT
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnum);
-#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;
@@ -112,7 +110,6 @@ namespace Dune
 namespace cpgrid
 {
 
-#if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
@@ -232,7 +229,6 @@ namespace cpgrid
             processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
         }
     }
-#endif // #if HAVE_ECL_INPUT
 
 
     enum { NNCFace = -1 };
@@ -306,7 +302,6 @@ namespace cpgrid
 
     namespace
     {
-#if HAVE_ECL_INPUT
         std::vector<double>
         getSanitizedZCORN(const ::Opm::EclipseGrid& ecl_grid,
                           const ::std::vector<int>& actnumData)
@@ -353,7 +348,6 @@ namespace cpgrid
 
             return zcornData;
         }
-#endif
 
         typedef std::array<int, 3> coord_t;
         typedef std::array<double, 8> cellz_t;

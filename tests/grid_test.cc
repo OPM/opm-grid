@@ -163,20 +163,16 @@ int main(int argc, char** argv )
     dgfFile << "8 8 8" << std::endl;
     dgfFile << "#" << std::endl;
 
-#if HAVE_ECL_INPUT
     Opm::Parser parser;
     Opm::ParseContext parseContext;
     const auto deck = parser.parseString(deckString , parseContext);
     std::vector<double> porv;
-#endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
-#if HAVE_ECL_INPUT
       Grid grid(deck, porv);
       testGrid( grid, "polyhedralgrid" );
-#endif
       //Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "polyhedralgrid-dgf" );
     }
@@ -184,7 +180,6 @@ int main(int argc, char** argv )
     // test CpGrid
     {
       typedef Dune::CpGrid Grid;
-#if HAVE_ECL_INPUT
       Grid grid;
       const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
       Opm::EclipseGrid ecl_grid(deck , actnum);
@@ -194,7 +189,6 @@ int main(int argc, char** argv )
 
       Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
       testGrid( grid, "cpgrid2" );
-#endif
       Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "cpgrid-dgf" );
     }
