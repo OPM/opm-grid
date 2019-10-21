@@ -109,21 +109,32 @@ private:
     std::vector<std::set<int> > well_indices_;
 };
 
+
+#ifdef HAVE_MPI
 /// \brief Computes wells assigned to processes.
 ///
 /// Computes for all processes all indices of wells that
 /// will be assigned to this process.
 /// \param parts The partition number for each cell
+/// \param globalCell The linearized cartesian index for each index
 /// \param eclipseState The eclipse information
-/// \param well_connecton The informatio about the perforations of each well.
-/// \param no_procs The number of processes.
+/// \param well_connecton The information about the perforations of each well.
+/// \param exportList List of cells to be exported. Each entry is a tuple of the
+///                   global cell index, the process rank to export to, and the
+///                   attribute on that rank (assumed to be owner)
+/// \param exportList List of cells to be imported. Each entry is a tuple of the
+///                   global cell index, the process rank that exports it, and the
+///                   attribute on this rank (assumed to be owner)
+/// \param cc Information about the parallelism together with the decomposition.
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
+                                const std::vector<int>& globalCell,
                                 const std::vector<OpmWellType>&  wells,
                                 const WellConnections& well_connections,
-                                std::size_t no_procs);
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                const CollectiveCommunication<MPI_Comm>& cc);
 
-#ifdef HAVE_MPI
 /// \brief Computes that names that of all wells not handled by this process
 /// \param wells_on_proc well indices assigned to each process
 /// \param eclipseState The eclipse information
