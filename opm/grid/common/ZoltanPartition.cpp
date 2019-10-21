@@ -29,7 +29,9 @@ namespace Dune
 {
 namespace cpgrid
 {
-std::pair<std::vector<int>, std::unordered_set<std::string> >
+std::tuple<std::vector<int>, std::unordered_set<std::string>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> > >
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
@@ -65,7 +67,6 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     // For the load balancer one process has the whole grid and
     // all others an empty partition before loadbalancing.
     bool partitionIsEmpty     = cc.rank()!=root;
-    bool partitionIsWholeGrid = !partitionIsEmpty;
 
     std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
 
@@ -103,19 +104,51 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int                         rank  = cc.rank();
     std::vector<int>            parts(size, rank);
     std::vector<std::vector<int> > wells_on_proc;
+    // List entry: process to export to, (global) index, attribute there (not needed?)
+    std::vector<std::tuple<int,int,char>> myExportList(numExport);
+    // List entry: process to import from, global index, attribute here, local index
+    // (determined later)
+    std::vector<std::tuple<int,int,char,int>>myImportList(numImport);
+    myExportList.reserve(1.2*myExportList.size());
+    myImportList.reserve(1.2*myImportList.size());
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 
     for ( int i=0; i < numExport; ++i )
     {
         parts[exportLocalGids[i]] = exportProcs[i];
+        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportProcs[i], static_cast<char>(AttributeSet::owner));
     }
 
-    if( wells && partitionIsWholeGrid )
+    for ( int i=0; i < numImport; ++i )
+    {
+        myImportList[i] = std::make_tuple(importGlobalGids[i], importProcs[i], static_cast<char>(AttributeSet::owner),-1);
+    }
+    // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
+    for ( std::size_t i = 0; i < parts.size(); ++i)
+    {
+        if ( parts[i] == rank )
+        {
+            myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
+            myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
+        }
+    }
+
+    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
+    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+    // free space allocated for zoltan.
+    Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
+    Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
+    Zoltan_Destroy(&zz);
+
+    if( wells )
     {
         wells_on_proc =
             postProcessPartitioningForWells(parts,
+                                            cpgrid.globalCell(),
                                             *wells,
                                             grid_and_wells->getWellConnections(),
-                                            cc.size());
+                                            myExportList, myImportList,
+                                            cc);
 
 #ifndef NDEBUG
         int index = 0;
@@ -138,10 +171,6 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         }
 #endif
     }
-    // free space allocated for zoltan.
-    Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
-    Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
-    Zoltan_Destroy(&zz);
 
     std::unordered_set<std::string> defunct_well_names;
 
@@ -153,9 +182,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                      root);
     }
 
-    cc.broadcast(&parts[0], parts.size(), root);
-
-    return std::make_pair(parts, defunct_well_names);
+    return std::make_tuple(parts, defunct_well_names, myExportList, myImportList);
 }
 }
 }

@@ -41,6 +41,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 
+#include <unordered_map>
 namespace Dune
 {
     namespace cpgrid
@@ -203,6 +204,7 @@ namespace Dune
 
         class IdSet
         {
+            friend class ReversePointGlobalIdSet;
         public:
             typedef int IdType;
 
@@ -262,6 +264,7 @@ namespace Dune
         class GlobalIdSet : public GlobalIdMapping
         {
             friend class CpGridData;
+            friend class ReversePointGlobalIdSet;
         public:
             typedef int IdType;
 
@@ -310,6 +313,42 @@ namespace Dune
             const IdSet* idSet_;
         };
 
+    class ReversePointGlobalIdSet
+    {
+    public:
+        ReversePointGlobalIdSet(const GlobalIdSet& idSet)
+        {
+            if(idSet.idSet_)
+            {
+                grid_ = &(idSet.idSet_->grid_);
+            }
+            else
+            {
+                mapping_.reset(new std::unordered_map<int,int>);
+                int localId = 0;
+                for (const  auto& globalId: idSet.template getMapping<3>())
+                    (*mapping_)[globalId] = localId++;
+            }
+        }
+        int operator[](int i) const
+        {
+            if (mapping_)
+            {
+                return(*mapping_)[i];
+            }
+            else
+            {
+                return i - grid_->size(0) - grid_->size(1) - grid_->size(2);
+            }
+        }
+        void release()
+        {
+            mapping_.reset(nullptr);
+        }
+    private:
+        std::unique_ptr<std::unordered_map<int,int> > mapping_;
+        const CpGridData* grid_;
+    };
 
     } // namespace cpgrid
 } // namespace Dune
