@@ -60,11 +60,7 @@
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
-#else
-#include <opm/grid/utility/VariableSizeCommunicator.hpp>
-#endif
 #include <dune/grid/common/gridenums.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -82,7 +78,6 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include "Entity2IndexDataHandle.hpp"
-#include "DataHandleWrappers.hpp"
 #include "GlobalIdMapping.hpp"
 
 namespace Dune
@@ -137,12 +132,12 @@ public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
-
+#if HAVE_MPI
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
-    explicit CpGridData(MPIHelper::MPICommunicator comm);
-
+    CpGridData(MPI_Comm comm);
+#endif
     /// Constructor
     CpGridData();
     /// Destructor
@@ -269,9 +264,10 @@ public:
     /// \brief Redistribute a global grid.
     ///
     /// The whole grid must be available on all processors.
-    void distributeGlobalGrid(CpGrid& grid,
+    void distributeGlobalGrid(const CpGrid& grid,
                               const CpGridData& view_data,
-                              const std::vector<int>& cell_part);
+                              const std::vector<int>& cell_part,
+                              int overlap_layers);
 
     /// \brief communicate objects for all codims on a given level
     /// \param data The data handle describing the data. Has to adhere to the
@@ -281,23 +277,7 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
-#if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    /// \brief The type of the  Communicator.
-    using Communicator = VariableSizeCommunicator<>;
-#else
-    /// \brief The type of the Communicator.
-    using Communicator = Opm::VariableSizeCommunicator<>;
-#endif
-
-    /// \brief The type of the map describing communication interfaces.
-    using InterfaceMap = Communicator::InterfaceMap;
-#endif
-
 private:
-
-    /// \brief Adds entries to the parallel index set of the cells during grid construction
-    void populateGlobalCellIndexSet();
 
 #if HAVE_MPI
 
@@ -321,6 +301,9 @@ private:
     void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
 
+    /// \brief The type of the interface map for communication.
+    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
     /// \param data A data handle for getting or setting the data
@@ -329,8 +312,7 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
     void scatterData(DataHandle& data, CpGridData* global_data,
-                     CpGridData* distributed_data, const InterfaceMap& cell_inf,
-                     const InterfaceMap& point_inf);
+                     CpGridData* distributed_data, const InterfaceMap& inf);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
     /// to a distributed representation of the same grid.
@@ -366,16 +348,7 @@ private:
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                           const InterfaceMap& interface);
-
 #endif
-
-    void computeGeometry(CpGrid& grid,
-                         const DefaultGeometryPolicy&  globalGeometry,
-                         const OrientedEntityTable<0, 1>& globalCell2Faces,
-                         DefaultGeometryPolicy& geometry,
-                         const OrientedEntityTable<0, 1>& cell2Faces,
-                         const std::vector< std::array<int,8> >& cell2Points);
-
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
@@ -532,7 +505,85 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-    Communicator comm(ccobj_, interface);
+    if ( interface.empty() )
+    {
+        // The communication interface is empty, do nothing.
+        // Otherwise we will produce a memory error in
+        // VariableSizeCommunicator prior to DUNE 2.4
+        return;
+    }
+
+#if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
+    VariableSizeCommunicator<> comm(ccobj_, interface);
+#else
+    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
+    // buffer cannot hold all data that needs to be send.
+    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
+    // For this we calculate an upper barrier of the number of
+    // data items to be send manually and use it to construct a
+    // VariableSizeCommunicator with sufficient buffer.
+    std::size_t max_interface_entries = 0;
+#ifndef NDEBUG
+    std::size_t max_items = 0;
+#endif
+
+    for (const auto& pair: interface )
+    {
+        using std::max;
+        max_interface_entries = max(max_interface_entries, pair.second.first.size());
+        max_interface_entries = max(max_interface_entries, pair.second.second.size());
+
+#ifndef NDEBUG
+        if ( data_wrapper.fixedsize() )
+        {
+            const auto& interface_send = pair.second.first;
+
+            if ( interface_send.size() )
+            {
+                max_items = std::max(max_items, data_wrapper.size(interface_send[0]));
+            }
+
+            const auto& interface_recv = pair.second.second;
+
+            if ( interface_recv.size() )
+            {
+                max_items = std::max(max_items, data_wrapper.size(interface_recv[0]));
+            }
+        }
+        else
+        {
+            const auto& interface_send = pair.second.first;
+
+            for ( std::size_t i = 0, end = interface_send.size(); i < end; ++i)
+            {
+                max_items = std::max(max_items, data_wrapper.size(interface_send[i]));
+            }
+
+            const auto& interface_recv = pair.second.second;
+
+            for ( std::size_t i = 0, end = interface_recv.size(); i < end; ++i)
+            {
+                max_items = std::max(max_items, data_wrapper.size(interface_recv[i]));
+            }
+        }
+#endif
+    }
+
+#ifndef NDEBUG
+    max_items = ccobj_.max(max_items);
+
+    if ( max_items > MAX_DATA_PER_CELL)
+    {
+        OPM_THROW(std::logic_error,
+                  "You triggered a bug in the communication of DUNE"
+                   << " as you tried to send more than " << MAX_DATA_PER_CELL
+                   << " values per cell/point. Please define MAX_DATA_COMMUNICATED_PER_ENTITY"
+                   << " to a high enough value when compiling.");
+    }
+#endif
+    VariableSizeCommunicator<> comm(ccobj_, interface,
+                                    max_interface_entries * MAX_DATA_PER_CELL);
+#endif
 
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
@@ -694,19 +745,17 @@ struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 
 template<class DataHandle>
 void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
-                             CpGridData* distributed_data, const InterfaceMap& cell_inf,
-                             const InterfaceMap& point_inf)
+                             CpGridData* distributed_data, const InterfaceMap& inf)
 {
 #if HAVE_MPI
     if(data.contains(3,0))
     {
         Entity2IndexDataHandle<DataHandle, 0> data_wrapper(*global_data, *distributed_data, data);
-        communicateCodim<0>(data_wrapper, ForwardCommunication, cell_inf);
+        communicateCodim<0>(data_wrapper, ForwardCommunication, inf);
     }
     if(data.contains(3,3))
     {
-        Entity2IndexDataHandle<DataHandle, 3> data_wrapper(*global_data, *distributed_data, data);
-        communicateCodim<3>(data_wrapper, ForwardCommunication, point_inf);
+        scatterCodimData<3>(data, global_data, distributed_data);
     }
 #endif
 }
