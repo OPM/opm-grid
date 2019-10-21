@@ -65,10 +65,6 @@ namespace Dune
     /// Read the Sintef legacy grid format ('topogeom').
     void cpgrid::CpGridData::readSintefLegacyFormat(const std::string& grid_prefix)
     {
-        if ( ccobj_.rank() != 0 )
-            // global grid only on rank 0
-            return;
-
         std::string topofilename = grid_prefix + "-topo.dat";
         {
             std::ifstream file(topofilename.c_str());
@@ -101,9 +97,6 @@ namespace Dune
             }
         }
         computeUniqueBoundaryIds();
-
-        if(ccobj_.size()>1)
-            populateGlobalCellIndexSet();
     }
 
 
