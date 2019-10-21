@@ -328,6 +328,7 @@ private:
 
 BOOST_AUTO_TEST_CASE(testDistributedComm)
 {
+#if HAVE_MPI
     Dune::CpGrid grid;
     std::array<int, 3> dims={{8, 4, 2}};
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
@@ -352,6 +353,7 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
 
     for ( const auto index: indexSet)
         BOOST_REQUIRE(cont[index.local()] == 1);
+#endif
 }
 
 BOOST_AUTO_TEST_CASE(compareWithSequential)
