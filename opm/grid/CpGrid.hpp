@@ -50,11 +50,7 @@
 #include <dune/common/version.hh>
 
 #if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
-#else
-#include <opm/grid/utility/VariableSizeCommunicator.hpp>
-#endif
 #endif
 
 #include <dune/grid/common/capabilities.hh>
@@ -231,7 +227,6 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
-        friend class cpgrid::CpGridData;
 
     public:
 
@@ -247,8 +242,6 @@ namespace Dune
 
         /// Default constructor
         CpGrid();
-
-        CpGrid(MPIHelper::MPICommunicator comm);
 
         /// \name IO routines
         //@{
@@ -1217,8 +1210,7 @@ namespace Dune
 #if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface(),
-                                           pointScatterGatherInterface());
+            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
@@ -1244,13 +1236,8 @@ namespace Dune
 #endif
         }
 #if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
         /// \brief The type of the map describing communication interfaces.
-        using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
-#else
-        /// \brief The type of the map describing communication interfaces.
-        using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
-#endif
+        typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
 #else
         // bogus definition for the non parallel type. VariableSizeCommunicator not
         // availabe
@@ -1259,7 +1246,7 @@ namespace Dune
         typedef std::map<int, std::list<int> > InterfaceMap;
 #endif
 
-        /// \brief Get an interface for gathering/scattering data attached to cells with communication.
+        /// \brief Get an interface for gathering/scattering data with communication.
         ///
         /// Scattering means sending data from the indices of the global grid on
         /// process 0 to the distributed grid on all ranks independent of the grid.
@@ -1292,13 +1279,6 @@ namespace Dune
             return *cell_scatter_gather_interfaces_;
         }
 
-        /// \brief Get an interface for gathering/scattering data attached to points with communication.
-        /// \see cellScatterGatherInterface
-        const InterfaceMap& pointScatterGatherInterface() const
-        {
-            return *point_scatter_gather_interfaces_;
-        }
-
         /// \brief Switch to the global view.
         void switchToGlobalView()
         {
@@ -1308,8 +1288,6 @@ namespace Dune
         /// \brief Switch to the distributed view.
         void switchToDistributedView()
         {
-            if (! distributed_data_)
-                OPM_THROW(std::logic_error, "No distributed view available in grid");
             current_view_data_=distributed_data_.get();
         }
         //@}
@@ -1373,12 +1351,6 @@ namespace Dune
          * @warning Will only update owner cells
          */
         std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
-        /*
-         * @brief Interface for scattering and gathering point data.
-         *
-         * @warning Will only update owner cells
-         */
-        std::shared_ptr<InterfaceMap> point_scatter_gather_interfaces_;
     }; // end Class CpGrid
 
 
