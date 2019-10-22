@@ -456,6 +456,12 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                   { return std::get<0>(t1) < std::get<0>(t2);});
         return importOwnerSize;
 #else
+        (void) grid;
+        (void) cell_part;
+        (void) exportList;
+        (void) importList;
+        (void) cc;
+        (void) layers;
         DUNE_THROW(InvalidStateException, "MPI is missing from the system");
 
         return 0;
