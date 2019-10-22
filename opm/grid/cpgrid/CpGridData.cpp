@@ -1392,7 +1392,7 @@ void createInterfaceList(const typename CpGridData::InterfaceMap::value_type& pr
         for (const auto& point: cell2Points[cellList[c]])
             tmpPoints.push_back(local2Global(point));
 
-        for (const auto& point: additionalPoints[c])
+        for (const auto& point: additionalPoints[cellList[c]])
             tmpPoints.push_back(point); // is already a global id
     }
 
