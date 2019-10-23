@@ -69,7 +69,7 @@ namespace Dune
 
 
 //#include <opm/core/utility/SparseTable.hpp>
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 #include <climits>
 //#include <boost/algorithm/minmax_element.hpp>
 #include <vector>

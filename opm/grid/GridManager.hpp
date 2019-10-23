@@ -41,7 +41,6 @@ namespace Opm
     {
     public:
 
-#if HAVE_ECL_INPUT
         /// Construct a grid from an EclipseState::EclipseGrid instance.
         explicit GridManager(const Opm::EclipseGrid& inputGrid);
 
@@ -52,7 +51,6 @@ namespace Opm
         /// \input[in] poreVolumes    one element per logical cartesian grid element
         GridManager(const Opm::EclipseGrid& inputGrid,
                     const std::vector<double>& poreVolumes);
-#endif
 
         /// Construct a 2d cartesian grid with cells of unit size.
         GridManager(int nx, int ny);
@@ -85,11 +83,9 @@ namespace Opm
         GridManager(const GridManager& other);
         GridManager& operator=(const GridManager& other);
 
-#if HAVE_ECL_INPUT
         // Construct corner-point grid from EclipseGrid.
         void initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
                                  const std::vector<double>& poreVolumes);
-#endif
 
         // The managed UnstructuredGrid.
         UnstructuredGrid* ug_;

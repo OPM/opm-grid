@@ -42,7 +42,6 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
                            const std::array<int, 3>& cartesianSize,
                            const std::vector<int>& cartesian_to_compressed)
 {
-#if HAVE_ECL_INPUT
     well_indices_.resize(wells.size());
 
     // We assume that we know all the wells.
@@ -64,7 +63,6 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
         }
         ++index;
     }
-#endif
 }
 
 std::vector<std::vector<int> >
@@ -76,7 +74,6 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // Contains for each process the indices of the wells assigned to it.
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
-#if HAVE_ECL_INPUT
     if( ! well_connections.size() )
     {
         // No wells to be processed
@@ -127,7 +124,6 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         well_indices_on_proc[owner].push_back(well_index);
         ++well_index;
     }
-#endif
 
     return well_indices_on_proc;
 
@@ -143,7 +139,6 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
     // We need to use well names as only they are consistent.
     std::unordered_set<std::string> defunct_well_names;
 
-#if HAVE_ECL_INPUT
     std::vector<int> my_well_indices;
     const int well_information_tag = 267553;
 
@@ -190,7 +185,6 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
             defunct_well_names.insert(wells[defunct-defunct_wells.begin()].name());
         }
     }
-#endif
 
     return defunct_well_names;
 }

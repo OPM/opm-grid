@@ -53,21 +53,14 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgpreprocess/uniquepoints.c
   opm/grid/UnstructuredGrid.c
   opm/grid/grid_equal.cpp
+  opm/grid/transmissibility/trans_tpfa.c
   opm/grid/utility/compressedToCartesian.cpp
   opm/grid/utility/cartesianToCompressed.cpp
+	opm/grid/utility/extractPvtTableIndex.cpp
   opm/grid/utility/StopWatch.cpp
+  opm/grid/utility/VelocityInterpolation.cpp
   opm/grid/utility/WachspressCoord.cpp
   )
-
-if (opm-common_FOUND)
-  list(APPEND MAIN_SOURCE_FILES
-		opm/grid/utility/VelocityInterpolation.cpp
-		opm/grid/transmissibility/trans_tpfa.c)
-endif()
-
-if(HAVE_ECL_INPUT)
-  list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
-endif()
 
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
@@ -85,11 +78,13 @@ list (APPEND ATTIC_FILES
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
   tests/test_column_extract.cpp
+  tests/test_compressedpropertyaccess.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
   tests/cpgrid/geometry_test.cpp
+  tests/cpgrid/grid_nnc.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
@@ -98,20 +93,13 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_minpvprocessor.cpp
 #	tests/grid_test.cc
   tests/p2pcommunicator_test.cc
+  tests/test_regionmapping.cpp
+  tests/test_quadratures.cpp
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
-  tests/test_quadratures.cpp
+  tests/test_ug.cpp
   tests/test_compressed_cartesian_mapping.cpp
-	)
-
-if(HAVE_ECL_INPUT)
-  list(APPEND TEST_SOURCE_FILES
-		tests/test_regionmapping.cpp
-		tests/test_ug.cpp
-		tests/test_compressedpropertyaccess.cpp
-                tests/cpgrid/grid_nnc.cpp
-	)
-endif()
+)
 
 # originally generated with the command:
 # find tests -name '*.xml' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
@@ -126,19 +114,17 @@ list (APPEND TEST_DATA_FILES
 # originally generated with the command:
 # find tutorials examples -name '*.c*' -printf '\t%p\n' | sort
 list (APPEND EXAMPLE_SOURCE_FILES
-  examples/finitevolume/finitevolume.cc
-  examples/mirror_grid.cpp
-  )
+					   examples/finitevolume/finitevolume.cc
+						 examples/grdecl2vtu.cpp
+						 examples/mirror_grid.cpp
+)
 
 # programs listed here will not only be compiled, but also marked for
 # installation
 list (APPEND PROGRAM_SOURCE_FILES
-  examples/mirror_grid.cpp
-  )
-if(HAVE_ECL_INPUT)
-  list(APPEND EXAMPLE_SOURCE_FILES examples/grdecl2vtu.cpp)
-  list(APPEND PROGRAM_SOURCE_FILES examples/grdecl2vtu.cpp)
-endif()
+			examples/mirror_grid.cpp
+			examples/grdecl2vtu.cpp
+)
 
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
@@ -217,7 +203,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/StopWatch.hpp
   opm/grid/utility/VelocityInterpolation.hpp
   opm/grid/utility/WachspressCoord.hpp
-  opm/grid/utility/ErrorMacros.hpp
   opm/grid/utility/OpmParserIncludes.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
   opm/grid/utility/platform_dependent/reenable_warnings.h

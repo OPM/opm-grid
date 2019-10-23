@@ -37,7 +37,7 @@
 #endif
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 namespace Opm
 {

@@ -42,7 +42,7 @@
 #include <map>
 #include <array>
 #include <unordered_set>
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
@@ -257,7 +257,6 @@ namespace Dune
         void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
 
-#if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
@@ -269,7 +268,6 @@ namespace Dune
         void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>(),
                                   const Opm::NNC& = Opm::NNC());
-#endif
 
         /// Read the Eclipse grid format ('grdecl').
         /// \param input_data the data in grdecl format, declared in preprocess.h.

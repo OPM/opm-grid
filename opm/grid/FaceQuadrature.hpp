@@ -20,7 +20,7 @@
 #ifndef OPM_FACEQUADRATURE_HEADER_INCLUDED
 #define OPM_FACEQUADRATURE_HEADER_INCLUDED
 
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 #include <opm/grid/UnstructuredGrid.h>
 #include <cmath>
 
