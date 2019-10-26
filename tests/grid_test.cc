@@ -198,7 +198,7 @@ int main(int argc, char** argv )
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
     dgfFile << "2 2 2" << std::endl;
-    dgfFile << "2 2 2" << std::endl;
+    dgfFile << "1 1 2" << std::endl;
     dgfFile << "#" << std::endl;
     //dgfFile << "Simplex" << std::endl;
     //dgfFile << "#" << std::endl;
