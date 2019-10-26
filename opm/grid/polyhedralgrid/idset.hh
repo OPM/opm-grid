@@ -13,12 +13,13 @@ namespace Dune
 
   template< int dim, int dimworld, typename coord_t >
   class PolyhedralGridIdSet
-      : public IdSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIdSet< dim, dimworld, coord_t >, /*IdType=*/int >
+      : public IdSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIdSet< dim, dimworld, coord_t >, size_t /*IdType=int*/ >
   {
   public:
     typedef PolyhedralGrid<  dim, dimworld, coord_t > Grid;
     typedef typename std::remove_const< Grid >::type::Traits Traits;
-    typedef typename Traits::Index  IdType;
+    //typedef typename Traits::Index  IdType;
+    typedef size_t IdType;
 
     typedef PolyhedralGridIdSet< dim, dimworld, coord_t > This;
     typedef IdSet< Grid, This, IdType > Base;
@@ -26,7 +27,13 @@ namespace Dune
     PolyhedralGridIdSet (const Grid& grid)
         : grid_( grid ),
           globalCellPtr_( grid_.globalCellPtr() )
-    {}
+    {
+      codimOffset_[ 0 ] = 0;
+      for( int i=1; i<=dim; ++i )
+      {
+        codimOffset_[ i ] = codimOffset_[ i-1 ] + grid.size( i-1 );
+      }
+    }
 
     //! id meethod for entity and specific codim
     template< int codim >
@@ -35,9 +42,11 @@ namespace Dune
       const int index = entity.seed().index();
       // in case
       if (codim == 0 && globalCellPtr_ )
-        return globalCellPtr_[ index ];
+        return size_t( globalCellPtr_[ index ] );
       else
-        return index;
+      {
+        return codimOffset_[ codim ] + index;
+      }
     }
 
 #if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
@@ -72,7 +81,9 @@ namespace Dune
       else if ( codim == 1 )
         return id( entity.template subEntity< 1 >( i ) );
       else if ( codim == dim )
+      {
         return id( entity.template subEntity< dim >( i ) );
+      }
       else
       {
         DUNE_THROW(NotImplemented,"codimension not available");
@@ -83,6 +94,7 @@ namespace Dune
   protected:
     const Grid& grid_;
     const int* globalCellPtr_;
+    size_t codimOffset_[ dim+1 ];
   };
 
 } // namespace Dune
