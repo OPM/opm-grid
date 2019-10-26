@@ -76,7 +76,7 @@ struct Fixture
         grid.processEclipseFormat(es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
-        ElementMapper elmap(gv, Dune::mcmgVertexLayout());
+        ElementMapper elmap(gv, Dune::mcmgElementLayout());
 #else
         ElementMapper elmap(gv);
 #endif

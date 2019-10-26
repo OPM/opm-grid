@@ -1205,7 +1205,7 @@ namespace Dune
         /// \param handle The data handle describing the data and responsible for
         ///         gathering and scattering the data.
         template<class DataHandle>
-        void scatterData(DataHandle& handle)
+        void scatterData(DataHandle& handle) const
         {
 #if HAVE_MPI
             if(!distributed_data_)
@@ -1224,7 +1224,7 @@ namespace Dune
         /// \param handle The data handle describing the data and responsible for
         ///         gathering and scattering the data.
         template<class DataHandle>
-        void gatherData(DataHandle& handle)
+        void gatherData(DataHandle& handle) const
         {
 #if HAVE_MPI
             if(!distributed_data_)

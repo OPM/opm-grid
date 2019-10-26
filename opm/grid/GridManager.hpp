@@ -80,10 +80,6 @@ namespace Opm
         /// to make it clear that we are returning a C-compatible struct.
         const UnstructuredGrid* c_grid() const;
 
-#if HAVE_ECL_INPUT
-        static void createGrdecl(const Opm::Deck& deck, struct grdecl &grdecl);
-#endif
-
     private:
         // Disable copying and assignment.
         GridManager(const GridManager& other);
