@@ -609,8 +609,8 @@ fill_cart_topology_2d(struct UnstructuredGrid *G)
     /* Faces with y-normal */
     for (j=0; j<ny+1; ++j) {
         for (i=0; i<nx; ++i) {
-            *fnodes++ = i+1 + Nx*j;
             *fnodes++ = i+    Nx*j;
+            *fnodes++ = i+1 + Nx*j;
             fnodepos[1] = fnodepos[0] + 2;
             ++fnodepos;
             if (j==0) {

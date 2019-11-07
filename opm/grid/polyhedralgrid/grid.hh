@@ -950,6 +950,7 @@ namespace Dune
         if( dim == 2 )
         {
           cgrid = create_grid_cart2d( n[ 0 ], n[ 1 ], dx[ 0 ], dx[ 1 ] );
+          print_grid( cgrid );
         }
         else if ( dim == 3 )
         {
