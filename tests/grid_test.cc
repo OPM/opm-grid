@@ -238,7 +238,6 @@ int main(int argc, char** argv )
         //testGrid( *gridPtr, "polyhedralgrid-dgf", std::pow(3, int(Grid::dimension)) );
         gridcheck( *gridPtr );
       }
-      return 0;
 
       {
         std::cout <<"Check 2d grid" << std::endl;

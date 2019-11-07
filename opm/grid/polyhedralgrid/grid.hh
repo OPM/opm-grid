@@ -418,7 +418,7 @@ namespace Dune
       localIdSet_( *this ),
       nBndSegments_( 0 )
     {
-      std::cout << "Creating TopSurfaceGrid" <<  topSurfaceGrid_ << std::endl;
+      // std::cout << "Creating TopSurfaceGrid" <<  topSurfaceGrid_ << std::endl;
       init();
     }
 
@@ -961,7 +961,7 @@ namespace Dune
           cgrid = create_grid_hexa3d( n[ 0 ], n[ 1 ], n[ 2 ], dx[ 0 ], dx[ 1 ], dx[ 2 ] );
         }
 
-        print_grid( cgrid );
+        //print_grid( cgrid );
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
@@ -1000,7 +1000,7 @@ namespace Dune
 
     template <class EntitySeed>
     GlobalCoordinate
-    corner( const EntitySeed& seed, const int i ) const
+    corner( const EntitySeed& seed, int i, const bool swap = false ) const
     {
       const int codim = EntitySeed :: codimension;
       switch (codim)
@@ -1012,12 +1012,10 @@ namespace Dune
           }
         case 1:
           {
-            static const int map[ 6 ][ 4 ] = { {0, 1, 3, 2},  // face 0
-                                               {0, 1, 3, 2},  // face 1
-                                               {0, 3, 1, 2},  // face 2
-                                               {0, 3, 1, 2},  // face 3
-                                               {0, 1, 3, 2},  // face 4
-                                               {0, 1, 3, 2}}; // face 5
+            // for faces we need to swap vertices since in UnstructuredGrid
+            // those are ordered counter clockwise
+            if( EntitySeed :: dimension == 3 && i > 1 )
+              i = 5 - i;
 
             const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i ];
             return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
@@ -1353,7 +1351,7 @@ namespace Dune
   protected:
     void init()
     {
-      std::cout << "PolyhedralGrid init" << std::endl;
+      //std::cout << "PolyhedralGrid init" << std::endl;
 
       // copy Cartesian dimensions
       for( int i=0; i<3; ++i )
@@ -1369,7 +1367,6 @@ namespace Dune
       // sort vertices such that they comply with the dune cube reference element
       if( grid_.cell_facetag )
       {
-        std::cout << "Sort vertices " << std::endl;
         typedef std::array<int, 3> KeyType;
         std::map< const KeyType, const int > vertexFaceTags;
         const int vertexFacePattern [8][3] = {
@@ -1396,6 +1393,14 @@ namespace Dune
 
         for (int c = 0; c < numCells; ++c)
         {
+          if( dim == 2 )
+          {
+            // for 2d Cartesian grids the face ordering is wrong
+            int f = grid_.cell_facepos[ c ];
+            std::swap( grid_.cell_faces[ f+1 ], grid_.cell_faces[ f+2 ] );
+            std::swap( grid_.cell_facetag[ f+1 ], grid_.cell_facetag[ f+2 ] );
+          }
+
           typedef std::map<int,int> vertexmap_t;
           typedef typename vertexmap_t :: iterator iterator;
 

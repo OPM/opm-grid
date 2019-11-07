@@ -181,58 +181,6 @@ void print_grid(const struct UnstructuredGrid *grd )
     printf(")\n");
   }
 
-  static const int map[ 6 ][ 4 ] = { {0, 1, 3, 2},  // face 0
-                                     {0, 1, 3, 2},  // face 1
-                                     {0, 3, 1, 2},  // face 2
-                                     {0, 3, 1, 2},  // face 3
-                                     {0, 1, 3, 2},  // face 4
-                                     {0, 1, 3, 2}}; // face 5
-
-  if( dim == 3 )
-  {
-    for( int face=0; face<grd->number_of_faces; ++face )
-    {
-      int c = grd->face_cells[ 2*face ];
-      if( c < 0 )
-        c = grd->face_cells[ 2*face+1 ];
-      if( c < 0 ) exit(1);
-
-      //for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
-      const int faces = grd->cell_facepos[ c+1 ] - grd->cell_facepos[ c ];
-      if( faces == 6 ) // Cartesian hexahedral case
-      {
-        printf("Swap vertices for face %d \n", face);
-        int i = -1;
-        for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
-        {
-          if( grd->cell_faces[ f ] == face )
-          {
-            i = grd->cell_facepos[ c+1 ] - f - 1;
-            break;
-          }
-        }
-        printf("Face is %d\n", i);
-        int vxPos = grd->face_nodepos[ face ];
-        const int vxs[ 4 ] = { grd->face_nodes[ vxPos   ],
-                               grd->face_nodes[ vxPos+1 ],
-                               grd->face_nodes[ vxPos+2 ],
-                               grd->face_nodes[ vxPos+3 ] };
-        for( int vx=0; vx<4; ++vx )
-        {
-          grd->face_nodes[ vxPos+vx ] = vxs[ map[ i ][ vx ]];
-        }
-
-        /*
-        for( int vx=grd->face_nodepos[ f ]; vx<grd->face_nodepos[ f+1 ]; ++vx )
-        {
-          printf(" %d ",grd->face_nodes[ vx ]);
-        }
-        printf(")\n");
-        */
-      }
-    }
-  }
-
   for( int f=0; f<grd->number_of_faces; ++f )
   {
     //for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
@@ -248,6 +196,7 @@ void print_grid(const struct UnstructuredGrid *grd )
     printf("\n");
   }
 
+  /*
   if( dim == 2 )
   {
     for( int c=0; c<grd->number_of_cells; ++c )
@@ -257,6 +206,7 @@ void print_grid(const struct UnstructuredGrid *grd )
       SWAP( grd->cell_facetag[ f+1 ], grd->cell_facetag[ f+2 ] );
     }
   }
+  */
 
   for( int c=0; c<grd->number_of_cells; ++c )
   {
