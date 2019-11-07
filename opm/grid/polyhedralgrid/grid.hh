@@ -1156,7 +1156,7 @@ namespace Dune
 
     bool isBoundaryFace(const typename Codim<1>::EntitySeed& faceSeed ) const
     {
-      assert( faceSeed.valid() );
+      assert( faceSeed.isValid() );
       return isBoundaryFace( faceSeed.index() );
     }
 
