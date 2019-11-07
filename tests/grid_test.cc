@@ -248,7 +248,7 @@ int main(int argc, char** argv )
         dgfFile << "Interval" << std::endl;
         dgfFile << "0 0" << std::endl;
         dgfFile << "1 1" << std::endl;
-        dgfFile << "4 4" << std::endl;
+        dgfFile << "2 2" << std::endl;
         dgfFile << "#" << std::endl;
         typedef Dune::PolyhedralGrid< 2, 2 > Grid;
         Dune::GridPtr< Grid > gridPtr( dgfFile );

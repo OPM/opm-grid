@@ -335,7 +335,8 @@ namespace Dune
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
-      localIdSet_( *this )
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
     {
       init();
     }
@@ -354,7 +355,8 @@ namespace Dune
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
-      localIdSet_( *this )
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
     {
       init();
     }
@@ -373,7 +375,8 @@ namespace Dune
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
-      localIdSet_( *this )
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
     {
       init();
     }
@@ -392,7 +395,8 @@ namespace Dune
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
-      localIdSet_( *this )
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
     {
       init();
     }
@@ -411,7 +415,8 @@ namespace Dune
       comm_( *this ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
-      localIdSet_( *this )
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
     {
       std::cout << "Creating TopSurfaceGrid" <<  topSurfaceGrid_ << std::endl;
       init();
@@ -513,7 +518,7 @@ namespace Dune
      */
     size_t numBoundarySegments () const
     {
-      return 0;
+      return nBndSegments_;
     }
     /** \} */
 
@@ -1125,6 +1130,42 @@ namespace Dune
       }
     }
 
+    bool hasBoundaryIntersections(const typename Codim<0>::EntitySeed& seed ) const
+    {
+      const int faces = subEntities( seed, 1 );
+      for( int f=0; f<faces; ++f )
+      {
+        const auto faceSeed = this->template subEntitySeed<1>( seed, f );
+        if( isBoundaryFace( faceSeed ) )
+          return true;
+      }
+      return false;
+    }
+
+    bool isBoundaryFace(const int face ) const
+    {
+      assert( face >= 0 && face < grid_.number_of_faces );
+      const int facePos = 2 * face;
+      return ((grid_.face_cells[ facePos ] < 0) || (grid_.face_cells[ facePos+1 ] < 0));
+    }
+
+    bool isBoundaryFace(const typename Codim<1>::EntitySeed& faceSeed ) const
+    {
+      assert( faceSeed.valid() );
+      return isBoundaryFace( faceSeed.index() );
+    }
+
+    int boundarySegmentIndex(const typename Codim<0>::EntitySeed& seed, const int face ) const
+    {
+      const auto faceSeed = this->template subEntitySeed<1>( seed, face );
+      assert( faceSeed.isValid() );
+      const int facePos = 2 * faceSeed.index();
+      const int idx = std::min( grid_.face_cells[ facePos ], grid_.face_cells[ facePos+1 ]);
+      // check that this is actually the boundary
+      assert( idx < 0 );
+      return -(idx+1); // +1 to include 0 boundary segment index
+    }
+
     const std::vector< GeometryType > &geomTypes ( const unsigned int codim ) const
     {
       static std::vector< GeometryType > emptyDummy;
@@ -1305,6 +1346,8 @@ namespace Dune
   protected:
     void init()
     {
+      std::cout << "PolyhedralGrid init" << std::endl;
+
       // copy Cartesian dimensions
       for( int i=0; i<3; ++i )
       {
@@ -1581,14 +1624,31 @@ namespace Dune
         }
       } // end else of ( grid_.cell_facetag )
 
+      nBndSegments_ = 0;
       unitOuterNormals_.resize( grid_.number_of_faces );
       for( int face = 0; face < grid_.number_of_faces; ++face )
       {
-         const int normalIdx = face * GlobalCoordinate :: dimension ;
-         GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
-         normal /= normal.two_norm();
+        const int normalIdx = face * GlobalCoordinate :: dimension ;
+        GlobalCoordinate normal = copyToGlobalCoordinate( grid_.face_normals + normalIdx );
+        normal /= normal.two_norm();
+        unitOuterNormals_[ face ] = normal;
 
-         unitOuterNormals_[ face ] = normal;
+        if( isBoundaryFace( face ) )
+        {
+          // increase number if boundary segments
+          ++nBndSegments_;
+          const int facePos = 2 * face ;
+          // store negative number to indicate boundary
+          // the abstract value is the segment index
+          if( grid_.face_cells[ facePos ] < 0 )
+          {
+            grid_.face_cells[ facePos ] = -nBndSegments_;
+          }
+          else if ( grid_.face_cells[ facePos+1 ] < 0 )
+          {
+            grid_.face_cells[ facePos+1 ] = -nBndSegments_;
+          }
+        }
       }
 
       //print( std::cout, grid_ );
@@ -1633,6 +1693,8 @@ namespace Dune
     mutable LeafIndexSet leafIndexSet_;
     mutable GlobalIdSet globalIdSet_;
     mutable LocalIdSet localIdSet_;
+
+    size_t nBndSegments_;
 
   private:
     // no copying

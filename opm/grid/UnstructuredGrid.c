@@ -189,7 +189,11 @@ void print_grid(const struct UnstructuredGrid *grd )
     {
       printf(" %d ",grd->face_nodes[ vx ]);
     }
-    printf(")\n");
+    printf(")");
+    int bnd = grd->face_cells[ 2*f ] < 0 || grd->face_cells[ 2*f+1 ] < 0;
+    if( bnd )
+      printf(" boundary");
+    printf("\n");
   }
 
   for( int c=0; c<grd->number_of_cells; ++c )
@@ -206,6 +210,28 @@ void print_grid(const struct UnstructuredGrid *grd )
     for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
     {
       printf(" %d ",grd->cell_faces[ f ]);
+
+      /*
+      for( int vx=grd->face_nodepos[ f ]; vx<grd->face_nodepos[ f+1 ]; ++vx )
+      {
+        printf(" %d ",grd->face_nodes[ vx ]);
+      }
+      printf(")\n");
+      */
+    }
+    printf(")\n");
+  }
+
+  printf("Neighbors \n");
+  for( int c=0; c<grd->number_of_cells; ++c )
+  {
+    printf("Cell %d \n ", c);
+    //for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
+    for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
+    {
+      int face = grd->cell_faces[ f ];
+      int bnd = grd->face_cells[ 2*face ] < 0 || grd->face_cells[ 2*face+1 ] < 0;
+      printf(" Face %d is boundary %d",f-grd->cell_facepos[ c ],bnd);
 
       /*
       for( int vx=grd->face_nodepos[ f ]; vx<grd->face_nodepos[ f+1 ]; ++vx )

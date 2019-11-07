@@ -41,7 +41,9 @@ namespace Dune
 
     int index () const { return index_ ; }
 
-    bool isValid() const { return index_ != defaultIndex; }
+    // check that index is valid, which means >= 0
+    // boundary faces can be arbitrary number < 0
+    bool isValid() const { return index_ > defaultIndex; }
 
     bool equals(const PolyhedralGridEntitySeed& other) const
     { return index_ == other.index_; }
