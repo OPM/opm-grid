@@ -955,13 +955,13 @@ namespace Dune
         if( dim == 2 )
         {
           cgrid = create_grid_cart2d( n[ 0 ], n[ 1 ], dx[ 0 ], dx[ 1 ] );
-          print_grid( cgrid );
         }
         else if ( dim == 3 )
         {
           cgrid = create_grid_hexa3d( n[ 0 ], n[ 1 ], n[ 2 ], dx[ 0 ], dx[ 1 ], dx[ 2 ] );
         }
 
+        print_grid( cgrid );
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
         }
@@ -1012,6 +1012,13 @@ namespace Dune
           }
         case 1:
           {
+            static const int map[ 6 ][ 4 ] = { {0, 1, 3, 2},  // face 0
+                                               {0, 1, 3, 2},  // face 1
+                                               {0, 3, 1, 2},  // face 2
+                                               {0, 3, 1, 2},  // face 3
+                                               {0, 1, 3, 2},  // face 4
+                                               {0, 1, 3, 2}}; // face 5
+
             const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i ];
             return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
           }

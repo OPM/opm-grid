@@ -197,8 +197,8 @@ int main(int argc, char** argv )
     dgfFile << "DGF" << std::endl;
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
-    dgfFile << "2 2 2" << std::endl;
     dgfFile << "1 1 1" << std::endl;
+    dgfFile << "4 4 4" << std::endl;
     dgfFile << "#" << std::endl;
     //dgfFile << "Simplex" << std::endl;
     //dgfFile << "#" << std::endl;
@@ -232,13 +232,13 @@ int main(int argc, char** argv )
       testGrid ( tsDune, "ts", 27 );
       */
 #endif
-      /*
       {
         std::cout <<"Check 3d grid" << std::endl;
         Dune::GridPtr< Grid > gridPtr( dgfFile );
-        testGrid( *gridPtr, "polyhedralgrid-dgf", std::pow(3, Grid::dimension) );
+        //testGrid( *gridPtr, "polyhedralgrid-dgf", std::pow(3, int(Grid::dimension)) );
+        gridcheck( *gridPtr );
       }
-      */
+      return 0;
 
       {
         std::cout <<"Check 2d grid" << std::endl;
