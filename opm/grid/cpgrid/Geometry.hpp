@@ -41,6 +41,7 @@
 
 #include <dune/common/version.hh>
 #include <dune/geometry/referenceelements.hh>
+#include <dune/grid/common/geometry.hh>
 
 #if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
 #include <dune/geometry/type.hh>
@@ -542,7 +543,7 @@ namespace Dune
             /// This method is meaningless for singular geometries.
             GlobalCoordinate corner(int /* cor */) const
             {
-                // Meaningless call to cpgrid::Geometry::corner(int): 
+                // Meaningless call to cpgrid::Geometry::corner(int):
                 //"singular geometry has no corners.
                 // But the DUNE tests assume at least one corner.
                 return GlobalCoordinate( 0.0 );
@@ -590,6 +591,15 @@ namespace Dune
 
 
     } // namespace cpgrid
+
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
+    template< int mydim, int cdim >
+    auto referenceElement(const cpgrid::Geometry<mydim,cdim>& geo) -> decltype(referenceElement<double,mydim>(geo.type()))
+    {
+        return referenceElement<double,mydim>(geo.type());
+    }
+#endif
+
 } // namespace Dune
 
 #endif // OPM_GEOMETRY_HEADER

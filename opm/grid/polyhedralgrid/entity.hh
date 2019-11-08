@@ -97,7 +97,7 @@ namespace Dune
      */
     GeometryType type () const
     {
-      return data()->geomTypes(codimension)[0];
+      return data()->geometryType(seed_);
     }
 
     /** \brief obtain the level of this entity */
@@ -296,17 +296,7 @@ namespace Dune
 
     bool hasBoundaryIntersections () const
     {
-      const int faces = subEntities( 1 );
-      for( int i=0; i<faces; ++i )
-      {
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-        if( !this->template subEntity< 1 >( i ).seed().isValid() )
-#else
-        if( !this->template subEntity< 1 >( i )->seed().isValid() )
-#endif
-          return true;
-      }
-      return false;
+      return data()->hasBoundaryIntersections( this->seed() );
     }
 
 #if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)

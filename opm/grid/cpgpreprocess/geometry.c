@@ -325,7 +325,8 @@ compute_cell_geometry_3d(double *coords,
             for (i=0; i<ndims; ++i) cface[i] = (x[i]+(twothirds)*0.5*(u[i]+v[i]));
 
             /* Cell centroid */
-            for (i=0; i<ndims; ++i) ccell[i] += tet_volume * 3/4.0*(cface[i] - xcell[i]);
+            //printf("tet_vol %f, cface %f, xcel %f \n", tet_volume, cface[i], xcell[i]);
+            for (i=0; i<ndims; ++i) ccell[i] += tet_volume * 3./4.0*(cface[i] - xcell[i]);
 
 
             /* Store v in u for next iteration */
