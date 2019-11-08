@@ -33,16 +33,16 @@ const char *deckString =
     "RUNSPEC\n"
     "METRIC\n"
     "DIMENS\n"
-    "2 2 2 /\n"
+    "4 4 4 /\n"
     "GRID\n"
     "DXV\n"
-    "2*1 /\n"
+    "4*1 /\n"
     "DYV\n"
-    "2*1 /\n"
+    "4*1 /\n"
     "DZ\n"
-    "8*1 /\n"
+    "16*1 /\n"
     "TOPS\n"
-    "4*100.0 /\n";
+    "16*100.0 /\n";
 
 template <class GridView>
 void testGridIteration( const GridView& gridView, const int nElem )
@@ -204,20 +204,20 @@ int main(int argc, char** argv )
     //dgfFile << "#" << std::endl;
 
 #if HAVE_ECL_INPUT
-    /*
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
     std::vector<double> porv;
-    */
 #endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
 #if HAVE_ECL_INPUT
-      /*
+      std::cout << "Check ecl grid" << std::endl;
       Grid grid(deck, porv);
-      testGrid( grid, "polyhedralgrid", 8, 27 );
+      gridcheck( grid );
+      //testGrid( grid, "polyhedralgrid", 8, 27 );
+      /*
       Opm::TopSurf* ts;
       ts = Opm::TopSurf::create (grid);
       std::cout << ts->dimensions << std::endl;
@@ -259,7 +259,7 @@ int main(int argc, char** argv )
       }
     }
 
-    /*
+#if 0
     // test CpGrid
     {
       typedef Dune::CpGrid Grid;
@@ -278,6 +278,6 @@ int main(int argc, char** argv )
       //Dune::GridPtr< Grid > gridPtr( dgfFile );
       //testGrid( *gridPtr, "cpgrid-dgf" );
     }
-    */
+#endif
     return 0;
 }

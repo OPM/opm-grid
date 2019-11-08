@@ -1000,7 +1000,7 @@ namespace Dune
 
     template <class EntitySeed>
     GlobalCoordinate
-    corner( const EntitySeed& seed, int i, const bool swap = false ) const
+    corner( const EntitySeed& seed, const int i ) const
     {
       const int codim = EntitySeed :: codimension;
       switch (codim)
@@ -1012,12 +1012,10 @@ namespace Dune
           }
         case 1:
           {
-            // for faces we need to swap vertices since in UnstructuredGrid
-            // those are ordered counter clockwise
-            if( EntitySeed :: dimension == 3 && i > 1 )
-              i = 5 - i;
-
-            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + i ];
+            // for faces we need to swap vertices in 3d since in UnstructuredGrid
+            // those are ordered counter clockwise, for 2d this does not matter
+            const int crner = (EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
+            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
             return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
           }
         case dim:
@@ -1509,8 +1507,8 @@ namespace Dune
           {
             assert( cellVertices_[ c ].size() == 4 );
             GlobalCoordinate center( 0 );
-            GlobalCoordinate p[ 4 ];
-            for( int i=0; i<4; ++i )
+            GlobalCoordinate p[ dim+1 ];
+            for( int i=0; i<dim+1; ++i )
             {
               const int vertex = cellVertices_[ c ][ i ];
 
@@ -1526,20 +1524,12 @@ namespace Dune
               grid_.cell_centroids[ c*dim + d ] = center[ d ];
             }
 
-            FieldMatrix< double, 3, 3 > matrix( 0 );
-            matrix [0][0] = p[1][0] - p[0][0] ;
-            matrix [0][1] = p[1][1] - p[0][1] ;
-            matrix [0][2] = p[1][2] - p[0][2] ;
+            Dune::GeometryType simplex;
+            simplex.makeSimplex( dim );
 
-            matrix [1][0] = p[2][0] - p[0][0] ;
-            matrix [1][1] = p[2][1] - p[0][1] ;
-            matrix [1][2] = p[2][2] - p[0][2] ;
-
-            matrix [2][0] = p[3][0] - p[0][0] ;
-            matrix [2][1] = p[3][1] - p[0][1] ;
-            matrix [2][2] = p[3][2] - p[0][2] ;
-
-            grid_.cell_volumes[ c ] = std::abs( matrix.determinant() )/ 6.0;
+            typedef Dune::AffineGeometry< ctype, dim, dimworld>  AffineGeometryType;
+            AffineGeometryType geometry( simplex, p );
+            grid_.cell_volumes[ c ] = geometry.volume();
           }
         }
 
