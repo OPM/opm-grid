@@ -273,11 +273,12 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
                                       const std::vector<double>& poreVolume,
-                                      const Opm::NNC& nncs)
+                                      const Opm::NNC& nncs,
+                                      bool allow_deactivate_cells)
     {
         current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
                                                  turn_normals, clip_z,
-                                                 poreVolume, nncs);
+                                                 poreVolume, nncs, allow_deactivate_cells);
     }
 #endif
 

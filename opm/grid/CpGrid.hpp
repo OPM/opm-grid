@@ -268,7 +268,8 @@ namespace Dune
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
         void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>(),
-                                  const Opm::NNC& = Opm::NNC());
+                                  const Opm::NNC& = Opm::NNC(),
+                                  bool allow_deactivate_cells = false);
 #endif
 
         /// Read the Eclipse grid format ('grdecl').
