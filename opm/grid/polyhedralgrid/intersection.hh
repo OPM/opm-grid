@@ -102,8 +102,7 @@ namespace Dune
 
     size_t boundarySegmentIndex () const
     {
-        // not implementable
-        return -1;
+        return data()->boundarySegmentIndex( seed_, intersectionIdx_);
     }
 
     LocalGeometry geometryInInside () const

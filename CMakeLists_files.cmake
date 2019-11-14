@@ -84,6 +84,7 @@ list (APPEND ATTIC_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
+  tests/test_cpgrid.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -96,7 +97,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
   tests/test_minpvprocessor.cpp
-#	tests/grid_test.cc
+  tests/test_polyhedralgrid.cpp
   tests/p2pcommunicator_test.cc
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
