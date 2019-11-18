@@ -270,6 +270,36 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     }
 }
 
+/// \brief Adds cells to the overlap that just share a point with an owner cell.
+void addOverlapCornerCell(const CpGrid& grid, int owner,
+                          const CpGrid::Codim<0>::Entity& from,
+                          const CpGrid::Codim<0>::Entity& neighbor,
+                          const std::vector<int>& cell_part,
+                          std::vector<std::tuple<int,int,char>>& exportList)
+{
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+    int my_index = ix.index(from);
+    int nb_index = ix.index(neighbor);
+    const int num_from_subs = from.subEntities(CpGrid::dimension);
+    for ( int i = 0; i < num_from_subs ; i++ )
+    {
+        int mypoint = ix.index(*from.subEntity<CpGrid::dimension>(i));
+        const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
+        for ( int j = 0; j < num_nb_subs; j++)
+        {
+            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(i));
+            if ( mypoint == otherpoint )
+            {
+                // Note: multiple adds for same process are possible
+                exportList.emplace_back(nb_index, owner, AttributeSet::copy);
+                exportList.emplace_back(my_index, cell_part[nb_index],  AttributeSet::copy);
+                return;
+            }
+        }
+    }
+}
+
 void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
                      const int owner, const std::vector<int>& cell_part,
                      std::vector<std::set<int> >& cell_overlap, int recursion_deps)
@@ -351,6 +381,21 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         // Add another layer
                         addOverlapLayer(grid, nb_index, *(iit->outside()), owner,
                                         cell_part, exportList, recursion_deps-1);
+                    }
+                    else
+                    {
+                        // Add cells to the overlap that just share a corner with e.
+                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
+                             iit2 != iit->outside()->ileafend(); ++iit2)
+                        {
+                            if ( iit2->neighbor() )
+                            {
+                                int nb_index2 = ix.index(*(iit2->outside()));
+                                if( cell_part[nb_index2]==owner ) continue;
+                                addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
+                                                     cell_part, exportList);
+                            }
+                        }
                     }
                 }
             }
