@@ -344,8 +344,8 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                 if ( cell_part[nb_index]!=owner )
                 {
                     // Note: multiple adds for same process are possible
-                    exportList.emplace_back(nb_index, owner, AttributeSet::overlap);
-                    exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::overlap);
+                    exportList.emplace_back(nb_index, owner, AttributeSet::copy);
+                    exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::copy);
                     if ( recursion_deps>0 )
                     {
                         // Add another layer
@@ -448,7 +448,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         for(const auto& proc: importProcs)
         {
             for(const auto& index: *buffer)
-                importList.emplace_back(index, proc.first, AttributeSet::overlap, -1);
+                importList.emplace_back(index, proc.first, AttributeSet::copy, -1);
             ++buffer;
         }
         std::sort(importList.begin() + importOwnerSize, importList.end(),
