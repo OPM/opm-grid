@@ -287,6 +287,166 @@ public:
     }
 };
 
+class CopyCellValues
+{
+public:
+    CopyCellValues(std::vector<int>& cont)
+        : cont_(cont)
+    {}
+
+    typedef int DataType;
+    bool fixedsize(int /*dim*/, int /*codim*/)
+    {
+        return true;
+    }
+
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(cont_[t.index()]);
+    }
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t s)
+    {
+        for(std::size_t i=0; i<s; ++i)
+        {
+            buffer.read(cont_[t.index()]);
+        }
+    }
+    bool contains(int dim, int codim)
+    {
+        return dim==3 && codim==0;
+    }
+private:
+    std::vector<int>& cont_;
+};
+
+BOOST_AUTO_TEST_CASE(testDistributedComm)
+{
+#if HAVE_MPI
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+    grid.createCartesian(dims, size);
+    grid.loadBalance();
+#ifdef HAVE_DUNE_ISTL
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+#else
+    /// \brief The type of the set of the attributes
+    enum AttributeSet{owner, overlap, copy};
+#endif
+    std::vector<int> cont(grid.size(0), 1);
+    const auto& indexSet = grid.getCellIndexSet();
+    for ( const auto index: indexSet)
+        if (index.local().attribute() != AttributeSet::owner )
+            cont[index.local()] = -1;
+
+    CopyCellValues handle(cont);
+    grid.communicate(handle, Dune::InteriorBorder_All_Interface,
+                     Dune::ForwardCommunication);
+
+    for ( const auto index: indexSet)
+        BOOST_REQUIRE(cont[index.local()] == 1);
+#endif
+}
+
+BOOST_AUTO_TEST_CASE(compareWithSequential)
+{
+#if HAVE_MPI
+    Dune::CpGrid grid;
+    Dune::CpGrid seqGrid(MPI_COMM_SELF);
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+    seqGrid.setUniqueBoundaryIds(true);
+    grid.createCartesian(dims, size);
+    grid.loadBalance();
+    seqGrid.createCartesian(dims, size);
+
+    auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
+
+    using GridView = Dune::CpGrid::LeafGridView;
+    using ElementIterator = GridView::Codim<0>::Iterator;
+    GridView gridView(grid.leafGridView());
+    GridView seqGridView(seqGrid.leafGridView());
+
+    ElementIterator endEIt = gridView.end<0>();
+    ElementIterator seqEndEIt = seqGridView.end<0>();
+    ElementIterator seqEIt = seqGridView.begin<0>();
+    const auto& gc = grid.globalCell();
+    const auto& seqGc = seqGrid.globalCell();
+    int i{}, seqI{};
+    BOOST_REQUIRE(gc.size() == std::size_t(grid.size(0)));
+
+    for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
+        // find corresponding cell in global grid
+        auto id = idSet.id(*eIt);
+        while (seqIdSet.id(*seqEIt) < id && seqEIt != seqEndEIt)
+        {
+            ++seqI;
+            ++seqEIt;
+        }
+        BOOST_REQUIRE(id == seqIdSet.id(seqEIt));
+        BOOST_REQUIRE(gc[eIt->index()] == seqGc[seqEIt->index()]);
+        const auto& geom = eIt->geometry();
+        const auto& seqGeom = seqEIt-> geometry();
+        BOOST_REQUIRE(geom.center() == seqGeom.center());
+        BOOST_REQUIRE(geom.volume() == seqGeom.volume());
+
+        int ii{};
+
+        for (auto iit=gridView.ibegin(*eIt), siit = seqGridView.ibegin(*seqEIt),
+                 endiit = gridView.iend(*eIt); iit!=endiit; ++iit, ++siit, ++ii)
+            {
+                if (iit.boundary())
+                {
+                    BOOST_REQUIRE(iit.boundarySegmentIndex() == siit.boundarySegmentIndex());
+                    BOOST_REQUIRE(iit.boundaryId() == siit.boundaryId());
+                }
+                BOOST_REQUIRE(iit->geometry().center() == siit->geometry().center());
+                BOOST_REQUIRE(iit->geometry().volume() == siit->geometry().volume());
+                BOOST_REQUIRE(iit.boundary() == siit.boundary());
+                BOOST_REQUIRE(iit.outerNormal({0, 0}) == siit.outerNormal({0, 0}));
+                BOOST_REQUIRE(idSet.id(*iit.inside()) == seqIdSet.id(*siit.inside()));
+                if (iit->neighbor())
+                {
+                    assert(siit->neighbor());
+                    BOOST_REQUIRE(idSet.id(*iit.outside()) == seqIdSet.id(*siit.outside()));
+                }
+            }
+
+        // to reach all points we need to loop over subentities
+        int faces = grid.numCellFaces(eIt->index());
+        BOOST_REQUIRE(faces == seqGrid.numCellFaces(seqEIt.index()));
+        for (int f = 0; f < faces; ++f)
+        {
+            using namespace Dune::cpgrid;
+            auto face = grid.cellFace(eIt->index(), f);
+            auto seqFace = seqGrid.cellFace(seqEIt->index(), f);
+            BOOST_REQUIRE(idSet.id(EntityRep<1>(face, true)) ==
+                          seqIdSet.id(EntityRep<1>(seqFace, true)));
+            int vertices = grid.numFaceVertices(face);
+            BOOST_REQUIRE(vertices == seqGrid.numFaceVertices(seqFace));
+            for (int v = 0; v < vertices; ++v)
+            {
+                auto vertex = grid.faceVertex(face, v);
+                auto seqVertex = seqGrid.faceVertex(seqFace, v);
+                BOOST_REQUIRE(idSet.id(EntityRep<3>(vertex, true)) ==
+                              seqIdSet.id(EntityRep<3>(seqVertex, true)));
+                BOOST_REQUIRE(grid.vertexPosition(vertex) ==
+                              seqGrid.vertexPosition(seqVertex));
+            }
+        }
+    }
+#endif
+}
+
 BOOST_AUTO_TEST_CASE(distribute)
 {
 
@@ -306,7 +466,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
     grid.createCartesian(dims, size);
 #if HAVE_MPI
-    BOOST_REQUIRE(grid.comm()==MPI_COMM_SELF);
+    BOOST_REQUIRE(grid.comm()==MPI_COMM_WORLD);
 #endif
     std::vector<int> cell_indices, face_indices, point_indices;
     std::vector<Dune::CpGrid::Traits::Codim<0>::Geometry::GlobalCoordinate > cell_centers, face_centers, point_centers;

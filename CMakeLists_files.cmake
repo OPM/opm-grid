@@ -32,6 +32,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Intersection.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
@@ -152,6 +153,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/p2pcommunicator_impl.hh
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
+  opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
   opm/grid/cpgrid/dgfparser.hh
   opm/grid/cpgrid/Entity2IndexDataHandle.hpp
@@ -216,6 +218,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp
+  opm/grid/utility/VariableSizeCommunicator.hpp
   opm/grid/utility/VelocityInterpolation.hpp
   opm/grid/utility/WachspressCoord.hpp
   opm/grid/utility/ErrorMacros.hpp
