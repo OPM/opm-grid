@@ -110,8 +110,7 @@ if(HAVE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
-		tests/test_compressedpropertyaccess.cpp
-                tests/cpgrid/grid_nnc.cpp
+		tests/cpgrid/grid_nnc.cpp
 	)
 endif()
 
@@ -211,7 +210,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/trans_tpfa.h
   opm/grid/transmissibility/TransTpfa.hpp
   opm/grid/transmissibility/TransTpfa_impl.hpp
-  opm/grid/utility/CompressedPropertyAccess.hpp
   opm/grid/utility/compressedToCartesian.hpp
   opm/grid/utility/cartesianToCompressed.hpp
   opm/grid/utility/extractPvtTableIndex.hpp
