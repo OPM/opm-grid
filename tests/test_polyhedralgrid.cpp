@@ -288,7 +288,9 @@ int main(int argc, char** argv )
 
         std::cout <<"Check 3d grid created from deck" << std::endl << std::endl;
         Grid grid(deck, porv);
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
         gridcheck( grid );
+#endif
         std::cout << std::endl;
 #endif
         // test DGF grid creation capabilities
@@ -303,7 +305,9 @@ int main(int argc, char** argv )
 
         std::cout <<"Check 3d Cartesian grid created from DGF file" << std::endl << std::endl;
         Dune::GridPtr< Grid > gridPtr( dgfFile );
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
         gridcheck( *gridPtr );
+#endif
         std::cout << std::endl;
 
         {
@@ -311,7 +315,9 @@ int main(int argc, char** argv )
             std::stringstream poly;
             poly << hexaPoly;
             Dune::GridPtr< Grid > gridPoly( poly );
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
             gridcheck( *gridPoly );
+#endif
             std::cout << std::endl;
         }
 
@@ -320,7 +326,9 @@ int main(int argc, char** argv )
             std::stringstream poly;
             poly << tetraPoly;
             Dune::GridPtr< Grid > gridPoly( poly );
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
             gridcheck( *gridPoly );
+#endif
             std::cout << std::endl;
         }
 
@@ -338,7 +346,9 @@ int main(int argc, char** argv )
         dgfFile << "#" << std::endl;
         typedef Dune::PolyhedralGrid< 2, 2 > Grid;
         Dune::GridPtr< Grid > gridPtr( dgfFile );
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
         gridcheck( *gridPtr );
+#endif
     }
     return 0;
 }

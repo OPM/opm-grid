@@ -16,6 +16,7 @@
 #else
 #include <dune/geometry/genericgeometry/geometrytraits.hh>
 #include <dune/geometry/genericgeometry/matrixhelper.hh>
+#include <dune/geometry/multilineargeometry.hh>
 #endif
 
 
