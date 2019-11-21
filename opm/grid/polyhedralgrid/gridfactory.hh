@@ -228,8 +228,7 @@ namespace Dune
 
       // check normal direction
       {
-        const int faces = ug->number_of_faces;
-        for( int face = 0 ; face < faces; ++face )
+        for( int face = 0 ; face < ug->number_of_faces; ++face )
         {
           const int a = ug->face_cells[ 2*face     ];
           const int b = ug->face_cells[ 2*face + 1 ];

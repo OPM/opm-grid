@@ -168,12 +168,12 @@ namespace Dune
     : Base()
     {}
 
-    explicit PolyhedralGridEntity ( ExtraData data )
-    : Base( data )
+    explicit PolyhedralGridEntity ( ExtraData data_param )
+    : Base( data_param )
     {}
 
-    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
-    : Base( data, seed )
+    PolyhedralGridEntity ( ExtraData data_param, const EntitySeed& seed )
+    : Base( data_param, seed )
     {}
 
     unsigned int subEntities( const unsigned int cd ) const
@@ -254,13 +254,13 @@ namespace Dune
     {}
 
     /** \brief construct a null entity with data pointer */
-    explicit PolyhedralGridEntity ( ExtraData data )
-    : Base( data )
+    explicit PolyhedralGridEntity ( ExtraData data_param )
+    : Base( data_param )
     {}
 
     /** \brief construct an initialized entity */
-    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
-    : Base( data, seed )
+    PolyhedralGridEntity ( ExtraData data_param, const EntitySeed& seed )
+    : Base( data_param, seed )
     {}
 
     /** \} */
