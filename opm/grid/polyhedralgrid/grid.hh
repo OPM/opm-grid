@@ -1139,7 +1139,7 @@ namespace Dune
         }
         else
         {
-          assert( seed.index() < cellGeomTypes_.size() );
+          assert( static_cast<size_t>(seed.index()) < cellGeomTypes_.size() );
           return cellGeomTypes_[ seed.index() ];
         }
       }

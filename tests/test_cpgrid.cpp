@@ -110,7 +110,7 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
                                               Dune::MCMGVertexLayout> mapper(grid.leafGridView());
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (mapper.size() != nVertices ) {
+    if (static_cast<size_t>(mapper.size()) != nVertices ) {
         std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
         //std::abort();
     }
