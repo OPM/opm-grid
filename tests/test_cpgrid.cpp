@@ -30,9 +30,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
-    typedef typename GridView::Grid::LocalIdSet LocalIdSet;
-
-    const LocalIdSet& localIdSet = gridView.grid().localIdSet();
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
