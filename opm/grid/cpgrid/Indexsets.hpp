@@ -336,10 +336,12 @@ namespace Dune
             {
                 return(*mapping_)[i];
             }
-            else
+            else if (grid_)
             {
                 return i - grid_->size(0) - grid_->size(1) - grid_->size(2);
             }
+
+            OPM_THROW(std::runtime_error, "No grid or mapping. Should not be here!");
         }
         void release()
         {
@@ -347,7 +349,7 @@ namespace Dune
         }
     private:
         std::unique_ptr<std::unordered_map<int,int> > mapping_;
-        const CpGridData* grid_;
+        const CpGridData* grid_ = nullptr;
     };
 
     } // namespace cpgrid
