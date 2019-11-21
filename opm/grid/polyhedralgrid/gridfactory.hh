@@ -45,7 +45,7 @@ namespace Dune
 
 
     /** \brief Default constructor */
-    explicit GridFactory ( const MPICommunicatorType &communicator = MPIHelper::getCommunicator() )
+    explicit GridFactory ( const MPICommunicatorType& = MPIHelper::getCommunicator() )
       : nodes_(),
         faces_(),
         cells_()
@@ -98,13 +98,13 @@ namespace Dune
 
     virtual void insertElement(const GeometryType& type,
                                const std::vector<unsigned int>& vertices,
-                               const shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >& elementParametrization)
+                               const shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >&)
     {
       std::cerr << "Warning: elementParametrization is being ignored in insertElement!" << std::endl;
       insertElement( type, vertices );
     }
 
-    void insertBoundarySegment(const std::vector<unsigned int>& vertices)
+    void insertBoundarySegment(const std::vector<unsigned int>&)
     {
       DUNE_THROW(NotImplemented,"yet");
     }

@@ -146,7 +146,7 @@ namespace Dune
     typedef typename Grid::template Codim<0>::Entity Element;
     typedef typename Grid::template Codim<dimension>::Entity Vertex;
 
-    explicit DGFGridFactory ( std::istream &input, MPICommunicator comm = MPIHelper::getCommunicator() )
+    explicit DGFGridFactory ( std::istream &input, MPICommunicator = MPIHelper::getCommunicator() )
       : gridPtr_(),
         grid_( nullptr )
     {
@@ -199,7 +199,7 @@ namespace Dune
     }
 
     template< class Intersection >
-    int boundaryId ( const Intersection &intersection ) const
+    int boundaryId ( const Intersection& ) const
     {
       return false;
     }
@@ -215,13 +215,13 @@ namespace Dune
 
     template< class Intersection >
     const typename DGFBoundaryParameter::type &
-    boundaryParameter ( const Intersection &intersection ) const
+    boundaryParameter ( const Intersection& ) const
     {
       return DGFBoundaryParameter::defaultValue();;
     }
 
     template< class Entity >
-    std::vector< double > &parameter ( const Entity &entity )
+    std::vector< double > &parameter ( const Entity& )
     {
       static std::vector< double > dummy;
       return dummy;
