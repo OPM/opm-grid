@@ -1151,11 +1151,23 @@ namespace Dune
           GeometryType face;
           const int nVx = corners( seed );
           if( nVx == 4 ) // quad face
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            face = Dune::GeometryTypes::cube(2);
+#else
             face.makeCube( 2 );
+#endif
           else if( nVx == 3 ) // triangle face
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            face = Dune::GeometryTypes::simplex(2);
+#else
             face.makeSimplex( 2 );
+#endif
           else // polygonal face
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            face = Dune::GeometryTypes::none(2);
+#else
             face.makeNone( 2 );
+#endif
           return face;
         }
 
@@ -1436,7 +1448,11 @@ namespace Dune
         GeometryType tmp;
         for (int codim = 0; codim <= dim; ++codim)
         {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+          tmp = Dune::GeometryTypes::cube(dim - codim);
+#else
           tmp.makeCube(dim - codim);
+#endif
           geomTypes_[codim].push_back(tmp);
         }
       }
@@ -1486,7 +1502,11 @@ namespace Dune
             }
 
             Dune::GeometryType simplex;
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            simplex = Dune::GeometryTypes::simplex(dim);
+#else
             simplex.makeSimplex( dim );
+#endif
 
             typedef Dune::AffineGeometry< ctype, dim, dimworld>  AffineGeometryType;
             AffineGeometryType geometry( simplex, p );
@@ -1558,7 +1578,11 @@ namespace Dune
         }
 
         GeometryType tmp;
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+        tmp = Dune::GeometryTypes::none(dim);
+#else
         tmp.makeNone( dim );
+#endif
         // by default set all types to None
         cellGeomTypes_.resize( numCells );
         std::fill( cellGeomTypes_.begin(), cellGeomTypes_.end(), tmp );
@@ -1572,12 +1596,21 @@ namespace Dune
           const int nVx = cellVertices_[ c ].size();
           if( nVx == 4 )
           {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            cellGeomTypes_[ c ] = Dune::GeometryTypes::simplex(dim);
+#else
             cellGeomTypes_[ c ].makeSimplex( dim );
+#endif
             hasSimplex = true;
           }
           else if( nVx == 8 )
           {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+            cellGeomTypes_[ c ] = Dune::GeometryTypes::cube(dim);
+#else
             cellGeomTypes_[ c ].makeCube( dim );
+#endif
+
             hasCube = true;
           }
           else
@@ -1589,26 +1622,46 @@ namespace Dune
         // if no face_tag is available we assume that no reference element can be
         // assigned to the elements
         geomTypes_.resize(dim + 1);
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+        tmp = Dune::GeometryTypes::cube(0);
+#else
         tmp.makeCube( 0 ); // vertices (only one type)
+#endif
         geomTypes_[ dim ].push_back( tmp );
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+        tmp = Dune::GeometryTypes::cube(1);
+#else
         tmp.makeCube( 1 ); // edges (only one type)
+#endif
         geomTypes_[ dim-1 ].push_back( tmp );
 
         if( hasSimplex )
         {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+          tmp = Dune::GeometryTypes::simplex(dim);
+#else
           tmp.makeSimplex( dim );
+#endif
           geomTypes_[ 0 ].push_back( tmp );
         }
 
         if( hasCube )
         {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+          tmp = Dune::GeometryTypes::cube(dim);
+#else
           tmp.makeCube( dim );
+#endif
           geomTypes_[ 0 ].push_back( tmp );
         }
 
         if( hasPolyhedron )
         {
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+          tmp = Dune::GeometryTypes::none(dim);
+#else
           tmp.makeNone( dim );
+#endif
           geomTypes_[ 0 ].push_back( tmp );
         }
 
@@ -1617,11 +1670,23 @@ namespace Dune
           for( const auto& elemType : geomTypes_[ 0 ] )
           {
             if( elemType.isSimplex() )
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+              tmp = Dune::GeometryTypes::simplex(2);
+#else
               tmp.makeSimplex( 2 );
+#endif
             else if ( elemType.isCube() )
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+              tmp = Dune::GeometryTypes::cube(2);
+#else
               tmp.makeCube( 2 );
+#endif
             else
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
+              tmp = Dune::GeometryTypes::none(2);
+#else
               tmp.makeNone( 2 );
+#endif
             geomTypes_[ 1 ].push_back( tmp );
           }
         }

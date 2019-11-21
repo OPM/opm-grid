@@ -106,8 +106,12 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     testGridIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 6)
+  Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
+#else
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
                                               Dune::MCMGVertexLayout> mapper(grid.leafGridView());
+#endif
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
     if (static_cast<size_t>(mapper.size()) != nVertices ) {
