@@ -209,7 +209,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     std::vector<std::vector<std::size_t>> sizeBuffers(cc.size());
     auto begin = cellsPerProc.begin();
     auto req = requests.begin();
-    int tag = 782372873;
+    int tag = 7823;
     auto myRank = cc.rank();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {

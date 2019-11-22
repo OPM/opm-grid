@@ -444,7 +444,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         // communicate number of entries
         std::vector<MPI_Request> requests(importProcs.size());
         auto req = requests.begin();
-        int tag = 23872949;
+        int tag = 2387;
         for(auto&& proc : importProcs)
         {
             MPI_Irecv(&(proc.second), 1, MPI_INT, proc.first, tag, cc, &(*req));
