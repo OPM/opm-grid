@@ -163,7 +163,7 @@ namespace cpgrid
             nnc_cells[PinchNNC].insert({low, high});
         }
         // Add explicit NNCs.
-        for (const auto single_nnc : nncs.nncdata()) {
+        for (const auto single_nnc : nncs.data()) {
             // Repeated NNCs will only exist in the map once
             // (repeated insertions have no effect), and we make
             // sure NNCs specified using either order of cells
