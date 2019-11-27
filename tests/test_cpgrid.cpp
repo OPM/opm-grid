@@ -30,9 +30,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
-    typedef typename GridView::Grid::LocalIdSet LocalIdSet;
-
-    const LocalIdSet& localIdSet = gridView.grid().localIdSet();
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
@@ -109,11 +106,15 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     testGridIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 6)
+  Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
+#else
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
                                               Dune::MCMGVertexLayout> mapper(grid.leafGridView());
+#endif
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (mapper.size() != nVertices ) {
+    if (static_cast<size_t>(mapper.size()) != nVertices ) {
         std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
         //std::abort();
     }

@@ -57,6 +57,7 @@ namespace Dune
     PolyhedralGridView ( const Grid &grid, const int level = 0 )
     : grid_( &grid )
     {
+      (void)level;
     }
 
     const Grid &grid () const
