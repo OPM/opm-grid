@@ -41,6 +41,8 @@ BOOST_AUTO_TEST_CASE(Equal) {
         "10*0.25 /\n"
         "TOPS\n"
         "100*0.25 /\n"
+        "PORO\n"
+        "   1000*0.15 /\n"
         "EDIT\n"
         "\n";
 
@@ -124,6 +126,8 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
         "100*20 100*30  100*50 /\n"
         "TOPS\n"
         "100*8325 /\n"
+        "PORO\n"
+        "   300*0.15 /\n"
         "EDIT\n"
         "\n";
 
@@ -142,6 +146,8 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
         "100*20 100*30  100*50 /\n"
         "TOPS\n"
         "100*8325 100*8345  100*8375/\n"
+        "PORO\n"
+        "   300*0.15 /\n"
         "EDIT\n"
         "\n";
 
