@@ -35,6 +35,9 @@ NTG
   0.1 0.2 0.3 0.4
 /
 
+PORO
+   4*0.15 /
+
 REGIONS
 
 SATNUM
