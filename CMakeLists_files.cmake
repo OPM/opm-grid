@@ -66,9 +66,6 @@ if (opm-common_FOUND)
 		opm/grid/transmissibility/trans_tpfa.c)
 endif()
 
-if(HAVE_ECL_INPUT)
-  list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
-endif()
 
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
@@ -212,7 +209,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/TransTpfa_impl.hpp
   opm/grid/utility/compressedToCartesian.hpp
   opm/grid/utility/cartesianToCompressed.hpp
-  opm/grid/utility/extractPvtTableIndex.hpp
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp
