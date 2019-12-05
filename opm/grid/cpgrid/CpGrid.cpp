@@ -133,7 +133,7 @@ namespace Dune
 
 
 std::pair<bool, std::unordered_set<std::string> >
-CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
+CpGrid::scatterGrid(EdgeWeightMethod method, bool ownersFirst, const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities, int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
@@ -196,7 +196,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         // }
 #endif
 
-        bool ownersFirst = false;
+        //bool ownersFirst = false;
 
         // first create the overlap
         // map from process to global cell indices in overlap

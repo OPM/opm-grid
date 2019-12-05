@@ -607,7 +607,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, nullptr, nullptr, overlapLayers ));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, nullptr, overlapLayers ));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -631,7 +631,7 @@ namespace Dune
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            return scatterGrid(defaultTransEdgeWgt, wells, transmissibilities, overlapLayers);
+            return scatterGrid(defaultTransEdgeWgt, false, wells, transmissibilities, overlapLayers);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -653,11 +653,11 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
+        loadBalance(EdgeWeightMethod method, bool ownersFirst, const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            return scatterGrid(method, wells, transmissibilities, overlapLayers);
+            return scatterGrid(method, ownersFirst, wells, transmissibilities, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -1368,6 +1368,7 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
         scatterGrid(EdgeWeightMethod method,
+		    bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
