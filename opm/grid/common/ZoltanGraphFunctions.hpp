@@ -135,7 +135,7 @@ public:
                           const std::vector<OpmWellType> * wells,
                           const double* transmissibilities,
                           bool pretendEmptyGrid,
-			  EdgeWeightMethod edgeWeightsMethod);
+                          EdgeWeightMethod edgeWeightsMethod);
 
     /// \brief Access the grid.
     const Dune::CpGrid& getGrid() const
@@ -167,7 +167,7 @@ public:
     double edgeWeight(int face_index) const
     {
         if (edgeWeightsMethod_ == uniformEdgeWgt)
-            return 1.0;
+            return transmissibilities_[face_index] == 0.0 ? 0.0 : 1.0;
         else if (edgeWeightsMethod_ == defaultTransEdgeWgt)
             return transmissibility(face_index);
         else if (edgeWeightsMethod_ == logTransEdgeWgt)
@@ -197,18 +197,18 @@ private:
 
     void findMaxMinTrans()
     {
-	double min_val = std::numeric_limits<float>::max();
-		
-	for (int face = 0; face < getGrid().numFaces(); ++face)
-	{
-	    double trans = transmissibilities_[face];
-	    if (trans > 0)
-	    {
-		if (trans < min_val)
-		    min_val = trans;		
-	    }
-	}	
-	log_min_ = std::log(min_val);
+        double min_val = std::numeric_limits<float>::max();
+
+        for (int face = 0; face < getGrid().numFaces(); ++face)
+        {
+            double trans = transmissibilities_[face];
+            if (trans > 0)
+            {
+                if (trans < min_val)
+                    min_val = trans;
+            }
+        }
+        log_min_ = std::log(min_val);
     }
 
     const Dune::CpGrid& grid_;

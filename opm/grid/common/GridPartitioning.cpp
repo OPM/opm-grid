@@ -403,11 +403,44 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         }
     }
 
+    void addOverlapLayerNoZeroTrans(const CpGrid& grid, int index,
+                                    const int owner, const std::vector<int>& cell_part,
+                                    std::vector<std::tuple<int,int,char>>& exportList,
+                                    int recursion_deps, const double* trans)
+    {
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        for (int loc_face = 0; loc_face < grid.numCellFaces(index); ++loc_face) {
+            int face = grid.cellFace(index, loc_face);
+            int faceCell0 = grid.faceCell(face, 0);
+            int faceCell1 = grid.faceCell(face, 1);
+            int otherCell = faceCell0!=index ? faceCell0 : faceCell1;
+            
+            if ( otherCell != -1 ) {
+                if ( trans[face] != 0.0 ) {
+                    int nb_index = otherCell;
+                
+                    if ( cell_part[nb_index]!=owner )
+                    {
+                        // Note: multiple adds for same process are possible
+                        exportList.emplace_back(nb_index, owner, AttributeSet::copy);
+                        exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::copy);
+                        if ( recursion_deps>0 )
+                        {
+                            // Add another layer
+                            addOverlapLayerNoZeroTrans(grid, nb_index, owner,cell_part,
+                                                       exportList, recursion_deps-1, trans);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
-                        int layers)
+                        const double* trans, int layers)
     {
 #ifdef HAVE_MPI
         using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
@@ -420,7 +453,8 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             int index = ix.index(*it);
             auto owner = cell_part[index];
             exportProcs.insert(std::make_pair(owner, 0));
-            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
+            //addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
+            addOverlapLayerNoZeroTrans(grid, index, owner, cell_part, exportList, layers-1, trans);
         }
         // remove multiple entries
         auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)

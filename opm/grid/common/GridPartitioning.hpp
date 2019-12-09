@@ -98,7 +98,7 @@ namespace Dune
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
-                        int layers = 1);
+                        const double* trans, int layers = 1);
 
 } // namespace Dune
 

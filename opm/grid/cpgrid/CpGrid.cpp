@@ -196,12 +196,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method, bool ownersFirst, const std::vector
         // }
 #endif
 
-        //bool ownersFirst = false;
-
         // first create the overlap
         // map from process to global cell indices in overlap
         std::map<int,std::set<int> > overlap;
-        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc);
+        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc, transmissibilities);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
                                 const std::tuple<int,int,char,int>&t2)

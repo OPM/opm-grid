@@ -1368,7 +1368,7 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         std::pair<bool, std::unordered_set<std::string> >
         scatterGrid(EdgeWeightMethod method,
-		    bool ownersFirst,
+                    bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities,
                     int overlapLayers);
