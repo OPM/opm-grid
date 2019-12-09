@@ -69,9 +69,15 @@ struct Fixture
     {
         Opm::EclipseState es(parser.parseFile(filename));
         std::vector<double> porv;
+#ifdef ENABLE_3DPROPS_TESTING
+        if (use_deck_porv) {
+            porv = es.fieldProps().porv(true);
+        }
+#else
         if (use_deck_porv) {
             porv = es.get3DProperties().getDoubleGridProperty("PORV").getData();
         }
+#endif
         Dune::CpGrid grid;
         grid.processEclipseFormat(es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
