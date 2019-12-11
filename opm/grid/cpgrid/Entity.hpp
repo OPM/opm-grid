@@ -332,6 +332,13 @@ namespace Dune
             }
         };
     } // namespace cpgrid
+
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    template <int codim>
+    auto referenceElement(const Dune::cpgrid::Entity<codim>& entity) -> decltype(referenceElement<double, 3>(entity.type()))
+    { return referenceElement<double, 3>(entity.type()); }
+#endif
+
 } // namespace Dune
 
 // now we include the Iterators.hh We need to do this here because for hbegin/hend the compiler
