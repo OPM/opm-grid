@@ -15,6 +15,8 @@
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
 #include <dune/common/parallel/collectivecommunication.hh>
+#include <dune/common/parallel/mpicollectivecommunication.hh>
+#include <dune/common/parallel/mpihelper.hh>
 
 //- polyhedralgrid includes
 #include <opm/grid/polyhedralgrid/capabilities.hh>
@@ -120,7 +122,7 @@ namespace Dune
       typedef PolyhedralGridIdSet< dim, dimworld, ctype > GlobalIdSet;
       typedef GlobalIdSet  LocalIdSet;
 
-      typedef Dune::CollectiveCommunication< Grid > CollectiveCommunication;
+      typedef Dune::CollectiveCommunication< Dune::MPIHelper::MPICommunicator > CollectiveCommunication;
 
       template< PartitionIteratorType pitype >
       struct Partition
@@ -323,7 +325,7 @@ namespace Dune
                               const std::vector<double>& poreVolumes = std::vector<double> ())
     : gridPtr_( createGrid( deck, poreVolumes ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( Dune::MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -342,7 +344,7 @@ namespace Dune
                               const std::vector< double >& dx )
     : gridPtr_( createGrid( n, dx ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( Dune::MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -360,7 +362,7 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( Dune::MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -379,7 +381,7 @@ namespace Dune
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),
       grid_( grid ),
-      comm_( *this ),
+      comm_( Dune::MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -675,8 +677,8 @@ namespace Dune
      *  \param[in]  direction   communication direction (one of
      *                          ForwardCommunication, BackwardCommunication)
      */
-    template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+    template< class DataHandle >
+    void communicate ( DataHandle& /* dataHandle */,
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */ ) const
     {
@@ -697,6 +699,11 @@ namespace Dune
     }
 
     // data handle interface different between geo and interface
+
+    template< class DataHandle >
+    void scatterData ( DataHandle& /* datahandle */ ) const
+    {
+    }
 
     /** \brief rebalance the load each process has to handle
      *
