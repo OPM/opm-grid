@@ -107,6 +107,16 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
 
 
     BOOST_CHECK( grid_equal( cgrid1 , cgrid2 ));
+
+    auto actnum = Opm::UgGridHelpers::createACTNUM(*cgrid1);
+    BOOST_CHECK_EQUAL( actnum.size(), 500 );
+    for (std::size_t i=0; i < 100; i++) {
+        BOOST_CHECK_EQUAL(actnum[i + 200], 1);
+        for (std::size_t j=0; j < 2; j++) {
+            BOOST_CHECK_EQUAL(actnum[i + j * 100], 0);
+            BOOST_CHECK_EQUAL(actnum[i + j * 100 + 300], 0);
+        }
+    }
     destroy_grid( cgrid2 );
 }
 
@@ -167,4 +177,7 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
     BOOST_CHECK(grid_equal(cgrid1, cgrid2));
 
     Opm::EclipseGrid grid = Opm::UgGridHelpers::createEclipseGrid( *cgrid1 , es1.getInputGrid( ) );
+    auto actnum = Opm::UgGridHelpers::createACTNUM(*cgrid1);
+    for (std::size_t g = 0; g < 300; g++)
+        BOOST_CHECK_EQUAL(actnum[g], 1);
 }

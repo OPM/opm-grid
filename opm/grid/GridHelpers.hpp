@@ -395,6 +395,19 @@ double getCoordinate(T t, int i)
     return (*t)[i];
 }
 
+
+
+/// \brief Create Eclipse style ACTNUM array.
+///
+/// Create a vector with global cartesian number of elements,
+/// the value is 0 for inactive cells and one for active cells.
+template<class Grid>
+std::vector<int> createACTNUM(const Grid& grid){
+    const int* dims = cartDims(grid);
+    return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();
+}
+
+
 } // end namespace UGGridHelpers
 } // end namespace OPM
 #endif

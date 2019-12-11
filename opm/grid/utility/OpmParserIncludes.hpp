@@ -27,6 +27,8 @@
 #include <opm/parser/eclipse/Deck/DeckRecord.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well/WellConnections.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
+#include <opm/common/utility/ActiveGridCells.hpp>
+
 
 namespace Dune {
     namespace cpgrid {
