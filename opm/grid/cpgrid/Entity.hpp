@@ -39,6 +39,7 @@
 #include <dune/common/version.hh>
 #include <dune/geometry/type.hh>
 #include <dune/grid/common/gridenums.hh>
+#include <dune/grid/common/entity.hh>
 
 #include "PartitionTypeIndicator.hpp"
 #include "EntityRep.hpp"

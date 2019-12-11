@@ -72,8 +72,10 @@ namespace Dune
         // host geometry object
         EntitySeed seed_;
 
+        GeometryType type_;
+
         Storage( ExtraData data, EntitySeed seed )
-          : data_( data ), seed_( seed )
+          : data_( data ), seed_( seed ), type_( data->geometryType( seed ) )
         {}
 
         Storage( ExtraData data )
@@ -95,6 +97,9 @@ namespace Dune
         ctype volume() const { return data()->volumes( seed_ ); }
 
         const EntitySeed& seed () const { return seed_; }
+        const GeometryType& type () const { return type_; }
+
+        bool hasGeometry () const { return (! type_.isNone()) && isValid(); }
       };
 
       template <int mdim, int cordim>
@@ -130,41 +135,23 @@ namespace Dune
     PolyhedralGridBasicGeometry ( ExtraData data, const EntitySeed& seed )
     : storage_( data, seed )
     {
-      GeometryType myType = type();
-      if( ! myType.isNone() && storage_.isValid() )
-      {
-        geometryImpl_.reset( new MultiLinearGeometryType(myType, storage_) );
-      }
-      //std::cout << myType << "  " << storage_.corners() << std::endl;
     }
 
-    GeometryType type () const { return data()->geometryType( storage_.seed() ); }
+    GeometryType type () const { return storage_.type(); }
     bool affine () const { return (geometryImpl_) ? geometryImpl_->affine() : false; }
 
     int corners () const { return storage_.corners(); }
     GlobalCoordinate corner ( const int i ) const { return storage_.corner( i ); }
     GlobalCoordinate center () const
     {
-      if( type().isNone() )
-      {
-        return storage_.center();
-      }
-      else
-      {
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,7)
-        const auto refElem = Dune::referenceElement< ctype, mydim > ( type() );
-#else
-        const auto& refElem = Dune::ReferenceElements< ctype, mydim >::general( type() );
-#endif
-        return global( refElem.position(0,0) );
-      }
+      return storage_.center();
     }
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->global( local );
+        return geometryImpl().global( local );
       }
 
       return center();
@@ -174,9 +161,9 @@ namespace Dune
     /// May be slow.
     LocalCoordinate local(const GlobalCoordinate& global) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->local( global );
+        return geometryImpl().local( global );
       }
 
       // if no geometry type return a vector filled with 1
@@ -185,28 +172,24 @@ namespace Dune
 
     ctype integrationElement ( const LocalCoordinate &local ) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->integrationElement( local );
+        return geometryImpl().integrationElement( local );
       }
       return volume();
     }
 
     ctype volume () const
     {
-      if( geometryImpl_ )
-      {
-        return geometryImpl_->volume();
-      }
       return storage_.volume();
     }
 
 #if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     JacobianTransposed jacobianTransposed ( const LocalCoordinate & local ) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->jacobianTransposed( local );
+        return geometryImpl().jacobianTransposed( local );
       }
 
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
@@ -215,9 +198,9 @@ namespace Dune
 
     JacobianInverseTransposed jacobianInverseTransposed ( const LocalCoordinate & local ) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->jacobianInverseTransposed( local );
+        return geometryImpl().jacobianInverseTransposed( local );
       }
 
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
@@ -226,9 +209,9 @@ namespace Dune
 #else
     const JacobianTransposed& jacobianTransposed ( const LocalCoordinate &local ) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->jacobianTransposed( local );
+        return geometryImpl().jacobianTransposed( local );
       }
 
       DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
@@ -238,9 +221,9 @@ namespace Dune
 
     const JacobianInverseTransposed& jacobianInverseTransposed ( const LocalCoordinate &local ) const
     {
-      if( geometryImpl_ )
+      if( storage_.hasGeometry()  )
       {
-        return geometryImpl_->jacobianInverseTransposed( local );
+        return geometryImpl().jacobianInverseTransposed( local );
       }
 
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
@@ -252,8 +235,19 @@ namespace Dune
     ExtraData data() const { return storage_.data(); }
 
   protected:
+    const MultiLinearGeometryType& geometryImpl() const
+    {
+      assert( storage_.hasGeometry() );
+      if( ! geometryImpl_ )
+      {
+        geometryImpl_.reset( new MultiLinearGeometryType(storage_.type(), storage_) );
+      }
+
+      return *geometryImpl_;
+    }
+
     CornerStorageType storage_;
-    std::shared_ptr< MultiLinearGeometryType > geometryImpl_;
+    mutable std::shared_ptr< MultiLinearGeometryType > geometryImpl_;
   };
 
 
