@@ -406,6 +406,12 @@ const int* cartDims(const Dune::CpGrid& grid);
 /// in the underlying structured grid.
 const int*  globalCell(const Dune::CpGrid&);
 
+/// \brief Create Eclipse style ACTNUM array.
+///
+/// Create a vector with global cartesian number of elements,
+/// the value is 0 for inactive cells and one for active cells.
+std::vector<int> createACTNUM(const Dune::CpGrid& grid);
+
 #if HAVE_ECL_INPUT
 /// Construct an EclipseGrid instance based on the inputGrid, with modifications to
 /// zcorn and actum from the dune CPGrid
