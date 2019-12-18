@@ -79,7 +79,7 @@ struct Fixture
         }
 #endif
         Dune::CpGrid grid;
-        grid.processEclipseFormat(es.getInputGrid(), false, false, false, porv, nnc);
+        grid.processEclipseFormat(&es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         ElementMapper elmap(gv, Dune::mcmgElementLayout());

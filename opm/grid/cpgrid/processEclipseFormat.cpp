@@ -113,7 +113,7 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
+    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
         if (ccobj_.rank() != 0 ) {
@@ -121,6 +121,10 @@ namespace cpgrid
             return;
         }
 
+        if (!ecl_grid_ptr)
+            OPM_THROW(std::logic_error, "We need a valid pointer to an eclipse grid on rank 0!");
+
+        const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
         std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 

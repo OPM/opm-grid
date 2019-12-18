@@ -341,7 +341,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
 
 
 #if HAVE_ECL_INPUT
-    void CpGrid::processEclipseFormat(const Opm::EclipseGrid& ecl_grid,
+    void CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
                                       const std::vector<double>& poreVolume,
