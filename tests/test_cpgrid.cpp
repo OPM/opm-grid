@@ -171,7 +171,7 @@ int main(int argc, char** argv )
     const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
     Opm::EclipseGrid ecl_grid(deck , actnum);
 
-    grid.processEclipseFormat(ecl_grid, false, false, false, porv);
+    grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 
