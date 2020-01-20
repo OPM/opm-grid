@@ -1306,12 +1306,12 @@ namespace Dune
             current_view_data_=data_.get();
         }
 
-        /// \brief Switch to the distributed view.
+        /// \brief Switch to the distributed view. If the grid does not have a distributed view
+        /// this is a no op; i.e. it is always safe to call the switchToDistributedView() function.
         void switchToDistributedView()
         {
-            if (! distributed_data_)
-                OPM_THROW(std::logic_error, "No distributed view available in grid");
-            current_view_data_=distributed_data_.get();
+            if ( distributed_data_)
+                current_view_data_=distributed_data_.get();
         }
         //@}
 
