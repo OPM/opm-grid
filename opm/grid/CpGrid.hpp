@@ -153,31 +153,17 @@ namespace Dune
         template <PartitionIteratorType pitype>
         struct Partition
         {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             /// \brief The type of the level grid view associated with this partition type.
             typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
             /// \brief The type of the leaf grid view associated with this partition type.
             typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid> > LeafGridView;
-#else
-            /// \brief The type of the level grid view associated with this partition type.
-            typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid, pitype> > LevelGridView;
-            /// \brief The type of the leaf grid view associated with this partition type.
-            typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid, pitype> > LeafGridView;
-#endif
 
         };
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \brief The type of the level grid view associated with this partition type.
         typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
         /// \brief The type of the leaf grid view associated with this partition type.
         typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid> > LeafGridView;
-#else
-        /// \brief The type of the level grid view associated with this partition type.
-        typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid, Dune::All_Partition> > LevelGridView;
-        /// \brief The type of the leaf grid view associated with this partition type.
-        typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid, Dune::All_Partition> > LeafGridView;
-#endif
 
         /// \brief The type of the level index set.
         typedef cpgrid::IndexSet LevelIndexSet;
@@ -1399,15 +1385,6 @@ namespace Dune
         {
             static const bool v = true;
         };
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
-        /// \todo Please doc me !
-        template <>
-        struct isParallel<CpGrid>
-        {
-            static const bool v = true;
-        };
-#endif
 
         template<>
         struct canCommunicate<CpGrid,0>

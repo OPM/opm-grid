@@ -74,16 +74,8 @@ namespace Dune
             IndexSet(const CpGridData& grid)
                 : grid_(grid)
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 geom_types_[0].emplace_back(Dune::GeometryTypes::cube(3));
                 geom_types_[3].emplace_back(Dune::GeometryTypes::cube(0));
-#else
-                GeometryType t;
-                t.makeCube(3);
-                geom_types_[0].push_back(t);
-                t.makeCube(0);
-                geom_types_[3].push_back(t);
-#endif
             }
 
             /// \brief Destructor.

@@ -9,15 +9,9 @@
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/common/geometry.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
 #include <dune/geometry/referenceelements.hh>
 #include <dune/geometry/type.hh>
 #include <dune/geometry/multilineargeometry.hh>
-#else
-#include <dune/geometry/genericgeometry/geometrytraits.hh>
-#include <dune/geometry/genericgeometry/matrixhelper.hh>
-#include <dune/geometry/multilineargeometry.hh>
-#endif
 
 
 namespace Dune
@@ -117,11 +111,7 @@ namespace Dune
     typedef FieldMatrix< ctype, mydim, cdim > JacobianTransposed;
 
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
     typedef Dune::Impl::FieldMatrixHelper< ctype >  MatrixHelperType;
-#else
-    typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits< ctype > >  MatrixHelperType;
-#endif
 
     explicit PolyhedralGridBasicGeometry ( ExtraData data )
     : storage_( data )
@@ -201,7 +191,6 @@ namespace Dune
       return storage_.volume();
     }
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     JacobianTransposed jacobianTransposed ( const LocalCoordinate & local ) const
     {
       if( geometryImpl_ )
@@ -223,31 +212,6 @@ namespace Dune
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
-#else
-    const JacobianTransposed& jacobianTransposed ( const LocalCoordinate &local ) const
-    {
-      if( geometryImpl_ )
-      {
-        return geometryImpl_->jacobianTransposed( local );
-      }
-
-      DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
-      static const JacobianTransposed jac( 0 );
-      return jac;
-    }
-
-    const JacobianInverseTransposed& jacobianInverseTransposed ( const LocalCoordinate &local ) const
-    {
-      if( geometryImpl_ )
-      {
-        return geometryImpl_->jacobianInverseTransposed( local );
-      }
-
-      DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
-      static const JacobianInverseTransposed jac( 0 );
-      return jac;
-    }
-#endif
 
     ExtraData data() const { return storage_.data(); }
 
@@ -292,30 +256,6 @@ namespace Dune
     : Base( data )
     {}
   };
-
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-  namespace FacadeOptions
-  {
-
-    //! \brief Traits class determining whether the Dune::Geometry facade
-    //!        class stores the implementation object by reference or by value
-    template< int mydim, int cdim, class GridImp >
-    struct StoreGeometryReference< mydim, cdim, GridImp, PolyhedralGridGeometry >
-    {
-      //! Whether to store by reference.
-      static const bool v = false;
-    };
-
-    template< int mydim, int cdim, class GridImp >
-    struct StoreGeometryReference< mydim, cdim, GridImp, PolyhedralGridLocalGeometry >
-    {
-      //! Whether to store by reference.
-      static const bool v = false;
-    };
-
-  }
-#endif
 
 
 } // namespace Dune

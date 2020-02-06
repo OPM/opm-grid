@@ -160,13 +160,8 @@ namespace Dune
     typedef PolyhedralGridIntersection< const Grid > IntersectionImpl;
     typedef PolyhedralGridIntersectionIterator< const Grid > IntersectionIteratorImpl;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
     typedef Dune::Intersection< const Grid, IntersectionImpl > Intersection;
     typedef Dune::IntersectionIterator< const Grid, IntersectionIteratorImpl, IntersectionImpl > IntersectionIterator;
-#else
-    typedef Dune::Intersection< const Grid, PolyhedralGridIntersection > Intersection;
-    typedef Dune::IntersectionIterator< const Grid, PolyhedralGridIntersectionIterator, PolyhedralGridIntersection > IntersectionIterator;
-#endif
 
     typedef typename Grid::CollectiveCommunication CollectiveCommunication;
 

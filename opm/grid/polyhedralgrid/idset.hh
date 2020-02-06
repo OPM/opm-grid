@@ -48,15 +48,6 @@ namespace Dune
       }
     }
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    //! id meethod for entity and specific codim
-    template< int codim >
-    IdType id ( const typename Traits::template Codim< codim >::EntityPointer &entityPointer ) const
-    {
-      return id( *entityPointer );
-    }
-#endif
-
     //! id method of all entities
     template< class Entity >
     IdType id ( const Entity &entity ) const
