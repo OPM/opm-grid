@@ -30,7 +30,13 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/mpicollectivecommunication.hh>
+#endif
+
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 

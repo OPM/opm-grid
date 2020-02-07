@@ -14,7 +14,12 @@
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/collectivecommunication.hh>
+#endif
 
 //- polyhedralgrid includes
 #include <opm/grid/polyhedralgrid/capabilities.hh>
