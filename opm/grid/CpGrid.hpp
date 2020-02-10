@@ -277,6 +277,14 @@ namespace Dune
         void processEclipseFormat(const Opm::EclipseGrid* ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>(),
                                   const Opm::NNC& = Opm::NNC());
+
+        void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+                                  const std::vector<double>& poreVolume = std::vector<double>(),
+                                  const Opm::NNC& nnc = Opm::NNC())
+        {
+            processEclipseFormat(&ecl_grid, periodic_extension, turn_normals,
+                                 clip_z, poreVolume, nnc);
+        }
 #endif
 
         /// Read the Eclipse grid format ('grdecl').
