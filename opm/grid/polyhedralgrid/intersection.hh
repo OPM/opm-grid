@@ -62,7 +62,6 @@ namespace Dune
       intersectionIdx_( other.intersectionIdx_ )
     {}
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     Entity inside () const
     {
         return Entity( EntityImpl( data(), seed_ ) );
@@ -73,18 +72,6 @@ namespace Dune
       return Entity( EntityImpl(data(),
                                 data()->neighbor(seed_, intersectionIdx_)) );
     }
-#else
-    EntityPointer inside () const
-    {
-        return EntityPointer( EntityPointerImpl( EntityImpl( data(), seed_ ) ) );
-    }
-
-    EntityPointer outside () const
-    {
-      return EntityPointer( EntityPointerImpl( EntityImpl(data(),
-                                               data()->neighbor(seed_, intersectionIdx_)) ) );
-    }
-#endif
 
     bool operator == ( const This& other ) const
     {
@@ -122,11 +109,7 @@ namespace Dune
 
     GeometryType type () const
     {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
         return Dune::GeometryTypes::cube(dimension);
-#else
-        return GeometryType(GeometryType::cube, dimension);
-#endif
     }
 
     int indexInInside () const

@@ -175,13 +175,7 @@ namespace Dune
             /// Using the cube type for all entities now (cells and vertices).
             GeometryType type() const
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 return Dune::GeometryTypes::cube(3 - codim);
-#else
-                GeometryType t;
-                t.makeCube(3 - codim);
-                return t;
-#endif
             }
 
             /// The count of subentities of codimension cc

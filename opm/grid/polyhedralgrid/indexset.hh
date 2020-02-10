@@ -49,16 +49,12 @@ namespace Dune
     template< int cd >
     IndexType index ( const typename Traits::template Codim< cd >::Entity &entity ) const
     {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+      return entity.impl().index();
+#else
       return grid().getRealImplementation(entity).index();
-    }
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-    template< int cd >
-    IndexType index ( const typename Traits::template Codim< cd >::EntityPointer &entityPointer ) const
-    {
-      return index( *entityPointer );
-    }
 #endif
+    }
 
     template< int cd >
     IndexType subIndex ( const typename Traits::template Codim< cd >::Entity &entity, int i, unsigned int codim ) const
@@ -72,10 +68,18 @@ namespace Dune
       if( codim == 0 )
         return index( entity );
       else if ( codim == 1 )
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+        return index( entity.impl().template subEntity< 1 > ( i ) );
+#else
         return index( grid().getRealImplementation( entity ).template subEntity< 1 > ( i ) );
+#endif
       else if ( codim == dimension )
       {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+        return index( entity.impl().template subEntity< dimension > ( i ) );
+#else
         return index( grid().getRealImplementation( entity ).template subEntity< dimension > ( i ) );
+#endif
       }
       else
       {

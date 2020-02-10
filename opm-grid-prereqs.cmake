@@ -26,7 +26,7 @@ set (opm-grid_DEPS
   "Boost 1.44.0
     COMPONENTS date_time filesystem system unit_test_framework REQUIRED"
   "MPI"
-  "dune-common"
+  "dune-common REQUIRED"
   "dune-grid REQUIRED"
   "dune-istl"
   "opm-common REQUIRED"

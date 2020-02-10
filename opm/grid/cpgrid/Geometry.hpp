@@ -43,12 +43,7 @@
 #include <dune/geometry/referenceelements.hh>
 #include <dune/grid/common/geometry.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
 #include <dune/geometry/type.hh>
-#else
-#include <dune/geometry/genericgeometry/geometrytraits.hh>
-#include <dune/geometry/genericgeometry/matrixhelper.hh>
-#endif
 
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -142,13 +137,7 @@ namespace Dune
             /// Using the cube type for vertices.
             GeometryType type() const
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 return Dune::GeometryTypes::cube(mydimension);
-#else
-                GeometryType t;
-                t.makeCube(mydimension);
-                return t;
-#endif
             }
 
             /// A vertex is defined by a single corner.
@@ -237,11 +226,7 @@ namespace Dune
             /// Type of the inverse of the transposed Jacobian matrix
             typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverseTransposed;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
             typedef Dune::Impl::FieldMatrixHelper< double >  MatrixHelperType;
-#else
-            typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits<double> >  MatrixHelperType;
-#endif
 
             /// @brief Construct from centroid, volume (1- and 0-moments) and
             ///        corners.
@@ -323,12 +308,7 @@ namespace Dune
                 // This code is modified from dune/grid/genericgeometry/mapping.hh
                 // \todo: Implement direct computation.
                 const ctype epsilon = 1e-12;
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 auto refElement = Dune::ReferenceElements<ctype, 3>::cube();
-#else
-                const ReferenceElement< ctype , 3 > & refElement =
-                    ReferenceElements< ctype, 3 >::general(type());
-#endif
                 LocalCoordinate x = refElement.position(0,0);
                 LocalCoordinate dx;
                 do {
@@ -356,13 +336,7 @@ namespace Dune
             /// but we use the singular type for intersections.
             GeometryType type() const
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 return Dune::GeometryTypes::cube(mydimension);
-#else
-                GeometryType t;
-                t.makeCube(mydimension);
-                return t;
-#endif
             }
 
             /// The number of corners of this convex polytope.
@@ -524,13 +498,7 @@ namespace Dune
             /// We use the singular type (None) for intersections.
             GeometryType type() const
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 return Dune::GeometryTypes::none(mydimension);
-#else
-                GeometryType t;
-                t.makeNone(mydimension);
-                return t;
-#endif
             }
 
             /// The number of corners of this convex polytope.
@@ -592,13 +560,11 @@ namespace Dune
 
     } // namespace cpgrid
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
     template< int mydim, int cdim >
     auto referenceElement(const cpgrid::Geometry<mydim,cdim>& geo) -> decltype(referenceElement<double,mydim>(geo.type()))
     {
         return referenceElement<double,mydim>(geo.type());
     }
-#endif
 
 } // namespace Dune
 

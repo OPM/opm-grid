@@ -40,15 +40,6 @@ namespace Dune
     };
 
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
-    template< int dim, int dimworld >
-    struct isParallel< PolyhedralGrid< dim, dimworld > >
-    {
-        static const bool v = false;
-    };
-#endif
-
-
     template< int dim, int dimworld, int codim >
     struct canCommunicate< PolyhedralGrid< dim, dimworld >, codim >
     {

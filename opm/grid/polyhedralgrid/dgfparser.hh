@@ -338,11 +338,7 @@ namespace Dune
 
         // insert faces with type none/dim-1
         GeometryType type;
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
         type = Dune::GeometryTypes::none(Grid::dimension-1);
-#else
-        type.makeNone( Grid::dimension - 1 );
-#endif
         std::vector< unsigned int > numbers;
 
         const int nFaces = faces.size();
@@ -359,11 +355,7 @@ namespace Dune
         //faces.swap( IndexVectorType() );
 
         // insert cells with type none/dim
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
         type = Dune::GeometryTypes::none(Grid::dimension);
-#else
-        type.makeNone( Grid::dimension );
-#endif
 
         const int nCells = cells.size();
         for(int i = 0; i < nCells; ++ i )
