@@ -55,7 +55,7 @@ compute_face_geometry_3d(double *coords, int nfaces,
    /*#pragma omp parallel for  */
 
    /*#pragma omp parallel for shared(fnormals,fcentroids,fareas)*/
-#pragma omp parallel for default(none) 			   \
+#pragma omp parallel for 			   \
     private(f,x,u,v,w,i,k,node,cface,n,a,num_face_nodes,area)		\
     shared(fnormals,fcentroids,fareas  \
 	   ,coords, nfaces, nodepos, facenodes, twothirds)
@@ -234,7 +234,7 @@ compute_cell_geometry_3d(double *coords,
    double volume;
    double tet_volume, subnormal_sign;
    double twothirds = 0.666666666666666666666666666667;
-#pragma omp parallel for default(none)     \
+#pragma omp parallel for     \
     private(i,k,f,c,face,node,x,u,v,w,xcell				\
 	    ,ccell ,cface,num_faces,volume, tet_volume, subnormal_sign) \
    shared(coords,nodepos,facenodes,neighbors,twothirds,		\
