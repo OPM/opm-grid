@@ -190,8 +190,7 @@ int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& 
 {
     int count = std::count_if(indicator.begin(),
                               indicator.end(),
-                              std::bind2nd(std::less<int>(),
-                                           std::numeric_limits<int>::max()));
+                              [](int x) { return x < std::numeric_limits<int>::max(); });
     ids.resize(count);
     typedef typename std::vector<int>::const_iterator VIter;
     for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end();
