@@ -146,7 +146,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
                  << " Maybe scatterGrid was called before?"<<std::endl;
         return std::make_pair(false, std::unordered_set<std::string>());
     }
-
 #if HAVE_MPI
     auto& cc = data_->ccobj_;
 
@@ -195,19 +194,26 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         //                                                     0);
         // }
 #endif
-
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        
         bool ownersFirst = false;
 
         // first create the overlap
+
+        this->cell_has_well_.reset( new std::vector<int> ); 
+        this->findWellperforatedCells(wells, *this->cell_has_well_);
+        
         // map from process to global cell indices in overlap
         std::map<int,std::set<int> > overlap;
-        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc);
+        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList,
+                                               *this->cell_has_well_, cc, overlapLayers);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
                                 const std::tuple<int,int,char,int>&t2)
                              {
                                  return std::get<0>(t1) < std::get<0>(t2);
                              };
+
 
         if ( ! ownersFirst )
         {
@@ -236,7 +242,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         distributed_data_->cell_indexset_.beginResize();
         for(const auto& entry: importList)
         {
-            distributed_data_->cell_indexset_.add(std::get<0>(entry), ParallelIndexSet::LocalIndex(std::get<3>(entry), AttributeSet(std::get<2>(entry)), true));
+            distributed_data_->cell_indexset_.add(std::get<0>(entry),
+                                                  ParallelIndexSet::LocalIndex(std::get<3>(entry),
+                                                                               AttributeSet(std::get<2>(entry)),
+                                                                               true));
         }
         distributed_data_->cell_indexset_.endResize();
         // add an interface for gathering/scattering data with communication
@@ -272,6 +281,30 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
 #endif
 }
 
+void CpGrid::findWellperforatedCells(const std::vector<cpgrid::OpmWellType> * wells,
+                                     std::vector<int>& cell_has_well)
+{
+    cell_has_well.resize(this->numCells(), 0);
+    cpgrid::WellConnections well_indices;
+    const auto& cpgdim = this->logicalCartesianSize();
+    
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+
+    for( int i=0; i < this->numCells(); ++i )
+    {
+        cartesian_to_compressed[this->globalCell()[i]] = i;
+    }
+    well_indices.init(*wells, cpgdim, cartesian_to_compressed);
+    
+    for(const auto& well: well_indices)
+    {
+        for( auto well_idx = well.begin(); well_idx != well.end();
+             ++well_idx)
+        {
+            cell_has_well[*well_idx] = 1;
+        }
+    }
+}
 
     void CpGrid::createCartesian(const std::array<int, 3>& dims,
                                  const std::array<double, 3>& cellsize)
