@@ -35,7 +35,6 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
-#include <boost/date_time/posix_time/posix_time.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
 #include <opm/grid/utility/ErrorMacros.hpp>
 
