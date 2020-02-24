@@ -146,15 +146,14 @@ namespace cpgrid
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             // Currently PINCH is always assumed to be active
-            bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
                 thickness[i] = ecl_grid.getCellThickness(i);
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
-            if (opmfil || nnc_cells_pinch.size() > 0) {
+            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data());
+            if (nnc_cells_pinch.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
