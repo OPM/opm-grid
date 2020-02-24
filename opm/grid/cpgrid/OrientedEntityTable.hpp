@@ -40,7 +40,6 @@
 #include <opm/grid/utility/SparseTable.hpp>
 #include <map>
 #include <climits>
-#include <boost/algorithm/minmax_element.hpp>
 
 /// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
