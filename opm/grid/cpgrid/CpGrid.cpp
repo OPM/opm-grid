@@ -146,6 +146,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
                  << " Maybe scatterGrid was called before?"<<std::endl;
         return std::make_pair(false, std::unordered_set<std::string>());
     }
+
 #if HAVE_MPI
     auto& cc = data_->ccobj_;
 
@@ -213,7 +214,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
                              {
                                  return std::get<0>(t1) < std::get<0>(t2);
                              };
-
 
         if ( ! ownersFirst )
         {

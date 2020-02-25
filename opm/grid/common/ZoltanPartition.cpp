@@ -77,7 +77,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                        wells,
                                                        transmissibilities,
                                                        partitionIsEmpty,
-						       edgeWeightsMethod));
+                                                       edgeWeightsMethod));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     partitionIsEmpty);
     }
@@ -104,7 +104,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int                         rank  = cc.rank();
     std::vector<int>            parts(size, rank);
     std::vector<std::vector<int> > wells_on_proc;
-    // List entry: process to export to, (global) index, attribute there (not needed?)
+    // List entry: (global) index, process to export to, attribute there
     std::vector<std::tuple<int,int,char>> myExportList(numExport);
     // List entry: process to import from, global index, attribute here, local index
     // (determined later)

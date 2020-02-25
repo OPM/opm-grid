@@ -1574,9 +1574,10 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
     for(const auto i: cell_indexset_)
     {
+        auto ci_attr = i.local().attribute();
         partition_type_indicator_->cell_indicator_[i.local()]=
-            i.local().attribute()==AttributeSet::owner?
-            InteriorEntity:OverlapEntity;
+            ci_attr==AttributeSet::owner?
+            InteriorEntity: ci_attr==AttributeSet::copy? GhostEntity:OverlapEntity;
     }
 
     // Compute partition type for points

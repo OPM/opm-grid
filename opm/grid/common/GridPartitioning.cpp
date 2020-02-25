@@ -242,97 +242,6 @@ namespace Dune
         }
     }
 
-/// \brief seperate overlap and ghost cells
-void seperateOverlapAndGhostCells(const CpGrid& grid, const std::vector<int>& cell_has_well,
-                                  std::vector<int>& part_type, int layers)
-{
-    
-    auto lid = grid.localIdSet();
-    auto gid = grid.globalIdSet();
-    part_type.resize(grid.numCells(), 0);
-    
-    for (auto it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
-        auto elem = *it;
-        
-        if (elem.partitionType() == InteriorEntity) {
-            auto id = lid.id(elem);
-            
-            part_type[id] = 1;
-            
-            for (CpGrid::LeafIntersectionIterator iit = elem.ileafbegin(); iit != elem.ileafend(); ++iit) {
-                auto inter = *iit;
-                if ( inter.neighbor() ) {
-                    auto nab = inter.outside();
-                    int nab_lid = lid.id(nab);
-                    if (nab.partitionType() != InteriorEntity && part_type[nab_lid] == 0) {
-                        int nab_gid = gid.id(nab);
-                        
-                        if ( cell_has_well[nab_gid] == 1 ) {
-                            part_type[nab_lid] = layers + 1;
-                        }
-                        else {
-                            part_type[nab_lid] = 2;
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    int layer = 2; 
-    while (layer < layers + 1) {
-        for (auto it = grid.leafbegin<0>(); it != grid.leafend<0>(); ++it) {
-
-            auto elem = *it;
-            int id = lid.id(elem);
-            bool isLayer = part_type[id] == layer || part_type[id] == layers + 1;
-
-            if (elem.partitionType() != InteriorEntity &&  isLayer) {
-                for (CpGrid::LeafIntersectionIterator iit = elem.ileafbegin(); iit != elem.ileafend(); ++iit) {
-
-                    auto inter = *iit;
-                    if ( inter.neighbor() ) {
-
-                        auto nab = inter.outside();
-                        int nab_gid = gid.id(nab);
-                        int nab_lid = lid.id(nab);
-
-                        if (nab.partitionType() != InteriorEntity && part_type[nab_lid] == 0) {
-                            if (cell_has_well[nab_gid] == 1) {
-                                part_type[nab_lid] = layers + 1;
-                            }
-                            else {
-                                part_type[nab_lid] = layer + 1;
-                            }
-                        }
-                    }
-                }
-            }
-            /*
-            else if (elem.partitionType() != InteriorEntity && part_type[id] == layers + 1) {
-                int gid_e = gid.id(elem);
-                bool isWell = cell_has_well[gid_e] == 1;
-                if ( isWell ) {
-                    for (CpGrid::LeafIntersectionIterator iit = elem.ileafbegin(); iit != elem.ileafend(); ++iit) {
-                        auto inter = *iit;
-                        if ( inter.neighbor() ) {
-                        
-                            auto nab = inter.outside();
-                            int nab_gid = gid.id(nab);
-                            int nab_lid = lid.id(nab);
-                            if (nab.partitionType() != InteriorEntity) {
-                                part_type[nab_lid] = layers + 1;
-                            }
-                        }
-                    }
-                }
-            }
-            */
-        }
-        layer++;
-    }
-}
-
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
 void addOverlapCornerCell(const CpGrid& grid, int owner,
                           const CpGrid::Codim<0>::Entity& from,
@@ -499,9 +408,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         auto ownerSize = exportList.size();
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         std::map<int,int> exportProcs, importProcs;
-        
-        std::vector<std::tuple<int,int,char>> ghostList;
-        
+
         for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             int index = ix.index(*it);
@@ -544,7 +451,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         // Remove duplicate cells in overlap layer.
         auto newEnd = std::unique(ownerEnd, exportList.end(), overlapEqual);
         exportList.resize(newEnd - exportList.begin());
-        
+
         for(const auto& entry: importList)
             importProcs.insert(std::make_pair(std::get<1>(entry), 0));
         //count entries to send
@@ -596,24 +503,24 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
 
         MPI_Waitall(requests.size(), requests.data(), statuses.data());
 
-        // -------------- Communicate overlap type
+        // Communicate overlap type
         ++tag;
         std::vector<std::vector<int> > typeBuffers(importProcs.size());
-        auto tbuffer = typeBuffers.begin();
+        auto partitionTypeBuffer = typeBuffers.begin();
         req = requests.begin();
 
         for(auto&& proc: importProcs)
         {
-            tbuffer->resize(proc.second);
-            MPI_Irecv(tbuffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
-            ++req; ++tbuffer;
+            partitionTypeBuffer->resize(proc.second);
+            MPI_Irecv(partitionTypeBuffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
+            ++req; ++partitionTypeBuffer;
         }
 
         for(const auto& proc: exportProcs)
         {
             std::vector<int> sendBuffer;
             sendBuffer.reserve(proc.second);
-            
+
             for (auto t = ownerEnd; t != exportList.end(); ++t) {
                 if ( std::get<1>(*t) == proc.first ) {
                     if ( std::get<2>(*t) == AttributeSet::copy)  
@@ -622,21 +529,20 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         sendBuffer.push_back(1);
                 }
             }
-
             MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
         }
 
         std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
         MPI_Waitall(requests.size(), requests.data(), statuses.data());
-        // ------------------------------
-        
+
+        // Add the overlap layer to the import list on each process.
         buffer = receiveBuffers.begin();
-        tbuffer = typeBuffers.begin();
+        partitionTypeBuffer = typeBuffers.begin();
         auto importOwnerSize = importList.size();
-        
+
         for(const auto& proc: importProcs)
         {
-            auto pt = tbuffer->begin();
+            auto pt = partitionTypeBuffer->begin();
             for(const auto& index: *buffer) {
                 
                 if (*pt == 0) {
@@ -648,7 +554,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                 ++pt;
             }
             ++buffer;
-            ++tbuffer;
+            ++partitionTypeBuffer;
         }
         std::sort(importList.begin() + importOwnerSize, importList.end(),
                   [](const std::tuple<int,int,char,int>& t1, const std::tuple<int,int,char,int>& t2)

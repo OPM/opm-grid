@@ -43,7 +43,6 @@
 #include <tuple>
 
 #include <dune/common/parallel/mpihelper.hh>
-
 namespace Dune
 {
 
@@ -72,9 +71,6 @@ namespace Dune
                    bool recursive = false,
                    bool ensureConnectivity = true);
 
-    void seperateOverlapAndGhostCells(const CpGrid& grid, const std::vector<int>& cell_has_well,
-				      std::vector<int>& part_type, int layers);
-    
     /// \brief Adds a layer of overlap cells to a partitioning.
     /// \param[in] grid The grid that is partitioned.
     /// \param[in] cell_part a vector containing each cells partition number.
@@ -96,13 +92,15 @@ namespace Dune
     /// \param[inout] importList List indices to import, each entry is a tuple
     /// of global index, process rank (to import from), attribute here, local
     /// index here
+    /// \param[in] cell_has_well integer list that indicate if cell i is perforated
+    /// by a well.
     /// \param[in] cc The communication object
     /// \param[in] layer Number of overlap layers
     int addOverlapLayer(const CpGrid& grid,
-			const std::vector<int>& cell_part,
+                        const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
-			const std::vector<int>& cell_has_well,
+                        const std::vector<int>& cell_has_well,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
                         int layers = 1);
 
