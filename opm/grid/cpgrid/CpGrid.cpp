@@ -152,7 +152,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
 
     if (cc.size() > 1)
     {
-        int my_num=cc.rank();
 #ifdef HAVE_ZOLTAN
         auto part_and_wells =
             cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
@@ -247,12 +246,23 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
 
         distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
         int num_cells = distributed_data_->cell_to_face_.size();
-        std::ostringstream message;
-        message << "After loadbalancing process " << my_num << " has " << num_cells << " cells.";
-        if (num_cells == 0) {
-            throw std::runtime_error(message.str() + " Aborting.");
-        } else {
-            std::cout << message.str() << "\n";
+
+        std::vector<int> cc_num_cells(cc.size(), 0);
+        cc_num_cells[cc.rank()] = num_cells;
+        cc.sum(cc_num_cells.data(),cc.size());
+
+        if (cc.rank() == 0) {
+            std::string str = "\nAfter loadbalancing on " + std::to_string(cc.size()) + " processes we have\nrank: num cells\n----------------\n";
+            for (int i = 0; i < cc.size(); ++i) {
+                str += std::to_string(i) + ": " + std::to_string(cc_num_cells[i]) + "\n";
+            }
+            str += "----------------\n";
+            Opm::OpmLog::info(str);
+        }
+        for (const auto& nc : cc_num_cells) {
+            if (nc == 0) {
+                throw std::runtime_error("At least one process has zero cells. Aborting.");
+            }
         }
 
         current_view_data_ = distributed_data_.get();
