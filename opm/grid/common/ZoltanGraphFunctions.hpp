@@ -155,7 +155,7 @@ public:
 
     double logTransmissibilityWeights(int face_index) const
     {
-        double trans = transmissibilities_[face_index]; 
+        double trans = transmissibilities_ ?  transmissibilities_[face_index] : 1; 
         return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
     }
 
@@ -167,7 +167,7 @@ public:
     double edgeWeight(int face_index) const
     {
         if (edgeWeightsMethod_ == uniformEdgeWgt)
-            return transmissibilities_[face_index] == 0.0 ? 0.0 : 1.0;
+            return 1.0;
         else if (edgeWeightsMethod_ == defaultTransEdgeWgt)
             return transmissibility(face_index);
         else if (edgeWeightsMethod_ == logTransEdgeWgt)
@@ -199,16 +199,21 @@ private:
     {
         double min_val = std::numeric_limits<float>::max();
 
-        for (int face = 0; face < getGrid().numFaces(); ++face)
-        {
-            double trans = transmissibilities_[face];
-            if (trans > 0)
+        if (transmissibilities_) {
+            for (int face = 0; face < getGrid().numFaces(); ++face)
             {
-                if (trans < min_val)
-                    min_val = trans;
+                double trans = transmissibilities_[face];
+                if (trans > 0)
+                {
+                    if (trans < min_val)
+                        min_val = trans;
+                }
             }
+            log_min_ = std::log(min_val);
         }
-        log_min_ = std::log(min_val);
+        else {
+            log_min_ = 0.0;
+        }
     }
 
     const Dune::CpGrid& grid_;

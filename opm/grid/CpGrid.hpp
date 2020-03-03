@@ -653,8 +653,8 @@ namespace Dune
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
         std::pair<bool, std::unordered_set<std::string> >
-        loadBalance(EdgeWeightMethod method, bool ownersFirst, const std::vector<cpgrid::OpmWellType> * wells,
-                    const double* transmissibilities = nullptr,
+        loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
+                    const double* transmissibilities = nullptr, bool ownersFirst=false,
                     int overlapLayers=1)
         {
             return scatterGrid(method, ownersFirst, wells, transmissibilities, overlapLayers);

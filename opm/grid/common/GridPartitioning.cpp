@@ -453,8 +453,12 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             int index = ix.index(*it);
             auto owner = cell_part[index];
             exportProcs.insert(std::make_pair(owner, 0));
-            //addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
-            addOverlapLayerNoZeroTrans(grid, index, owner, cell_part, exportList, layers-1, trans);
+            if ( trans ) {
+                addOverlapLayerNoZeroTrans(grid, index, owner, cell_part, exportList, layers-1, trans);
+            }
+            else {
+                addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
+            }
         }
         // remove multiple entries
         auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
