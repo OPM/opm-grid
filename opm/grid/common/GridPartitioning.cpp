@@ -260,7 +260,7 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
         const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
         for ( int j = 0; j < num_nb_subs; j++)
         {
-            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(i));
+            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(j));
             if ( mypoint == otherpoint )
             {
                 cell_overlap[nb_index].insert(owner);
@@ -289,7 +289,7 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
         const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
         for ( int j = 0; j < num_nb_subs; j++)
         {
-            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(i));
+            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(j));
             if ( mypoint == otherpoint )
             {
                 // Note: multiple adds for same process are possible
@@ -324,7 +324,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         // Add cells to the overlap that just share a corner with e.
                         for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
                              iit2 != iit->outside()->ileafend(); ++iit2)
-                       {
+                        {
                            if ( iit2->neighbor() )
                            {
                                int nb_index2 = ix.index(*(iit2->outside()));
@@ -392,9 +392,10 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                             if ( iit2->neighbor() )
                             {
                                 int nb_index2 = ix.index(*(iit2->outside()));
-                                if( cell_part[nb_index2]==owner ) continue;
-                                addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
-                                                     cell_part, exportList);
+                                if( cell_part[nb_index2]!=owner ) {
+                                    addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
+                                                         cell_part, exportList);
+                                }
                             }
                         }
                     }
