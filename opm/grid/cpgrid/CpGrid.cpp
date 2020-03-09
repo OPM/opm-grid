@@ -57,7 +57,7 @@ namespace
 
 #if HAVE_MPI
 
-using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
 template<typename Tuple, bool first>
 void reserveInterface(const std::vector<Tuple>& list, Dune::CpGrid::InterfaceMap& interface,
