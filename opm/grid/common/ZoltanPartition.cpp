@@ -24,7 +24,7 @@
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
-#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI) && defined(HAVE_DUNE_ISTL)
 namespace Dune
 {
 namespace cpgrid

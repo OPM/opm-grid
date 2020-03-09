@@ -55,7 +55,7 @@
 namespace
 {
 
-#if HAVE_MPI
+#if HAVE_MPI && defined(HAVE_DUNE_ISTL)
 
 using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 
@@ -147,7 +147,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         return std::make_pair(false, std::unordered_set<std::string>());
     }
 
-#if HAVE_MPI
+#if HAVE_MPI && HAVE_DUNE_ISTL
     auto& cc = data_->ccobj_;
 
     if (cc.size() > 1)
@@ -276,7 +276,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
     }
 #else // #if HAVE_MPI
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
-              << "MPI support and if the target Dune platform is "
+              << "MPI support, dune-istl and if the target Dune platform is "
               << "sufficiently recent.\n";
     return std::make_pair(false, std::unordered_set<std::string>());
 #endif

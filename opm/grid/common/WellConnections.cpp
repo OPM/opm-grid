@@ -28,7 +28,10 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <dune/common/parallel/mpitraits.hh>
+
+#if HAVE_DUNE_ISTL
 #include <dune/istl/owneroverlapcopy.hh>
+#endif
 
 namespace
 {
@@ -93,7 +96,7 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 #endif
 }
 
-#ifdef HAVE_MPI
+#if HAVE_MPI && HAVE_DUNE_ISTL
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
                                 const std::vector<int>& globalCell,

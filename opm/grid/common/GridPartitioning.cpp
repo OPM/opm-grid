@@ -37,7 +37,9 @@
 #if HAVE_CONFIG_H
 #include "config.h"
 #endif
+#if HAVE_DUNE_ISTL
 #include <dune/istl/owneroverlapcopy.hh>
+#endif
 #include "GridPartitioning.hpp"
 #include <opm/grid/CpGrid.hpp>
 #include <stack>
@@ -242,6 +244,7 @@ namespace Dune
         }
     }
 
+#if HAVE_DUNE_IST
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
 void addOverlapCornerCell(const CpGrid& grid, int owner,
                           const CpGrid::Codim<0>::Entity& from,
@@ -401,6 +404,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             }
         }
     }
+#endif
 
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
@@ -408,7 +412,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
                         int layers)
     {
-#ifdef HAVE_MPI
+#if defined(HAVE_MPI) && defined(HAVE_DUNE_ISTL)
         using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
         auto ownerSize = exportList.size();
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
@@ -507,7 +511,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         (void) importList;
         (void) cc;
         (void) layers;
-        DUNE_THROW(InvalidStateException, "MPI is missing from the system");
+        DUNE_THROW(InvalidStateException, "MPI and/or dune-istl is missing from the system");
 
         return 0;
 #endif
