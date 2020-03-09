@@ -98,7 +98,7 @@ namespace Dune
 
     virtual void insertElement(const GeometryType& type,
                                const std::vector<unsigned int>& vertices,
-                               const shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >&)
+                               const std::shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >&)
     {
       std::cerr << "Warning: elementParametrization is being ignored in insertElement!" << std::endl;
       insertElement( type, vertices );
