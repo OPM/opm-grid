@@ -21,8 +21,8 @@
 #include <config.h>
 #endif
 #include <opm/grid/common/ZoltanPartition.hpp>
-
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/cpgrid/CpGridData.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
@@ -111,7 +111,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     std::vector<std::tuple<int,int,char,int>>myImportList(numImport);
     myExportList.reserve(1.2*myExportList.size());
     myImportList.reserve(1.2*myImportList.size());
-    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+    using AttributeSet = CpGridData::AttributeSet;
 
     for ( int i=0; i < numExport; ++i )
     {

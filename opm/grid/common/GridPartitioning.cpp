@@ -40,6 +40,7 @@
 #include <dune/istl/owneroverlapcopy.hh>
 #include "GridPartitioning.hpp"
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/CpGridData.hpp>
 #include <stack>
 
 #ifdef HAVE_MPI
@@ -277,7 +278,7 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
                           const std::vector<int>& cell_part,
                           std::vector<std::tuple<int,int,char>>& exportList)
 {
-    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
     const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
     int my_index = ix.index(from);
     int nb_index = ix.index(neighbor);
@@ -366,7 +367,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                          std::vector<std::tuple<int,int,char>>& exportList,
                          int recursion_deps)
     {
-        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
             if ( iit->neighbor() ) {
@@ -409,7 +410,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         int layers)
     {
 #ifdef HAVE_MPI
-        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
         auto ownerSize = exportList.size();
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         std::map<int,int> exportProcs, importProcs;

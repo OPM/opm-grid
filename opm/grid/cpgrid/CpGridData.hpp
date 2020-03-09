@@ -299,6 +299,14 @@ public:
     using InterfaceMap = Communicator::InterfaceMap;
 #endif
 
+#ifdef HAVE_DUNE_ISTL
+    /// \brief The type of the set of the attributes
+    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+#else
+    /// \brief The type of the set of the attributes
+    enum AttributeSet{owner, overlap, copy};
+#endif
+
 private:
 
     /// \brief Adds entries to the parallel index set of the cells during grid construction
@@ -444,13 +452,6 @@ private:
     /// the zcorn values will typically be modified, and we retain a
     /// copy here to be able to create an EclipseGrid for output.
     std::vector<double> zcorn;
-
-#ifdef HAVE_DUNE_ISTL
-    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
-#else
-    /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap, copy};
-#endif
 
 #if HAVE_MPI
 
