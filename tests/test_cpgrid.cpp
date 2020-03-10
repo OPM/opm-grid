@@ -13,9 +13,9 @@
 
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <dune/grid/test/gridcheck.hh>
-#endif
+
 
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -63,7 +63,7 @@ void testGridIteration( const GridView& gridView, const int nElem )
             {
               if( numIs != intersection.indexInInside() )
                   std::cout << "num iit = " << numIs << " indexInInside " << intersection.indexInInside() << std::endl;
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+
               if (std::abs(intersection.outside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "outside element volume of intersection " << numIs << " of element " << numElem
                             << " volume is wrong: " << intersection.outside().geometry().volume() << std::endl;
@@ -71,7 +71,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
               if (std::abs(intersection.inside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "inside element volume of intersection " << numIs << " of element " << numElem
                             << " volume is wrong: " << intersection.inside().geometry().volume() << std::endl;
-#endif
             }
         }
 
@@ -91,7 +90,7 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
 {
     typedef typename Grid::LeafGridView GridView;
     /*
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+
     try {
       gridcheck( grid );
     }
@@ -99,19 +98,13 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     {
       std::cerr << "Warning: " << e.what() << std::endl;
     }
-#endif
 */
     std::cout << name << std::endl;
 
     testGridIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 6)
   Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
-#else
-    Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
-                                              Dune::MCMGVertexLayout> mapper(grid.leafGridView());
-#endif
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
     if (static_cast<size_t>(mapper.size()) != nVertices ) {

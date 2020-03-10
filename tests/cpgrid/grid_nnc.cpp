@@ -41,11 +41,8 @@ namespace std
         return os;
     }
 }
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+
 using ElementMapper = Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView>;
-#else
-using ElementMapper = Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView, Dune::MCMGElementLayout>;
-#endif
 
 struct Fixture
 {
@@ -77,32 +74,14 @@ struct Fixture
         Dune::CpGrid grid;
         grid.processEclipseFormat(&es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         ElementMapper elmap(gv, Dune::mcmgElementLayout());
-#else
-        ElementMapper elmap(gv);
-#endif
         int elemcount = 0;
         int intercount = 0;
         int bdycount = 0;
         std::vector<std::pair<int, int>> nb;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         for (const auto& elem : elements(gv)) {
-#else
-        auto elemIt = gv.template begin<0>();
-        auto elemEnd = gv.template end<0>();
-        for (; elemIt != elemEnd; ++elemIt ) {
-            auto& elem = *elemIt;
-#endif
             ++elemcount;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             for (const auto& inter : intersections(gv, elem)) {
-#else
-            auto interIt = gv.ibegin(elem);
-            auto interEnd = gv.iend(elem);
-            for (; interIt != interEnd; ++interIt) {
-                auto& inter = *interIt;
-#endif
                 ++intercount;
                 if (inter.boundary()) {
                     ++bdycount;
