@@ -172,7 +172,7 @@ namespace Dune
         /// \brief The type of the global id set.
         typedef cpgrid::GlobalIdSet GlobalIdSet;
         /// \brief The type of the local id set.
-        typedef cpgrid::IdSet LocalIdSet;
+        typedef cpgrid::GlobalIdSet LocalIdSet;
 
         /// \brief The type of the collective communication.
 
@@ -471,7 +471,7 @@ namespace Dune
         /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const
         {
-            return *current_view_data_->local_id_set_;
+            return *current_view_data_->global_id_set_;
         }
 
 
