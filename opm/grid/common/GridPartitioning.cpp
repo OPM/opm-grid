@@ -365,7 +365,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
     void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
                          const int owner, const std::vector<int>& cell_part,
                          std::vector<std::tuple<int,int,char>>& exportList,
-                         int recursion_deps)
+                         const std::vector<int>& isWell, int recursion_deps)
     {
         using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
@@ -374,38 +374,33 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                 int nb_index = ix.index(*(iit->outside()));
                 if ( cell_part[nb_index]!=owner )
                 {
-                    // Note: multiple adds for same process are possible
-                    exportList.emplace_back(nb_index, owner, AttributeSet::copy);
-                    exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::copy);
-                    if ( recursion_deps>0 )
+                    // If on last level add cell as type: copy. If not it has partition type: overlap
+                    if ( recursion_deps < 1 ) {
+                        exportList.emplace_back(nb_index, owner,  AttributeSet::copy);
+                    }
+                    else {
+                        // If cell is perforated by a well add it as a copy cell, since wells are not parallel
+                        if ( isWell[nb_index] == 1 )
+                            exportList.emplace_back(nb_index, owner,  AttributeSet::copy);
+                        else
+                            exportList.emplace_back(nb_index, owner,  AttributeSet::overlap);
+                    }
+                    if ( recursion_deps > 0 )
                     {
                         // Add another layer
-                        addOverlapLayer(grid, nb_index, *(iit->outside()), owner,
-                                        cell_part, exportList, recursion_deps-1);
-                    }
-                    else
-                    {
-                        // Add cells to the overlap that just share a corner with e.
-                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
-                             iit2 != iit->outside()->ileafend(); ++iit2)
-                        {
-                            if ( iit2->neighbor() )
-                            {
-                                int nb_index2 = ix.index(*(iit2->outside()));
-                                if( cell_part[nb_index2]==owner ) continue;
-                                addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
-                                                     cell_part, exportList);
-                            }
-                        }
+                        addOverlapLayer(grid, index, *(iit->outside()), owner,
+                                        cell_part, exportList, isWell, recursion_deps-1);
                     }
                 }
             }
         }
     }
 
-    int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
+    int addOverlapLayer(const CpGrid& grid,
+                        const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
+                        const std::vector<int>& cell_has_well,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
                         int layers)
     {
@@ -418,22 +413,44 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
             int index = ix.index(*it);
+
             auto owner = cell_part[index];
             exportProcs.insert(std::make_pair(owner, 0));
-            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, layers-1);
+            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, cell_has_well, layers-1);
         }
+        
         // remove multiple entries
+        // This predicate will result in the following ordering of
+        // the exportList tuples (index, rank, Attribute) after std::sort:
+        //
+        // Tuple x comes before tuple y if x[0] < y[0].
+        // Tuple x comes before tuple y if x[0] == y[0] and x[1] < y[1].
+        // Tuple x comes before tuple y if x[0] == y[0] and x[1] == y[1] and (x[2] == overlap and y[2] = copy).
+        // This ordering is needed to meke std::unique work properly.
         auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
-                       {
-                           return (std::get<0>(t1) < std::get<0>(t2)) ||
-                                                    ( ! (std::get<0>(t2) < std::get<0>(t1))
-                                                      && (std::get<1>(t1) < std::get<1>(t2)) );
-                       };
+            {
+                return (std::get<0>(t1) < std::get<0>(t2) ) ||
+                ( (std::get<0>(t2) == std::get<0>(t1))
+                  && (std::get<1>(t1) < std::get<1>(t2))  ) ||
+                ( (std::get<0>(t2) == std::get<0>(t1)) && std::get<2>(t1) == AttributeSet::overlap
+                  && std::get<2>(t2) == AttributeSet::copy && (std::get<1>(t1) == std::get<1>(t2)));
+            };
+        
+        // We do not want to add a cell twice as an overlap and copy type. To avoid this we say two tuples
+        // x,y in exportList are equal if x[0] == y[0] and x[1] == y[1]. Since overlap tuples come
+        // before the copy tuples, the copy tuples will be removed.
+        auto overlapEqual = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
+            {
+                return  ( ( std::get<0>(t1) == std::get<0>(t2) )
+                          && ( std::get<1>(t1) == std::get<1>(t2) ) ) ;
+            };
 
+        // We only sort and remove duplicate cells in the overlap layers
         auto ownerEnd = exportList.begin() + ownerSize;
         std::sort(ownerEnd, exportList.end(), compare);
 
-        auto newEnd = std::unique(ownerEnd, exportList.end());
+        // Remove duplicate cells in overlap layer.
+        auto newEnd = std::unique(ownerEnd, exportList.end(), overlapEqual);
         exportList.resize(newEnd - exportList.begin());
 
         for(const auto& entry: importList)
@@ -485,17 +502,60 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
         }
 
-        std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
-
         MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+        // Communicate overlap type
+        ++tag;
+        std::vector<std::vector<int> > typeBuffers(importProcs.size());
+        auto partitionTypeBuffer = typeBuffers.begin();
+        req = requests.begin();
+
+        for(auto&& proc: importProcs)
+        {
+            partitionTypeBuffer->resize(proc.second);
+            MPI_Irecv(partitionTypeBuffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
+            ++req; ++partitionTypeBuffer;
+        }
+
+        for(const auto& proc: exportProcs)
+        {
+            std::vector<int> sendBuffer;
+            sendBuffer.reserve(proc.second);
+
+            for (auto t = ownerEnd; t != exportList.end(); ++t) {
+                if ( std::get<1>(*t) == proc.first ) {
+                    if ( std::get<2>(*t) == AttributeSet::copy)  
+                        sendBuffer.push_back(0);
+                    else
+                        sendBuffer.push_back(1);
+                }
+            }
+            MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
+        }
+
+        std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
+        MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+        // Add the overlap layer to the import list on each process.
         buffer = receiveBuffers.begin();
+        partitionTypeBuffer = typeBuffers.begin();
         auto importOwnerSize = importList.size();
 
         for(const auto& proc: importProcs)
         {
-            for(const auto& index: *buffer)
-                importList.emplace_back(index, proc.first, AttributeSet::copy, -1);
+            auto pt = partitionTypeBuffer->begin();
+            for(const auto& index: *buffer) {
+                
+                if (*pt == 0) {
+                    importList.emplace_back(index, proc.first, AttributeSet::copy, -1);
+                }
+                else {
+                    importList.emplace_back(index, proc.first, AttributeSet::overlap, -1);
+                }
+                ++pt;
+            }
             ++buffer;
+            ++partitionTypeBuffer;
         }
         std::sort(importList.begin() + importOwnerSize, importList.end(),
                   [](const std::tuple<int,int,char,int>& t1, const std::tuple<int,int,char,int>& t2)

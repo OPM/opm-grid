@@ -92,11 +92,15 @@ namespace Dune
     /// \param[inout] importList List indices to import, each entry is a tuple
     /// of global index, process rank (to import from), attribute here, local
     /// index here
+    /// \param[in] cell_has_well integer list that indicate if cell i is perforated
+    /// by a well.
     /// \param[in] cc The communication object
     /// \param[in] layer Number of overlap layers
-    int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
+    int addOverlapLayer(const CpGrid& grid,
+                        const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
+                        const std::vector<int>& cell_has_well,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
                         int layers = 1);
 

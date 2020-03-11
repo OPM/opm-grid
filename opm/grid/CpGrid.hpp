@@ -1354,6 +1354,11 @@ namespace Dune
             return current_view_data_->cell_remote_indices_;
         }
 
+	std::vector<int> cellHasWell() const
+	{
+	    return *cell_has_well_;
+	}
+
 #endif
 
     private:
@@ -1393,6 +1398,13 @@ namespace Dune
          * @warning Will only update owner cells
          */
         std::shared_ptr<InterfaceMap> point_scatter_gather_interfaces_;
+	
+	/// \brief Mark all cells perforated by cells.
+	void findWellperforatedCells(const std::vector<cpgrid::OpmWellType> * wells,
+				     std::vector<int>& cell_has_well);
+
+	std::shared_ptr<std::vector<int>> cell_has_well_;
+	
     }; // end Class CpGrid
 
 

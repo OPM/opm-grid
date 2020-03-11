@@ -46,10 +46,13 @@ namespace cpgrid
 /// @param edgeWeightMethod The method used to calculate the weights associated
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
-/// @return A pair consisting of a vector that contains for each local cell of the grid the
+/// @return A tuple consisting of a vector that contains for each local cell of the grid the
 ///         the number of the process that owns it after repartitioning,
-///         and a set of names of wells that should be defunct in a parallel
-///         simulation.
+///         a set of names of wells that should be defunct in a parallel
+///         simulation, a vector of tuples exportList(global id, owner rank, attribute)
+///         containing information each rank needs for distributing the grid and a second
+///         vector of tuples importList(global id, send rank, attribute, local id) containing
+///         information about the cells of the grid each rank will receive.
 std::tuple<std::vector<int>,std::unordered_set<std::string>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> >  >
