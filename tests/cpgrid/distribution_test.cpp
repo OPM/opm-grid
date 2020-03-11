@@ -486,13 +486,7 @@ BOOST_AUTO_TEST_CASE(distribute)
         typedef GridView :: Codim<0> :: Iterator LeafIterator ;
         for (LeafIterator it = gridView.begin<0>();
              it != gridView.end<0>(); ++it) {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
             auto ref = Dune::ReferenceElements<Dune::CpGrid::ctype,3>::cube();
-#else
-            Dune::GeometryType gt = it->type () ;
-            const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-                Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#endif
 
             cell_indices.push_back(ix.index(*it));
             cell_centers.push_back(it->geometry().center());
@@ -544,13 +538,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
              it != grid.leafend<0>(); ++it) {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
             auto ref = Dune::ReferenceElements<Dune::CpGrid::ctype,3>::cube();
-#else
-            Dune::GeometryType gt = it->type () ;
-            const Dune::ReferenceElement<Dune::CpGrid::ctype, 3>& ref=
-                Dune::ReferenceElements<Dune::CpGrid::ctype, 3>::general(gt);
-#endif
 
             BOOST_REQUIRE(cell_indices[cell_index]==ix1.index(*it));
             BOOST_REQUIRE(cell_centers[cell_index++]==it->geometry().center());
