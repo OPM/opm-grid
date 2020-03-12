@@ -118,7 +118,8 @@ namespace Dune
           current_view_data_(data_.get()),
           distributed_data_(),
           cell_scatter_gather_interfaces_(new InterfaceMap),
-          point_scatter_gather_interfaces_(new InterfaceMap)
+          point_scatter_gather_interfaces_(new InterfaceMap),
+          global_id_set_(*current_view_data_)
     {}
 
 
@@ -127,7 +128,8 @@ namespace Dune
           current_view_data_(data_.get()),
           distributed_data_(),
           cell_scatter_gather_interfaces_(new InterfaceMap),
-          point_scatter_gather_interfaces_(new InterfaceMap)
+          point_scatter_gather_interfaces_(new InterfaceMap),
+          global_id_set_(*current_view_data_)
     {}
 
 
@@ -246,6 +248,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellTy
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
         distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+        global_id_set_.insertIdSet(*distributed_data_);
 
 
         // Compute the partition type for cell
