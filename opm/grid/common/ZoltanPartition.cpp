@@ -77,7 +77,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                        wells,
                                                        transmissibilities,
                                                        partitionIsEmpty,
-						       edgeWeightsMethod));
+                                                       edgeWeightsMethod));
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
                                                     partitionIsEmpty);
     }

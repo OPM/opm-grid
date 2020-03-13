@@ -93,12 +93,14 @@ namespace Dune
     /// of global index, process rank (to import from), attribute here, local
     /// index here
     /// \param[in] cc The communication object
+    /// \param[in] addCornerCells Switch for adding corner cells to overlap layer.
+    /// \param[in] trans The transmissibilities on cell faces. When trans[i]==0, no overlap is added.
     /// \param[in] layer Number of overlap layers
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
-                        int layers = 1);
+                        bool addCornerCells, const double* trans, int layers = 1);
 
 } // namespace Dune
 
