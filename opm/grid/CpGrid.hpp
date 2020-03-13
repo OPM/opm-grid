@@ -172,7 +172,7 @@ namespace Dune
         /// \brief The type of the global id set.
         typedef cpgrid::GlobalIdSet GlobalIdSet;
         /// \brief The type of the local id set.
-        typedef cpgrid::IdSet LocalIdSet;
+        typedef GlobalIdSet LocalIdSet;
 
         /// \brief The type of the collective communication.
 
@@ -218,6 +218,8 @@ namespace Dune
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
         friend class cpgrid::CpGridData;
+        template<int dim>
+        friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
 
     public:
 
@@ -464,14 +466,14 @@ namespace Dune
         /// \brief Access to the GlobalIdSet
         const Traits::GlobalIdSet& globalIdSet() const
         {
-            return *current_view_data_->global_id_set_;
+            return global_id_set_;
         }
 
 
         /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const
         {
-            return *current_view_data_->local_id_set_;
+            return global_id_set_;
         }
 
 
@@ -1404,6 +1406,10 @@ namespace Dune
          * @warning Will only update owner cells
          */
         std::shared_ptr<InterfaceMap> point_scatter_gather_interfaces_;
+        /**
+         * @brief The global id set (also used as local one).
+         */
+        cpgrid::GlobalIdSet global_id_set_;
     }; // end Class CpGrid
 
 

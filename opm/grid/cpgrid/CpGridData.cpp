@@ -29,7 +29,7 @@ namespace cpgrid
 
 CpGridData::CpGridData(const CpGridData& g)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
+      global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
 {
 #if HAVE_MPI
     ccobj_=CollectiveCommunication(MPI_COMM_SELF);
@@ -39,7 +39,7 @@ CpGridData::CpGridData(const CpGridData& g)
 
 CpGridData::CpGridData()
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
+      global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
@@ -50,7 +50,7 @@ CpGridData::CpGridData()
 
 CpGridData::CpGridData(MPIHelper::MPICommunicator comm)
     : index_set_(new IndexSet(*this)), local_id_set_(new IdSet(*this)),
-      global_id_set_(new GlobalIdSet(local_id_set_)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
+      global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)),
       ccobj_(comm), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
@@ -61,7 +61,7 @@ CpGridData::CpGridData(MPIHelper::MPICommunicator comm)
 
 CpGridData::CpGridData(CpGrid&)
   : index_set_(new IndexSet(*this)),   local_id_set_(new IdSet(*this)),
-    global_id_set_(new GlobalIdSet(local_id_set_)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
+    global_id_set_(new LevelGlobalIdSet(local_id_set_, this)),  partition_type_indicator_(new PartitionTypeIndicator(*this)),
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
@@ -113,7 +113,7 @@ void CpGridData::populateGlobalCellIndexSet()
 #if HAVE_MPI
     cell_indexset_.beginResize();
     for (int index = 0, end = size(0); index != end ; ++index){
-        cell_indexset_.add(global_id_set_->id(EntityRep<0>(index, true)),
+        cell_indexset_.add(global_id_set_->id(Entity<0>(*this, EntityRep<0>(index, true))),
                            ParallelIndexSet::LocalIndex(index, AttributeSet::owner, true));
     }
     cell_indexset_.endResize();
@@ -560,7 +560,7 @@ struct Cell2PointsDataHandle
     using DataType = int;
     using Vector = std::vector<std::array<int,8> >;
     Cell2PointsDataHandle(const Vector& globalCell2Points,
-                          const GlobalIdSet& globalIds,
+                          const LevelGlobalIdSet& globalIds,
                           const std::vector<std::set<int> >& globalAdditionalPointIds,
                           Vector& localCell2Points,
                           std::vector<int>& flatGlobalPoints,
@@ -615,7 +615,7 @@ struct Cell2PointsDataHandle
     }
 private:
     const Vector& globalCell2Points_;
-    const GlobalIdSet& globalIds_;
+    const LevelGlobalIdSet& globalIds_;
     const std::vector<std::set<int> >& globalAdditionalPointIds_;
     Vector& localCell2Points_;
     std::vector<int>& flatGlobalPoints_;
@@ -684,7 +684,7 @@ struct SparseTableDataHandle
     using DataType = int;
     static constexpr int from = 1;
     SparseTableDataHandle(const Table& global,
-                          const GlobalIdSet& globalIds,
+                          const LevelGlobalIdSet& globalIds,
                           Table& local,
                           const std::map<int,int>& global2Local)
         : global_(global), globalIds_(globalIds), local_(local), global2Local_(global2Local)
@@ -728,7 +728,7 @@ struct SparseTableDataHandle
     }
     private:
     const Table& global_;
-    const GlobalIdSet& globalIds_;
+    const LevelGlobalIdSet& globalIds_;
     Table& local_;
     const std::map<int,int>& global2Local_;
 };
@@ -800,12 +800,12 @@ protected:
 };
 
 class C2FDataHandle
-    : public OrientedEntityTableDataHandle<GlobalIdSet,0,1>
+    : public OrientedEntityTableDataHandle<LevelGlobalIdSet,0,1>
 {
 public:
-    C2FDataHandle(const Table& global, const GlobalIdSet& globalIds, Table& local,
+    C2FDataHandle(const Table& global, const LevelGlobalIdSet& globalIds, Table& local,
                   std::vector<int>& unsignedGlobalFaceIds)
-        : OrientedEntityTableDataHandle<GlobalIdSet,0,1>(global, local, &globalIds),
+        : OrientedEntityTableDataHandle<LevelGlobalIdSet,0,1>(global, local, &globalIds),
           unsignedGlobalFaceIds_(unsignedGlobalFaceIds)
     {}
     template<class B>
@@ -1224,7 +1224,7 @@ void CpGridData::computeGeometry(CpGrid& grid,
 
 void computeFace2Point(CpGrid& grid,
                        const OrientedEntityTable<0, 1>& globalCell2Faces,
-                       const GlobalIdSet& globalIds,
+                       const LevelGlobalIdSet& globalIds,
                        const OrientedEntityTable<0, 1>& cell2Faces,
                        const Opm::SparseTable<int>& globalFace2Points,
                        Opm::SparseTable<int>& face2Points,
@@ -1300,7 +1300,7 @@ void computeFace2Cell(CpGrid& grid,
 
 std::map<int,int> computeCell2Face(CpGrid& grid,
                                     const OrientedEntityTable<0, 1>& globalCell2Faces,
-                                    const GlobalIdSet& globalIds,
+                                    const LevelGlobalIdSet& globalIds,
                                     OrientedEntityTable<0, 1>& cell2Faces,
                                     std::vector<int>& map2Global,
                                     std::size_t noCells)
@@ -1348,7 +1348,7 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
 std::vector<std::set<int> > computeAdditionalFacePoints(const std::vector<std::array<int,8> >& globalCell2Points,
                                                         const OrientedEntityTable<0, 1>& globalCell2Faces,
                                                         const Opm::SparseTable<int>& globalFace2Points,
-                                                        const GlobalIdSet& globalIds)
+                                                        const LevelGlobalIdSet& globalIds)
 {
     std::vector<std::set<int> > additionalFacePoints(globalCell2Points.size());
 
@@ -1413,7 +1413,7 @@ void createInterfaceList(const typename CpGridData::InterfaceMap::value_type& pr
 
 std::map<int,int> computeCell2Point(CpGrid& grid,
                                     const std::vector<std::array<int,8> >& globalCell2Points,
-                                    const GlobalIdSet& globalIds,
+                                    const LevelGlobalIdSet& globalIds,
                                     const OrientedEntityTable<0, 1>& globalCell2Faces,
                                     const Opm::SparseTable<int>& globalFace2Points,
                                     std::vector<std::array<int,8> >& cell2Points,

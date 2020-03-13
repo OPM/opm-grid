@@ -98,7 +98,7 @@ namespace cpgrid
 
 class IndexSet;
 class IdSet;
-class GlobalIdSet;
+class LevelGlobalIdSet;
 class PartitionTypeIndicator;
 template<int,int> class Geometry;
 template<int> class Entity;
@@ -116,6 +116,8 @@ template<class T, int i> struct Mover;
 class CpGridData
 {
     template<class T, int i> friend struct mover::Mover;
+
+    friend class GlobalIdSet;
 
 private:
     CpGridData(const CpGridData& g);
@@ -430,10 +432,10 @@ private:
     cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
     /** @brief The index set of the grid (level). */
     cpgrid::IndexSet* index_set_;
-    /** @brief The local id set. */
+    /** @brief The internal local id set (not exported). */
     const cpgrid::IdSet* local_id_set_;
-    /** @brief The global id set. */
-    GlobalIdSet* global_id_set_;
+    /** @brief The global id set (used also as local id set). */
+    LevelGlobalIdSet* global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     PartitionTypeIndicator* partition_type_indicator_;
 
