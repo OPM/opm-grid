@@ -468,7 +468,8 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
-                        bool addCornerCells, const double* trans, int layers)
+                        [[maybe_unused]] bool addCornerCells,
+                        [[maybe_unused]] const double* trans, int layers)
     {
 #ifdef HAVE_MPI
         using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
