@@ -1674,27 +1674,27 @@ namespace Dune
       const int numCells = grid.number_of_cells;
       for( int c=0; c<numCells; ++c )
       {
-        std::cout << "cell " << c << " : faces = " << std::endl;
+        out << "cell " << c << " : faces = " << std::endl;
         for (int hf=grid.cell_facepos[ c ]; hf < grid.cell_facepos[c+1]; ++hf)
         {
            int f = grid_.cell_faces[ hf ];
            const int* fnbeg = grid_.face_nodes + grid_.face_nodepos[f];
            const int* fnend = grid_.face_nodes + grid_.face_nodepos[f+1];
-           std::cout << f << "  vx = " ;
+           out << f << "  vx = " ;
            while( fnbeg != fnend )
            {
-             std::cout << *fnbeg << " ";
+             out << *fnbeg << " ";
              ++fnbeg;
            }
-           std::cout << std::endl;
+           out << std::endl;
         }
-        std::cout << std::endl;
+        out << std::endl;
 
         const auto& vx = cellVertices_[ c ];
-        std::cout << "cell " << c << " : vertices = ";
+        out << "cell " << c << " : vertices = ";
         for( size_t  i=0; i<vx.size(); ++i )
-          std::cout << vx[ i ] << " ";
-        std::cout << std::endl;
+          out << vx[ i ] << " ";
+        out << std::endl;
       }
 
     }
