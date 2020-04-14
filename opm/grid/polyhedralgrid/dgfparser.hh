@@ -157,7 +157,7 @@ namespace Dune
       generate( input );
     }
 
-    explicit DGFGridFactory ( const std::string &filename, MPICommunicator comm = MPIHelper::getCommunicator() )
+    explicit DGFGridFactory ( const std::string &filename, MPICommunicator /* comm */ = MPIHelper::getCommunicator() )
       : gridPtr_(),
         grid_( nullptr )
     {
@@ -193,7 +193,7 @@ namespace Dune
     }
 
     template< class Intersection >
-    bool wasInserted ( const Intersection &intersection ) const
+    bool wasInserted ( const Intersection& /*intersection*/ ) const
     {
       return false;
     }

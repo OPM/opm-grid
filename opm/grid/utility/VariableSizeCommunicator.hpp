@@ -499,7 +499,7 @@ private:
    * and scatter operations.
    */
   template<bool FORWARD, class DataHandle>
-  void communicateFixedSize(DataHandle& handle);
+  [[maybe_unused]] void communicateFixedSize(DataHandle& handle);
    /**
    * @brief Communicate data with a variable amount of data per entry.
    * @tparam FORWARD If true we send in the forward direction.
@@ -773,11 +773,11 @@ struct UnpackSizeEntries{
  * @param[in] recv_trackers The trackers for the receiving side.
  * @param[out] recv_requests The request for the asynchronous receive operations.
  */
-void sendFixedSize(std::vector<InterfaceTracker>& send_trackers,
-                   std::vector<MPI_Request>& send_requests,
-                   std::vector<InterfaceTracker>& recv_trackers,
-                   std::vector<MPI_Request>& recv_requests,
-                   MPI_Comm communicator)
+[[maybe_unused]] void sendFixedSize(std::vector<InterfaceTracker>& send_trackers,
+                                    std::vector<MPI_Request>& send_requests,
+                                    std::vector<InterfaceTracker>& recv_trackers,
+                                    std::vector<MPI_Request>& recv_requests,
+                                    MPI_Comm communicator)
 {
   typedef std::vector<InterfaceTracker>::iterator TIter;
   std::vector<MPI_Request>::iterator mIter=recv_requests.begin();
@@ -988,7 +988,7 @@ std::size_t checkReceiveAndContinueReceiving(DataHandle& handle,
 }
 
 
-bool validRecvRequests(const std::vector<MPI_Request> reqs)
+[[maybe_unused]] bool validRecvRequests(const std::vector<MPI_Request> reqs)
 {
   for(std::vector<MPI_Request>::const_iterator i=reqs.begin(), end=reqs.end();
       i!=end; ++i)

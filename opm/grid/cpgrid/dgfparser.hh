@@ -52,7 +52,7 @@ namespace Dune
     }
 
     template< class Intersection >
-    bool wasInserted ( const Intersection &intersection ) const
+    bool wasInserted ( const Intersection /*&intersection*/ ) const
     {
       return false;
     }
