@@ -57,16 +57,15 @@ endif()
 
 find_package(opm-common REQUIRED)
 
-include(OpmInit)
-
-# not the same location as most of the other projects? this hook overrides
-macro (dir_hook)
-endmacro (dir_hook)
-
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
 # the build starts, so it makes sense to keep the data there then.
 include (OpmInit)
+OpmSetPolicies()
+# not the same location as most of the other projects? this hook overrides
+macro (dir_hook)
+endmacro (dir_hook)
+
 
 # list of prerequisites for this particular project; this is in a
 # separate file (in cmake/Modules sub-directory) because it is shared
