@@ -2,10 +2,10 @@
 # spec file for package opm-grid
 #
 
-%define tag final
+%define tag rc2
 
 Name:           opm-grid
-Version:        2018.10
+Version:        2020.04
 Release:        0
 Summary:        Cornerpoint grid management module for OPM
 License:        GPL-3.0
