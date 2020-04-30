@@ -37,7 +37,7 @@ Description: opm-grid library -- development files
 
 Package: libopm-grid1
 Section: libs
-Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Pre-Depends: ${misc:Pre-Depends}
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -71,7 +71,7 @@ Description: opm grid library -- documentation
 
 Package: libopm-grid1-bin
 Section: libs
-Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Pre-Depends: ${misc:Pre-Depends}
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
