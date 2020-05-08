@@ -2,7 +2,7 @@
 # spec file for package opm-grid
 #
 
-%define tag rc3
+%define tag rc4
 
 Name:           opm-grid
 Version:        2020.04
