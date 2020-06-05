@@ -196,7 +196,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/GridManager.hpp
   opm/grid/GridUtilities.hpp
   opm/grid/MinpvProcessor.hpp
-  opm/grid/PinchProcessor.hpp
   opm/grid/RepairZCORN.hpp
   opm/grid/cart_grid.h
   opm/grid/cornerpoint_grid.h
