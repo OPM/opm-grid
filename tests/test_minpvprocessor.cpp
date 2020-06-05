@@ -95,6 +95,12 @@ BOOST_AUTO_TEST_CASE(Processing)
     mp2.process(thicknes, z_threshold, pv, minpvv2, actnum, fill_removed_cells, z2.data());
     BOOST_CHECK_EQUAL_COLLECTIONS(z2.begin(), z2.end(), zcorn2after.begin(), zcorn2after.end());
 
+    Opm::MinpvProcessor mp2b(1, 1, 4);
+    auto z2b = zcorn;
+    mp2b.process(thicknes, z_threshold, pv, minpvv2, actnum_empty, fill_removed_cells, z2b.data());
+    // All cells active! zcorn should not change?
+    BOOST_CHECK_EQUAL_COLLECTIONS(z2b.begin(), z2b.end(), zcorn.begin(), zcorn.end());
+
     Opm::MinpvProcessor mp3(1, 1, 4);
     auto z3 = zcorn;
     std::vector<double> minpvv3(4, 2.5);
