@@ -330,10 +330,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     {
         if ( current_view_data_->ccobj_.rank() != 0 )
         {
-            grdecl g;
-            g.dims[0] = g.dims[1] = g.dims[2] = 0;
-            current_view_data_->processEclipseFormat(g, {}, 0.0, false, false);
             // global grid only on rank 0
+            current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                                 current_view_data_->logical_cartesian_size_.size(),
+                                                 0);
             return;
         }
 
@@ -374,6 +374,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         g.zcorn = &zcorn[0];
         g.actnum = &actnum[0];
         current_view_data_->processEclipseFormat(g, {}, 0.0, false, false);
+        // global grid only on rank 0
+        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
+                                             current_view_data_->logical_cartesian_size_.size(),
+                                             0);
     }
 
     void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
