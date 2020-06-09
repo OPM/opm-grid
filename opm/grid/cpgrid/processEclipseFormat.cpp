@@ -250,9 +250,7 @@ namespace cpgrid
     {
         if( ccobj_.rank() != 0 )
         {
-            // We do not store any grid information
-            ccobj_.scatter(logical_cartesian_size_.data(), logical_cartesian_size_.data(), 3, 0);
-            return;
+            OPM_THROW(std::logic_error, "Processing  eclipse file only allowed on rank 0");
         }
         // Process.
 #ifdef VERBOSE
@@ -305,8 +303,7 @@ namespace cpgrid
 
         if(ccobj_.size()>1)
             populateGlobalCellIndexSet();
-        auto tmp = logical_cartesian_size_; // Probably not necessary?
-        ccobj_.scatter(tmp.data(), logical_cartesian_size_.data(), 3, 0);
+
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
 #endif
