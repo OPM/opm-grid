@@ -57,7 +57,8 @@ namespace Opm
                     const std::vector<double>& minpvv,
                     const std::vector<int>& actnum,
                     const bool mergeMinPVCells,
-                    double* zcorn) const;
+                    double* zcorn,
+                    bool pinchNOGAP = false) const;
     private:
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
@@ -80,7 +81,8 @@ namespace Opm
                                         const std::vector<double>& minpvv,
                                         const std::vector<int>& actnum,
                                         const bool mergeMinPVCells,
-                                        double* zcorn) const
+                                        double* zcorn,
+                                        bool pinchNOGAP) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -100,6 +102,9 @@ namespace Opm
         //    created if the cell below and above are active
         //    Inactive cells with thickness below z_tolerance and cells with porv<minpv
         //    are bypassed.
+        // 6. If pinchNOGAP (only has an effect if mergeMinPVcells==false holds):
+        //    is true active cells with porevolume less than minpvv will only be disregarded
+        //    if their thickness is below z_tolerance and nncs will be created in this case.
 
 
         // return a list of the non-neighbor connection.
@@ -159,20 +164,22 @@ namespace Opm
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpvv[c_above]) ) {
+                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpvv[c_above]
+                                                                                                               && (!pinchNOGAP || thickness[c_above] < z_tolerance) ) ) {
                                 for (int topk = kk - 2; topk > 0; --topk) {
                                     c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
-                                    if ( ((actnum.empty() || actnum[c_above]) && pv[c_above] > minpvv[c_above]) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
+                                    if ( ((actnum.empty() || actnum[c_above]) && (pv[c_above] > minpvv[c_above] || (pinchNOGAP && thickness[c_above] > z_tolerance) ) ) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
                                         break;
                                     }
                                 }
                             }
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpvv[c]) ) {
+                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpvv[c]
+                                                                                                                 && (!pinchNOGAP || thickness[c_below] < z_tolerance) ) ) {
                                 for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
                                     c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
-                                    if ( ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpvv[c_below]) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
+                                    if ( ((actnum.empty() || actnum[c_below]) && (pv[c_below] > minpvv[c_below] || (pinchNOGAP && thickness[c_above] > z_tolerance) ) ) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
                                         break;
                                     }
                                 }
@@ -180,7 +187,7 @@ namespace Opm
 
                             // Add a connection if the cell above and below is active and has porv > minpv
                             if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
-                                nnc.insert(std::make_pair(c_above, c_below));
+                                    nnc.insert(std::make_pair(c_above, c_below));
                             }
                         } else {
 

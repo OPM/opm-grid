@@ -27,6 +27,86 @@
 
 #include <opm/grid/MinpvProcessor.hpp>
 
+BOOST_AUTO_TEST_CASE(Pinch)
+{
+    // Set up a simple example.
+    std::vector<double> zcorn = { 0, 0, 0, 0,
+                                  2, 2, 2, 2,
+                                  2, 2, 2, 2,
+                                  2.5, 2.5, 2.5, 2.5,
+                                  2.5, 2.5, 2.5, 2.5,
+                                  3.5, 3.5, 3.5, 3.5,
+                                  3.5, 3.5, 3.5, 3.5,
+                                  6, 6, 6, 6 };
+
+    std::vector<double> pv = { 2, 0.5, 1, 2.5};
+    std::vector<int> actnum = { 1, 1, 1, 1 };
+    std::vector<double> thickness = {2, 0.5, 1, 2.5};
+    double z_threshold = 0.4;
+
+    Opm::MinpvProcessor mp1(1, 1, 4);
+    auto z1 = zcorn;
+    std::vector<double> minpvv(4, 0.6);
+    bool fill_removed_cells = false;
+    bool pinch_no_gap = false;
+    std::vector<double> zcornAfter =
+        {0, 0, 0, 0,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2.5, 2.5, 2.5, 2.5,
+         3.5, 3.5, 3.5, 3.5,
+         3.5, 3.5, 3.5, 3.5,
+         6, 6, 6, 6
+        };
+    auto nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+    BOOST_CHECK_EQUAL(nnc.size(), 1);
+
+    z1= zcorn;
+    pinch_no_gap = true;
+    nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+    BOOST_CHECK_EQUAL(nnc.size(), 1);
+
+    z_threshold = 0.4;
+    pinch_no_gap = true;
+    minpvv = std::vector(4, 0.6);
+    z1 = zcorn;
+    nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+
+    BOOST_CHECK_EQUAL(nnc.size(), 1);
+    BOOST_CHECK_EQUAL(nnc[0], 2);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+
+    z_threshold = 0.6;
+    pinch_no_gap = true;
+    minpvv = std::vector(4, 0.4);
+    z1 = zcorn;
+    nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+
+    BOOST_CHECK_EQUAL(nnc.size(), 0);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcorn.begin(), zcorn.end());
+
+    z_threshold = 1.1;
+    pinch_no_gap = true;
+    minpvv = std::vector(4, 1.1);
+    z1 = zcorn;
+    nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    zcornAfter =
+        {0, 0, 0, 0,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2.5, 2.5, 2.5, 2.5,
+         2.5, 2.5, 2.5, 2.5,
+         3.5, 3.5, 3.5, 3.5,
+         6, 6, 6, 6
+        };
+    BOOST_CHECK_EQUAL(nnc.size(), 1);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+}
+
 BOOST_AUTO_TEST_CASE(Processing)
 {
     std::vector<double> zcorn = { 0, 0, 0, 0,

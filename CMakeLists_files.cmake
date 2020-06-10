@@ -119,6 +119,9 @@ list (APPEND TEST_DATA_FILES
      tests/FIVE.DATA
      tests/FIVE_ACTNUM.DATA
      tests/FIVE_PINCH.DATA
+     tests/FIVE_PINCH_NOGAP.DATA
+     tests/FIVE_PINCH_NOGAP2.DATA
+     tests/FIVE_PINCH_NOGAP3.DATA
   )
 
 # originally generated with the command:

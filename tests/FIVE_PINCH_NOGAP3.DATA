@@ -1,0 +1,43 @@
+-- A stack of five cells on top of each other, each 1 cubic meter.
+RUNSPEC
+
+DIMENS
+  1  1  5 /
+
+GRID
+
+COORD
+   0 0 0
+   0 0 1
+   1 0 0
+   1 0 1
+   0 1 0
+   0 1 1
+   1 1 0
+   1 1 1
+/
+
+ZCORN
+   4*0
+   8*1
+   8*1.1
+   8*1.4
+   8*1.8
+   4*4
+/
+
+PORO
+   5*1.0
+/
+
+MINPV
+   0.5
+/
+
+PINCH
+   0.001   NOGAP   1*   1*
+/
+
+ACTNUM
+    5*1
+/

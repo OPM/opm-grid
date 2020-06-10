@@ -152,7 +152,8 @@ namespace cpgrid
                 thickness[i] = ecl_grid.getCellThickness(i);
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data());
+            const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
+            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
             if (nnc_cells_pinch.size() > 0) {
                 this->zcorn = zcornData;
             }
