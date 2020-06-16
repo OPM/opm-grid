@@ -382,17 +382,21 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
     void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
     {
-        current_view_data_->readSintefLegacyFormat(grid_prefix);
+        if ( current_view_data_->ccobj_.rank() == 0 )
+        {
+            current_view_data_->readSintefLegacyFormat(grid_prefix);
+        }
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
     }
     void CpGrid::writeSintefLegacyFormat(const std::string& grid_prefix) const
     {
-        current_view_data_->writeSintefLegacyFormat(grid_prefix);
-        current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
-                                             current_view_data_->logical_cartesian_size_.size(),
-                                             0);
+        // Only rank 0 has the full data. Use that for writing.
+        if ( current_view_data_->ccobj_.rank() == 0 )
+        {
+            data_->writeSintefLegacyFormat(grid_prefix);
+        }
     }
 
 
