@@ -164,22 +164,38 @@ namespace Opm
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpvv[c_above]
-                                                                                                               && (!pinchNOGAP || thickness[c_above] < z_tolerance) ) ) {
+                            auto above_active = actnum.empty() || actnum[c_above];
+                            auto above_inactive = actnum.empty() || !actnum[c_above]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_above]
+                            auto above_thin = thickness[c_above] < z_tolerance;
+                            auto above_small_pv = pv[c_above] < minpvv[c_above];
+                            if ((above_inactive && above_thin) || (above_active && above_small_pv
+                                                                   && (!pinchNOGAP || above_thin) ) ) {
                                 for (int topk = kk - 2; topk > 0; --topk) {
                                     c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
-                                    if ( ((actnum.empty() || actnum[c_above]) && (pv[c_above] > minpvv[c_above] || (pinchNOGAP && thickness[c_above] > z_tolerance) ) ) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
+                                    above_active = actnum.empty() || actnum[c_above];
+                                    above_inactive = actnum.empty() || !actnum[c_above];
+                                    auto above_significant_pv = pv[c_above] > minpvv[c_above];
+                                    auto above_broad = thickness[c_above] > z_tolerance;
+                                    // \todo if condition seems wrong and should be the negation of above?
+                                    if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
                                         break;
                                     }
                                 }
                             }
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpvv[c]
-                                                                                                                 && (!pinchNOGAP || thickness[c_below] < z_tolerance) ) ) {
+                            auto below_active = actnum.empty() || actnum[c_below];
+                            auto below_inactive = actnum.empty() || !actnum[c_below]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_below]
+                            auto below_thin = thickness[c_below] < z_tolerance;
+                            auto below_small_pv = pv[c_below] < minpvv[c];
+                            if ((below_inactive && below_thin) || (below_active && below_small_pv
+                                                                   && (!pinchNOGAP || below_thin ) ) ) {
                                 for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
                                     c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
-                                    if ( ((actnum.empty() || actnum[c_below]) && (pv[c_below] > minpvv[c_below] || (pinchNOGAP && thickness[c_above] > z_tolerance) ) ) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
+                                    auto below_significant_pv = pv[c_below] > minpvv[c_below];
+                                    auto below_broad = thickness[c_above] > z_tolerance;
+                                    // \todo if condition seems wrong and should be the negation of above?
+                                    if ( (below_active && (below_significant_pv || (pinchNOGAP && below_broad) ) ) || (below_inactive && below_broad)) {
                                         break;
                                     }
                                 }
