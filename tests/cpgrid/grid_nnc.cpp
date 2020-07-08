@@ -189,6 +189,24 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCH, Fixture)
     testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 1, 18 + 1, { {0,1}, {1,2}, {2,3} }, true);
 }
 
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP.DATA", nnc, 4, 4 * 6 + 1, 2 * (4 + 5) + 1, { {0,1}, {1,2}, {2,3} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP2, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP2.DATA", nnc, 3, 3*6, 3*6-2, { {1,2} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP3, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP3.DATA", nnc, 2, 2*6, 2*6, { }, true);
+}
+
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
 {
     Opm::NNC nnc;

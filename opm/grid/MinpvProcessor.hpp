@@ -57,7 +57,8 @@ namespace Opm
                     const std::vector<double>& minpvv,
                     const std::vector<int>& actnum,
                     const bool mergeMinPVCells,
-                    double* zcorn) const;
+                    double* zcorn,
+                    bool pinchNOGAP = false) const;
     private:
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
@@ -80,7 +81,8 @@ namespace Opm
                                         const std::vector<double>& minpvv,
                                         const std::vector<int>& actnum,
                                         const bool mergeMinPVCells,
-                                        double* zcorn) const
+                                        double* zcorn,
+                                        bool pinchNOGAP) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -100,6 +102,9 @@ namespace Opm
         //    created if the cell below and above are active
         //    Inactive cells with thickness below z_tolerance and cells with porv<minpv
         //    are bypassed.
+        // 6. If pinchNOGAP (only has an effect if mergeMinPVcells==false holds):
+        //    is true active cells with porevolume less than minpvv will only be disregarded
+        //    if their thickness is below z_tolerance and nncs will be created in this case.
 
 
         // return a list of the non-neighbor connection.
@@ -159,20 +164,38 @@ namespace Opm
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || !actnum[c_above]) && thickness[c_above] < z_tolerance) || ((actnum.empty() || actnum[c_above]) && pv[c_above] < minpvv[c_above]) ) {
+                            auto above_active = actnum.empty() || actnum[c_above];
+                            auto above_inactive = actnum.empty() || !actnum[c_above]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_above]
+                            auto above_thin = thickness[c_above] < z_tolerance;
+                            auto above_small_pv = pv[c_above] < minpvv[c_above];
+                            if ((above_inactive && above_thin) || (above_active && above_small_pv
+                                                                   && (!pinchNOGAP || above_thin) ) ) {
                                 for (int topk = kk - 2; topk > 0; --topk) {
                                     c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
-                                    if ( ((actnum.empty() || actnum[c_above]) && pv[c_above] > minpvv[c_above]) || ((actnum.empty() || !actnum[c_above]) && thickness[c_above] > z_tolerance)) {
+                                    above_active = actnum.empty() || actnum[c_above];
+                                    above_inactive = actnum.empty() || !actnum[c_above];
+                                    auto above_significant_pv = pv[c_above] > minpvv[c_above];
+                                    auto above_broad = thickness[c_above] > z_tolerance;
+                                    // \todo if condition seems wrong and should be the negation of above?
+                                    if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
                                         break;
                                     }
                                 }
                             }
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            if (((actnum.empty() || (!actnum[c_below])) && thickness[c_below] < z_tolerance) || ((actnum.empty() || actnum[c_below]) && pv[c_below] < minpvv[c]) ) {
+                            auto below_active = actnum.empty() || actnum[c_below];
+                            auto below_inactive = actnum.empty() || !actnum[c_below]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_below]
+                            auto below_thin = thickness[c_below] < z_tolerance;
+                            auto below_small_pv = pv[c_below] < minpvv[c];
+                            if ((below_inactive && below_thin) || (below_active && below_small_pv
+                                                                   && (!pinchNOGAP || below_thin ) ) ) {
                                 for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
                                     c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
-                                    if ( ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpvv[c_below]) || ((actnum.empty() || !actnum[c_below]) && thickness[c_below] > z_tolerance)) {
+                                    auto below_significant_pv = pv[c_below] > minpvv[c_below];
+                                    auto below_broad = thickness[c_above] > z_tolerance;
+                                    // \todo if condition seems wrong and should be the negation of above?
+                                    if ( (below_active && (below_significant_pv || (pinchNOGAP && below_broad) ) ) || (below_inactive && below_broad)) {
                                         break;
                                     }
                                 }
@@ -180,7 +203,7 @@ namespace Opm
 
                             // Add a connection if the cell above and below is active and has porv > minpv
                             if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
-                                nnc.insert(std::make_pair(c_above, c_below));
+                                    nnc.insert(std::make_pair(c_above, c_below));
                             }
                         } else {
 
