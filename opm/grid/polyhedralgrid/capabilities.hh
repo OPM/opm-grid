@@ -41,6 +41,12 @@ namespace Dune
 
 
     template< int dim, int dimworld, int codim >
+    struct hasEntityIterator< PolyhedralGrid< dim, dimworld >, codim >
+    {
+      static const bool v = (codim == 0 || codim == 1 || codim == dim);
+    };
+
+    template< int dim, int dimworld, int codim >
     struct canCommunicate< PolyhedralGrid< dim, dimworld >, codim >
     {
         static const bool v = false;
