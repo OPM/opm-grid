@@ -171,11 +171,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 auto exportCandidate =  exportList.begin();
 
                 for (auto movedCell = oldEnd; movedCell != add.end(); ++movedCell) {
-                    using ELValueT = decltype(*exportList.begin());
                     exportCandidate = std::lower_bound(exportCandidate, exportList.end(), *movedCell,
-                                                        [](const ELValueT& v1, const int& v2){
-                                                            return std::get<0>(v1) < v2;
-                                                        });
+                                                       Less());
                     assert(exportCandidate != exportList.end() && std::get<0>(*exportCandidate) == *movedCell);
                     std::get<1>(*exportCandidate) = new_owner;
                 }
@@ -288,12 +285,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
             for (; offset != noAdded; ++offset)
                 importList.emplace_back(cellIndexBuffer[offset], otherRank,
                                         AttributeSet::owner, -1);
-            auto compare = [](const std::tuple<int, int, char, int> &t1,
-                              const std::tuple<int, int, char, int> &t2) {
-                               return std::get<0>(t1) < std::get<0>(t2);
-                           };
             std::inplace_merge(importList.begin(), middle, importList.end(),
-                               compare);
+                               Less());
 
             // remove cells that moved to another process
             auto noRemoved = sizeBuffers[otherRank][1];
