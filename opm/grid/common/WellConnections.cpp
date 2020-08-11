@@ -273,8 +273,9 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
 
     // unpack data
-    int otherRank = 0;
+    auto status = statuses.begin();
     for (const auto &cellIndexBuffer : cellIndexBuffers) {
+        int otherRank = status->MPI_SOURCE;
         if (!cellIndexBuffer.empty()) {
             // add cells that moved here
             auto noAdded = sizeBuffers[otherRank][0];
@@ -300,7 +301,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 importList.swap(tmp);
             }
         }
-        ++otherRank;
+        ++status;
     }
 #endif
 
