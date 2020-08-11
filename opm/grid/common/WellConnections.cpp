@@ -176,6 +176,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                     assert(exportCandidate != exportList.end() && std::get<0>(*exportCandidate) == *movedCell);
                     std::get<1>(*exportCandidate) = new_owner;
                 }
+                owner = new_owner;
             }
 
             well_indices_on_proc[owner].push_back(well_index);
