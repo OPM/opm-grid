@@ -194,18 +194,16 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
     // setup receives for each process that owns cells of the original grid
     auto noSource = std::count_if(cellsPerProc.begin(), cellsPerProc.end(),
-                                  [](const std::size_t &i) { return i > 0; }) -
-        (parts.size() > 0);
+                                  [](const std::size_t &i) { return i > 0; });
     std::vector<MPI_Request> requests(noSource, MPI_REQUEST_NULL);
     std::vector<std::vector<std::size_t>> sizeBuffers(cc.size());
     auto begin = cellsPerProc.begin();
     auto req = requests.begin();
     int tag = 7823;
-    auto myRank = cc.rank();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
-        if (otherRank != myRank && *it > 0 ) {
+        if ( *it > 0 ) {
             sizeBuffers[otherRank].resize(2);
             MPI_Irecv(sizeBuffers[otherRank].data(), 2, mpiType, otherRank, tag, cc, &(*req));
             ++req;
@@ -215,17 +213,17 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // Send the sizes
     if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
-            if (otherRank != myRank) {
-                std::size_t sizes[2] = {0, 0};
-                auto candidate = addCells.find(otherRank);
-                if (candidate != addCells.end())
-                    sizes[0] = candidate->second.size();
+        {
+            std::size_t sizes[2] = {0, 0};
+            auto candidate = addCells.find(otherRank);
+            if (candidate != addCells.end())
+                sizes[0] = candidate->second.size();
 
-                candidate = removeCells.find(otherRank);
-                if (candidate != removeCells.end())
-                    sizes[1] = candidate->second.size();
-                MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
-            }
+            candidate = removeCells.find(otherRank);
+            if (candidate != removeCells.end())
+                sizes[1] = candidate->second.size();
+            MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
+        }
     }
     std::vector<MPI_Status> statuses(requests.size());
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
@@ -242,7 +240,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
         const auto &buffer = sizeBuffers[otherRank];
-        if ( otherRank != myRank && buffer.size() >= 2 && (buffer[0] + buffer[1])) {
+        if ( buffer.size() >= 2 && (buffer[0] + buffer[1])) {
             auto &cellIndexBuffer = cellIndexBuffers[otherRank];
             cellIndexBuffer.resize(buffer[0] + buffer[1]);
             MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, otherRank, tag, cc,
@@ -254,22 +252,22 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // Send data if we have cells.
     if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
-            if (otherRank != myRank) {
-                std::vector<std::size_t> buffer;
-                auto candidate = addCells.find(otherRank);
-                if (candidate != addCells.end())
-                    buffer.insert(buffer.end(), candidate->second.begin(),
-                                  candidate->second.end());
+        {
+            std::vector<std::size_t> buffer;
+            auto candidate = addCells.find(otherRank);
+            if (candidate != addCells.end())
+                buffer.insert(buffer.end(), candidate->second.begin(),
+                              candidate->second.end());
 
-                candidate = removeCells.find(otherRank);
-                if (candidate != removeCells.end())
-                    buffer.insert(buffer.end(), candidate->second.begin(),
-                                  candidate->second.end());
+            candidate = removeCells.find(otherRank);
+            if (candidate != removeCells.end())
+                buffer.insert(buffer.end(), candidate->second.begin(),
+                              candidate->second.end());
 
-                if (!buffer.empty()) {
-                    MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
-                }
+            if (!buffer.empty()) {
+                MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
             }
+        }
     }
     statuses.resize(messages);
     // Wait for the messages
