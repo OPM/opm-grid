@@ -235,17 +235,19 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     ++tag;
 
     req = requests.begin();
-    std::vector<std::vector<std::size_t>> cellIndexBuffers; // receive buffers for indices of each rank.
+    std::vector<std::vector<std::size_t>> cellIndexBuffers(messages); // receive buffers for indices of each rank.
+    auto cellIndexBufferIt = cellIndexBuffers.begin();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
-        const auto &buffer = sizeBuffers[otherRank];
-        if ( buffer.size() >= 2 && (buffer[0] + buffer[1])) {
-            auto &cellIndexBuffer = cellIndexBuffers[otherRank];
-            cellIndexBuffer.resize(buffer[0] + buffer[1]);
+        const auto& sizeBuffer = sizeBuffers[otherRank];
+        if ( sizeBuffer.size() >= 2 && (sizeBuffer[0] + sizeBuffer[1])) {
+            auto &cellIndexBuffer = *cellIndexBufferIt;
+            cellIndexBuffer.resize(sizeBuffer[0] + sizeBuffer[1]);
             MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, otherRank, tag, cc,
                       &(*req));
             ++req;
+            ++cellIndexBufferIt;
         }
     }
 
