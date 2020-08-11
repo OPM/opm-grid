@@ -217,11 +217,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
             if (otherRank != myRank) {
                 std::size_t sizes[2] = {0, 0};
-                auto candidate = addCells.find(myRank);
+                auto candidate = addCells.find(otherRank);
                 if (candidate != addCells.end())
                     sizes[0] = candidate->second.size();
 
-                candidate = removeCells.find(myRank);
+                candidate = removeCells.find(otherRank);
                 if (candidate != removeCells.end())
                     sizes[1] = candidate->second.size();
                 MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
