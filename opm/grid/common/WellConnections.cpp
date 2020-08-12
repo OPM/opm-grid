@@ -96,7 +96,7 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 #ifdef HAVE_MPI
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const std::vector<int>& globalCell,
+                                std::function<int(int)> gid,
                                 const std::vector<OpmWellType>& wells,
                                 const WellConnections& well_connections,
                                 std::vector<std::tuple<int,int,char>>& exportList,
@@ -157,7 +157,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 auto addOldSize = add.size(); // remember beginning of this well
 
                 for (auto connection_cell : connections) {
-                    const auto &global = globalCell[connection_cell];
+                    const auto &global = gid(connection_cell);
                     auto old_owner = parts[connection_cell];
                     if (old_owner != new_owner) // only parts might be moved
                     {

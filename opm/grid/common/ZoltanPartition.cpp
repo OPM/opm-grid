@@ -23,6 +23,7 @@
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
@@ -142,9 +143,10 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
     if( wells )
     {
+        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
         wells_on_proc =
             postProcessPartitioningForWells(parts,
-                                            cpgrid.globalCell(),
+                                            gidGetter,
                                             *wells,
                                             grid_and_wells->getWellConnections(),
                                             myExportList, myImportList,

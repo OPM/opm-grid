@@ -1451,6 +1451,13 @@ namespace Dune
 
     }
 
+
+    template<int dim>
+    cpgrid::Entity<dim> createEntity(const CpGrid& grid,int index,bool orientation)
+    {
+        return cpgrid::Entity<dim>(*grid.current_view_data_, index, orientation);
+    }
+
 } // namespace Dune
 
 #include <opm/grid/cpgrid/PersistentContainer.hpp>
