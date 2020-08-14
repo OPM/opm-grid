@@ -96,7 +96,7 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 #ifdef HAVE_MPI
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                const std::vector<int>& globalCell,
+                                std::function<int(int)> gid,
                                 const std::vector<OpmWellType>& wells,
                                 const WellConnections& well_connections,
                                 std::vector<std::tuple<int,int,char>>& exportList,
@@ -137,6 +137,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
             int owner = no_connections_on_proc.begin()->first;
 
+            // \todo remove trigger code for #476 that moves all wells to the last rank
             if (no_connections_on_proc.size() > 1) {
                 // partition with the most connections on it becomes new owner
                 int new_owner =
@@ -150,44 +151,32 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 std::cout << "Manually moving well " << well.name()
                           << " to partition " << new_owner << std::endl;
 
-                std::vector<int> globalConnections;
-                globalConnections.reserve(connections.size());
-                std::map<int, std::vector<int>> tmpRemove;
+                // all cells moving to new_owner. Might already contain cells from
+                // previous wells.
                 auto &add = addCells[new_owner];
-                auto oldEnd = add.end();
-                std::vector<int> myConnections;
-                myConnections.reserve(connections.size());
-                for (auto connection_cell : connections) {
-                    const auto &global = globalCell[connection_cell];
-                    auto old_owner = parts[connection_cell];
-                    if (old_owner != cc.rank()) //otherwise there is not entry
-                        removeCells[old_owner].push_back(global);
-                    else
-                        myConnections.push_back(global);
-                    parts[connection_cell] = new_owner;
-                    if (new_owner != cc.rank()) // no entry assumed for rank
-                        add.push_back(global);
-                }
-                std::sort(myConnections.begin(), myConnections.end());
-                std::sort(oldEnd, add.end());
-                exportList.reserve(exportList.size()+myConnections.size()); // We might store new entries
-                auto start  = exportList.begin();
-                auto middle = exportList.end();
+                auto addOldSize = add.size(); // remember beginning of this well
 
-                for (auto movedCell = oldEnd; oldEnd != add.end(); ++movedCell) {
-                    auto myCandidate = std::lower_bound(myConnections.begin(), myConnections.end(), *movedCell);
-                    if (myCandidate == myConnections.end()){
-                        auto candidate = std::lower_bound(start, middle, *movedCell, Less());
-                        assert(candidate != exportList.end());
-                        std::get<1>(*candidate) = new_owner;
-                        start = candidate;
-                    } else {
-                        // entry was not yet in the list. add it at the end.
-                        exportList.emplace_back(*movedCell, new_owner, AttributeSet::owner);
+                for (auto connection_cell : connections) {
+                    const auto &global = gid(connection_cell);
+                    auto old_owner = parts[connection_cell];
+                    if (old_owner != new_owner) // only parts might be moved
+                    {
+                        removeCells[old_owner].push_back(global);
+                        add.push_back(global);
+                        parts[connection_cell] = new_owner;
                     }
                 }
-                std::sort(middle, exportList.end(), Less());
-                std::inplace_merge(exportList.begin(), middle, exportList.end(), Less());
+                auto oldEnd = add.begin()+addOldSize;
+                std::sort(oldEnd, add.end()); // we need ascending order
+                auto exportCandidate =  exportList.begin();
+
+                for (auto movedCell = oldEnd; movedCell != add.end(); ++movedCell) {
+                    exportCandidate = std::lower_bound(exportCandidate, exportList.end(), *movedCell,
+                                                       Less());
+                    assert(exportCandidate != exportList.end() && std::get<0>(*exportCandidate) == *movedCell);
+                    std::get<1>(*exportCandidate) = new_owner;
+                }
+                owner = new_owner;
             }
 
             well_indices_on_proc[owner].push_back(well_index);
@@ -203,18 +192,16 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
     // setup receives for each process that owns cells of the original grid
     auto noSource = std::count_if(cellsPerProc.begin(), cellsPerProc.end(),
-                                  [](const std::size_t &i) { return i > 0; }) -
-        (parts.size() > 0);
+                                  [](const std::size_t &i) { return i > 0; });
     std::vector<MPI_Request> requests(noSource, MPI_REQUEST_NULL);
     std::vector<std::vector<std::size_t>> sizeBuffers(cc.size());
     auto begin = cellsPerProc.begin();
     auto req = requests.begin();
     int tag = 7823;
-    auto myRank = cc.rank();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
-        if (otherRank != myRank && *it > 0 ) {
+        if ( *it > 0 ) {
             sizeBuffers[otherRank].resize(2);
             MPI_Irecv(sizeBuffers[otherRank].data(), 2, mpiType, otherRank, tag, cc, &(*req));
             ++req;
@@ -224,17 +211,17 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // Send the sizes
     if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
-            if (otherRank != myRank) {
-                std::size_t sizes[2] = {0, 0};
-                auto candidate = addCells.find(myRank);
-                if (candidate != addCells.end())
-                    sizes[0] = candidate->second.size();
+        {
+            std::size_t sizes[2] = {0, 0};
+            auto candidate = addCells.find(otherRank);
+            if (candidate != addCells.end())
+                sizes[0] = candidate->second.size();
 
-                candidate = removeCells.find(myRank);
-                if (candidate != removeCells.end())
-                    sizes[1] = candidate->second.size();
-                MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
-            }
+            candidate = removeCells.find(otherRank);
+            if (candidate != removeCells.end())
+                sizes[1] = candidate->second.size();
+            MPI_Send(sizes, 2, mpiType, otherRank, tag, cc);
+        }
     }
     std::vector<MPI_Status> statuses(requests.size());
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
@@ -246,47 +233,50 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     ++tag;
 
     req = requests.begin();
-    std::vector<std::vector<std::size_t>> cellIndexBuffers; // receive buffers for indices of each rank.
+    std::vector<std::vector<std::size_t>> cellIndexBuffers(messages); // receive buffers for indices of each rank.
+    auto cellIndexBufferIt = cellIndexBuffers.begin();
 
     for (auto it = begin, end = cellsPerProc.end(); it != end; ++it) {
         auto otherRank = it - begin;
-        const auto &buffer = sizeBuffers[otherRank];
-        if ( otherRank != myRank && buffer.size() >= 2 && (buffer[0] + buffer[1])) {
-            auto &cellIndexBuffer = cellIndexBuffers[otherRank];
-            cellIndexBuffer.resize(buffer[0] + buffer[1]);
+        const auto& sizeBuffer = sizeBuffers[otherRank];
+        if ( sizeBuffer.size() >= 2 && (sizeBuffer[0] + sizeBuffer[1])) {
+            auto &cellIndexBuffer = *cellIndexBufferIt;
+            cellIndexBuffer.resize(sizeBuffer[0] + sizeBuffer[1]);
             MPI_Irecv(cellIndexBuffer.data(), cellIndexBuffer.size(), mpiType, otherRank, tag, cc,
                       &(*req));
             ++req;
+            ++cellIndexBufferIt;
         }
     }
 
     // Send data if we have cells.
     if (!parts.empty()) {
         for (int otherRank = 0; otherRank < cc.size(); ++otherRank)
-            if (otherRank != myRank) {
-                std::vector<std::size_t> buffer;
-                auto candidate = addCells.find(otherRank);
-                if (candidate != addCells.end())
-                    buffer.insert(buffer.end(), candidate->second.begin(),
-                                  candidate->second.end());
+        {
+            std::vector<std::size_t> buffer;
+            auto candidate = addCells.find(otherRank);
+            if (candidate != addCells.end())
+                buffer.insert(buffer.end(), candidate->second.begin(),
+                              candidate->second.end());
 
-                candidate = removeCells.find(otherRank);
-                if (candidate != removeCells.end())
-                    buffer.insert(buffer.end(), candidate->second.begin(),
-                                  candidate->second.end());
+            candidate = removeCells.find(otherRank);
+            if (candidate != removeCells.end())
+                buffer.insert(buffer.end(), candidate->second.begin(),
+                              candidate->second.end());
 
-                if (!buffer.empty()) {
-                    MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
-                }
+            if (!buffer.empty()) {
+                MPI_Send(buffer.data(), buffer.size(), mpiType, otherRank, tag, cc);
             }
+        }
     }
     statuses.resize(messages);
     // Wait for the messages
     MPI_Waitall(requests.size(), requests.data(), statuses.data());
 
     // unpack data
-    int otherRank = 0;
+    auto status = statuses.begin();
     for (const auto &cellIndexBuffer : cellIndexBuffers) {
+        int otherRank = status->MPI_SOURCE;
         if (!cellIndexBuffer.empty()) {
             // add cells that moved here
             auto noAdded = sizeBuffers[otherRank][0];
@@ -297,12 +287,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
             for (; offset != noAdded; ++offset)
                 importList.emplace_back(cellIndexBuffer[offset], otherRank,
                                         AttributeSet::owner, -1);
-            auto compare = [](const std::tuple<int, int, char, int> &t1,
-                              const std::tuple<int, int, char, int> &t2) {
-                               return std::get<0>(t1) < std::get<0>(t2);
-                           };
             std::inplace_merge(importList.begin(), middle, importList.end(),
-                               compare);
+                               Less());
 
             // remove cells that moved to another process
             auto noRemoved = sizeBuffers[otherRank][1];
@@ -316,7 +302,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                 importList.swap(tmp);
             }
         }
-        ++otherRank;
+        ++status;
     }
 #endif
 

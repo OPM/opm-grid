@@ -23,6 +23,7 @@
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
@@ -104,9 +105,9 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int                         rank  = cc.rank();
     std::vector<int>            parts(size, rank);
     std::vector<std::vector<int> > wells_on_proc;
-    // List entry: process to export to, (global) index, attribute there (not needed?)
+    // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
     std::vector<std::tuple<int,int,char>> myExportList(numExport);
-    // List entry: process to import from, global index, attribute here, local index
+    // List entry: process to import from, global index, process rank, attribute here, local index
     // (determined later)
     std::vector<std::tuple<int,int,char,int>>myImportList(numImport);
     myExportList.reserve(1.2*myExportList.size());
@@ -142,9 +143,10 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
     if( wells )
     {
+        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
         wells_on_proc =
             postProcessPartitioningForWells(parts,
-                                            cpgrid.globalCell(),
+                                            gidGetter,
                                             *wells,
                                             grid_and_wells->getWellConnections(),
                                             myExportList, myImportList,
