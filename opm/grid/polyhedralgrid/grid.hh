@@ -1411,7 +1411,7 @@ namespace Dune
             }
           }
 
-          assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
+          assert( int(vertexList.size()) == ( dim == 2 ? 4 : 8) );
 
           cellVertices_[ c ].resize( vertexList.size() );
           for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )

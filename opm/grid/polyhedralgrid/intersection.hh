@@ -73,6 +73,14 @@ namespace Dune
                                 data()->neighbor(seed_, intersectionIdx_)) );
     }
 
+    PolyhedralGridIntersection& operator=(const PolyhedralGridIntersection& other)
+    {
+      data_ = other.data_;
+      seed_ = other.seed_;
+      intersectionIdx_ = other.intersectionIdx_;
+      return *this;
+    }
+
     bool operator == ( const This& other ) const
     {
       return (seed_ == other.seed_) &&
