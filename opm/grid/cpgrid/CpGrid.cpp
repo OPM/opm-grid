@@ -275,7 +275,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
 
         cc.sum(procsWithZeroCells);
-        if (procsWithZeroCells == 0) {
+        if (procsWithZeroCells == 0 && false) {
             if (cc.rank()==0)
             {
                 OPM_THROW(std::runtime_error, "At least one process has zero cells. Aborting.");

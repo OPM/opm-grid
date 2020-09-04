@@ -35,6 +35,8 @@
 #ifndef OPM_SPARSETABLE_HEADER
 #define OPM_SPARSETABLE_HEADER
 
+#include <sys/wait.h>
+#include <iostream>
 #include <vector>
 #include <numeric>
 #include <algorithm>
@@ -263,6 +265,22 @@ namespace Opm
             // we have to create the cumulative ones.
             int num_rows = rowsize_end - rowsize_beg;
             if (num_rows < 1) {
+                std::string pid = std::to_string(getpid());
+                std::vector<char> name(512);
+                std::size_t nameSize;
+                name[nameSize = readlink("/proc/self/exe", name.data(), 511)]=0;
+                name.resize(nameSize+1);
+                int childid=fork();
+                if(!childid)
+                {
+                    dup2(2,1); // redirect output to stderr
+                    std::cerr<<"stacktrace for "<<name.data()<<" "<<pid<<std::endl;
+                    execlp("gdb", "gdb", "--batch", "-n", "-ex", "thread", "-ex", "bt", name.data(), pid.c_str(), NULL);
+                }
+                else
+                {
+                    waitpid(childid,NULL,0);
+                }
                 OPM_THROW(std::runtime_error, "Must have at least one row. Got " << num_rows << " rows.");
             }
 #ifndef NDEBUG
