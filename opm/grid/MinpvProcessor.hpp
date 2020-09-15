@@ -192,6 +192,8 @@ namespace Opm
                                                                    && (!pinchNOGAP || below_thin ) ) ) {
                                 for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
                                     c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
+                                    below_active = actnum.empty() || actnum[c_below];
+                                    below_inactive = actnum.empty() || !actnum[c_below]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_below]
                                     auto below_significant_pv = pv[c_below] > minpvv[c_below];
                                     auto below_broad = thickness[c_above] > z_tolerance;
                                     // \todo if condition seems wrong and should be the negation of above?
