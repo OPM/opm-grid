@@ -115,6 +115,8 @@ BOOST_AUTO_TEST_CASE(zoltan)
 #endif
             grid.createCartesian(dims, size);
 
+        MPI_Barrier(MPI_COMM_WORLD);
+
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, grid);
 
         BOOST_REQUIRE(grid.comm()==MPI_COMM_WORLD);
