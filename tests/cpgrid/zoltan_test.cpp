@@ -117,7 +117,7 @@ BOOST_AUTO_TEST_CASE(zoltan)
 
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, grid);
 
-        BOOST_REQUIRE(grid.comm()==MPI_COMM_SELF);
+        BOOST_REQUIRE(grid.comm()==MPI_COMM_WORLD);
 
         //ZOLTAN_TRACE_ENTER(zz, yo);
         rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
