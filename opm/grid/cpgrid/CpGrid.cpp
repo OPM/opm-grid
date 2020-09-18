@@ -159,7 +159,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     {
 #ifdef HAVE_ZOLTAN
         auto part_and_wells =
-            cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
+            cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
         using std::get;
         auto cell_part = std::get<0>(part_and_wells);
         auto defunct_wells = std::get<1>(part_and_wells);

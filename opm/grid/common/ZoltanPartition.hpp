@@ -61,6 +61,40 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root);
+
+/// \brief Partition a CpGrid using Zoltan
+///
+/// This function will extract Zoltan's graph information
+/// from the grid, and the wells and use it to partition the grid.
+/// In case the global grid is available on all processes, it
+/// will nevertheless only use the information on the root process
+/// to partition it as Zoltan cannot identify this situation.
+/// @param grid The grid to partition
+/// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param transmissibilities The transmissibilities associated with the
+///             faces
+/// @paramm cc  The MPI communicator to use for the partitioning.
+///             The will be partitioned among the partiticipating processes.
+/// @param edgeWeightMethod The method used to calculate the weights associated
+///             with the edges of the graph (uniform, transmissibilities, log thereof)
+/// @param root The process number that holds the global grid.
+/// @return A tuple consisting of a vector that contains for each local cell of the original grid the
+///         the number of the process that owns it after repartitioning,
+///         a set of names of wells that should be defunct in a parallel
+///         simulation, vector containing information for each exported cell (global id
+///         of cell, process id to send to, attribute there), and a vector containing
+///         information for each imported cell (global index, process id that sends, attribute here, local index
+///         here)
+///
+/// @note This function will only do *serial* partioning.
+std::tuple<std::vector<int>,std::unordered_set<std::string>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >  >
+zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
+                               const std::vector<OpmWellType> * wells,
+                               const double* transmissibilities,
+                               const CollectiveCommunication<MPI_Comm>& cc,
+                               EdgeWeightMethod edgeWeightsMethod, int root);
 }
 }
 #endif // HAVE_ZOLTAN
