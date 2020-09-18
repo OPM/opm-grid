@@ -40,6 +40,10 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root)
 {
+    {
+        std::ofstream outfile("ran_mpi.txt");
+        outfile << "ran mpi" << std::endl;
+    }
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
     struct Zoltan_Struct *zz;
@@ -197,6 +201,10 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root)
 {
+    {
+        std::ofstream outfile("ran_mpi.txt");
+        outfile << "ran mpi" << std::endl;
+    }
     int rc = ZOLTAN_OK - 1;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries = 0, numLidEntries = 0, numImport = 0, numExport = 0;
@@ -273,7 +281,9 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         for (int i = 0; i < numExport; ++i) {
             numberOfExportedVerticesPerProcess[exportToPart[i]]++;
         }
-        cc.scatter<int>(numberOfExportedVerticesPerProcess.data(), nullptr, 1, root);
+
+        int dummyForRoot = 0;
+        cc.scatter<int>(numberOfExportedVerticesPerProcess.data(), &dummyForRoot, 1, root);
 
 
 
@@ -288,8 +298,9 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
             globalIndicesToSend[currentIndex[exportToPart[i]]++ + offsets[i]] = exportGlobalGids[i];
         }
 
+        std::vector<unsigned int> dummyIndicesForRoot(numExport, 0);
         cc.scatterv<unsigned int>(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
-                     offsets.data(), nullptr, 0, root);
+                     offsets.data(), dummyIndicesForRoot.data(), 0, root);
 
     } else {
         cc.scatter<int>(nullptr, &numImport, 1, root);
