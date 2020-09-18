@@ -21,7 +21,6 @@
 #include <config.h>
 #define ONE_TO_ALL
 #define BOOST_TEST_MODULE ZoltanTests
-#define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
@@ -52,6 +51,35 @@ void MPI_err_handler(MPI_Comm *, int *err_code, ...){
   throw MPIError(s, *err_code);
 }
 #endif
+
+struct MPIFixture
+{
+    MPIFixture()
+    {
+#if HAVE_MPI
+    int m_argc = boost::unit_test::framework::master_test_suite().argc;
+    char** m_argv = boost::unit_test::framework::master_test_suite().argv;
+    helper = &Dune::MPIHelper::instance(m_argc, m_argv);
+#ifdef MPI_2
+    MPI_Comm_create_errhandler(MPI_err_handler, &handler);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
+#else
+        MPI_Errhandler_create(MPI_err_handler, &handler);
+        MPI_Errhandler_set(MPI_COMM_WORLD, handler);
+#endif
+#endif
+    }
+    ~MPIFixture()
+    {
+#if HAVE_MPI
+        MPI_Finalize();
+#endif
+    }
+    Dune::MPIHelper* helper;
+    MPI_Errhandler handler;
+};
+
+BOOST_GLOBAL_FIXTURE(MPIFixture);
 
 BOOST_AUTO_TEST_CASE(zoltan)
 {
@@ -96,14 +124,6 @@ BOOST_AUTO_TEST_CASE(zoltan)
         Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
         Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
-        MPI_Errhandler handler;
-#ifdef MPI_2
-        MPI_Comm_create_errhandler(MPI_err_handler, &handler);
-        MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
-#else
-        MPI_Errhandler_create(MPI_err_handler, &handler);
-        MPI_Errhandler_set(MPI_COMM_WORLD, handler);
-#endif
         MPI_Comm_size(MPI_COMM_WORLD, &procs);
         MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
@@ -166,17 +186,4 @@ BOOST_AUTO_TEST_CASE(zoltan)
         }
 #endif
     }
-}
-
-bool
-init_unit_test_func()
-{
-    return true;
-}
-
-int main(int argc, char** argv)
-{
-    Dune::MPIHelper::instance(argc, argv);
-    boost::unit_test::unit_test_main(&init_unit_test_func,
-                                     argc, argv);
 }
