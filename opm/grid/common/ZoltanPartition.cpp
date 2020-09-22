@@ -40,10 +40,6 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root)
 {
-    {
-        std::ofstream outfile("ran_mpi.txt");
-        outfile << "ran mpi" << std::endl;
-    }
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
     struct Zoltan_Struct *zz;
@@ -201,17 +197,13 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root)
 {
-    {
-        std::ofstream outfile("ran_mpi.txt");
-        outfile << "ran mpi" << std::endl;
-    }
     int rc = ZOLTAN_OK - 1;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries = 0, numLidEntries = 0, numImport = 0, numExport = 0;
     ZOLTAN_ID_PTR importGlobalGids = nullptr, importLocalGids = nullptr, exportGlobalGids = nullptr, exportLocalGids = nullptr;
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
-
+    MPI_Barrier(cc);
     if (cc.rank() == root) {
         int argc=0;
         char** argv = 0;
@@ -233,13 +225,12 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
         Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
+        Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
         Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
         // For the load balancer one process has the whole grid and
         // all others an empty partition before loadbalancing.
         bool partitionIsEmpty     = cc.rank()!=root;
-
-        std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
 
         if( wells )
         {
@@ -272,51 +263,65 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                  &exportProcs,    /* Process to which I send each of the vertices */
                                  &exportToPart);  /* Partition to which each vertex will belong */
 
+        // This is very important: by default, zoltan sets numImport to -1,
+        // as we are only running Zoltan in serial.
+        // In order to make sense of the rest of  the code, this must be set
+        // to 0.
+        numImport = 0;
+
 
     }
-
+    MPI_Barrier(cc);
     std::vector<unsigned int> importGlobalGidsVector;
     if (cc.rank() == root) {
         std::vector<int> numberOfExportedVerticesPerProcess(cc.size(), 0);
         for (int i = 0; i < numExport; ++i) {
             numberOfExportedVerticesPerProcess[exportToPart[i]]++;
         }
-
         int dummyForRoot = 0;
         cc.scatter<int>(numberOfExportedVerticesPerProcess.data(), &dummyForRoot, 1, root);
 
 
-
-        std::vector<int> offsets(cc.size(), 0);
+        std::vector<int> offsets(cc.size() + 1, 0);
         std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
-                         numberOfExportedVerticesPerProcess.end(), offsets.begin());
-
+                         numberOfExportedVerticesPerProcess.end(), offsets.begin() + 1);
         std::vector<unsigned int> globalIndicesToSend(numExport, 0);
         std::vector<int> currentIndex(cc.size(), 0);
-
         for (int i = 0; i < numExport; ++i) {
-            globalIndicesToSend[currentIndex[exportToPart[i]]++ + offsets[i]] = exportGlobalGids[i];
-        }
+            if (exportToPart[i] >= currentIndex.size()) {
+                OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
+                          << "Debug information: exportToPart[i] = "
+                          << exportToPart[i] << ", " << "currentIndex.size() = " << currentIndex.size());
+            }
+            const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
 
+            if (index >= globalIndicesToSend.size()) {
+                OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
+                          << "index " << index << ", " << "globalIndicesToSend.size() = "
+                          << globalIndicesToSend.size()
+                          << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
+                          << "\n\ncurrentIndex[exportToPart[i]] = "<< currentIndex[exportToPart[i]]
+                          <<"\n\nexportToPart[i] = " << exportToPart[i]);
+            }
+
+            globalIndicesToSend[index] = exportGlobalGids[i];
+        }
         std::vector<unsigned int> dummyIndicesForRoot(numExport, 0);
         cc.scatterv<unsigned int>(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
                      offsets.data(), dummyIndicesForRoot.data(), 0, root);
-
     } else {
         cc.scatter<int>(nullptr, &numImport, 1, root);
-
         importGlobalGidsVector.resize(numImport, 0);
         cc.scatterv<unsigned int>(nullptr, nullptr, nullptr, importGlobalGidsVector.data(),
                          numImport, root);
-
         importGlobalGids = importGlobalGidsVector.data();
-
     }
 
     int                         size = cpgrid.numCells();
     int                         rank  = cc.rank();
-    std::vector<int>            parts(cc.size(), rank);
+    std::vector<int>            parts(size, rank);
     std::vector<std::vector<int> > wells_on_proc;
+
     // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
     std::vector<std::tuple<int,int,char>> myExportList(numExport);
     // List entry: process to import from, global index, process rank, attribute here, local index
@@ -329,13 +334,15 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     for ( int i=0; i < numExport; ++i )
     {
         parts[exportLocalGids[i]] = exportToPart[i];
-        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportProcs[i], static_cast<char>(AttributeSet::owner));
+        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
     }
 
     for ( int i=0; i < numImport; ++i )
     {
-        myImportList[i] = std::make_tuple(importGlobalGids[i], importProcs[i], static_cast<char>(AttributeSet::owner),-1);
+        myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
     }
+
+
     // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
     for ( std::size_t i = 0; i < parts.size(); ++i)
     {
@@ -345,9 +352,9 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
             myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
         }
     }
-
     std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
     std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+
     // free space allocated for zoltan.
     if (cc.rank() == root) {
         Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
@@ -376,7 +383,6 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                                      cc,
                                                      root);
     }
-
     return std::make_tuple(parts, defunct_well_names, myExportList, myImportList);
 }
 }
