@@ -628,7 +628,10 @@ namespace Dune
         /// \param transmissibilities The transmissibilities used as the edge weights.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
@@ -656,7 +659,10 @@ namespace Dune
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
@@ -678,8 +684,11 @@ namespace Dune
         ///        (default: 1)
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
         template<class DataHandle>
-        std::pair<bool, std::unordered_set<std::string> >
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data,
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
@@ -708,8 +717,11 @@ namespace Dune
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param The number of layers of cells of the overlap region (default: 1).
         /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
         template<class DataHandle>
-        std::pair<bool, std::unordered_set<std::string> >
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, EdgeWeightMethod method,
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
@@ -1378,7 +1390,10 @@ namespace Dune
         ///                           performance of the parallel preconditioner.
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param The number of layers of cells of the overlap region.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         scatterGrid(EdgeWeightMethod method,
                     bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,

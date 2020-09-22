@@ -133,7 +133,7 @@ namespace Dune
     {}
 
 
-std::pair<bool, std::unordered_set<std::string> >
+std::pair<bool, std::vector<std::pair<std::string,bool> > >
 CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
@@ -149,7 +149,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     {
         std::cerr<<"There is already a distributed version of the grid."
                  << " Maybe scatterGrid was called before?"<<std::endl;
-        return std::make_pair(false, std::unordered_set<std::string>());
+        return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
 #if HAVE_MPI
@@ -162,7 +162,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
         using std::get;
         auto cell_part = std::get<0>(part_and_wells);
-        auto defunct_wells = std::get<1>(part_and_wells);
+        auto wells_on_proc = std::get<1>(part_and_wells);
         auto exportList = std::get<2>(part_and_wells);
         auto importList = std::get<3>(part_and_wells);
 #else
@@ -310,19 +310,19 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
         current_view_data_ = distributed_data_.get();
-        return std::make_pair(true, defunct_wells);
+        return std::make_pair(true, wells_on_proc);
     }
     else
     {
         std::cerr << "CpGrid::scatterGrid() only makes sense in a parallel run. "
                   << "This run only uses one process.\n";
-        return std::make_pair(false, std::unordered_set<std::string>());
+        return std::make_pair(false, std::vector<std::pair<std::string,bool>>());
     }
 #else // #if HAVE_MPI
     std::cerr << "CpGrid::scatterGrid() is non-trivial only with "
               << "MPI support and if the target Dune platform is "
               << "sufficiently recent.\n";
-    return std::make_pair(false, std::unordered_set<std::string>());
+    return std::make_pair(false, std::vector<std::pair<std::string,bool>>());
 #endif
 }
 
