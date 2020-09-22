@@ -31,6 +31,22 @@ namespace Dune
 {
 namespace cpgrid
 {
+
+namespace {
+void setDefaultZoltanParameters(Zoltan_Struct* zz) {
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
+    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
+    Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
+    Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
+    Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
+    Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
+    Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
+    Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
+    Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
+    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
+    Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
+}
+}
 std::tuple<std::vector<int>, std::unordered_set<std::string>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
@@ -54,17 +70,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
     }
-    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
-    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
-    Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
-    Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
-    Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
-    Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
-    Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-    Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
-    Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
-    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
-    Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
+    setDefaultZoltanParameters(zz);
 
     // For the load balancer one process has the whole grid and
     // all others an empty partition before loadbalancing.
@@ -215,18 +221,9 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         {
             OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
         }
-        Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
-        Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
-        Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
-        Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
-        Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
-        Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
-        Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-        Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
-        Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
-        Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
+
+        setDefaultZoltanParameters(zz);
         Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
-        Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 
         // For the load balancer one process has the whole grid and
         // all others an empty partition before loadbalancing.
