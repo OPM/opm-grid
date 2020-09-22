@@ -46,7 +46,109 @@ void setDefaultZoltanParameters(Zoltan_Struct* zz) {
     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 }
+
+std::tuple<std::vector<int>, std::unordered_set<std::string>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> > >
+makeImportAndExportLists(const CpGrid& cpgrid,
+                         const CollectiveCommunication<MPI_Comm>& cc,
+                         const std::vector<OpmWellType> * wells,
+                         const CombinedGridWellGraph& gridAndWells,
+                         int root,
+                         int numExport,
+                         int numImport,
+                         const ZOLTAN_ID_PTR exportLocalGids,
+                         const ZOLTAN_ID_PTR exportGlobalGids,
+                         const int* exportToPart,
+                         const ZOLTAN_ID_PTR importGlobalGids) {
+    int                         size = cpgrid.numCells();
+    int                         rank  = cc.rank();
+    std::vector<int>            parts(size, rank);
+    std::vector<std::vector<int> > wellsOnProc;
+
+    // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
+    std::vector<std::tuple<int,int,char>> myExportList(numExport);
+    // List entry: process to import from, global index, process rank, attribute here, local index
+    // (determined later)
+    std::vector<std::tuple<int,int,char,int>> myImportList(numImport);
+    myExportList.reserve(1.2*myExportList.size());
+    myImportList.reserve(1.2*myImportList.size());
+    using AttributeSet = CpGridData::AttributeSet;
+
+    for ( int i=0; i < numExport; ++i )
+    {
+        parts[exportLocalGids[i]] = exportToPart[i];
+        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
+    }
+
+    for ( int i=0; i < numImport; ++i )
+    {
+        myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
+    }
+
+
+    // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
+    for ( std::size_t i = 0; i < parts.size(); ++i)
+    {
+        if ( parts[i] == rank )
+        {
+            myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
+            myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
+        }
+    }
+    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
+    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+
+
+
+    if( wells )
+    {
+        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
+        wellsOnProc =
+            postProcessPartitioningForWells(parts,
+                                            gidGetter,
+                                            *wells,
+                                            gridAndWells.getWellConnections(),
+                                            myExportList, myImportList,
+                                            cc);
+
+
+#ifndef NDEBUG
+        int index = 0;
+        for( auto well : gridAndWells.getWellsGraph() )
+        {
+            int part=parts[index];
+            std::set<std::pair<int,int> > cells_on_other;
+            for( auto vertex : well )
+            {
+                if( part != parts[vertex] )
+                {
+                    cells_on_other.insert(std::make_pair(vertex, parts[vertex]));
+                }
+            }
+            if ( cells_on_other.size() )
+            {
+                OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
+            }
+            ++index;
+        }
+#endif
+    }
+
+    std::unordered_set<std::string> defunctWellNames;
+
+    if( wells )
+    {
+        defunctWellNames = computeDefunctWellNames(wellsOnProc,
+                                                     *wells,
+                                                     cc,
+                                                     root);
+    }
+    return std::make_tuple(parts, defunctWellNames, myExportList, myImportList);
 }
+}
+
+
 std::tuple<std::vector<int>, std::unordered_set<std::string>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
@@ -76,17 +178,17 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     // all others an empty partition before loadbalancing.
     bool partitionIsEmpty     = cc.rank()!=root;
 
-    std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
+    std::shared_ptr<CombinedGridWellGraph> gridAndWells;
 
     if( wells )
     {
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-        grid_and_wells.reset(new CombinedGridWellGraph(cpgrid,
+        gridAndWells.reset(new CombinedGridWellGraph(cpgrid,
                                                        wells,
                                                        transmissibilities,
                                                        partitionIsEmpty,
                                                        edgeWeightsMethod));
-        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
+        Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells,
                                                     partitionIsEmpty);
     }
     else
@@ -108,90 +210,23 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                              &exportLocalGids,   /* Local IDs of the vertices I must send */
                              &exportProcs,    /* Process to which I send each of the vertices */
                              &exportToPart);  /* Partition to which each vertex will belong */
-    int                         size = cpgrid.numCells();
-    int                         rank  = cc.rank();
-    std::vector<int>            parts(size, rank);
-    std::vector<std::vector<int> > wells_on_proc;
-    // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
-    std::vector<std::tuple<int,int,char>> myExportList(numExport);
-    // List entry: process to import from, global index, process rank, attribute here, local index
-    // (determined later)
-    std::vector<std::tuple<int,int,char,int>>myImportList(numImport);
-    myExportList.reserve(1.2*myExportList.size());
-    myImportList.reserve(1.2*myImportList.size());
-    using AttributeSet = CpGridData::AttributeSet;
 
-    for ( int i=0; i < numExport; ++i )
-    {
-        parts[exportLocalGids[i]] = exportProcs[i];
-        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportProcs[i], static_cast<char>(AttributeSet::owner));
-    }
-
-    for ( int i=0; i < numImport; ++i )
-    {
-        myImportList[i] = std::make_tuple(importGlobalGids[i], importProcs[i], static_cast<char>(AttributeSet::owner),-1);
-    }
-    // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
-    for ( std::size_t i = 0; i < parts.size(); ++i)
-    {
-        if ( parts[i] == rank )
-        {
-            myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
-            myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
-        }
-    }
-
-    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
-    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
-    // free space allocated for zoltan.
+    auto importExportLists = makeImportAndExportLists(cpgrid,
+                                     cc,
+                                     wells,
+                                     *gridAndWells,
+                                     root,
+                                     numExport,
+                                     numImport,
+                                     exportLocalGids,
+                                     exportGlobalGids,
+                                     exportProcs,
+                                     importGlobalGids);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
 
-    if( wells )
-    {
-        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
-        wells_on_proc =
-            postProcessPartitioningForWells(parts,
-                                            gidGetter,
-                                            *wells,
-                                            grid_and_wells->getWellConnections(),
-                                            myExportList, myImportList,
-                                            cc);
-
-#ifndef NDEBUG
-        int index = 0;
-        for( auto well : grid_and_wells->getWellsGraph() )
-        {
-            int part=parts[index];
-            std::set<std::pair<int,int> > cells_on_other;
-            for( auto vertex : well )
-            {
-                if( part != parts[vertex] )
-                {
-                    cells_on_other.insert(std::make_pair(vertex, parts[vertex]));
-                }
-            }
-            if ( cells_on_other.size() )
-            {
-                OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
-            }
-            ++index;
-        }
-#endif
-    }
-
-    std::unordered_set<std::string> defunct_well_names;
-
-    if( wells )
-    {
-        defunct_well_names = computeDefunctWellNames(wells_on_proc,
-                                                     *wells,
-                                                     cc,
-                                                     root);
-    }
-
-    return std::make_tuple(parts, defunct_well_names, myExportList, myImportList);
+    return importExportLists;
 }
 
 std::tuple<std::vector<int>, std::unordered_set<std::string>,
@@ -208,7 +243,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int changes, numGidEntries = 0, numLidEntries = 0, numImport = 0, numExport = 0;
     ZOLTAN_ID_PTR importGlobalGids = nullptr, importLocalGids = nullptr, exportGlobalGids = nullptr, exportLocalGids = nullptr;
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
-    std::shared_ptr<CombinedGridWellGraph> grid_and_wells;
+    std::shared_ptr<CombinedGridWellGraph> gridAndWells;
     MPI_Barrier(cc);
     if (cc.rank() == root) {
         int argc=0;
@@ -232,12 +267,12 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         if( wells )
         {
             Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-            grid_and_wells.reset(new CombinedGridWellGraph(cpgrid,
+            gridAndWells.reset(new CombinedGridWellGraph(cpgrid,
                                                            wells,
                                                            transmissibilities,
                                                            partitionIsEmpty,
                                                            edgeWeightsMethod));
-            Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *grid_and_wells,
+            Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells,
                                                         partitionIsEmpty);
         }
         else
@@ -314,43 +349,17 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         importGlobalGids = importGlobalGidsVector.data();
     }
 
-    int                         size = cpgrid.numCells();
-    int                         rank  = cc.rank();
-    std::vector<int>            parts(size, rank);
-    std::vector<std::vector<int> > wells_on_proc;
-
-    // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
-    std::vector<std::tuple<int,int,char>> myExportList(numExport);
-    // List entry: process to import from, global index, process rank, attribute here, local index
-    // (determined later)
-    std::vector<std::tuple<int,int,char,int>> myImportList(numImport);
-    myExportList.reserve(1.2*myExportList.size());
-    myImportList.reserve(1.2*myImportList.size());
-    using AttributeSet = CpGridData::AttributeSet;
-
-    for ( int i=0; i < numExport; ++i )
-    {
-        parts[exportLocalGids[i]] = exportToPart[i];
-        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
-    }
-
-    for ( int i=0; i < numImport; ++i )
-    {
-        myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
-    }
-
-
-    // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
-    for ( std::size_t i = 0; i < parts.size(); ++i)
-    {
-        if ( parts[i] == rank )
-        {
-            myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
-            myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
-        }
-    }
-    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
-    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+    auto importExportLists = makeImportAndExportLists(cpgrid,
+                                 cc,
+                                 wells,
+                                 *gridAndWells,
+                                 root,
+                                 numExport,
+                                 numImport,
+                                 exportLocalGids,
+                                 exportGlobalGids,
+                                 exportToPart,
+                                 importGlobalGids);
 
     // free space allocated for zoltan.
     if (cc.rank() == root) {
@@ -359,28 +368,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         Zoltan_Destroy(&zz);
     }
 
-    if( wells )
-    {
-        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
-        wells_on_proc =
-            postProcessPartitioningForWells(parts,
-                                            gidGetter,
-                                            *wells,
-                                            grid_and_wells->getWellConnections(),
-                                            myExportList, myImportList,
-                                            cc);
-    }
-
-    std::unordered_set<std::string> defunct_well_names;
-
-    if( wells )
-    {
-        defunct_well_names = computeDefunctWellNames(wells_on_proc,
-                                                     *wells,
-                                                     cc,
-                                                     root);
-    }
-    return std::make_tuple(parts, defunct_well_names, myExportList, myImportList);
+    return importExportLists;
 }
 }
 }
