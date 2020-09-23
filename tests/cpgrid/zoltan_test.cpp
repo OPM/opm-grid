@@ -76,7 +76,9 @@ struct MPIFixture
 #endif
     }
     Dune::MPIHelper* helper;
+#if HAVE_MPI
     MPI_Errhandler handler;
+#endif
 };
 
 BOOST_GLOBAL_FIXTURE(MPIFixture);
