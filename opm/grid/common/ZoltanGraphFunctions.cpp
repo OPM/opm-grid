@@ -82,7 +82,7 @@ void getNullNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
     (void) sizeGID; (void) sizeLID; (void) numCells; (void) globalID;
     (void) localID; (void) numEdges; (void) cpGridPointer;
     // Pretend that there are no edges
-    numEdges = 0;
+    assert(numCells=0);
     *err = ZOLTAN_OK;
 }
 
