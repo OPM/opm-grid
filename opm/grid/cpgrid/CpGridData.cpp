@@ -32,7 +32,6 @@ CpGridData::CpGridData(const CpGridData& g)
       global_id_set_(new LevelGlobalIdSet(local_id_set_, this)), partition_type_indicator_(new PartitionTypeIndicator(*this)), ccobj_(g.ccobj_)
 {
 #if HAVE_MPI
-    ccobj_=CollectiveCommunication(MPI_COMM_SELF);
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
@@ -43,7 +42,6 @@ CpGridData::CpGridData()
       ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
-    ccobj_=CollectiveCommunication(MPI_COMM_SELF);
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
@@ -65,7 +63,6 @@ CpGridData::CpGridData(CpGrid&)
     ccobj_(Dune::MPIHelper::getCommunicator()), use_unique_boundary_ids_(false)
 {
 #if HAVE_MPI
-    //ccobj_=CollectiveCommunication(MPI_COMM_SELF);
     cell_interfaces_=std::make_tuple(Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_),Interface(ccobj_));
 #endif
 }
