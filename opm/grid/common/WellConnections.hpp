@@ -142,17 +142,19 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 std::vector<std::tuple<int,int,char,int>>& importList,
                                 const CollectiveCommunication<MPI_Comm>& cc);
 
-/// \brief Computes that names that of all wells not handled by this process
+/// \brief Computes whether wells are perforating cells on this process.
 /// \param wells_on_proc well indices assigned to each process
 /// \param eclipseState The eclipse information
 /// \param cc The communicator
 /// \param root The rank of the process that has the complete partitioning
 ///             information.
-std::unordered_set<std::string>
-computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const std::vector<OpmWellType>&  wells,
-                        const CollectiveCommunication<MPI_Comm>& cc,
-                        int root);
+/// \return Vector of pairs of well name and a boolean indicating whether the
+///         well with this name perforates cells here. Sorted by well name!
+std::vector<std::pair<std::string,bool>>
+computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
+                     const std::vector<OpmWellType>&  wells,
+                     const CollectiveCommunication<MPI_Comm>& cc,
+                     int root);
 #endif
 } // end namespace cpgrid
 } // end namespace Dune

@@ -310,14 +310,13 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
 }
 
-std::unordered_set<std::string>
-computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const std::vector<OpmWellType>& wells,
-                        const CollectiveCommunication<MPI_Comm>& cc,
-                        int root)
+std::vector<std::pair<std::string,bool>>
+computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
+                     const std::vector<OpmWellType>& wells,
+                     const CollectiveCommunication<MPI_Comm>& cc,
+                     int root)
 {
     // We need to use well names as only they are consistent.
-    std::unordered_set<std::string> defunct_well_names;
 
 #if HAVE_ECL_INPUT
     std::vector<int> my_well_indices;
@@ -398,24 +397,33 @@ computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
         }
     }
 
-    // Compute defunct wells in parallel run.
-    std::vector<int> defunct_wells(wells.size(), true);
+    // Compute wells active/inactive in parallel run.
+    // boolean indicates whether the well perforates local cells
+    std::vector<std::pair<std::string,bool>> parallel_wells;
+    parallel_wells.reserve(wells.size());
+
+    for(const auto& well_name: globalWellNames)
+    {
+        parallel_wells.emplace_back(well_name, false);
+    }
 
     for(auto well_index : my_well_indices)
     {
-        defunct_wells[well_index] = false;
+        parallel_wells[well_index].second = true;
     }
 
-    for(auto defunct = defunct_wells.begin(); defunct != defunct_wells.end(); ++defunct)
+    std::sort(parallel_wells.begin(), parallel_wells.end());
+#ifndef NDEBUG
+    std::string last;
+    for(const auto& wpair: parallel_wells)
     {
-        if ( *defunct )
-        {
-            defunct_well_names.insert(globalWellNames[defunct-defunct_wells.begin()]);
-        }
+        assert(last != wpair.first);
+        last = wpair.first;
     }
 #endif
+#endif
 
-    return defunct_well_names;
+    return parallel_wells;
 }
 #endif
 } // end namespace cpgrid

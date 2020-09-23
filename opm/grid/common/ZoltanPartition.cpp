@@ -30,7 +30,7 @@ namespace Dune
 {
 namespace cpgrid
 {
-std::tuple<std::vector<int>, std::unordered_set<std::string>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
@@ -141,6 +141,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
 
+    std::vector<std::pair<std::string,bool>> parallel_wells;
+
     if( wells )
     {
         auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
@@ -174,17 +176,15 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 #endif
     }
 
-    std::unordered_set<std::string> defunct_well_names;
-
     if( wells )
     {
-        defunct_well_names = computeDefunctWellNames(wells_on_proc,
-                                                     *wells,
-                                                     cc,
-                                                     root);
+        parallel_wells = computeParallelWells(wells_on_proc,
+                                              *wells,
+                                              cc,
+                                              root);
     }
 
-    return std::make_tuple(parts, defunct_well_names, myExportList, myImportList);
+    return std::make_tuple(parts, parallel_wells, myExportList, myImportList);
 }
 }
 }
