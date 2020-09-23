@@ -48,12 +48,13 @@ namespace cpgrid
 /// @param root The process number that holds the global grid.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
-///         a set of names of wells that should be defunct in a parallel
-///         simulation, vector containing information for each exported cell (global id
+///         a vector containing a pair of name  and a boolean indicating whether this well has
+///         perforated cells local to the process of all wells,
+///         vector containing information for each exported cell (global id
 ///         of cell, process id to send to, attribute there), and a vector containing
 ///         information for each imported cell (global index, process id that sends, attribute here, local index
 ///         here)
-std::tuple<std::vector<int>,std::unordered_set<std::string>,
+std::tuple<std::vector<int>,std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> >  >
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
@@ -87,7 +88,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 ///         here)
 ///
 /// @note This function will only do *serial* partioning.
-std::tuple<std::vector<int>,std::unordered_set<std::string>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> >  >
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,

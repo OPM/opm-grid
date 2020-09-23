@@ -47,7 +47,7 @@ void setDefaultZoltanParameters(Zoltan_Struct* zz) {
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
 }
 
-std::tuple<std::vector<int>, std::unordered_set<std::string>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 makeImportAndExportLists(const CpGrid& cpgrid,
@@ -135,21 +135,21 @@ makeImportAndExportLists(const CpGrid& cpgrid,
 #endif
     }
 
-    std::unordered_set<std::string> defunctWellNames;
+    std::vector<std::pair<std::string,bool>> parallel_wells;
 
     if( wells )
     {
-        defunctWellNames = computeDefunctWellNames(wellsOnProc,
-                                                     *wells,
-                                                     cc,
-                                                     root);
+        parallel_wells = computeParallelWells(wellsOnProc,
+					      *wells,
+					      cc,
+					      root);
     }
-    return std::make_tuple(parts, defunctWellNames, myExportList, myImportList);
+    return std::make_tuple(parts, parallel_wells, myExportList, myImportList);
 }
 }
 
 
-std::tuple<std::vector<int>, std::unordered_set<std::string>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
@@ -229,7 +229,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     return importExportLists;
 }
 
-std::tuple<std::vector<int>, std::unordered_set<std::string>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
