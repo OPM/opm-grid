@@ -130,7 +130,7 @@ BOOST_AUTO_TEST_CASE(zoltan)
         MPI_Comm_rank(MPI_COMM_WORLD, &myRank);
 
         Dune::CpGrid grid;
-        std::array<int, 3> dims={{1, 2, 2}};
+        std::array<int, 3> dims={{1, procs, procs}};
         std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
 #ifdef ONE_TO_ALL
         if (myRank==0)
@@ -142,6 +142,10 @@ BOOST_AUTO_TEST_CASE(zoltan)
         Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, grid);
 
         BOOST_REQUIRE(grid.comm()==MPI_COMM_WORLD);
+        if (myRank != 0)
+        {
+            BOOST_REQUIRE(grid.numCells()==0);
+        }
 
         //ZOLTAN_TRACE_ENTER(zz, yo);
         rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
