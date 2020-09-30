@@ -231,32 +231,137 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
 
 
-std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
-           std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> > >
-zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
-                               const std::vector<OpmWellType> * wells,
-                               const double* transmissibilities,
-                               const CollectiveCommunication<MPI_Comm>& cc,
-                               EdgeWeightMethod edgeWeightsMethod, int root)
+class ZoltanSerialPartitioner
 {
-    int rc = ZOLTAN_OK - 1;
-    struct Zoltan_Struct *zz;
-    int changes, numGidEntries = 0, numLidEntries = 0, numImport = 0, numExport = 0;
-    ZOLTAN_ID_PTR importGlobalGids = nullptr, importLocalGids = nullptr, exportGlobalGids = nullptr, exportLocalGids = nullptr;
-    int *importProcs, *importToPart, *exportProcs, *exportToPart;
-    std::shared_ptr<CombinedGridWellGraph> gridAndWells;
-    MPI_Barrier(cc);
-    if (cc.rank() == root) {
-        int argc=0;
+public:
+    ZoltanSerialPartitioner(const CpGrid& _cpgrid,
+                            const std::vector<OpmWellType>* _wells,
+                            const double* _transmissibilities,
+                            const CollectiveCommunication<MPI_Comm>& _cc,
+                            EdgeWeightMethod _edgeWeightsMethod,
+                            int _root)
+        : cpgrid(_cpgrid)
+        , wells(_wells)
+        , transmissibilities(_transmissibilities)
+        , cc(_cc)
+        , edgeWeightsMethod(_edgeWeightsMethod)
+        , root(_root)
+    {
+    }
+
+    std::tuple<std::vector<int>,
+               std::vector<std::pair<std::string, bool>>,
+               std::vector<std::tuple<int, int, char>>,
+               std::vector<std::tuple<int, int, char, int>>>
+    partition()
+    {
+        MPI_Barrier(cc);
+
+        // Initialize Zoltan and perform partitioning.
+        int rc = ZOLTAN_OK;
+        if (cc.rank() == root) {
+            rc = callZoltan();
+            cc.broadcast<int>(&rc, 1, root);
+        } else {
+            cc.broadcast<int>(&rc, 1, root);
+        }
+        if (rc != ZOLTAN_OK) {
+            OPM_THROW(std::runtime_error, "Could not initialize Zoltan, or Zoltan partitioning failed.");
+        }
+
+        // Build and communicate import/export data.
+        // 1. Send number of exports/imports.
+        if (cc.rank() == root) {
+            numberOfExportedVerticesPerProcess.resize(cc.size(), 0);
+            for (int i = 0; i < numExport; ++i) {
+                ++numberOfExportedVerticesPerProcess[exportToPart[i]];
+            }
+            int dummyForRoot = 0;
+            cc.scatter<int>(numberOfExportedVerticesPerProcess.data(), &dummyForRoot, 1, root);
+        } else {
+            cc.scatter<int>(nullptr, &numImport, 1, root);
+        }
+
+        // 2. Build the imports/exports themselves.
+        if (cc.rank() == root) {
+            offsets.resize(cc.size() + 1, 0);
+            std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
+                             numberOfExportedVerticesPerProcess.end(),
+                             offsets.begin() + 1);
+            globalIndicesToSend.resize(numExport, 0);
+            const int commSize = cc.size();
+            std::vector<int> currentIndex(commSize, 0);
+            for (int i = 0; i < numExport; ++i) {
+                if (exportToPart[i] >= commSize) {
+                    OPM_THROW(std::runtime_error,
+                              "Something wrong with Zoltan decomposition. "
+                              << "Debug information: exportToPart[i] = " << exportToPart[i] << ", "
+                              << "currentIndex.size() = " << currentIndex.size());
+                }
+                const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
+                if (index >= numExport) {
+                    OPM_THROW(std::runtime_error,
+                              "Something wrong with Zoltan decomposition. "
+                                  << "index " << index << ", "
+                                  << "globalIndicesToSend.size() = " << globalIndicesToSend.size()
+                                  << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
+                                  << "\n\ncurrentIndex[exportToPart[i]] = " << currentIndex[exportToPart[i]]
+                                  << "\n\nexportToPart[i] = " << exportToPart[i]);
+                }
+
+                globalIndicesToSend[index] = exportGlobalGids[i];
+            }
+            std::vector<unsigned int> dummyIndicesForRoot(1, 0);
+            cc.scatterv<unsigned int>(globalIndicesToSend.data(),
+                                      numberOfExportedVerticesPerProcess.data(),
+                                      offsets.data(),
+                                      dummyIndicesForRoot.data(),
+                                      0,
+                                      root);
+        } else {
+            importGlobalGidsVector.resize(numImport, 0);
+            cc.scatterv<unsigned int>(nullptr, nullptr, nullptr, importGlobalGidsVector.data(), numImport, root);
+            importGlobalGids = importGlobalGidsVector.data();
+        }
+
+        auto importExportLists = makeImportAndExportLists(cpgrid,
+                                                          cc,
+                                                          wells,
+                                                          *gridAndWells,
+                                                          root,
+                                                          numExport,
+                                                          numImport,
+                                                          exportLocalGids,
+                                                          exportGlobalGids,
+                                                          exportToPart,
+                                                          importGlobalGids);
+
+        return importExportLists;
+    }
+
+    ~ZoltanSerialPartitioner()
+    {
+        // free space allocated for zoltan.
+        if (cc.rank() == root) {
+            Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
+            Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
+            Zoltan_Destroy(&zz);
+        }
+    }
+
+private:
+    // Methods
+
+    int callZoltan()
+    {
+        int argc = 0;
         char** argv = 0;
         float ver = 0;
 
-        rc = Zoltan_Initialize(argc, argv, &ver);
+        int rc = Zoltan_Initialize(argc, argv, &ver);
         zz = Zoltan_Create(MPI_COMM_SELF);
-        if ( rc != ZOLTAN_OK )
-        {
-            OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+        if (rc != ZOLTAN_OK) {
+            return rc;
         }
 
         setDefaultZoltanParameters(zz);
@@ -264,112 +369,86 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
         // For the load balancer one process has the whole grid and
         // all others an empty partition before loadbalancing.
-        bool partitionIsEmpty     = cc.rank()!=root;
+        bool partitionIsEmpty = cc.rank() != root;
 
-        if( wells )
-        {
-            Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
-            gridAndWells.reset(new CombinedGridWellGraph(cpgrid,
-                                                           wells,
-                                                           transmissibilities,
-                                                           partitionIsEmpty,
-                                                           edgeWeightsMethod));
-            Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells,
-                                                        partitionIsEmpty);
-        }
-        else
-        {
+        if (wells) {
+            Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "1");
+            gridAndWells.reset(
+                new CombinedGridWellGraph(cpgrid, wells, transmissibilities, partitionIsEmpty, edgeWeightsMethod));
+            Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells, partitionIsEmpty);
+        } else {
             Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, partitionIsEmpty);
         }
 
         rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
-                                 &changes,        /* 1 if partitioning was changed, 0 otherwise */
-                                 &numGidEntries,  /* Number of integers used for a global ID */
-                                 &numLidEntries,  /* Number of integers used for a local ID */
-                                 &numImport,      /* Number of vertices to be sent to me */
-                                 &importGlobalGids,  /* Global IDs of vertices to be sent to me */
-                                 &importLocalGids,   /* Local IDs of vertices to be sent to me */
-                                 &importProcs,    /* Process rank for source of each incoming vertex */
-                                 &importToPart,   /* New partition for each incoming vertex */
-                                 &numExport,      /* Number of vertices I must send to other processes*/
-                                 &exportGlobalGids,  /* Global IDs of the vertices I must send */
-                                 &exportLocalGids,   /* Local IDs of the vertices I must send */
-                                 &exportProcs,    /* Process to which I send each of the vertices */
-                                 &exportToPart);  /* Partition to which each vertex will belong */
+                                 &changes, /* 1 if partitioning was changed, 0 otherwise */
+                                 &numGidEntries, /* Number of integers used for a global ID */
+                                 &numLidEntries, /* Number of integers used for a local ID */
+                                 &numImport, /* Number of vertices to be sent to me */
+                                 &importGlobalGids, /* Global IDs of vertices to be sent to me */
+                                 &importLocalGids, /* Local IDs of vertices to be sent to me */
+                                 &importProcs, /* Process rank for source of each incoming vertex */
+                                 &importToPart, /* New partition for each incoming vertex */
+                                 &numExport, /* Number of vertices I must send to other processes*/
+                                 &exportGlobalGids, /* Global IDs of the vertices I must send */
+                                 &exportLocalGids, /* Local IDs of the vertices I must send */
+                                 &exportProcs, /* Process to which I send each of the vertices */
+                                 &exportToPart); /* Partition to which each vertex will belong */
 
         // This is very important: by default, zoltan sets numImport to -1,
         // as we are only running Zoltan in serial.
         // In order to make sense of the rest of  the code, this must be set
         // to 0.
         numImport = 0;
+        return rc;
     }
+
+    // Data members
+    const CpGrid& cpgrid;
+    const std::vector<OpmWellType>* wells;
+    const double* transmissibilities;
+    const CollectiveCommunication<MPI_Comm>& cc;
+    EdgeWeightMethod edgeWeightsMethod;
+    int root;
+    std::string errorOnRoot;
+
+    struct Zoltan_Struct* zz = nullptr;
+    int changes = 0;
+    int numGidEntries = 0;
+    int numLidEntries = 0;
+    int numImport = 0;
+    int numExport = 0;
+    ZOLTAN_ID_PTR importGlobalGids = nullptr;
+    ZOLTAN_ID_PTR importLocalGids = nullptr;
+    ZOLTAN_ID_PTR exportGlobalGids = nullptr;
+    ZOLTAN_ID_PTR exportLocalGids = nullptr;
+    int *importProcs, *importToPart, *exportProcs, *exportToPart;
+    std::unique_ptr<CombinedGridWellGraph> gridAndWells;
     std::vector<unsigned int> importGlobalGidsVector;
-    if (cc.rank() == root) {
-        std::vector<int> numberOfExportedVerticesPerProcess(cc.size(), 0);
-        for (int i = 0; i < numExport; ++i) {
-            numberOfExportedVerticesPerProcess[exportToPart[i]]++;
-        }
-        int dummyForRoot = 0;
-        cc.scatter<int>(numberOfExportedVerticesPerProcess.data(), &dummyForRoot, 1, root);
+    std::vector<int> numberOfExportedVerticesPerProcess;
+    std::vector<unsigned int> globalIndicesToSend;
+    std::vector<int> offsets;
+};
 
 
-        std::vector<int> offsets(cc.size() + 1, 0);
-        std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
-                         numberOfExportedVerticesPerProcess.end(), offsets.begin() + 1);
-        std::vector<unsigned int> globalIndicesToSend(numExport, 0);
-        const int commSize = cc.size();
-        std::vector<int> currentIndex(commSize, 0);
-        for (int i = 0; i < numExport; ++i) {
-            if (exportToPart[i] >= commSize) {
-                OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
-                          << "Debug information: exportToPart[i] = "
-                          << exportToPart[i] << ", " << "currentIndex.size() = " << currentIndex.size());
-            }
-            const std::size_t index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
-
-            if (index >= globalIndicesToSend.size()) {
-                OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
-                          << "index " << index << ", " << "globalIndicesToSend.size() = "
-                          << globalIndicesToSend.size()
-                          << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
-                          << "\n\ncurrentIndex[exportToPart[i]] = "<< currentIndex[exportToPart[i]]
-                          <<"\n\nexportToPart[i] = " << exportToPart[i]);
-            }
-
-            globalIndicesToSend[index] = exportGlobalGids[i];
-        }
-        std::vector<unsigned int> dummyIndicesForRoot(1, 0);
-        cc.scatterv<unsigned int>(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
-                     offsets.data(), dummyIndicesForRoot.data(), 0, root);
-    } else {
-        cc.scatter<int>(nullptr, &numImport, 1, root);
-        importGlobalGidsVector.resize(numImport, 0);
-        cc.scatterv<unsigned int>(nullptr, nullptr, nullptr, importGlobalGidsVector.data(),
-                         numImport, root);
-        importGlobalGids = importGlobalGidsVector.data();
-    }
-
-    auto importExportLists = makeImportAndExportLists(cpgrid,
-                                 cc,
-                                 wells,
-                                 *gridAndWells,
-                                 root,
-                                 numExport,
-                                 numImport,
-                                 exportLocalGids,
-                                 exportGlobalGids,
-                                 exportToPart,
-                                 importGlobalGids);
-
-    // free space allocated for zoltan.
-    if (cc.rank() == root) {
-        Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
-        Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
-        Zoltan_Destroy(&zz);
-    }
-
-    return importExportLists;
+std::tuple<std::vector<int>,
+           std::vector<std::pair<std::string, bool>>,
+           std::vector<std::tuple<int, int, char>>,
+           std::vector<std::tuple<int, int, char, int>>>
+zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
+                                     const std::vector<OpmWellType>* wells,
+                                     const double* transmissibilities,
+                                     const CollectiveCommunication<MPI_Comm>& cc,
+                                     EdgeWeightMethod edgeWeightsMethod,
+                                     int root)
+{
+    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod, root);
+    return partitioner.partition();
 }
-}
-}
+
+
+
+
+} // namespace cpgrid
+} // namespace Dune
 #endif // HAVE_ZOLTAN
