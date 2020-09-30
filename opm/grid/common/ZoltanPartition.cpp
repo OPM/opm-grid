@@ -229,6 +229,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     return importExportLists;
 }
 
+
+
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
@@ -300,10 +302,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // In order to make sense of the rest of  the code, this must be set
         // to 0.
         numImport = 0;
-
-
     }
-    MPI_Barrier(cc);
     std::vector<unsigned int> importGlobalGidsVector;
     if (cc.rank() == root) {
         std::vector<int> numberOfExportedVerticesPerProcess(cc.size(), 0);
@@ -318,14 +317,15 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
                          numberOfExportedVerticesPerProcess.end(), offsets.begin() + 1);
         std::vector<unsigned int> globalIndicesToSend(numExport, 0);
-        std::vector<int> currentIndex(cc.size(), 0);
+        const int commSize = cc.size();
+        std::vector<int> currentIndex(commSize, 0);
         for (int i = 0; i < numExport; ++i) {
-            if (exportToPart[i] >= currentIndex.size()) {
+            if (exportToPart[i] >= commSize) {
                 OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
                           << "Debug information: exportToPart[i] = "
                           << exportToPart[i] << ", " << "currentIndex.size() = " << currentIndex.size());
             }
-            const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
+            const std::size_t index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
 
             if (index >= globalIndicesToSend.size()) {
                 OPM_THROW(std::runtime_error, "Something wrong with Zoltan decomposition. "
@@ -338,7 +338,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 
             globalIndicesToSend[index] = exportGlobalGids[i];
         }
-        std::vector<unsigned int> dummyIndicesForRoot(numExport, 0);
+        std::vector<unsigned int> dummyIndicesForRoot(1, 0);
         cc.scatterv<unsigned int>(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
                      offsets.data(), dummyIndicesForRoot.data(), 0, root);
     } else {
