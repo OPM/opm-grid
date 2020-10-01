@@ -266,10 +266,8 @@ public:
         int rc = ZOLTAN_OK;
         if (cc.rank() == root) {
             rc = callZoltan();
-            cc.broadcast<int>(&rc, 1, root);
-        } else {
-            cc.broadcast<int>(&rc, 1, root);
         }
+        cc.broadcast<int>(&rc, 1, root);
         if (rc != ZOLTAN_OK) {
             OPM_THROW(std::runtime_error, "Could not initialize Zoltan, or Zoltan partitioning failed.");
         }
@@ -325,11 +323,7 @@ public:
         }
         // Check for errors
         int ok = error.empty();
-        if (cc.rank() == root) {
-            cc.broadcast<int>(&ok, 1, root);
-        } else {
-            cc.broadcast<int>(&ok, 1, root);
-        }
+        cc.broadcast<int>(&ok, 1, root);
         if (!ok) {
             OPM_THROW(std::runtime_error, error);
         }
