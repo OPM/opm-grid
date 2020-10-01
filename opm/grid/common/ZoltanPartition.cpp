@@ -247,6 +247,11 @@ public:
         , edgeWeightsMethod(_edgeWeightsMethod)
         , root(_root)
     {
+        if (wells) {
+            const bool partitionIsEmpty = cc.rank() != root;
+            gridAndWells.reset(
+                new CombinedGridWellGraph(cpgrid, wells, transmissibilities, partitionIsEmpty, edgeWeightsMethod));
+        }
     }
 
     std::tuple<std::vector<int>,
@@ -373,8 +378,6 @@ private:
 
         if (wells) {
             Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "1");
-            gridAndWells.reset(
-                new CombinedGridWellGraph(cpgrid, wells, transmissibilities, partitionIsEmpty, edgeWeightsMethod));
             Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, *gridAndWells, partitionIsEmpty);
         } else {
             Dune::cpgrid::setCpGridZoltanGraphFunctions(zz, cpgrid, partitionIsEmpty);
