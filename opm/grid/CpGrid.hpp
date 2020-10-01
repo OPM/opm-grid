@@ -609,7 +609,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, nullptr, true, overlapLayers ));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, false, nullptr, true, overlapLayers ));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -636,7 +636,7 @@ namespace Dune
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1)
         {
-            return scatterGrid(defaultTransEdgeWgt, false, wells, transmissibilities, false, overlapLayers);
+            return scatterGrid(defaultTransEdgeWgt, false, wells, false, transmissibilities, false, overlapLayers);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -667,7 +667,7 @@ namespace Dune
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
         {
-            return scatterGrid(method, ownersFirst, wells, transmissibilities, addCornerCells, overlapLayers);
+            return scatterGrid(method, ownersFirst, wells, false, transmissibilities, addCornerCells, overlapLayers);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -712,6 +712,7 @@ namespace Dune
         ///            of each well are stored on one process. This is done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param serialPartitioning If true, the partitioning will be done on a single process.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
         /// \param addCornerCells Add corner cells to the overlap layer.
@@ -724,10 +725,11 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, EdgeWeightMethod method,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
         {
-            auto ret = scatterGrid(method, ownersFirst, wells, transmissibilities, addCornerCells, overlapLayers);
+            auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities, addCornerCells, overlapLayers);
             scatterData(data);
             return ret;
         }
@@ -1397,6 +1399,7 @@ namespace Dune
         scatterGrid(EdgeWeightMethod method,
                     bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    bool serialPartitioning,
                     const double* transmissibilities,
                     bool addCornerCells, int overlapLayers);
 

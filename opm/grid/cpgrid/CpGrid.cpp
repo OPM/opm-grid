@@ -137,8 +137,10 @@ std::pair<bool, std::vector<std::pair<std::string,bool> > >
 CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    [[maybe_unused]] bool serialPartitioning,
                     const double* transmissibilities,
-                    [[maybe_unused]] bool addCornerCells, int overlapLayers)
+                    [[maybe_unused]] bool addCornerCells,
+                    int overlapLayers)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -158,8 +160,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     if (cc.size() > 1)
     {
 #ifdef HAVE_ZOLTAN
-        auto part_and_wells =
-            cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
+        auto part_and_wells = serialPartitioning
+            ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0)
+            : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
         using std::get;
         auto cell_part = std::get<0>(part_and_wells);
         auto wells_on_proc = std::get<1>(part_and_wells);
