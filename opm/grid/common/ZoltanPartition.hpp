@@ -63,7 +63,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root);
 
-/// \brief Partition a CpGrid using Zoltan
+/// \brief Partition a CpGrid using Zoltan serially only on rank 0
 ///
 /// This function will extract Zoltan's graph information
 /// from the grid, and the wells and use it to partition the grid.
