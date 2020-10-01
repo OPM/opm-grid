@@ -288,6 +288,7 @@ public:
         }
 
         // 2. Build the imports/exports themselves.
+        std::string error;
         if (cc.rank() == root) {
             offsets.resize(cc.size() + 1, 0);
             std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
@@ -298,24 +299,43 @@ public:
             std::vector<int> currentIndex(commSize, 0);
             for (int i = 0; i < numExport; ++i) {
                 if (exportToPart[i] >= commSize) {
-                    OPM_THROW(std::runtime_error,
-                              "Something wrong with Zoltan decomposition. "
-                              << "Debug information: exportToPart[i] = " << exportToPart[i] << ", "
-                              << "currentIndex.size() = " << currentIndex.size());
+                    std::ostringstream oss;
+                    oss << "Something wrong with Zoltan decomposition. "
+                        << "Debug information: exportToPart[i] = " << exportToPart[i] << ", "
+                        << "currentIndex.size() = " << currentIndex.size();
+                    error = oss.str();
+                    break;
                 }
                 const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
                 if (index >= numExport) {
-                    OPM_THROW(std::runtime_error,
-                              "Something wrong with Zoltan decomposition. "
-                                  << "index " << index << ", "
-                                  << "globalIndicesToSend.size() = " << globalIndicesToSend.size()
-                                  << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
-                                  << "\n\ncurrentIndex[exportToPart[i]] = " << currentIndex[exportToPart[i]]
-                                  << "\n\nexportToPart[i] = " << exportToPart[i]);
+                    std::ostringstream oss;
+                    oss << "Something wrong with Zoltan decomposition. "
+                        << "index " << index << ", "
+                        << "globalIndicesToSend.size() = " << globalIndicesToSend.size()
+                        << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
+                        << "\n\ncurrentIndex[exportToPart[i]] = " << currentIndex[exportToPart[i]]
+                        << "\n\nexportToPart[i] = " << exportToPart[i];
+                    error = oss.str();
+                    break;
                 }
-
                 globalIndicesToSend[index] = exportGlobalGids[i];
             }
+        } else {
+            importGlobalGidsVector.resize(numImport, 0);
+        }
+        // Check for errors
+        int ok = error.empty();
+        if (cc.rank() == root) {
+            cc.broadcast<int>(&ok, 1, root);
+        } else {
+            cc.broadcast<int>(&ok, 1, root);
+        }
+        if (!ok) {
+            OPM_THROW(std::runtime_error, error);
+        }
+
+        // 3. Communicate the imports/exports.
+        if (cc.rank() == root) {
             std::vector<unsigned int> dummyIndicesForRoot(1, 0);
             cc.scatterv<unsigned int>(globalIndicesToSend.data(),
                                       numberOfExportedVerticesPerProcess.data(),
@@ -324,7 +344,6 @@ public:
                                       0,
                                       root);
         } else {
-            importGlobalGidsVector.resize(numImport, 0);
             cc.scatterv<unsigned int>(nullptr, nullptr, nullptr, importGlobalGidsVector.data(), numImport, root);
             importGlobalGids = importGlobalGidsVector.data();
         }
