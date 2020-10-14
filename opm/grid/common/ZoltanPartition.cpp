@@ -25,6 +25,7 @@
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <algorithm>
+#include <type_traits>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
@@ -433,9 +434,10 @@ private:
     ZOLTAN_ID_PTR exportLocalGids = nullptr;
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     std::unique_ptr<CombinedGridWellGraph> gridAndWells;
-    std::vector<unsigned int> importGlobalGidsVector;
+    using ZoltanId = typename std::remove_pointer<ZOLTAN_ID_PTR>::type;
+    std::vector<ZoltanId> importGlobalGidsVector;
     std::vector<int> numberOfExportedVerticesPerProcess;
-    std::vector<unsigned int> globalIndicesToSend;
+    std::vector<ZoltanId> globalIndicesToSend;
     std::vector<int> offsets;
 };
 
