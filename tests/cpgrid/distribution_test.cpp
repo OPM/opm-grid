@@ -343,7 +343,7 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
 #endif
     std::vector<int> cont(grid.size(0), 1);
     const auto& indexSet = grid.getCellIndexSet();
-    for ( const auto index: indexSet)
+    for ( const auto& index: indexSet)
         if (index.local().attribute() != AttributeSet::owner )
             cont[index.local()] = -1;
 
@@ -351,7 +351,7 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
     grid.communicate(handle, Dune::InteriorBorder_All_Interface,
                      Dune::ForwardCommunication);
 
-    for ( const auto index: indexSet)
+    for ( const auto& index: indexSet)
         BOOST_REQUIRE(cont[index.local()] == 1);
 #endif
 }
