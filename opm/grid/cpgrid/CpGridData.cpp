@@ -1569,7 +1569,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute the partition type for cell
     partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
-    for(const auto i: cell_indexset_)
+    for(const auto& i: cell_indexset_)
     {
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?

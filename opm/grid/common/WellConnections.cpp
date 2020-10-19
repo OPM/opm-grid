@@ -73,7 +73,7 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 
     // We assume that we know all the wells.
     int index=0;
-    for (const auto well : wells) {
+    for (const auto& well : wells) {
         std::set<int>& well_indices = well_indices_[index];
         const auto& connectionSet = well.getConnections( );
         for (size_t c=0; c<connectionSet.size(); c++) {
