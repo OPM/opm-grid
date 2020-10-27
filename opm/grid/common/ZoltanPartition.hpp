@@ -43,7 +43,8 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Id* exportLocalGids,
                          const Id* exportGlobalGids,
                          const int* exportToPart,
-                         const Id* importGlobalGids);
+                         const Id* importGlobalGids,
+                         bool allowDistributedWells = false);
 
 template<class Id>
 std::tuple<int, std::vector<Id> >

@@ -47,7 +47,8 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Id* exportLocalGids,
                          const Id* exportGlobalGids,
                          const int* exportToPart,
-                         const Id* importGlobalGids) {
+                         const Id* importGlobalGids,
+                         bool allowDistributedWells) {
 
     int                         size = cpgrid.numCells();
     int                         rank  = cc.rank();
@@ -90,7 +91,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
 
 
 
-    if( wells )
+    if( wells && ! allowDistributedWells)
     {
         auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(Dune::createEntity<0>(cpgrid, i, true));};
         wellsOnProc =
