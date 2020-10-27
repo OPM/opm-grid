@@ -91,38 +91,45 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
 
 
 
-    if( wells && ! allowDistributedWells)
+    if( wells )
     {
-        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(Dune::createEntity<0>(cpgrid, i, true));};
-        wellsOnProc =
-            postProcessPartitioningForWells(parts,
-                                            gidGetter,
-                                            *wells,
-                                            gridAndWells->getWellConnections(),
-                                            myExportList, myImportList,
-                                            cc);
+        if (allowDistributedWells)
+        {
+            wellsOnProc = perforatingWellIndicesOnProc(parts, *wells, cpgrid);
+        }
+        else
+        {
+            auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(Dune::createEntity<0>(cpgrid, i, true));};
+            wellsOnProc =
+                postProcessPartitioningForWells(parts,
+                                                gidGetter,
+                                                *wells,
+                                                gridAndWells->getWellConnections(),
+                                                myExportList, myImportList,
+                                                cc);
 
 
 #ifndef NDEBUG
-        int index = 0;
-        for( auto well : gridAndWells->getWellsGraph() )
-        {
-            int part=parts[index];
-            std::set<std::pair<int,int> > cells_on_other;
-            for( auto vertex : well )
+            int index = 0;
+            for( auto well : gridAndWells->getWellsGraph() )
             {
-                if( part != parts[vertex] )
+                int part=parts[index];
+                std::set<std::pair<int,int> > cells_on_other;
+                for( auto vertex : well )
                 {
-                    cells_on_other.insert(std::make_pair(vertex, parts[vertex]));
+                    if( part != parts[vertex] )
+                    {
+                        cells_on_other.insert(std::make_pair(vertex, parts[vertex]));
+                    }
                 }
+                if ( cells_on_other.size() )
+                {
+                    OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
+                }
+                ++index;
             }
-            if ( cells_on_other.size() )
-            {
-                OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
-            }
-            ++index;
-        }
 #endif
+        }
     }
 
     std::vector<std::pair<std::string,bool>> parallel_wells;
@@ -206,7 +213,7 @@ scatterExportInformation(int numExport, const Id* exportGlobalGids,
         // 3. Communicate the imports/exports.
         cc.scatterv(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
                     offsets.data(), importGlobalGidsVector.data(), numImport, root);
-        return std::make_tuple(numImport, globalIndicesToSend);
+        return std::make_tuple(numImport, importGlobalGidsVector);
 }
 
 // instantiate int types

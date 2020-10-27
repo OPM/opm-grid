@@ -64,6 +64,20 @@ WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
     init(wells, cartesianSize, cartesian_to_compressed);
 }
 
+WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
+                                 const Dune::CpGrid& cpGrid)
+{
+    const auto& cpgdim = cpGrid.logicalCartesianSize();
+    // create compressed lookup from cartesian.
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+
+    for( int i=0; i < cpGrid.numCells(); ++i )
+    {
+        cartesian_to_compressed[cpGrid.globalCell()[i]] = i;
+    }
+    init(wells, cpgdim, cartesian_to_compressed);
+}
+
 void WellConnections::init(const std::vector<OpmWellType>& wells,
                            const std::array<int, 3>& cartesianSize,
                            const std::vector<int>& cartesian_to_compressed)
@@ -94,6 +108,45 @@ void WellConnections::init(const std::vector<OpmWellType>& wells,
 }
 
 #ifdef HAVE_MPI
+std::vector<std::vector<int> >
+perforatingWellIndicesOnProc(const std::vector<int>& parts,
+                             const std::vector<Dune::cpgrid::OpmWellType>& wells,
+                             const CpGrid& cpGrid)
+{
+    auto numProcs = cpGrid.comm().size();
+    std::vector<std::vector<int> > wellIndices(numProcs);
+
+    if (cpGrid.numCells())
+    {
+        // root process that has global cells
+        WellConnections wellConnections(wells, cpGrid);
+        if (!wellConnections.size())
+        {
+            return wellIndices;
+        }
+        // prevent memory allocation
+        for (auto &well_indices : wellIndices) {
+            well_indices.reserve(wells.size());
+        }
+
+        for (std::size_t wellIndex = 0; wellIndex < wells.size(); ++wellIndex) {
+            const auto &connections = wellConnections[wellIndex];
+            std::map<int, std::size_t> connectionsOnProc;
+            for (const auto& connection_index : connections) {
+                ++connectionsOnProc[parts[connection_index]];
+            }
+
+            for (const auto entry: connectionsOnProc)
+            {
+                if (entry.second > 0) // Should be unnecessary
+                {
+                    wellIndices[entry.first].push_back(wellIndex);
+                }
+            }
+        }
+    }
+    return wellIndices;
+}
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
                                 std::function<int(int)> gid,
