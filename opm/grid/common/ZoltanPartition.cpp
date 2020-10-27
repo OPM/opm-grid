@@ -27,42 +27,28 @@
 #include <algorithm>
 #include <type_traits>
 
-#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
 namespace cpgrid
 {
 
-namespace {
-void setDefaultZoltanParameters(Zoltan_Struct* zz) {
-    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
-    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
-    Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
-    Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
-    Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
-    Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
-    Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-    Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
-    Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
-    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
-    Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
-}
-
-
+#if HAVE_MPI
+template<class Id>
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
-makeImportAndExportLists(const CpGrid& cpgrid,
-                         const CollectiveCommunication<MPI_Comm>& cc,
-                         const std::vector<OpmWellType> * wells,
-                         const CombinedGridWellGraph& gridAndWells,
+makeImportAndExportLists(const Dune::CpGrid& cpgrid,
+                         const Dune::CollectiveCommunication<MPI_Comm>& cc,
+                         const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                         const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
                          int root,
                          int numExport,
                          int numImport,
-                         const ZOLTAN_ID_PTR exportLocalGids,
-                         const ZOLTAN_ID_PTR exportGlobalGids,
+                         const Id* exportLocalGids,
+                         const Id* exportGlobalGids,
                          const int* exportToPart,
-                         const ZOLTAN_ID_PTR importGlobalGids) {
+                         const Id* importGlobalGids) {
+
     int                         size = cpgrid.numCells();
     int                         rank  = cc.rank();
     std::vector<int>            parts(size, rank);
@@ -75,7 +61,7 @@ makeImportAndExportLists(const CpGrid& cpgrid,
     std::vector<std::tuple<int,int,char,int>> myImportList(numImport);
     myExportList.reserve(1.2*myExportList.size());
     myImportList.reserve(1.2*myImportList.size());
-    using AttributeSet = CpGridData::AttributeSet;
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
     for ( int i=0; i < numExport; ++i )
     {
@@ -106,19 +92,19 @@ makeImportAndExportLists(const CpGrid& cpgrid,
 
     if( wells )
     {
-        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(createEntity<0>(cpgrid, i, true));};
+        auto gidGetter = [&cpgrid](int i) { return cpgrid.globalIdSet().id(Dune::createEntity<0>(cpgrid, i, true));};
         wellsOnProc =
             postProcessPartitioningForWells(parts,
                                             gidGetter,
                                             *wells,
-                                            gridAndWells.getWellConnections(),
+                                            gridAndWells->getWellConnections(),
                                             myExportList, myImportList,
                                             cc);
 
 
 #ifndef NDEBUG
         int index = 0;
-        for( auto well : gridAndWells.getWellsGraph() )
+        for( auto well : gridAndWells->getWellsGraph() )
         {
             int part=parts[index];
             std::set<std::pair<int,int> > cells_on_other;
@@ -141,13 +127,136 @@ makeImportAndExportLists(const CpGrid& cpgrid,
     std::vector<std::pair<std::string,bool>> parallel_wells;
     if( wells )
     {
-        parallel_wells = computeParallelWells(wellsOnProc,
-                                              *wells,
-                                              cc,
-                                              root);
+        parallel_wells = Dune::cpgrid::computeParallelWells(wellsOnProc,
+                                                            *wells,
+                                                            cc,
+                                                            root);
     }
     return std::make_tuple(parts, parallel_wells, myExportList, myImportList);
 }
+
+template<class Id>
+std::tuple<int, std::vector<Id> >
+scatterExportInformation(int numExport, const Id* exportGlobalGids,
+                         const int* exportToPart, int root,
+                         const Dune::CollectiveCommunication<MPI_Comm>& cc)
+{
+    int numImport;
+    std::vector<int> numberOfExportedVerticesPerProcess;
+    std::vector<Id> importGlobalGidsVector;
+    std::vector<Id> globalIndicesToSend;
+    std::vector<int> offsets;
+
+    // Build and communicate import/export data.
+    // 1. Send number of exports/imports.
+    if (cc.rank() == root) {
+        numberOfExportedVerticesPerProcess.resize(cc.size(), 0);
+        for (int i = 0; i < numExport; ++i) {
+            ++numberOfExportedVerticesPerProcess[exportToPart[i]];
+        }
+    }
+
+    cc.scatter(numberOfExportedVerticesPerProcess.data(), &numImport, 1, root);
+    assert(cc.rank() != root || numImport == 0);
+
+    // 2. Build the imports/exports themselves.
+    std::string error;
+    if (cc.rank() == root) {
+        offsets.resize(cc.size() + 1, 0);
+        std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
+                         numberOfExportedVerticesPerProcess.end(),
+                         offsets.begin() + 1);
+            globalIndicesToSend.resize(numExport, 0);
+            const int commSize = cc.size();
+            std::vector<int> currentIndex(commSize, 0);
+            for (int i = 0; i < numExport; ++i) {
+                if (exportToPart[i] >= commSize) {
+                    std::ostringstream oss;
+                    oss << "Something wrong with Zoltan decomposition. "
+                        << "Debug information: exportToPart[i] = " << exportToPart[i] << ", "
+                        << "currentIndex.size() = " << currentIndex.size();
+                    error = oss.str();
+                    break;
+                }
+                const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
+                if (index >= numExport) {
+                    std::ostringstream oss;
+                    oss << "Something wrong with Zoltan decomposition. "
+                        << "index " << index << ", "
+                        << "globalIndicesToSend.size() = " << globalIndicesToSend.size()
+                        << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
+                        << "\n\ncurrentIndex[exportToPart[i]] = " << currentIndex[exportToPart[i]]
+                        << "\n\nexportToPart[i] = " << exportToPart[i];
+                    error = oss.str();
+                    break;
+                }
+                globalIndicesToSend[index] = exportGlobalGids[i];
+            }
+        } else {
+            importGlobalGidsVector.resize(numImport, 0);
+        }
+        // Check for errors
+        int ok = error.empty();
+        cc.broadcast(&ok, 1, root);
+        if (!ok) {
+            OPM_THROW(std::runtime_error, error);
+        }
+
+        // 3. Communicate the imports/exports.
+        cc.scatterv(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
+                    offsets.data(), importGlobalGidsVector.data(), numImport, root);
+        return std::make_tuple(numImport, globalIndicesToSend);
+}
+
+// instantiate int types
+template
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> > >
+makeImportAndExportLists(const Dune::CpGrid&,
+                         const Dune::CollectiveCommunication<MPI_Comm>&,
+                         const std::vector<Dune::cpgrid::OpmWellType>*,
+                         const Dune::cpgrid::CombinedGridWellGraph*,
+                         int,
+                         int,
+                         int,
+                         const int*,
+                         const int*,
+                         const int*,
+                         const int*,
+                         bool);
+
+template
+std::tuple<int, std::vector<int> >
+scatterExportInformation(int numExport, const int*,
+                         const int*, int,
+                         const Dune::CollectiveCommunication<MPI_Comm>&);
+#endif // HAVE_MPI
+} // end namespace Dune
+} // end namespace cpgrid
+
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
+namespace Dune
+{
+namespace cpgrid
+{
+
+namespace {
+void setDefaultZoltanParameters(Zoltan_Struct* zz) {
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
+    Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
+    Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
+    Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
+    Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
+    Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "1");
+    Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
+    Zoltan_Set_Param(zz, "CHECK_GRAPH", "2");
+    Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","0");
+    Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "0");
+    Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
+}
+
+
 } // anon namespace
 
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
@@ -215,7 +324,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     auto importExportLists = makeImportAndExportLists(cpgrid,
                                      cc,
                                      wells,
-                                     *gridAndWells,
+                                     gridAndWells.get(),
                                      root,
                                      numExport,
                                      numImport,
@@ -273,82 +382,23 @@ public:
             OPM_THROW(std::runtime_error, "Could not initialize Zoltan, or Zoltan partitioning failed.");
         }
 
-        // Build and communicate import/export data.
-        // 1. Send number of exports/imports.
-        if (cc.rank() == root) {
-            numberOfExportedVerticesPerProcess.resize(cc.size(), 0);
-            for (int i = 0; i < numExport; ++i) {
-                ++numberOfExportedVerticesPerProcess[exportToPart[i]];
-            }
-        }
+        std::tie(numImport, importGlobalGidsVector) = scatterExportInformation<ZoltanId>(numExport, exportGlobalGids,
+                                                                                         exportToPart, root, cc);
 
-        cc.scatter(numberOfExportedVerticesPerProcess.data(), &numImport, 1, root);
-        assert(cc.rank() != root || numImport == 0);
-
-        // 2. Build the imports/exports themselves.
-        std::string error;
-        if (cc.rank() == root) {
-            offsets.resize(cc.size() + 1, 0);
-            std::partial_sum(numberOfExportedVerticesPerProcess.begin(),
-                             numberOfExportedVerticesPerProcess.end(),
-                             offsets.begin() + 1);
-            globalIndicesToSend.resize(numExport, 0);
-            const int commSize = cc.size();
-            std::vector<int> currentIndex(commSize, 0);
-            for (int i = 0; i < numExport; ++i) {
-                if (exportToPart[i] >= commSize) {
-                    std::ostringstream oss;
-                    oss << "Something wrong with Zoltan decomposition. "
-                        << "Debug information: exportToPart[i] = " << exportToPart[i] << ", "
-                        << "currentIndex.size() = " << currentIndex.size();
-                    error = oss.str();
-                    break;
-                }
-                const auto index = currentIndex[exportToPart[i]]++ + offsets[exportToPart[i]];
-                if (index >= numExport) {
-                    std::ostringstream oss;
-                    oss << "Something wrong with Zoltan decomposition. "
-                        << "index " << index << ", "
-                        << "globalIndicesToSend.size() = " << globalIndicesToSend.size()
-                        << "\n\noffsets[exportToPart[i]] = " << offsets[exportToPart[i]]
-                        << "\n\ncurrentIndex[exportToPart[i]] = " << currentIndex[exportToPart[i]]
-                        << "\n\nexportToPart[i] = " << exportToPart[i];
-                    error = oss.str();
-                    break;
-                }
-                globalIndicesToSend[index] = exportGlobalGids[i];
-            }
-        } else {
-            importGlobalGidsVector.resize(numImport, 0);
-        }
-        // Check for errors
-        int ok = error.empty();
-        cc.broadcast(&ok, 1, root);
-        if (!ok) {
-            OPM_THROW(std::runtime_error, error);
-        }
-
-        // 3. Communicate the imports/exports.
-        cc.scatterv(globalIndicesToSend.data(), numberOfExportedVerticesPerProcess.data(),
-                    offsets.data(), importGlobalGidsVector.data(), numImport, root);
         if (cc.rank() != root)
-        {
             importGlobalGids = importGlobalGidsVector.data();
-        }
 
-        auto importExportLists = makeImportAndExportLists(cpgrid,
-                                                          cc,
-                                                          wells,
-                                                          *gridAndWells,
-                                                          root,
-                                                          numExport,
-                                                          numImport,
-                                                          exportLocalGids,
-                                                          exportGlobalGids,
-                                                          exportToPart,
-                                                          importGlobalGids);
-
-        return importExportLists;
+        return makeImportAndExportLists(cpgrid,
+                                        cc,
+                                        wells,
+                                        gridAndWells.get(),
+                                        root,
+                                        numExport,
+                                        numImport,
+                                        exportLocalGids,
+                                        exportGlobalGids,
+                                        exportToPart,
+                                        importGlobalGids);
     }
 
     ~ZoltanSerialPartitioner()
@@ -436,9 +486,6 @@ private:
     std::unique_ptr<CombinedGridWellGraph> gridAndWells;
     using ZoltanId = typename std::remove_pointer<ZOLTAN_ID_PTR>::type;
     std::vector<ZoltanId> importGlobalGidsVector;
-    std::vector<int> numberOfExportedVerticesPerProcess;
-    std::vector<ZoltanId> globalIndicesToSend;
-    std::vector<int> offsets;
 };
 
 
