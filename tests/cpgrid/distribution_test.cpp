@@ -538,7 +538,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
         const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
 #if HAVE_MPI
-        BOOST_REQUIRE(&ix!=&ix1);
+        BOOST_REQUIRE(&ix==&ix1);
 #endif
 
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
