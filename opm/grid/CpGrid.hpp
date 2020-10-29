@@ -704,7 +704,11 @@ namespace Dune
                     int overlapLayers=1, bool useZoltan = true)
         {
             auto ret = loadBalance(wells, transmissibilities, overlapLayers, useZoltan);
-            scatterData(data);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
             return ret;
         }
 
@@ -742,7 +746,11 @@ namespace Dune
                     bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities, addCornerCells, overlapLayers, useZoltan);
-            scatterData(data);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
             return ret;
         }
 
@@ -759,7 +767,10 @@ namespace Dune
                          int overlapLayers=1, bool useZoltan = true)
         {
             bool ret = loadBalance(overlapLayers, useZoltan);
-            scatterData(data);
+            if (ret)
+            {
+                scatterData(data);
+            }
             return ret;
         }
 
