@@ -229,7 +229,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                                              exportGlobalIds.data(),
                                              exportToPart.data(),
                                              importGlobalIds.data(),
-                                             true);
+                                             /* allowDistributedWells = */ false);
         }
 
         // first create the overlap
