@@ -8,7 +8,7 @@ Build-Depends: build-essential, debhelper (>= 9),
                libdune-istl-dev, doxygen, texlive-latex-extra,
                texlive-latex-recommended, ghostscript,
                libsuitesparse-dev,
-               libopm-common-dev,
+               libopm-common-dev, libscotchmetis-dev, libscotchparmetis-dev,
                libdune-geometry-dev, libtrilinos-zoltan-dev, mpi-default-dev,
                mpi-default-bin
 Standards-Version: 3.9.2
