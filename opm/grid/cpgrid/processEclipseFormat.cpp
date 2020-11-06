@@ -1084,9 +1084,11 @@ namespace cpgrid
                 cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cell_ent];
                 face_indices.clear();
                 for (int local_index = 0; local_index < cf.size(); ++local_index) {
-                    face_indices.push_back(cf[local_index].index());
+                    if (face_to_output_face[cf[local_index].index()] != cpgrid::NNCFace) {
+                        face_indices.push_back(cf[local_index].index());
+                    }
                 }
-                IndirectArray<point_t> cell_pts(face_centroids, &face_indices[0], &face_indices[0] + cf.size());
+                IndirectArray<point_t> cell_pts(face_centroids, &face_indices[0], &face_indices[0] + face_indices.size());
                 point_t cell_avg = average(cell_pts);
                 point_t cell_centroid(0.0);
                 double tot_cell_vol = 0.0;
