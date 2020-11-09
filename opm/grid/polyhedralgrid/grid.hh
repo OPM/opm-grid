@@ -654,8 +654,8 @@ namespace Dune
      *                          ForwardCommunication or BackwardCommunication)
      *  \param[in]  level       grid level to communicate
      */
-    template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+    template< class DataHandle>
+    void communicate ( DataHandle& /* dataHandle */,
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */,
                        int /* level */ ) const
@@ -675,8 +675,8 @@ namespace Dune
      *  \param[in]  direction   communication direction (one of
      *                          ForwardCommunication, BackwardCommunication)
      */
-    template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+    template< class DataHandle>
+    void communicate ( DataHandle& /* dataHandle */,
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */ ) const
     {
@@ -846,6 +846,34 @@ namespace Dune
       ijk[0] = gc % logicalCartesianSize()[0];  gc /= logicalCartesianSize()[0];
       ijk[1] = gc % logicalCartesianSize()[1];
       ijk[2] = gc / logicalCartesianSize()[1];
+    }
+
+    /// \name Parallel grid extensions.
+    /// Methods extending the DUNE's parallel grid interface.
+    /// These are basically for scattering/gathering data to/from
+    /// distributed views.
+    //@{
+    ///
+    /// \brief Moves data from the global (all data on process) view to the distributed view.
+    ///
+    /// This method does not do communication but assumes that the global grid
+    /// is present on every process and simply copies data to the distributed view.
+    /// \tparam DataHandle The type of the data handle describing the data and responsible for
+    ///         gathering and scattering the data.
+    /// \param handle The data handle describing the data and responsible for
+    ///         gathering and scattering the data.
+    template<class DataHandle>
+    void scatterData(DataHandle& handle) const
+    {
+#if HAVE_MPI
+        //if(!distributed_data_)
+        //    OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
+        //distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface(),
+                                       pointScatterGatherInterface());
+#else
+        // Suppress warnings for unused argument.
+        (void) handle;
+#endif
     }
 
   protected:
