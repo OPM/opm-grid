@@ -319,9 +319,9 @@ namespace Dune
      *  \param[in]  deck         Opm Eclipse deck
      *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
      */
-    explicit PolyhedralGrid ( const Opm::Deck& deck,
+    explicit PolyhedralGrid ( const Opm::EclipseGrid& inputGrid,
                               const std::vector<double>& poreVolumes = std::vector<double> ())
-    : gridPtr_( createGrid( deck, poreVolumes ) ),
+    : gridPtr_( createGrid( inputGrid, poreVolumes ) ),
       grid_( *gridPtr_ ),
       comm_( *this ),
       leafIndexSet_( *this ),
@@ -878,59 +878,54 @@ namespace Dune
 
   protected:
 #if HAVE_ECL_INPUT
-    UnstructuredGridType* createGrid( const Opm::Deck& deck, const std::vector< double >& poreVolumes ) const
+    UnstructuredGridType* createGrid( const Opm::EclipseGrid& inputGrid, const std::vector< double >& poreVolumes ) const
     {
-        const int* rawactnum = deck.hasKeyword("ACTNUM")
-          ? deck.getKeyword("ACTNUM").getIntData().data()
-          : nullptr;
-        const auto eclipseGrid = std::make_shared<Opm::EclipseGrid>(deck, rawactnum);
-
         struct grdecl g;
 
-        g.dims[0] = eclipseGrid->getNX();
-        g.dims[1] = eclipseGrid->getNY();
-        g.dims[2] = eclipseGrid->getNZ();
+        g.dims[0] = inputGrid.getNX();
+        g.dims[1] = inputGrid.getNY();
+        g.dims[2] = inputGrid.getNZ();
 
-        std::vector<double> mapaxes = eclipseGrid->getMAPAXES( );
-        std::vector<double> coord = eclipseGrid->getCOORD( );
-        std::vector<double> zcorn = eclipseGrid->getZCORN( );
-        std::vector<int> actnum = eclipseGrid->getACTNUM(  );
+        std::vector<double> mapaxes = inputGrid.getMAPAXES( );
+        std::vector<double> coord = inputGrid.getCOORD( );
+        std::vector<double> zcorn = inputGrid.getZCORN( );
+        std::vector<int> actnum = inputGrid.getACTNUM(  );
 
         g.coord = coord.data();
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
         g.mapaxes = mapaxes.data();
 
-        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
         {
           Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-          const std::vector<double>& minpvv  = eclipseGrid->getMinpvVector();
+          const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
           // Currently the pinchProcessor is not used and only opmfil is supported
           // The polyhedralgrid only only supports the opmfil option
-          //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+          //bool opmfil = inputGrid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
           bool opmfil = true;
           const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
           std::vector<double> thickness(cartGridSize);
           for (size_t i = 0; i < cartGridSize; ++i) {
-              thickness[i] = eclipseGrid->getCellThickness(i);
+              thickness[i] = inputGrid.getCellThickness(i);
           }
-          const double z_tolerance = eclipseGrid->isPinchActive() ? eclipseGrid->getPinchThresholdThickness() : 0.0;
+          const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
           mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
         }
 
         /*
-        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            const double minpv_value  = eclipseGrid->getMinpvValue();
+            const double minpv_value  = inputGrid.getMinpvValue();
             // Currently the pinchProcessor is not used and only opmfil is supported
-            //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            //bool opmfil = inputGrid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             bool opmfil = true;
             mp.process(poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
         }
         */
 
-        const double z_tolerance = eclipseGrid->isPinchActive() ?
-            eclipseGrid->getPinchThresholdThickness() : 0.0;
+        const double z_tolerance = inputGrid.isPinchActive() ?
+            inputGrid.getPinchThresholdThickness() : 0.0;
         UnstructuredGridType* cgrid = create_grid_cornerpoint(&g, z_tolerance);
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
