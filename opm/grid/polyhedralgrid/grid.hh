@@ -11,6 +11,7 @@
 
 //- dune-common includes
 #include <dune/common/version.hh>
+#include <dune/common/parallel/mpihelper.hh>
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
@@ -120,7 +121,8 @@ namespace Dune
       typedef PolyhedralGridIdSet< dim, dimworld, ctype > GlobalIdSet;
       typedef GlobalIdSet  LocalIdSet;
 
-      typedef Dune::CollectiveCommunication< Grid > CollectiveCommunication;
+      typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
+      typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
 
       template< PartitionIteratorType pitype >
       struct Partition
@@ -323,7 +325,7 @@ namespace Dune
                               const std::vector<double>& poreVolumes = std::vector<double> ())
     : gridPtr_( createGrid( inputGrid, poreVolumes ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -342,7 +344,7 @@ namespace Dune
                               const std::vector< double >& dx )
     : gridPtr_( createGrid( n, dx ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator()),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -360,7 +362,7 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -379,7 +381,7 @@ namespace Dune
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),
       grid_( grid ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -660,7 +662,7 @@ namespace Dune
                        CommunicationDirection /* direction */,
                        int /* level */ ) const
     {
-       //levelGridView( level ).communicate( dataHandle, interface, direction );
+        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
     }
 
     /** \brief communicate information on leaf entities
@@ -680,7 +682,19 @@ namespace Dune
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */ ) const
     {
-      //leafGridView().communicate( dataHandle, interface, direction );
+        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
+    }
+
+    /// \brief Switch to the global view.
+    void switchToGlobalView()
+    {
+        OPM_THROW(std::runtime_error, "switch to global view not implemented for polyhedreal grid!");
+    }
+
+    /// \brief Switch to the distributed view.
+    void switchToDistributedView()
+    {
+        OPM_THROW(std::runtime_error, "switch to distributed view not implemented for polyhedreal grid!");
     }
 
     /** \brief obtain CollectiveCommunication object
@@ -865,15 +879,7 @@ namespace Dune
     template<class DataHandle>
     void scatterData(DataHandle& handle) const
     {
-#if HAVE_MPI
-        //if(!distributed_data_)
-        //    OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-        //distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface(),
-                                       pointScatterGatherInterface());
-#else
-        // Suppress warnings for unused argument.
-        (void) handle;
-#endif
+        OPM_THROW(std::runtime_error, "ScatterData not implemented for polyhedreal grid!");
     }
 
   protected:
