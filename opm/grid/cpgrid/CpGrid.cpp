@@ -46,6 +46,7 @@
 #include "../CpGrid.hpp"
 #include "CpGridData.hpp"
 #include <opm/grid/common/ZoltanPartition.hpp>
+#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
@@ -218,10 +219,21 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         std::tie(numImport, importGlobalIds) =
             cpgrid::scatterExportInformation(numExport, exportGlobalIds.data(),
                                              exportToPart.data(), 0, cc);
+        const bool allowDistributedWells = false;
+        std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
+        if (wells && !allowDistributedWells)
+        {
+            bool partitionIsEmpty = (size(0) == 0);
+            gridAndWells.reset(new cpgrid::CombinedGridWellGraph(*this,
+                                                       wells,
+                                                       transmissibilities,
+                                                       partitionIsEmpty,
+                                                       method));
+        }
         std::tie(cell_part, wells_on_proc, exportList, importList) =
             cpgrid::makeImportAndExportLists(*this, comm(),
                                              wells,
-                                             nullptr,
+                                             gridAndWells.get(),
                                              root,
                                              numExport,
                                              numImport,
@@ -229,7 +241,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                                              exportGlobalIds.data(),
                                              exportToPart.data(),
                                              importGlobalIds.data(),
-                                             /* allowDistributedWells = */ false);
+                                             allowDistributedWells);
         }
 
         // first create the overlap
