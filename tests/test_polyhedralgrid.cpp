@@ -282,10 +282,11 @@ int main(int argc, char** argv )
 
         Opm::Parser parser;
         const auto deck = parser.parseString(deckString);
+        Opm::EclipseGrid eclgrid( deck);
         std::vector<double> porv;
 
         std::cout <<"Check 3d grid created from deck" << std::endl << std::endl;
-        Grid grid(deck, porv);
+        Grid grid(eclgrid, porv);
         gridcheck( grid );
         std::cout << std::endl;
 #endif
