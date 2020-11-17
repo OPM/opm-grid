@@ -877,9 +877,9 @@ namespace Dune
     /// \param handle The data handle describing the data and responsible for
     ///         gathering and scattering the data.
     template<class DataHandle>
-    void scatterData(DataHandle& handle) const
+    void scatterData([[maybe_unused]] DataHandle& handle) const
     {
-        OPM_THROW(std::runtime_error, "ScatterData not implemented for polyhedreal grid!");
+        OPM_THROW(std::runtime_error, "ScatterData not implemented for polyhedral grid!");
     }
 
   protected:
