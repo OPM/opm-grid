@@ -99,6 +99,7 @@ namespace Dune
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
+                       const std::unordered_map<size_t, double>& aquifer_cell_volumes,
                        cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
@@ -114,7 +115,8 @@ namespace cpgrid
 
 #if HAVE_ECL_INPUT
     void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs)
+                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs,
+                                          const std::unordered_map<size_t, double>& aquifer_cell_volumes)
     {
         if (ccobj_.rank() != 0 ) {
             // Store global grid only on rank 0
@@ -233,7 +235,7 @@ namespace cpgrid
             processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
+            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals, aquifer_cell_volumes);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -243,7 +245,8 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
+                                          const std::unordered_map<size_t, double> aquifer_cell_volumes)
     {
         if( ccobj_.rank() != 0 )
         {
@@ -254,7 +257,12 @@ namespace cpgrid
         std::cout << "Processing eclipse data." << std::endl;
 #endif
         processed_grid output;
-        process_grdecl(&input_data, z_tolerance, &output);
+        const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
+        std::vector<int> is_aquifer_cell(global_nc, 0);
+        for (const auto& cell : aquifer_cell_volumes) {
+            is_aquifer_cell[cell.first] = 1;
+        }
+        process_grdecl(&input_data, z_tolerance, is_aquifer_cell.data(), &output);
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
@@ -271,7 +279,13 @@ namespace cpgrid
 #ifdef VERBOSE
         std::cout << "Building geometry." << std::endl;
 #endif
-        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, geometry_.geomVector(std::integral_constant<int,0>()),
+        std::unordered_map<size_t, double> aquifer_cell_volumes_local;
+        for (size_t i = 0; i < this->global_cell_.size(); ++i) {
+            if (aquifer_cell_volumes.count(this->global_cell_[i]) > 0) {
+                aquifer_cell_volumes_local.insert({i, aquifer_cell_volumes.at(this->global_cell_[i])});
+            }
+        }
+        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, aquifer_cell_volumes_local, geometry_.geomVector(std::integral_constant<int,0>()),
                   geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
                   face_normals_, turn_normals);
 
@@ -1000,6 +1014,7 @@ namespace cpgrid
                        const cpgrid::OrientedEntityTable<0, 1>& c2f,
                        const std::vector<std::array<int,8> >& c2p,
                        const std::vector<int>& face_to_output_face,
+                       const std::unordered_map<size_t, double>& aquifer_cell_volumes,
                        cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
@@ -1102,7 +1117,11 @@ namespace cpgrid
                     face_contrib *= small_vol;
                     cell_centroid += face_contrib;
                 }
-                cell_centroid /= tot_cell_vol;
+                // TODO: for the cell with zero volumes, data in cell_centroid is NaN already. We need to
+                // find solution to deal with those cells to get sensible cell_centroid.
+                if (tot_cell_vol > 0.) {
+                    cell_centroid /= tot_cell_vol;
+                }
 // #define HACK_CELL_CENTROIDS     // when this is defined, you get the average of top and bottom face centroids.
 #ifdef HACK_CELL_CENTROIDS
                 int numf = cf.size();
@@ -1112,6 +1131,10 @@ namespace cpgrid
 #endif
                 cell_centroids.push_back(cell_centroid);
                 cell_volumes.push_back(tot_cell_vol);
+            }
+            // this is the bad way of doing this
+            for (const auto& aqu_cell : aquifer_cell_volumes) {
+                cell_volumes[aqu_cell.first] = aqu_cell.second;
             }
 #ifdef VERBOSE
             std::cout << "Cells:              " << clock.secsSinceLast() << std::endl;

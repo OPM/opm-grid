@@ -63,6 +63,7 @@ process_vertical_faces(int direction,
 static void
 process_horizontal_faces(int **intersections,
                          int *plist,
+                         const int* is_aquifer_cell,
                          struct processed_grid *out);
 
 static int
@@ -300,6 +301,7 @@ process_vertical_faces(int direction,
 static void
 process_horizontal_faces(int **intersections,
                          int *plist,
+                         const int* is_aquifer_cell,
                          struct processed_grid *out)
 {
     int i,j,k;
@@ -344,16 +346,16 @@ process_horizontal_faces(int **intersections,
 
 
             for (k = 1; k<nz*2+1; ++k){
+                idx = linearindex(out->dimensions, i,j,(k-1)/2);
 
                 /* Skip if space between face k and face k+1 is collapsed. */
                 /* Note that inactive cells (with ACTNUM==0) have all been  */
                 /* collapsed in finduniquepoints.                           */
+                /* we keep aquifer cells active always even the cells have zero thickness or volume */
                 if (c[0][k] == c[0][k+1] && c[1][k] == c[1][k+1] &&
-                    c[2][k] == c[2][k+1] && c[3][k] == c[3][k+1]){
+                c[2][k] == c[2][k+1] && c[3][k] == c[3][k+1] && !(is_aquifer_cell && is_aquifer_cell[idx])){
 
-                    /* If the pinch is a cell: */
-                    if (k%2){
-                        idx = linearindex(out->dimensions, i,j,(k-1)/2);
+                     if (k%2) {
                         cell[idx] = -1;
                     }
                 }
@@ -760,6 +762,7 @@ reverse_face_nodes(struct processed_grid *out)
 */
 void process_grdecl(const struct grdecl   *in,
                     double                tolerance,
+                    const int*     is_aquifer_cell,
                     struct processed_grid *out)
 {
     struct grdecl g;
@@ -872,7 +875,7 @@ void process_grdecl(const struct grdecl   *in,
 
     process_vertical_faces   (0, &intersections, plist, work, out);
     process_vertical_faces   (1, &intersections, plist, work, out);
-    process_horizontal_faces (   &intersections, plist,       out);
+    process_horizontal_faces (   &intersections, plist, is_aquifer_cell, out);
 
     free (plist);
     free (work);

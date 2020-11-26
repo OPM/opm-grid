@@ -129,6 +129,7 @@ extern "C" {
      */
     void process_grdecl(const struct grdecl   *g  ,
                         double                 tol,
+                        const int*   is_aquifer_cell,
                         struct processed_grid *out);
 
     /**
