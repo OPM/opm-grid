@@ -78,9 +78,6 @@ public:
     /// \brief Constructor
     /// \param wells The eclipse information about the wells
     /// \param cpGrid The corner point grid
-    /// \param cartesian_to_compressed Mapping of cartesian index
-    ///        compressed cell index. The compressed index is used
-    ///        to represent the well conditions.
     WellConnections(const std::vector<OpmWellType>& wells,
                     const Dune::CpGrid& cpGrid);
 
