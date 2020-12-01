@@ -26,6 +26,11 @@
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
+#ifdef HAVE_ZOLTAN
+bool USE_ZOLTAN = true;
+#else
+bool USE_ZOLTAN = false;
+#endif
 
 #if HAVE_MPI
 class MPIError {
@@ -334,7 +339,7 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
     //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     grid.createCartesian(dims, size);
-    grid.loadBalance();
+    grid.loadBalance(1, USE_ZOLTAN);
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -366,7 +371,7 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     seqGrid.setUniqueBoundaryIds(true);
     grid.createCartesian(dims, size);
-    grid.loadBalance();
+    grid.loadBalance(1, USE_ZOLTAN);
     seqGrid.createCartesian(dims, size);
 
     auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
@@ -508,7 +513,7 @@ BOOST_AUTO_TEST_CASE(distribute)
     const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
 
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
-    grid.loadBalance(data);
+    grid.loadBalance(data, 1, USE_ZOLTAN);
 
     if ( grid.numCells())
     {
@@ -533,7 +538,7 @@ BOOST_AUTO_TEST_CASE(distribute)
 
         const Dune::CpGrid::LeafIndexSet& ix1 = grid.leafIndexSet();
 #if HAVE_MPI
-        BOOST_REQUIRE(&ix!=&ix1);
+        BOOST_REQUIRE(&ix==&ix1);
 #endif
 
         for (Dune::CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
@@ -587,7 +592,41 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     typedef Dune::CpGrid::LeafGridView GridView;
     enum{dimWorld = GridView::dimensionworld};
 
-    grid.loadBalance();
+    grid.loadBalance(1, USE_ZOLTAN);
+    auto global_grid = grid;
+    global_grid.switchToGlobalView();
+
+    auto scatter_handle = CheckGlobalCellHandle(global_grid.globalCell(),
+                                                grid.globalCell());
+    auto gather_handle  = CheckGlobalCellHandle(grid.globalCell(),
+                                                global_grid.globalCell());
+    auto bid_handle     = CheckBoundaryIdHandle(global_grid, grid);
+
+#if HAVE_MPI
+    Dune::VariableSizeCommunicator<> scatter_gather_comm(grid.comm(), grid.cellScatterGatherInterface(), 8*4*2*8);
+    scatter_gather_comm.forward(scatter_handle);
+    scatter_gather_comm.backward(gather_handle);
+    scatter_gather_comm.forward(bid_handle);
+#else
+    (void) scatter_handle;
+    (void) gather_handle;
+    (void) bid_handle;
+#endif
+}
+// A small test that gathers/scatter the global cell indices.
+// On the sending side these are sent and on the receiving side
+// these are check with the globalCell values.
+BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPIWithoutZoltan)
+{
+
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{8, 4, 2}};
+    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+    grid.createCartesian(dims, size);
+    typedef Dune::CpGrid::LeafGridView GridView;
+    enum{dimWorld = GridView::dimensionworld};
+
+    grid.loadBalance(1, false);
     auto global_grid = grid;
     global_grid.switchToGlobalView();
 
@@ -624,7 +663,7 @@ BOOST_AUTO_TEST_CASE(intersectionOverlap)
     typedef GridView::Codim<0>::Iterator ElementIterator;
     typedef typename GridView::IntersectionIterator IntersectionIterator;
 
-    grid.loadBalance();
+    grid.loadBalance(1, USE_ZOLTAN);
     ElementIterator endEIt = gridView.end<0>();
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
         IntersectionIterator isEndIt = gridView.iend(eIt);

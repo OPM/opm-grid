@@ -112,7 +112,14 @@ void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
                        int *num_edges,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
+} // end namespace cpgrid
+} // end namespace Dune
 
+#endif // HAVE_ZOLTAN
+namespace Dune
+{
+namespace cpgrid
+{
 /// \brief A graph repesenting a grid together with the well completions.
 ///
 /// The edges of the graph are formed by the superset of the edges representing
@@ -224,7 +231,7 @@ private:
     double log_min_;
 };
 
-
+#ifdef HAVE_ZOLTAN
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.
 /// \param zz The struct with the information for ZOLTAN.
 /// \param grid The grid to partition.
@@ -235,8 +242,8 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
                                    const CombinedGridWellGraph& graph,
                                    bool pretendNull);
+#endif // HAVE_ZOLTAN
 } // end namespace cpgrid
 } // end namespace Dune
 
-#endif // HAVE_ZOLTAN
 #endif // header guard
