@@ -143,7 +143,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
-                    bool useZoltan)
+                    [[maybe_unused]] bool useZoltan)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
