@@ -893,10 +893,15 @@ void process_grdecl(const struct grdecl   *in,
        -make [0...nx*ny*nz-1] array of local cell numbers,
        lexicographically ordered, used to remap out->face_neighbors
     */
+
+/*     for (int i = 0; i < nc; ++i) {
+        printf(" local_cell_index %d is %d \n", i, out->local_cell_index[i]);
+    } */
     global_cell_index = malloc(nc * sizeof *global_cell_index);
     cellnum = 0;
     for (i = 0; i < nc; ++i) {
         if (out->local_cell_index[i] != -1) {
+//            printf(" local_cell_index[%ld] is %d, cellnum is %d \n", i, out->local_cell_index[i], cellnum);
             global_cell_index[cellnum] = (int) i;
             out->local_cell_index[i]   = cellnum;
             cellnum++;
@@ -914,6 +919,9 @@ void process_grdecl(const struct grdecl   *in,
 
     free(out->local_cell_index);
     out->local_cell_index = global_cell_index;
+/*     for (int i = 0; i < nc; ++i) {
+        printf(" global_cell_index %d is %d \n", i, global_cell_index[i]);
+    } */
 
     /* Reflect Y coordinate back to original position if left-handed
      * coordinate system was detected and handled earlier. */

@@ -114,7 +114,7 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
+    void CpGridData::processEclipseFormat(Opm::EclipseState& ecl_state, const Opm::Deck& deck, const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs,
                                           const std::unordered_map<size_t, double>& aquifer_cell_volumes)
     {
@@ -232,10 +232,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
+            processEclipseFormat(ecl_state, deck, new_g, nnc_cells, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals, aquifer_cell_volumes);
+            processEclipseFormat(ecl_state, deck, g, nnc_cells, z_tolerance, false, turn_normals, aquifer_cell_volumes);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -245,7 +245,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
+    void CpGridData::processEclipseFormat(Opm::EclipseState& ecl_state, const Opm::Deck& deck, const grdecl& input_data, NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
                                           const std::unordered_map<size_t, double> aquifer_cell_volumes)
     {
         if( ccobj_.rank() != 0 )
@@ -266,6 +266,21 @@ namespace cpgrid
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
+        }
+        std::vector<int> new_actnum(global_nc, 0);
+        for (int i = 0; i < output.number_of_cells; ++i) {
+            new_actnum[output.local_cell_index[i]] = 1;
+        }
+        // TODO: here, we need to use the new ACTNUM information to generate the NNC for the aquifers
+        ecl_state.aquifer().numericalAquifers().addAquiferConnections(deck, ecl_state.getInputGrid(), new_actnum);
+        ecl_state.aquifer().numericalAquifers().appendConnectionNNC(ecl_state.getInputGrid(), ecl_state.fieldProps(), new_actnum, ecl_state.getInputNNC());
+
+        for (const auto single_nnc : ecl_state.getInputNNC().input()) {
+            // Repeated NNCs will only exist in the map once (repeated
+            // insertions have no effect). The code that computes the
+            // transmissibilities is responsible for ensuring repeated NNC
+            // transmissibilities are added.
+            nnc[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
         }
 
         // Move data into the grid's structures.
@@ -747,6 +762,7 @@ namespace cpgrid
                 const int c1 = global_to_local[nncpair.first];
                 const int c2 = global_to_local[nncpair.second];
                 if (c1 < 0 || c2 < 0) {
+                    std::cout << " c1 " << c1 << " g1 " << nncpair.first << " c2 " << c2 << " g2 " << nncpair.second << std::endl;
                     Opm::OpmLog::warning("nnc_inactive", "NNC connection requested between inactive cells.");
                     continue;
                 }

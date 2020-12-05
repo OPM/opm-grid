@@ -203,7 +203,7 @@ public:
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-    void processEclipseFormat(const Opm::EclipseGrid* ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+    void processEclipseFormat(Opm::EclipseState& ecl_state, const Opm::Deck& deck, const Opm::EclipseGrid* ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                               const std::vector<double>& poreVolume = std::vector<double>(), const Opm::NNC& nncs = Opm::NNC(),
                               const std::unordered_map<size_t, double>& aquifer_cell_volumes = std::unordered_map<size_t, double>());
 #endif
@@ -213,7 +213,7 @@ public:
     /// \param z_tolerance points along a pillar that are closer together in z
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-    void processEclipseFormat(const grdecl& input_data, const std::array<std::set<std::pair<int, int>>, 2>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false,
+    void processEclipseFormat(Opm::EclipseState& ecl_state, const Opm::Deck& deck, const grdecl& input_data, std::array<std::set<std::pair<int, int>>, 2>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false,
                               const std::unordered_map<size_t, double> aquifer_cell_volumes = std::unordered_map<size_t, double>());
 
 
