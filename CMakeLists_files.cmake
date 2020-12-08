@@ -82,7 +82,7 @@ list (APPEND ATTIC_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
-  tests/test_cpgrid.cpp
+#  tests/test_cpgrid.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -107,7 +107,7 @@ if(HAVE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
-		tests/cpgrid/grid_nnc.cpp
+#		tests/cpgrid/grid_nnc.cpp
 	)
 endif()
 
@@ -136,10 +136,10 @@ list (APPEND EXAMPLE_SOURCE_FILES
 list (APPEND PROGRAM_SOURCE_FILES
   examples/mirror_grid.cpp
   )
-if(HAVE_ECL_INPUT)
-  list(APPEND EXAMPLE_SOURCE_FILES examples/grdecl2vtu.cpp)
-  list(APPEND PROGRAM_SOURCE_FILES examples/grdecl2vtu.cpp)
-endif()
+# if(HAVE_ECL_INPUT)
+#   list(APPEND EXAMPLE_SOURCE_FILES examples/grdecl2vtu.cpp)
+#   list(APPEND PROGRAM_SOURCE_FILES examples/grdecl2vtu.cpp)
+# endif()
 
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
