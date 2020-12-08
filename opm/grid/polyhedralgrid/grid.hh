@@ -987,8 +987,11 @@ namespace Dune
           {
             return 1;
           }
+        default:
+          {
+            return 0;
+          }
       }
-      return 0;
     }
 
     template <class EntitySeed>
@@ -1018,8 +1021,11 @@ namespace Dune
             const int coordIndex = GlobalCoordinate :: dimension * seed.index();
             return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
           }
+        default:
+          {
+            return GlobalCoordinate( 0 );
+          }
       }
-      return GlobalCoordinate( 0 );
     }
 
     template <class EntitySeed>

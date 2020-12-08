@@ -136,7 +136,7 @@ perforatingWellIndicesOnProc(const std::vector<int>& parts,
                 ++connectionsOnProc[parts[connection_index]];
             }
 
-            for (const auto entry: connectionsOnProc)
+            for (const auto& entry: connectionsOnProc)
             {
                 if (entry.second > 0) // Should be unnecessary
                 {
