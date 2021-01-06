@@ -143,13 +143,16 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
-                    [[maybe_unused]] bool useZoltan)
+                    [[maybe_unused]] bool useZoltan,
+                    double zoltanImbalanceTol)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
     static_cast<void>(method);
+    static_cast<void>(zoltanImbalanceTol);
+
     if(distributed_data_)
     {
         std::cerr<<"There is already a distributed version of the grid."
@@ -172,8 +175,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_ZOLTAN
             std::tie(cell_part, wells_on_proc, exportList, importList)
                 = serialPartitioning
-                ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0)
-                : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0);
+                ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol)
+                : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol);
 #else
             OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
@@ -321,13 +324,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         procsWithZeroCells = cc.sum(procsWithZeroCells);
 
         if (procsWithZeroCells) {
+            std::string msg = "At least one process has zero cells. Aborting. \n"
+                     " Try decreasing the imbalance tolerance for zoltan with \n"
+                     " --zoltan-imbalance-tolerance. The current value is "
+                     + std::to_string(zoltanImbalanceTol);
             if (cc.rank()==0)
             {
-                OPM_THROW(std::runtime_error, "At least one process has zero cells. Aborting.");
+                OPM_THROW(std::runtime_error, msg );
             }
             else
             {
-                OPM_THROW_NOLOG(std::runtime_error, "At least one process has zero cells. Aborting.");
+                OPM_THROW_NOLOG(std::runtime_error, msg);
             }
         }
 

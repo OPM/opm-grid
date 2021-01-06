@@ -732,6 +732,7 @@ namespace Dune
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
         ///        rectangular partitioning the underlying cartesian grid.
+        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
@@ -743,9 +744,11 @@ namespace Dune
                     const std::vector<cpgrid::OpmWellType> * wells,
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
-                    bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true)
+                    bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true,
+                    double zoltanImbalanceTol = 1.1)
         {
-            auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities, addCornerCells, overlapLayers, useZoltan);
+            auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
+                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol);
             using std::get;
             if (get<0>(ret))
             {
@@ -1417,6 +1420,9 @@ namespace Dune
         ///                           performance of the parallel preconditioner.
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param The number of layers of cells of the overlap region.
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
+        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
         ///         perforated cells local to the process, for all wells (sorted by name)
@@ -1426,7 +1432,10 @@ namespace Dune
                     const std::vector<cpgrid::OpmWellType> * wells,
                     bool serialPartitioning,
                     const double* transmissibilities,
-                    bool addCornerCells, int overlapLayers, bool useZoltan = true);
+                    bool addCornerCells,
+                    int overlapLayers,
+                    bool useZoltan = true,
+                    double zoltanImbalanceTol = 1.1);
 
         /** @brief The data stored in the grid.
          *
