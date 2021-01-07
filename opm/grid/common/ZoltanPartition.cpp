@@ -251,7 +251,6 @@ namespace cpgrid
 
 namespace {
 void setDefaultZoltanParameters(Zoltan_Struct* zz) {
-    Zoltan_Set_Param(zz, "IMBALANCE_TOL", "1.1");
     Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
     Zoltan_Set_Param(zz, "LB_METHOD", "GRAPH");
     Zoltan_Set_Param(zz, "LB_APPROACH", "PARTITION");
@@ -274,7 +273,9 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
-                               EdgeWeightMethod edgeWeightsMethod, int root)
+                               EdgeWeightMethod edgeWeightsMethod,
+                               int root,
+                               const double zoltanImbalanceTol)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -291,6 +292,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
     }
     setDefaultZoltanParameters(zz);
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
 
     // For the load balancer one process has the whole grid and
     // all others an empty partition before loadbalancing.
@@ -357,13 +359,15 @@ public:
                             const double* _transmissibilities,
                             const CollectiveCommunication<MPI_Comm>& _cc,
                             EdgeWeightMethod _edgeWeightsMethod,
-                            int _root)
+                            int _root,
+                            const double _zoltanImbalanceTol)
         : cpgrid(_cpgrid)
         , wells(_wells)
         , transmissibilities(_transmissibilities)
         , cc(_cc)
         , edgeWeightsMethod(_edgeWeightsMethod)
         , root(_root)
+        , zoltanImbalanceTol(_zoltanImbalanceTol)
     {
         if (wells) {
             const bool partitionIsEmpty = cc.rank() != root;
@@ -435,6 +439,7 @@ private:
         }
 
         setDefaultZoltanParameters(zz);
+        Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
         Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
 
         // For the load balancer one process has the whole grid and
@@ -478,6 +483,7 @@ private:
     const CollectiveCommunication<MPI_Comm>& cc;
     EdgeWeightMethod edgeWeightsMethod;
     int root;
+    const double zoltanImbalanceTol;
     std::string errorOnRoot;
 
     struct Zoltan_Struct* zz = nullptr;
@@ -506,9 +512,10 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const double* transmissibilities,
                                      const CollectiveCommunication<MPI_Comm>& cc,
                                      EdgeWeightMethod edgeWeightsMethod,
-                                     int root)
+                                     int root,
+                                     const double zoltanImbalanceTol)
 {
-    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod, root);
+    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod, root, zoltanImbalanceTol);
     return partitioner.partition();
 }
 
