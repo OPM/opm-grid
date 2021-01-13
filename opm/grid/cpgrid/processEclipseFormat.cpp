@@ -113,7 +113,9 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
+    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
+                                          const Opm::Deck& deck, const Opm::AquiferConfig& aquifer,
+                                          bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
         if (ccobj_.rank() != 0 ) {
@@ -230,10 +232,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals);
+            processEclipseFormat(ecl_grid, deck, new_g, nnc_cells, aquifer, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals);
+            processEclipseFormat(ecl_grid, deck, g, nnc_cells, aquifer, z_tolerance, false, turn_normals);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -243,7 +245,10 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
+    void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, const Opm::Deck& deck,
+                                          const grdecl& input_data, const NNCMaps& nnc,
+                                          const Opm::AquiferConfig& aquifer,
+                                          double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         if( ccobj_.rank() != 0 )
         {
@@ -258,6 +263,15 @@ namespace cpgrid
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
+        }
+
+        const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
+        if (aquifer.active()) {
+            std::vector<int> new_actnum(global_nc, 0);
+            for (int i = 0; i < output.number_of_cells; ++i) {
+                new_actnum[output.local_cell_index[i]] = 1;
+            }
+            aquifer.generateConnections(ecl_grid, deck, new_actnum);
         }
 
         // Move data into the grid's structures.
