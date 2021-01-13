@@ -493,7 +493,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         g.coord = &coord[0];
         g.zcorn = &zcorn[0];
         g.actnum = &actnum[0];
-        current_view_data_->processEclipseFormat(g, {}, 0.0, false, false);
+        current_view_data_->processEclipseFormat({}, {}, g, {}, Opm::AquiferConfig(), 0.0, false, false);
         // global grid only on rank 0
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -522,12 +522,14 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 #if HAVE_ECL_INPUT
     void CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
+                                      const Opm::Deck& deck,
+                                      const Opm::AquiferConfig& aquifer,
                                       bool periodic_extension,
                                       bool turn_normals, bool clip_z,
                                       const std::vector<double>& poreVolume,
                                       const Opm::NNC& nncs)
     {
-        current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
+        current_view_data_->processEclipseFormat(ecl_grid, deck, aquifer, periodic_extension,
                                                  turn_normals, clip_z,
                                                  poreVolume, nncs);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
@@ -539,7 +541,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)
     {
-        current_view_data_->processEclipseFormat(input_data, {}, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->processEclipseFormat({}, {}, input_data, {}, {}, z_tolerance, remove_ij_boundary, turn_normals);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
