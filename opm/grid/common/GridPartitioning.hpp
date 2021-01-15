@@ -16,7 +16,8 @@
 /*
   Copyright 2009, 2010, 2013 SINTEF ICT, Applied Mathematics.
   Copyright 2009, 2010 Statoil ASA.
-  Copyright 2013 Dr. Markus Blatt - HPC-Simulation-Software & Services
+  Copyright 2013       Dr. Markus Blatt - HPC-Simulation-Software & Services
+  Copyright 2020, 2021 OPM-OP AS
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -43,6 +44,8 @@
 #include <tuple>
 
 #include <dune/common/parallel/mpihelper.hh>
+
+#include <opm/grid/utility/OpmParserIncludes.hpp>
 namespace Dune
 {
 
@@ -102,6 +105,54 @@ namespace Dune
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
                         bool addCornerCells, const double* trans, int layers = 1);
 
+namespace cpgrid
+{
+    /// \brief Creates lists as Zoltan would return for vanilla / user specified partitioning.
+    ///
+    /// \param grid The grid
+    /// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
+    ///              nullptr is possible
+    /// \param transmissibilities C-array with transmissibilities or nullptr.
+    /// \param parts The partitioning information. Contains for each cells the partition number (zero-based,
+    ///              consecutive
+    /// \return  A tuple consisting of a vector that contains for each local cell of the original grid the
+    ///         the number of the process that owns it after repartitioning,
+    ///         a vector containing a pair of name  and a boolean indicating whether this well has
+    ///         perforated cells local to the process of all wells,
+    ///         vector containing information for each exported cell (global id
+    ///         of cell, process id to send to, attribute there), and a vector containing
+    ///         information for each imported cell (global index, process id that sends, attribute here, local index
+    ///         here)
+    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+               std::vector<std::tuple<int,int,char> >,
+               std::vector<std::tuple<int,int,char,int> > >
+    createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const double* transmissibilities, const std::vector<int>& parts,
+                               bool allowDistributedWells);
+
+    /// \brief Creats a vanilla partitioning without a real loadbalancer
+    ///
+    /// The loadbalancing will take place on the cartesian grid.
+    /// \param grid The grid
+    /// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
+    ///              nullptr is possible
+    /// \param transmissibilities C-array with transmissibilities or nullptr.
+    /// \return  A tuple consisting of a vector that contains for each local cell of the original grid the
+    ///         the number of the process that owns it after repartitioning,
+    ///         a vector containing a pair of name  and a boolean indicating whether this well has
+    ///         perforated cells local to the process of all wells,
+    ///         vector containing information for each exported cell (global id
+    ///         of cell, process id to send to, attribute there), and a vector containing
+    ///         information for each imported cell (global index, process id that sends, attribute here, local index
+    ///         here)
+    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+               std::vector<std::tuple<int,int,char> >,
+               std::vector<std::tuple<int,int,char,int> > >
+    vanillaPartitionGridOnRoot(const CpGrid& grid,
+                               const std::vector<cpgrid::OpmWellType> * wells,
+                               const double* transmissibilities,
+                               bool allowDistributedWells);
+} // namespace cpgrid
 } // namespace Dune
 
 

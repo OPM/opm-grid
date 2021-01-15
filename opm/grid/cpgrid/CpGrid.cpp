@@ -183,68 +183,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
         else
         {
-        std::vector<int> exportGlobalIds;
-        std::vector<int> exportLocalIds;
-        std::vector<int> exportToPart;
-        std::vector<int> importGlobalIds;
-        std::size_t numExport = 0;
-        int root = 0;
-
-        if (cc.rank() == root)
-        {
-            std::vector<int> parts(current_view_data_->global_cell_.size());
-            int  numParts=-1;
-            std::array<int, 3> initialSplit;
-            initialSplit[1]=initialSplit[2]=std::pow(cc.size(), 1.0/3.0);
-            initialSplit[0]=cc.size()/(initialSplit[1]*initialSplit[2]);
-            partition(*this, initialSplit, numParts, parts, false, false);
-            // Create export lists as from Zoltan output, do not include part 0!
-            exportGlobalIds.reserve(numCells());
-            exportLocalIds.reserve(numCells());
-            exportToPart.reserve(numCells());
-            for (auto cell = leafbegin<0>(), cellEnd = leafend<0>();
-                 cell != cellEnd; ++cell)
-            {
-                const auto& gid = globalIdSet().id(*cell);
-                const auto& lid = localIdSet().id(*cell);
-                const auto& index = leafIndexSet().index(cell);
-                const auto& part = parts[index];
-                if (part != 0 )
-                {
-                    exportGlobalIds.push_back(gid);
-                    exportLocalIds.push_back(lid);
-                    exportToPart.push_back(part);
-                    ++numExport;
-                }
-            }
-        }
-        int numImport = 0;
-        std::tie(numImport, importGlobalIds) =
-            cpgrid::scatterExportInformation(numExport, exportGlobalIds.data(),
-                                             exportToPart.data(), 0, cc);
-        const bool allowDistributedWells = false;
-        std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
-        if (wells && !allowDistributedWells)
-        {
-            bool partitionIsEmpty = (size(0) == 0);
-            gridAndWells.reset(new cpgrid::CombinedGridWellGraph(*this,
-                                                       wells,
-                                                       transmissibilities,
-                                                       partitionIsEmpty,
-                                                       method));
-        }
-        std::tie(cell_part, wells_on_proc, exportList, importList) =
-            cpgrid::makeImportAndExportLists(*this, comm(),
-                                             wells,
-                                             gridAndWells.get(),
-                                             root,
-                                             numExport,
-                                             numImport,
-                                             exportLocalIds.data(),
-                                             exportGlobalIds.data(),
-                                             exportToPart.data(),
-                                             importGlobalIds.data(),
-                                             allowDistributedWells);
+            std::tie(cell_part, wells_on_proc, exportList, importList) =
+                cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities);
         }
 
         // first create the overlap
