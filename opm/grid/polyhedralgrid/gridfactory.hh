@@ -19,12 +19,12 @@ namespace Dune
   // GridFactory for PolyhedralGrid
   // ---------------------------------
 
-  template< int dim, int dimworld >
-  class GridFactory< PolyhedralGrid< dim, dimworld > >
-    : public GridFactoryInterface< PolyhedralGrid< dim, dimworld > >
+  template< int dim, int dimworld, class coord_t >
+  class GridFactory< PolyhedralGrid< dim, dimworld, coord_t > >
+    : public GridFactoryInterface< PolyhedralGrid< dim, dimworld, coord_t > >
   {
   public:
-    typedef PolyhedralGrid< dim, dimworld > Grid;
+    typedef PolyhedralGrid< dim, dimworld, coord_t > Grid;
 
     const static int dimension      = Grid::dimension;
     const static int dimensionworld = Grid::dimensionworld;
