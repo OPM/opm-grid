@@ -25,6 +25,7 @@
 #endif
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
+#include <dune/grid/common/mcmgmapper.hh>
 
 #ifdef HAVE_ZOLTAN
 bool USE_ZOLTAN = true;
@@ -576,6 +577,102 @@ BOOST_AUTO_TEST_CASE(distribute)
                                                      cell_ids);
         grid.gatherData(gather_gid_set_data);
 
+    }
+    decltype(std::get<0>(Dune::CpGrid().loadBalance(nullptr))) test1 = true;
+    decltype(std::get<0>(Dune::CpGrid().loadBalance(Dune::EdgeWeightMethod(), nullptr))) test2 = true;
+    test2 = test1;
+}
+
+// A test for distributing by a parts array.
+BOOST_AUTO_TEST_CASE(distributeParts)
+{
+    int m_argc = boost::unit_test::framework::master_test_suite().argc;
+    char** m_argv = boost::unit_test::framework::master_test_suite().argv;
+    Dune::MPIHelper::instance(m_argc, m_argv);
+    int procs=1;
+#if HAVE_MPI
+    MPI_Errhandler handler;
+    MPI_Comm_create_errhandler(MPI_err_handler, &handler);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
+    MPI_Comm_size(MPI_COMM_WORLD, &procs);
+#endif
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{10, 10, 10}};
+    std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+
+    if (grid.comm().size()==1)
+    {
+        return;
+    }
+
+    grid.createCartesian(dims, size);
+    std::size_t numCells = 1;
+    for(const auto& dim : dims)
+    {
+        numCells *= dim;
+    }
+
+    auto numCellsPerProc = numCells / grid.comm().size();
+    std::vector<int> parts(numCells);
+    std::vector<int> globalGids(numCells);
+    std::vector<int> offset(grid.comm().size());
+    std::vector<int> realCellsPerProc(grid.comm().size());
+
+    for ( int rank = 0; rank < grid.comm().size();
+          ++rank)
+    {
+        std::size_t start = rank * numCellsPerProc;
+        std::size_t end = (rank + 1) * numCellsPerProc;
+        offset[rank] = start;
+
+        if ( rank == grid.comm().size() - 1 )
+        {
+            end = numCells;
+        }
+        realCellsPerProc[rank] = end - start;
+        for (;start < end; ++start)
+        {
+            parts[start] = rank;
+        }
+    }
+
+    using ElementMapper =
+        Dune::MultipleCodimMultipleGeomTypeMapper<typename Dune::CpGrid::LeafGridView>;
+
+    if (grid.comm().rank() == 0)
+    {
+        auto gridView = grid.leafGridView();
+        ElementMapper elemMapper(gridView, Dune::mcmgElementLayout());
+        const auto& gidSet = grid.globalIdSet();
+        const auto& indexSet = grid.leafGridView().indexSet();
+
+        for( const auto &element : elements( gridView, Dune::Partitions::interiorBorder ) )
+        {
+            globalGids[indexSet.index(element)] = gidSet.id(element);
+        }
+    }
+    grid.comm().broadcast(globalGids.data(), globalGids.size(), 0);
+
+    grid.loadBalance(parts);
+
+    auto gridView = grid.leafGridView();
+    const auto& gidSet = grid.globalIdSet();
+    std::vector<int> found(numCells, false);
+
+    for( const auto &element : elements( gridView, Dune::Partitions::interiorBorder ) )
+    {
+        BOOST_REQUIRE(globalGids[gidSet.id(element)] == gidSet.id(element));
+        found[gidSet.id(element)] = true;
+    }
+    auto rank = grid.comm().rank();
+    grid.comm().gatherv(found.data() + offset[rank], realCellsPerProc[rank], found.data(), realCellsPerProc.data(),
+                        offset.data(), 0);
+    if ( rank == 0)
+    {
+        for (const auto& f : found)
+        {
+            BOOST_REQUIRE(f);
+        }
     }
 }
 

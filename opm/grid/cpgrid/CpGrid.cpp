@@ -144,7 +144,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
                     [[maybe_unused]] bool useZoltan,
-                    double zoltanImbalanceTol)
+                    double zoltanImbalanceTol,
+                    const std::vector<int>& input_cell_part)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -165,32 +166,107 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
     if (cc.size() > 1)
     {
-        std::vector<int> cell_part;
+        std::vector<int> computedCellPart;
         std::vector<std::pair<std::string,bool>> wells_on_proc;
         std::vector<std::tuple<int,int,char>> exportList;
         std::vector<std::tuple<int,int,char,int>> importList;
 
-        if (useZoltan)
+        auto inputNumParts = input_cell_part.size();
+        inputNumParts = this->comm().max(inputNumParts);
+
+        if ( inputNumParts > 0 )
         {
-#ifdef HAVE_ZOLTAN
-            std::tie(cell_part, wells_on_proc, exportList, importList)
-                = serialPartitioning
-                ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol)
-                : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol);
-#else
-            OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
-#endif // HAVE_ZOLTAN
+            std::vector<int> errors;
+            std::vector<std::string> errorMessages =
+                { "More parts than MPI Communicator can handle",
+                  "Indices of parts need to zero starting",
+                  "Indices of parts need to be consecutive",
+                  "Only rank 0 should provide partitioning information for each cell"};
+
+            std::set<int> existingParts;
+
+            if (comm().rank() == 0)
+            {
+                for(const auto& part: input_cell_part)
+                {
+                    existingParts.insert(part);
+                }
+                if (*input_cell_part.rbegin() >= comm().size())
+                {
+                    errors.push_back(0);
+                }
+
+                int i = 0;
+                if (*existingParts.begin() != i)
+                {
+                    errors.push_back(1);
+                }
+                for (const auto& part: existingParts)
+                {
+                    if (part != i++)
+                    {
+                        errors.push_back(2);
+                        break;
+                    }
+                }
+                if (std::size_t(size(0)) != input_cell_part.size())
+                {
+                    errors.push_back(3);
+                }
+            }
+            auto size = errors.size();
+            comm().broadcast(&size, 1, 0);
+            errors.resize(size);
+
+            if (!errors.empty())
+            {
+                comm().broadcast(errors.data(), size, 0);
+                std::string message("Loadbalance: ");
+                for ( const auto& e: errors)
+                {
+                    message.append(errorMessages[e]).append(". ");
+                }
+                if (comm().rank() == 0)
+                {
+                    OPM_THROW(std::logic_error, message);
+                }
+                else
+                {
+                    OPM_THROW_NOLOG(std::logic_error, message);
+                }
+            }
+
+
+            // Partitioning given externally
+            std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+                cpgrid::createZoltanListsFromParts(*this, nullptr, nullptr, input_cell_part,
+                                                   true);
         }
         else
         {
-            std::tie(cell_part, wells_on_proc, exportList, importList) =
-                cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities);
+            if (useZoltan)
+            {
+#ifdef HAVE_ZOLTAN
+                std::tie(computedCellPart, wells_on_proc, exportList, importList)
+                    = serialPartitioning
+                ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol)
+                : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol);
+#else
+                OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
+#endif // HAVE_ZOLTAN
+            }
+            else
+            {
+                std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+                    cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities, false);
+            }
         }
+        comm().barrier();
 
         // first create the overlap
         // map from process to global cell indices in overlap
         std::map<int,std::set<int> > overlap;
-        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc, addCornerCells,
+        auto noImportedOwner = addOverlapLayer(*this, computedCellPart, exportList, importList, cc, addCornerCells,
                                                transmissibilities);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
@@ -296,7 +372,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
-        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
         global_id_set_.insertIdSet(*distributed_data_);
 
 
