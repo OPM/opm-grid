@@ -335,7 +335,8 @@ int main(int argc, char** argv )
         dgfFile << "1 1" << std::endl;
         dgfFile << "8 8" << std::endl;
         dgfFile << "#" << std::endl;
-        typedef Dune::PolyhedralGrid< 2, 2 > Grid;
+        // check different coordinate field type here
+        typedef Dune::PolyhedralGrid< 2, 2, float > Grid;
         Dune::GridPtr< Grid > gridPtr( dgfFile );
         gridcheck( *gridPtr );
     }
