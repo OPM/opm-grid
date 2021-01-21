@@ -104,6 +104,8 @@ namespace cpgrid
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+///        interior region of multiple processes.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
 ///         a vector containing a pair of name  and a boolean indicating whether this well has
@@ -120,7 +122,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
-                               const double zoltanImbalanceTol);
+                               const double zoltanImbalanceTol,
+                               bool allowDistributedWells);
 
 /// \brief Partition a CpGrid using Zoltan serially only on rank 0
 ///
@@ -139,6 +142,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+///        interior region of multiple processes.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
 ///         a set of names of wells that should be defunct in a parallel
@@ -156,7 +161,8 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
-                               const double zoltanImbalanceTol);
+                               const double zoltanImbalanceTol,
+                               bool allowDistributedWells);
 }
 }
 #endif // HAVE_ZOLTAN

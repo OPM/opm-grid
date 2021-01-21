@@ -733,6 +733,8 @@ namespace Dune
         /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
         ///        rectangular partitioning the underlying cartesian grid.
         /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+        ///        interior region of multiple processes.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
@@ -745,10 +747,11 @@ namespace Dune
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true,
-                    double zoltanImbalanceTol = 1.1)
+                    double zoltanImbalanceTol = 1.1,
+                    bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol);
+                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol, allowDistributedWells);
             using std::get;
             if (get<0>(ret))
             {
@@ -798,7 +801,8 @@ namespace Dune
                                       /* serialPartitioning = */ false,
                                       /* trabsmissibilities = */ {},
                                       addCornerCells, overlapLayers, /* useZoltan =*/ false,
-                                      /* zoltanImbalanceTol (ignored) = */ 0.0, parts));
+                                      /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                      /* allowDistributedWells = */ true, parts));
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine
@@ -1471,6 +1475,8 @@ namespace Dune
         /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
         ///        rectangular partitioning the underlying cartesian grid.
         /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+        ///        interior region of multiple processes.
         /// \param cell_part When using an external loadbalancer the partition number for each cell.
         ///                  If empty or not specified we use internal load balancing.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
@@ -1486,6 +1492,7 @@ namespace Dune
                     int overlapLayers,
                     bool useZoltan = true,
                     double zoltanImbalanceTol = 1.1,
+                    bool allowDistributedWells = true,
                     const std::vector<int>& input_cell_part = {});
 
         /** @brief The data stored in the grid.
