@@ -24,7 +24,7 @@
 #include <boost/test/unit_test.hpp>
 #include <boost/test/unit_test.hpp>
 #include <dune/common/parallel/mpihelper.hh>
-#include <opm/common/utility/CommunicationUtils.hpp>
+#include <opm/grid/common/CommunicationUtils.hpp>
 #include <vector>
 #include <random>
 
