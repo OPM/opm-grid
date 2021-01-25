@@ -50,6 +50,7 @@
 #include <opm/grid/common/GridPartitioning.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
+#include <opm/common/utility/CommunicationUtils.hpp>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -335,6 +336,55 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             auto sumOverlap = std::accumulate(overlapCells.begin(), overlapCells.end(), 0);
             ostr << std::setw(16) << sumOverlap;
             ostr << std::setw(14) << (sumOwned + sumOverlap) << "\n";
+            Opm::OpmLog::info(ostr.str());
+        }
+
+        // Print well distribution
+        std::vector<std::pair<int,int> > procWellPairs;
+
+        // range filters would be nice here. so C++20.
+        procWellPairs.reserve(std::count_if(std::begin(wells_on_proc),
+                                            std::end(wells_on_proc),
+                                            [](const std::pair<std::string, bool>& p){ return p.second; }));
+        int wellIndex = 0;
+        for ( const auto& well: wells_on_proc)
+        {
+            if ( well.second )
+            {
+                procWellPairs.emplace_back(cc.rank(), wellIndex);
+            }
+            ++wellIndex;
+        }
+
+        std::tie(procWellPairs, std::ignore) = Opm::gatherv(procWellPairs, cc, 0);
+
+        if (cc.rank() == 0)
+        {
+            std::sort(std::begin(procWellPairs), std::end(procWellPairs),
+                      [](const std::pair<int,int>& p1, const std::pair<int,int>& p2)
+                      { return p1.second < p2.second;});
+            std::ostringstream ostr;
+            ostr << "\nLoad balancing distributed the wells as follows:\n"
+                 << "  well name            ranks with perforated cells\n"
+                 << "---------------------------------------------------\n";
+            auto procWellPair = std::begin(procWellPairs);
+            auto endProcWellPair = std::end(procWellPairs);
+            int wellIdx = 0;
+            for ( const auto& well: wells_on_proc)
+            {
+                ostr << std::setw(16) << well.first;
+                while (procWellPair != endProcWellPair && procWellPair->second < wellIdx)
+                {
+                    ++procWellPair;
+                }
+                for ( ; procWellPair != endProcWellPair && procWellPair->second == wellIdx;
+                      ++procWellPair)
+                {
+                    ostr << " "<< std::setw(7) << procWellPair->first;
+                }
+                ostr << "\n";
+                ++wellIdx;
+            }
             Opm::OpmLog::info(ostr.str());
         }
 
