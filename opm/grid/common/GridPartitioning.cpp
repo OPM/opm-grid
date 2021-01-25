@@ -585,7 +585,9 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
 
 namespace cpgrid
 {
-    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+#if HAVE_MPI
+
+   std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
                std::vector<std::tuple<int,int,char> >,
                std::vector<std::tuple<int,int,char,int> > >
     createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
@@ -675,6 +677,7 @@ namespace cpgrid
         return createZoltanListsFromParts(grid, wells, transmissibilities, parts,
                                           allowDistributedWells);
     }
+#endif
 } // namespace cpgrid
 } // namespace Dune
 

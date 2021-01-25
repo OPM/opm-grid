@@ -107,6 +107,7 @@ namespace Dune
 
 namespace cpgrid
 {
+#if HAVE_MPI
     /// \brief Creates lists as Zoltan would return for vanilla / user specified partitioning.
     ///
     /// \param grid The grid
@@ -152,6 +153,7 @@ namespace cpgrid
                                const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities,
                                bool allowDistributedWells);
+#endif
 } // namespace cpgrid
 } // namespace Dune
 

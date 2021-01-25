@@ -146,8 +146,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     int overlapLayers,
                     [[maybe_unused]] bool useZoltan,
                     double zoltanImbalanceTol,
-                    bool allowDistributedWells,
-                    const std::vector<int>& input_cell_part)
+                    [[maybe_unused]] bool allowDistributedWells,
+                    [[maybe_unused]] const std::vector<int>& input_cell_part)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
