@@ -22,11 +22,14 @@
 
 #define BOOST_TEST_MODULE CommunicationUtilities
 #include <boost/test/unit_test.hpp>
-#include <boost/test/unit_test.hpp>
 #include <dune/common/parallel/mpihelper.hh>
 #include <opm/grid/common/CommunicationUtils.hpp>
+#include <tuple> // Should be included via CommunicationUtils.hpp but you never know.
+#include <numeric> // Should be included via CommunicationUtils.hpp but you never know.
 #include <vector>
 #include <random>
+#include <iostream>
+#include <string>
 
 class MPIError {
 public:
@@ -40,12 +43,11 @@ public:
 
 #ifdef HAVE_MPI
 void MPI_err_handler(MPI_Comm *, int *err_code, ...){
-  char *err_string=new char[MPI_MAX_ERROR_STRING];
+    std::vector<char> err_string(MPI_MAX_ERROR_STRING);
   int err_length;
-  MPI_Error_string(*err_code, err_string, &err_length);
-  std::string s(err_string, err_length);
+  MPI_Error_string(*err_code, err_string.data(), &err_length);
+  std::string s(err_string.data(), err_length);
   std::cerr << "An MPI Error ocurred:"<<std::endl<<s<<std::endl;
-  delete[] err_string;
   throw MPIError(s, *err_code);
 }
 #endif
