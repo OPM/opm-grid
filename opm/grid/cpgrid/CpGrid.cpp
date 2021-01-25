@@ -50,7 +50,7 @@
 #include <opm/grid/common/GridPartitioning.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
-#include <opm/common/utility/CommunicationUtils.hpp>
+#include <opm/grid/common/CommunicationUtils.hpp>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
