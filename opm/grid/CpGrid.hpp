@@ -757,6 +757,43 @@ namespace Dune
             return ret;
         }
 
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param parts The partitioning information. For a cell with local index i the entry
+        ///              parts[i] is the partion number. Partition numbers need to start with zero
+        ///              and need to be consectutive also parts.size()==grid.leafGridView().size()
+        ///              and the ranks communicator need to be able to map all parts. Needs to valid
+        ///              at rank 0. Number of parts cannot exceed the number of ranks. Parts need to
+        ///              numbered consecutively starting from zero.
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        template<class DataHandle>
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
+        loadBalance(DataHandle& data, const std::vector<int>& parts,
+                    const std::vector<cpgrid::OpmWellType> * wells,
+                    bool ownersFirst=false,
+                    bool addCornerCells=false, int overlapLayers=1)
+        {
+            using std::get;
+            auto ret = scatterGrid(defaultTransEdgeWgt,  ownersFirst, wells,
+                                   /* serialPartitioning = */ false,
+                                   /* transmissibilities = */ {},
+                                   addCornerCells, overlapLayers, /* useZoltan =*/ false,
+                                   /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                   /* allowDistributedWells = */ true, parts);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
+            return ret;
+        }
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
         /// \param overlapLayers The number of layers of overlap cells to be added
