@@ -122,6 +122,13 @@ const int* cartDims(const UnstructuredGrid& grid);
 /// in the underlying structured grid.
 const int* globalCell(const UnstructuredGrid& grid);
 
+/// \brief Create Eclipse style ACTNUM array.
+///
+/// Create a vector with global cartesian number of elements,
+/// the value is 0 for inactive cells and one for active cells.
+std::vector<int> createACTNUM(const UnstructuredGrid& grid);
+
+
 /// \brief Traits of the cell centroids of a grid.
 ///
 /// This class exports two types: IteratorType, the type of the iterator
@@ -394,6 +401,10 @@ double getCoordinate(T t, int i)
 {
     return (*t)[i];
 }
+
+
+
+
 
 } // end namespace UGGridHelpers
 } // end namespace OPM

@@ -23,6 +23,7 @@
 #include <set>
 #include <unordered_set>
 #include <vector>
+#include <functional>
 
 #ifdef HAVE_MPI
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
@@ -30,9 +31,16 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
+#include <dune/common/version.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/mpicollectivecommunication.hh>
+#endif
+
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/CpGrid.hpp>
 
 namespace Dune
 {
@@ -58,7 +66,7 @@ public:
     WellConnections() = default;
 
     /// \brief Constructor
-    /// \param schedule The eclipse information
+    /// \param wells The eclipse information about the wells
     /// \param cartesianSize The logical cartesian size of the grid.
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
@@ -66,6 +74,12 @@ public:
     WellConnections(const std::vector<OpmWellType>& wells,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
+
+    /// \brief Constructor
+    /// \param wells The eclipse information about the wells
+    /// \param cpGrid The corner point grid
+    WellConnections(const std::vector<OpmWellType>& wells,
+                    const Dune::CpGrid& cpGrid);
 
     /// \brief Initialze the data of the container
     /// \param schedule The eclipse information
@@ -109,32 +123,63 @@ private:
     std::vector<std::set<int> > well_indices_;
 };
 
+
+#ifdef HAVE_MPI
+/// \brief Determines the wells that have peforate cells for each process.
+///
+/// On the root process omputes for all processes all indices of wells that
+/// will perforate local cells.
+/// Note that a well might perforate local cells of multiple processes
+///
+/// \param parts The partition number for each cell
+/// \param well The eclipse information about the wells.
+/// \param cpGrid The unbalanced grid we compute on.
+/// \return On the rank that has the global grid a vector with the well
+///         indices for process i at index i.
+std::vector<std::vector<int> >
+perforatingWellIndicesOnProc(const std::vector<int>& parts,
+                  const std::vector<Dune::cpgrid::OpmWellType>& wells,
+                  const CpGrid& cpgrid);
+
 /// \brief Computes wells assigned to processes.
 ///
 /// Computes for all processes all indices of wells that
 /// will be assigned to this process.
 /// \param parts The partition number for each cell
+/// \param gid Functor that turns cell index to global id.
 /// \param eclipseState The eclipse information
-/// \param well_connecton The informatio about the perforations of each well.
-/// \param no_procs The number of processes.
+/// \param well_connecton The information about the perforations of each well.
+/// \param exportList List of cells to be exported. Each entry is a tuple of the
+///                   global cell index, the process rank to export to, and the
+///                   attribute on that rank (assumed to be owner)
+/// \param exportList List of cells to be imported. Each entry is a tuple of the
+///                   global cell index, the process rank that exports it, and the
+///                   attribute on this rank (assumed to be owner)
+/// \param cc Information about the parallelism together with the decomposition.
+/// \return On rank 0 a vector with the well indices for process i
+///         at index i.
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
+                                std::function<int(int)> gid,
                                 const std::vector<OpmWellType>&  wells,
                                 const WellConnections& well_connections,
-                                std::size_t no_procs);
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                const CollectiveCommunication<MPI_Comm>& cc);
 
-#ifdef HAVE_MPI
-/// \brief Computes that names that of all wells not handled by this process
+/// \brief Computes whether wells are perforating cells on this process.
 /// \param wells_on_proc well indices assigned to each process
 /// \param eclipseState The eclipse information
 /// \param cc The communicator
 /// \param root The rank of the process that has the complete partitioning
 ///             information.
-std::unordered_set<std::string>
-computeDefunctWellNames(const std::vector<std::vector<int> >& wells_on_proc,
-                        const std::vector<OpmWellType>&  wells,
-                        const CollectiveCommunication<MPI_Comm>& cc,
-                        int root);
+/// \return Vector of pairs of well name and a boolean indicating whether the
+///         well with this name perforates cells here. Sorted by well name!
+std::vector<std::pair<std::string,bool>>
+computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
+                     const std::vector<OpmWellType>&  wells,
+                     const CollectiveCommunication<MPI_Comm>& cc,
+                     int root);
 #endif
 } // end namespace cpgrid
 } // end namespace Dune

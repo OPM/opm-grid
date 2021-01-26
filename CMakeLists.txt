@@ -23,6 +23,11 @@ cmake_minimum_required (VERSION 2.8)
 # the build starts, so it makes sense to keep the data there then.
 
 option(SIBLING_SEARCH "Search for other modules in sibling directories?" ON)
+option(ENABLE_3DPROPS_TESTING "Build and use the new experimental 3D properties" OFF)
+option(REQUIRE_ZOLTAN "Require Zoltan to be found (needed for productive run" ON)
+if (ENABLE_3DPROPS_TESTING)
+  add_definitions(-DENABLE_3DPROPS_TESTING)
+endif()
 
 if(SIBLING_SEARCH AND NOT opm-common_DIR)
   # guess the sibling dir
@@ -53,16 +58,15 @@ endif()
 
 find_package(opm-common REQUIRED)
 
-include(OpmInit)
-
-# not the same location as most of the other projects? this hook overrides
-macro (dir_hook)
-endmacro (dir_hook)
-
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
 # the build starts, so it makes sense to keep the data there then.
 include (OpmInit)
+OpmSetPolicies()
+# not the same location as most of the other projects? this hook overrides
+macro (dir_hook)
+endmacro (dir_hook)
+
 
 # list of prerequisites for this particular project; this is in a
 # separate file (in cmake/Modules sub-directory) because it is shared
@@ -87,10 +91,10 @@ macro (config_hook)
 	list (APPEND ${project}_CONFIG_IMPL_VARS
 		HAVE_DUNE_GRID_CHECKS
 		)
-	if(NOT ZOLTAN_FOUND AND MPI_C_FOUND)
+	if(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
 		message(SEND_ERROR "opm-grid with MPI support requires the package ZOLTAN."
 			"Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)")
-	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND)
+	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
 endmacro (config_hook)
 
 macro (prereqs_hook)

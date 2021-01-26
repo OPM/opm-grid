@@ -56,11 +56,19 @@
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
 
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/collectivecommunication.hh>
+#endif
 #include <dune/common/parallel/indexset.hh>
 #include <dune/common/parallel/interface.hh>
 #include <dune/common/parallel/plocalindex.hh>
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#else
+#include <opm/grid/utility/VariableSizeCommunicator.hpp>
+#endif
 #include <dune/grid/common/gridenums.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -78,6 +86,7 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include "Entity2IndexDataHandle.hpp"
+#include "DataHandleWrappers.hpp"
 #include "GlobalIdMapping.hpp"
 
 namespace Dune
@@ -89,7 +98,7 @@ namespace cpgrid
 
 class IndexSet;
 class IdSet;
-class GlobalIdSet;
+class LevelGlobalIdSet;
 class PartitionTypeIndicator;
 template<int,int> class Geometry;
 template<int> class Entity;
@@ -107,6 +116,8 @@ template<class T, int i> struct Mover;
 class CpGridData
 {
     template<class T, int i> friend struct mover::Mover;
+
+    friend class GlobalIdSet;
 
 private:
     CpGridData(const CpGridData& g);
@@ -132,12 +143,12 @@ public:
     /// Constructor
     /// \param grid  The grid that we are the data of.
     explicit CpGridData(CpGrid& grid);
-#if HAVE_MPI
+
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
-    CpGridData(MPI_Comm comm);
-#endif
+    explicit CpGridData(MPIHelper::MPICommunicator comm);
+
     /// Constructor
     CpGridData();
     /// Destructor
@@ -185,13 +196,14 @@ public:
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
+    ///        In a parallel run this may be a nullptr on all ranks but rank zero.
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that
     ///        intersections/faces along i and j boundaries will match those on the other
     ///        side. That is, i- faces will match i+ faces etc.
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-    void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+    void processEclipseFormat(const Opm::EclipseGrid* ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                               const std::vector<double>& poreVolume = std::vector<double>(), const Opm::NNC& nncs = Opm::NNC());
 #endif
 
@@ -264,10 +276,9 @@ public:
     /// \brief Redistribute a global grid.
     ///
     /// The whole grid must be available on all processors.
-    void distributeGlobalGrid(const CpGrid& grid,
+    void distributeGlobalGrid(CpGrid& grid,
                               const CpGridData& view_data,
-                              const std::vector<int>& cell_part,
-                              int overlap_layers);
+                              const std::vector<int>& cell_part);
 
     /// \brief communicate objects for all codims on a given level
     /// \param data The data handle describing the data. Has to adhere to the
@@ -277,7 +288,31 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+#if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    /// \brief The type of the  Communicator.
+    using Communicator = VariableSizeCommunicator<>;
+#else
+    /// \brief The type of the Communicator.
+    using Communicator = Opm::VariableSizeCommunicator<>;
+#endif
+
+    /// \brief The type of the map describing communication interfaces.
+    using InterfaceMap = Communicator::InterfaceMap;
+#endif
+
+#ifdef HAVE_DUNE_ISTL
+    /// \brief The type of the set of the attributes
+    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
+#else
+    /// \brief The type of the set of the attributes
+    enum AttributeSet{owner, overlap, copy};
+#endif
+
 private:
+
+    /// \brief Adds entries to the parallel index set of the cells during grid construction
+    void populateGlobalCellIndexSet();
 
 #if HAVE_MPI
 
@@ -301,9 +336,6 @@ private:
     void gatherCodimData(DataHandle& data, CpGridData* global_data,
                          CpGridData* distributed_data);
 
-    /// \brief The type of the interface map for communication.
-    typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
-
     /// \brief Scatter data from a global grid representation
     /// to a distributed representation of the same grid.
     /// \param data A data handle for getting or setting the data
@@ -312,7 +344,8 @@ private:
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
     void scatterData(DataHandle& data, CpGridData* global_data,
-                     CpGridData* distributed_data, const InterfaceMap& inf);
+                     CpGridData* distributed_data, const InterfaceMap& cell_inf,
+                     const InterfaceMap& point_inf);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
     /// to a distributed representation of the same grid.
@@ -348,7 +381,16 @@ private:
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
                           const InterfaceMap& interface);
+
 #endif
+
+    void computeGeometry(CpGrid& grid,
+                         const DefaultGeometryPolicy&  globalGeometry,
+                         const OrientedEntityTable<0, 1>& globalCell2Faces,
+                         DefaultGeometryPolicy& geometry,
+                         const OrientedEntityTable<0, 1>& cell2Faces,
+                         const std::vector< std::array<int,8> >& cell2Points);
+
     // Representing the topology
     /** @brief Container for lookup of the faces attached to each cell. */
     cpgrid::OrientedEntityTable<0, 1> cell_to_face_;
@@ -390,10 +432,10 @@ private:
     cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
     /** @brief The index set of the grid (level). */
     cpgrid::IndexSet* index_set_;
-    /** @brief The local id set. */
+    /** @brief The internal local id set (not exported). */
     const cpgrid::IdSet* local_id_set_;
-    /** @brief The global id set. */
-    GlobalIdSet* global_id_set_;
+    /** @brief The global id set (used also as local id set). */
+    LevelGlobalIdSet* global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     PartitionTypeIndicator* partition_type_indicator_;
 
@@ -412,13 +454,6 @@ private:
     /// the zcorn values will typically be modified, and we retain a
     /// copy here to be able to create an EclipseGrid for output.
     std::vector<double> zcorn;
-
-#ifdef HAVE_DUNE_ISTL
-    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
-#else
-    /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap, copy};
-#endif
 
 #if HAVE_MPI
 
@@ -505,85 +540,7 @@ template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
                                   const InterfaceMap& interface)
 {
-    if ( interface.empty() )
-    {
-        // The communication interface is empty, do nothing.
-        // Otherwise we will produce a memory error in
-        // VariableSizeCommunicator prior to DUNE 2.4
-        return;
-    }
-
-#if DUNE_VERSION_NEWER_REV(DUNE_GRID, 2, 5, 2)
-    VariableSizeCommunicator<> comm(ccobj_, interface);
-#else
-    // Work around a bug/deadlock in DUNE <=2.5.1 which happens if the
-    // buffer cannot hold all data that needs to be send.
-    // https://gitlab.dune-project.org/core/dune-common/merge_requests/416
-    // For this we calculate an upper barrier of the number of
-    // data items to be send manually and use it to construct a
-    // VariableSizeCommunicator with sufficient buffer.
-    std::size_t max_interface_entries = 0;
-#ifndef NDEBUG
-    std::size_t max_items = 0;
-#endif
-
-    for (const auto& pair: interface )
-    {
-        using std::max;
-        max_interface_entries = max(max_interface_entries, pair.second.first.size());
-        max_interface_entries = max(max_interface_entries, pair.second.second.size());
-
-#ifndef NDEBUG
-        if ( data_wrapper.fixedsize() )
-        {
-            const auto& interface_send = pair.second.first;
-
-            if ( interface_send.size() )
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_send[0]));
-            }
-
-            const auto& interface_recv = pair.second.second;
-
-            if ( interface_recv.size() )
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_recv[0]));
-            }
-        }
-        else
-        {
-            const auto& interface_send = pair.second.first;
-
-            for ( std::size_t i = 0, end = interface_send.size(); i < end; ++i)
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_send[i]));
-            }
-
-            const auto& interface_recv = pair.second.second;
-
-            for ( std::size_t i = 0, end = interface_recv.size(); i < end; ++i)
-            {
-                max_items = std::max(max_items, data_wrapper.size(interface_recv[i]));
-            }
-        }
-#endif
-    }
-
-#ifndef NDEBUG
-    max_items = ccobj_.max(max_items);
-
-    if ( max_items > MAX_DATA_PER_CELL)
-    {
-        OPM_THROW(std::logic_error,
-                  "You triggered a bug in the communication of DUNE"
-                   << " as you tried to send more than " << MAX_DATA_PER_CELL
-                   << " values per cell/point. Please define MAX_DATA_COMMUNICATED_PER_ENTITY"
-                   << " to a high enough value when compiling.");
-    }
-#endif
-    VariableSizeCommunicator<> comm(ccobj_, interface,
-                                    max_interface_entries * MAX_DATA_PER_CELL);
-#endif
+    Communicator comm(ccobj_, interface);
 
     if(dir==ForwardCommunication)
         comm.forward(data_wrapper);
@@ -745,17 +702,19 @@ struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 
 template<class DataHandle>
 void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
-                             CpGridData* distributed_data, const InterfaceMap& inf)
+                             CpGridData* distributed_data, const InterfaceMap& cell_inf,
+                             const InterfaceMap& point_inf)
 {
 #if HAVE_MPI
     if(data.contains(3,0))
     {
         Entity2IndexDataHandle<DataHandle, 0> data_wrapper(*global_data, *distributed_data, data);
-        communicateCodim<0>(data_wrapper, ForwardCommunication, inf);
+        communicateCodim<0>(data_wrapper, ForwardCommunication, cell_inf);
     }
     if(data.contains(3,3))
     {
-        scatterCodimData<3>(data, global_data, distributed_data);
+        Entity2IndexDataHandle<DataHandle, 3> data_wrapper(*global_data, *distributed_data, data);
+        communicateCodim<3>(data_wrapper, ForwardCommunication, point_inf);
     }
 #endif
 }

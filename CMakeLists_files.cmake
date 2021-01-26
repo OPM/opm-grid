@@ -32,6 +32,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Intersection.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
@@ -69,9 +70,6 @@ if (opm-common_FOUND)
 		opm/grid/transmissibility/trans_tpfa.c)
 endif()
 
-if(HAVE_ECL_INPUT)
-  list(APPEND MAIN_SOURCE_FILES opm/grid/utility/extractPvtTableIndex.cpp)
-endif()
 
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
@@ -88,6 +86,7 @@ list (APPEND ATTIC_FILES
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
+  tests/test_cpgrid.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -100,7 +99,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
   tests/test_minpvprocessor.cpp
-	#tests/grid_test.cc
+  tests/test_polyhedralgrid.cpp
   tests/p2pcommunicator_test.cc
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
@@ -112,8 +111,7 @@ if(HAVE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
-		tests/test_compressedpropertyaccess.cpp
-                tests/cpgrid/grid_nnc.cpp
+		tests/cpgrid/grid_nnc.cpp
 	)
 endif()
 
@@ -125,6 +123,9 @@ list (APPEND TEST_DATA_FILES
      tests/FIVE.DATA
      tests/FIVE_ACTNUM.DATA
      tests/FIVE_PINCH.DATA
+     tests/FIVE_PINCH_NOGAP.DATA
+     tests/FIVE_PINCH_NOGAP2.DATA
+     tests/FIVE_PINCH_NOGAP3.DATA
   )
 
 # originally generated with the command:
@@ -132,7 +133,6 @@ list (APPEND TEST_DATA_FILES
 list (APPEND EXAMPLE_SOURCE_FILES
   examples/finitevolume/finitevolume.cc
   examples/mirror_grid.cpp
-	tests/grid_test.cc
   )
 
 # programs listed here will not only be compiled, but also marked for
@@ -156,6 +156,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/p2pcommunicator_impl.hh
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
+  opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
   opm/grid/cpgrid/dgfparser.hh
   opm/grid/cpgrid/Entity2IndexDataHandle.hpp
@@ -176,6 +177,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
+  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/capabilities.hh
   opm/grid/polyhedralgrid/cartesianindexmapper.hh
   opm/grid/polyhedralgrid/declaration.hh
@@ -187,7 +189,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/grid.hh
   opm/grid/polyhedralgrid/gridview.hh
-  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/idset.hh
   opm/grid/polyhedralgrid/indexset.hh
   opm/grid/polyhedralgrid/intersection.hh
@@ -202,7 +203,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/GridManager.hpp
   opm/grid/GridUtilities.hpp
   opm/grid/MinpvProcessor.hpp
-  opm/grid/PinchProcessor.hpp
   opm/grid/RepairZCORN.hpp
   opm/grid/cart_grid.h
   opm/grid/cornerpoint_grid.h
@@ -213,13 +213,12 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/trans_tpfa.h
   opm/grid/transmissibility/TransTpfa.hpp
   opm/grid/transmissibility/TransTpfa_impl.hpp
-  opm/grid/utility/CompressedPropertyAccess.hpp
   opm/grid/utility/compressedToCartesian.hpp
   opm/grid/utility/cartesianToCompressed.hpp
-  opm/grid/utility/extractPvtTableIndex.hpp
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp
+  opm/grid/utility/VariableSizeCommunicator.hpp
   opm/grid/utility/VelocityInterpolation.hpp
   opm/grid/utility/WachspressCoord.hpp
   opm/grid/utility/ErrorMacros.hpp

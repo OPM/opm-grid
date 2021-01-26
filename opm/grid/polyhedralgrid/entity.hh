@@ -97,7 +97,7 @@ namespace Dune
      */
     GeometryType type () const
     {
-      return data()->cellGeometryType(seed_);
+      return data()->geometryType(seed_);
     }
 
     /** \brief obtain the level of this entity */
@@ -168,12 +168,12 @@ namespace Dune
     : Base()
     {}
 
-    explicit PolyhedralGridEntity ( ExtraData data )
-    : Base( data )
+    explicit PolyhedralGridEntity ( ExtraData data_param )
+    : Base( data_param )
     {}
 
-    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
-    : Base( data, seed )
+    PolyhedralGridEntity ( ExtraData data_param, const EntitySeed& seed )
+    : Base( data_param, seed )
     {}
 
     unsigned int subEntities( const unsigned int cd ) const
@@ -254,13 +254,13 @@ namespace Dune
     {}
 
     /** \brief construct a null entity with data pointer */
-    explicit PolyhedralGridEntity ( ExtraData data )
-    : Base( data )
+    explicit PolyhedralGridEntity ( ExtraData data_param )
+    : Base( data_param )
     {}
 
     /** \brief construct an initialized entity */
-    PolyhedralGridEntity ( ExtraData data, const EntitySeed& seed )
-    : Base( data, seed )
+    PolyhedralGridEntity ( ExtraData data_param, const EntitySeed& seed )
+    : Base( data_param, seed )
     {}
 
     /** \} */
@@ -299,7 +299,6 @@ namespace Dune
       return data()->hasBoundaryIntersections( this->seed() );
     }
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     LeafIntersectionIterator ibegin () const
     {
       return LeafIntersectionIterator( LeafIntersectionIteratorImpl( data(), seed_, true ) );
@@ -315,7 +314,6 @@ namespace Dune
 
     LeafIntersectionIterator  ileafend  () const { return iend(); }
     LevelIntersectionIterator ilevelend () const { return iend(); }
-#endif
 
     bool isLeaf () const
     {

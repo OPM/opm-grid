@@ -1,15 +1,15 @@
 Source: opm-grid
 Priority: extra
 Maintainer: Arne Morten Kvarving <arne.morten.kvarving@sintef.no>
-Build-Depends: build-essential, debhelper (>= 9), libboost-filesystem-dev,
+Build-Depends: build-essential, debhelper (>= 9),
                libboost-system-dev, libboost-date-time-dev, libboost-test-dev,
                libdune-common-dev, cmake, bc, git, zlib1g-dev, libtool, pkg-config,
                libdune-grid-dev, libtinyxml-dev,
                libdune-istl-dev, doxygen, texlive-latex-extra,
-               texlive-latex-recommended, ghostscript, libecl-dev,
-               libboost-iostreams-dev, libsuitesparse-dev,
-               libopm-common-dev,
-               libdune-geometry-dev, libtrilinos-zoltan-dev, libopenmpi-dev,
+               texlive-latex-recommended, ghostscript,
+               libsuitesparse-dev,
+               libopm-common-dev, libscotchmetis-dev, libscotchparmetis-dev,
+               libdune-geometry-dev, libtrilinos-zoltan-dev, mpi-default-dev,
                mpi-default-bin
 Standards-Version: 3.9.2
 Section: libs
@@ -37,7 +37,7 @@ Description: opm-grid library -- development files
 
 Package: libopm-grid1
 Section: libs
-Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Pre-Depends: ${misc:Pre-Depends}
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
@@ -71,7 +71,7 @@ Description: opm grid library -- documentation
 
 Package: libopm-grid1-bin
 Section: libs
-Pre-Depends: ${misc:Pre-Depends}, multiarch-support
+Pre-Depends: ${misc:Pre-Depends}
 Architecture: any
 Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}

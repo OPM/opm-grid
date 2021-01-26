@@ -20,18 +20,15 @@ set (opm-grid_CONFIG_VAR
 set (opm-grid_DEPS
   # compile with C99 support if available
   "C99"
-  # compile with C++0x/11 support if available
-  "CXX11Features"
   # various runtime library enhancements
   "Boost 1.44.0
-    COMPONENTS date_time filesystem system unit_test_framework REQUIRED"
+    COMPONENTS date_time system unit_test_framework REQUIRED"
   "MPI"
-  "dune-common"
+  "dune-common REQUIRED"
   "dune-grid REQUIRED"
   "dune-istl"
   "opm-common REQUIRED"
   "ZOLTAN"
-  "ecl REQUIRED"
   )
 
 find_package_deps(opm-grid)

@@ -11,10 +11,16 @@
 
 //- dune-common includes
 #include <dune/common/version.hh>
+#include <dune/common/parallel/mpihelper.hh>
 
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/collectivecommunication.hh>
+#endif
 
 //- polyhedralgrid includes
 #include <opm/grid/polyhedralgrid/capabilities.hh>
@@ -95,13 +101,8 @@ namespace Dune
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
         typedef EntityImpl EntityPointerImpl;
         typedef Entity     EntityPointer;
-#else
-        typedef PolyhedralGridEntityPointer< codim, const Grid > EntityPointerImpl;
-        typedef Dune::EntityPointer< const Grid, EntityPointerImpl > EntityPointer;
-#endif
 
         //typedef Dune::EntitySeed< const Grid, PolyhedralGridEntitySeed< codim, const Grid > > EntitySeed;
         typedef PolyhedralGridEntitySeed< codim, const Grid > EntitySeed;
@@ -125,7 +126,8 @@ namespace Dune
       typedef PolyhedralGridIdSet< dim, dimworld, ctype > GlobalIdSet;
       typedef GlobalIdSet  LocalIdSet;
 
-      typedef Dune::CollectiveCommunication< Grid > CollectiveCommunication;
+      typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
+      typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
 
       template< PartitionIteratorType pitype >
       struct Partition
@@ -179,7 +181,6 @@ namespace Dune
 
   public:
     typedef PolyhedralMesh< dim, dimworld, coord_t, int > PolyhedralMeshType;
-
     typedef std::unique_ptr< UnstructuredGridType, UnstructuredGridDeleter > UnstructuredGridPtr;
 
     static UnstructuredGridPtr
@@ -327,12 +328,11 @@ namespace Dune
      *  \param[in]  deck         Opm Eclipse deck
      *  \param[in]  poreVolumes  vector with pore volumes (default = empty)
      */
-    explicit PolyhedralGrid ( const Opm::Deck& deck,
+    explicit PolyhedralGrid ( const Opm::EclipseGrid& inputGrid,
                               const std::vector<double>& poreVolumes = std::vector<double> ())
-    : gridPtr_( createGrid( deck, poreVolumes ) ),
+    : gridPtr_( createGrid( inputGrid, poreVolumes ) ),
       grid_( *gridPtr_ ),
-      topSurfaceGrid_( nullptr ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -352,7 +352,7 @@ namespace Dune
     : gridPtr_( createGrid( n, dx ) ),
       grid_( *gridPtr_ ),
       topSurfaceGrid_( nullptr ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator()),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -372,7 +372,7 @@ namespace Dune
       grid_( *gridPtr_ ),
       topSurfaceGrid_( nullptr ),
       //polyhedralMesh_( grid_ ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -392,7 +392,7 @@ namespace Dune
     : gridPtr_(),
       grid_( grid ),
       topSurfaceGrid_( nullptr ),
-      comm_( *this ),
+      comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
@@ -691,13 +691,13 @@ namespace Dune
      *                          ForwardCommunication or BackwardCommunication)
      *  \param[in]  level       grid level to communicate
      */
-    template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+    template< class DataHandle>
+    void communicate ( DataHandle& /* dataHandle */,
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */,
                        int /* level */ ) const
     {
-       //levelGridView( level ).communicate( dataHandle, interface, direction );
+        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
     }
 
     /** \brief communicate information on leaf entities
@@ -712,12 +712,24 @@ namespace Dune
      *  \param[in]  direction   communication direction (one of
      *                          ForwardCommunication, BackwardCommunication)
      */
-    template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data >& /* dataHandle */,
+    template< class DataHandle>
+    void communicate ( DataHandle& /* dataHandle */,
                        InterfaceType /* interface */,
                        CommunicationDirection /* direction */ ) const
     {
-      //leafGridView().communicate( dataHandle, interface, direction );
+        OPM_THROW(std::runtime_error, "communicate not implemented for polyhedreal grid!");
+    }
+
+    /// \brief Switch to the global view.
+    void switchToGlobalView()
+    {
+        OPM_THROW(std::runtime_error, "switch to global view not implemented for polyhedreal grid!");
+    }
+
+    /// \brief Switch to the distributed view.
+    void switchToDistributedView()
+    {
+        OPM_THROW(std::runtime_error, "switch to distributed view not implemented for polyhedreal grid!");
     }
 
     /** \brief obtain CollectiveCommunication object
@@ -885,61 +897,76 @@ namespace Dune
       ijk[2] = gc / logicalCartesianSize()[1];
     }
 
+    /// \name Parallel grid extensions.
+    /// Methods extending the DUNE's parallel grid interface.
+    /// These are basically for scattering/gathering data to/from
+    /// distributed views.
+    //@{
+    ///
+    /// \brief Moves data from the global (all data on process) view to the distributed view.
+    ///
+    /// This method does not do communication but assumes that the global grid
+    /// is present on every process and simply copies data to the distributed view.
+    /// \tparam DataHandle The type of the data handle describing the data and responsible for
+    ///         gathering and scattering the data.
+    /// \param handle The data handle describing the data and responsible for
+    ///         gathering and scattering the data.
+    template<class DataHandle>
+    void scatterData([[maybe_unused]] DataHandle& handle) const
+    {
+        OPM_THROW(std::runtime_error, "ScatterData not implemented for polyhedral grid!");
+    }
+
   protected:
 #if HAVE_ECL_INPUT
-    UnstructuredGridType* createGrid( const Opm::Deck& deck, const std::vector< double >& poreVolumes ) const
+    UnstructuredGridType* createGrid( const Opm::EclipseGrid& inputGrid, const std::vector< double >& poreVolumes ) const
     {
-        const int* rawactnum = deck.hasKeyword("ACTNUM")
-          ? deck.getKeyword("ACTNUM").getIntData().data()
-          : nullptr;
-        const auto eclipseGrid = std::make_shared<Opm::EclipseGrid>(deck, rawactnum);
-
         struct grdecl g;
 
-        g.dims[0] = eclipseGrid->getNX();
-        g.dims[1] = eclipseGrid->getNY();
-        g.dims[2] = eclipseGrid->getNZ();
+        g.dims[0] = inputGrid.getNX();
+        g.dims[1] = inputGrid.getNY();
+        g.dims[2] = inputGrid.getNZ();
 
-        std::vector<double> mapaxes = eclipseGrid->getMAPAXES( );
-        std::vector<double> coord = eclipseGrid->getCOORD( );
-        std::vector<double> zcorn = eclipseGrid->getZCORN( );
-        std::vector<int> actnum = eclipseGrid->getACTNUM(  );
+        std::vector<double> mapaxes = inputGrid.getMAPAXES( );
+        std::vector<double> coord = inputGrid.getCOORD( );
+        std::vector<double> zcorn = inputGrid.getZCORN( );
+        std::vector<int> actnum = inputGrid.getACTNUM(  );
 
         g.coord = coord.data();
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
         g.mapaxes = mapaxes.data();
 
-        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
         {
           Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-          const std::vector<double>& minpvv  = eclipseGrid->getMinpvVector();
+          const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
           // Currently the pinchProcessor is not used and only opmfil is supported
           // The polyhedralgrid only only supports the opmfil option
-          //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+          //bool opmfil = inputGrid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
           bool opmfil = true;
           const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
           std::vector<double> thickness(cartGridSize);
           for (size_t i = 0; i < cartGridSize; ++i) {
-              thickness[i] = eclipseGrid->getCellThickness(i);
+              thickness[i] = inputGrid.getCellThickness(i);
           }
-          const double z_tolerance = eclipseGrid->isPinchActive() ? eclipseGrid->getPinchThresholdThickness() : 0.0;
+          const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
           mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
         }
 
         /*
-        if (!poreVolumes.empty() && (eclipseGrid->getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            const double minpv_value  = eclipseGrid->getMinpvValue();
+            const double minpv_value  = inputGrid.getMinpvValue();
             // Currently the pinchProcessor is not used and only opmfil is supported
-            //bool opmfil = eclipseGrid->getMinpvMode() == Opm::MinpvMode::OpmFIL;
+            //bool opmfil = inputGrid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             bool opmfil = true;
             mp.process(poreVolumes, minpv_value, actnum, opmfil, zcorn.data());
         }
         */
 
-        const double z_tolerance = eclipseGrid->isPinchActive() ?
-            eclipseGrid->getPinchThresholdThickness() : 0.0;
+        const double z_tolerance = inputGrid.isPinchActive() ?
+            inputGrid.getPinchThresholdThickness() : 0.0;
         UnstructuredGridType* cgrid = create_grid_cornerpoint(&g, z_tolerance);
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
@@ -969,8 +996,9 @@ namespace Dune
     }
 
   public:
+#if DUNE_VERSION_LT_REV(DUNE_GRID, 2, 7, 1)
     using Base::getRealImplementation;
-
+#endif
     typedef typename Traits :: ExtraData ExtraData;
     ExtraData extraData () const  { return this; }
 
@@ -994,13 +1022,16 @@ namespace Dune
           {
             return 1;
           }
+        default:
+          {
+            return 0;
+          }
       }
-      return 0;
     }
 
     template <class EntitySeed>
     GlobalCoordinate
-    corner( const EntitySeed& seed, const int i ) const
+    corner ( const EntitySeed& seed, const int i ) const
     {
       const int codim = EntitySeed :: codimension;
       switch (codim)
@@ -1014,7 +1045,9 @@ namespace Dune
           {
             // for faces we need to swap vertices in 3d since in UnstructuredGrid
             // those are ordered counter clockwise, for 2d this does not matter
-            const int crner = (EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
+            // TODO: Improve this for performance reasons
+            const int crners = corners( seed );
+            const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
             const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
             return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
           }
@@ -1023,25 +1056,11 @@ namespace Dune
             const int coordIndex = GlobalCoordinate :: dimension * seed.index();
             return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
           }
-      }
-
-      /*
-      const int codim = EntitySeed :: codimension;
-      switch (codim)
-      {
-        case 0:
-        case 1:
+        default:
           {
-            const int vxIndex = polyhedralMesh_.subEntity( seed.index(), i, codim );
-            return polyhedralMesh_.coordinate( vxIndex );
-          }
-        case dim:
-          {
-            return polyhedralMesh_.coordinate( seed.index() );
+            return GlobalCoordinate( 0 );
           }
       }
-      */
-      return GlobalCoordinate( 0 );
     }
 
     template <class EntitySeed>
@@ -1055,7 +1074,6 @@ namespace Dune
           case 0:
             return 1;
           case 1:
-            //std::cout << "Subent codim 1 " << grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ] << std::endl;
             return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
           case dim:
             return cellVertices_[ index ].size();
@@ -1181,15 +1199,40 @@ namespace Dune
     }
 
     template < class Seed >
-    GeometryType cellGeometryType( const Seed& seed ) const
+    GeometryType geometryType( const Seed& seed ) const
     {
-      if( Seed::codimension == 0 && ! cellGeomTypes_.empty() )
+      if( Seed::codimension == 0 )
       {
-        assert( seed.index() < cellGeomTypes_.size() );
-        return cellGeomTypes_[ seed.index() ];
+        if( cellGeomTypes_.empty() )
+        {
+          assert( geomTypes( Seed::codimension ).size() == 1 );
+          return geomTypes( Seed::codimension )[ 0 ];
+        }
+        else
+        {
+          assert( static_cast<size_t>(seed.index()) < cellGeomTypes_.size() );
+          return cellGeomTypes_[ seed.index() ];
+        }
       }
       else
+      {
+        // 3d faces
+        if( dim == 3 && Seed::codimension == 1 )
+        {
+          GeometryType face;
+          const int nVx = corners( seed );
+          if( nVx == 4 ) // quad face
+            face = Dune::GeometryTypes::cube(2);
+          else if( nVx == 3 ) // triangle face
+            face = Dune::GeometryTypes::simplex(2);
+          else // polygonal face
+            face = Dune::GeometryTypes::none(2);
+          return face;
+        }
+
+        // for codim 2 and codim 3 there is only one option
         return geomTypes( Seed::codimension )[ 0 ];
+      }
     }
 
     int indexInInside( const typename Codim<0>::EntitySeed& seed, const int i ) const
@@ -1339,15 +1382,11 @@ namespace Dune
           DUNE_THROW(InvalidStateException,"codimension not implemented");
           return 0.0;
         }
-
-        //const int index = seed.index();
-        //assert( seed.isValid() );
-        //return polyhedralMesh_.volume( index, codim );
       }
     }
 
   protected:
-    void init()
+    void init ()
     {
       //std::cout << "PolyhedralGrid init" << std::endl;
 
@@ -1357,12 +1396,14 @@ namespace Dune
         cartDims_[ i ] = grid_.cartdims[ i ];
       }
 
+      cellGeomTypes_.clear();
+
       // setup list of cell vertices
       const int numCells = size( 0 );
 
       cellVertices_.resize( numCells );
 
-      // sort vertices such that they comply with the dune cube reference element
+      // sort vertices such that they comply with the dune reference cube
       if( grid_.cell_facetag )
       {
         typedef std::array<int, 3> KeyType;
@@ -1434,7 +1475,6 @@ namespace Dune
                  end = cell_pts[ faceTag ].end(); it != end; ++it )
             {
 
-              //std::cout << (*it).second << std::endl;
               // only consider vertices with one appearance
               if( (*it).second == 1 )
               {
@@ -1443,7 +1483,7 @@ namespace Dune
             }
           }
 
-          assert( int(vertexList.size()) == ( dim == 2 ) ? 4 : 8 );
+          assert( int(vertexList.size()) == ( dim == 2 ? 4 : 8) );
 
           cellVertices_[ c ].resize( vertexList.size() );
           for( auto it = vertexList.begin(), end = vertexList.end(); it != end; ++it )
@@ -1474,13 +1514,12 @@ namespace Dune
         GeometryType tmp;
         for (int codim = 0; codim <= dim; ++codim)
         {
-          tmp.makeCube(dim - codim);
+          tmp = Dune::GeometryTypes::cube(dim - codim);
           geomTypes_[codim].push_back(tmp);
         }
       }
       else // if ( grid_.cell_facetag )
       {
-
         int maxVx = 0 ;
         int minVx = std::numeric_limits<int>::max();
 
@@ -1525,7 +1564,7 @@ namespace Dune
             }
 
             Dune::GeometryType simplex;
-            simplex.makeSimplex( dim );
+            simplex = Dune::GeometryTypes::simplex(dim);
 
             typedef Dune::AffineGeometry< ctype, dim, dimworld>  AffineGeometryType;
             AffineGeometryType geometry( simplex, p );
@@ -1584,9 +1623,6 @@ namespace Dune
               normal[ d ] = grid_.face_normals[ face*dim + d ];
             }
 
-            //if( normal.two_norm() < 1e-10 )
-            //  std::abort();
-
             if( centerDiff.two_norm() < 1e-10 )
               std::abort();
 
@@ -1599,15 +1635,29 @@ namespace Dune
           }
         }
 
-        // if no face_tag is available we assume that no reference element can be
-        // assigned to the elements
-        geomTypes_.resize(dim + 1);
         GeometryType tmp;
-        for (int codim = 0; codim <= dim; ++codim)
+        tmp = Dune::GeometryTypes::none(dim);
+        // by default set all types to None
+        cellGeomTypes_.resize( numCells );
+        std::fill( cellGeomTypes_.begin(), cellGeomTypes_.end(), tmp );
+
+        bool hasSimplex = false ;
+        bool hasCube    = false ;
+        bool hasPolyhedron = false;
+
+        for (int c = 0; c < numCells; ++c)
         {
-          if( codim == dim )
+          const int nVx = cellVertices_[ c ].size();
+          if( nVx == 4 )
           {
-            tmp.makeCube(dim - codim);
+            cellGeomTypes_[ c ] = Dune::GeometryTypes::simplex(dim);
+            hasSimplex = true;
+          }
+          else if( nVx == 8 )
+          {
+            cellGeomTypes_[ c ] = Dune::GeometryTypes::cube(dim);
+
+            hasCube = true;
           }
           else if ( codim == 0 )
           {
@@ -1620,10 +1670,50 @@ namespace Dune
           }
           else
           {
-            tmp.makeNone(dim - codim);
+            hasPolyhedron = true;
           }
-          geomTypes_[codim].push_back(tmp);
         }
+
+        // if no face_tag is available we assume that no reference element can be
+        // assigned to the elements
+        geomTypes_.resize(dim + 1);
+        tmp = Dune::GeometryTypes::cube(0);
+        geomTypes_[ dim ].push_back( tmp );
+        tmp = Dune::GeometryTypes::cube(1);
+        geomTypes_[ dim-1 ].push_back( tmp );
+
+        if( hasSimplex )
+        {
+          tmp = Dune::GeometryTypes::simplex(dim);
+          geomTypes_[ 0 ].push_back( tmp );
+        }
+
+        if( hasCube )
+        {
+          tmp = Dune::GeometryTypes::cube(dim);
+          geomTypes_[ 0 ].push_back( tmp );
+        }
+
+        if( hasPolyhedron )
+        {
+          tmp = Dune::GeometryTypes::none(dim);
+          geomTypes_[ 0 ].push_back( tmp );
+        }
+
+        if( dim > 2 )
+        {
+          for( const auto& elemType : geomTypes_[ 0 ] )
+          {
+            if( elemType.isSimplex() )
+              tmp = Dune::GeometryTypes::simplex(2);
+            else if ( elemType.isCube() )
+              tmp = Dune::GeometryTypes::cube(2);
+            else
+              tmp = Dune::GeometryTypes::none(2);
+            geomTypes_[ 1 ].push_back( tmp );
+          }
+        }
+
       } // end else of ( grid_.cell_facetag )
 
       nBndSegments_ = 0;
@@ -1652,8 +1742,6 @@ namespace Dune
           }
         }
       }
-
-      //print( std::cout, grid_ );
     }
 
     void print( std::ostream& out, const UnstructuredGridType& grid ) const
@@ -1661,17 +1749,28 @@ namespace Dune
       const int numCells = grid.number_of_cells;
       for( int c=0; c<numCells; ++c )
       {
-        std::cout << "cell " << c << " : ";
+        out << "cell " << c << " : faces = " << std::endl;
         for (int hf=grid.cell_facepos[ c ]; hf < grid.cell_facepos[c+1]; ++hf)
         {
            int f = grid_.cell_faces[ hf ];
            const int* fnbeg = grid_.face_nodes + grid_.face_nodepos[f];
            const int* fnend = grid_.face_nodes + grid_.face_nodepos[f+1];
-           std::cout << f << " " ;
+           out << f << "  vx = " ;
+           while( fnbeg != fnend )
+           {
+             out << *fnbeg << " ";
+             ++fnbeg;
+           }
+           out << std::endl;
         }
-        std::cout << std::endl;
-      }
+        out << std::endl;
 
+        const auto& vx = cellVertices_[ c ];
+        out << "cell " << c << " : vertices = ";
+        for( size_t  i=0; i<vx.size(); ++i )
+          out << vx[ i ] << " ";
+        out << std::endl;
+      }
     }
 
   protected:

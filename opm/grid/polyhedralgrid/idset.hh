@@ -9,17 +9,16 @@ namespace Dune
 {
 
   // PolyhedralGridIdSet
-  // -----------
+  // -------------------
 
   template< int dim, int dimworld, typename coord_t >
   class PolyhedralGridIdSet
-      : public IdSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIdSet< dim, dimworld, coord_t >, size_t /*IdType=int*/ >
+      : public IdSet< PolyhedralGrid< dim, dimworld, coord_t >, PolyhedralGridIdSet< dim, dimworld, coord_t >, std::size_t /*IdType=size_t*/ >
   {
   public:
     typedef PolyhedralGrid<  dim, dimworld, coord_t > Grid;
     typedef typename std::remove_const< Grid >::type::Traits Traits;
-    //typedef typename Traits::Index  IdType;
-    typedef size_t IdType;
+    typedef std::size_t IdType;
 
     typedef PolyhedralGridIdSet< dim, dimworld, coord_t > This;
     typedef IdSet< Grid, This, IdType > Base;
@@ -42,7 +41,7 @@ namespace Dune
       const int index = entity.seed().index();
       // in case
       if (codim == 0 && globalCellPtr_ )
-        return size_t( globalCellPtr_[ index ] );
+        return IdType( globalCellPtr_[ index ] );
       else
       {
         return codimOffset_[ codim ] + index;
@@ -69,7 +68,11 @@ namespace Dune
     template< class IntersectionImpl >
     IdType id ( const Dune::Intersection< const Grid, IntersectionImpl >& intersection ) const
     {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+      return intersection.impl().id();
+#else
       return Grid::getRealImplementation( intersection ).id();
+#endif
     }
 
     //! subId method for entities
@@ -94,7 +97,7 @@ namespace Dune
   protected:
     const Grid& grid_;
     const int* globalCellPtr_;
-    size_t codimOffset_[ dim+1 ];
+    IdType codimOffset_[ dim+1 ];
   };
 
 } // namespace Dune

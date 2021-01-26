@@ -41,11 +41,8 @@ namespace std
         return os;
     }
 }
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
+
 using ElementMapper = Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView>;
-#else
-using ElementMapper = Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView, Dune::MCMGElementLayout>;
-#endif
 
 struct Fixture
 {
@@ -69,38 +66,22 @@ struct Fixture
     {
         Opm::EclipseState es(parser.parseFile(filename));
         std::vector<double> porv;
+
         if (use_deck_porv) {
-            porv = es.get3DProperties().getDoubleGridProperty("PORV").getData();
+            porv = es.fieldProps().porv(true);
         }
+
         Dune::CpGrid grid;
-        grid.processEclipseFormat(es.getInputGrid(), false, false, false, porv, nnc);
+        grid.processEclipseFormat(&es.getInputGrid(), false, false, false, porv, nnc);
         const auto& gv = grid.leafGridView();
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2,6)
         ElementMapper elmap(gv, Dune::mcmgElementLayout());
-#else
-        ElementMapper elmap(gv);
-#endif
         int elemcount = 0;
         int intercount = 0;
         int bdycount = 0;
         std::vector<std::pair<int, int>> nb;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         for (const auto& elem : elements(gv)) {
-#else
-        auto elemIt = gv.template begin<0>();
-        auto elemEnd = gv.template end<0>();
-        for (; elemIt != elemEnd; ++elemIt ) {
-            auto& elem = *elemIt;
-#endif
             ++elemcount;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             for (const auto& inter : intersections(gv, elem)) {
-#else
-            auto interIt = gv.ibegin(elem);
-            auto interEnd = gv.iend(elem);
-            for (; interIt != interEnd; ++interIt) {
-                auto& inter = *interIt;
-#endif
                 ++intercount;
                 if (inter.boundary()) {
                     ++bdycount;
@@ -206,6 +187,24 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCH, Fixture)
 {
     Opm::NNC nnc;
     testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 1, 18 + 1, { {0,1}, {1,2}, {2,3} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP.DATA", nnc, 4, 4 * 6 + 1, 2 * (4 + 5) + 1, { {0,1}, {1,2}, {2,3} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP2, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP2.DATA", nnc, 3, 3*6, 3*6-2, { {1,2} }, true);
+}
+
+BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP3, Fixture)
+{
+    Opm::NNC nnc;
+    testCase("FIVE_PINCH_NOGAP3.DATA", nnc, 2, 2*6, 2*6, { }, true);
 }
 
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)

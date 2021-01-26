@@ -3,17 +3,15 @@
 #ifndef DUNE_POLYHEDRALGRID_GEOMETRY_HH
 #define DUNE_POLYHEDRALGRID_GEOMETRY_HH
 
+#include <memory>
+
 #include <dune/common/version.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/common/geometry.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 5 )
+#include <dune/geometry/referenceelements.hh>
 #include <dune/geometry/type.hh>
 #include <dune/geometry/multilineargeometry.hh>
-#else
-#include <dune/geometry/genericgeometry/geometrytraits.hh>
-#include <dune/geometry/genericgeometry/matrixhelper.hh>
-#endif
 
 
 namespace Dune
@@ -89,6 +87,8 @@ namespace Dune
         GlobalCoordinate center () const { return data()->centroids( seed_ ); }
 
         ctype volume() const { return data()->volumes( seed_ ); }
+
+        const EntitySeed& seed () const { return seed_; }
       };
 
       template <int mdim, int cordim>
@@ -111,11 +111,7 @@ namespace Dune
     typedef FieldMatrix< ctype, mydim, cdim > JacobianTransposed;
 
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
     typedef Dune::Impl::FieldMatrixHelper< ctype >  MatrixHelperType;
-#else
-    typedef Dune::GenericGeometry::MatrixHelper< Dune::GenericGeometry::DuneCoordTraits< ctype > >  MatrixHelperType;
-#endif
 
     explicit PolyhedralGridBasicGeometry ( ExtraData data )
     : storage_( data )
@@ -127,23 +123,32 @@ namespace Dune
       GeometryType myType = type();
       if( ! myType.isNone() && storage_.isValid() )
       {
-        if( myType.isLine() && storage_.corners() != 2 )
-        {
-          std::cout << myType << "  " << storage_.corners() << std::endl;
-          std::abort();
-        }
-
-        //std::cout << myType << "  " << storage_.corners() << std::endl;
         geometryImpl_.reset( new MultiLinearGeometryType(myType, storage_) );
       }
+      //std::cout << myType << "  " << storage_.corners() << std::endl;
     }
 
-    GeometryType type () const { return data()->geomTypes(codimension)[0]; }
+    GeometryType type () const { return data()->geometryType( storage_.seed() ); }
     bool affine () const { return (geometryImpl_) ? geometryImpl_->affine() : false; }
 
     int corners () const { return storage_.corners(); }
     GlobalCoordinate corner ( const int i ) const { return storage_.corner( i ); }
-    GlobalCoordinate center () const { return storage_.center(); }
+    GlobalCoordinate center () const
+    {
+      if( type().isNone() )
+      {
+        return storage_.center();
+      }
+      else
+      {
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,7)
+        const auto refElem = Dune::referenceElement< ctype, mydim > ( type() );
+#else
+        const auto& refElem = Dune::ReferenceElements< ctype, mydim >::general( type() );
+#endif
+        return global( refElem.position(0,0) );
+      }
+    }
 
     GlobalCoordinate global(const LocalCoordinate& local) const
     {
@@ -186,7 +191,7 @@ namespace Dune
       return storage_.volume();
     }
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+
     JacobianTransposed jacobianTransposed ( const LocalCoordinate & local ) const
     {
       if( geometryImpl_ )
@@ -208,31 +213,6 @@ namespace Dune
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
     }
-#else
-    const JacobianTransposed& jacobianTransposed ( const LocalCoordinate &local ) const
-    {
-      if( geometryImpl_ )
-      {
-        return geometryImpl_->jacobianTransposed( local );
-      }
-
-      DUNE_THROW(NotImplemented,"jacobianTransposed not implemented");
-      static const JacobianTransposed jac( 0 );
-      return jac;
-    }
-
-    const JacobianInverseTransposed& jacobianInverseTransposed ( const LocalCoordinate &local ) const
-    {
-      if( geometryImpl_ )
-      {
-        return geometryImpl_->jacobianInverseTransposed( local );
-      }
-
-      DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
-      static const JacobianInverseTransposed jac( 0 );
-      return jac;
-    }
-#endif
 
     ExtraData data() const { return storage_.data(); }
 
@@ -277,30 +257,6 @@ namespace Dune
     : Base( data )
     {}
   };
-
-
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,4)
-  namespace FacadeOptions
-  {
-
-    //! \brief Traits class determining whether the Dune::Geometry facade
-    //!        class stores the implementation object by reference or by value
-    template< int mydim, int cdim, class GridImp >
-    struct StoreGeometryReference< mydim, cdim, GridImp, PolyhedralGridGeometry >
-    {
-      //! Whether to store by reference.
-      static const bool v = false;
-    };
-
-    template< int mydim, int cdim, class GridImp >
-    struct StoreGeometryReference< mydim, cdim, GridImp, PolyhedralGridLocalGeometry >
-    {
-      //! Whether to store by reference.
-      static const bool v = false;
-    };
-
-  }
-#endif
 
 
 } // namespace Dune

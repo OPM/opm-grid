@@ -24,7 +24,36 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
+#if HAVE_MPI
+namespace Dune
+{
+namespace cpgrid
+{
+template<class Id>
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> > >
+makeImportAndExportLists(const Dune::CpGrid& cpgrid,
+                         const Dune::CollectiveCommunication<MPI_Comm>& cc,
+                         const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                         const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
+                         int root,
+                         int numExport,
+                         int numImport,
+                         const Id* exportLocalGids,
+                         const Id* exportGlobalGids,
+                         const int* exportToPart,
+                         const Id* importGlobalGids,
+                         bool allowDistributedWells = false);
 
+template<class Id>
+std::tuple<int, std::vector<Id> >
+scatterExportInformation(int numExport, const Id* exportGlobalGids,
+                         const int* exportToPart, int root,
+                         const Dune::CollectiveCommunication<MPI_Comm>& cc);
+} // end namespace cpgrid
+} // end namespace Dune
+#endif //HAVE_MPI
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 namespace Dune
 {
@@ -46,16 +75,60 @@ namespace cpgrid
 /// @param edgeWeightMethod The method used to calculate the weights associated
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
-/// @return A pair consisting of a vector that contains for each local cell of the grid the
+/// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
-///         and a set of names of wells that should be defunct in a parallel
-///         simulation.
-std::pair<std::vector<int>,std::unordered_set<std::string> >
+///         a vector containing a pair of name  and a boolean indicating whether this well has
+///         perforated cells local to the process of all wells,
+///         vector containing information for each exported cell (global id
+///         of cell, process id to send to, attribute there), and a vector containing
+///         information for each imported cell (global index, process id that sends, attribute here, local index
+///         here)
+std::tuple<std::vector<int>,std::vector<std::pair<std::string,bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >  >
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
-                               EdgeWeightMethod edgeWeightsMethod, int root);
+                               EdgeWeightMethod edgeWeightsMethod, int root,
+                               const double zoltanImbalanceTol);
+
+/// \brief Partition a CpGrid using Zoltan serially only on rank 0
+///
+/// This function will extract Zoltan's graph information
+/// from the grid, and the wells and use it to partition the grid.
+/// In case the global grid is available on all processes, it
+/// will nevertheless only use the information on the root process
+/// to partition it as Zoltan cannot identify this situation.
+/// @param grid The grid to partition
+/// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param transmissibilities The transmissibilities associated with the
+///             faces
+/// @paramm cc  The MPI communicator to use for the partitioning.
+///             The will be partitioned among the partiticipating processes.
+/// @param edgeWeightMethod The method used to calculate the weights associated
+///             with the edges of the graph (uniform, transmissibilities, log thereof)
+/// @param root The process number that holds the global grid.
+/// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// @return A tuple consisting of a vector that contains for each local cell of the original grid the
+///         the number of the process that owns it after repartitioning,
+///         a set of names of wells that should be defunct in a parallel
+///         simulation, vector containing information for each exported cell (global id
+///         of cell, process id to send to, attribute there), and a vector containing
+///         information for each imported cell (global index, process id that sends, attribute here, local index
+///         here)
+///
+/// @note This function will only do *serial* partioning.
+std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+           std::vector<std::tuple<int,int,char> >,
+           std::vector<std::tuple<int,int,char,int> >  >
+zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
+                               const std::vector<OpmWellType> * wells,
+                               const double* transmissibilities,
+                               const CollectiveCommunication<MPI_Comm>& cc,
+                               EdgeWeightMethod edgeWeightsMethod, int root,
+                               const double zoltanImbalanceTol);
 }
 }
 #endif // HAVE_ZOLTAN

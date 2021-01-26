@@ -71,7 +71,6 @@ namespace Dune
 //#include <opm/core/utility/SparseTable.hpp>
 #include <opm/grid/utility/ErrorMacros.hpp>
 #include <climits>
-//#include <boost/algorithm/minmax_element.hpp>
 #include <vector>
 
 /// The namespace Dune is the main namespace for all Dune code.
@@ -128,6 +127,11 @@ namespace Dune
                 return entityrep_ < 0 ? ~entityrep_ : entityrep_;
             }
 
+            /// @brief The signed index that also tells us the orientation
+            int signedIndex() const
+            {
+                return entityrep_;
+            }
             /// @brief Returns true if the entity has positive orientation.
             /// Not a Dune interface method.
             ///
@@ -267,6 +271,13 @@ namespace Dune
             /// @param e Entity representation.
             /// @return a const reference to the varable, at e.
             const T& operator[](const EntityRep<codim>& e) const
+            {
+                return EntityVariableBase<T>::get(e.index());
+            }
+            /// @brief Random access to the variable through an EntityRep.
+            /// @param e Entity representation.
+            /// @return a mutable reference to the varable, at e.
+            T& operator[](const EntityRep<codim>& e)
             {
                 return EntityVariableBase<T>::get(e.index());
             }

@@ -5,10 +5,10 @@
 
 Module: opm-grid
 Description: DUNE module supporting grids in a corner-point format
-Version: 2019.10-pre
-Label: 2019.10-pre
+Version: 2021.04-pre
+Label: 2021.04-pre
 Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
-Depends: dune-common (>= 2.4) dune-geometry (>= 2.4) dune-grid (>= 2.4) opm-common
-Suggests: dune-istl (>= 2.4)
+Depends: dune-common (>= 2.6) dune-geometry (>= 2.6) dune-grid (>= 2.6) opm-common
+Suggests: dune-istl (>= 2.6)

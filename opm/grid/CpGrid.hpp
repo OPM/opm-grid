@@ -50,7 +50,11 @@
 #include <dune/common/version.hh>
 
 #if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#else
+#include <opm/grid/utility/VariableSizeCommunicator.hpp>
+#endif
 #endif
 
 #include <dune/grid/common/capabilities.hh>
@@ -149,31 +153,17 @@ namespace Dune
         template <PartitionIteratorType pitype>
         struct Partition
         {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
             /// \brief The type of the level grid view associated with this partition type.
             typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
             /// \brief The type of the leaf grid view associated with this partition type.
             typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid> > LeafGridView;
-#else
-            /// \brief The type of the level grid view associated with this partition type.
-            typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid, pitype> > LevelGridView;
-            /// \brief The type of the leaf grid view associated with this partition type.
-            typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid, pitype> > LeafGridView;
-#endif
 
         };
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
         /// \brief The type of the level grid view associated with this partition type.
         typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid> > LevelGridView;
         /// \brief The type of the leaf grid view associated with this partition type.
         typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid> > LeafGridView;
-#else
-        /// \brief The type of the level grid view associated with this partition type.
-        typedef Dune::GridView<DefaultLevelGridViewTraits<CpGrid, Dune::All_Partition> > LevelGridView;
-        /// \brief The type of the leaf grid view associated with this partition type.
-        typedef Dune::GridView<DefaultLeafGridViewTraits<CpGrid, Dune::All_Partition> > LeafGridView;
-#endif
 
         /// \brief The type of the level index set.
         typedef cpgrid::IndexSet LevelIndexSet;
@@ -182,7 +172,7 @@ namespace Dune
         /// \brief The type of the global id set.
         typedef cpgrid::GlobalIdSet GlobalIdSet;
         /// \brief The type of the local id set.
-        typedef cpgrid::IdSet LocalIdSet;
+        typedef GlobalIdSet LocalIdSet;
 
         /// \brief The type of the collective communication.
 
@@ -227,6 +217,9 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily >
     {
+        friend class cpgrid::CpGridData;
+        template<int dim>
+        friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
 
     public:
 
@@ -242,6 +235,8 @@ namespace Dune
 
         /// Default constructor
         CpGrid();
+
+        CpGrid(MPIHelper::MPICommunicator comm);
 
         /// \name IO routines
         //@{
@@ -260,13 +255,14 @@ namespace Dune
 #if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
+        ///        In a parallel run this may be a nullptr on all ranks but rank zero.
         /// \param periodic_extension if true, the grid will be (possibly) refined, so that
         ///        intersections/faces along i and j boundaries will match those on the other
         ///        side. That is, i- faces will match i+ faces etc.
         /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
         /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-        void processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+        void processEclipseFormat(const Opm::EclipseGrid* ecl_grid, bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                   const std::vector<double>& poreVolume = std::vector<double>(),
                                   const Opm::NNC& = Opm::NNC());
 #endif
@@ -470,14 +466,14 @@ namespace Dune
         /// \brief Access to the GlobalIdSet
         const Traits::GlobalIdSet& globalIdSet() const
         {
-            return *current_view_data_->global_id_set_;
+            return global_id_set_;
         }
 
 
         /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const
         {
-            return *current_view_data_->local_id_set_;
+            return global_id_set_;
         }
 
 
@@ -609,11 +605,13 @@ namespace Dune
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
         /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=1)
+        bool loadBalance(int overlapLayers=1, bool useZoltan=true)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, nullptr, nullptr, overlapLayers ));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, false, nullptr, true, overlapLayers, useZoltan ));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -631,13 +629,18 @@ namespace Dune
         ///            possible pairs of cells in the completion set of a well.
         /// \param transmissibilities The transmissibilities used as the edge weights.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
         /// \warning May only be called once.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1)
+                    int overlapLayers=1, bool useZoltan=true)
         {
-            return scatterGrid(defaultTransEdgeWgt, wells, transmissibilities, overlapLayers);
+            return scatterGrid(defaultTransEdgeWgt, false, wells, false, transmissibilities, false, overlapLayers, useZoltan);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -656,14 +659,22 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
-        /// \param The number of layers of cells of the overlap region (default: 1).
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
         /// \warning May only be called once.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
-                    const double* transmissibilities = nullptr,
-                    int overlapLayers=1)
+                    const double* transmissibilities = nullptr, bool ownersFirst=false,
+                    bool addCornerCells=false, int overlapLayers=1,
+                    bool useZoltan = true)
         {
-            return scatterGrid(method, wells, transmissibilities, overlapLayers);
+            return scatterGrid(method, ownersFirst, wells, false, transmissibilities, addCornerCells, overlapLayers, useZoltan);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -678,33 +689,91 @@ namespace Dune
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
         template<class DataHandle>
-        std::pair<bool, std::unordered_set<std::string> >
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data,
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1)
+                    int overlapLayers=1, bool useZoltan = true)
         {
-            auto ret = loadBalance(wells, transmissibilities, overlapLayers);
-            scatterData(data);
+            auto ret = loadBalance(wells, transmissibilities, overlapLayers, useZoltan);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
             return ret;
         }
 
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        ///
+        /// This will construct the corresponding graph to the grid and use the transmissibilities
+        /// specified to calculate the  weights associated with its edges. The graph will be passed
+        ///  to the load balancer.
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param wells The information about all possible wells. If null then
+        ///            the wells will be neglected. Otherwise the wells will be
+        ///            used to make sure that all the possible completion cells
+        ///            of each well are stored on one process. This is done by
+        ///            adding an edge with a very high edge weight for all
+        ///            possible pairs of cells in the completion set of a well.
+        /// \param serialPartitioning If true, the partitioning will be done on a single process.
+        /// \param transmissibilities The transmissibilities used to calculate the edge weights.
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
+        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        template<class DataHandle>
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
+        loadBalance(DataHandle& data, EdgeWeightMethod method,
+                    const std::vector<cpgrid::OpmWellType> * wells,
+                    bool serialPartitioning,
+                    const double* transmissibilities = nullptr, bool ownersFirst=false,
+                    bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true,
+                    double zoltanImbalanceTol = 1.1)
+        {
+            auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
+                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
+            return ret;
+        }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
-                         int overlapLayers=1)
+                         int overlapLayers=1, bool useZoltan = true)
         {
-            bool ret = loadBalance(overlapLayers);
-            scatterData(data);
+            bool ret = loadBalance(overlapLayers, useZoltan);
+            if (ret)
+            {
+                scatterData(data);
+            }
             return ret;
         }
 
@@ -1210,7 +1279,8 @@ namespace Dune
 #if HAVE_MPI
             if(!distributed_data_)
                 OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface());
+            distributed_data_->scatterData(handle, data_.get(), distributed_data_.get(), cellScatterGatherInterface(),
+                                           pointScatterGatherInterface());
 #else
             // Suppress warnings for unused argument.
             (void) handle;
@@ -1236,8 +1306,13 @@ namespace Dune
 #endif
         }
 #if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
         /// \brief The type of the map describing communication interfaces.
-        typedef VariableSizeCommunicator<>::InterfaceMap InterfaceMap;
+        using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
+#else
+        /// \brief The type of the map describing communication interfaces.
+        using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
+#endif
 #else
         // bogus definition for the non parallel type. VariableSizeCommunicator not
         // availabe
@@ -1246,7 +1321,7 @@ namespace Dune
         typedef std::map<int, std::list<int> > InterfaceMap;
 #endif
 
-        /// \brief Get an interface for gathering/scattering data with communication.
+        /// \brief Get an interface for gathering/scattering data attached to cells with communication.
         ///
         /// Scattering means sending data from the indices of the global grid on
         /// process 0 to the distributed grid on all ranks independent of the grid.
@@ -1279,6 +1354,13 @@ namespace Dune
             return *cell_scatter_gather_interfaces_;
         }
 
+        /// \brief Get an interface for gathering/scattering data attached to points with communication.
+        /// \see cellScatterGatherInterface
+        const InterfaceMap& pointScatterGatherInterface() const
+        {
+            return *point_scatter_gather_interfaces_;
+        }
+
         /// \brief Switch to the global view.
         void switchToGlobalView()
         {
@@ -1288,6 +1370,8 @@ namespace Dune
         /// \brief Switch to the distributed view.
         void switchToDistributedView()
         {
+            if (! distributed_data_)
+                OPM_THROW(std::logic_error, "No distributed view available in grid");
             current_view_data_=distributed_data_.get();
         }
         //@}
@@ -1323,18 +1407,35 @@ namespace Dune
     private:
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the Zoltan partitioner.
-        /// \param ecl Pointer to the eclipse state information. Default: null
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
         ///            used to make sure that all the possible completion cells
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        std::pair<bool, std::unordered_set<std::string> >
+        /// \param transmissibilities The transmissibilities used to calculate the edge weights in
+        ///                           the Zoltan partitioner. This is done to improve the numerical
+        ///                           performance of the parallel preconditioner.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param The number of layers of cells of the overlap region.
+        /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
+        ///        rectangular partitioning the underlying cartesian grid.
+        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
         scatterGrid(EdgeWeightMethod method,
+                    bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    bool serialPartitioning,
                     const double* transmissibilities,
-                    int overlapLayers);
+                    bool addCornerCells,
+                    int overlapLayers,
+                    bool useZoltan = true,
+                    double zoltanImbalanceTol = 1.1);
 
         /** @brief The data stored in the grid.
          *
@@ -1351,6 +1452,16 @@ namespace Dune
          * @warning Will only update owner cells
          */
         std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
+        /*
+         * @brief Interface for scattering and gathering point data.
+         *
+         * @warning Will only update owner cells
+         */
+        std::shared_ptr<InterfaceMap> point_scatter_gather_interfaces_;
+        /**
+         * @brief The global id set (also used as local one).
+         */
+        cpgrid::GlobalIdSet global_id_set_;
     }; // end Class CpGrid
 
 
@@ -1371,15 +1482,6 @@ namespace Dune
             static const bool v = true;
         };
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID, 2, 5)
-        /// \todo Please doc me !
-        template <>
-        struct isParallel<CpGrid>
-        {
-            static const bool v = true;
-        };
-#endif
-
         template<>
         struct canCommunicate<CpGrid,0>
         {
@@ -1399,6 +1501,13 @@ namespace Dune
             static const bool v = false;
         };
 
+    }
+
+
+    template<int dim>
+    cpgrid::Entity<dim> createEntity(const CpGrid& grid,int index,bool orientation)
+    {
+        return cpgrid::Entity<dim>(*grid.current_view_data_, index, orientation);
     }
 
 } // namespace Dune

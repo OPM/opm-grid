@@ -7,8 +7,8 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
+
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
-#include <dune/grid/test/gridcheck.hh>
 
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
@@ -18,9 +18,9 @@
 #include <opm/grid/common/VerteqColumnUtility.hpp>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <dune/grid/test/gridcheck.hh>
-#endif
+
 
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -29,20 +29,6 @@
 
 #include <iostream>
 
-const char *deckString =
-    "RUNSPEC\n"
-    "METRIC\n"
-    "DIMENS\n"
-    "4 4 4 /\n"
-    "GRID\n"
-    "DXV\n"
-    "4*1 /\n"
-    "DYV\n"
-    "4*1 /\n"
-    "DZ\n"
-    "16*1 /\n"
-    "TOPS\n"
-    "16*100.0 /\n";
 
 template <class GridView>
 void testGridIteration( const GridView& gridView, const int nElem )
@@ -50,9 +36,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
     typedef typename GridView::template Codim<0>::Geometry Geometry;
-    typedef typename GridView::Grid::LocalIdSet LocalIdSet;
-
-    const LocalIdSet& localIdSet = gridView.grid().localIdSet();
 
     int numElem = 0;
     ElemIterator elemIt = gridView.template begin<0>();
@@ -78,7 +61,7 @@ void testGridIteration( const GridView& gridView, const int nElem )
         {
             const auto& intersection = *isIt;
             const auto& isGeom = intersection.geometry();
-            std::cout << "Checking intersection id = " << localIdSet.id( intersection ) << std::endl;
+            //std::cout << "Checking intersection id = " << localIdSet.id( intersection ) << std::endl;
             if (std::abs(isGeom.volume() - 1.0) > 1e-8)
                 std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
 
@@ -86,7 +69,7 @@ void testGridIteration( const GridView& gridView, const int nElem )
             {
               if( numIs != intersection.indexInInside() )
                   std::cout << "num iit = " << numIs << " indexInInside " << intersection.indexInInside() << std::endl;
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
+
               if (std::abs(intersection.outside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "outside element volume of intersection " << numIs << " of element " << numElem
                             << " volume is wrong: " << intersection.outside().geometry().volume() << std::endl;
@@ -94,7 +77,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
               if (std::abs(intersection.inside().geometry().volume() - 1.0) > 1e-8)
                   std::cout << "inside element volume of intersection " << numIs << " of element " << numElem
                             << " volume is wrong: " << intersection.inside().geometry().volume() << std::endl;
-#endif
             }
         }
 
@@ -108,34 +90,6 @@ void testGridIteration( const GridView& gridView, const int nElem )
         std::cout << "number of elements is wrong: " << numElem << ", expected " << nElem << std::endl;
 }
 
-/*
-template <class Grid>
-void testVerteq(const Grid& grid)
-{
-    typedef typename Grid::LeafGridView GridView;
-    GridView gv = grid.leafGridView();
-
-    Dune::VerteqColumnUtility< Grid > verteqUtil ( grid );
-
-    std::cout << "Start checking vertical equilibirum utility." << std::endl;
-
-    const auto end = gv.template end< 0 > ();
-    for( auto it = gv.template begin< 0 > (); it != end; ++it )
-    {
-      const auto& entity = *it ;
-      std::cout << "Start column for entity " << entity.impl().index() << std::endl;
-      const auto endCol = verteqUtil.end( entity );
-      for( auto col = verteqUtil.begin( entity ); col != endCol; ++col )
-      {
-        const auto& collCell = *col;
-        std::cout << "Column cell [ " << collCell.index()
-                  << " ]: h = " << collCell.h()
-                  << " dz = "   << collCell.dz() << std::endl;
-      }
-    }
-    std::cout << "Finished checking vertical equilibirum utility." << std::endl;
-}
-*/
 
 
 template <class Grid>
@@ -144,25 +98,22 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     //testVerteq( grid );
 
     typedef typename Grid::LeafGridView GridView;
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
-    try {
-      gridcheck( grid );
-    }
-    catch ( const Dune::Exception& e)
-    {
-      std::cerr << "Warning: " << e.what() << std::endl;
-    }
-#endif
+    // try {
+    //   gridcheck( grid );
+    // }
+    // catch ( const Dune::Exception& e)
+    // {
+    //   std::cerr << "Warning: " << e.what() << std::endl;
+    // }
     std::cout << name << std::endl;
 
     testGridIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
-    Dune::MultipleCodimMultipleGeomTypeMapper<GridView,
-                                              Dune::MCMGVertexLayout> mapper(grid.leafGridView());
+  Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (mapper.size() != nVertices ) {
+    if (static_cast<size_t>(mapper.size()) != nVertices ) {
         std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
         //std::abort();
     }
@@ -187,32 +138,43 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
 
 }
 
+
 int main(int argc, char** argv )
 {
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
-
     std::stringstream dgfFile;
-    // create unit cube with 8 cells in each direction
+    // create unit cube with 4 cells in each direction
     dgfFile << "DGF" << std::endl;
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
-    dgfFile << "1 1 1" << std::endl;
+    dgfFile << "4 4 4" << std::endl;
     dgfFile << "4 4 4" << std::endl;
     dgfFile << "#" << std::endl;
-    //dgfFile << "Simplex" << std::endl;
-    //dgfFile << "#" << std::endl;
-
-#if HAVE_ECL_INPUT
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
-    std::vector<double> porv;
-#endif
 
     // test PolyhedralGrid
     {
       typedef Dune::PolyhedralGrid< 3, 3 > Grid;
 #if HAVE_ECL_INPUT
+      const char *deckString =
+	"RUNSPEC\n"
+	"METRIC\n"
+	"DIMENS\n"
+	"4 4 4 /\n"
+	"GRID\n"
+	"DXV\n"
+	"4*1 /\n"
+	"DYV\n"
+	"4*1 /\n"
+	"DZ\n"
+	"16*1 /\n"
+	"TOPS\n"
+	"16*100.0 /\n";
+
+      Opm::Parser parser;
+      const auto deck = parser.parseString(deckString);
+      std::vector<double> porv;
+
       std::cout << "Check ecl grid" << std::endl;
       Grid grid(deck, porv);
       gridcheck( grid );
@@ -259,25 +221,39 @@ int main(int argc, char** argv )
       }
     }
 
-#if 0
     // test CpGrid
     {
       typedef Dune::CpGrid Grid;
 #if HAVE_ECL_INPUT
+      const char *deckString =
+        "RUNSPEC\n"
+        "METRIC\n"
+        "DIMENS\n"
+        "2 2 2 /\n"
+        "GRID\n"
+        "DXV\n"
+        "2*1 /\n"
+        "DYV\n"
+        "2*1 /\n"
+        "DZ\n"
+        "8*1 /\n"
+        "TOPS\n"
+        "8*100.0 /\n";
+
+      Opm::Parser parser;
+      const auto deck = parser.parseString(deckString);
+      std::vector<double> porv;
+
       Grid grid;
       const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
       Opm::EclipseGrid ecl_grid(deck , actnum);
 
-      grid.processEclipseFormat(ecl_grid, false, false, false, porv);
-      testGrid( grid, "cpgrid" );
-
-      Opm::UgGridHelpers::createEclipseGrid( grid , ecl_grid );
-      testGrid( grid, "cpgrid2" );
-
+      grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
+      testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
-      //Dune::GridPtr< Grid > gridPtr( dgfFile );
-      //testGrid( *gridPtr, "cpgrid-dgf" );
+
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      testGrid( *gridPtr, "CpGrid_dgf", 64, 125 );
     }
-#endif
     return 0;
 }

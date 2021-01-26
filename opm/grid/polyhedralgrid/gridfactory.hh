@@ -18,13 +18,12 @@ namespace Dune
 
   // GridFactory for PolyhedralGrid
   // ---------------------------------
-
-  template< int dim, int dimworld >
-  class GridFactory< PolyhedralGrid< dim, dimworld > >
-    : public GridFactoryInterface< PolyhedralGrid< dim, dimworld > >
+  template< int dim, int dimworld, class coord_t >
+  class GridFactory< PolyhedralGrid< dim, dimworld, coord_t > >
+    : public GridFactoryInterface< PolyhedralGrid< dim, dimworld, coord_t > >
   {
   public:
-    typedef PolyhedralGrid< dim, dimworld > Grid;
+    typedef PolyhedralGrid< dim, dimworld, coord_t > Grid;
 
     const static int dimension      = Grid::dimension;
     const static int dimensionworld = Grid::dimensionworld;
@@ -45,7 +44,7 @@ namespace Dune
 
 
     /** \brief Default constructor */
-    explicit GridFactory ( const MPICommunicatorType &communicator = MPIHelper::getCommunicator() )
+    explicit GridFactory ( const MPICommunicatorType& = MPIHelper::getCommunicator() )
       : nodes_(),
         faces_(),
         cells_()
@@ -98,13 +97,13 @@ namespace Dune
 
     virtual void insertElement(const GeometryType& type,
                                const std::vector<unsigned int>& vertices,
-                               const shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >& elementParametrization)
+                               const std::shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >&)
     {
       std::cerr << "Warning: elementParametrization is being ignored in insertElement!" << std::endl;
       insertElement( type, vertices );
     }
 
-    void insertBoundarySegment(const std::vector<unsigned int>& vertices)
+    void insertBoundarySegment(const std::vector<unsigned int>&)
     {
       DUNE_THROW(NotImplemented,"yet");
     }
@@ -223,20 +222,24 @@ namespace Dune
         for( int i=0; i<3; ++i ) ug->cartdims[ i ] = 0;
       }
 
-      // compute geometric quntities like cell volume and face normals
+      // compute geometric quantities like cell volume and face normals
       Grid::computeGeometry( ug );
 
       // check normal direction
       {
-        const int faces = ug->number_of_faces;
-        for( int face = 0 ; face < faces; ++face )
+        for( int face = 0 ; face < ug->number_of_faces; ++face )
         {
           const int a = ug->face_cells[ 2*face     ];
           const int b = ug->face_cells[ 2*face + 1 ];
+          if( a < 0 || b < 0 )
+            continue ;
+
           Coordinate centerDiff( 0 );
           Coordinate normal( 0 );
+          //std::cout << "Cell center " << a << " " << b << std::endl;
           for( int d=0; d<dim; ++d )
           {
+            //std::cout << ug->cell_centroids[ a*dim + d ] << " " << ug->cell_centroids[ b*dim + d ] << std::endl;
             centerDiff[ d ] = ug->cell_centroids[ b*dim + d ] - ug->cell_centroids[ a*dim + d ];
             normal[ d ] = ug->face_normals[ face*dim + d ];
           }

@@ -16,7 +16,7 @@
 #include <dune/grid/common/gridfactory.hh>
 #include <dune/grid/io/file/dgfparser/dgfparser.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+#if DUNE_VERSION_NEWER(DUNE_GRID,2,7)
 #include <dune/grid/io/file/dgfparser/blocks/polyhedron.hh>
 #endif
 
@@ -34,7 +34,7 @@ namespace Dune
   namespace dgf
   {
 
-#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,5)
+#if ! DUNE_VERSION_NEWER(DUNE_GRID,2,7)
     namespace PolyhedralGrid
     {
 
@@ -136,17 +136,17 @@ namespace Dune
   // DGFGridFactory for PolyhedralGrid
   // ---------------------------------
 
-  template< int dim, int dimworld >
-  struct DGFGridFactory< PolyhedralGrid< dim, dimworld > >
+  template< int dim, int dimworld, class coord_t >
+  struct DGFGridFactory< PolyhedralGrid< dim, dimworld, coord_t > >
   {
-    typedef PolyhedralGrid< dim, dimworld > Grid;
+    typedef PolyhedralGrid< dim, dimworld, coord_t > Grid;
 
     const static int dimension = Grid::dimension;
     typedef MPIHelper::MPICommunicator MPICommunicator;
     typedef typename Grid::template Codim<0>::Entity Element;
     typedef typename Grid::template Codim<dimension>::Entity Vertex;
 
-    explicit DGFGridFactory ( std::istream &input, MPICommunicator comm = MPIHelper::getCommunicator() )
+    explicit DGFGridFactory ( std::istream &input, MPICommunicator = MPIHelper::getCommunicator() )
       : gridPtr_(),
         grid_( nullptr )
     {
@@ -157,7 +157,7 @@ namespace Dune
       generate( input );
     }
 
-    explicit DGFGridFactory ( const std::string &filename, MPICommunicator comm = MPIHelper::getCommunicator() )
+    explicit DGFGridFactory ( const std::string &filename, MPICommunicator /* comm */ = MPIHelper::getCommunicator() )
       : gridPtr_(),
         grid_( nullptr )
     {
@@ -193,13 +193,13 @@ namespace Dune
     }
 
     template< class Intersection >
-    bool wasInserted ( const Intersection &intersection ) const
+    bool wasInserted ( const Intersection& /*intersection*/ ) const
     {
       return false;
     }
 
     template< class Intersection >
-    int boundaryId ( const Intersection &intersection ) const
+    int boundaryId ( const Intersection& ) const
     {
       return false;
     }
@@ -215,13 +215,13 @@ namespace Dune
 
     template< class Intersection >
     const typename DGFBoundaryParameter::type &
-    boundaryParameter ( const Intersection &intersection ) const
+    boundaryParameter ( const Intersection& ) const
     {
       return DGFBoundaryParameter::defaultValue();;
     }
 
     template< class Entity >
-    std::vector< double > &parameter ( const Entity &entity )
+    std::vector< double > &parameter ( const Entity& )
     {
       static std::vector< double > dummy;
       return dummy;
@@ -338,7 +338,7 @@ namespace Dune
 
         // insert faces with type none/dim-1
         GeometryType type;
-        type.makeNone( Grid::dimension - 1 );
+        type = Dune::GeometryTypes::none(Grid::dimension-1);
         std::vector< unsigned int > numbers;
 
         const int nFaces = faces.size();
@@ -355,7 +355,7 @@ namespace Dune
         //faces.swap( IndexVectorType() );
 
         // insert cells with type none/dim
-        type.makeNone( Grid::dimension );
+        type = Dune::GeometryTypes::none(Grid::dimension);
 
         const int nCells = cells.size();
         for(int i = 0; i < nCells; ++ i )

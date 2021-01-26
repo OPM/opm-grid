@@ -112,7 +112,14 @@ void getCpGridWellsEdgeList(void *cpGridWellsPointer, int sizeGID, int sizeLID,
                        int *num_edges,
                        ZOLTAN_ID_PTR nborGID, int *nborProc,
                        int wgt_dim, float *ewgts, int *err);
+} // end namespace cpgrid
+} // end namespace Dune
 
+#endif // HAVE_ZOLTAN
+namespace Dune
+{
+namespace cpgrid
+{
 /// \brief A graph repesenting a grid together with the well completions.
 ///
 /// The edges of the graph are formed by the superset of the edges representing
@@ -135,7 +142,7 @@ public:
                           const std::vector<OpmWellType> * wells,
                           const double* transmissibilities,
                           bool pretendEmptyGrid,
-			  EdgeWeightMethod edgeWeightsMethod);
+                          EdgeWeightMethod edgeWeightsMethod);
 
     /// \brief Access the grid.
     const Dune::CpGrid& getGrid() const
@@ -155,7 +162,7 @@ public:
 
     double logTransmissibilityWeights(int face_index) const
     {
-        double trans = transmissibilities_[face_index]; 
+        double trans = transmissibilities_ ?  transmissibilities_[face_index] : 1; 
         return trans == 0.0 ? 0.0 : 1.0 + std::log(trans) - log_min_;
     }
 
@@ -197,18 +204,23 @@ private:
 
     void findMaxMinTrans()
     {
-	double min_val = std::numeric_limits<float>::max();
-		
-	for (int face = 0; face < getGrid().numFaces(); ++face)
-	{
-	    double trans = transmissibilities_[face];
-	    if (trans > 0)
-	    {
-		if (trans < min_val)
-		    min_val = trans;		
-	    }
-	}	
-	log_min_ = std::log(min_val);
+        double min_val = std::numeric_limits<float>::max();
+
+        if (transmissibilities_) {
+            for (int face = 0; face < getGrid().numFaces(); ++face)
+            {
+                double trans = transmissibilities_[face];
+                if (trans > 0)
+                {
+                    if (trans < min_val)
+                        min_val = trans;
+                }
+            }
+            log_min_ = std::log(min_val);
+        }
+        else {
+            log_min_ = 0.0;
+        }
     }
 
     const Dune::CpGrid& grid_;
@@ -219,7 +231,7 @@ private:
     double log_min_;
 };
 
-
+#ifdef HAVE_ZOLTAN
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.
 /// \param zz The struct with the information for ZOLTAN.
 /// \param grid The grid to partition.
@@ -230,8 +242,8 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz, const Dune::CpGrid& grid,
 void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
                                    const CombinedGridWellGraph& graph,
                                    bool pretendNull);
+#endif // HAVE_ZOLTAN
 } // end namespace cpgrid
 } // end namespace Dune
 
-#endif // HAVE_ZOLTAN
 #endif // header guard

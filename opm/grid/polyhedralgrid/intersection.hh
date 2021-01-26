@@ -50,6 +50,12 @@ namespace Dune
       intersectionIdx_( -1 )
     {}
 
+    PolyhedralGridIntersection ()
+    : data_(),
+      seed_(),
+      intersectionIdx_( -1 )
+    {}
+
     PolyhedralGridIntersection ( ExtraData data, const EntitySeed& seed, const int intersectionIdx )
     : data_( data ),
       seed_( seed ),
@@ -62,7 +68,6 @@ namespace Dune
       intersectionIdx_( other.intersectionIdx_ )
     {}
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,4)
     Entity inside () const
     {
         return Entity( EntityImpl( data(), seed_ ) );
@@ -73,18 +78,14 @@ namespace Dune
       return Entity( EntityImpl(data(),
                                 data()->neighbor(seed_, intersectionIdx_)) );
     }
-#else
-    EntityPointer inside () const
-    {
-        return EntityPointer( EntityPointerImpl( EntityImpl( data(), seed_ ) ) );
-    }
 
-    EntityPointer outside () const
+    PolyhedralGridIntersection& operator=(const PolyhedralGridIntersection& other)
     {
-      return EntityPointer( EntityPointerImpl( EntityImpl(data(),
-                                               data()->neighbor(seed_, intersectionIdx_)) ) );
+      data_ = other.data_;
+      seed_ = other.seed_;
+      intersectionIdx_ = other.intersectionIdx_;
+      return *this;
     }
-#endif
 
     bool operator == ( const This& other ) const
     {
@@ -120,7 +121,10 @@ namespace Dune
       return Geometry( GeometryImpl(data(), data()->template subEntitySeed<1>(seed_, intersectionIdx_)));
     }
 
-    GeometryType type () const { return GeometryType(GeometryType::cube, dimension); }
+    GeometryType type () const
+    {
+        return Dune::GeometryTypes::cube(dimension);
+    }
 
     int indexInInside () const
     {

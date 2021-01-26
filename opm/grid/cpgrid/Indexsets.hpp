@@ -41,6 +41,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 
+#include <unordered_map>
 namespace Dune
 {
     namespace cpgrid
@@ -73,16 +74,8 @@ namespace Dune
             IndexSet(const CpGridData& grid)
                 : grid_(grid)
             {
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
                 geom_types_[0].emplace_back(Dune::GeometryTypes::cube(3));
                 geom_types_[3].emplace_back(Dune::GeometryTypes::cube(0));
-#else
-                GeometryType t;
-                t.makeCube(3);
-                geom_types_[0].push_back(t);
-                t.makeCube(0);
-                geom_types_[3].push_back(t);
-#endif
             }
 
             /// \brief Destructor.
@@ -203,6 +196,7 @@ namespace Dune
 
         class IdSet
         {
+            friend class ReversePointGlobalIdSet;
         public:
             typedef int IdType;
 
@@ -259,9 +253,10 @@ namespace Dune
         };
 
 
-        class GlobalIdSet : public GlobalIdMapping
+        class LevelGlobalIdSet : public GlobalIdMapping
         {
             friend class CpGridData;
+            friend class ReversePointGlobalIdSet;
         public:
             typedef int IdType;
 
@@ -274,29 +269,38 @@ namespace Dune
                                       faceMapping,
                                       pointMapping);
             }
-            GlobalIdSet(const IdSet* ids)
-            : idSet_(ids)
+            LevelGlobalIdSet(const IdSet* ids, const CpGridData* view)
+                : idSet_(ids), view_(view)
             {}
-            GlobalIdSet()
-                : idSet_()
+            LevelGlobalIdSet()
+                : idSet_(), view_()
             {}
-            template<class EntityType>
-            IdType id(const EntityType& e) const
+            template<int codim>
+            IdType id(const Entity<codim>& e) const
+            {
+                assert(view_ == e.pgrid_);
+                return id(static_cast<const EntityRep<codim>&>(e));
+            }
+            template<int codim>
+            IdType id(const EntityRep<codim>& e) const
             {
                 if(idSet_)
                     return idSet_->id(e);
                 else
-                    return this->template getMapping<EntityType::codimension>()[e.index()];
+                    return this->template getMapping<codim>()[e.index()];
             }
 
             template<int cc>
             IdType subId(const cpgrid::Entity<0>& e, int i) const
             {
+                assert(view_ == e.pgrid_);
                 return id(e.template subEntity<cc>(i));
             }
 
             IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
             {
+                assert(view_ == e.pgrid_);
+
                 switch (cc) {
                 case 0: return id(*e.subEntity<0>(i));
                 //case 1: return id(*e.subEntity<1>(i));
@@ -308,8 +312,97 @@ namespace Dune
             }
         private:
             const IdSet* idSet_;
+            const CpGridData* view_;
         };
 
+    /*!
+     * \brief The global id set for Dune.
+     *
+     * You can pass it any entity of either the loadbalanced
+     * or global grid that is stored on this process.
+     */
+    class GlobalIdSet
+    {
+    public:
+        /// \brief The type of the id.
+        using IdType = typename LevelGlobalIdSet::IdType;
+
+        GlobalIdSet(const CpGridData& view)
+        {
+            idSets_.insert(std::make_pair(&view,view.global_id_set_));
+        }
+
+        template<int codim>
+        IdType id(const Entity<codim>& e) const
+        {
+            return levelIdSet(e.pgrid_).id(e);
+        }
+
+        template<int cc>
+        IdType subId(const cpgrid::Entity<0>& e, int i) const
+        {
+            return levelIdSet(e.pgrid_).template subId<cc>(e, i);
+        }
+
+        IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
+        {
+            return levelIdSet(e.pgrid_).subId(e, i, cc);
+        }
+
+        void insertIdSet(const CpGridData& view)
+        {
+            idSets_.insert(std::make_pair(&view,view.global_id_set_));
+        }
+    private:
+        /// \brief Get the correct id set of a level (global or distributed)
+        const LevelGlobalIdSet& levelIdSet(const CpGridData* const data) const
+        {
+            auto candidate = idSets_.find(data);
+            assert(candidate != idSets_.end());
+            return *candidate->second;
+        }
+        /// \brief map of views onto idesets if the view.
+        std::map<const CpGridData* const, const LevelGlobalIdSet*> idSets_;
+    };
+
+    class ReversePointGlobalIdSet
+    {
+    public:
+        ReversePointGlobalIdSet(const LevelGlobalIdSet& idSet)
+        {
+            if(idSet.idSet_)
+            {
+                grid_ = &(idSet.idSet_->grid_);
+            }
+            else
+            {
+                mapping_.reset(new std::unordered_map<int,int>);
+                int localId = 0;
+                for (const  auto& globalId: idSet.template getMapping<3>())
+                    (*mapping_)[globalId] = localId++;
+            }
+        }
+        int operator[](int i) const
+        {
+            if (mapping_)
+            {
+                return(*mapping_)[i];
+            }
+            else if (grid_)
+            {
+                return i - grid_->size(0) - grid_->size(1) - grid_->size(2);
+            }
+
+            OPM_THROW(std::runtime_error, "No grid or mapping. Should not be here!");
+        }
+        void release()
+        {
+            mapping_.reset(nullptr);
+        }
+    private:
+        std::unique_ptr<std::unordered_map<int,int> > mapping_;
+        const CpGridData* grid_ = nullptr;
+    };
 
     } // namespace cpgrid
 } // namespace Dune

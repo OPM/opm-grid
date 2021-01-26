@@ -113,11 +113,19 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid& ecl_grid, bool periodic_extension, bool turn_normals, bool clip_z,
+    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
                                           const std::vector<double>& poreVolume, const Opm::NNC& nncs)
     {
-        std::vector<double> coordData = ecl_grid.getCOORD();
+        if (ccobj_.rank() != 0 ) {
+            // Store global grid only on rank 0
+            return;
+        }
 
+        if (!ecl_grid_ptr)
+            OPM_THROW(std::logic_error, "We need a valid pointer to an eclipse grid on rank 0!");
+
+        const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
+        std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 
         // Mutable because grdecl::zcorn is non-const.
@@ -138,15 +146,15 @@ namespace cpgrid
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             // Currently PINCH is always assumed to be active
-            bool opmfil = ecl_grid.getMinpvMode() == Opm::MinpvMode::OpmFIL;
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
                 thickness[i] = ecl_grid.getCellThickness(i);
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, opmfil, zcornData.data());
-            if (opmfil || nnc_cells_pinch.size() > 0) {
+            const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
+            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
+            if (nnc_cells_pinch.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
@@ -159,16 +167,12 @@ namespace cpgrid
             nnc_cells[PinchNNC].insert({low, high});
         }
         // Add explicit NNCs.
-        for (const auto single_nnc : nncs.nncdata()) {
-            // Repeated NNCs will only exist in the map once
-            // (repeated insertions have no effect), and we make
-            // sure NNCs specified using either order of cells
-            // end up with the same {low, high} pair.
-            // The code that computes the transmissibilities is responsible
-            // for ensuring repeated NNC transmissibilities are added.
-            auto low = std::min(single_nnc.cell1, single_nnc.cell2);
-            auto high = std::max(single_nnc.cell1, single_nnc.cell2);
-            nnc_cells[ExplicitNNC].insert({low, high});
+        for (const auto single_nnc : nncs.input()) {
+            // Repeated NNCs will only exist in the map once (repeated
+            // insertions have no effect). The code that computes the
+            // transmissibilities is responsible for ensuring repeated NNC
+            // transmissibilities are added.
+            nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
         }
 
         // this variable is only required because getCellZvals() needs
@@ -241,6 +245,10 @@ namespace cpgrid
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
+        if( ccobj_.rank() != 0 )
+        {
+            OPM_THROW(std::logic_error, "Processing  eclipse file only allowed on rank 0");
+        }
         // Process.
 #ifdef VERBOSE
         std::cout << "Processing eclipse data." << std::endl;
@@ -289,6 +297,9 @@ namespace cpgrid
         free_processed_grid(&output);
 
         computeUniqueBoundaryIds();
+
+        if(ccobj_.size()>1)
+            populateGlobalCellIndexSet();
 
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
@@ -1069,9 +1080,11 @@ namespace cpgrid
                 cpgrid::OrientedEntityTable<0, 1>::row_type cf = c2f[cell_ent];
                 face_indices.clear();
                 for (int local_index = 0; local_index < cf.size(); ++local_index) {
-                    face_indices.push_back(cf[local_index].index());
+                    if (face_to_output_face[cf[local_index].index()] != cpgrid::NNCFace) {
+                        face_indices.push_back(cf[local_index].index());
+                    }
                 }
-                IndirectArray<point_t> cell_pts(face_centroids, &face_indices[0], &face_indices[0] + cf.size());
+                IndirectArray<point_t> cell_pts(face_centroids, &face_indices[0], &face_indices[0] + face_indices.size());
                 point_t cell_avg = average(cell_pts);
                 point_t cell_centroid(0.0);
                 double tot_cell_vol = 0.0;

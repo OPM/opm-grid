@@ -57,6 +57,11 @@ const int* cartDims(const UnstructuredGrid& grid)
     return grid.cartdims;
 }
 
+std::vector<int> createACTNUM(const UnstructuredGrid& grid) {
+    const int* dims = cartDims(grid);
+    return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();
+}
+
 const double* beginCellCentroids(const UnstructuredGrid& grid)
 {
     return grid.cell_centroids;

@@ -52,7 +52,7 @@ namespace Dune
     }
 
     template< class Intersection >
-    bool wasInserted ( const Intersection &intersection ) const
+    bool wasInserted ( const Intersection /*&intersection*/ ) const
     {
       return false;
     }
@@ -70,7 +70,7 @@ namespace Dune
     }
 
     template< class Entity >
-    std::vector< double > &parameter ( const Entity &entity )
+    std::vector< double > &parameter ( const Entity& )
     {
       DUNE_THROW( InvalidStateException,
                   "Calling DGFGridFactory::parameter is only allowed if there are parameters." );
@@ -80,7 +80,7 @@ namespace Dune
 
     template< class Intersection >
     const typename DGFBoundaryParameter::type &
-    boundaryParameter ( const Intersection &intersection ) const
+    boundaryParameter ( const Intersection& ) const
     {
       return DGFBoundaryParameter::defaultValue();
     }

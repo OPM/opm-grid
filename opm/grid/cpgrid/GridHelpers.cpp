@@ -84,6 +84,11 @@ const int*  globalCell(const Dune::CpGrid& grid)
     return &(grid.globalCell()[0]);
 }
 
+std::vector<int> createACTNUM(const Dune::CpGrid& grid) {
+    const int* dims = cartDims(grid);
+    return ActiveGridCells(dims[0], dims[1], dims[2], globalCell(grid), numCells(grid)).actNum();
+}
+
 CellCentroidTraits<Dune::CpGrid>::IteratorType
 beginCellCentroids(const Dune::CpGrid& grid)
 {

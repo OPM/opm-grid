@@ -57,6 +57,7 @@ namespace Dune
     PolyhedralGridView ( const Grid &grid, const int level = 0 )
     : grid_( &grid )
     {
+      (void)level;
     }
 
     const Grid &grid () const
@@ -134,9 +135,9 @@ namespace Dune
     }
 
     template< class DataHandle, class Data >
-    void communicate ( CommDataHandleIF< DataHandle, Data > &dataHandle,
-                       InterfaceType interface,
-                       CommunicationDirection direction ) const
+    void communicate ( CommDataHandleIF< DataHandle, Data > /*&dataHandle*/,
+                       InterfaceType /*interface*/,
+                       CommunicationDirection /*direction*/ ) const
     {
     }
 
@@ -159,13 +160,8 @@ namespace Dune
     typedef PolyhedralGridIntersection< const Grid > IntersectionImpl;
     typedef PolyhedralGridIntersectionIterator< const Grid > IntersectionIteratorImpl;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,3)
     typedef Dune::Intersection< const Grid, IntersectionImpl > Intersection;
     typedef Dune::IntersectionIterator< const Grid, IntersectionIteratorImpl, IntersectionImpl > IntersectionIterator;
-#else
-    typedef Dune::Intersection< const Grid, PolyhedralGridIntersection > Intersection;
-    typedef Dune::IntersectionIterator< const Grid, PolyhedralGridIntersectionIterator, PolyhedralGridIntersection > IntersectionIterator;
-#endif
 
     typedef typename Grid::CollectiveCommunication CollectiveCommunication;
 

@@ -27,23 +27,21 @@
 
 #include <dune/common/version.hh>
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON,2,3)
 #include <dune/common/parallel/mpihelper.hh>
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/communication.hh>
+#else
 #include <dune/common/parallel/collectivecommunication.hh>
+#endif
 
 // the following implementation is only available in case MPI is available
 #if HAVE_MPI
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#include <dune/common/parallel/mpicommunication.hh>
+#else
 #include <dune/common/parallel/mpicollectivecommunication.hh>
 #endif
-#else // DUNE_COMMON 2.2
-#include <dune/common/mpihelper.hh>
-#include <dune/common/collectivecommunication.hh>
-
-// the following implementation is only available in case MPI is available
-#if HAVE_MPI
-#include <dune/common/mpicollectivecommunication.hh>
 #endif
-#endif // #if DUNE_VERSION_NEWER()
 
 
 namespace Dune
