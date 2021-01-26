@@ -241,7 +241,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList) =
-                cpgrid::createZoltanListsFromParts(*this, nullptr, nullptr, input_cell_part,
+                cpgrid::createZoltanListsFromParts(*this, wells, nullptr, input_cell_part,
                                                    true);
         }
         else
