@@ -446,8 +446,8 @@ namespace Dune
 
         /// given an EntitySeed (or EntityPointer) return an entity object
         template <int codim>
-        cpgrid::Entity<codim> entity(const cpgrid::Entity< codim >&) const;
-           
+        cpgrid::Entity<codim> entity(const cpgrid::Entity<codim>& seed) const;
+
         /// @brief Create a grid out of a coarse one and a refinement(LGR) of a selected block-shaped patch of cells from that coarse grid.
         ///
         /// Level0 refers to the coarse grid, assumed to be this-> data_[0]. Level1 refers to the LGR (stored in this->data_[1]).
