@@ -30,6 +30,7 @@
 #include <random>
 #include <iostream>
 #include <string>
+#include <tuple>
 
 class MPIError {
 public:
