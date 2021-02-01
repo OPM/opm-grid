@@ -972,26 +972,13 @@ namespace Dune
     {
       const int codim = EntitySeed :: codimension;
       const int index = seed.index();
-      switch (codim)
-      {
-        case 0:
-          {
-            return cellVertices_[ index ].size();
-          }
-        case 1:
-          {
-            //return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
-            return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
-          }
-        case dim:
-          {
-            return 1;
-          }
-        default:
-          {
-            return 0;
-          }
-      }
+      if (codim==0)
+        return cellVertices_[ index ].size();
+      if (codim==1)
+        return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
+      if (codim==dim)
+         return 1;
+      return 0;
     }
 
     template <class EntitySeed>
@@ -999,33 +986,27 @@ namespace Dune
     corner ( const EntitySeed& seed, const int i ) const
     {
       const int codim = EntitySeed :: codimension;
-      switch (codim)
+      if (codim==0)
       {
-        case 0:
-          {
-            const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-          }
-        case 1:
-          {
-            // for faces we need to swap vertices in 3d since in UnstructuredGrid
-            // those are ordered counter clockwise, for 2d this does not matter
-            // TODO: Improve this for performance reasons
-            const int crners = corners( seed );
-            const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
-            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
-            return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
-          }
-        case dim:
-          {
-            const int coordIndex = GlobalCoordinate :: dimension * seed.index();
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-          }
-        default:
-          {
-            return GlobalCoordinate( 0 );
-          }
+        const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
+          return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
       }
+      if (codim==1)
+      {
+        // for faces we need to swap vertices in 3d since in UnstructuredGrid
+        // those are ordered counter clockwise, for 2d this does not matter
+        // TODO: Improve this for performance reasons
+        const int crners = corners( seed );
+        const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
+        const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
+        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+      }
+      if (codim==dim)
+      {
+        const int coordIndex = GlobalCoordinate :: dimension * seed.index();
+        return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+      }      
+      return GlobalCoordinate( 0 );
     }
 
     template <class EntitySeed>
@@ -1034,25 +1015,19 @@ namespace Dune
       const int index = seed.index();
       if( seed.codimension == 0 )
       {
-        switch (codim)
-        {
-          case 0:
-            return 1;
-          case 1:
-            return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
-          case dim:
-            return cellVertices_[ index ].size();
-        }
+        if (codim==0)
+          return 1;
+        if (codim==1)
+          return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+        if (codim==dim)
+          return cellVertices_[ index ].size();
       }
       else if( seed.codimension == 1 )
       {
-        switch (codim)
-        {
-          case 1:
-            return 1;
-          case dim:
-            return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
-        }
+        if (codim==1)
+          return 1;
+        if (codim==dim)
+          return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
       }
       else if ( seed.codimension == dim )
       {
@@ -1532,7 +1507,6 @@ namespace Dune
 
         // check face normals
         {
-          typedef Dune::FieldVector< double, dim > Coordinate;
           const int faces = grid_.number_of_faces;
           for( int face = 0 ; face < faces; ++face )
           {
@@ -1544,7 +1518,7 @@ namespace Dune
             if( grid_.face_areas[ face ] < 0 )
               std::abort();
 
-            Coordinate centerDiff( 0 );
+            GlobalCoordinate centerDiff( 0 );
             if( b >= 0 )
             {
               for( int d=0; d<dim; ++d )
@@ -1575,7 +1549,7 @@ namespace Dune
               }
             }
 
-            Coordinate normal( 0 );
+            GlobalCoordinate normal( 0 );
             for( int d=0; d<dim; ++d )
             {
               normal[ d ] = grid_.face_normals[ face*dim + d ];
@@ -1617,7 +1591,7 @@ namespace Dune
 
             hasCube = true;
           }
-          else
+          else if ( false )
           {
             hasPolyhedron = true;
           }
