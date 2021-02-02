@@ -340,5 +340,118 @@ int main(int argc, char** argv )
         Dune::GridPtr< Grid > gridPtr( dgfFile );
         gridcheck( *gridPtr );
     }
+
+    {
+        // Test 2D grid embedded in a 3D domain
+        const std::string gridFileName = "polyhedral_grid_test.txt";
+        std::stringstream gridFile;
+        std::ofstream out(gridFileName);
+
+        gridFile << "3 1 3 3 6 3 0 0" << std::endl;
+        gridFile << "0 0 0" << std::endl;
+        gridFile << "0.0 0.0 1.0 0.0 1.0 0.0 0.0 1.0 1.0" << std::endl;
+        gridFile << "0 2 4 6" << std::endl;
+        gridFile << "0 1 0 2 1 2" << std::endl;  
+        gridFile << "0 -1 0 -1 0 -1" << std::endl; 
+        gridFile << "1.4142135623730951 1.0 1.0" << std::endl;
+        gridFile << "0.0 0.5 0.5 0.0 0.5 1.0 0.0 1.0 0.5" << std::endl;
+        gridFile << "-1.1102230246251565e-16 -1.0 -1.0 1.1102230246251565e-16 0.0 1.0 0.0 1.0 0.0" << std::endl;
+        gridFile << "0 3" << std::endl;
+        gridFile << "0 1 2" << std::endl;
+        gridFile << "0.5" << std::endl;
+        gridFile << "0.0 0.6666666666666666 0.6666666666666666" << std::endl;
+
+        out << gridFile.str();
+        out.close();
+
+        const char* c_str = gridFileName.c_str();
+        typedef Dune::PolyhedralGrid< 2, 3, float > Grid;
+        UnstructuredGrid* grid = read_grid(c_str);
+        std::remove(c_str);
+
+        if (!grid) {
+            std::string msg = "RuntimeError: UnstructuredGrid could not read grid file";
+            throw std::runtime_error(msg);
+        }
+        // check different coordinate field type here
+        Grid::UnstructuredGridPtr ugPtr( grid );
+        Dune::GridPtr< Grid > gridPtr( new Grid(*ugPtr) );
+        gridcheck( *gridPtr );
+    }
+
+    {
+        // Test 1D grid embedded in a 3D domain
+        const std::string gridFileName = "polyhedral_grid_test.txt";
+        std::stringstream gridFile;
+        std::ofstream out(gridFileName);
+        gridFile << "3 2 3 3 3 4 0 0" << std::endl;
+        gridFile << "0 0 0" << std::endl;
+        gridFile << "0.0 0.0 0.0 0.5 0.5 1.0 1.0 1.0 2.0" << std::endl;
+        gridFile << "0 1 2 3" << std::endl;
+        gridFile << "0 1 2" << std::endl;
+        gridFile << "-1 0 0 1 1 -1" << std::endl;
+        gridFile << "1.0 1.0 1.0" << std::endl;
+        gridFile << "0.0 0.0 0.0 0.5 0.5 1.0 1.0 1.0 2.0" << std::endl;
+        gridFile << "0.4082482904638631 0.4082482904638631 0.8164965809277261 0.4082482904638631 0.4082482904638631 0.8164965809277261 0.4082482904638631 0.4082482904638631 0.8164965809277261" << std::endl;
+        gridFile << "0 2 4" << std::endl;
+        gridFile << "0 1 1 2" << std::endl;
+        gridFile << "1.224744871391589 1.224744871391589" << std::endl;
+        gridFile << "0.25 0.25 0.5 0.75 0.75 1.5" << std::endl;
+
+        out << gridFile.str();
+        out.close();
+
+        const char* c_str = gridFileName.c_str();
+        UnstructuredGrid* grid = read_grid(c_str);
+        std::remove(c_str);
+
+        if (!grid) {
+            std::string msg = "RuntimeError: UnstructuredGrid could not read grid file";
+            throw std::runtime_error(msg);
+        }
+        // check different coordinate field type here
+        typedef Dune::PolyhedralGrid< 1, 3, float > Grid;
+        Grid::UnstructuredGridPtr ugPtr( grid );
+        Dune::GridPtr< Grid > gridPtr( new Grid(*ugPtr) );
+        gridcheck( *gridPtr );
+    }
+
+    {
+        // Test 1D grid embedded in a 2D domain
+        const std::string gridFileName = "polyhedral_grid_test.txt";
+        std::stringstream gridFile;
+        std::ofstream out(gridFileName);
+        gridFile << "2 2 3 3 3 4 0 0" << std::endl;
+        gridFile << "0 0" << std::endl;
+        gridFile << "0.0 -0.0 0.5 -0.5 1.0 -1.0" << std::endl;
+        gridFile << "0 1 2 3" << std::endl;
+        gridFile << "0 1 2" << std::endl;
+        gridFile << "-1 0 0 1 1 -1" << std::endl;
+        gridFile << "1.0 1.0 1.0" << std::endl;
+        gridFile << "0.0 -0.0 0.5 -0.5 1.0 -1.0" << std::endl;
+        gridFile << "0.7071067811865475 -0.7071067811865475 0.7071067811865475 -0.7071067811865475 0.7071067811865475 -0.7071067811865475" << std::endl;
+        gridFile << "0 2 4" << std::endl;
+        gridFile << "0 1 1 2" << std::endl;
+        gridFile << "0.7071067811865476 0.7071067811865476" << std::endl;
+        gridFile << "0.25 -0.25 0.75 -0.75" << std::endl;
+
+        out << gridFile.str();
+        out.close();
+
+        const char* c_str = gridFileName.c_str();
+        UnstructuredGrid* grid = read_grid(c_str);
+        std::remove(c_str);
+
+        if (!grid) {
+            std::string msg = "RuntimeError: UnstructuredGrid could not read grid file";
+            throw std::runtime_error(msg);
+        }
+        // check different coordinate field type here
+        typedef Dune::PolyhedralGrid< 1, 2, float > Grid;
+        Grid::UnstructuredGridPtr ugPtr( grid );
+        Dune::GridPtr< Grid > gridPtr( new Grid(*ugPtr) );
+        gridcheck( *gridPtr );
+    }
+
     return 0;
 }
