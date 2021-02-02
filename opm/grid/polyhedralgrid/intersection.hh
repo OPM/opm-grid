@@ -50,6 +50,12 @@ namespace Dune
       intersectionIdx_( -1 )
     {}
 
+    PolyhedralGridIntersection ( )
+    : data_( ),
+      seed_(),
+      intersectionIdx_( -1 )
+    {}
+
     PolyhedralGridIntersection ( ExtraData data, const EntitySeed& seed, const int intersectionIdx )
     : data_( data ),
       seed_( seed ),
