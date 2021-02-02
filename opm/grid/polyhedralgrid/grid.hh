@@ -179,7 +179,8 @@ namespace Dune
     static UnstructuredGridPtr
     allocateGrid ( std::size_t nCells, std::size_t nFaces, std::size_t nFaceNodes, std::size_t nCellFaces, std::size_t nNodes )
     {
-      UnstructuredGridType *grid = allocate_grid( dim, nCells, nFaces, nFaceNodes, nCellFaces, nNodes );
+      // Note that we here assign a grid of dimension dimworld in order to obtain global coordinates in the correct dimension
+      UnstructuredGridType *grid = allocate_grid( dimworld, nCells, nFaces, nFaceNodes, nCellFaces, nNodes );
       if( !grid )
         DUNE_THROW( GridError, "Unable to allocate grid" );
       return UnstructuredGridPtr( grid );
@@ -1521,38 +1522,38 @@ namespace Dune
             GlobalCoordinate centerDiff( 0 );
             if( b >= 0 )
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.cell_centroids[ b*dim + d ];
+                centerDiff[ d ] = grid_.cell_centroids[ b*dimworld + d ];
               }
             }
             else
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.face_centroids[ face*dim + d ];
+                centerDiff[ d ] = grid_.face_centroids[ face*dimworld + d ];
               }
             }
 
             if( a >= 0 )
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.cell_centroids[ a*dim + d ];
+                centerDiff[ d ] -= grid_.cell_centroids[ a*dimworld + d ];
               }
             }
             else
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.face_centroids[ face*dim + d ];
+                centerDiff[ d ] -= grid_.face_centroids[ face*dimworld + d ];
               }
             }
 
             GlobalCoordinate normal( 0 );
-            for( int d=0; d<dim; ++d )
+            for( int d=0; d<dimworld; ++d )
             {
-              normal[ d ] = grid_.face_normals[ face*dim + d ];
+              normal[ d ] = grid_.face_normals[ face*dimworld + d ];
             }
 
             if( centerDiff.two_norm() < 1e-10 )
@@ -1567,9 +1568,11 @@ namespace Dune
           }
         }
 
+        // if no face_tag is available we set the reference element based
+        // on the number of nodes in a cell.
+        // By default set all types to None. This corresponds to hasPolygon
         GeometryType tmp;
         tmp = Dune::GeometryTypes::none(dim);
-        // by default set all types to None
         cellGeomTypes_.resize( numCells );
         std::fill( cellGeomTypes_.begin(), cellGeomTypes_.end(), tmp );
 
@@ -1591,50 +1594,27 @@ namespace Dune
 
             hasCube = true;
           }
-          else if ( false )
+          else
           {
             hasPolyhedron = true;
           }
         }
-
-        // if no face_tag is available we assume that no reference element can be
-        // assigned to the elements
+        // Propogate the cell geometry type to all codimensions
         geomTypes_.resize(dim + 1);
-        tmp = Dune::GeometryTypes::cube(0);
-        geomTypes_[ dim ].push_back( tmp );
-        tmp = Dune::GeometryTypes::cube(1);
-        geomTypes_[ dim-1 ].push_back( tmp );
-
-        if( hasSimplex )
+        for (int codim = 0; codim <= dim; ++codim)
         {
-          tmp = Dune::GeometryTypes::simplex(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( hasCube )
-        {
-          tmp = Dune::GeometryTypes::cube(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( hasPolyhedron )
-        {
-          tmp = Dune::GeometryTypes::none(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( dim > 2 )
-        {
-          for( const auto& elemType : geomTypes_[ 0 ] )
-          {
-            if( elemType.isSimplex() )
-              tmp = Dune::GeometryTypes::simplex(2);
-            else if ( elemType.isCube() )
-              tmp = Dune::GeometryTypes::cube(2);
+            if( hasSimplex ){
+              tmp = Dune::GeometryTypes::simplex(dim - codim);
+              geomTypes_[ codim ].push_back( tmp );
+              }
+            else if ( hasCube ){
+              tmp = Dune::GeometryTypes::cube(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );}
+            else if (hasPolyhedron){
+              tmp = Dune::GeometryTypes::none(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );}
             else
-              tmp = Dune::GeometryTypes::none(2);
-            geomTypes_[ 1 ].push_back( tmp );
-          }
+              OPM_THROW(std::runtime_error, "Grid error, unkown geometry type.");
         }
 
       } // end else of ( grid_.cell_facetag )
@@ -1665,17 +1645,6 @@ namespace Dune
           }
         }
       }
-
-      /*
-      for( int i=0; i<= dim ; ++ i )
-      {
-        for( const auto& geomType : geomTypes_[ i ] )
-        {
-          std::cout << "Codim " << i << "  type = " << geomType << std::endl;
-        }
-      }
-      */
-      //print( std::cout, grid_ );
     }
 
     void print( std::ostream& out, const UnstructuredGridType& grid ) const
