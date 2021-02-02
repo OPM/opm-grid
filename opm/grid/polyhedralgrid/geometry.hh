@@ -191,6 +191,7 @@ namespace Dune
       return storage_.volume();
     }
 
+
     JacobianTransposed jacobianTransposed ( const LocalCoordinate & local ) const
     {
       if( geometryImpl_ )

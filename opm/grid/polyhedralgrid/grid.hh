@@ -30,6 +30,7 @@
 #include <opm/grid/polyhedralgrid/geometry.hh>
 #include <opm/grid/polyhedralgrid/gridview.hh>
 #include <opm/grid/polyhedralgrid/idset.hh>
+#include <opm/grid/polyhedralgrid/polyhedralmesh.hh>
 
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
@@ -42,6 +43,10 @@
 #include <opm/grid/GridManager.hpp>
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
+
+#include <opm/grid/verteq/topsurf.hpp>
+
+#include <opm/grid/verteq/topsurf.hpp>
 
 namespace Dune
 {
@@ -163,6 +168,7 @@ namespace Dune
 
   public:
     typedef UnstructuredGrid  UnstructuredGridType;
+    typedef Opm::TopSurf      TopSurfaceGridType;
 
   protected:
     struct UnstructuredGridDeleter
@@ -174,6 +180,7 @@ namespace Dune
     };
 
   public:
+    typedef PolyhedralMesh< dim, dimworld, coord_t, int > PolyhedralMeshType;
     typedef std::unique_ptr< UnstructuredGridType, UnstructuredGridDeleter > UnstructuredGridPtr;
 
     static UnstructuredGridPtr
@@ -344,6 +351,7 @@ namespace Dune
                               const std::vector< double >& dx )
     : gridPtr_( createGrid( n, dx ) ),
       grid_( *gridPtr_ ),
+      topSurfaceGrid_( nullptr ),
       comm_( MPIHelper::getCommunicator()),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -362,6 +370,8 @@ namespace Dune
     explicit PolyhedralGrid ( UnstructuredGridPtr &&gridPtr )
     : gridPtr_( std::move( gridPtr ) ),
       grid_( *gridPtr_ ),
+      topSurfaceGrid_( nullptr ),
+      //polyhedralMesh_( grid_ ),
       comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
@@ -381,12 +391,34 @@ namespace Dune
     explicit PolyhedralGrid ( const UnstructuredGridType& grid )
     : gridPtr_(),
       grid_( grid ),
+      topSurfaceGrid_( nullptr ),
       comm_( MPIHelper::getCommunicator() ),
       leafIndexSet_( *this ),
       globalIdSet_( *this ),
       localIdSet_( *this ),
       nBndSegments_( 0 )
     {
+      init();
+    }
+
+    /** \brief constructor
+     *
+     *  The references to ug are stored in the grid.
+     *  Therefore, they must remain valid until the grid is destroyed.
+     *
+     *  \param[in]  ug    UnstructuredGrid reference
+     */
+    explicit PolyhedralGrid ( const TopSurfaceGridType& topSurf )
+    : gridPtr_(),
+      grid_( static_cast< UnstructuredGridType > ( topSurf ) ),
+      topSurfaceGrid_( &topSurf ),
+      comm_( *this ),
+      leafIndexSet_( *this ),
+      globalIdSet_( *this ),
+      localIdSet_( *this ),
+      nBndSegments_( 0 )
+    {
+      // std::cout << "Creating TopSurfaceGrid" <<  topSurfaceGrid_ << std::endl;
       init();
     }
 
@@ -397,6 +429,8 @@ namespace Dune
     operator const UnstructuredGridType& () const { return grid_; }
 
     /** \} */
+
+    const TopSurfaceGridType* topSurfaceGrid() const { return topSurfaceGrid_; }
 
     /** \name Size Methods
      *  \{ */
@@ -434,6 +468,7 @@ namespace Dune
      */
     int size ( int codim ) const
     {
+      //return polyhedralMesh_.size( codim );
       if( codim == 0 )
       {
         return grid_.number_of_cells;
@@ -1353,6 +1388,8 @@ namespace Dune
   protected:
     void init ()
     {
+      //std::cout << "PolyhedralGrid init" << std::endl;
+
       // copy Cartesian dimensions
       for( int i=0; i<3; ++i )
       {
@@ -1464,6 +1501,11 @@ namespace Dune
               // store node number on correct local position
               cellVertices_[ c ][ (*vx).second ] = (*it).first ;
             }
+          }
+
+          for( int c=0; c<numCells; ++c )
+          {
+            // sort face_nodes according to reference element
           }
         }
 
@@ -1617,6 +1659,15 @@ namespace Dune
 
             hasCube = true;
           }
+          else if ( codim == 0 )
+          {
+            //if( minVx == maxVx && maxVx == 8 )
+            // tmp.makeCube(dim);
+            //if( minVx == maxVx && maxVx == 4 )
+            //  tmp.makeSimplex(dim);
+            //else
+            tmp.makeNone( dim );
+          }
           else
           {
             hasPolyhedron = true;
@@ -1691,17 +1742,6 @@ namespace Dune
           }
         }
       }
-
-      /*
-      for( int i=0; i<= dim ; ++ i )
-      {
-        for( const auto& geomType : geomTypes_[ i ] )
-        {
-          std::cout << "Codim " << i << "  type = " << geomType << std::endl;
-        }
-      }
-      */
-      //print( std::cout, grid_ );
     }
 
     void print( std::ostream& out, const UnstructuredGridType& grid ) const
@@ -1731,12 +1771,15 @@ namespace Dune
           out << vx[ i ] << " ";
         out << std::endl;
       }
-
     }
 
   protected:
     UnstructuredGridPtr gridPtr_;
     const UnstructuredGridType& grid_;
+
+    const TopSurfaceGridType* topSurfaceGrid_;
+
+    PolyhedralMeshType polyhedralMesh_;
 
     CollectiveCommunication comm_;
     std::array< int, 3 > cartDims_;
@@ -1852,5 +1895,6 @@ namespace Dune
 #include <opm/grid/polyhedralgrid/persistentcontainer.hh>
 #include <opm/grid/polyhedralgrid/cartesianindexmapper.hh>
 #include <opm/grid/polyhedralgrid/gridhelpers.hh>
+#include <opm/grid/polyhedralgrid/verteqcolumnutility.hh>
 
 #endif // #ifndef DUNE_POLYHEDRALGRID_GRID_HH

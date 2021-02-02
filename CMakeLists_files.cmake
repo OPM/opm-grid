@@ -58,6 +58,10 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/utility/cartesianToCompressed.cpp
   opm/grid/utility/StopWatch.cpp
   opm/grid/utility/WachspressCoord.cpp
+  opm/grid/verteq/topsurf.cpp
+  opm/grid/verteq/nav.cpp
+  opm/grid/verteq/utility/exc.cpp
+  opm/grid/verteq/utility/runlen.cpp
   )
 
 if (opm-common_FOUND)
@@ -175,6 +179,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
+  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/capabilities.hh
   opm/grid/polyhedralgrid/cartesianindexmapper.hh
   opm/grid/polyhedralgrid/declaration.hh
@@ -186,7 +191,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/grid.hh
   opm/grid/polyhedralgrid/gridview.hh
-  opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/idset.hh
   opm/grid/polyhedralgrid/indexset.hh
   opm/grid/polyhedralgrid/intersection.hh
@@ -223,4 +227,9 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/OpmParserIncludes.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
   opm/grid/utility/platform_dependent/reenable_warnings.h
+  opm/grid/verteq/topsurf.hpp
+  opm/grid/verteq/nav.hpp
+  opm/grid/verteq/utility/visibility.h
+  opm/grid/verteq/utility/exc.hpp
+  opm/grid/verteq/utility/runlen.hpp
   )

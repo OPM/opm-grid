@@ -166,6 +166,67 @@ allocate_grid(size_t ndims     ,
     return G;
 }
 
+#define SWAP(a,b) { int tmp = a; a = b; b =tmp; }
+
+void print_grid(const struct UnstructuredGrid *grd )
+{
+  int dim = grd->dimensions;
+  for(int i=0; i<grd->number_of_nodes; ++i )
+  {
+    printf("Vx (%d) = ( ",i);
+    for( int d=0; d<dim; ++d )
+    {
+      printf(" %2.2f ", grd->node_coordinates[i*dim + d ]);
+    }
+    printf(")\n");
+  }
+
+  for( int f=0; f<grd->number_of_faces; ++f )
+  {
+    //for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
+    printf(" Face (%d) (",f);
+    for( int vx=grd->face_nodepos[ f ]; vx<grd->face_nodepos[ f+1 ]; ++vx )
+    {
+      printf(" %d ",grd->face_nodes[ vx ]);
+    }
+    printf(")");
+    int bnd = grd->face_cells[ 2*f ] < 0 || grd->face_cells[ 2*f+1 ] < 0;
+    if( bnd )
+      printf(" boundary");
+    printf("\n");
+  }
+
+  /*
+  if( dim == 2 )
+  {
+    for( int c=0; c<grd->number_of_cells; ++c )
+    {
+      int f=grd->cell_facepos[ c ];
+      SWAP( grd->cell_faces[ f+1 ], grd->cell_faces[ f+2 ] );
+      SWAP( grd->cell_facetag[ f+1 ], grd->cell_facetag[ f+2 ] );
+    }
+  }
+  */
+
+  for( int c=0; c<grd->number_of_cells; ++c )
+  {
+    printf("Cell %d = (", c);
+    //for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
+    for( int f=grd->cell_facepos[ c ]; f<grd->cell_facepos[ c+1 ]; ++f )
+    {
+      printf(" %d ",grd->cell_faces[ f ]);
+
+      /*
+      for( int vx=grd->face_nodepos[ f ]; vx<grd->face_nodepos[ f+1 ]; ++vx )
+      {
+        printf(" %d ",grd->face_nodes[ vx ]);
+      }
+      printf(")\n");
+      */
+    }
+    printf(")\n");
+  }
+}
 
 #define GRID_NMETA      6
 #define GRID_NDIMS      0

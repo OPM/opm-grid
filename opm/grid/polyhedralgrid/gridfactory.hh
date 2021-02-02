@@ -18,7 +18,6 @@ namespace Dune
 
   // GridFactory for PolyhedralGrid
   // ---------------------------------
-
   template< int dim, int dimworld, class coord_t >
   class GridFactory< PolyhedralGrid< dim, dimworld, coord_t > >
     : public GridFactoryInterface< PolyhedralGrid< dim, dimworld, coord_t > >

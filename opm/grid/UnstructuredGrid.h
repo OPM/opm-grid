@@ -299,6 +299,8 @@ allocate_grid(size_t ndims     ,
               size_t ncellfaces,
               size_t nnodes    );
 
+void print_grid(const struct UnstructuredGrid *);
+
 
 /**
    Will allocate storage internally in the grid object to hold a copy

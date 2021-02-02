@@ -5,12 +5,17 @@
 
 #include <dune/common/unused.hh>
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/polyhedralgrid.hh>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
 
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 
 #include <opm/grid/cpgrid/dgfparser.hh>
+#include <opm/grid/polyhedralgrid/dgfparser.hh>
 
+#include <opm/grid/verteq/topsurf.hpp>
+
+#include <opm/grid/common/VerteqColumnUtility.hpp>
 
 #define DISABLE_DEPRECATED_METHOD_CHECK 1
 using Dune::referenceElement; //grid check assume usage of Dune::Geometry
@@ -23,6 +28,7 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <iostream>
+
 
 template <class GridView>
 void testGridIteration( const GridView& gridView, const int nElem )
@@ -85,20 +91,20 @@ void testGridIteration( const GridView& gridView, const int nElem )
 }
 
 
+
 template <class Grid>
 void testGrid(Grid& grid, const std::string& name, const size_t nElem, const size_t nVertices)
 {
-    typedef typename Grid::LeafGridView GridView;
-    /*
+    //testVerteq( grid );
 
-    try {
-      gridcheck( grid );
-    }
-    catch ( const Dune::Exception& e)
-    {
-      std::cerr << "Warning: " << e.what() << std::endl;
-    }
-*/
+    typedef typename Grid::LeafGridView GridView;
+    // try {
+    //   gridcheck( grid );
+    // }
+    // catch ( const Dune::Exception& e)
+    // {
+    //   std::cerr << "Warning: " << e.what() << std::endl;
+    // }
     std::cout << name << std::endl;
 
     testGridIteration( grid.leafGridView(), nElem );
@@ -132,16 +138,94 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
 
 }
 
+
 int main(int argc, char** argv )
 {
     // initialize MPI
     Dune::MPIHelper::instance( argc, argv );
+    std::stringstream dgfFile;
+    // create unit cube with 4 cells in each direction
+    dgfFile << "DGF" << std::endl;
+    dgfFile << "Interval" << std::endl;
+    dgfFile << "0 0 0" << std::endl;
+    dgfFile << "4 4 4" << std::endl;
+    dgfFile << "4 4 4" << std::endl;
+    dgfFile << "#" << std::endl;
+
+    // test PolyhedralGrid
+    {
+      typedef Dune::PolyhedralGrid< 3, 3 > Grid;
+#if HAVE_ECL_INPUT
+      const char *deckString =
+	"RUNSPEC\n"
+	"METRIC\n"
+	"DIMENS\n"
+	"4 4 4 /\n"
+	"GRID\n"
+	"DXV\n"
+	"4*1 /\n"
+	"DYV\n"
+	"4*1 /\n"
+	"DZ\n"
+	"16*1 /\n"
+	"TOPS\n"
+	"16*100.0 /\n";
+
+      Opm::Parser parser;
+      const auto deck = parser.parseString(deckString);
+      std::vector<double> porv;
+
+      std::cout << "Check ecl grid" << std::endl;
+      Grid grid(deck, porv);
+      gridcheck( grid );
+      //testGrid( grid, "polyhedralgrid", 8, 27 );
+      /*
+      Opm::TopSurf* ts;
+      ts = Opm::TopSurf::create (grid);
+      std::cout << ts->dimensions << std::endl;
+      std::cout << ts->number_of_cells <<" " << ts->number_of_faces << " " << ts->number_of_nodes << " " << std::endl;
+      //for (int i = 0; i < ts->number_of_nodes*ts->dimensions; ++i)
+      //  std::cout << ts->node_coordinates[i] << std::endl;
+      typedef Dune::PolyhedralGrid< 2, 2 > Grid2D;
+
+      std::cout << "tsDune for " << std::endl;
+      Grid2D tsDune (*ts);
+      std::cout << "tsDune after " << std::endl;
+      testGrid ( tsDune, "ts", 27 );
+      */
+#endif
+      {
+        std::cout <<"Check 3d grid" << std::endl;
+        Dune::GridPtr< Grid > gridPtr( dgfFile );
+        //testGrid( *gridPtr, "polyhedralgrid-dgf", std::pow(3, int(Grid::dimension)) );
+        gridcheck( *gridPtr );
+      }
+
+      {
+        std::cout <<"Check 2d grid" << std::endl;
+        std::stringstream dgfFile;
+        // create unit cube with 8 cells in each direction
+        dgfFile << "DGF" << std::endl;
+        dgfFile << "Interval" << std::endl;
+        dgfFile << "0 0" << std::endl;
+        dgfFile << "1 1" << std::endl;
+        dgfFile << "2 2" << std::endl;
+        dgfFile << "#" << std::endl;
+        typedef Dune::PolyhedralGrid< 2, 2 > Grid;
+        Dune::GridPtr< Grid > gridPtr( dgfFile );
+
+        std::cout << "Grididm = " << int(Grid::dimension) << std::endl;
+        size_t nVx = 9; //std::pow(int(3), int(Grid::dimension));
+        //testGrid( *gridPtr, "polyhedralgrid-dgf", 4, nVx);
+        gridcheck( *gridPtr );
+      }
+    }
 
     // test CpGrid
-    typedef Dune::CpGrid Grid;
-
+    {
+      typedef Dune::CpGrid Grid;
 #if HAVE_ECL_INPUT
-    const char *deckString =
+      const char *deckString =
         "RUNSPEC\n"
         "METRIC\n"
         "DIMENS\n"
@@ -156,29 +240,20 @@ int main(int argc, char** argv )
         "TOPS\n"
         "8*100.0 /\n";
 
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
-    std::vector<double> porv;
+      Opm::Parser parser;
+      const auto deck = parser.parseString(deckString);
+      std::vector<double> porv;
 
-    Grid grid;
-    const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
-    Opm::EclipseGrid ecl_grid(deck , actnum);
+      Grid grid;
+      const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
+      Opm::EclipseGrid ecl_grid(deck , actnum);
 
-    grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
-    testGrid( grid, "CpGrid_ecl", 8, 27 );
+      grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
+      testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 
-    std::stringstream dgfFile;
-    // create unit cube with 8 cells in each direction
-    dgfFile << "DGF" << std::endl;
-    dgfFile << "Interval" << std::endl;
-    dgfFile << "0 0 0" << std::endl;
-    dgfFile << "4 4 4" << std::endl;
-    dgfFile << "4 4 4" << std::endl;
-    dgfFile << "#" << std::endl;
-
-    Dune::GridPtr< Grid > gridPtr( dgfFile );
-    testGrid( *gridPtr, "CpGrid_dgf", 64, 125 );
-
+      Dune::GridPtr< Grid > gridPtr( dgfFile );
+      testGrid( *gridPtr, "CpGrid_dgf", 64, 125 );
+    }
     return 0;
 }
