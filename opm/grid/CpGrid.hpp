@@ -733,6 +733,8 @@ namespace Dune
         /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
         ///        rectangular partitioning the underlying cartesian grid.
         /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+        ///        interior region of multiple processes.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
@@ -745,10 +747,11 @@ namespace Dune
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, bool useZoltan = true,
-                    double zoltanImbalanceTol = 1.1)
+                    double zoltanImbalanceTol = 1.1,
+                    bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol);
+                                   addCornerCells, overlapLayers, useZoltan, zoltanImbalanceTol, allowDistributedWells);
             using std::get;
             if (get<0>(ret))
             {
@@ -757,6 +760,43 @@ namespace Dune
             return ret;
         }
 
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param parts The partitioning information. For a cell with local index i the entry
+        ///              parts[i] is the partion number. Partition numbers need to start with zero
+        ///              and need to be consectutive also parts.size()==grid.leafGridView().size()
+        ///              and the ranks communicator need to be able to map all parts. Needs to valid
+        ///              at rank 0. Number of parts cannot exceed the number of ranks. Parts need to
+        ///              numbered consecutively starting from zero.
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
+        /// \warning May only be called once.
+        /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
+        ///         a vector containing a pair of name and a boolean, indicating whether this well has
+        ///         perforated cells local to the process, for all wells (sorted by name)
+        template<class DataHandle>
+        std::pair<bool, std::vector<std::pair<std::string,bool> > >
+        loadBalance(DataHandle& data, const std::vector<int>& parts,
+                    const std::vector<cpgrid::OpmWellType> * wells,
+                    bool ownersFirst=false,
+                    bool addCornerCells=false, int overlapLayers=1)
+        {
+            using std::get;
+            auto ret = scatterGrid(defaultTransEdgeWgt,  ownersFirst, wells,
+                                   /* serialPartitioning = */ false,
+                                   /* transmissibilities = */ {},
+                                   addCornerCells, overlapLayers, /* useZoltan =*/ false,
+                                   /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                   /* allowDistributedWells = */ true, parts);
+            using std::get;
+            if (get<0>(ret))
+            {
+                scatterData(data);
+            }
+            return ret;
+        }
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
         /// \param overlapLayers The number of layers of overlap cells to be added
@@ -767,9 +807,58 @@ namespace Dune
         /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
-                         int overlapLayers=1, bool useZoltan = true)
+                         decltype(data.fixedsize(0,0)) overlapLayers=1, bool useZoltan = true)
         {
+            // decltype usage needed to tell the compiler not to use this function if first
+            // argument is std::vector but rather loadbalance by parts
             bool ret = loadBalance(overlapLayers, useZoltan);
+            if (ret)
+            {
+                scatterData(data);
+            }
+            return ret;
+        }
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param parts The partitioning information. For a cell with local index i the entry
+        ///              parts[i] is the partion number. Partition numbers need to start with zero
+        ///              and need to be consectutive also parts.size()==grid.leafGridView().size()
+        ///              and the ranks communicator need to be able to map all parts. Needs to valid
+        ///              at rank 0. Number of parts cannot exceed the number of ranks. Parts need to
+        ///              numbered consecutively starting from zero.
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        bool loadBalance(const std::vector<int>& parts, bool ownersFirst=false,
+                         bool addCornerCells=false, int overlapLayers=1)
+        {
+            using std::get;
+            return get<0>(scatterGrid(defaultTransEdgeWgt,  ownersFirst, /* wells = */ {},
+                                      /* serialPartitioning = */ false,
+                                      /* trabsmissibilities = */ {},
+                                      addCornerCells, overlapLayers, /* useZoltan =*/ false,
+                                      /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                      /* allowDistributedWells = */ true, parts));
+        }
+
+        /// \brief Distributes this grid and data over the available nodes in a distributed machine
+        /// \param data A data handle describing how to distribute attached data.
+        /// \param parts The partitioning information. For a cell with local index i the entry
+        ///              parts[i] is the partion number. Partition numbers need to start with zero
+        ///              and need to be consectutive also parts.size()==grid.leafGridView().size()
+        ///              and the ranks communicator need to be able to map all parts. Needs to valid
+        ///              at rank 0. Number of parts cannot exceed the number of ranks. Parts need to
+        ///              numbered consecutively starting from zero.
+        /// \param ownersFirst Order owner cells before copy/overlap cells.
+        /// \param addCornerCells Add corner cells to the overlap layer.
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \warning May only be called once.
+        template<class DataHandle>
+        bool loadBalance(DataHandle& data, const std::vector<int>& parts, bool ownersFirst=false,
+                         bool addCornerCells=false, int overlapLayers=1)
+        {
+            bool ret = loadBalance(parts, ownersFirst, addCornerCells, overlapLayers);
             if (ret)
             {
                 scatterData(data);
@@ -1419,10 +1508,14 @@ namespace Dune
         ///                           the Zoltan partitioner. This is done to improve the numerical
         ///                           performance of the parallel preconditioner.
         /// \param addCornerCells Add corner cells to the overlap layer.
-        /// \param The number of layers of cells of the overlap region.
+        /// \param overlapLayers The number of layers of cells of the overlap region.
         /// \param useZoltan Whether to use Zoltan for partitioning or our simple approach based on
         ///        rectangular partitioning the underlying cartesian grid.
         /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+        ///        interior region of multiple processes.
+        /// \param cell_part When using an external loadbalancer the partition number for each cell.
+        ///                  If empty or not specified we use internal load balancing.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
         ///         perforated cells local to the process, for all wells (sorted by name)
@@ -1435,7 +1528,9 @@ namespace Dune
                     bool addCornerCells,
                     int overlapLayers,
                     bool useZoltan = true,
-                    double zoltanImbalanceTol = 1.1);
+                    double zoltanImbalanceTol = 1.1,
+                    bool allowDistributedWells = true,
+                    const std::vector<int>& input_cell_part = {});
 
         /** @brief The data stored in the grid.
          *

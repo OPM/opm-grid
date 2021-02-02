@@ -18,6 +18,7 @@
   Copyright 2009, 2010, 2013 Statoil ASA.
   Copyright 2013, 2015 Dr. Markus Blatt - HPC-Simulation-Software & Services
   Copyright 2015       NTNU
+  Copyright 2020, 2021 OPM-OP AS
   This file is part of The Open Porous Media project  (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -41,6 +42,7 @@
 #include "GridPartitioning.hpp"
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/common/ZoltanPartition.hpp>
 #include <stack>
 
 #ifdef HAVE_MPI
@@ -580,5 +582,102 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         return 0;
 #endif
     }
+
+namespace cpgrid
+{
+#if HAVE_MPI
+
+   std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+               std::vector<std::tuple<int,int,char> >,
+               std::vector<std::tuple<int,int,char,int> > >
+    createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const double* transmissibilities, const std::vector<int>& parts,
+                               bool allowDistributedWells)
+    {
+        std::vector<int> exportGlobalIds;
+        std::vector<int> exportLocalIds;
+        std::vector<int> exportToPart;
+        std::vector<int> importGlobalIds;
+        std::size_t numExport = 0;
+        int root = 0;
+
+        if (grid.comm().rank() == 0)
+        {
+            // Create export lists as from Zoltan output, do not include part 0!
+            auto numCells = grid.size(0);
+            exportGlobalIds.reserve(numCells);
+            exportLocalIds.reserve(numCells);
+            exportToPart.reserve(numCells);
+            for (auto cell = grid.leafbegin<0>(), cellEnd = grid.leafend<0>();
+                 cell != cellEnd; ++cell)
+            {
+                const auto& gid = grid.globalIdSet().id(*cell);
+                const auto& lid = grid.localIdSet().id(*cell);
+                const auto& index = grid.leafIndexSet().index(cell);
+                const auto& part = parts[index];
+                if (part != 0 )
+                {
+                    exportGlobalIds.push_back(gid);
+                    exportLocalIds.push_back(lid);
+                    exportToPart.push_back(part);
+                    ++numExport;
+                }
+            }
+        }
+
+        int numImport = 0;
+        std::tie(numImport, importGlobalIds) =
+            scatterExportInformation(numExport, exportGlobalIds.data(),
+                                     exportToPart.data(), 0,
+                                     grid.comm());
+        std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
+        if (wells && !allowDistributedWells)
+        {
+            bool partitionIsEmpty = (grid.size(0) == 0);
+            EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
+            gridAndWells.reset(new cpgrid::CombinedGridWellGraph(grid,
+                                                                 wells,
+                                                                 transmissibilities,
+                                                                 partitionIsEmpty,
+                                                                 method));
+        }
+        return makeImportAndExportLists(grid, grid.comm(),
+                                        wells,
+                                        gridAndWells.get(),
+                                        root,
+                                        numExport,
+                                        numImport,
+                                        exportLocalIds.data(),
+                                        exportGlobalIds.data(),
+                                        exportToPart.data(),
+                                        importGlobalIds.data(),
+                                        allowDistributedWells);
+    }
+
+    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+               std::vector<std::tuple<int,int,char> >,
+               std::vector<std::tuple<int,int,char,int> > >
+    vanillaPartitionGridOnRoot(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const double* transmissibilities, bool allowDistributedWells = false)
+    {
+        int root = 0;
+        const auto& cc = grid.comm();
+        std::vector<int> parts;
+
+        if (cc.rank() == root)
+        {
+            std::cout<<"WARNING: Using poor man's load balancer"<<std::endl;
+            parts.resize(grid.size(0));
+            int  numParts=-1;
+            std::array<int, 3> initialSplit;
+            initialSplit[1]=initialSplit[2]=std::pow(cc.size(), 1.0/3.0);
+            initialSplit[0]=cc.size()/(initialSplit[1]*initialSplit[2]);
+            partition(grid, initialSplit, numParts, parts, false, false);
+        }
+        return createZoltanListsFromParts(grid, wells, transmissibilities, parts,
+                                          allowDistributedWells);
+    }
+#endif
+} // namespace cpgrid
 } // namespace Dune
 

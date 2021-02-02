@@ -83,6 +83,7 @@ list (APPEND ATTIC_FILES
 list (APPEND TEST_SOURCE_FILES
   tests/test_cartgrid.cpp
   tests/test_cpgrid.cpp
+  tests/test_communication_utils.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
@@ -144,6 +145,7 @@ endif()
 # originally generated with the command:
 # find dune -name '*.h*' -a ! -name '*-pch.hpp' -printf '\t%p\n' | sort
 list (APPEND PUBLIC_HEADER_FILES
+  opm/grid/common/CommunicationUtils.hpp
   opm/grid/common/GeometryHelpers.hpp
   opm/grid/common/GridAdapter.hpp
   opm/grid/common/GridPartitioning.hpp

@@ -50,6 +50,7 @@
 #include <opm/grid/common/GridPartitioning.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
+#include <opm/grid/common/CommunicationUtils.hpp>
 #include <fstream>
 #include <iostream>
 #include <iomanip>
@@ -144,7 +145,9 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
                     [[maybe_unused]] bool useZoltan,
-                    double zoltanImbalanceTol)
+                    double zoltanImbalanceTol,
+                    [[maybe_unused]] bool allowDistributedWells,
+                    [[maybe_unused]] const std::vector<int>& input_cell_part)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -165,92 +168,107 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
     if (cc.size() > 1)
     {
-        std::vector<int> cell_part;
+        std::vector<int> computedCellPart;
         std::vector<std::pair<std::string,bool>> wells_on_proc;
         std::vector<std::tuple<int,int,char>> exportList;
         std::vector<std::tuple<int,int,char,int>> importList;
 
-        if (useZoltan)
+        auto inputNumParts = input_cell_part.size();
+        inputNumParts = this->comm().max(inputNumParts);
+
+        if ( inputNumParts > 0 )
         {
-#ifdef HAVE_ZOLTAN
-            std::tie(cell_part, wells_on_proc, exportList, importList)
-                = serialPartitioning
-                ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol)
-                : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol);
-#else
-            OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
-#endif // HAVE_ZOLTAN
+            std::vector<int> errors;
+            std::vector<std::string> errorMessages =
+                { "More parts than MPI Communicator can handle",
+                  "Indices of parts need to zero starting",
+                  "Indices of parts need to be consecutive",
+                  "Only rank 0 should provide partitioning information for each cell"};
+
+            std::set<int> existingParts;
+
+            if (comm().rank() == 0)
+            {
+                for(const auto& part: input_cell_part)
+                {
+                    existingParts.insert(part);
+                }
+                if (*input_cell_part.rbegin() >= comm().size())
+                {
+                    errors.push_back(0);
+                }
+
+                int i = 0;
+                if (*existingParts.begin() != i)
+                {
+                    errors.push_back(1);
+                }
+                for (const auto& part: existingParts)
+                {
+                    if (part != i++)
+                    {
+                        errors.push_back(2);
+                        break;
+                    }
+                }
+                if (std::size_t(size(0)) != input_cell_part.size())
+                {
+                    errors.push_back(3);
+                }
+            }
+            auto size = errors.size();
+            comm().broadcast(&size, 1, 0);
+            errors.resize(size);
+
+            if (!errors.empty())
+            {
+                comm().broadcast(errors.data(), size, 0);
+                std::string message("Loadbalance: ");
+                for ( const auto& e: errors)
+                {
+                    message.append(errorMessages[e]).append(". ");
+                }
+                if (comm().rank() == 0)
+                {
+                    OPM_THROW(std::logic_error, message);
+                }
+                else
+                {
+                    OPM_THROW_NOLOG(std::logic_error, message);
+                }
+            }
+
+
+            // Partitioning given externally
+            std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+                cpgrid::createZoltanListsFromParts(*this, wells, nullptr, input_cell_part,
+                                                   true);
         }
         else
         {
-        std::vector<int> exportGlobalIds;
-        std::vector<int> exportLocalIds;
-        std::vector<int> exportToPart;
-        std::vector<int> importGlobalIds;
-        std::size_t numExport = 0;
-        int root = 0;
-
-        if (cc.rank() == root)
-        {
-            std::vector<int> parts(current_view_data_->global_cell_.size());
-            int  numParts=-1;
-            std::array<int, 3> initialSplit;
-            initialSplit[1]=initialSplit[2]=std::pow(cc.size(), 1.0/3.0);
-            initialSplit[0]=cc.size()/(initialSplit[1]*initialSplit[2]);
-            partition(*this, initialSplit, numParts, parts, false, false);
-            // Create export lists as from Zoltan output, do not include part 0!
-            exportGlobalIds.reserve(numCells());
-            exportLocalIds.reserve(numCells());
-            exportToPart.reserve(numCells());
-            for (auto cell = leafbegin<0>(), cellEnd = leafend<0>();
-                 cell != cellEnd; ++cell)
+            if (useZoltan)
             {
-                const auto& gid = globalIdSet().id(*cell);
-                const auto& lid = localIdSet().id(*cell);
-                const auto& index = leafIndexSet().index(cell);
-                const auto& part = parts[index];
-                if (part != 0 )
-                {
-                    exportGlobalIds.push_back(gid);
-                    exportLocalIds.push_back(lid);
-                    exportToPart.push_back(part);
-                    ++numExport;
-                }
+#ifdef HAVE_ZOLTAN
+                std::tie(computedCellPart, wells_on_proc, exportList, importList)
+                    = serialPartitioning
+                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells)
+                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells);
+#else
+                OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
+#endif // HAVE_ZOLTAN
+            }
+            else
+            {
+                std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+                    cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities, allowDistributedWells);
             }
         }
-        int numImport = 0;
-        std::tie(numImport, importGlobalIds) =
-            cpgrid::scatterExportInformation(numExport, exportGlobalIds.data(),
-                                             exportToPart.data(), 0, cc);
-        const bool allowDistributedWells = false;
-        std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
-        if (wells && !allowDistributedWells)
-        {
-            bool partitionIsEmpty = (size(0) == 0);
-            gridAndWells.reset(new cpgrid::CombinedGridWellGraph(*this,
-                                                       wells,
-                                                       transmissibilities,
-                                                       partitionIsEmpty,
-                                                       method));
-        }
-        std::tie(cell_part, wells_on_proc, exportList, importList) =
-            cpgrid::makeImportAndExportLists(*this, comm(),
-                                             wells,
-                                             gridAndWells.get(),
-                                             root,
-                                             numExport,
-                                             numImport,
-                                             exportLocalIds.data(),
-                                             exportGlobalIds.data(),
-                                             exportToPart.data(),
-                                             importGlobalIds.data(),
-                                             allowDistributedWells);
-        }
+        comm().barrier();
 
         // first create the overlap
         // map from process to global cell indices in overlap
         std::map<int,std::set<int> > overlap;
-        auto noImportedOwner = addOverlapLayer(*this, cell_part, exportList, importList, cc, addCornerCells,
+        auto noImportedOwner = addOverlapLayer(*this, computedCellPart, exportList, importList, cc, addCornerCells,
                                                transmissibilities);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
@@ -321,6 +339,55 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             Opm::OpmLog::info(ostr.str());
         }
 
+        // Print well distribution
+        std::vector<std::pair<int,int> > procWellPairs;
+
+        // range filters would be nice here. so C++20.
+        procWellPairs.reserve(std::count_if(std::begin(wells_on_proc),
+                                            std::end(wells_on_proc),
+                                            [](const std::pair<std::string, bool>& p){ return p.second; }));
+        int wellIndex = 0;
+        for ( const auto& well: wells_on_proc)
+        {
+            if ( well.second )
+            {
+                procWellPairs.emplace_back(cc.rank(), wellIndex);
+            }
+            ++wellIndex;
+        }
+
+        std::tie(procWellPairs, std::ignore) = Opm::gatherv(procWellPairs, cc, 0);
+
+        if (cc.rank() == 0)
+        {
+            std::sort(std::begin(procWellPairs), std::end(procWellPairs),
+                      [](const std::pair<int,int>& p1, const std::pair<int,int>& p2)
+                      { return p1.second < p2.second;});
+            std::ostringstream ostr;
+            ostr << "\nLoad balancing distributed the wells as follows:\n"
+                 << "  well name            ranks with perforated cells\n"
+                 << "---------------------------------------------------\n";
+            auto procWellPair = std::begin(procWellPairs);
+            auto endProcWellPair = std::end(procWellPairs);
+            int wellIdx = 0;
+            for ( const auto& well: wells_on_proc)
+            {
+                ostr << std::setw(16) << well.first;
+                while (procWellPair != endProcWellPair && procWellPair->second < wellIdx)
+                {
+                    ++procWellPair;
+                }
+                for ( ; procWellPair != endProcWellPair && procWellPair->second == wellIdx;
+                      ++procWellPair)
+                {
+                    ostr << " "<< std::setw(7) << procWellPair->first;
+                }
+                ostr << "\n";
+                ++wellIdx;
+            }
+            Opm::OpmLog::info(ostr.str());
+        }
+
         procsWithZeroCells = cc.sum(procsWithZeroCells);
 
         if (procsWithZeroCells) {
@@ -356,7 +423,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
-        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, cell_part);
+        distributed_data_->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
         global_id_set_.insertIdSet(*distributed_data_);
 
 

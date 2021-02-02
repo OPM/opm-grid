@@ -275,7 +275,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod,
                                int root,
-                               const double zoltanImbalanceTol)
+                               const double zoltanImbalanceTol,
+                               bool allowDistributedWells)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -341,7 +342,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      exportLocalGids,
                                      exportGlobalGids,
                                      exportProcs,
-                                     importGlobalGids);
+                                     importGlobalGids,
+                                     allowDistributedWells);
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
@@ -360,7 +362,8 @@ public:
                             const CollectiveCommunication<MPI_Comm>& _cc,
                             EdgeWeightMethod _edgeWeightsMethod,
                             int _root,
-                            const double _zoltanImbalanceTol)
+                            const double _zoltanImbalanceTol,
+                            bool _allowDistributedWells)
         : cpgrid(_cpgrid)
         , wells(_wells)
         , transmissibilities(_transmissibilities)
@@ -368,6 +371,7 @@ public:
         , edgeWeightsMethod(_edgeWeightsMethod)
         , root(_root)
         , zoltanImbalanceTol(_zoltanImbalanceTol)
+        , allowDistributedWells(_allowDistributedWells)
     {
         if (wells) {
             const bool partitionIsEmpty = cc.rank() != root;
@@ -410,7 +414,8 @@ public:
                                         exportLocalGids,
                                         exportGlobalGids,
                                         exportToPart,
-                                        importGlobalGids);
+                                        importGlobalGids,
+                                        allowDistributedWells);
     }
 
     ~ZoltanSerialPartitioner()
@@ -500,6 +505,7 @@ private:
     std::unique_ptr<CombinedGridWellGraph> gridAndWells;
     using ZoltanId = typename std::remove_pointer<ZOLTAN_ID_PTR>::type;
     std::vector<ZoltanId> importGlobalGidsVector;
+    bool allowDistributedWells;
 };
 
 
@@ -513,9 +519,11 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const CollectiveCommunication<MPI_Comm>& cc,
                                      EdgeWeightMethod edgeWeightsMethod,
                                      int root,
-                                     const double zoltanImbalanceTol)
+                                     const double zoltanImbalanceTol,
+                                     bool allowDistributedWells)
 {
-    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod, root, zoltanImbalanceTol);
+    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
+                                        root, zoltanImbalanceTol, allowDistributedWells);
     return partitioner.partition();
 }
 

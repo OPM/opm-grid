@@ -29,6 +29,34 @@ namespace Dune
 {
 namespace cpgrid
 {
+/// \brief Creates all the information needed from the partitioning
+///
+/// Note that if wells is not null and allowDitributedWells is false,
+/// then the partitioning is postprocessed such that all cells that a
+/// perforated by a well are part of the interior of exactly one process.
+/// Otherwise they might spreaded between multiple processes.
+///
+/// \param grid The grid
+/// \param cc  The MPI communicator used for the partitioning.
+/// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
+///              nullptr is possible
+/// \param gridAndWells Graph representing grid and wells (must match the other parameters!)
+/// \param root The rank that has the whole grid before loadbalancing.
+/// \param numExport The number of exported cells (created e.g. by Zoltan)
+/// \param numImport The number of imported cells (created e.g. by Zoltan)
+/// \param exportGlobalIds C-array of the global ids of exported cells (created e.g. by Zoltan)
+/// \param exportLocalIds C-array of the local ids of exported cells (created e.g. by Zoltan)
+/// \param exportToPart C-array with target partition of exported cells (created e.g. by Zoltan)
+/// \param importGlobalIds C-array of the global ids of exported cells (created e.g. by Zoltan)
+/// \param allowDistributedWells Whether wells might be distibuted to the interior of multiple processes.
+/// \return  A tuple consisting of a vector that contains for each local cell of the original grid the
+///         the number of the process that owns it after repartitioning,
+///         a vector containing a pair of name  and a boolean indicating whether this well has
+///         perforated cells local to the process of all wells,
+///         vector containing information for each exported cell (global id
+///         of cell, process id to send to, attribute there), and a vector containing
+///         information for each imported cell (global index, process id that sends, attribute here, local index
+///         here)
 template<class Id>
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
@@ -76,6 +104,8 @@ namespace cpgrid
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+///        interior region of multiple processes.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
 ///         a vector containing a pair of name  and a boolean indicating whether this well has
@@ -92,7 +122,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
-                               const double zoltanImbalanceTol);
+                               const double zoltanImbalanceTol,
+                               bool allowDistributedWells);
 
 /// \brief Partition a CpGrid using Zoltan serially only on rank 0
 ///
@@ -111,6 +142,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+/// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+///        interior region of multiple processes.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,
 ///         a set of names of wells that should be defunct in a parallel
@@ -128,7 +161,8 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                const double* transmissibilities,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
-                               const double zoltanImbalanceTol);
+                               const double zoltanImbalanceTol,
+                               bool allowDistributedWells);
 }
 }
 #endif // HAVE_ZOLTAN
