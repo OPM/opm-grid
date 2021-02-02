@@ -1603,18 +1603,25 @@ namespace Dune
         geomTypes_.resize(dim + 1);
         for (int codim = 0; codim <= dim; ++codim)
         {
-            if( hasSimplex ){
-              tmp = Dune::GeometryTypes::simplex(dim - codim);
-              geomTypes_[ codim ].push_back( tmp );
-              }
-            else if ( hasCube ){
-              tmp = Dune::GeometryTypes::cube(dim - codim);
-            geomTypes_[ codim ].push_back( tmp );}
-            else if (hasPolyhedron){
-              tmp = Dune::GeometryTypes::none(dim - codim);
-            geomTypes_[ codim ].push_back( tmp );}
-            else
-              OPM_THROW(std::runtime_error, "Grid error, unkown geometry type.");
+          if( hasSimplex )
+          {
+            tmp = Dune::GeometryTypes::simplex(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else if ( hasCube )
+          {
+            tmp = Dune::GeometryTypes::cube(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else if (hasPolyhedron)
+          {
+            tmp = Dune::GeometryTypes::none(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else
+          {
+            OPM_THROW(std::runtime_error, "Grid error, unkown geometry type.");
+          }
         }
 
       } // end else of ( grid_.cell_facetag )
