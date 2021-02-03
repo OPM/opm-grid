@@ -91,7 +91,7 @@ namespace Dune
         typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridGeometry > Geometry;
 
         typedef PolyhedralGridLocalGeometry< dimension-codim, dimensionworld, const Grid> LocalGeometryImpl;
-        typedef Dune::Geometry< dimension-codim, dimension, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
+        typedef Dune::Geometry< dimension-codim, dimensionworld, const Grid, PolyhedralGridLocalGeometry > LocalGeometry;
 
         typedef PolyhedralGridEntity< codim, dimension, const Grid > EntityImpl;
         typedef Dune::Entity< codim, dimension, const Grid, PolyhedralGridEntity > Entity;
@@ -179,7 +179,8 @@ namespace Dune
     static UnstructuredGridPtr
     allocateGrid ( std::size_t nCells, std::size_t nFaces, std::size_t nFaceNodes, std::size_t nCellFaces, std::size_t nNodes )
     {
-      UnstructuredGridType *grid = allocate_grid( dim, nCells, nFaces, nFaceNodes, nCellFaces, nNodes );
+      // Note that we here assign a grid of dimension dimworld in order to obtain global coordinates in the correct dimension
+      UnstructuredGridType *grid = allocate_grid( dimworld, nCells, nFaces, nFaceNodes, nCellFaces, nNodes );
       if( !grid )
         DUNE_THROW( GridError, "Unable to allocate grid" );
       return UnstructuredGridPtr( grid );
@@ -972,26 +973,13 @@ namespace Dune
     {
       const int codim = EntitySeed :: codimension;
       const int index = seed.index();
-      switch (codim)
-      {
-        case 0:
-          {
-            return cellVertices_[ index ].size();
-          }
-        case 1:
-          {
-            //return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
-            return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
-          }
-        case dim:
-          {
-            return 1;
-          }
-        default:
-          {
-            return 0;
-          }
-      }
+      if (codim==0)
+        return cellVertices_[ index ].size();
+      if (codim==1)
+        return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
+      if (codim==dim)
+         return 1;
+      return 0;
     }
 
     template <class EntitySeed>
@@ -999,33 +987,27 @@ namespace Dune
     corner ( const EntitySeed& seed, const int i ) const
     {
       const int codim = EntitySeed :: codimension;
-      switch (codim)
+      if (codim==0)
       {
-        case 0:
-          {
-            const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-          }
-        case 1:
-          {
-            // for faces we need to swap vertices in 3d since in UnstructuredGrid
-            // those are ordered counter clockwise, for 2d this does not matter
-            // TODO: Improve this for performance reasons
-            const int crners = corners( seed );
-            const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
-            const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
-            return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
-          }
-        case dim:
-          {
-            const int coordIndex = GlobalCoordinate :: dimension * seed.index();
-            return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
-          }
-        default:
-          {
-            return GlobalCoordinate( 0 );
-          }
+        const int coordIndex = GlobalCoordinate :: dimension * cellVertices_[ seed.index() ][ i ];
+          return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
       }
+      if (codim==1)
+      {
+        // for faces we need to swap vertices in 3d since in UnstructuredGrid
+        // those are ordered counter clockwise, for 2d this does not matter
+        // TODO: Improve this for performance reasons
+        const int crners = corners( seed );
+        const int crner  = (crners == 4 && EntitySeed :: dimension == 3 && i > 1 ) ? 5 - i : i;
+        const int faceVertex = grid_.face_nodes[ grid_.face_nodepos[seed.index() ] + crner ];
+        return copyToGlobalCoordinate( grid_.node_coordinates + GlobalCoordinate :: dimension * faceVertex );
+      }
+      if (codim==dim)
+      {
+        const int coordIndex = GlobalCoordinate :: dimension * seed.index();
+        return copyToGlobalCoordinate( grid_.node_coordinates + coordIndex );
+      }      
+      return GlobalCoordinate( 0 );
     }
 
     template <class EntitySeed>
@@ -1034,25 +1016,19 @@ namespace Dune
       const int index = seed.index();
       if( seed.codimension == 0 )
       {
-        switch (codim)
-        {
-          case 0:
-            return 1;
-          case 1:
-            return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
-          case dim:
-            return cellVertices_[ index ].size();
-        }
+        if (codim==0)
+          return 1;
+        if (codim==1)
+          return grid_.cell_facepos[ index+1 ] - grid_.cell_facepos[ index ];
+        if (codim==dim)
+          return cellVertices_[ index ].size();
       }
       else if( seed.codimension == 1 )
       {
-        switch (codim)
-        {
-          case 1:
-            return 1;
-          case dim:
-            return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
-        }
+        if (codim==1)
+          return 1;
+        if (codim==dim)
+          return grid_.face_nodepos[ index+1 ] - grid_.face_nodepos[ index ];
       }
       else if ( seed.codimension == dim )
       {
@@ -1532,7 +1508,6 @@ namespace Dune
 
         // check face normals
         {
-          typedef Dune::FieldVector< double, dim > Coordinate;
           const int faces = grid_.number_of_faces;
           for( int face = 0 ; face < faces; ++face )
           {
@@ -1544,41 +1519,41 @@ namespace Dune
             if( grid_.face_areas[ face ] < 0 )
               std::abort();
 
-            Coordinate centerDiff( 0 );
+            GlobalCoordinate centerDiff( 0 );
             if( b >= 0 )
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.cell_centroids[ b*dim + d ];
+                centerDiff[ d ] = grid_.cell_centroids[ b*dimworld + d ];
               }
             }
             else
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] = grid_.face_centroids[ face*dim + d ];
+                centerDiff[ d ] = grid_.face_centroids[ face*dimworld + d ];
               }
             }
 
             if( a >= 0 )
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.cell_centroids[ a*dim + d ];
+                centerDiff[ d ] -= grid_.cell_centroids[ a*dimworld + d ];
               }
             }
             else
             {
-              for( int d=0; d<dim; ++d )
+              for( int d=0; d<dimworld; ++d )
               {
-                centerDiff[ d ] -= grid_.face_centroids[ face*dim + d ];
+                centerDiff[ d ] -= grid_.face_centroids[ face*dimworld + d ];
               }
             }
 
-            Coordinate normal( 0 );
-            for( int d=0; d<dim; ++d )
+            GlobalCoordinate normal( 0 );
+            for( int d=0; d<dimworld; ++d )
             {
-              normal[ d ] = grid_.face_normals[ face*dim + d ];
+              normal[ d ] = grid_.face_normals[ face*dimworld + d ];
             }
 
             if( centerDiff.two_norm() < 1e-10 )
@@ -1593,9 +1568,11 @@ namespace Dune
           }
         }
 
+        // if no face_tag is available we set the reference element based
+        // on the number of nodes in a cell.
+        // By default set all types to None. This corresponds to hasPolygon
         GeometryType tmp;
         tmp = Dune::GeometryTypes::none(dim);
-        // by default set all types to None
         cellGeomTypes_.resize( numCells );
         std::fill( cellGeomTypes_.begin(), cellGeomTypes_.end(), tmp );
 
@@ -1622,44 +1599,28 @@ namespace Dune
             hasPolyhedron = true;
           }
         }
-
-        // if no face_tag is available we assume that no reference element can be
-        // assigned to the elements
+        // Propogate the cell geometry type to all codimensions
         geomTypes_.resize(dim + 1);
-        tmp = Dune::GeometryTypes::cube(0);
-        geomTypes_[ dim ].push_back( tmp );
-        tmp = Dune::GeometryTypes::cube(1);
-        geomTypes_[ dim-1 ].push_back( tmp );
-
-        if( hasSimplex )
+        for (int codim = 0; codim <= dim; ++codim)
         {
-          tmp = Dune::GeometryTypes::simplex(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( hasCube )
-        {
-          tmp = Dune::GeometryTypes::cube(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( hasPolyhedron )
-        {
-          tmp = Dune::GeometryTypes::none(dim);
-          geomTypes_[ 0 ].push_back( tmp );
-        }
-
-        if( dim > 2 )
-        {
-          for( const auto& elemType : geomTypes_[ 0 ] )
+          if( hasSimplex )
           {
-            if( elemType.isSimplex() )
-              tmp = Dune::GeometryTypes::simplex(2);
-            else if ( elemType.isCube() )
-              tmp = Dune::GeometryTypes::cube(2);
-            else
-              tmp = Dune::GeometryTypes::none(2);
-            geomTypes_[ 1 ].push_back( tmp );
+            tmp = Dune::GeometryTypes::simplex(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else if ( hasCube )
+          {
+            tmp = Dune::GeometryTypes::cube(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else if (hasPolyhedron)
+          {
+            tmp = Dune::GeometryTypes::none(dim - codim);
+            geomTypes_[ codim ].push_back( tmp );
+          }
+          else
+          {
+            OPM_THROW(std::runtime_error, "Grid error, unkown geometry type.");
           }
         }
 
@@ -1691,17 +1652,6 @@ namespace Dune
           }
         }
       }
-
-      /*
-      for( int i=0; i<= dim ; ++ i )
-      {
-        for( const auto& geomType : geomTypes_[ i ] )
-        {
-          std::cout << "Codim " << i << "  type = " << geomType << std::endl;
-        }
-      }
-      */
-      //print( std::cout, grid_ );
     }
 
     void print( std::ostream& out, const UnstructuredGridType& grid ) const
