@@ -589,12 +589,10 @@ BOOST_AUTO_TEST_CASE(distributeParts)
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
-    int procs=1;
 #if HAVE_MPI
     MPI_Errhandler handler;
     MPI_Comm_create_errhandler(MPI_err_handler, &handler);
     MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
-    MPI_Comm_size(MPI_COMM_WORLD, &procs);
 #endif
     Dune::CpGrid grid;
     std::array<int, 3> dims={{10, 10, 10}};
