@@ -493,7 +493,13 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         g.coord = &coord[0];
         g.zcorn = &zcorn[0];
         g.actnum = &actnum[0];
-        current_view_data_->processEclipseFormat(g, {}, 0.0, false, false);
+        // TODO: just fix the interface, not sure whether it is problematic
+        Opm::EclipseState ecl_state;
+        Opm::Deck deck;
+        using NNCMap = std::set<std::pair<int, int>>;
+        using NNCMaps = std::array<NNCMap, 2>;
+        NNCMaps nnc;
+        current_view_data_->processEclipseFormat(g, ecl_state, deck, nnc, 0.0, false, false);
         // global grid only on rank 0
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -521,16 +527,13 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
 #if HAVE_ECL_INPUT
-    void CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
+    void CpGrid::processEclipseFormat(Opm::EclipseState& ecl_state,
+                                      const Opm::Deck& deck,
                                       bool periodic_extension,
-                                      bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume,
-                                      const Opm::NNC& nncs,
-                                      const std::unordered_map<size_t, double>& aquifer_cell_volumes)
+                                      bool turn_normals, bool clip_z)
     {
-        current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
-                                                 turn_normals, clip_z,
-                                                 poreVolume, nncs, aquifer_cell_volumes);
+        current_view_data_->processEclipseFormat(ecl_state, deck, periodic_extension,
+                                                 turn_normals, clip_z);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
@@ -540,7 +543,13 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
                                       bool remove_ij_boundary, bool turn_normals)
     {
-        current_view_data_->processEclipseFormat(input_data, {}, z_tolerance, remove_ij_boundary, turn_normals);
+        // TODO: just fix the interface, not sure it will be problematic
+        Opm::EclipseState ecl_state;
+        Opm::Deck deck;
+        using NNCMap = std::set<std::pair<int, int>>;
+        using NNCMaps = std::array<NNCMap, 2>;
+        NNCMaps nnc;
+        current_view_data_->processEclipseFormat(input_data, ecl_state, deck, nnc, z_tolerance, remove_ij_boundary, turn_normals);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);

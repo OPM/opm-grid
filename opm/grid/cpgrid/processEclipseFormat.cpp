@@ -114,19 +114,16 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs,
-                                          const std::unordered_map<size_t, double>& aquifer_cell_volumes)
+    void CpGridData::processEclipseFormat(Opm::EclipseState& ecl_state,
+                                          const Opm::Deck& deck,
+                                          bool periodic_extension, bool turn_normals, bool clip_z)
     {
         if (ccobj_.rank() != 0 ) {
             // Store global grid only on rank 0
             return;
         }
 
-        if (!ecl_grid_ptr)
-            OPM_THROW(std::logic_error, "We need a valid pointer to an eclipse grid on rank 0!");
-
-        const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
+        const Opm::EclipseGrid& ecl_grid = ecl_state.getInputGrid();
         std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 
@@ -144,6 +141,7 @@ namespace cpgrid
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
         std::map<int,int> nnc_cells_pinch;
 
+        const auto& poreVolume = ecl_state.fieldProps().porv(true);
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
@@ -169,6 +167,7 @@ namespace cpgrid
             nnc_cells[PinchNNC].insert({low, high});
         }
         // Add explicit NNCs.
+        const auto& nncs = ecl_state.getInputNNC();
         for (const auto single_nnc : nncs.input()) {
             // Repeated NNCs will only exist in the map once (repeated
             // insertions have no effect). The code that computes the
@@ -232,10 +231,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, nnc_cells, z_tolerance, true, turn_normals, aquifer_cell_volumes);
+            processEclipseFormat(new_g, ecl_state, deck, nnc_cells, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals, aquifer_cell_volumes);
+            processEclipseFormat(g, ecl_state, deck, nnc_cells, z_tolerance, false, turn_normals);
         }
     }
 #endif // #if HAVE_ECL_INPUT
@@ -245,8 +244,8 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, const NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
-                                          const std::unordered_map<size_t, double>& aquifer_cell_volumes)
+    void CpGridData::processEclipseFormat(const grdecl& input_data, Opm::EclipseState& ecl_state, const Opm::Deck& deck,
+                                          NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         if( ccobj_.rank() != 0 )
         {
@@ -257,6 +256,8 @@ namespace cpgrid
         std::cout << "Processing eclipse data." << std::endl;
 #endif
         processed_grid output;
+        const auto& aquifer = ecl_state.aquifer();
+        const auto aquifer_cell_volumes = aquifer.numericalAquifers().aquiferCellVolumes();
         const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
         std::vector<int> is_aquifer_cell(global_nc, 0);
         for ([[maybe_unused]]const auto& [global_index, volume] : aquifer_cell_volumes) {
@@ -266,6 +267,22 @@ namespace cpgrid
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
+        }
+
+        {
+            std::vector<int> new_actnum(global_nc, 0);
+            for (int i = 0; i < output.number_of_cells; ++i) {
+                new_actnum[output.local_cell_index[i]] = 1;
+            }
+            const auto& ecl_grid = ecl_state.getInputGrid();
+            const auto& fp = ecl_state.fieldProps();
+            aquifer.mutableNumericalAquifers().addAquiferConnections(deck, ecl_grid, new_actnum);
+            const auto& aquifer_nnc = aquifer.numericalAquifers().aquiferConnectionNNCs(ecl_grid, fp);
+            // We need to update the nnc in the ecl_state
+            ecl_state.appendInputNNC(aquifer_nnc);
+            for (const auto single_nnc : aquifer_nnc) {
+                nnc[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
+            }
         }
 
         // Move data into the grid's structures.
