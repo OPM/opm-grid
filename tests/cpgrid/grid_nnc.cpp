@@ -64,7 +64,9 @@ struct Fixture
                   const std::vector<std::pair<int, int>>& ex_nb,
                   const bool use_deck_porv = false)
     {
-        Opm::EclipseState es(parser.parseFile(filename));
+        Opm::Deck deck = parser.parseFile(filename);
+        Opm::EclipseState es(deck);
+        es.appendInputNNC(nnc.input());
         std::vector<double> porv;
 
         if (use_deck_porv) {
@@ -72,7 +74,7 @@ struct Fixture
         }
 
         Dune::CpGrid grid;
-        grid.processEclipseFormat(&es.getInputGrid(), false, false, false, porv, nnc);
+        grid.processEclipseFormat(es, deck, false, false, false);
         const auto& gv = grid.leafGridView();
         ElementMapper elmap(gv, Dune::mcmgElementLayout());
         int elemcount = 0;

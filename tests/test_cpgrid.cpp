@@ -154,17 +154,18 @@ int main(int argc, char** argv )
         "DZ\n"
         "8*1 /\n"
         "TOPS\n"
-        "8*100.0 /\n";
+        "8*100.0 /\n"
+        "PORO\n"
+        "8*0.1/\n";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
     std::vector<double> porv;
 
     Grid grid;
-    const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
-    Opm::EclipseGrid ecl_grid(deck , actnum);
+    Opm::EclipseState ecl_state(deck);
 
-    grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
+    grid.processEclipseFormat(ecl_state, deck, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 

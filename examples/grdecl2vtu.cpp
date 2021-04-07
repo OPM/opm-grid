@@ -142,7 +142,8 @@ try
     {
         const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
         Opm::EclipseGrid ecl_grid(deck , actnum);
-        grid.processEclipseFormat(&ecl_grid, false);
+        Opm::EclipseState ecl_state(deck);
+        grid.processEclipseFormat(ecl_state, deck, false);
     }
 
     VTKWriter<CpGrid::LeafGridView> vtkwriter(grid.leafGridView());

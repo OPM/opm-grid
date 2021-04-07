@@ -269,7 +269,7 @@ namespace cpgrid
             // removeUnusedNodes(output);
         }
 
-        {
+        if (aquifer.hasNumericalAquifer()) {
             std::vector<int> new_actnum(global_nc, 0);
             for (int i = 0; i < output.number_of_cells; ++i) {
                 new_actnum[output.local_cell_index[i]] = 1;
