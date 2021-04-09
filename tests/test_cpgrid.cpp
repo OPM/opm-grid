@@ -160,12 +160,11 @@ int main(int argc, char** argv )
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
-    std::vector<double> porv;
 
     Grid grid;
     Opm::EclipseState ecl_state(deck);
 
-    grid.processEclipseFormat(ecl_state, deck, false, false, false);
+    grid.processEclipseFormat(&ecl_state, &deck, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 

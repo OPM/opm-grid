@@ -74,7 +74,7 @@ struct Fixture
         }
 
         Dune::CpGrid grid;
-        grid.processEclipseFormat(es, deck, false, false, false);
+        grid.processEclipseFormat(&es, &deck, false, false, false);
         const auto& gv = grid.leafGridView();
         ElementMapper elmap(gv, Dune::mcmgElementLayout());
         int elemcount = 0;
