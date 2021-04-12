@@ -114,13 +114,14 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    void CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
-                                          const std::vector<double>& poreVolume, const Opm::NNC& nncs,
-                                          const std::unordered_map<size_t, double>& aquifer_cell_volumes)
+    std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr, bool periodic_extension, bool turn_normals, bool clip_z,
+                                                              const std::vector<double>& poreVolume, const Opm::NNC& nncs,
+                                                              const std::unordered_map<size_t, double>& aquifer_cell_volumes)
     {
+        std::vector<std::size_t> removed_cells;
         if (ccobj_.rank() != 0 ) {
             // Store global grid only on rank 0
-            return;
+            return removed_cells;
         }
 
         if (!ecl_grid_ptr)
@@ -142,7 +143,7 @@ namespace cpgrid
         g.zcorn = &zcornData[0];
 
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
-        std::map<int,int> nnc_cells_pinch;
+        std::vector<Opm::MinpvProcessor::PinchPair> pinched_cells;
 
         // Possibly process MINPV
         if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
@@ -155,19 +156,19 @@ namespace cpgrid
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
             const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
-            nnc_cells_pinch = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
-            if (nnc_cells_pinch.size() > 0) {
+            pinched_cells = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
+            if (pinched_cells.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
 
         NNCMaps nnc_cells;
         // Add PINCH NNCs.
-        for (const auto& p : nnc_cells_pinch) {
-            auto low = std::min(p.first, p.second);
-            auto high = std::max(p.first, p.second);
-            nnc_cells[PinchNNC].insert({low, high});
+        for (const auto& p : pinched_cells) {
+            nnc_cells[PinchNNC].insert({p.cell1, p.cell2});
+            removed_cells.push_back(p.removed_cell);
         }
+
         // Add explicit NNCs.
         for (const auto single_nnc : nncs.input()) {
             // Repeated NNCs will only exist in the map once (repeated
@@ -237,6 +238,8 @@ namespace cpgrid
             // Make the grid.
             processEclipseFormat(g, nnc_cells, z_tolerance, false, turn_normals, aquifer_cell_volumes);
         }
+
+        return removed_cells;
     }
 #endif // #if HAVE_ECL_INPUT
 

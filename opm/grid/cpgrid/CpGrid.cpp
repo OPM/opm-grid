@@ -521,19 +521,20 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
 #if HAVE_ECL_INPUT
-    void CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
-                                      bool periodic_extension,
-                                      bool turn_normals, bool clip_z,
-                                      const std::vector<double>& poreVolume,
-                                      const Opm::NNC& nncs,
-                                      const std::unordered_map<size_t, double>& aquifer_cell_volumes)
+    std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
+                                                          bool periodic_extension,
+                                                          bool turn_normals, bool clip_z,
+                                                          const std::vector<double>& poreVolume,
+                                                          const Opm::NNC& nncs,
+                                                          const std::unordered_map<size_t, double>& aquifer_cell_volumes)
     {
-        current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
-                                                 turn_normals, clip_z,
-                                                 poreVolume, nncs, aquifer_cell_volumes);
+        auto removed_cells = current_view_data_->processEclipseFormat(ecl_grid, periodic_extension,
+                                                                      turn_normals, clip_z,
+                                                                      poreVolume, nncs, aquifer_cell_volumes);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
+        return removed_cells;
     }
 #endif
 

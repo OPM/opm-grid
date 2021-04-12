@@ -76,7 +76,9 @@ BOOST_AUTO_TEST_CASE(Pinch)
     nnc = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
 
     BOOST_CHECK_EQUAL(nnc.size(), 1);
-    BOOST_CHECK_EQUAL(nnc[0], 2);
+    BOOST_CHECK_EQUAL(nnc[0].cell1, 0);
+    BOOST_CHECK_EQUAL(nnc[0].cell2, 2);
+    BOOST_CHECK_EQUAL(nnc[0].removed_cell, 1);
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
 
     z_threshold = 0.6;
@@ -186,7 +188,9 @@ BOOST_AUTO_TEST_CASE(Processing)
     auto z4 = zcorn;
     auto nnc4 = mp4.process(thicknes, z_threshold, pv, minpvv2, actnum, !fill_removed_cells, z4.data());
     BOOST_CHECK_EQUAL(nnc4.size(), 1);
-    BOOST_CHECK_EQUAL(nnc4.at(0), 3);
+    BOOST_CHECK_EQUAL(nnc4.at(0).cell1, 0);
+    BOOST_CHECK_EQUAL(nnc4.at(0).removed_cell, 1);
+    BOOST_CHECK_EQUAL(nnc4.at(0).cell2, 3);
     BOOST_CHECK_EQUAL_COLLECTIONS(z4.begin(), z4.end(), zcorn4after.begin(), zcorn4after.end());
 
     Opm::MinpvProcessor mp5(1, 1, 4);
