@@ -7,7 +7,7 @@ Build-Depends: build-essential, debhelper (>= 9),
                libdune-grid-dev, libtinyxml-dev,
                libdune-istl-dev, doxygen, texlive-latex-extra,
                texlive-latex-recommended, ghostscript,
-               libsuitesparse-dev,
+               libsuitesparse-dev, libpython3-dev,
                libopm-common-dev, libscotchmetis-dev, libscotchparmetis-dev,
                libdune-geometry-dev, libtrilinos-zoltan-dev, mpi-default-dev,
                mpi-default-bin
