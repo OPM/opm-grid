@@ -33,6 +33,20 @@ namespace Opm
     class MinpvProcessor
     {
     public:
+
+        struct PinchPair {
+            int cell1;
+            int cell2;
+            int removed_cell;
+
+            PinchPair(int c1, int c2, int rm) :
+                cell1(std::min(c1, c2)),
+                cell2(std::max(c1, c2)),
+                removed_cell(rm)
+            {}
+        };
+
+
         /// \brief Create a processor.
         /// \param[in]   nx   logical cartesian number of cells in I-direction
         /// \param[in]   ny   logical cartesian number of cells in J-direction
@@ -51,14 +65,14 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
-        std::map<int,int> process(const std::vector<double>& thickness,
-                    const double z_tolerance,
-                    const std::vector<double>& pv,
-                    const std::vector<double>& minpvv,
-                    const std::vector<int>& actnum,
-                    const bool mergeMinPVCells,
-                    double* zcorn,
-                    bool pinchNOGAP = false) const;
+        std::vector<PinchPair> process(const std::vector<double>& thickness,
+                                       const double z_tolerance,
+                                       const std::vector<double>& pv,
+                                       const std::vector<double>& minpvv,
+                                       const std::vector<int>& actnum,
+                                       const bool mergeMinPVCells,
+                                       double* zcorn,
+                                       bool pinchNOGAP = false) const;
     private:
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
@@ -74,15 +88,14 @@ namespace Opm
 
 
 
-    inline std::map<int,int> MinpvProcessor::process(
-                                        const std::vector<double>& thickness,
-                                        const double z_tolerance,
-                                        const std::vector<double>& pv,
-                                        const std::vector<double>& minpvv,
-                                        const std::vector<int>& actnum,
-                                        const bool mergeMinPVCells,
-                                        double* zcorn,
-                                        bool pinchNOGAP) const
+    inline std::vector<MinpvProcessor::PinchPair> MinpvProcessor::process(const std::vector<double>& thickness,
+                                                                          const double z_tolerance,
+                                                                          const std::vector<double>& pv,
+                                                                          const std::vector<double>& minpvv,
+                                                                          const std::vector<int>& actnum,
+                                                                          const bool mergeMinPVCells,
+                                                                          double* zcorn,
+                                                                          bool pinchNOGAP) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -108,7 +121,7 @@ namespace Opm
 
 
         // return a list of the non-neighbor connection.
-        std::map<int,int> nnc;
+        std::vector<PinchPair> nnc;
 
         // Check for sane input sizes.
         const size_t log_size = dims_[0] * dims_[1] * dims_[2];
@@ -205,7 +218,7 @@ namespace Opm
 
                             // Add a connection if the cell above and below is active and has porv > minpv
                             if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
-                                    nnc.insert(std::make_pair(c_above, c_below));
+                                    nnc.emplace_back(c_above, c_below, c);
                             }
                         } else {
 

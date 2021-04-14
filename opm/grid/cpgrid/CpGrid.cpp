@@ -524,16 +524,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
 #if HAVE_ECL_INPUT
-    void CpGrid::processEclipseFormat(Opm::EclipseState* ecl_state,
-                                      const Opm::Deck* deck,
-                                      bool periodic_extension,
-                                      bool turn_normals, bool clip_z)
+    std::vector<std::size_t> CpGrid::processEclipseFormat(Opm::EclipseState* ecl_state,
+                                                          const Opm::Deck* deck,
+                                                          bool periodic_extension,
+                                                          bool turn_normals, bool clip_z)
     {
-        current_view_data_->processEclipseFormat(ecl_state, deck, periodic_extension,
-                                                 turn_normals, clip_z);
+        auto removed_cells = current_view_data_->processEclipseFormat(ecl_state, deck, periodic_extension,
+                                                                      turn_normals, clip_z);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
+        return removed_cells;
     }
 #endif
 
