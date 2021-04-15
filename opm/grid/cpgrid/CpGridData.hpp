@@ -203,7 +203,7 @@ public:
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param poreVolume pore volumes for use in MINPV processing, if asked for in deck
-    std::vector<std::size_t> processEclipseFormat(Opm::EclipseState* ecl_state, const Opm::Deck* deck,
+    std::vector<std::size_t> processEclipseFormat(const Opm::EclipseGrid* input_grid, Opm::EclipseState* ecl_state, const Opm::Deck* deck,
                                                   bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 #endif
 

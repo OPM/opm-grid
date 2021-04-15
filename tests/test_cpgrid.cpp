@@ -154,17 +154,15 @@ int main(int argc, char** argv )
         "DZ\n"
         "8*1 /\n"
         "TOPS\n"
-        "8*100.0 /\n"
-        "PORO\n"
-        "8*0.1/\n";
+        "8*100.0 /\n";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
     Grid grid;
-    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid(deck);
 
-    grid.processEclipseFormat(&ecl_state, &deck, false, false, false);
+    grid.processEclipseFormat(&ecl_grid, nullptr, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 

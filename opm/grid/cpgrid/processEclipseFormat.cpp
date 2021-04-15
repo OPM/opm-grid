@@ -114,7 +114,8 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    std::vector<std::size_t> CpGridData::processEclipseFormat(Opm::EclipseState* ecl_state,
+    std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* input_grid,
+                                                              Opm::EclipseState* ecl_state,
                                                               const Opm::Deck* deck,
                                                               bool periodic_extension, bool turn_normals, bool clip_z)
     {
@@ -124,7 +125,7 @@ namespace cpgrid
             return removed_cells;
         }
 
-        const Opm::EclipseGrid& ecl_grid = ecl_state->getInputGrid();
+        const Opm::EclipseGrid& ecl_grid = *input_grid;
         std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 
@@ -142,9 +143,8 @@ namespace cpgrid
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
         std::vector<Opm::MinpvProcessor::PinchPair> pinched_cells;
 
-        const auto& poreVolume = ecl_state->fieldProps().porv(true);
         // Possibly process MINPV
-        if (!poreVolume.empty() && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             // Currently PINCH is always assumed to be active
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
@@ -154,6 +154,7 @@ namespace cpgrid
             }
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
             const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
+            const auto& poreVolume = ecl_state->fieldProps().porv(true);
             pinched_cells = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
             if (pinched_cells.size() > 0) {
                 this->zcorn = zcornData;
@@ -168,13 +169,15 @@ namespace cpgrid
         }
 
         // Add explicit NNCs.
-        const auto& nncs = ecl_state->getInputNNC();
-        for (const auto single_nnc : nncs.input()) {
-            // Repeated NNCs will only exist in the map once (repeated
-            // insertions have no effect). The code that computes the
-            // transmissibilities is responsible for ensuring repeated NNC
-            // transmissibilities are added.
-            nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
+        if (ecl_state) {
+            const auto& nncs = ecl_state->getInputNNC();
+            for (const auto single_nnc : nncs.input()) {
+                // Repeated NNCs will only exist in the map once (repeated
+                // insertions have no effect). The code that computes the
+                // transmissibilities is responsible for ensuring repeated NNC
+                // transmissibilities are added.
+                nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
+            }
         }
 
         // this variable is only required because getCellZvals() needs
