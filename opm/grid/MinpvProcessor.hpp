@@ -34,16 +34,17 @@ namespace Opm
     {
     public:
 
-        struct PinchPair {
-            int cell1;
-            int cell2;
-            int removed_cell;
+        struct Result {
+            std::vector<std::size_t> removed_cells;
+            std::map<int,int> nnc;
 
-            PinchPair(int c1, int c2, int rm) :
-                cell1(std::min(c1, c2)),
-                cell2(std::max(c1, c2)),
-                removed_cell(rm)
-            {}
+
+            void add_nnc(int cell1, int cell2) {
+                auto key = std::min(cell1, cell2);
+                auto value = std::max(cell1,cell2);
+
+                this->nnc.insert({key, value});
+            }
         };
 
 
@@ -65,14 +66,14 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
-        std::vector<PinchPair> process(const std::vector<double>& thickness,
-                                       const double z_tolerance,
-                                       const std::vector<double>& pv,
-                                       const std::vector<double>& minpvv,
-                                       const std::vector<int>& actnum,
-                                       const bool mergeMinPVCells,
-                                       double* zcorn,
-                                       bool pinchNOGAP = false) const;
+        Result process(const std::vector<double>& thickness,
+                       const double z_tolerance,
+                       const std::vector<double>& pv,
+                       const std::vector<double>& minpvv,
+                       const std::vector<int>& actnum,
+                       const bool mergeMinPVCells,
+                       double* zcorn,
+                       bool pinchNOGAP = false) const;
     private:
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
@@ -88,14 +89,14 @@ namespace Opm
 
 
 
-    inline std::vector<MinpvProcessor::PinchPair> MinpvProcessor::process(const std::vector<double>& thickness,
-                                                                          const double z_tolerance,
-                                                                          const std::vector<double>& pv,
-                                                                          const std::vector<double>& minpvv,
-                                                                          const std::vector<int>& actnum,
-                                                                          const bool mergeMinPVCells,
-                                                                          double* zcorn,
-                                                                          bool pinchNOGAP) const
+    inline MinpvProcessor::Result MinpvProcessor::process(const std::vector<double>& thickness,
+                                                          const double z_tolerance,
+                                                          const std::vector<double>& pv,
+                                                          const std::vector<double>& minpvv,
+                                                          const std::vector<int>& actnum,
+                                                          const bool mergeMinPVCells,
+                                                          double* zcorn,
+                                                          bool pinchNOGAP) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -120,8 +121,7 @@ namespace Opm
         //    if their thickness is below z_tolerance and nncs will be created in this case.
 
 
-        // return a list of the non-neighbor connection.
-        std::vector<PinchPair> nnc;
+        Result result;
 
         // Check for sane input sizes.
         const size_t log_size = dims_[0] * dims_[1] * dims_[2];
@@ -218,7 +218,7 @@ namespace Opm
 
                             // Add a connection if the cell above and below is active and has porv > minpv
                             if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
-                                    nnc.emplace_back(c_above, c_below, c);
+                                result.add_nnc(c_above, c_below);
                             }
                         } else {
 
@@ -230,13 +230,13 @@ namespace Opm
                             }
                             setCellZcorn(ii, jj, kk_iter, cz_below, zcorn);
                         }
-
+                        result.removed_cells.push_back(c);
                     }
                 }
 
             }
         }
-        return nnc;
+        return result;
     }
 
 
