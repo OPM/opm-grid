@@ -114,7 +114,7 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* input_grid,
+    std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                                               Opm::EclipseState* ecl_state,
                                                               const Opm::Deck* deck,
                                                               bool periodic_extension, bool turn_normals, bool clip_z)
@@ -125,7 +125,7 @@ namespace cpgrid
             return removed_cells;
         }
 
-        const Opm::EclipseGrid& ecl_grid = *input_grid;
+        const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
         std::vector<double> coordData = ecl_grid.getCOORD();
         std::vector<int> actnumData = ecl_grid.getACTNUM();
 
