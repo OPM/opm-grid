@@ -254,6 +254,9 @@ namespace Dune
 
 #if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
+        /// \return Vector of global indices to the cells which have
+        ///         been removed in the grid processing due to small pore volume. Function only returns
+        ///         indices on rank 0, the vector is empty of other ranks.
         /// \param ecl_grid the high-level object from opm-parser which represents the simulation's grid
         ///        In a parallel run this may be a nullptr on all ranks but rank zero.
         /// \param ecl_state the object from opm-parser provide information regarding to pore volume, NNC,

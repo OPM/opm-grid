@@ -141,7 +141,7 @@ namespace cpgrid
         g.zcorn = &zcornData[0];
 
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
-        std::vector<Opm::MinpvProcessor::PinchPair> pinched_cells;
+        Opm::MinpvProcessor::Result minpv_result;
 
         // Possibly process MINPV
         if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
@@ -155,18 +155,16 @@ namespace cpgrid
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
             const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
             const auto& poreVolume = ecl_state->fieldProps().porv(true);
-            pinched_cells = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
-            if (pinched_cells.size() > 0) {
+            minpv_result = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
+            if (minpv_result.nnc.size() > 0) {
                 this->zcorn = zcornData;
             }
         }
 
         NNCMaps nnc_cells;
         // Add PINCH NNCs.
-        for (const auto& p : pinched_cells) {
-            nnc_cells[PinchNNC].insert({p.cell1, p.cell2});
-            removed_cells.push_back(p.removed_cell);
-        }
+        for (const auto& [cell1, cell2] : minpv_result.nnc)
+            nnc_cells[PinchNNC].insert({cell1, cell2});
 
         // Add explicit NNCs.
         if (ecl_state) {
@@ -241,7 +239,7 @@ namespace cpgrid
             processEclipseFormat(g, ecl_state, deck, nnc_cells, z_tolerance, false, turn_normals);
         }
 
-        return removed_cells;
+        return minpv_result.removed_cells;
     }
 #endif // #if HAVE_ECL_INPUT
 
