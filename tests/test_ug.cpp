@@ -25,6 +25,8 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
 
 using namespace std;
 

@@ -20,11 +20,7 @@
 #define OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
 
 #if HAVE_ECL_INPUT
-#include <opm/parser/eclipse/Parser/Parser.hpp>
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Deck/DeckItem.hpp>
-#include <opm/parser/eclipse/Deck/DeckKeyword.hpp>
-#include <opm/parser/eclipse/Deck/DeckRecord.hpp>
+#include <opm/parser/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well/WellConnections.hpp>
 #include <opm/parser/eclipse/EclipseState/Schedule/Well/Well.hpp>
 #include <opm/common/utility/ActiveGridCells.hpp>
@@ -33,7 +29,6 @@
 namespace Dune {
     namespace cpgrid {
         typedef Opm::Well OpmWellType;
-        typedef Opm::EclipseState OpmEclipseStateType;
     }
 }
 #else // #if HAVE_ECL_INPUT
@@ -41,7 +36,6 @@ namespace Dune {
 namespace Dune {
     namespace cpgrid {
         typedef int OpmWellType;
-        typedef int OpmEclipseStateType;
     }
 }
 
