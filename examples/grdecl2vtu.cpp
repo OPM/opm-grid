@@ -32,6 +32,7 @@
 #include <opm/grid/CpGrid.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
 
 using namespace Dune;
 

@@ -9,6 +9,7 @@
 #include <opm/grid/GridManager.hpp>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/parser/eclipse/Parser/Parser.hpp>
 
 #include <cstddef>
 #include <iostream>
