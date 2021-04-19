@@ -21,7 +21,7 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
-
+#include <opm/parser/eclipse/Parser/Parser.hpp>
 #include <iostream>
 
 template <class GridView>
