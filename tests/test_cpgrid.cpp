@@ -162,7 +162,7 @@ int main(int argc, char** argv )
     Grid grid;
     Opm::EclipseGrid ecl_grid(deck);
 
-    grid.processEclipseFormat(&ecl_grid, nullptr, nullptr, false, false, false);
+    grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 

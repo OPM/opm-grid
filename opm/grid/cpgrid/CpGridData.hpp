@@ -88,7 +88,10 @@
 #include "Entity2IndexDataHandle.hpp"
 #include "DataHandleWrappers.hpp"
 #include "GlobalIdMapping.hpp"
-
+namespace Opm
+{
+class EclipseState;
+}
 namespace Dune
 {
 class CpGrid;
@@ -200,13 +203,12 @@ public:
     /// \param ecl_state the object from opm-parser provide information regarding to pore volume, NNC,
     ///        aquifer information when ecl_state is available. NNC and aquifer connection
     ///        information will also be updated during the function call when available and necessary.
-    /// \param deck information from opm-parser. It will be used when generating the aquifer connections.
     /// \param periodic_extension if true, the grid will be (possibly) refined, so that
     ///        intersections/faces along i and j boundaries will match those on the other
     ///        side. That is, i- faces will match i+ faces etc.
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-    std::vector<std::size_t> processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state, const Opm::Deck* deck,
+    std::vector<std::size_t> processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state,
                                                   bool periodic_extension, bool turn_normals = false, bool clip_z = false);
 #endif
 
@@ -215,12 +217,11 @@ public:
     /// \param ecl_state the object from opm-parser provide information regarding to pore volume, NNC,
     ///        aquifer information when ecl_state is available. NNC and aquifer connection
     ///        information will also be updated during the function call when available and necessary.
-    /// \param deck information from opm-parser. It will be used when generating the aquifer connections.
     /// \param nnc is the non-neighboring connections
     /// \param z_tolerance points along a pillar that are closer together in z
     ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-    void processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state, const Opm::Deck* deck,
+    void processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
                               std::array<std::set<std::pair<int, int>>, 2>& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
 
 

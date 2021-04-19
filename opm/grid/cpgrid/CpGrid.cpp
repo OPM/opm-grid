@@ -496,7 +496,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(g, nullptr, nullptr, nnc, 0.0, false, false);
+        current_view_data_->processEclipseFormat(g, nullptr, nnc, 0.0, false, false);
         // global grid only on rank 0
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -526,11 +526,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #if HAVE_ECL_INPUT
     std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                                                           Opm::EclipseState* ecl_state,
-                                                          const Opm::Deck* deck,
                                                           bool periodic_extension,
                                                           bool turn_normals, bool clip_z)
     {
-        auto removed_cells = current_view_data_->processEclipseFormat(ecl_grid, ecl_state, deck, periodic_extension,
+        auto removed_cells = current_view_data_->processEclipseFormat(ecl_grid, ecl_state, periodic_extension,
                                                                       turn_normals, clip_z);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -545,7 +544,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(input_data, nullptr, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->processEclipseFormat(input_data, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);

@@ -40,6 +40,8 @@
 
 #include "CpGridData.hpp"
 
+#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+
 #include <opm/grid/common/GeometryHelpers.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 
@@ -116,7 +118,6 @@ namespace cpgrid
 #if HAVE_ECL_INPUT
     std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                                               Opm::EclipseState* ecl_state,
-                                                              const Opm::Deck* deck,
                                                               bool periodic_extension, bool turn_normals, bool clip_z)
     {
         std::vector<std::size_t> removed_cells;
@@ -233,10 +234,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, ecl_state, deck, nnc_cells, z_tolerance, true, turn_normals);
+            processEclipseFormat(new_g, ecl_state, nnc_cells, z_tolerance, true, turn_normals);
         } else {
             // Make the grid.
-            processEclipseFormat(g, ecl_state, deck, nnc_cells, z_tolerance, false, turn_normals);
+            processEclipseFormat(g, ecl_state, nnc_cells, z_tolerance, false, turn_normals);
         }
 
         return minpv_result.removed_cells;
@@ -248,7 +249,7 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state, const Opm::Deck* deck,
+    void CpGridData::processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
                                           NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals)
     {
         if( ccobj_.rank() != 0 )
@@ -278,7 +279,6 @@ namespace cpgrid
         }
 
         if (ecl_state) {
-            assert(deck);
             const auto& aquifer = ecl_state->aquifer();
             if (aquifer.hasNumericalAquifer()) {
                 const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
@@ -288,7 +288,7 @@ namespace cpgrid
                 }
                 const auto& ecl_grid = ecl_state->getInputGrid();
                 const auto& fp = ecl_state->fieldProps();
-                aquifer.mutableNumericalAquifers().addAquiferConnections(*deck, ecl_grid, new_actnum);
+                aquifer.mutableNumericalAquifers().postProcessConnections(ecl_grid, new_actnum);
                 const auto& aquifer_nnc = aquifer.numericalAquifers().aquiferConnectionNNCs(ecl_grid, fp);
                 // We need to update the nnc in the ecl_state
                 ecl_state->appendInputNNC(aquifer_nnc);
