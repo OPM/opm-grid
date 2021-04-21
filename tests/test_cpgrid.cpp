@@ -158,13 +158,11 @@ int main(int argc, char** argv )
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
-    std::vector<double> porv;
 
     Grid grid;
-    const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
-    Opm::EclipseGrid ecl_grid(deck , actnum);
+    Opm::EclipseGrid ecl_grid(deck);
 
-    grid.processEclipseFormat(&ecl_grid, false, false, false, porv);
+    grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
 #endif
 
