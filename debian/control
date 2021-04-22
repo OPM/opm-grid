@@ -25,15 +25,25 @@ Depends: libopm-grid1 (= ${binary:Version})
 Provides: libopm-grid-dev
 Suggests: libopm-grid1-doc
 Replaces: libdune-cornerpoint1-dev
-Description: opm-grid library -- development files
- opm-grid is intended to enable working with corner-point or, more
- generally, pillar grids in dune. A standard grid type in the petroleum
- industry, corner-point grids fill space with a relatively low number
- of cells while still providing sufficient flexibility to model faults,
- fractures and erosion. The grid format was originally designed with
- an eye towards geological modelling rather than numerical simulation
- and this design choice does limit the number of feasible numerical
- methods.
+Description: DUNE grid implementations for reservoir simulation -- development files
+ The Open Porous Media (OPM) software suite provides libraries and
+ tools for modeling and simulation of porous media processes, especially
+ for simulating CO2 sequestration and improved and enhanced oil recovery.
+ .
+ opm-grid provides implementations of grids for reservoir simulation,
+ corner point or more general pillar grids, following the DUNE grid interface:
+ CpGrid, a parallel corner point grid, and PolyhedralGrid a more general serial
+ grid implementation of an unstructured, legacy, grid.
+ .
+ A standard grid type in the petroleum industry, corner-point grids fills
+ the domain with a relatively low number of cells while still providing
+ sufficient flexibility to model faults, fractures and erosion. The grid
+ format was originally designed with an eye towards geological modeling
+ rather than numerical simulation, but is still suitable for e.g. low order
+ finite volume discretizations.
+ .
+ This package provides the development files for the grid implementations,
+ i.e. the headers and shared library links.
 
 Package: libopm-grid1
 Section: libs
@@ -43,15 +53,24 @@ Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: libopm-grid
 Replaces: libdune-cornerpoint1
-Description: opm grid library
- opm-grid is intended to enable working with corner-point or, more
- generally, pillar grids in dune. A standard grid type in the petroleum
- industry, corner-point grids fill space with a relatively low number
- of cells while still providing sufficient flexibility to model faults,
- fractures and erosion. The grid format was originally designed with
- an eye towards geological modelling rather than numerical simulation
- and this design choice does limit the number of feasible numerical
- methods.
+Description: DUNE grid implementations for reservoir simulation -- library
+ The Open Porous Media (OPM) software suite provides libraries and
+ tools for modeling and simulation of porous media processes, especially
+ for simulating CO2 sequestration and improved and enhanced oil recovery.
+ .
+ opm-grid provides implementations of grids for reservoir simulation,
+ corner point or more general pillar grids, following the DUNE grid interface:
+ CpGrid, a parallel corner point grid, and PolyhedralGrid a more general serial
+ grid implementation of an unstructured, legacy, grid.
+ .
+ A standard grid type in the petroleum industry, corner-point grids fills
+ the domain with a relatively low number of cells while still providing
+ sufficient flexibility to model faults, fractures and erosion. The grid
+ format was originally designed with an eye towards geological modeling
+ rather than numerical simulation, but is still suitable for e.g. low order
+ finite volume discretizations.
+ .
+ This package provides the library of the grid implementations.
 
 Package: libopm-grid1-doc
 Section: doc
@@ -59,15 +78,25 @@ Architecture: all
 Multi-Arch: foreign
 Provides: libopm-grid-doc
 Replaces: libdune-cornerpoint1-doc
-Description: opm grid library -- documentation
- opm-grid is intended to enable working with corner-point or, more
- generally, pillar grids in dune. A standard grid type in the petroleum
- industry, corner-point grids fill space with a relatively low number
- of cells while still providing sufficient flexibility to model faults,
- fractures and erosion. The grid format was originally designed with
- an eye towards geological modelling rather than numerical simulation
- and this design choice does limit the number of feasible numerical
- methods.
+Description: DUNE grid implementations for reservoir simulation -- documentation
+ The Open Porous Media (OPM) software suite provides libraries and
+ tools for modeling and simulation of porous media processes, especially
+ for simulating CO2 sequestration and improved and enhanced oil recovery.
+ .
+ opm-grid provides implementations of grids for reservoir simulation,
+ corner point or more general pillar grids, following the DUNE grid interface:
+ CpGrid, a parallel corner point grid, and PolyhedralGrid a more general serial
+ grid implementation of an unstructured, legacy, grid.
+ .
+ A standard grid type in the petroleum industry, corner-point grids fills
+ the domain with a relatively low number of cells while still providing
+ sufficient flexibility to model faults, fractures and erosion. The grid
+ format was originally designed with an eye towards geological modeling
+ rather than numerical simulation, but is still suitable for e.g. low order
+ finite volume discretizations.
+ .
+ This package provides the source code documentation of the grid
+ implementations.
 
 Package: libopm-grid1-bin
 Section: libs
@@ -77,15 +106,27 @@ Multi-Arch: same
 Depends: ${shlibs:Depends}, ${misc:Depends}
 Provides: libopm-grid-bin
 Replaces: libdune-cornerpoint1-bin
-Description: opm grid library -- applications
- opm-grid is intended to enable working with corner-point or, more
- generally, pillar grids in dune. A standard grid type in the petroleum
- industry, corner-point grids fill space with a relatively low number
- of cells while still providing sufficient flexibility to model faults,
- fractures and erosion. The grid format was originally designed with
- an eye towards geological modelling rather than numerical simulation
- and this design choice does limit the number of feasible numerical
- methods.
+Description: corner point grid utility programs.
+ The Open Porous Media (OPM) software suite provides libraries and
+ tools for modeling and simulation of porous media processes, especially
+ for simulating CO2 sequestration and improved and enhanced oil recovery.
+ .
+ opm-grid provides implementations of grids for reservoir simulation,
+ corner point or more general pillar grids, following the DUNE grid interface:
+ CpGrid, a parallel corner point grid, and PolyhedralGrid a more general serial
+ grid implementation of an unstructured, legacy, grid.
+ .
+ A standard grid type in the petroleum industry, corner-point grids fills
+ the domain with a relatively low number of cells while still providing
+ sufficient flexibility to model faults, fractures and erosion. The grid
+ format was originally designed with an eye towards geological modeling
+ rather than numerical simulation, but is still suitable for e.g. low order
+ finite volume discretizations.
+ .
+ This package provides programs to mirror corner point grids specified in
+ Eclipse file format and convert the corner point grid representation
+ of an Eclipse together with permeability/porosity to file suitable
+ for visualization with Paraview.
 
 Package: libopm-grid1-dbg
 Section: debug
@@ -94,12 +135,21 @@ Multi-Arch: foreign
 Provides: libopm-grid-dbg
 Depends: libopm-grid1 (= ${binary:Version}), ${misc:Depends}
 Replaces: libdune-cornerpoint1-dbg
-Description: opm grid library -- debug symbols
- opm-grid is intended to enable working with corner-point or, more
- generally, pillar grids in dune. A standard grid type in the petroleum
- industry, corner-point grids fill space with a relatively low number
- of cells while still providing sufficient flexibility to model faults,
- fractures and erosion. The grid format was originally designed with
- an eye towards geological modelling rather than numerical simulation
- and this design choice does limit the number of feasible numerical
- methods.
+Description: DUNE grid implementations for reservoir simulation -- debug library
+ The Open Porous Media (OPM) software suite provides libraries and
+ tools for modeling and simulation of porous media processes, especially
+ for simulating CO2 sequestration and improved and enhanced oil recovery.
+ .
+ opm-grid provides implementations of grids for reservoir simulation,
+ corner point or more general pillar grids, following the DUNE grid interface:
+ CpGrid, a parallel corner point grid, and PolyhedralGrid a more general serial
+ grid implementation of an unstructured, legacy, grid.
+ .
+ A standard grid type in the petroleum industry, corner-point grids fills
+ the domain with a relatively low number of cells while still providing
+ sufficient flexibility to model faults, fractures and erosion. The grid
+ format was originally designed with an eye towards geological modeling
+ rather than numerical simulation, but is still suitable for e.g. low order
+ finite volume discretizations.
+ .
+ This package provides the debug library of the grid implementations.
