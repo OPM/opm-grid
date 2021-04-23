@@ -34,7 +34,9 @@
  *
  */
 
-#if HAVE_OPM_COMMON
+#if HAVE_ECL_INPUT
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+
 /// Print init message in new grid filename
 void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {
     std::ifstream infile;
@@ -398,7 +400,12 @@ int main(int argc, char** argv)
     mirror_celldata<double>("NTG", deck, direction, outfile);
     mirror_celldata<double>("SWCR", deck, direction, outfile);
     mirror_celldata<double>("SOWCR", deck, direction, outfile);
+    return 0;
 }
 #else
-int main () { return 0; }
+int main () {
+    std::cerr << "Program need activated ECL input. (Configure opm-common "
+              << " with -DENABLE_ECL_INPUT=ON)"<<std::endl
+    return 1;
+}
 #endif // #if HAVE_OPM_COMMON
