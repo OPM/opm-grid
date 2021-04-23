@@ -34,7 +34,7 @@
  *
  */
 
-#if HAVE_OPM_PARSER
+#if HAVE_OPM_COMMON
 /// Print init message in new grid filename
 void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {
     std::ifstream infile;
@@ -267,7 +267,7 @@ std::vector<double> getMapaxesValues(const Opm::Deck& deck)
     for (size_t itemIdx = 0; itemIdx < mapaxesRecord.size(); ++itemIdx) {
         const auto& curItem = mapaxesRecord.getItem(itemIdx);
 
-        for (size_t dataItemIdx = 0; dataItemIdx < curItem.size(); ++dataItemIdx) {
+        for (size_t dataItemIdx = 0; dataItemIdx < curItem.data_size(); ++dataItemIdx) {
             result.push_back(curItem.get< double >(dataItemIdx));
         }
     }
@@ -401,4 +401,4 @@ int main(int argc, char** argv)
 }
 #else
 int main () { return 0; }
-#endif // #if HAVE_OPM_PARSER
+#endif // #if HAVE_OPM_COMMON
