@@ -73,6 +73,9 @@
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
+#if HAVE_ECL_INPUT
+#include <opm/parser/eclipse/EclipseState/Grid/NNC.hpp>
+#endif
 
 #include <array>
 #include <tuple>

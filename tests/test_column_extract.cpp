@@ -8,8 +8,11 @@
 #include <opm/grid/ColumnExtract.hpp>
 #include <opm/grid/GridManager.hpp>
 
+#if HAVE_ECL_INPUT
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/parser/eclipse/Deck/Deck.hpp>
+#endif
 
 #include <cstddef>
 #include <iostream>
