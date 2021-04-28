@@ -1,13 +1,72 @@
-License: GPL-3+
- This package is free software; you can redistribute it and/or modify
- it under the terms of the GNU General Public License as published by
- the Free Software Foundation; either version 3 of the License, or
- (at your option) any later version.
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: opm-grid
+Upstream-Contact: opm@opm-project.org
+Source: <https://github.com/OPM/opm-grid>
+Comment: We use the name "OPM development team", to denote that parts
+     of individual files might be copyright by
+     Dr. Blatt - HPC-Simulation-Software & Services, Equinor ASA,
+     IWS-LH2 at University of Stuttgart, NORCE, Poware (Andreas Lauser), SINTEF,
+     or TNO.
+Files-Excluded: external
+    redhat
+    debian
+    .git*
+    jenkins
+    .clang-format
+    travis
+    .hgsubstate
 
+Files: *
+Copyright: 2009-2021,  OPM development team
+  2009-2021,  Equinor ASA
+  2013-2018, Dr. Blatt - HPC-Simulation-Software & Services
+  2020,      Bernd Flemisch, IWS-LH2 at University of Stuttgart
+  2013-2014, Andreas Lauser
+  2013-2017, NORCE AS
+  2015,      NTNU
+  2009-2019, SINTEF Digital, Mathematics & Cybernetics
+  2020-2021, OPM-OP AS
+License: GPL-3.0+
+
+Files: debian/*
+Copyright: 2013-2021 Equinor ASA
+   2013-2021 OPM development team
+License: GPL-3.0+
+
+Files: attic/mapper_test.cpp
+Copyright: 2008-2009, Bernd Flemisch, Markus Wolff
+License: GPL-2.0+
+
+License: GPL-3.0+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 3 of the License, or
+ (at your option) any later version.
+ .
  This package is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
-
+ .
  You should have received a copy of the GNU General Public License
- along with this program. If not, see <http://www.gnu.org/licenses/>
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License version 3 can be found in "/usr/share/common-licenses/GPL-3".
+
+License: GPL-2.0+
+ This program is free software: you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation, either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This package is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ You should have received a copy of the GNU General Public License
+ along with this program. If not, see <https://www.gnu.org/licenses/>.
+ .
+ On Debian systems, the complete text of the GNU General
+ Public License version 2 can be found in "/usr/share/common-licenses/GPL-2".
