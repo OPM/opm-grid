@@ -261,9 +261,8 @@ namespace cpgrid
         std::cout << "Processing eclipse data." << std::endl;
 #endif
         processed_grid output;
-        if (ecl_state) {
-            const auto& aquifer = ecl_state->aquifer();
-            const auto aquifer_cell_volumes = aquifer.numericalAquifers().aquiferCellVolumes();
+        if (ecl_state && ecl_state->aquifer().hasNumericalAquifer()) {
+            const auto aquifer_cell_volumes = ecl_state->aquifer().numericalAquifers().aquiferCellVolumes();
             const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
             std::vector<int> is_aquifer_cell(global_nc, 0);
             for ([[maybe_unused]]const auto&[global_index, volume] : aquifer_cell_volumes) {
