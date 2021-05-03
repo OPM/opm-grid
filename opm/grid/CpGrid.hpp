@@ -75,6 +75,9 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <iostream>
+#if ! HAVE_MPI
+#include <list>
+#endif
 
 namespace Dune
 {
