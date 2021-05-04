@@ -105,7 +105,6 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
         g.coord  = coord.getSIDoubleData().data();
         g.zcorn  = zcorn.getSIDoubleData().data();
         g.actnum = actnum.getIntData().data();
-        g.mapaxes = NULL;
 
 
         cgrid2 = create_grid_cornerpoint(&g , 0.0);

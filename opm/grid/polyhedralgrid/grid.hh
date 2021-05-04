@@ -893,7 +893,6 @@ namespace Dune
         g.dims[1] = inputGrid.getNY();
         g.dims[2] = inputGrid.getNZ();
 
-        std::vector<double> mapaxes = inputGrid.getMAPAXES( );
         std::vector<double> coord = inputGrid.getCOORD( );
         std::vector<double> zcorn = inputGrid.getZCORN( );
         std::vector<int> actnum = inputGrid.getACTNUM(  );
@@ -901,7 +900,6 @@ namespace Dune
         g.coord = coord.data();
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
-        g.mapaxes = mapaxes.data();
 
         if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
         {
