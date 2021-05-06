@@ -58,6 +58,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/utility/cartesianToCompressed.cpp
   opm/grid/utility/StopWatch.cpp
   opm/grid/utility/WachspressCoord.cpp
+  opm/grid/parallel/mpihelper_set_and_get.cpp
   )
 
 if (opm-common_FOUND)
@@ -223,4 +224,5 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/OpmParserIncludes.hpp
   opm/grid/utility/platform_dependent/disable_warnings.h
   opm/grid/utility/platform_dependent/reenable_warnings.h
+  opm/grid/parallel/mpihelper_set_and_get.hpp
   )
