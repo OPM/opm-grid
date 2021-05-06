@@ -172,6 +172,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
+  opm/grid/common/GridEnums.hpp
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
