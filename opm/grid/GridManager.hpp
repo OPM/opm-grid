@@ -43,14 +43,14 @@ namespace Opm
 
 #if HAVE_ECL_INPUT
         /// Construct a grid from an EclipseState::EclipseGrid instance.
-        explicit GridManager(const Opm::EclipseGrid& inputGrid);
+        explicit GridManager(const EclipseGrid& inputGrid);
 
         /// Construct a grid from an EclipseState::EclipseGrid instance,
         /// giving an explicit set of pore volumes to be used for MINPV
         /// considerations.
         /// \input[in] eclipseGrid    encapsulates a corner-point grid given from a deck
         /// \input[in] poreVolumes    one element per logical cartesian grid element
-        GridManager(const Opm::EclipseGrid& inputGrid,
+        GridManager(const EclipseGrid& inputGrid,
                     const std::vector<double>& poreVolumes);
 #endif
 
@@ -87,7 +87,7 @@ namespace Opm
 
 #if HAVE_ECL_INPUT
         // Construct corner-point grid from EclipseGrid.
-        void initFromEclipseGrid(const Opm::EclipseGrid& inputGrid,
+        void initFromEclipseGrid(const EclipseGrid& inputGrid,
                                  const std::vector<double>& poreVolumes);
 #endif
 
