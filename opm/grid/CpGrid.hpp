@@ -69,6 +69,7 @@
 #include "cpgrid/Iterators.hpp"
 #include "cpgrid/Indexsets.hpp"
 #include "cpgrid/DefaultGeometryPolicy.hpp"
+#include "common/GridEnums.hpp"
 #include "common/Volumes.hpp"
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
@@ -181,22 +182,6 @@ namespace Dune
 
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
-    };
-
-    /// \brief enum for choosing Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
-    ////
-    /// uniform methods means all edges have weight 1. defaultTrans uses transmissibility as weights.
-    /// logTrans uses the logarithm of the transmissibility.
-    /// The uniform and logTrans edge-weighting methods produce partitioning results with lower edge-cut,
-    /// fewer overlap/ghost cells and less communication overhead than when using defaultTrans. However, the impact
-    /// on parallel linear solver performance is negative.
-    enum EdgeWeightMethod {
-        /// \brief All edge have a uniform weight of 1
-        uniformEdgeWgt=0,
-        /// \brief Use the transmissibilities as edge weights
-        defaultTransEdgeWgt=1,
-        /// \brief Use the log of the transmissibilities as edge weights
-        logTransEdgeWgt=2
     };
 
     ////////////////////////////////////////////////////////////////////////
