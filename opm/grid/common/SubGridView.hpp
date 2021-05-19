@@ -145,25 +145,6 @@ public:
     enum { dimension = GridImp::dimension };
 
 public:
-    /// Construct a view of the codim 0 entities enumerated in the indices vector.
-    ///
-    /// The indices vector is assumed to be sorted in ascending order.
-    SubGridView(const Grid& grid,
-                const std::vector<int>& indices)
-        : grid_(&grid)
-    {
-        assert(std::is_sorted(indices.begin(), indices.end()));
-        subset_.resize(indices.size());
-        const auto beg = grid.template leafbegin<0>();
-        auto it = beg;
-        int previous = 0;
-        for (size_t c = 0; c < indices.size(); ++c) {
-            using EntitySeed = typename Codim<0>::Entity::EntitySeed;
-            std::advance(it, indices[c] - previous);
-            subset_[c] = it->seed();
-            previous = indices[c];
-        }
-    }
 
     /// Construct a view of the codim 0 entities that can be constructed from the seeds input.
     ///

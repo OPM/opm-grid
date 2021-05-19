@@ -91,6 +91,23 @@ void testGridIteration( const GridView& gridView, const int nElem )
 
 
 template <class Grid>
+auto getSeeds(const Grid& grid, const std::vector<int>& indices)
+{
+    assert(std::is_sorted(indices.begin(), indices.end()));
+    using EntitySeed = typename Grid::template Codim<0>::Entity::EntitySeed;
+    std::vector<EntitySeed> seeds(indices.size());
+    auto it = grid.template leafbegin<0>();
+    int previous = 0;
+    for (size_t c = 0; c < indices.size(); ++c) {
+        std::advance(it, indices[c] - previous);
+        seeds[c] = it->seed();
+        previous = indices[c];
+    }
+    return seeds;
+}
+
+
+template <class Grid>
 void testGrid(Grid& grid, const std::string& name, const size_t nElem, const size_t nVertices)
 {
     typedef typename Grid::LeafGridView GridView;
@@ -117,7 +134,7 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
         //std::abort();
     }
 
-    Dune::SubGridView<Grid> sgv(grid, {0, 1, 2});
+    Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}));
     testGridIteration(sgv, 3);
 
 }
