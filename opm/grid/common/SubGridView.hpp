@@ -19,6 +19,9 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
+#include <stdexcept>
+#include <type_traits>
 #include <vector>
 
 namespace Dune
@@ -29,38 +32,38 @@ class SubGridView;
 
 template <class GridImp>
 struct SubGridViewTraits {
-    typedef SubGridView<GridImp> GridViewImp;
+    using GridViewImp = SubGridView<GridImp>;
 
     /** \brief type of the grid */
-    typedef typename std::remove_const<GridImp>::type Grid;
+    using Grid = typename std::remove_const<GridImp>::type;
 
     /** \brief type of the index set */
-    typedef typename Grid ::Traits ::LeafIndexSet IndexSet;
+    using IndexSet = typename Grid ::Traits ::LeafIndexSet;
 
     /** \brief type of the intersection */
-    typedef typename Grid ::Traits ::LeafIntersection Intersection;
+    using Intersection = typename Grid ::Traits ::LeafIntersection;
 
     /** \brief type of the intersection iterator */
-    typedef typename Grid ::Traits ::LeafIntersectionIterator IntersectionIterator;
+    using IntersectionIterator = typename Grid ::Traits ::LeafIntersectionIterator;
 
     /** \brief type of the collective communication */
-    typedef typename Grid ::Traits ::CollectiveCommunication CollectiveCommunication;
+    using CollectiveCommunication = typename Grid ::Traits ::CollectiveCommunication;
 
     template <int cd>
     struct Codim {
-        typedef typename Grid ::Traits ::template Codim<cd>::template Partition<All_Partition>::LeafIterator BaseIterator;
+        using BaseIterator = typename Grid ::Traits ::template Codim<cd>::template Partition<All_Partition>::LeafIterator;
 
-        typedef typename Grid ::Traits ::template Codim<cd>::Entity Entity;
-        typedef typename Grid ::Traits ::template Codim<cd>::EntitySeed EntitySeed;
+        using Entity = typename Grid ::Traits ::template Codim<cd>::Entity;
+        using EntitySeed = typename Grid ::Traits ::template Codim<cd>::EntitySeed;
 
-        typedef typename Grid ::template Codim<cd>::Geometry Geometry;
-        typedef typename Grid ::template Codim<cd>::LocalGeometry LocalGeometry;
+        using Geometry = typename Grid ::template Codim<cd>::Geometry;
+        using LocalGeometry = typename Grid ::template Codim<cd>::LocalGeometry;
 
         /** \brief Define types needed to iterate over entities of a given partition type */
         template <PartitionIteratorType pit>
         struct Partition {
             /** \brief iterator over a given codim and partition type */
-            typedef typename Grid ::template Codim<cd>::template Partition<pit>::LeafIterator BaseIterator;
+            using BaseIterator = typename Grid ::template Codim<cd>::template Partition<pit>::LeafIterator;
         };
     };
 
@@ -71,25 +74,25 @@ struct SubGridViewTraits {
 template <class GridImp>
 class SubGridView
 {
-    typedef SubGridView<GridImp> ThisType;
+    using ThisType = SubGridView<GridImp>;
 
 public:
-    typedef SubGridViewTraits<GridImp> Traits;
+    using Traits = SubGridViewTraits<GridImp>;
 
     /** \brief type of the grid */
-    typedef typename Traits::Grid Grid;
+    using Grid = typename Traits::Grid;
 
     /** \brief type of the index set */
-    typedef typename Traits ::IndexSet IndexSet;
+    using IndexSet = typename Traits ::IndexSet;
 
     /** \brief type of the intersection */
-    typedef typename Traits ::Intersection Intersection;
+    using Intersection = typename Traits ::Intersection;
 
     /** \brief type of the intersection iterator */
-    typedef typename Traits ::IntersectionIterator IntersectionIterator;
+    using IntersectionIterator = typename Traits ::IntersectionIterator;
 
     /** \brief type of the collective communication */
-    typedef typename Traits ::CollectiveCommunication CollectiveCommunication;
+    using CollectiveCommunication = typename Traits ::CollectiveCommunication;
 
     /** \brief Codim Structure */
     template <int cd>
@@ -166,7 +169,7 @@ public:
     /** \brief obtain the index set */
     const IndexSet& indexSet() const
     {
-        throw std::logic_error("Not implemented.");
+        throw std::logic_error("SubGridView::indexSet() not implemented.");
         return grid().leafIndexSet();
     }
 

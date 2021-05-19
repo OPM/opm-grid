@@ -26,8 +26,9 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <opm/parser/eclipse/Deck/Deck.hpp>
 #include <opm/parser/eclipse/Parser/Parser.hpp>
 
-
+#include <cmath>
 #include <iostream>
+
 
 template <class GridView>
 void testGridIteration( const GridView& gridView, const int nElem )
@@ -98,7 +99,7 @@ auto getSeeds(const Grid& grid, const std::vector<int>& indices)
     std::vector<EntitySeed> seeds(indices.size());
     auto it = grid.template leafbegin<0>();
     int previous = 0;
-    for (size_t c = 0; c < indices.size(); ++c) {
+    for (std::size_t c = 0; c < indices.size(); ++c) {
         std::advance(it, indices[c] - previous);
         seeds[c] = it->seed();
         previous = indices[c];
@@ -108,7 +109,7 @@ auto getSeeds(const Grid& grid, const std::vector<int>& indices)
 
 
 template <class Grid>
-void testGrid(Grid& grid, const std::string& name, const size_t nElem, const size_t nVertices)
+void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, const std::size_t nVertices)
 {
     typedef typename Grid::LeafGridView GridView;
     /*
@@ -129,7 +130,7 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
 
     std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (static_cast<size_t>(mapper.size()) != nVertices ) {
+    if (static_cast<std::size_t>(mapper.size()) != nVertices ) {
         std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
         //std::abort();
     }
