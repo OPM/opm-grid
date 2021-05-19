@@ -37,10 +37,6 @@ namespace Dune
         entityImpl() = EntityImpl( data, EntitySeed( 0 ) );
     }
 
-    PolyhedralGridIterator ( const This& other )
-    : Base( other )
-    {}
-
     /** \brief increment */
     void increment ()
     {
