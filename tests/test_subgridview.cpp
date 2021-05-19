@@ -146,23 +146,24 @@ int main(int argc, char** argv )
 
     // ------------ Test grid from deck. ------------
 #if HAVE_ECL_INPUT
-    const char *deckString =
-        "RUNSPEC\n"
-        "METRIC\n"
-        "DIMENS\n"
-        "2 2 2 /\n"
-        "GRID\n"
-        "DXV\n"
-        "2*1 /\n"
-        "DYV\n"
-        "2*1 /\n"
-        "DZ\n"
-        "8*1 /\n"
-        "TOPS\n"
-        "8*100.0 /\n";
+    const char* deckString =
+R"(
+RUNSPEC
+METRIC
+DIMENS
+2 2 2 /
+GRID
+DXV
+2*1 /
+DYV
+2*1 /
+DZ
+8*1 /
+TOPS
+8*100.0 /
+)";
 
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
+    const auto deck = Opm::Parser{}.parseString(deckString);
 
     Dune::CpGrid grid;
     const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
