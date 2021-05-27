@@ -223,10 +223,6 @@ namespace cpgrid
             this->zcorn = clipped_zcorn;
         }
 
-        // Get z_tolerance.
-        const double z_tolerance = ecl_grid.isPinchActive() ?
-            ecl_grid.getPinchThresholdThickness() : 0.0;
-
         if (periodic_extension) {
             // Extend grid periodically with one layer of cells in the (i, j) directions.
             std::vector<double> new_coord;
@@ -235,10 +231,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, ecl_state, nnc_cells, z_tolerance, true, turn_normals, pinchActive);
+            processEclipseFormat(new_g, ecl_state, nnc_cells, true, turn_normals, pinchActive);
         } else {
             // Make the grid.
-            processEclipseFormat(g, ecl_state, nnc_cells, z_tolerance, false, turn_normals, pinchActive);
+            processEclipseFormat(g, ecl_state, nnc_cells, false, turn_normals, pinchActive);
         }
 
         return minpv_result.removed_cells;
@@ -251,7 +247,7 @@ namespace cpgrid
 
     /// Read the Eclipse grid format ('.grdecl').
     void CpGridData::processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
-                                          NNCMaps& nnc, double z_tolerance, bool remove_ij_boundary, bool turn_normals,
+                                          NNCMaps& nnc, bool remove_ij_boundary, bool turn_normals,
                                           bool pinchActive)
     {
         if( ccobj_.rank() != 0 )
@@ -270,9 +266,9 @@ namespace cpgrid
             for ([[maybe_unused]]const auto&[global_index, volume] : aquifer_cell_volumes) {
                 is_aquifer_cell[global_index] = 1;
             }
-            process_grdecl(&input_data, z_tolerance, is_aquifer_cell.data(), &output, pinchActive);
+            process_grdecl(&input_data, 0, is_aquifer_cell.data(), &output, pinchActive);
         } else {
-            process_grdecl(&input_data, z_tolerance, nullptr, &output, pinchActive);
+            process_grdecl(&input_data, 0, nullptr, &output, pinchActive);
         }
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);

@@ -181,7 +181,7 @@ namespace Dune
 
     // create grid
     grid_ = new Grid;
-    grid_->processEclipseFormat( g, 0.0, false, false );
+    grid_->processEclipseFormat( g, false, false );
   }
 
 
