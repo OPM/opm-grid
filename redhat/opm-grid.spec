@@ -189,11 +189,15 @@ cd ..
 cd openmpi
 make install DESTDIR=${RPM_BUILD_ROOT}
 mv ${RPM_BUILD_ROOT}/usr/lib64/openmpi/include/* ${RPM_BUILD_ROOT}/usr/include/openmpi-x86_64/
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/mirror_grid.1
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/grdecl2vtu.1
 cd ..
 
 cd mpich
 make install DESTDIR=${RPM_BUILD_ROOT}
 mv ${RPM_BUILD_ROOT}/usr/lib64/mpich/include/* ${RPM_BUILD_ROOT}/usr/include/mpich-x86_64/
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/mirror_grid.1
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/grdecl2vtu.1
 
 %clean
 rm -rf %{buildroot}
@@ -211,6 +215,7 @@ rm -rf %{buildroot}
 
 %files doc
 %{_docdir}/*
+%{_datadir}/man/*
 
 %files -n libopm-grid1
 %defattr(-,root,root,-)

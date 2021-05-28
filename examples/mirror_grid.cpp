@@ -34,7 +34,9 @@
  *
  */
 
-#if HAVE_OPM_PARSER
+#if HAVE_ECL_INPUT
+#include <opm/parser/eclipse/Parser/Parser.hpp>
+
 /// Print init message in new grid filename
 void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {
     std::ifstream infile;
@@ -267,7 +269,7 @@ std::vector<double> getMapaxesValues(const Opm::Deck& deck)
     for (size_t itemIdx = 0; itemIdx < mapaxesRecord.size(); ++itemIdx) {
         const auto& curItem = mapaxesRecord.getItem(itemIdx);
 
-        for (size_t dataItemIdx = 0; dataItemIdx < curItem.size(); ++dataItemIdx) {
+        for (size_t dataItemIdx = 0; dataItemIdx < curItem.data_size(); ++dataItemIdx) {
             result.push_back(curItem.get< double >(dataItemIdx));
         }
     }
@@ -398,7 +400,12 @@ int main(int argc, char** argv)
     mirror_celldata<double>("NTG", deck, direction, outfile);
     mirror_celldata<double>("SWCR", deck, direction, outfile);
     mirror_celldata<double>("SOWCR", deck, direction, outfile);
+    return 0;
 }
 #else
-int main () { return 0; }
-#endif // #if HAVE_OPM_PARSER
+int main () {
+    std::cerr << "Program need activated ECL input. (Configure opm-common "
+              << " with -DENABLE_ECL_INPUT=ON)"<<std::endl
+    return 1;
+}
+#endif // #if HAVE_OPM_COMMON
