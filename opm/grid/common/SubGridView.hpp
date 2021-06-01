@@ -20,6 +20,8 @@
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
+#include <map>
+#include <set>
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
@@ -156,7 +158,47 @@ public:
                 std::vector<typename Codim<0>::Entity::EntitySeed>&& seeds)
         : grid_(&grid)
         , subset_(std::move(seeds))
+        , num_owned_(subset_.size())
     {
+        // Add neighbouring not-owned entities to subset_
+        using Seed = typename Codim<0>::Entity::EntitySeed;
+        std::set<int> owned;
+        std::map<int, Seed> neighbors;
+        const auto& iset = grid_->leafIndexSet();
+        const auto& leaf_view = grid_->leafGridView();
+        for (const auto& seed : subset_) {
+            // Add this entity to the set of owned indices.
+            const auto& entity = grid_->entity(seed);
+            owned.insert(iset.index(entity));
+            // Iterating over all intersections, ...
+            const auto end = leaf_view.iend(entity);
+            for (auto it = leaf_view.ibegin(entity); it != end; ++it) {
+                if (it->boundary()) {
+                    continue;
+                }
+                if (it->neighbor()) {
+                    const auto outside_entity = it->outside();
+                    // ...for all neighbour entities, add to neighbors.
+                    const int index = iset.index(outside_entity);
+                    const Seed outside_seed = outside_entity.seed();
+                    auto elem = std::make_pair(index, outside_seed);
+                    neighbors.insert(elem/*{index, seed}*/);
+                }
+            }
+        }
+        // Now that owned is complete, we can eliminate any owned entries.
+        std::map<int, Seed> unowned_neighbors;
+        for (const auto& nb : neighbors) {
+            if (owned.count(nb.first) == 0) {
+                unowned_neighbors.insert(nb);
+            }
+        }
+        subset_.resize(subset_.size() + unowned_neighbors.size());
+        int count = num_owned_;
+        for (const auto& [index, seed] : unowned_neighbors) {
+            subset_[count] = seed;
+            ++count;
+        }
     }
 
     /** \brief obtain a const reference to the underlying hierarchic grid */
@@ -267,6 +309,7 @@ private:
     }
     const Grid* grid_;
     std::vector<typename Codim<0>::Entity::EntitySeed> subset_;
+    const int num_owned_;
 };
 
 } // namespace Dune
