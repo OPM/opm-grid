@@ -51,11 +51,39 @@ struct SubGridViewTraits {
     /** \brief type of the collective communication */
     using CollectiveCommunication = typename Grid ::Traits ::CollectiveCommunication;
 
+
+    template <class BaseEntityType>
+    class SubEntity : public BaseEntityType
+    {
+    public:
+        SubEntity()
+            : BaseEntityType()
+            , is_owned_(false)
+        {
+        }
+        SubEntity(const BaseEntityType& base, const bool owned)
+            : BaseEntityType(base)
+            , is_owned_(owned)
+        {
+        }
+        auto partitionType() const
+        {
+            if (is_owned_) {
+                return Dune::InteriorEntity;
+            } else {
+                return Dune::OverlapEntity;
+            }
+        }
+    private:
+        bool is_owned_;
+    };
+
     template <int cd>
     struct Codim {
         using BaseIterator = typename Grid ::Traits ::template Codim<cd>::template Partition<All_Partition>::LeafIterator;
 
-        using Entity = typename Grid ::Traits ::template Codim<cd>::Entity;
+        using BaseEntity = typename Grid ::Traits ::template Codim<cd>::Entity;
+        using Entity = SubEntity<BaseEntity>;
         using EntitySeed = typename Grid ::Traits ::template Codim<cd>::EntitySeed;
 
         using Geometry = typename Grid ::template Codim<cd>::Geometry;
@@ -95,6 +123,7 @@ public:
 
     /** \brief type of the collective communication */
     using CollectiveCommunication = typename Traits ::CollectiveCommunication;
+
 
     /** \brief Codim Structure */
     template <int cd>
@@ -194,11 +223,12 @@ public:
             }
         }
         subset_.resize(subset_.size() + unowned_neighbors.size());
-        int count = num_owned_;
+        std::size_t count = num_owned_;
         for (const auto& [index, seed] : unowned_neighbors) {
             subset_[count] = seed;
             ++count;
         }
+        assert(count == subset_.size());
     }
 
     /** \brief obtain a const reference to the underlying hierarchic grid */
@@ -303,13 +333,15 @@ public:
     }
 
 private:
-    typename Codim<0>::Entity get(std::size_t ii) const
+    using Entity0 = typename Codim<0>::Entity;
+    Entity0 get(std::size_t ii) const
     {
-        return grid_->entity(subset_[ii]);
+        const bool owned = ii < num_owned_;
+        return Entity0(grid_->entity(subset_[ii]), owned);
     }
     const Grid* grid_;
-    std::vector<typename Codim<0>::Entity::EntitySeed> subset_;
-    const int num_owned_;
+    std::vector<typename Entity0::EntitySeed> subset_;
+    const std::size_t num_owned_;
 };
 
 } // namespace Dune
