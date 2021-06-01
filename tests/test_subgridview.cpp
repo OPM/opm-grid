@@ -31,7 +31,7 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 
 
 template <class GridView>
-void testGridIteration( const GridView& gridView, const int nElem )
+void testGridInteriorIteration( const GridView& gridView, const int nElem )
 {
     typedef typename GridView::template Codim<0>::Iterator ElemIterator;
     typedef typename GridView::IntersectionIterator IsIt;
@@ -41,6 +41,9 @@ void testGridIteration( const GridView& gridView, const int nElem )
     ElemIterator elemIt = gridView.template begin<0>();
     ElemIterator elemEndIt = gridView.template end<0>();
     for (; elemIt != elemEndIt; ++elemIt) {
+        if (elemIt->partitionType() != Dune::InteriorEntity) {
+            continue;
+        }
         const Geometry& elemGeom = elemIt->geometry();
         if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
             std::cout << "element's " << numElem << " volume is wrong:"<<elemGeom.volume()<<"\n";
@@ -112,19 +115,10 @@ template <class Grid>
 void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, const std::size_t nVertices)
 {
     typedef typename Grid::LeafGridView GridView;
-    /*
 
-    try {
-      gridcheck( grid );
-    }
-    catch ( const Dune::Exception& e)
-    {
-      std::cerr << "Warning: " << e.what() << std::endl;
-    }
-*/
     std::cout << name << std::endl;
 
-    testGridIteration( grid.leafGridView(), nElem );
+    testGridInteriorIteration( grid.leafGridView(), nElem );
 
     std::cout << "create vertex mapper\n";
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
@@ -136,7 +130,7 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
     }
 
     Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}));
-    testGridIteration(sgv, 3);
+    testGridInteriorIteration(sgv, 3);
 
 }
 
@@ -176,7 +170,7 @@ TOPS
 
     // ------------ Test grid from dgf. ------------
     std::stringstream dgfFile;
-    // create unit cube with 8 cells in each direction
+    // create grid with 4 cells in each direction
     dgfFile << "DGF" << std::endl;
     dgfFile << "Interval" << std::endl;
     dgfFile << "0 0 0" << std::endl;
@@ -189,7 +183,7 @@ TOPS
 
     // ------------ Test YaspGrid. ------------
 
-    Dune::YaspGrid<3, Dune::EquidistantCoordinates<double, 3>> yaspGrid({1.0, 1.0, 1.0}, {4, 4, 4});
+    Dune::YaspGrid<3, Dune::EquidistantCoordinates<double, 3>> yaspGrid({4.0, 4.0, 4.0}, {4, 4, 4});
     testGrid(yaspGrid, "YaspGrid", 64, 125);
 
     return 0;
