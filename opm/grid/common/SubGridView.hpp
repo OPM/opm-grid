@@ -21,9 +21,10 @@
 #include <cassert>
 #include <cstddef>
 #include <map>
-#include <set>
 #include <stdexcept>
 #include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 namespace Dune
@@ -184,15 +185,21 @@ public:
     ///
     /// The seeds input is moved from and will be in a valid but indeterminate state after the call.
     SubGridView(const Grid& grid,
-                std::vector<typename Codim<0>::Entity::EntitySeed>&& seeds)
+                std::vector<typename Codim<0>::Entity::EntitySeed>&& seeds,
+                const bool overlap = true)
         : grid_(&grid)
         , subset_(std::move(seeds))
         , num_owned_(subset_.size())
     {
+        // Nothing more to do if we do not want to have overlap entities.
+        if (!overlap) {
+            return;
+        }
+
         // Add neighbouring not-owned entities to subset_
         using Seed = typename Codim<0>::Entity::EntitySeed;
-        std::set<int> owned;
-        std::map<int, Seed> neighbors;
+        std::unordered_set<int> owned;
+        std::unordered_map<int, Seed> neighbors;
         const auto& iset = grid_->leafIndexSet();
         const auto& leaf_view = grid_->leafGridView();
         for (const auto& seed : subset_) {
@@ -208,10 +215,7 @@ public:
                 if (it->neighbor()) {
                     const auto outside_entity = it->outside();
                     // ...for all neighbour entities, add to neighbors.
-                    const int index = iset.index(outside_entity);
-                    const Seed outside_seed = outside_entity.seed();
-                    auto elem = std::make_pair(index, outside_seed);
-                    neighbors.insert(elem/*{index, seed}*/);
+                    neighbors.try_emplace(iset.index(outside_entity), outside_entity.seed());
                 }
             }
         }
@@ -239,11 +243,7 @@ public:
     }
 
     /** \brief obtain the index set */
-    const IndexSet& indexSet() const
-    {
-        throw std::logic_error("SubGridView::indexSet() not implemented.");
-        return grid().leafIndexSet();
-    }
+    // const IndexSet& indexSet() const // Not implemented
 
     /** \brief obtain number of entities in a given codimension */
     int size(int codim) const
@@ -251,46 +251,61 @@ public:
         if (codim == 0) {
             return subset_.size();
         } else {
-            throw std::logic_error("Not implemented.");
+            return 0;
         }
     }
 
     /** \brief obtain number of entities with a given geometry type */
-    int size(const GeometryType& type) const
-    {
-        throw std::logic_error("Not implemented.");
-        return grid().size(type);
-    }
+    // int size(const GeometryType& type) const // Not implemented
 
     /** \brief obtain begin iterator for this view */
     template <int cd>
     typename Codim<cd>::Iterator begin() const
     {
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
         using Iterator = typename Codim<cd>::Iterator;
         return Iterator(*this, 0);
     }
-
-    /** \brief obtain begin iterator for this view */
-    // template <int cd, PartitionIteratorType pit>
-    // typename Codim<cd>::template Partition<pit>::Iterator begin() const
-    // {
-    //     return grid().template leafbegin<cd, pit>();
-    // }
 
     /** \brief obtain end iterator for this view */
     template <int cd>
     typename Codim<cd>::Iterator end() const
     {
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
         using Iterator = typename Codim<cd>::Iterator;
         return Iterator(*this, subset_.size());
     }
 
+    // We support iterating over Interior_Partition, Overlap_Partition and All_Partition
+
+    /** \brief obtain begin iterator for this view */
+    template <int cd, PartitionIteratorType pit>
+    typename Codim<cd>::template Partition<pit>::Iterator begin() const
+    {
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
+        if constexpr (pit == Interior_Partition || pit == All_Partition) {
+            return begin();
+        } else {
+            // Overlap partition starts at index num_owned_.
+            // Note that it may be empty, i.e. begin() == end().
+            return Iterator(*this, num_owned_);
+        }
+    }
+
     /** \brief obtain end iterator for this view */
-    // template <int cd, PartitionIteratorType pit>
-    // typename Codim<cd>::template Partition<pit>::Iterator end() const
-    // {
-    //     return grid().template leafend<cd, pit>();
-    // }
+    template <int cd, PartitionIteratorType pit>
+    typename Codim<cd>::template Partition<pit>::Iterator end() const
+    {
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
+        if constexpr (pit == Overlap_Partition || pit == All_Partition) {
+            return end();
+        } else {
+            // Interior partition ends before index num_owned_.
+            return Iterator(*this, num_owned_);
+        }
+    }
 
     /** \brief obtain begin intersection iterator with respect to this view */
     IntersectionIterator ibegin(const typename Codim<0>::Entity& entity) const
@@ -313,24 +328,24 @@ public:
     /** \brief Return size of the overlap region for a given codim on the grid view.  */
     int overlapSize(int codim) const
     {
-        throw std::logic_error("Not implemented.");
-        return grid().overlapSize(codim);
+        if (codim == 0) {
+            return subset_.size() - num_owned_;
+        } else {
+            return 0;
+        }
     }
 
     /** \brief Return size of the ghost region for a given codim on the grid view.  */
-    int ghostSize(int codim) const
+    int ghostSize([[maybe_unused]] int codim) const
     {
-        throw std::logic_error("Not implemented.");
-        return grid().ghostSize(codim);
+        return 0;
     }
 
     /** communicate data on this view */
-    template <class DataHandleImp, class DataType>
-    void
-    communicate(CommDataHandleIF<DataHandleImp, DataType>& data, InterfaceType iftype, CommunicationDirection dir) const
-    {
-        return grid().communicate(data, iftype, dir);
-    }
+    // template <class DataHandleImp, class DataType>
+    // void
+    // communicate(CommDataHandleIF<DataHandleImp, DataType>& data, InterfaceType iftype, CommunicationDirection dir) const
+    // Not implemented.
 
 private:
     using Entity0 = typename Codim<0>::Entity;
