@@ -58,47 +58,64 @@ void MPI_err_handler(MPI_Comm*, int* err_code, ...)
 }
 #endif
 
-template <class GridView>
-void testGridInteriorIteration( const GridView& gridView, const int nElem )
+
+template <class GridView, class Entity>
+void testElement(const GridView& gridView, const Entity& entity)
 {
-    typedef typename GridView::template Codim<0>::Iterator ElemIterator;
-    typedef typename GridView::IntersectionIterator IsIt;
-    typedef typename GridView::template Codim<0>::Geometry Geometry;
+    using Geometry = typename GridView::template Codim<0>::Geometry;
+    const Geometry& elemGeom = entity.geometry();
+    BOOST_CHECK_CLOSE(elemGeom.volume(), 1.0, 1e-8);
 
-    int numElem = 0;
-    ElemIterator elemIt = gridView.template begin<0>();
-    ElemIterator elemEndIt = gridView.template end<0>();
-    for (; elemIt != elemEndIt; ++elemIt) {
-        if (elemIt->partitionType() != Dune::InteriorEntity) {
-            continue;
-        }
-        const Geometry& elemGeom = elemIt->geometry();
-        BOOST_CHECK_CLOSE(elemGeom.volume(), 1.0, 1e-8);
+    typename Geometry::LocalCoordinate local( 0.5 );
+    typename Geometry::GlobalCoordinate global = elemGeom.global( local );
+    typename Geometry::GlobalCoordinate center = elemGeom.center();
+    BOOST_CHECK_SMALL((center - global).two_norm(), 1e-12);
 
-        typename Geometry::LocalCoordinate local( 0.5 );
-        typename Geometry::GlobalCoordinate global = elemGeom.global( local );
-        typename Geometry::GlobalCoordinate center = elemGeom.center();
-        BOOST_CHECK_SMALL((center - global).two_norm(), 1e-12);
-
-        int numIs = 0;
-        IsIt isIt = gridView.ibegin(*elemIt);
-        IsIt isEndIt = gridView.iend(*elemIt);
-        for (; isIt != isEndIt; ++isIt, ++ numIs)
+    int numIs = 0;
+    auto isIt = gridView.ibegin(entity);
+    const auto isEndIt = gridView.iend(entity);
+    for (; isIt != isEndIt; ++isIt, ++ numIs)
         {
             const auto& intersection = *isIt;
             const auto& isGeom = intersection.geometry();
             BOOST_CHECK_CLOSE(isGeom.volume(), 1.0, 1e-8);
 
             if (intersection.neighbor())
-            {
-                BOOST_CHECK_EQUAL(numIs, intersection.indexInInside());
-                BOOST_CHECK_CLOSE(intersection.outside().geometry().volume(), 1.0, 1e-8);
-                BOOST_CHECK_CLOSE(intersection.inside().geometry().volume(), 1.0, 1e-8);
-            }
+                {
+                    BOOST_CHECK_EQUAL(numIs, intersection.indexInInside());
+                    BOOST_CHECK_CLOSE(intersection.outside().geometry().volume(), 1.0, 1e-8);
+                    BOOST_CHECK_CLOSE(intersection.inside().geometry().volume(), 1.0, 1e-8);
+                }
         }
 
-        BOOST_CHECK_EQUAL(numIs, 2 * GridView::dimension);
+    BOOST_CHECK_EQUAL(numIs, 2 * GridView::dimension);
+}
 
+template <class GridView>
+void testGridInteriorIteration( const GridView& gridView, const int nElem )
+{
+    int numElem = 0;
+    auto elemIt = gridView.template begin<0>();
+    const auto elemEndIt = gridView.template end<0>();
+    for (; elemIt != elemEndIt; ++elemIt) {
+        if (elemIt->partitionType() != Dune::InteriorEntity) {
+            continue;
+        }
+        testElement(gridView, *elemIt);
+        ++ numElem;
+    }
+
+    BOOST_CHECK_EQUAL(numElem, nElem);
+}
+
+template <class GridView, Dune::PartitionIteratorType pit>
+void testGridPartitionIteration( const GridView& gridView, const int nElem)
+{
+    int numElem = 0;
+    auto elemIt = gridView.template begin<0, pit>();
+    const auto elemEndIt = gridView.template end<0, pit>();
+    for (; elemIt != elemEndIt; ++elemIt) {
+        testElement(gridView, *elemIt);
         ++ numElem;
     }
 
@@ -137,9 +154,26 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
 
     BOOST_CHECK_EQUAL(mapper.size(), nVertices);
 
-    Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}));
-    testGridInteriorIteration(sgv, 3);
-
+    {
+        // Testing with overlap
+        Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), true);
+        const std::size_t sz = sgv.size(0);
+        BOOST_CHECK(sz > 3);
+        const std::size_t overlap = sgv.overlapSize(0);
+        BOOST_CHECK_EQUAL(sz, overlap + 3);
+        testGridInteriorIteration(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Interior_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::All_Partition>(sgv, sz);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Overlap_Partition>(sgv, overlap);
+    }
+    {
+        // Testing without overlap
+        Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), false);
+        testGridInteriorIteration(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Interior_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::All_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Overlap_Partition>(sgv, 0);
+    }
 }
 
 
