@@ -496,7 +496,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(g, nullptr, nnc, 0.0, false, false);
+        current_view_data_->processEclipseFormat(g, nullptr, nnc, 0.0, false, false, false);
         // global grid only on rank 0
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -544,7 +544,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(input_data, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->processEclipseFormat(input_data, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals, false);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
