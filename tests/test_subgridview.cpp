@@ -1,5 +1,15 @@
 #include <config.h>
 
+#define BOOST_TEST_MODULE CartGridTest
+#define BOOST_TEST_NO_MAIN
+#include <boost/test/unit_test.hpp>
+#include <boost/version.hpp>
+#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
+#include <boost/test/floating_point_comparison.hpp>
+#else
+#include <boost/test/tools/floating_point_comparison.hpp>
+#endif
+
 #include <opm/grid/common/SubGridView.hpp>
 
 // Warning suppression for Dune includes.
@@ -29,6 +39,24 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <cmath>
 #include <iostream>
 
+#if HAVE_MPI
+struct MPIError
+{
+    MPIError(std::string s, int e) : errorstring(std::move(s)), errorcode(e){}
+    std::string errorstring;
+    int errorcode;
+};
+
+void MPI_err_handler(MPI_Comm*, int* err_code, ...)
+{
+    std::vector<char> err_string(MPI_MAX_ERROR_STRING);
+    int err_length;
+    MPI_Error_string(*err_code, err_string.data(), &err_length);
+    std::string s(err_string.data(), err_length);
+    std::cerr << "An MPI Error ocurred:" << std::endl << s << std::endl;
+    throw MPIError(s, *err_code);
+}
+#endif
 
 template <class GridView>
 void testGridInteriorIteration( const GridView& gridView, const int nElem )
@@ -45,17 +73,12 @@ void testGridInteriorIteration( const GridView& gridView, const int nElem )
             continue;
         }
         const Geometry& elemGeom = elemIt->geometry();
-        if (std::abs(elemGeom.volume() - 1.0) > 1e-8)
-            std::cout << "element's " << numElem << " volume is wrong:"<<elemGeom.volume()<<"\n";
+        BOOST_CHECK_CLOSE(elemGeom.volume(), 1.0, 1e-8);
 
         typename Geometry::LocalCoordinate local( 0.5 );
         typename Geometry::GlobalCoordinate global = elemGeom.global( local );
         typename Geometry::GlobalCoordinate center = elemGeom.center();
-        if( (center - global).two_norm() > 1e-6 )
-        {
-          std::cout << "center = " << center << " global( localCenter ) = " << global << std::endl;
-        }
-
+        BOOST_CHECK_SMALL((center - global).two_norm(), 1e-12);
 
         int numIs = 0;
         IsIt isIt = gridView.ibegin(*elemIt);
@@ -64,33 +87,22 @@ void testGridInteriorIteration( const GridView& gridView, const int nElem )
         {
             const auto& intersection = *isIt;
             const auto& isGeom = intersection.geometry();
-            //std::cout << "Checking intersection id = " << localIdSet.id( intersection ) << std::endl;
-            if (std::abs(isGeom.volume() - 1.0) > 1e-8)
-                std::cout << "volume of intersection " << numIs << " of element " << numElem << " volume is wrong: " << isGeom.volume() << "\n";
+            BOOST_CHECK_CLOSE(isGeom.volume(), 1.0, 1e-8);
 
             if (intersection.neighbor())
             {
-              if( numIs != intersection.indexInInside() )
-                  std::cout << "num iit = " << numIs << " indexInInside " << intersection.indexInInside() << std::endl;
-
-              if (std::abs(intersection.outside().geometry().volume() - 1.0) > 1e-8)
-                  std::cout << "outside element volume of intersection " << numIs << " of element " << numElem
-                            << " volume is wrong: " << intersection.outside().geometry().volume() << std::endl;
-
-              if (std::abs(intersection.inside().geometry().volume() - 1.0) > 1e-8)
-                  std::cout << "inside element volume of intersection " << numIs << " of element " << numElem
-                            << " volume is wrong: " << intersection.inside().geometry().volume() << std::endl;
+                BOOST_CHECK_EQUAL(numIs, intersection.indexInInside());
+                BOOST_CHECK_CLOSE(intersection.outside().geometry().volume(), 1.0, 1e-8);
+                BOOST_CHECK_CLOSE(intersection.inside().geometry().volume(), 1.0, 1e-8);
             }
         }
 
-        if (numIs != 2 * GridView::dimension )
-            std::cout << "number of intersections is wrong for element " << numElem << "\n";
+        BOOST_CHECK_EQUAL(numIs, 2 * GridView::dimension);
 
         ++ numElem;
     }
 
-    if (numElem != nElem )
-        std::cout << "number of elements is wrong: " << numElem << ", expected " << nElem << std::endl;
+    BOOST_CHECK_EQUAL(numElem, nElem);
 }
 
 
@@ -123,24 +135,18 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
     std::cout << "create vertex mapper\n";
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgVertexLayout());
 
-    std::cout << "VertexMapper.size(): " << mapper.size() << "\n";
-    if (static_cast<std::size_t>(mapper.size()) != nVertices ) {
-        std::cout << "Wrong size of vertex mapper. Expected " << nVertices << "!" << std::endl;
-        //std::abort();
-    }
+    BOOST_CHECK_EQUAL(mapper.size(), nVertices);
 
     Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}));
     testGridInteriorIteration(sgv, 3);
 
 }
 
-int main(int argc, char** argv )
-{
-    // initialize MPI
-    Dune::MPIHelper::instance( argc, argv );
 
-    // ------------ Test grid from deck. ------------
 #if HAVE_ECL_INPUT
+BOOST_AUTO_TEST_CASE(deck)
+{
+    // ------------ Test grid from deck. ------------
     const char* deckString =
 R"(
 RUNSPEC
@@ -166,8 +172,12 @@ TOPS
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
-#endif
+}
+#endif // HAVE_ECL_INPUT
 
+
+BOOST_AUTO_TEST_CASE(dgf)
+{
     // ------------ Test grid from dgf. ------------
     std::stringstream dgfFile;
     // create grid with 4 cells in each direction
@@ -180,11 +190,26 @@ TOPS
 
     Dune::GridPtr< Dune::CpGrid > gridPtr( dgfFile );
     testGrid( *gridPtr, "CpGrid_dgf", 64, 125 );
+}
 
+
+BOOST_AUTO_TEST_CASE(yasp)
+{
     // ------------ Test YaspGrid. ------------
 
     Dune::YaspGrid<3, Dune::EquidistantCoordinates<double, 3>> yaspGrid({4.0, 4.0, 4.0}, {4, 4, 4});
     testGrid(yaspGrid, "YaspGrid", 64, 125);
+}
 
-    return 0;
+int main(int argc, char** argv)
+{
+    Dune::MPIHelper::instance(argc, argv);
+#if HAVE_MPI
+    // register a throwing error handler to allow for
+    // debugging with "catch throw" in gdb
+    MPI_Errhandler handler;
+    MPI_Comm_create_errhandler(MPI_err_handler, &handler);
+    MPI_Comm_set_errhandler(MPI_COMM_WORLD, handler);
+#endif
+    return boost::unit_test::unit_test_main(&init_unit_test, argc, argv);
 }
