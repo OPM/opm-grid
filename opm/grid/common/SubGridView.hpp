@@ -81,8 +81,6 @@ struct SubGridViewTraits {
 
     template <int cd>
     struct Codim {
-        using BaseIterator = typename Grid ::Traits ::template Codim<cd>::template Partition<All_Partition>::LeafIterator;
-
         using BaseEntity = typename Grid ::Traits ::template Codim<cd>::Entity;
         using Entity = SubEntity<BaseEntity>;
         using EntitySeed = typename Grid ::Traits ::template Codim<cd>::EntitySeed;
@@ -130,10 +128,10 @@ public:
     template <int cd>
     struct Codim : public Traits ::template Codim<cd> {
         using Entity = typename Traits::template Codim<cd>::Entity;
-        class Iterator
+        class SubIterator
         {
         public:
-            Iterator(const SubGridView& view, std::size_t index)
+            SubIterator(const SubGridView& view, std::size_t index)
                 : view_(&view)
                 , index_(index)
             {
@@ -148,23 +146,23 @@ public:
                 entity_ = this->view_->get(index_);
                 return &entity_;
             }
-            Iterator operator++()
+            SubIterator operator++()
             {
                 ++index_;
                 return *this;
             }
-            Iterator operator++(int)
+            SubIterator operator++(int)
             {
                 Iterator copy(*this);
                 ++index_;
                 return copy;
             }
-            bool operator==(const Iterator& other) const
+            bool operator==(const SubIterator& other) const
             {
                 assert(view_ == other.view_);
                 return index_ == other.index_;
             }
-            bool operator!=(const Iterator& other) const
+            bool operator!=(const SubIterator& other) const
             {
                 assert(view_ == other.view_);
                 return index_ != other.index_;
@@ -174,6 +172,15 @@ public:
             std::size_t index_;
             mutable Entity entity_; // This may be low-performing for grids with large Entity objects.
         };
+        using Iterator = SubIterator;
+
+        /** \brief Define types needed to iterate over entities of a given partition type */
+        template <PartitionIteratorType pit>
+        struct Partition {
+            /** \brief iterator over a given codim and partition type */
+            using Iterator = SubIterator;
+        };
+
     };
 
     enum { conforming = Traits::conforming };
@@ -285,11 +292,11 @@ public:
         static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
         static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
         if constexpr (pit == Interior_Partition || pit == All_Partition) {
-            return begin();
+            return begin<0>();
         } else {
             // Overlap partition starts at index num_owned_.
             // Note that it may be empty, i.e. begin() == end().
-            return Iterator(*this, num_owned_);
+            return typename Codim<cd>::Iterator(*this, num_owned_);
         }
     }
 
@@ -300,10 +307,10 @@ public:
         static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
         static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
         if constexpr (pit == Overlap_Partition || pit == All_Partition) {
-            return end();
+            return end<0>();
         } else {
             // Interior partition ends before index num_owned_.
-            return Iterator(*this, num_owned_);
+            return typename Codim<cd>::Iterator(*this, num_owned_);
         }
     }
 
