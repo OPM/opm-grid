@@ -865,17 +865,20 @@ namespace cpgrid
                     if (fnc[1] == -1 ) {
                         // Add the NNC created from the minpv processs
                         // at the bottom of the cell.
-                        auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
-                        if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
-                            const int other_cell = global_to_local[it->second];
-                            cells[cellcount].setValue(other_cell, false);
-                            ++cellcount;
-                            // Now we must ensure that the face connecting
-                            // the second cell to the boundary is skipped,
-                            // it is considered replaced by the connection
-                            // added here.
-                            // Note: not done anymore, see comment below.
-                            // next_skip_zmin_face = other_cell;
+                        if(fnc[0] != -1)
+                        {
+                            auto it = nnc[PinchNNC].lower_bound({global_cell[fnc[0]], 0});
+                            if (it != nnc[PinchNNC].end() && it->first == global_cell[fnc[0]]) {
+                                const int other_cell = global_to_local[it->second];
+                                cells[cellcount].setValue(other_cell, false);
+                                ++cellcount;
+                                // Now we must ensure that the face connecting
+                                // the second cell to the boundary is skipped,
+                                // it is considered replaced by the connection
+                                // added here.
+                                // Note: not done anymore, see comment below.
+                                // next_skip_zmin_face = other_cell;
+                            }
                         }
                     } else if (fnc[0] == -1) {
                         // This block has been disabled, as removing the original top face
