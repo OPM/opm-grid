@@ -64,7 +64,8 @@ static void
 process_horizontal_faces(int **intersections,
                          int *plist,
                          const int* is_aquifer_cell,
-                         struct processed_grid *out);
+                         struct processed_grid *out,
+                         int pinchActive);
 
 static int
 linearindex(const int dims[3], int i, int j, int k)
@@ -80,6 +81,18 @@ linearindex(const int dims[3], int i, int j, int k)
     return i + dims[0]*(j + dims[1]*k);
 }
 
+/*--------------------------------------------------------------
+  Test whether two cells with cartesian indices c1 and c2 are
+  direct vertical neighbor in a cartesian grid with dimension
+  dims.
+ */
+static int
+vertical_cart_neighbors(const int dims[3], int c1, int c2){
+    int k1, k2;
+    k1 = c1 / dims[0] / dims[1];
+    k2 = c2 / dims[0] / dims[1];
+    return (k1 - k2) == 1 || (k2 - k1) == 1;
+}
 
 /*-----------------------------------------------------------------
   Given a vector <field> with k index running faster than i running
@@ -302,7 +315,8 @@ static void
 process_horizontal_faces(int **intersections,
                          int *plist,
                          const int* is_aquifer_cell,
-                         struct processed_grid *out)
+                         struct processed_grid *out,
+                         int pinchActive)
 {
     int i,j,k;
 
@@ -372,7 +386,7 @@ process_horizontal_faces(int **intersections,
                         out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                         thiscell = linearindex(out->dimensions, i,j,(k-1)/2);
-                        *n++ = prevcell;
+                        *n++ = (pinchActive || vertical_cart_neighbors(out->dimensions, thiscell, prevcell)) ? prevcell : -1;
                         *n++ = prevcell = thiscell;
 
                         cell[thiscell] = cellno++;
@@ -763,7 +777,8 @@ reverse_face_nodes(struct processed_grid *out)
 void process_grdecl(const struct grdecl   *in,
                     double                tolerance,
                     const int*     is_aquifer_cell,
-                    struct processed_grid *out)
+                    struct processed_grid *out,
+                    int pinchActive)
 {
     struct grdecl g;
 
@@ -875,7 +890,7 @@ void process_grdecl(const struct grdecl   *in,
 
     process_vertical_faces   (0, &intersections, plist, work, out);
     process_vertical_faces   (1, &intersections, plist, work, out);
-    process_horizontal_faces (   &intersections, plist, is_aquifer_cell, out);
+    process_horizontal_faces (   &intersections, plist, is_aquifer_cell, out, pinchActive);
 
     free (plist);
     free (work);

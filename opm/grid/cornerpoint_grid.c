@@ -173,7 +173,7 @@ create_grid_cornerpoint(const struct grdecl *in, double tol)
        return NULL;
    }
 
-   process_grdecl(in, tol, NULL, &pg);
+   process_grdecl(in, tol, NULL, &pg, false);
 
    /*
     *  Convert "struct processed_grid" to "struct UnstructuredGrid".

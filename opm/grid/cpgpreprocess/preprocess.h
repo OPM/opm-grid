@@ -125,11 +125,14 @@ extern "C" {
      *                    neighbourship definition, vertex geometry, face's
      *                    constituent vertices, and local-to-global cell
      *                    mapping.
+     * @param[in] pinchActive Whether cells with zero volume should be pinched out
+     *                    and neighboring cells should be connected.
      */
     void process_grdecl(const struct grdecl   *g  ,
                         double                 tol,
                         const int*   is_aquifer_cell,
-                        struct processed_grid *out);
+                        struct processed_grid *out,
+                        int pinchActive);
 
     /**
      * Release memory resources acquired in previous grid processing using

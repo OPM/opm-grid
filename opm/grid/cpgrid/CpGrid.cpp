@@ -496,7 +496,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(g, nullptr, nnc, 0.0, false, false);
+        current_view_data_->processEclipseFormat(g, nullptr, nnc, 0.0, false, false, false);
         // global grid only on rank 0
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
@@ -527,15 +527,25 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                                                           Opm::EclipseState* ecl_state,
                                                           bool periodic_extension,
-                                                          bool turn_normals, bool clip_z)
+                                                          bool turn_normals, bool clip_z,
+                                                          bool pinchActive)
     {
         auto removed_cells = current_view_data_->processEclipseFormat(ecl_grid, ecl_state, periodic_extension,
-                                                                      turn_normals, clip_z);
+                                                                      turn_normals, clip_z, pinchActive);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
         return removed_cells;
     }
+
+    std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
+                                                              Opm::EclipseState* ecl_state,
+                                                              bool periodic_extension, bool turn_normals, bool clip_z)
+    {
+        return processEclipseFormat(ecl_grid_ptr, ecl_state, periodic_extension, turn_normals, clip_z,
+                             !ecl_grid_ptr || ecl_grid_ptr->isPinchActive());
+    }
+
 #endif
 
     void CpGrid::processEclipseFormat(const grdecl& input_data, double z_tolerance,
@@ -544,7 +554,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         using NNCMap = std::set<std::pair<int, int>>;
         using NNCMaps = std::array<NNCMap, 2>;
         NNCMaps nnc;
-        current_view_data_->processEclipseFormat(input_data, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals);
+        current_view_data_->processEclipseFormat(input_data, nullptr, nnc, z_tolerance, remove_ij_boundary, turn_normals, false);
         current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                              current_view_data_->logical_cartesian_size_.size(),
                                              0);
