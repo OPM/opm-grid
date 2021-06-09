@@ -221,15 +221,12 @@ public:
     ///        aquifer information when ecl_state is available. NNC and aquifer connection
     ///        information will also be updated during the function call when available and necessary.
     /// \param nnc is the non-neighboring connections
-    /// \param z_tolerance points along a pillar that are closer together in z
-    ///        coordinate than this parameter, will be replaced by a single point.
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
     /// \param pinchActive If true, we will add faces between vertical cells that have only inactive cells or cells
     ///            with zero volume between them. If false these cells will not be connected.
     void processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
-                              std::array<std::set<std::pair<int, int>>, 2>& nnc, double z_tolerance, bool remove_ij_boundary,
-                              bool turn_normals, bool pinchActive);
-
+                              std::array<std::set<std::pair<int, int>>, 2>& nnc,
+                              bool remove_ij_boundary, bool turn_normals, bool pinchActive);
 
     /// @brief
     ///    Extract Cartesian index triplet (i,j,k) of an active cell.

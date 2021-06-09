@@ -291,10 +291,8 @@ namespace Dune
 
         /// Read the Eclipse grid format ('grdecl').
         /// \param input_data the data in grdecl format, declared in preprocess.h.
-        /// \param z_tolerance points along a pillar that are closer together in z
-        ///        coordinate than this parameter, will be replaced by a single point.
         /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
-        void processEclipseFormat(const grdecl& input_data, double z_tolerance, bool remove_ij_boundary, bool turn_normals = false);
+        void processEclipseFormat(const grdecl& input_data, bool remove_ij_boundary, bool turn_normals = false);
 
         //@}
 
