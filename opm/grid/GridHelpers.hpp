@@ -45,17 +45,6 @@ namespace UgGridHelpers
 class SparseTableView
 {
 public:
-    class IntRange : public boost::iterator_range<const int*>
-    {
-    public:
-        typedef boost::iterator_range<const int*> BaseRowType;
-        typedef BaseRowType::size_type size_type;
-        typedef int value_type;
-
-        IntRange(const int* start_arg, const int* end_arg)
-            : BaseRowType(start_arg, end_arg)
-        {}
-    };
     /// \brief The type of the roww.
     typedef boost::iterator_range<const int*> row_type;
 
