@@ -20,7 +20,7 @@
 #ifndef OPM_REGIONMAPPING_HEADER_INCLUDED
 #define OPM_REGIONMAPPING_HEADER_INCLUDED
 
-#include <boost/range.hpp>
+#include <opm/grid/utility/IteratorRange.hpp>
 
 #include <unordered_map>
 #include <vector>
@@ -73,7 +73,7 @@ namespace Opm
          */
         typedef typename std::vector<CellId>::const_iterator CellIter;
 
-        typedef boost::iterator_range<CellIter> Range;
+        using Range = iterator_range<CellIter>;
 
         /**
          * Compute region number of given active cell.

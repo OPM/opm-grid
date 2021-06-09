@@ -25,11 +25,8 @@
 
 #include <opm/grid/UnstructuredGrid.h>
 
+#include <opm/grid/utility/IteratorRange.hpp>
 #include <opm/grid/utility/OpmParserIncludes.hpp>
-
-#include <opm/grid/utility/platform_dependent/disable_warnings.h>
-#include <boost/range/iterator_range.hpp>
-#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 namespace Opm
@@ -46,7 +43,7 @@ class SparseTableView
 {
 public:
     /// \brief The type of the roww.
-    typedef boost::iterator_range<const int*> row_type;
+    using row_type = iterator_range_pod<int>;
 
     /// \brief Creates a sparse table view
     /// \param data The array with data of the table.
@@ -63,7 +60,8 @@ public:
     row_type operator[](std::size_t row) const
     {
         assert(row<=size());
-        return row_type(data_ + offset_[row], data_ + offset_[row+1]);
+        return row_type{data_ + offset_[row],
+                        data_ + offset_[row+1]};
     }
 
     /// \brief Get the size of the table.
