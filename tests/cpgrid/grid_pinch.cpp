@@ -81,7 +81,7 @@ BOOST_AUTO_TEST_CASE(NoPinchWithThickness)
         "PINCH\n"
         "0.02   NOGAP   1*   1*\n"
         "/\n";
-    
+
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
@@ -128,7 +128,7 @@ BOOST_AUTO_TEST_CASE(PinchZeroVolumeNoBarrier)
         "PINCH\n"
         "0.01   NOGAP   1*   1*\n"
         "/\n";
-    
+
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
@@ -154,5 +154,61 @@ BOOST_AUTO_TEST_CASE(PinchZeroVolumeNoBarrier)
             neighbors += it.neighbor();
         }
         BOOST_CHECK(neighbors > 0);
-    }       
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(NoPinchZeroVolumeBarrier)
+{
+    BOOST_TEST_MESSAGE("Testing that cells with zero volume present barriers"
+                       " without PINCH.");
+    // Specify a stack of five cells where the middle
+    // where two will present a barrier because of zero
+    // value
+    // cells is less thick than the PINCH thickness
+    // Should still result in a grid with 3 cells.
+    const char *deckString =
+        "RUNSPEC\n"
+        "DIMENS\n"
+        "1  1  5 /"
+        "GRID\n"
+        "COORD\n"
+        "0 0 0  0 0 3\n"
+        "1 0 0  1 0 3\n"
+        "0 1 0  0 1 3\n"
+        "1 1 0  1 1 3\n"
+        "/\n"
+        "ZCORN\n"
+        "4*0\n"
+        "8*1\n"
+        "8*1\n"
+        "8*1.1\n"
+        "8*1.1\n"
+        "4*2.1\n"
+        "/\n";
+
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+
+    Dune::CpGrid grid;
+    Opm::EclipseGrid ecl_grid(deck);
+
+    grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
+
+    if(Fixture::rank() == 0)
+    {
+        BOOST_CHECK(grid.size(0)==3);
+    }
+
+    // Check that cells 2 and 4 present no barriers
+    // i.d. each cell has neighbors
+    const auto& gridView = grid.leafGridView();
+    for(const auto& element : elements(gridView))
+    {
+        for(auto it = gridView.ibegin(element), endIt = gridView.iend(element);
+            it != endIt; ++it)
+        {
+            BOOST_CHECK(!it.neighbor());
+        }
+    }
 }
