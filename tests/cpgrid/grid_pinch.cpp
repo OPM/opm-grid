@@ -61,26 +61,27 @@ BOOST_AUTO_TEST_CASE(NoPinchWithThickness)
     // Specify a stack of three cells where the middle
     // cells is less thick than the PINCH thickness
     // Should still result in a grid with 3 cells.
-    const char *deckString =
-        "RUNSPEC\n"
-        "DIMENS\n"
-        "1  1  3 /"
-        "GRID\n"
-        "COORD\n"
-        "0 0 0  0 0 3\n"
-        "1 0 0  1 0 3\n"
-        "0 1 0  0 1 3\n"
-        "1 1 0  1 1 3\n"
-        "/\n"
-        "ZCORN\n"
-        "4*0\n"
-        "8*1\n"
-        "8*1.1\n"
-        "4*2.1\n"
-        "/\n"
-        "PINCH\n"
-        "0.02   NOGAP   1*   1*\n"
-        "/\n";
+    const std::string deckString =
+        R"(RUNSPEC
+        DIMENS
+        1  1  3 /
+        GRID
+        COORD
+        0 0 0  0 0 3
+        1 0 0  1 0 3
+        0 1 0  0 1 3
+        1 1 0  1 1 3
+        /
+        ZCORN
+        4*0
+        8*1
+        8*1.1
+        4*2.1
+        /
+        PINCH
+        0.02   NOGAP   1*   1*
+        /
+        )";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
@@ -106,28 +107,29 @@ BOOST_AUTO_TEST_CASE(PinchZeroVolumeNoBarrier)
     // value
     // cells is less thick than the PINCH thickness
     // Should still result in a grid with 3 cells.
-    const char *deckString =
-        "RUNSPEC\n"
-        "DIMENS\n"
-        "1  1  5 /"
-        "GRID\n"
-        "COORD\n"
-        "0 0 0  0 0 3\n"
-        "1 0 0  1 0 3\n"
-        "0 1 0  0 1 3\n"
-        "1 1 0  1 1 3\n"
-        "/\n"
-        "ZCORN\n"
-        "4*0\n"
-        "8*1\n"
-        "8*1\n"
-        "8*1.1\n"
-        "8*1.1\n"
-        "4*2.1\n"
-        "/\n"
-        "PINCH\n"
-        "0.01   NOGAP   1*   1*\n"
-        "/\n";
+    const std::string deckString =
+        R"(RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0  0 0 3
+        1 0 0  1 0 3
+        0 1 0  0 1 3
+        1 1 0  1 1 3
+        /
+        ZCORN
+        4*0
+        8*1
+        8*1
+        8*1.1
+        8*1.1
+        4*2.1
+        /
+        PINCH
+        0.01   NOGAP   1*   1*
+        /
+        )";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
@@ -167,25 +169,26 @@ BOOST_AUTO_TEST_CASE(NoPinchZeroVolumeBarrier)
     // value
     // cells is less thick than the PINCH thickness
     // Should still result in a grid with 3 cells.
-    const char *deckString =
-        "RUNSPEC\n"
-        "DIMENS\n"
-        "1  1  5 /"
-        "GRID\n"
-        "COORD\n"
-        "0 0 0  0 0 3\n"
-        "1 0 0  1 0 3\n"
-        "0 1 0  0 1 3\n"
-        "1 1 0  1 1 3\n"
-        "/\n"
-        "ZCORN\n"
-        "4*0\n"
-        "8*1\n"
-        "8*1\n"
-        "8*1.1\n"
-        "8*1.1\n"
-        "4*2.1\n"
-        "/\n";
+    const std::string deckString =
+        R"(RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0  0 0 3
+        1 0 0  1 0 3
+        0 1 0  0 1 3
+        1 1 0  1 1 3
+        /
+        ZCORN
+        4*0
+        8*1
+        8*1
+        8*1.1
+        8*1.1
+        4*2.1
+        /
+        )";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
