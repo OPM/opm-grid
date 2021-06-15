@@ -60,7 +60,7 @@ namespace Dune
 
             /// @brief Default constructor yielding an empty range.
             OrientedEntityRange()
-                : R(ToTypePtr(0), ToTypePtr(0)), orientation_(true)
+                : orientation_(true)
             {
             }
             /// @brief Constructor taking a row type and an orientation.
@@ -79,7 +79,7 @@ namespace Dune
             /// @return Entity representation.
             ToType operator[](int subindex) const
             {
-                ToType erep = R::operator[](subindex);
+                ToType erep = *(this->begin() + subindex);
                 return orientation_ ? erep : erep.opposite();
             }
         private:

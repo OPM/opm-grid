@@ -254,7 +254,7 @@ public:
         }
 
     private:
-        // Note that row_ is a boost::iterator_range returned by Opm::SparseTable.
+        // Note that row_ is a Opm::iterator_range returned by Opm::SparseTable.
         // and stored in CellFacesRow. It is a temporary object that only lives
         // as long as there is a reference to it e.g. by storing the Cell2FacesRow.
         // Therefore it needs to be copied. As it is rather light weight this
@@ -282,7 +282,7 @@ public:
     }
 
 private:
-    // Note that row_ is a boost::iterator_range returned by Opm::SparseTable.
+    // Note that row_ is a Opm::iterator_range returned by Opm::SparseTable.
     // and stored in CellFacesRow. It is a temporary object that only lives
     // as long as there is a reference to it e.g. by storing the Cell2FacesRow.
     // Therefore it needs to be copied. As it is rather light weight this

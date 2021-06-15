@@ -215,6 +215,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/transmissibility/TransTpfa_impl.hpp
   opm/grid/utility/compressedToCartesian.hpp
   opm/grid/utility/cartesianToCompressed.hpp
+  opm/grid/utility/IteratorRange.hpp
   opm/grid/utility/RegionMapping.hpp
   opm/grid/utility/SparseTable.hpp
   opm/grid/utility/StopWatch.hpp

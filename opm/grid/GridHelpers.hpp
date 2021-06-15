@@ -25,11 +25,8 @@
 
 #include <opm/grid/UnstructuredGrid.h>
 
+#include <opm/grid/utility/IteratorRange.hpp>
 #include <opm/grid/utility/OpmParserIncludes.hpp>
-
-#include <opm/grid/utility/platform_dependent/disable_warnings.h>
-#include <boost/range/iterator_range.hpp>
-#include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 
 namespace Opm
@@ -45,19 +42,8 @@ namespace UgGridHelpers
 class SparseTableView
 {
 public:
-    class IntRange : public boost::iterator_range<const int*>
-    {
-    public:
-        typedef boost::iterator_range<const int*> BaseRowType;
-        typedef BaseRowType::size_type size_type;
-        typedef int value_type;
-
-        IntRange(const int* start_arg, const int* end_arg)
-            : BaseRowType(start_arg, end_arg)
-        {}
-    };
     /// \brief The type of the roww.
-    typedef boost::iterator_range<const int*> row_type;
+    using row_type = iterator_range_pod<int>;
 
     /// \brief Creates a sparse table view
     /// \param data The array with data of the table.
@@ -74,7 +60,8 @@ public:
     row_type operator[](std::size_t row) const
     {
         assert(row<=size());
-        return row_type(data_ + offset_[row], data_ + offset_[row+1]);
+        return row_type{data_ + offset_[row],
+                        data_ + offset_[row+1]};
     }
 
     /// \brief Get the size of the table.
@@ -280,12 +267,6 @@ const double* faceNormal(const UnstructuredGrid& grid, int face_index);
 /// \param grid The grid that the face is part of.
 /// \param face_index The index of the face in the grid.
 double faceArea(const UnstructuredGrid& grid, int face_index);
-
-/// \brief Get Eclipse Cartesian tag of a face
-/// \param grid The grid that the face is part of.
-/// \param cell_face The face attached to a cell as obtained from cell2Faces()
-/// \return 0, 1, 2, 3, 4, 5 for I-, I+, J-, J+, K-, K+
-int faceTag(const UnstructuredGrid& grid, boost::iterator_range<const int*>::const_iterator cell_face);
 
 /// \brief Maps the grid type to the associated type of the cell to faces mapping.
 ///
