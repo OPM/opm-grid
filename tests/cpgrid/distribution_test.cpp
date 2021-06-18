@@ -66,7 +66,11 @@ public:
           dist_cell_ids_(dist_cell_ids)
     {}
     typedef int DataType;
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize(int /*dim*/, int /*codim*/)
+#else
     bool fixedsize(int /*dim*/, int /*codim*/)
+#endif
     {
         return true;
     }
@@ -155,7 +159,12 @@ public:
     {}
 
     typedef int DataType;
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize(int /*dim*/, int /*codim*/)
+#else
     bool fixedsize(int /*dim*/, int /*codim*/)
+#endif
     {
         return true;
     }
@@ -260,7 +269,11 @@ class DummyDataHandle
 {
 public:
     typedef double DataType;
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize(int /*dim*/, int /*codim*/)
+#else
     bool fixedsize(int /*dim*/, int /*codim*/)
+#endif
     {
         return true;
     }
@@ -301,7 +314,11 @@ public:
     {}
 
     typedef int DataType;
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize(int /*dim*/, int /*codim*/)
+#else
     bool fixedsize(int /*dim*/, int /*codim*/)
+#endif
     {
         return true;
     }

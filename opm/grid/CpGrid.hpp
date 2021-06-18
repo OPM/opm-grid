@@ -827,7 +827,11 @@ namespace Dune
         /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+			 decltype(data.fixedSize(0,0)) overlapLayers=1, bool useZoltan = true)
+#else
                          decltype(data.fixedsize(0,0)) overlapLayers=1, bool useZoltan = true)
+#endif
         {
             // decltype usage needed to tell the compiler not to use this function if first
             // argument is std::vector but rather loadbalance by parts

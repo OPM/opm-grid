@@ -34,6 +34,8 @@
 #ifndef OPM_ENTITY2INDEXDATAHANDLE_HEADER
 #define OPM_ENTITY2INDEXDATAHANDLE_HEADER
 
+#include <dune/common/version.hh>
+
 namespace Dune
 {
 namespace cpgrid
@@ -61,7 +63,11 @@ public:
     {}
     bool fixedsize()
     {
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+        return data_.fixedSize(3, codim);
+#else
         return data_.fixedsize(3, codim);
+#endif
     }
     std::size_t size(std::size_t i)
     {
