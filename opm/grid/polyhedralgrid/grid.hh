@@ -1129,7 +1129,7 @@ namespace Dune
     const std::vector< GeometryType > &geomTypes ( const unsigned int codim ) const
     {
       static std::vector< GeometryType > emptyDummy;
-      if (0 <= codim && codim < geomTypes_.size())
+      if (codim < geomTypes_.size())
       {
         return geomTypes_[codim];
       }
