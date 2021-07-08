@@ -528,7 +528,7 @@ namespace Dune
         template <int codim>
         cpgrid::Entity<codim> entity( const cpgrid::EntityPointer< codim >& seed ) const
         {
-            return cpgrid::Entity<codim>( *seed );
+            return cpgrid::Entity<codim>( *(this->current_view_data_), *seed );
         }
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.

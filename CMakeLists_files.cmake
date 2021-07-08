@@ -103,6 +103,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_sparsetable.cpp
   tests/test_quadratures.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_subgridview.cpp
 	)
 
 if(HAVE_ECL_INPUT)
@@ -174,6 +175,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
+  opm/grid/common/SubGridView.hpp
   opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
