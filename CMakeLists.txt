@@ -123,3 +123,6 @@ if(MPI_FOUND)
   add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
   add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
 endif()
+
+install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
+  FILES_MATCHING PATTERN "*.1")
