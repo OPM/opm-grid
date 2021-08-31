@@ -196,8 +196,8 @@ cd ..
 cd mpich
 make install DESTDIR=${RPM_BUILD_ROOT}
 mv ${RPM_BUILD_ROOT}/usr/lib64/mpich/include/* ${RPM_BUILD_ROOT}/usr/include/mpich-x86_64/
-rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/mirror_grid.1
-rm -f ${RPM_BUILD_ROOT}/usr/lib64/openmpi/share/man/man1/grdecl2vtu.1
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/mpich/share/man/man1/mirror_grid.1
+rm -f ${RPM_BUILD_ROOT}/usr/lib64/mpich/share/man/man1/grdecl2vtu.1
 
 %clean
 rm -rf %{buildroot}
