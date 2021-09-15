@@ -51,11 +51,10 @@ template<class G>
 void timeloop(const G& grid, double tend)
 {
     // make a mapper for codim 0 entities in the leaf grid
-#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
-    Dune::LeafMultipleCodimMultipleGeomTypeMapper<G> mapper(grid, Dune::mcmgElementLayout());
+#if DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 8)
+    Dune::MultipleCodimMultipleGeomTypeMapper<typename G::LeafGridView>  mapper(grid.leafGridView(), Dune::mcmgElementLayout());
 #else
-    Dune::LeafMultipleCodimMultipleGeomTypeMapper<G,P0Layout>
-    mapper(grid);
+    Dune::LeafMultipleCodimMultipleGeomTypeMapper<G> mapper(grid, Dune::mcmgElementLayout());
 #endif
 
     // allocate a vector for the concentration

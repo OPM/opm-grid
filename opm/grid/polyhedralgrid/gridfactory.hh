@@ -37,11 +37,15 @@ namespace Dune
     typedef Dune::FieldVector<ctype,dimensionworld> CoordinateType;
     typedef CoordinateType  Coordinate;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+#if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
+#if DUNE_VERSION_LT(DUNE_GRID, 2, 8)
     typedef ToUniquePtr<Grid>       UniquePtrType;
-#else // #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
+#else
+    using UniquePtrType = std::unique_ptr<Grid>;
+#endif
+#else // #if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
     typedef Grid*  UniquePtrType;
-#endif // #else // #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 6)
+#endif // #else // #if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
 
 
     /** \brief Default constructor */
@@ -94,14 +98,6 @@ namespace Dune
 
 
       }
-    }
-
-    virtual void insertElement(const GeometryType& type,
-                               const std::vector<unsigned int>& vertices,
-                               const std::shared_ptr<VirtualFunction<FieldVector<ctype,dimension>,FieldVector<ctype,dimensionworld> > >&)
-    {
-      std::cerr << "Warning: elementParametrization is being ignored in insertElement!" << std::endl;
-      insertElement( type, vertices );
     }
 
     void insertBoundarySegment(const std::vector<unsigned int>&)
@@ -254,7 +250,7 @@ namespace Dune
         }
       }
 
-      return new Grid( std::move( ug ) );
+      return UniquePtrType( new Grid( std::move( ug ) ));
     }
 
   protected:
