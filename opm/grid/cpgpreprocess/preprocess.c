@@ -376,6 +376,35 @@ process_horizontal_faces(int **intersections,
                 else{
 
                     if (k%2){
+                        thiscell = linearindex(out->dimensions, i,j,(k-1)/2);
+                        if (!pinchActive && !vertical_cart_neighbors(out->dimensions, thiscell, prevcell) && prevcell != -1) {
+                            /* We must also add the bottom face of the cell above the inactive area (prevcell).
+                               That face, and the top face of thiscell, are identical geometrically,
+                               yet their adjacent cells are not considered neighbors. I.e. the faces' neighbors are
+                                 (prevcell, -1) and (-1, thiscell).
+                               However, this extra face must only be added for the case when the two faces are the same.
+                               If the top face of thiscell is distinct from the bottom face of prevcell, then the else
+                               branch below takes care of it. */
+                            assert(out->number_of_faces > 0);
+                            if (out->face_neighbors[2*out->number_of_faces - 1] == -1) {
+                                /* The (prevcell, -1) face was already added. */
+                                assert(out->face_neighbors[2*out->number_of_faces - 2] == prevcell);
+                            } else {
+
+                                /* Add face */
+                                *f++ = c[0][k];
+                                *f++ = c[2][k];
+                                *f++ = c[3][k];
+                                *f++ = c[1][k];
+
+                                out->face_tag[  out->number_of_faces] = K_FACE;
+                                out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
+
+                                *n++ = prevcell;
+                                *n++ = -1;
+                            }
+                        }
+
                         /* Add face */
                         *f++ = c[0][k];
                         *f++ = c[2][k];
@@ -385,7 +414,6 @@ process_horizontal_faces(int **intersections,
                         out->face_tag[  out->number_of_faces] = K_FACE;
                         out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
 
-                        thiscell = linearindex(out->dimensions, i,j,(k-1)/2);
                         *n++ = (pinchActive || vertical_cart_neighbors(out->dimensions, thiscell, prevcell)) ? prevcell : -1;
                         *n++ = prevcell = thiscell;
 
