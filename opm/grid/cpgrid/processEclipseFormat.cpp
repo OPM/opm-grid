@@ -952,9 +952,11 @@ namespace cpgrid
                 // We know that the bottom and top faces come last.
                 int numf = cf.size();
                 int bot_face = face_to_output_face[cf[numf - 2].index()];
+                assert(output.face_tag[bot_face] == K_FACE);
                 int bfbegin = output.face_ptr[bot_face];
                 assert(output.face_ptr[bot_face + 1] - bfbegin == 4);
                 int top_face = face_to_output_face[cf[numf - 1].index()];
+                assert(output.face_tag[top_face] == K_FACE);
                 int tfbegin = output.face_ptr[top_face];
                 assert(output.face_ptr[top_face + 1] - tfbegin == 4);
                 // We want the corners in 'x fastest, then y, then z' order,
