@@ -148,8 +148,10 @@ namespace Opm
 
                         // Find the next cell
                         int kk_iter = kk + 1;
-                        if (kk_iter == dims_[2]) // we are at the end of the pillar.
+                        if (kk_iter == dims_[2]) { // we are at the end of the pillar.
+                            result.removed_cells.push_back(c);
                             continue;
+                        }
 
                         int c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
                         // bypass inactive cells with thickness less then the tolerance
@@ -164,15 +166,19 @@ namespace Opm
                             c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
                         }
 
-                        if (kk_iter == dims_[2]) // we have come to the end of the pillar.
+                        if (kk_iter == dims_[2]) { // we have come to the end of the pillar.
+                            result.removed_cells.push_back(c);
                             continue;
+                        }
 
                         // create nnc if false or merge the cells if true
                         if (!mergeMinPVCells) {
 
                             // We are at the top, so no nnc is created.
-                            if (kk == 0)
+                            if (kk == 0) {
+                                result.removed_cells.push_back(c);
                                 continue;
+                            }
 
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
 
@@ -220,22 +226,24 @@ namespace Opm
                             if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                                 result.add_nnc(c_above, c_below);
                             }
-                        } else {
-
+                        }
+                        else {
                             // Set lower k coordinates of cell below to upper cells's coordinates.
                             // i.e fill the void using the cell below
                             std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
                             for (int count = 0; count < 4; ++count) {
                                 cz_below[count] = cz[count];
                             }
+
                             setCellZcorn(ii, jj, kk_iter, cz_below, zcorn);
                         }
+
                         result.removed_cells.push_back(c);
                     }
                 }
-
             }
         }
+
         return result;
     }
 
