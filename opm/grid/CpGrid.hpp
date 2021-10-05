@@ -1495,24 +1495,35 @@ namespace Dune
         /// \brief The type of the remote indices information
         typedef cpgrid::CpGridData::RemoteIndices RemoteIndices;
 
+        /// \brief The type of the owner-overlap-copy communication
+        using CommunicationType = cpgrid::CpGridData::CommunicationType;
+
+        /// \brief Get the owner-overlap-copy communication for cells
+        ///
+        /// Suitable e.g. for parallel linear algebra used by CCFV
+        const CommunicationType& cellCommunication() const
+        {
+            return current_view_data_->cellCommunication();
+        }
+
         ParallelIndexSet& getCellIndexSet()
         {
-            return current_view_data_->cell_indexset_;
+            return current_view_data_->cellIndexSet();
         }
 
         RemoteIndices& getCellRemoteIndices()
         {
-            return current_view_data_->cell_remote_indices_;
+            return current_view_data_->cellRemoteIndices();
         }
 
         const ParallelIndexSet& getCellIndexSet() const
         {
-            return current_view_data_->cell_indexset_;
+            return current_view_data_->cellIndexSet();
         }
 
         const RemoteIndices& getCellRemoteIndices() const
         {
-            return current_view_data_->cell_remote_indices_;
+            return current_view_data_->cellRemoteIndices();
         }
 
 #endif
