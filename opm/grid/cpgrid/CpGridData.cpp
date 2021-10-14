@@ -108,12 +108,13 @@ CpGridData::~CpGridData()
 void CpGridData::populateGlobalCellIndexSet()
 {
 #if HAVE_MPI
-    cell_indexset_.beginResize();
+    auto& cell_indexset = cellIndexSet();
+    cell_indexset.beginResize();
     for (int index = 0, end = size(0); index != end ; ++index){
-        cell_indexset_.add(global_id_set_->id(Entity<0>(*this, EntityRep<0>(index, true))),
+        cell_indexset.add(global_id_set_->id(Entity<0>(*this, EntityRep<0>(index, true))),
                            ParallelIndexSet::LocalIndex(index, AttributeSet::owner, true));
     }
-    cell_indexset_.endResize();
+    cell_indexset.endResize();
 #endif
 }
 
@@ -1526,9 +1527,10 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
                                       const std::vector<int>& /* cell_part */)
 {
 #if HAVE_MPI
+    auto& cell_indexset = cellIndexSet();
+    auto& cell_remote_indices = cellRemoteIndices();
     // setup the remote indices.
-    cell_remote_indices_.setIndexSets(cell_indexset_, cell_indexset_, ccobj_);
-    cell_remote_indices_.template rebuild<false>(); // We could probably also compute this on our own, like before?
+    cell_remote_indices.template rebuild<false>(); // We could probably also compute this on our own, like before?
 
     // We can identify existing cells with the help of the index set.
     // Now we need to compute the existing faces and points. Either exist
@@ -1539,21 +1541,21 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     std::map<int,int> point_indicator =
         computeCell2Point(grid, view_data.cell_to_point_, *view_data.global_id_set_, view_data.cell_to_face_,
                           view_data.face_to_point_, cell_to_point_,
-                          map2GlobalPointId, cell_indexset_.size(),
+                          map2GlobalPointId, cell_indexset.size(),
                           *grid.cell_scatter_gather_interfaces_,
                           *grid.point_scatter_gather_interfaces_);
 
     // create global ids array for cells. The parallel index set uses the global id
     // as the global index.
-    std::vector<int> map2GlobalCellId(cell_indexset_.size());
-    for(const auto& i: cell_indexset_)
+    std::vector<int> map2GlobalCellId(cell_indexset.size());
+    for(const auto& i: cell_indexset)
     {
         map2GlobalCellId[i.local()]=i.global();
     }
 
     std::map<int,int> face_indicator =
         computeCell2Face(grid, view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
-                         map2GlobalFaceId, cell_indexset_.size());
+                         map2GlobalFaceId, cell_indexset.size());
 
     auto noExistingPoints = map2GlobalPointId.size();
     auto noExistingFaces = map2GlobalFaceId.size();
@@ -1561,7 +1563,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     global_id_set_->swap(map2GlobalCellId, map2GlobalFaceId, map2GlobalPointId);
 
     computeFace2Cell(grid, view_data.cell_to_face_, cell_to_face_,
-                     view_data.face_to_cell_, face_to_cell_, cell_indexset_, view_data.cell_indexset_, noExistingFaces);
+                     view_data.face_to_cell_, face_to_cell_, cell_indexset, view_data.cellIndexSet(), noExistingFaces);
     computeFace2Point(grid,  view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                       view_data.face_to_point_, face_to_point_, point_indicator,
                       noExistingFaces);
@@ -1577,7 +1579,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     computeGeometry(grid, view_data.geometry_, view_data.cell_to_face_,
                     geometry_, cell_to_face_, cell_to_point_);
 
-    global_cell_.resize(cell_indexset_.size());
+    global_cell_.resize(cell_indexset.size());
 
     // communicate global cell
     DefaultContainerHandle<std::vector<int> > indexHandle(view_data.global_cell_, global_cell_);
@@ -1608,8 +1610,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     }
 
     // Compute the partition type for cell
-    partition_type_indicator_->cell_indicator_.resize(cell_indexset_.size());
-    for(const auto& i: cell_indexset_)
+    partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
+    for(const auto& i: cell_indexset)
     {
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?
@@ -1644,16 +1646,16 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute the interface information for cells
     std::get<InteriorBorder_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::owner>(),
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
     std::get<Overlap_OverlapFront_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::copy>(),
                EnumItem<AttributeSet, AttributeSet::copy>());
     std::get<Overlap_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, EnumItem<AttributeSet, AttributeSet::copy>(),
+        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::copy>(),
                                  AllSet<AttributeSet>());
     std::get<All_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices_, AllSet<AttributeSet>(), AllSet<AttributeSet>());
+        .build(cell_remote_indices, AllSet<AttributeSet>(), AllSet<AttributeSet>());
 
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.

@@ -411,12 +411,12 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         cc.broadcast(&distributed_data_->use_unique_boundary_ids_, 1, 0);
 
         // Create indexset
-        distributed_data_->cell_indexset_.beginResize();
+        distributed_data_->cellIndexSet().beginResize();
         for(const auto& entry: importList)
         {
-            distributed_data_->cell_indexset_.add(std::get<0>(entry), ParallelIndexSet::LocalIndex(std::get<3>(entry), AttributeSet(std::get<2>(entry)), true));
+            distributed_data_->cellIndexSet().add(std::get<0>(entry), ParallelIndexSet::LocalIndex(std::get<3>(entry), AttributeSet(std::get<2>(entry)), true));
         }
-        distributed_data_->cell_indexset_.endResize();
+        distributed_data_->cellIndexSet().endResize();
         // add an interface for gathering/scattering data with communication
         // forward direction will be scatter and backward gather
         // Interface will communicate from owner to all

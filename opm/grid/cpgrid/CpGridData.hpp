@@ -312,6 +312,51 @@ public:
 
     /// \brief The type of the map describing communication interfaces.
     using InterfaceMap = Communicator::InterfaceMap;
+
+    /// \brief type of OwnerOverlap communication for cells
+    using CommunicationType = Dune::OwnerOverlapCopyCommunication<int,int>;
+
+    /// \brief The type of the parallel index set
+    using  ParallelIndexSet = CommunicationType::ParallelIndexSet;
+
+    /// \brief The type of the remote indices information
+    using RemoteIndices = Dune::RemoteIndices<ParallelIndexSet>;
+
+    /// \brief Get the owner-overlap-copy communication for cells
+    ///
+    /// Suitable e.g. for parallel linear algebra used by CCFV
+    CommunicationType& cellCommunication()
+    {
+        return cell_comm_;
+    }
+
+    /// \brief Get the owner-overlap-copy communication for cells
+    ///
+    /// Suitable e.g. for parallel linear algebra used by CCFV
+    const CommunicationType& cellCommunication() const
+    {
+        return cell_comm_;
+    }
+
+    ParallelIndexSet& cellIndexSet()
+    {
+        return cellCommunication().indexSet();
+    }
+
+    const ParallelIndexSet& cellIndexSet() const
+    {
+        return cellCommunication().indexSet();
+    }
+
+    RemoteIndices& cellRemoteIndices()
+    {
+        return cellCommunication().remoteIndices();
+    }
+
+    const RemoteIndices& cellRemoteIndices() const
+    {
+            return cellCommunication().remoteIndices();
+    }
 #endif
 
 #ifdef HAVE_DUNE_ISTL
@@ -470,17 +515,8 @@ private:
 
 #if HAVE_MPI
 
-    /// \brief The type of the parallel index set
-    typedef Dune::ParallelIndexSet<int,ParallelLocalIndex<AttributeSet>,512> ParallelIndexSet;
-
-    /// \brief The parallel index set of the cells.
-    ParallelIndexSet cell_indexset_;
-
-    /// \brief The type of the remote indices information
-    typedef Dune::RemoteIndices<ParallelIndexSet> RemoteIndices;
-
-    /// \brief The remote index information for the cells.
-    RemoteIndices cell_remote_indices_;
+    /// \brief OwnerOverlap communication for cells
+    CommunicationType cell_comm_;
 
     /// \brief Communication interface for the cells.
     std::tuple<Interface,Interface,Interface,Interface,Interface> cell_interfaces_;
@@ -742,9 +778,9 @@ void CpGridData::scatterCodimData(DataHandle& data, CpGridData* global_data,
 
     mover::Mover<DataHandle,codim> mover(data, gather_view, scatter_view);
 
-    typedef typename ParallelIndexSet::const_iterator Iter;
-    for(Iter index=distributed_data->cell_indexset_.begin(),
-            end = distributed_data->cell_indexset_.end();
+
+    for(auto index=distributed_data->cellIndexSet().begin(),
+            end = distributed_data->cellIndexSet().end();
         index!=end; ++index)
     {
         std::size_t from=index->global();
