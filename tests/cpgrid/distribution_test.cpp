@@ -119,7 +119,12 @@ public:
     {}
 
     typedef int DataType;
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize()
+#else
     bool fixedsize()
+#endif
     {
         return true;
     }
@@ -216,7 +221,11 @@ public:
     {}
 
     typedef int DataType;
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize()
+#else
     bool fixedsize()
+#endif
     {
         // We used fixedsize for the message as there is a bug in DUNE
         // up to 2.6.0
