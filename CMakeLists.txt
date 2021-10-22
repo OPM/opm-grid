@@ -77,6 +77,9 @@ include (${project}-prereqs)
 # it should set various lists with the names of the files to include
 include (CMakeLists_files.cmake)
 
+# Search opm-tests to use some of the data sets for testing
+include(Findopm-tests)
+
 macro (config_hook)
 	opm_need_version_of ("dune-common")
 	opm_need_version_of ("dune-geometry")
@@ -124,5 +127,8 @@ if(MPI_FOUND)
   add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
 endif()
 
+if(MPI_FOUND AND HAVE_OPM_TESTS)
+  add_test(cpgrid_aquifer_parallel_test ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/cpgrid_aquifer_test -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
+endif()
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
   FILES_MATCHING PATTERN "*.1")

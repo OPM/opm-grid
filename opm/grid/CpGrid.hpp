@@ -1528,6 +1528,12 @@ namespace Dune
 
 #endif
 
+        /// \brief Get sorted active cell indices of numerical aquifer
+       const std::vector<int>& sortedNumAquiferCells() const
+       {
+           return current_view_data_->sortedNumAquiferCells();
+       }
+
     private:
         /// \brief Scatter a global grid to all processors.
         /// \param method The edge-weighting method to be used on the Zoltan partitioner.

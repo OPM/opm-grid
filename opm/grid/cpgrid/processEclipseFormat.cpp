@@ -310,13 +310,16 @@ namespace cpgrid
         std::unordered_map<size_t, double> aquifer_cell_volumes_local;
         if (ecl_state && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer().numericalAquifers().aquiferCellVolumes();
+            aquifer_cells_.reserve(aquifer_cell_volumes.size());
             for (auto nc = this->global_cell_.size(), i = 0 * nc; i < nc; ++i) {
                 auto aquCellPos = aquifer_cell_volumes.find(this->global_cell_[i]);
                 if (aquCellPos != aquifer_cell_volumes.end()) {
                     aquifer_cell_volumes_local.emplace(i, aquCellPos->second);
+                    aquifer_cells_.push_back(i);
                 }
             }
         }
+        std::sort(aquifer_cells_.begin(), aquifer_cells_.end());
         buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, aquifer_cell_volumes_local, geometry_.geomVector(std::integral_constant<int,0>()),
                   geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
                   face_normals_, turn_normals);

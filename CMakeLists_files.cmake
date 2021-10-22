@@ -85,6 +85,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_cpgrid.cpp
   tests/test_communication_utils.cpp
   tests/test_column_extract.cpp
+  tests/cpgrid/cpgrid_aquifer_test.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp

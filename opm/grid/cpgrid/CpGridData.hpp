@@ -367,6 +367,12 @@ public:
     enum AttributeSet{owner, overlap, copy};
 #endif
 
+    /// \brief Get sorted active cell indices of numerical aquifer
+    const std::vector<int>& sortedNumAquiferCells() const
+    {
+        return aquifer_cells_;
+    }
+
 private:
 
     /// \brief Adds entries to the parallel index set of the cells during grid construction
@@ -444,8 +450,10 @@ private:
 
     void computeGeometry(CpGrid& grid,
                          const DefaultGeometryPolicy&  globalGeometry,
+                         const std::vector<int>& globalAquiferCells,
                          const OrientedEntityTable<0, 1>& globalCell2Faces,
                          DefaultGeometryPolicy& geometry,
+                         std::vector<int>& aquiferCells,
                          const OrientedEntityTable<0, 1>& cell2Faces,
                          const std::vector< std::array<int,8> >& cell2Points);
 
@@ -512,6 +520,9 @@ private:
     /// the zcorn values will typically be modified, and we retain a
     /// copy here to be able to create an EclipseGrid for output.
     std::vector<double> zcorn;
+
+    /// \brief Sorted vector of aquifer cell indices.
+    std::vector<int> aquifer_cells_;
 
 #if HAVE_MPI
 
