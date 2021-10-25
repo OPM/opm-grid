@@ -962,7 +962,12 @@ struct AttributeDataHandle
         : rank_(rank), indicator_(indicator), vals_(vals),
         c2e_(cell_to_entity), grid_(grid)
     {}
+
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+    bool fixedSize()
+#else
     bool fixedsize()
+#endif
     {
         return true;
     }
