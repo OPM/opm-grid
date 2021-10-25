@@ -62,7 +62,7 @@ public:
         : fromGrid_(fromGrid), toGrid_(toGrid), data_(data)
     {}
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 8)
     bool fixedSize()
     {
         return data_.fixedSize(3, codim);
@@ -70,7 +70,11 @@ public:
 #else
     bool fixedsize()
     {
+#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
+        return data_.fixedSize(3, codim);
+#else
         return data_.fixedsize(3, codim);
+#endif
     }
 #endif
     std::size_t size(std::size_t i)
