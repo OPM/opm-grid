@@ -128,7 +128,23 @@ if(MPI_FOUND)
 endif()
 
 if(MPI_FOUND AND HAVE_OPM_TESTS)
+  # opm_add_test would need a driver script to run the
+  # parallel test (tests/run-parallel-unitTest.sh which
+  # is in opm-simulators and needs to be moved) until
+  # then we use opm_add_test and an additional call to add_test
+  # to run the test in parall. ONLY_COMPILE does not work because
+  # somehow -DBOOST_TEST_DYN_LINK is skipped and there is no main.
+  opm_add_test(cpgrid_aquifer_test
+    SOURCES tests/cpgrid/cpgrid_aquifer_test.cpp
+    DEPENDS opmgrid
+    #ONLY_COMPILE
+    PROCESSORS 4
+    CONDITION MPI_FOUND AND Boost_UNIT_TEST_FRAMEWORK_FOUND
+    DRIVER_ARGS -np 4
+    TEST_ARGS -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
+    LIBRARIES opmgrid ${Boost_LIBRARIES})
   add_test(cpgrid_aquifer_parallel_test ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/cpgrid_aquifer_test -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
 endif()
+
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
   FILES_MATCHING PATTERN "*.1")
