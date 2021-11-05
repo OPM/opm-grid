@@ -58,13 +58,7 @@ BOOST_TEST_GLOBAL_FIXTURE( CommandLineDataFileMpiInit);
 
 
 BOOST_AUTO_TEST_CASE(CpGridAquiferTest)
-{    
-    if(CommandLineDataFileMpiInit::helper().size()==1)
-    {
-         std::cerr<<"Test should be run parallel"<<std::endl;
-        return;
-    }
-
+{
     Opm::Parser parser;
     Opm::ParseContext context;
     Opm::ErrorGuard guard;
