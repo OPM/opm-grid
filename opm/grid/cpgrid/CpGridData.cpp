@@ -515,11 +515,20 @@ struct CellGeometryHandle
     using Container = EntityVariable<Geom, 0>;
 
     CellGeometryHandle(const Container& gatherCont, Container& scatterCont,
+                       const std::vector<int>& gatherAquiferCells,
+                       std::vector<int>& scatterAquiferCells,
                        const EntityVariable<cpgrid::Geometry<0, 3>, 3>& pointGeom,
                        const std::vector< std::array<int,8> >& cell2Points)
-        : gatherCont_(gatherCont), scatterCont_(scatterCont), pointGeom_(pointGeom),
-          cell2Points_(cell2Points)
+        : gatherCont_(gatherCont), scatterCont_(scatterCont),
+        gatherAquiferCells_(gatherAquiferCells),scatterAquiferCells_(scatterAquiferCells),
+        pointGeom_(pointGeom), cell2Points_(cell2Points)
     {}
+
+    ~CellGeometryHandle()
+    {
+        std::sort(scatterAquiferCells_.begin(), scatterAquiferCells_.end());
+    }
+
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
     bool fixedSize(int, int)
 #else
@@ -535,7 +544,7 @@ struct CellGeometryHandle
     template<class T>
     std::size_t size(const T&)
     {
-        return 4; // 3 coordinates + 1 volume
+        return 5; // 3 coordinates + 1 volume + 1for indicating aquifer cells (1/0)
     }
     template<class B, class T>
     typename std::enable_if<T::codimension != 0, void>::type
@@ -550,6 +559,10 @@ struct CellGeometryHandle
         for (int i = 0; i < 3; i++)
             buffer.write(geom.center()[i]);
         buffer.write(geom.volume());
+        auto aquiferCell = std::lower_bound(gatherAquiferCells_.begin(),
+                                            gatherAquiferCells_.end(), t.index());
+        double isAquifer = (aquiferCell != gatherAquiferCells_.end() && *aquiferCell == t.index());
+        buffer.write(isAquifer);
     }
     template<class B, class T>
     typename std::enable_if<T::codimension != 0, void>::type
@@ -569,10 +582,18 @@ struct CellGeometryHandle
 
         buffer.read(vol);
         scatterCont_[t] = Geom(pos, vol, pointGeom_, cell2Points_[t.index()].data());
+        double isAquifer;
+        buffer.read(isAquifer);
+        if (isAquifer == 1.0)
+        {
+            scatterAquiferCells_.push_back(t.index());
+        }
     }
 private:
     const Container& gatherCont_;
     Container& scatterCont_;
+    const std::vector<int>& gatherAquiferCells_;
+    std::vector<int>& scatterAquiferCells_;
     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& pointGeom_;
     const std::vector< std::array<int,8> >& cell2Points_;
 };
@@ -1243,8 +1264,10 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 void CpGridData::computeGeometry(CpGrid& grid,
                                  const DefaultGeometryPolicy&  globalGeometry,
+                                 const std::vector<int>& globalAquiferCells,
                                  const OrientedEntityTable<0, 1>& globalCell2Faces,
                                  DefaultGeometryPolicy& geometry,
+                                 std::vector<int>& aquiferCells,
                                  const OrientedEntityTable<0, 1>& cell2Faces,
                                  const std::vector< std::array<int,8> >& cell2Points)
 {
@@ -1260,6 +1283,7 @@ void CpGridData::computeGeometry(CpGrid& grid,
 
     CellGeometryHandle cellGeomHandle(globalGeometry.geomVector(std::integral_constant<int,0>()),
                                       geometry.geomVector(std::integral_constant<int,0>()),
+                                      globalAquiferCells, aquiferCells,
                                       geometry.geomVector(std::integral_constant<int,3>()),
                                       cell2Points);
     grid.scatterData(cellGeomHandle);
@@ -1581,8 +1605,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     geometry_.geomVector(std::integral_constant<int,0>()).resize(cell_to_face_.size());
     geometry_.geomVector(std::integral_constant<int,3>()).resize(noExistingPoints);
 
-    computeGeometry(grid, view_data.geometry_, view_data.cell_to_face_,
-                    geometry_, cell_to_face_, cell_to_point_);
+    computeGeometry(grid, view_data.geometry_, view_data.aquifer_cells_, view_data.cell_to_face_,
+                    geometry_, aquifer_cells_, cell_to_face_, cell_to_point_);
 
     global_cell_.resize(cell_indexset.size());
 

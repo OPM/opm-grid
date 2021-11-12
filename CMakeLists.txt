@@ -77,6 +77,9 @@ include (${project}-prereqs)
 # it should set various lists with the names of the files to include
 include (CMakeLists_files.cmake)
 
+# Search opm-tests to use some of the data sets for testing
+include(Findopm-tests)
+
 macro (config_hook)
 	opm_need_version_of ("dune-common")
 	opm_need_version_of ("dune-geometry")
@@ -122,6 +125,25 @@ if(MPI_FOUND)
   endif()
   add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
   add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
+endif()
+
+if(MPI_FOUND AND HAVE_OPM_TESTS)
+  # opm_add_test would need a driver script to run the
+  # parallel test (tests/run-parallel-unitTest.sh which
+  # is in opm-simulators and needs to be moved) until
+  # then we use opm_add_test and an additional call to add_test
+  # to run the test in parall. ONLY_COMPILE does not work because
+  # somehow -DBOOST_TEST_DYN_LINK is skipped and there is no main.
+  opm_add_test(cpgrid_aquifer_test
+    SOURCES tests/cpgrid/cpgrid_aquifer_test.cpp
+    DEPENDS opmgrid
+    #ONLY_COMPILE
+    PROCESSORS 4
+    CONDITION MPI_FOUND AND Boost_UNIT_TEST_FRAMEWORK_FOUND
+    DRIVER_ARGS -np 4
+    TEST_ARGS -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA
+    LIBRARIES opmgrid ${Boost_LIBRARIES})
+  add_test(cpgrid_aquifer_parallel_test ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/cpgrid_aquifer_test -- ${OPM_TESTS_ROOT}/aquifer-num/3D_2AQU_NUM.DATA)
 endif()
 
 install(DIRECTORY doc/man1 DESTINATION ${CMAKE_INSTALL_MANDIR}
