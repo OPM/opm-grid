@@ -64,7 +64,7 @@ void condWriteDoubleField(std::vector<double>& fieldvector,
                           VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
     if (deck.hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<double> eclVector = deck.getKeyword(fieldname).getRawDoubleData();
+        std::vector<double> eclVector = deck[fieldname].back().getRawDoubleData();
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -91,7 +91,7 @@ void condWriteIntegerField(std::vector<double>& fieldvector,
                            VTKWriter<CpGrid::LeafGridView>& vtkwriter) {
     if (deck.hasKeyword(fieldname)) {
         std::cout << "Found " << fieldname << "..." << std::endl;
-        std::vector<int> eclVector = deck.getKeyword(fieldname).getIntData();
+        std::vector<int> eclVector = deck[fieldname].back().getIntData();
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
@@ -128,12 +128,12 @@ try
     // Get logical cartesian grid dimensions.
     std::array<size_t, 3> dims;
     if (deck.hasKeyword("SPECGRID")) {
-        const auto& specgridRecord = deck.getKeyword("SPECGRID").getRecord(0);
+        const auto& specgridRecord = deck["SPECGRID"].back().getRecord(0);
         dims[0] = specgridRecord.getItem("NX").get< int >(0);
         dims[1] = specgridRecord.getItem("NY").get< int >(0);
         dims[2] = specgridRecord.getItem("NZ").get< int >(0);
     } else if (deck.hasKeyword("DIMENS")) {
-        const auto& dimensRecord = deck.getKeyword("DIMENS").getRecord(0);
+        const auto& dimensRecord = deck["DIMENS"].back().getRecord(0);
         dims[0] = dimensRecord.getItem("NX").get< int >(0);
         dims[1] = dimensRecord.getItem("NY").get< int >(0);
         dims[2] = dimensRecord.getItem("NZ").get< int >(0);
@@ -142,7 +142,7 @@ try
     }
 
     {
-        const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
+        const int* actnum = deck.hasKeyword("ACTNUM") ? deck["ACTNUM"].back().getIntData().data() : nullptr;
         Opm::EclipseGrid ecl_grid(deck , actnum);
         grid.processEclipseFormat(&ecl_grid, nullptr, false);
     }
