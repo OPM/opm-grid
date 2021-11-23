@@ -93,10 +93,10 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
     struct UnstructuredGrid * cgrid2;
     {
         struct grdecl g;
-        const auto& dimens = deck.getKeyword("DIMENS");
-        const auto& coord = deck.getKeyword("COORD");
-        const auto& zcorn = deck.getKeyword("ZCORN");
-        const auto& actnum = deck.getKeyword("ACTNUM");
+        const auto& dimens = deck["DIMENS"].back();
+        const auto& coord  = deck["COORD"].back();
+        const auto& zcorn  = deck["ZCORN"].back();
+        const auto& actnum = deck["ACTNUM"].back();
 
         g.dims[0] = dimens.getRecord(0).getItem("NX").get< int >(0);
         g.dims[1] = dimens.getRecord(0).getItem("NY").get< int >(0);
