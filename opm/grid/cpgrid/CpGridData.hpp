@@ -146,9 +146,6 @@ public:
         MAX_DATA_PER_CELL = MAX_DATA_COMMUNICATED_PER_ENTITY
 #endif
     };
-    /// Constructor
-    /// \param grid  The grid that we are the data of.
-    explicit CpGridData(CpGrid& grid);
 
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
