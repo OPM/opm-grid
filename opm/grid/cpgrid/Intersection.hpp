@@ -86,7 +86,7 @@ namespace Dune
                   index_(-1),
                   subindex_(-1),
                   faces_of_cell_(),
-                  global_geom_(),
+//                  global_geom_(),
 //                   in_inside_geom_(),
                   nbcell_(-1), // Init to self, which is invalid.
                   is_on_boundary_(false)
@@ -185,10 +185,7 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @return
-            const Geometry& geometry() const
-            {
-                return global_geom_;
-            }
+            Geometry geometry() const;
 
             /// @brief
             /// @todo Doc me!
@@ -249,7 +246,7 @@ namespace Dune
             int index_;
             int subindex_;
             OrientedEntityTable<0,1>::row_type faces_of_cell_;
-            Geometry global_geom_;
+            // Geometry global_geom_;
 //             LocalGeometry in_inside_geom_;
 //             LocalGeometry in_outside_geom_;
             int nbcell_;
