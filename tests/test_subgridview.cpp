@@ -201,7 +201,7 @@ TOPS
     const auto deck = Opm::Parser{}.parseString(deckString);
 
     Dune::CpGrid grid;
-    const int* actnum = deck.hasKeyword("ACTNUM") ? deck.getKeyword("ACTNUM").getIntData().data() : nullptr;
+    const int* actnum = deck.hasKeyword("ACTNUM") ? deck["ACTNUM"].back().getIntData().data() : nullptr;
     Opm::EclipseGrid ecl_grid(deck , actnum);
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
