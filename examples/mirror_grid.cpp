@@ -35,7 +35,7 @@
  */
 
 #if HAVE_ECL_INPUT
-#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
 
 /// Print init message in new grid filename
 void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {

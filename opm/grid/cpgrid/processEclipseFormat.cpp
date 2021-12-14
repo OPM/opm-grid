@@ -40,7 +40,7 @@
 
 #include "CpGridData.hpp"
 
-#include <opm/parser/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
