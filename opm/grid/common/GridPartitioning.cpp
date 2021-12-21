@@ -588,8 +588,9 @@ namespace cpgrid
 #if HAVE_MPI
 
    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
-               std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+              std::vector<std::tuple<int,int,char> >,
+              std::vector<std::tuple<int,int,char,int> >,
+              WellConnections>
     createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells)
@@ -656,7 +657,8 @@ namespace cpgrid
 
     std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
                std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+               std::vector<std::tuple<int,int,char,int> >,
+               WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, bool allowDistributedWells = false)
     {

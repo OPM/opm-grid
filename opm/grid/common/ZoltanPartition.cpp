@@ -36,7 +36,8 @@ namespace cpgrid
 template<class Id>
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> > >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Dune::CollectiveCommunication<MPI_Comm>& cc,
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
@@ -96,6 +97,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
         if (allowDistributedWells)
         {
             wellsOnProc = perforatingWellIndicesOnProc(parts, *wells, cpgrid);
+            // In case we want to
         }
         else
         {
@@ -140,7 +142,8 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                                                             cc,
                                                             root);
     }
-    return std::make_tuple(parts, parallel_wells, myExportList, myImportList);
+    return std::make_tuple(parts, parallel_wells, myExportList, myImportList,
+                           wells ? gridAndWells->getWellConnections(): WellConnections());
 }
 
 template<class Id>
@@ -220,7 +223,8 @@ scatterExportInformation(int numExport, const Id* exportGlobalGids,
 template
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> > >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 makeImportAndExportLists(const Dune::CpGrid&,
                          const Dune::CollectiveCommunication<MPI_Comm>&,
                          const std::vector<Dune::cpgrid::OpmWellType>*,
@@ -268,7 +272,8 @@ void setDefaultZoltanParameters(Zoltan_Struct* zz) {
 
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> > >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
@@ -383,7 +388,8 @@ public:
     std::tuple<std::vector<int>,
                std::vector<std::pair<std::string, bool>>,
                std::vector<std::tuple<int, int, char>>,
-               std::vector<std::tuple<int, int, char, int>>>
+               std::vector<std::tuple<int, int, char, int>>,
+               WellConnections>
     partition()
     {
         MPI_Barrier(cc);
@@ -512,7 +518,8 @@ private:
 std::tuple<std::vector<int>,
            std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int, int, char>>,
-           std::vector<std::tuple<int, int, char, int>>>
+           std::vector<std::tuple<int, int, char, int>>,
+           WellConnections>
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const std::vector<OpmWellType>* wells,
                                      const double* transmissibilities,
