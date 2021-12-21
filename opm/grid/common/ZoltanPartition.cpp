@@ -97,7 +97,6 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
         if (allowDistributedWells)
         {
             wellsOnProc = perforatingWellIndicesOnProc(parts, *wells, cpgrid);
-            // In case we want to
         }
         else
         {

@@ -632,7 +632,7 @@ namespace cpgrid
                                      exportToPart.data(), 0,
                                      grid.comm());
         std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
-        if (wells && !allowDistributedWells)
+        if (wells)
         {
             bool partitionIsEmpty = (grid.size(0) == 0);
             EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
