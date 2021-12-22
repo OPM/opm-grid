@@ -46,6 +46,8 @@
 #include <dune/common/parallel/mpihelper.hh>
 
 #include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/common/WellConnections.hpp>
+
 namespace Dune
 {
 
@@ -121,17 +123,20 @@ namespace cpgrid
     ///         a vector containing a pair of name  and a boolean indicating whether this well has
     ///         perforated cells local to the process of all wells,
     ///         vector containing information for each exported cell (global id
-    ///         of cell, process id to send to, attribute there), and a vector containing
+    ///         of cell, process id to send to, attribute there), a vector containing
     ///         information for each imported cell (global index, process id that sends, attribute here, local index
-    ///         here)
+    ///         here), and a WellConnections object containing information about the well connections
+    ///         (if argument wells was not null and this is the root rank this will contain connections in
+    ///          form of global indices)
     std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
                std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+               std::vector<std::tuple<int,int,char,int> >,
+               WellConnections>
     createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells);
 
-    /// \brief Creats a vanilla partitioning without a real loadbalancer
+    /// \brief Creates a vanilla partitioning without a real loadbalancer
     ///
     /// The loadbalancing will take place on the cartesian grid.
     /// \param grid The grid
@@ -143,12 +148,15 @@ namespace cpgrid
     ///         a vector containing a pair of name  and a boolean indicating whether this well has
     ///         perforated cells local to the process of all wells,
     ///         vector containing information for each exported cell (global id
-    ///         of cell, process id to send to, attribute there), and a vector containing
+    ///         of cell, process id to send to, attribute there), a vector containing
     ///         information for each imported cell (global index, process id that sends, attribute here, local index
-    ///         here)
+    ///         here), and a WellConnections object containing information about the well connections
+    ///         (if argument wells was not null and this is the root rank this will contain connections in
+    ///          form of global indices)
     std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
                std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+               std::vector<std::tuple<int,int,char,int> >,
+               WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities,

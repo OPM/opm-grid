@@ -588,8 +588,9 @@ namespace cpgrid
 #if HAVE_MPI
 
    std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
-               std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+              std::vector<std::tuple<int,int,char> >,
+              std::vector<std::tuple<int,int,char,int> >,
+              WellConnections>
     createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells)
@@ -631,7 +632,7 @@ namespace cpgrid
                                      exportToPart.data(), 0,
                                      grid.comm());
         std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
-        if (wells && !allowDistributedWells)
+        if (wells)
         {
             bool partitionIsEmpty = (grid.size(0) == 0);
             EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
@@ -656,7 +657,8 @@ namespace cpgrid
 
     std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
                std::vector<std::tuple<int,int,char> >,
-               std::vector<std::tuple<int,int,char,int> > >
+               std::vector<std::tuple<int,int,char,int> >,
+               WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, bool allowDistributedWells = false)
     {

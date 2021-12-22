@@ -172,6 +172,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         std::vector<std::pair<std::string,bool>> wells_on_proc;
         std::vector<std::tuple<int,int,char>> exportList;
         std::vector<std::tuple<int,int,char,int>> importList;
+        cpgrid::WellConnections wellConnections;
 
         auto inputNumParts = input_cell_part.size();
         inputNumParts = this->comm().max(inputNumParts);
@@ -240,7 +241,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
             // Partitioning given externally
-            std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+            std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
                 cpgrid::createZoltanListsFromParts(*this, wells, nullptr, input_cell_part,
                                                    true);
         }
@@ -249,7 +250,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             if (useZoltan)
             {
 #ifdef HAVE_ZOLTAN
-                std::tie(computedCellPart, wells_on_proc, exportList, importList)
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
                     ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells)
                     : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells);
@@ -259,7 +260,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             }
             else
             {
-                std::tie(computedCellPart, wells_on_proc, exportList, importList) =
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
                     cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities, allowDistributedWells);
             }
         }

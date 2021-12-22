@@ -125,7 +125,7 @@ private:
 
 
 #ifdef HAVE_MPI
-/// \brief Determines the wells that have peforate cells for each process.
+/// \brief Determines the wells that have perforate cells for each process.
 ///
 /// On the root process omputes for all processes all indices of wells that
 /// will perforate local cells.

@@ -24,6 +24,8 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
+#include <opm/grid/common/WellConnections.hpp>
+
 #if HAVE_MPI
 namespace Dune
 {
@@ -56,11 +58,14 @@ namespace cpgrid
 ///         vector containing information for each exported cell (global id
 ///         of cell, process id to send to, attribute there), and a vector containing
 ///         information for each imported cell (global index, process id that sends, attribute here, local index
-///         here)
+///         here), and a WellConnections object containing information about the well connections
+///         (if argument wells was not null and this is the root rank this will contain connections in
+///          form of global indices)
 template<class Id>
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> > >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Dune::CollectiveCommunication<MPI_Comm>& cc,
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
@@ -111,12 +116,16 @@ namespace cpgrid
 ///         a vector containing a pair of name  and a boolean indicating whether this well has
 ///         perforated cells local to the process of all wells,
 ///         vector containing information for each exported cell (global id
-///         of cell, process id to send to, attribute there), and a vector containing
+///         of cell, process id to send to, attribute there), a vector containing
 ///         information for each imported cell (global index, process id that sends, attribute here, local index
-///         here)
+///         here), and a WellConnections object containing information about the well connections
+///         (if argument wells was not null and this is the root rank this will contain connections in
+///          form of global indices)
+
 std::tuple<std::vector<int>,std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> >  >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
@@ -148,14 +157,17 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 ///         the number of the process that owns it after repartitioning,
 ///         a set of names of wells that should be defunct in a parallel
 ///         simulation, vector containing information for each exported cell (global id
-///         of cell, process id to send to, attribute there), and a vector containing
+///         of cell, process id to send to, attribute there), a vector containing
 ///         information for each imported cell (global index, process id that sends, attribute here, local index
-///         here)
+///         here), and a WellConnections object containing information about the well connections
+///         (if argument wells was not null and this is the root rank this will contain connections in
+///          form of global indices)
 ///
 /// @note This function will only do *serial* partioning.
 std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char> >,
-           std::vector<std::tuple<int,int,char,int> >  >
+           std::vector<std::tuple<int,int,char,int> >,
+           WellConnections>
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
