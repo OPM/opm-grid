@@ -183,11 +183,16 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 
         for (const auto &well : wells) {
             const auto &connections = well_connections[well_index];
+            if (connections.empty()) {
+                // No connections, nothing to move or worry about.
+                ++well_index;
+                continue;
+            }
             std::map<int, std::size_t> no_connections_on_proc;
             for (auto connection_index : connections) {
                 ++no_connections_on_proc[parts[connection_index]];
             }
-
+            assert(!no_connections_on_proc.empty());
             int owner = no_connections_on_proc.begin()->first;
 
             // \todo remove trigger code for #476 that moves all wells to the last rank
