@@ -267,8 +267,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         comm().barrier();
 
         // first create the overlap
-        // map from process to global cell indices in overlap
-        std::map<int,std::set<int> > overlap;
         auto noImportedOwner = addOverlapLayer(*this, computedCellPart, exportList, importList, cc, addCornerCells,
                                                transmissibilities);
         // importList contains all the indices that will be here.
