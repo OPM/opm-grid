@@ -33,8 +33,8 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/parser/eclipse/Deck/Deck.hpp>
-#include <opm/parser/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
 
 #include <cmath>
 #include <iostream>
