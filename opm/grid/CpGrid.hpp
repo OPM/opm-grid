@@ -828,7 +828,7 @@ namespace Dune
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
 #if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
-			 decltype(data.fixedSize(0,0)) overlapLayers=1, bool useZoltan = true)
+                         decltype(data.fixedSize(0,0)) overlapLayers=1, bool useZoltan = true)
 #else
                          decltype(data.fixedsize(0,0)) overlapLayers=1, bool useZoltan = true)
 #endif
@@ -889,6 +889,15 @@ namespace Dune
             }
             return ret;
         }
+
+         /// \brief Partitions the grid using Zoltan without decomposing and distributing it among processes.
+         /// \param wells The wells of the eclipse.
+         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
+         /// \param numParts Number of parts in the partition.
+         /// \return 
+         std::vector<int> zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType> * wells,
+                                                        const double* transmissibilities, int numParts,
+                                                        const double zoltanImbalanceTol);
 
         /// The new communication interface.
         /// \brief communicate objects for all codims on a given level

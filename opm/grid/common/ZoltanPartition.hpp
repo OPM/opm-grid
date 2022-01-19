@@ -175,7 +175,37 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                EdgeWeightMethod edgeWeightsMethod, int root,
                                const double zoltanImbalanceTol,
                                bool allowDistributedWells);
+
+/// \brief Partition a CpGrid using Zoltan
+///
+/// This function will extract Zoltan's graph information
+/// from the grid, and the wells and use it to partition the grid.
+/// The difference between this function and zoltanGraphPartitionGridOnRoot
+/// is that the number of parts is an argument of the method and not inferred
+/// by the MPI communicator.
+/// 
+/// @param grid The grid to partition
+/// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param transmissibilities The transmissibilities associated with the
+///             faces
+/// @paramm cc  The MPI communicator to use for the partitioning.
+///             The will be partitioned among the partiticipating processes.
+/// @param edgeWeightMethod The method used to calculate the weights associated
+///             with the edges of the graph (uniform, transmissibilities, log thereof)
+/// @param root The process number that holds the global grid.
+/// @param numParts How many parts to divide the grid into.
+/// @return A list containing the part of cell i for all cells.
+std::vector<int>
+zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
+                               const std::vector<OpmWellType> * wells,
+			       const double* transmissibilities,
+			       const CollectiveCommunication<MPI_Comm>& cc,
+			       EdgeWeightMethod edgeWeightsMethod, int root,
+			       int numParts, const double zoltanImbalanceTol);
+
 }
 }
+
+
 #endif // HAVE_ZOLTAN
 #endif // header guard
