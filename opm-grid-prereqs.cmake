@@ -21,8 +21,6 @@ set (opm-grid_DEPS
   # compile with C99 support if available
   "C99"
   # various runtime library enhancements
-  "Boost 1.44.0
-    COMPONENTS date_time system unit_test_framework REQUIRED"
   "MPI"
   "dune-common REQUIRED"
   "dune-grid REQUIRED"
