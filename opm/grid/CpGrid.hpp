@@ -894,7 +894,7 @@ namespace Dune
          /// \param wells The wells of the eclipse.
          /// \param transmissibilities The transmissibilities used to calculate the edge weights.
          /// \param numParts Number of parts in the partition.
-         /// \return 
+         /// \return An array with the domain index for each cell.
          std::vector<int> zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType> * wells,
                                                         const double* transmissibilities, int numParts,
                                                         const double zoltanImbalanceTol);
