@@ -77,6 +77,8 @@ gatherv(const std::vector<T,A>& input, const C& comm, int root)
     bool isRoot = (comm.rank() == root);
     std::vector<int> sizes;
     std::vector<int> displ;
+    std::vector<T,A> output;
+
     if (isRoot)
     {
         sizes.resize(comm.size());
@@ -84,8 +86,14 @@ gatherv(const std::vector<T,A>& input, const C& comm, int root)
     }
     int mySize = input.size();
     comm.gather(&mySize, sizes.data(), 1, root);
-    std::partial_sum(sizes.begin(), sizes.end(), displ.begin()+1);
-    std::vector<T,A> output( isRoot ? displ.back() : 0);
+
+    if (isRoot)
+    {
+        std::partial_sum(sizes.begin(), sizes.end(),
+                         displ.begin()+1);
+        output.resize(displ.back());
+    }
+
     comm.gatherv(input.data(), input.size(), output.data(), sizes.data(), displ.data(), root);
     return {output, displ};
 }
