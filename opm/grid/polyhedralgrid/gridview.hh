@@ -71,6 +71,8 @@ namespace Dune
         return grid().leafIndexSet();
     }
 
+    bool isConforming() const { return bool(conforming); }
+
     int size ( int codim ) const
     {
       return grid().size( codim );
