@@ -501,7 +501,7 @@ private:
                                  &exportLocalGids, /* Local IDs of the vertices I must send */
                                  &exportProcs, /* Process to which I send each of the vertices */
                                  &exportToPart); /* Partition to which each vertex will belong */
-        std::cout << numExport<<" "<< cpgrid.numCells() << std::endl;
+
         // This is very important: by default, zoltan sets numImport to -1,
         // as we are only running Zoltan in serial.
         // In order to make sense of the rest of  the code, this must be set
