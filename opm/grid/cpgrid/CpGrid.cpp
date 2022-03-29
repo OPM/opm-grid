@@ -135,6 +135,24 @@ namespace Dune
           global_id_set_(*current_view_data_)
     {}
 
+std::vector<int> CpGrid::zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType> * wells,
+                                                       const double* transmissibilities, int numParts,
+                                                       const double zoltanImbalanceTol)
+{
+    std::vector<int> cell_part(this->numCells());
+#if HAVE_MPI
+    auto& cc = data_->ccobj_;
+#ifdef HAVE_ZOLTAN
+    EdgeWeightMethod met = EdgeWeightMethod(1);
+
+    return cpgrid::zoltanGraphPartitionGridForJac(*this, wells, transmissibilities, cc, met, 0,
+                                                  numParts, zoltanImbalanceTol);
+
+#endif
+#endif
+    return cell_part;
+}
+
 
 std::pair<bool, std::vector<std::pair<std::string,bool> > >
 CpGrid::scatterGrid(EdgeWeightMethod method,
