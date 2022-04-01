@@ -135,9 +135,11 @@ namespace Dune
           global_id_set_(*current_view_data_)
     {}
 
-std::vector<int> CpGrid::zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType> * wells,
-                                                       const double* transmissibilities, int numParts,
-                                                       const double zoltanImbalanceTol)
+std::vector<int>
+CpGrid::zoltanPartitionWithoutScatter([[maybe_unused]] const std::vector<cpgrid::OpmWellType> * wells,
+                                      [[maybe_unused]] const double* transmissibilities,
+                                      [[maybe_unused]] int numParts,
+                                      [[maybe_unused]] const double zoltanImbalanceTol)
 {
     std::vector<int> cell_part(this->numCells());
 #if HAVE_MPI
