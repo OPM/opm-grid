@@ -467,7 +467,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
     void CpGrid::createCartesian(const std::array<int, 3>& dims,
-                                 const std::array<double, 3>& cellsize)
+                                 const std::array<double, 3>& cellsize,
+                                 const std::array<double, 3>& bottom)
     {
         if ( current_view_data_->ccobj_.rank() != 0 )
         {
@@ -482,13 +483,13 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         // Pillar coords.
         std::vector<double> coord;
         coord.reserve(6*(dims[0] + 1)*(dims[1] + 1));
-        double bot = 0.0;
-        double top = dims[2]*cellsize[2];
+        double bot = bottom[2];
+        double top = bottom[2] + dims[2]*cellsize[2];
         // i runs fastest for the pillars.
         for (int j = 0; j < dims[1] + 1; ++j) {
-            double y = j*cellsize[1];
+            double y = j*cellsize[1] + bottom[1];
             for (int i = 0; i < dims[0] + 1; ++i) {
-                double x = i*cellsize[0];
+                double x = i*cellsize[0] + bottom[0];
                 double pillar[6] = { x, y, bot, x, y, top };
                 coord.insert(coord.end(), pillar, pillar + 6);
             }
@@ -497,10 +498,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         const int num_per_layer = 4*dims[0]*dims[1];
         double* offset = &zcorn[0];
         for (int k = 0; k < dims[2]; ++k) {
-            double zlow = k*cellsize[2];
+            double zlow = k*cellsize[2] + bot;
             std::fill(offset, offset + num_per_layer, zlow);
             offset += num_per_layer;
-            double zhigh = (k+1)*cellsize[2];
+            double zhigh = (k+1)*cellsize[2] + bot;
             std::fill(offset, offset + num_per_layer, zhigh);
             offset += num_per_layer;
         }
