@@ -46,6 +46,7 @@
 #include <dune/geometry/type.hh>
 
 #include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/grid/common/Volumes.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
 #include <opm/grid/utility/ErrorMacros.hpp>
@@ -359,6 +360,10 @@ namespace Dune
                 return vol_;
             }
 
+            void set_volume(ctype volume) {
+                vol_ = volume;
+            }
+
             /// Returns the centroid of the geometry.
             const GlobalCoordinate& center() const
             {
@@ -417,6 +422,150 @@ namespace Dune
             bool affine() const
             {
                 return false;
+            }
+
+            /**
+             * @brief Refine a single cell with regular intervals.
+             * 
+             * For each cell to be created, storage must be passed for its corners and the indices. That storage
+             * must be externally managed, since the newly created geometry structures only store pointers and do
+             * not free them on destruction.
+             * 
+             * @param cells The number of sub-cells in each direction.
+             * @param corner_storage A vector of mutable references to storage for the corners of each new cell.
+             * @param indices_storage A vector of mutable references to storage for the indices of each new cell.
+             * @return A vector with the created cells.
+             */
+            /// @brief Refine a single cell with regular intervals.
+            /// @param cells The number of sub-cells in each direction,
+            /// @param corner_storage A vector of mutable references to storage for the corners of each new cell.
+            /// @param indices_storage A vector of mutable references to storage for the indices of each new cell.
+            std::vector<Geometry<3, cdim>> refine(const std::array<int, 3>& cells,
+                                                  std::vector<EntityVariable<Geometry<0, 3>, 3>>& corner_storage,
+                                                  std::vector<std::array<int, 8>>& indices_storage)
+            {
+                // The center of the parent in local coordinates.
+                const Geometry<3, cdim>::LocalCoordinate parent_center(this->local(this->center()));
+
+                // Corners of the parent hexahedron in order, in local coordinates.
+                const Geometry<3, cdim>::LocalCoordinate parent_corners[8] = {
+                    {0.0, 0.0, 0.0},
+                    {1.0, 0.0, 0.0},
+                    {0.0, 1.0, 0.0},
+                    {1.0, 1.0, 0.0},
+                    {0.0, 0.0, 1.0},
+                    {1.0, 0.0, 1.0},
+                    {0.0, 1.0, 1.0},
+                    {1.0, 1.0, 1.0},
+                };
+
+                // Indices of the corners of the 6 faces of the hexahedrons.
+                const int face_corner_indices[6][4] = {
+                    {0, 1, 2, 3},
+                    {0, 1, 4, 5},
+                    {0, 2, 4, 6},
+                    {1, 3, 5, 7},
+                    {2, 3, 6, 7},
+                    {4, 5, 6, 7},
+                };
+
+                // To calculate a refined cell's volume, the hexahedron is
+                // divided in 24 tetrahedrons, each of wich is defined by the
+                // center of the cell, the center of one face, and by one edge
+                // of that face. This struct defines that edge for each face,
+                // for each of he four possible tetrahedrons that are based on
+                // that face.
+                const int tetra_edge_indices[6][4][2] = {
+                    {{0, 1}, {0, 2}, {1, 3}, {2, 3}},
+                    {{0, 1}, {0, 4}, {1, 5}, {4, 5}},
+                    {{0, 2}, {0, 4}, {2, 6}, {4, 6}},
+                    {{1, 3}, {1, 5}, {3, 7}, {5, 7}},
+                    {{2, 3}, {2, 6}, {3, 7}, {6, 7}},
+                    {{4, 5}, {4, 6}, {5, 7}, {6, 7}},
+                };
+
+
+                std::vector<Geometry<3, cdim>> result;
+                result.reserve(cells[0] * cells[1] * cells[2]);
+
+                Geometry<3, cdim>::LocalCoordinate refined_corners[8];
+                Geometry<3, cdim>::LocalCoordinate refined_center(0.0);
+                auto pcs = corner_storage.begin();
+                auto pis = indices_storage.begin();
+
+                Geometry<3, cdim>::ctype total_volume = 0.0;
+                for (int k = 0; k < cells[2]; k++) {
+                    refined_center[2] = (parent_center[2] + k) / cells[2];
+                    for (int h = 0; h < 8; h++) {
+                        refined_corners[h][2] = (parent_corners[h][2] + k) / cells[2];
+                    }
+                    for (int j = 0; j < cells[1]; j++) {
+                        refined_center[1] = (parent_center[1] + j) / cells[1];
+                        for (int h = 0; h < 8; h++) {
+                            refined_corners[h][1] = (parent_corners[h][1] + j) / cells[1];
+                        }
+                        for (int i = 0; i < cells[0]; i++) {
+                            refined_center[0] = (parent_center[0] + i) / cells[0];
+                            for (int h = 0; h < 8; h++) {
+                                refined_corners[h][0] = (parent_corners[h][0] + i) / cells[0];
+                            }
+
+                            auto& global_refined_corners = *pcs++;
+                            global_refined_corners.reserve(8);
+                            for (const auto& corner : refined_corners) {
+                                global_refined_corners.push_back(Geometry<0, 3>(this->global(corner)));
+                            }
+
+                            // The indices must match the order of the constant
+                            // arrays containing unit corners, face indices, and
+                            // tetrahedron edge indices. Do not reorder.
+                            auto& indices = *pis++;
+                            indices = {0, 1, 2, 3, 4, 5, 6, 7};
+
+                            // Get the center of the cell.
+                            const Geometry<3, cdim>::GlobalCoordinate global_refined_center(
+                                this->global(refined_center));
+
+                            // Calculate the centers of the 6 faces.
+                            const auto& hex_corners = global_refined_corners.data();
+                            Geometry<0, 3>::GlobalCoordinate face_centers[6];
+                            for (int f = 0; f < 6; f++) {
+                                face_centers[f] = hex_corners[face_corner_indices[f][0]].center();
+                                face_centers[f] += hex_corners[face_corner_indices[f][1]].center();
+                                face_centers[f] += hex_corners[face_corner_indices[f][2]].center();
+                                face_centers[f] += hex_corners[face_corner_indices[f][3]].center();
+                                face_centers[f] /= 4;
+                            }
+
+                            // Calculate the volume of the cell by adding the 4 tetrahedrons at each face.
+                            Geometry<3, cdim>::ctype volume = 0.0;
+                            for (int f = 0; f < 6; f++) {
+                                for (int e = 0; e < 4; e++) {
+                                    const Geometry<0, 3>::GlobalCoordinate tetra_corners[4]
+                                        = {hex_corners[tetra_edge_indices[f][e][0]].center(),
+                                           hex_corners[tetra_edge_indices[f][e][1]].center(),
+                                           face_centers[f],
+                                           global_refined_center};
+                                    volume += fabs(simplex_volume(tetra_corners));
+                                }
+                            }
+                            total_volume += volume;
+
+                            result.push_back(Geometry<3, cdim>(
+                                global_refined_center, volume, global_refined_corners, indices.data()));
+                        }
+                    }
+                }
+
+                // Rescale all volumes if the sum of volumes does not match the parent.
+                if (fabs(total_volume - this->volume()) > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
+                    Geometry<3, cdim>::ctype correction = this->volume() / total_volume;
+                    for (auto& r : result) {
+                        r.set_volume(r.volume() * correction);
+                    }
+                }
+
+                return result;
             }
 
         private:

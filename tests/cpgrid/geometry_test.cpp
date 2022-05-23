@@ -237,10 +237,142 @@ BOOST_AUTO_TEST_CASE(cellgeom)
             BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), Jit);
         }
     }
+}
 
 
+void
+check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
+                   const std::vector<cpgrid::Geometry<3, 3>>& refined,
+                   const std::array<int, 3>& cells)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    int count = cells[0] * cells[1] * cells[2];
+    BOOST_CHECK_EQUAL(refined.size(), count);
+
+    // Check the position of the first refined cell.
+    for (int c = 0; c < 3; c++) {
+        BOOST_CHECK_CLOSE(refined[0].corner(0)[c], parent.corner(0)[c], 1e-6);
+    }
+    // Check the last corner of the last cell.
+    for (int c = 0; c < 3; c++) {
+        BOOST_CHECK_CLOSE(refined[count - 1].corner(7)[c], parent.corner(7)[c], 1e-6);
+    }
+    // Check the center of the first cell.
+    GlobalCoordinate center = {0.0, 0.0, 0.0};
+    for (int h = 0; h < 8; h++) {
+        for (int c = 0; c < 3; c++) {
+            center[c] += refined[0].corner(h)[c] / 8.0;
+        }
+    }
+    for (int c = 0; c < 3; c++) {
+        BOOST_CHECK_CLOSE(refined[0].center()[c], center[c], 1e-6);
+    }
+
+    Geometry::ctype volume = 0.0;
+    for (auto r : refined) {
+        volume += r.volume();
+    }
+    BOOST_CHECK_CLOSE(volume, parent.volume(), 1e-6);
+}
 
 
+BOOST_AUTO_TEST_CASE(refine_simple_cube)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    const GlobalCoordinate corners[8] = {
+        {0.0, 0.0, 0.0},
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {1.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0},
+        {1.0, 0.0, 1.0},
+        {0.0, 1.0, 1.0},
+        {1.0, 1.0, 1.0},
+    };
+    const GlobalCoordinate c = {0.5, 0.5, 0.5};
+    const Geometry::ctype v = 1.0;
+
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    for (const auto& crn : corners) {
+        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+    }
+
+    int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    Geometry g(c, v, pg, cor_idx);
+
+    {
+        std::array<int, 3> cells = {1, 1, 1};
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
+        std::vector<std::array<int, 8>> ci(1);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+
+    {
+        std::array<int, 3> cells = {2, 3, 4};
+        int cell_count = cells[0] * cells[1] * cells[2];
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
+        std::vector<std::array<int, 8>> ci(cell_count);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+}
 
 
+BOOST_AUTO_TEST_CASE(refine_distorted_cube)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    // Distorted cube:
+    const GlobalCoordinate corners[8] = {
+        {0.1, 0.2, 0.3},
+        {1.2, 0.3, 0.4},
+        {0.3, 1.4, 0.5},
+        {1.4, 1.5, 0.6},
+        {0.5, 0.6, 1.7},
+        {1.6, 0.7, 1.8},
+        {0.7, 1.8, 1.9},
+        {1.8, 1.9, 2.0},
+    };
+
+    // Arbitrary volume:
+    const Geometry::ctype v = 123.0;
+
+    // Calculate the centroid:
+    GlobalCoordinate center = {0.0, 0.0, 0.0};
+    for (int h = 0; h < 8; h++) {
+        for (int c = 0; c < 3; c++) {
+            center[c] += corners[h][c] / 8.0;
+        }
+    }
+
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    for (const auto& crn : corners) {
+        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+    }
+
+    int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    Geometry g(center, v, pg, cor_idx);
+
+    {
+        std::array<int, 3> cells = {1, 1, 1};
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
+        std::vector<std::array<int, 8>> ci(1);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+
+    {
+        std::array<int, 3> cells = {2, 3, 4};
+        int cell_count = cells[0] * cells[1] * cells[2];
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
+        std::vector<std::array<int, 8>> ci(cell_count);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
 }
