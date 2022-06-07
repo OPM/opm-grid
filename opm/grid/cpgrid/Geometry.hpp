@@ -36,6 +36,8 @@
 #ifndef OPM_GEOMETRY_HEADER
 #define OPM_GEOMETRY_HEADER
 
+#include <cmath>
+
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
@@ -431,7 +433,7 @@ namespace Dune
              * must be externally managed, since the newly created geometry structures only store pointers and do
              * not free them on destruction.
              * 
-             * @param cells The number of sub-cells in each direction.
+             * @param cells_per_dim The number of sub-cells in each direction.
              * @param corner_storage A vector of mutable references to storage for the corners of each new cell.
              * @param indices_storage A vector of mutable references to storage for the indices of each new cell.
              * @return A vector with the created cells.
@@ -440,7 +442,7 @@ namespace Dune
             /// @param cells The number of sub-cells in each direction,
             /// @param corner_storage A vector of mutable references to storage for the corners of each new cell.
             /// @param indices_storage A vector of mutable references to storage for the indices of each new cell.
-            std::vector<Geometry<3, cdim>> refine(const std::array<int, 3>& cells,
+            std::vector<Geometry<3, cdim>> refine(const std::array<int, 3>& cells_per_dim,
                                                   std::vector<EntityVariable<Geometry<0, 3>, 3>>& corner_storage,
                                                   std::vector<std::array<int, 8>>& indices_storage)
             {
@@ -470,10 +472,10 @@ namespace Dune
                 };
 
                 // To calculate a refined cell's volume, the hexahedron is
-                // divided in 24 tetrahedrons, each of wich is defined by the
+                // divided in 24 tetrahedrons, each of which is defined by the
                 // center of the cell, the center of one face, and by one edge
                 // of that face. This struct defines that edge for each face,
-                // for each of he four possible tetrahedrons that are based on
+                // for each of the four possible tetrahedrons that are based on
                 // that face.
                 const int tetra_edge_indices[6][4][2] = {
                     {{0, 1}, {0, 2}, {1, 3}, {2, 3}},
@@ -486,28 +488,29 @@ namespace Dune
 
 
                 std::vector<Geometry<3, cdim>> result;
-                result.reserve(cells[0] * cells[1] * cells[2]);
+                result.reserve(cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2]);
 
-                Geometry<3, cdim>::LocalCoordinate refined_corners[8];
-                Geometry<3, cdim>::LocalCoordinate refined_center(0.0);
                 auto pcs = corner_storage.begin();
                 auto pis = indices_storage.begin();
 
                 Geometry<3, cdim>::ctype total_volume = 0.0;
-                for (int k = 0; k < cells[2]; k++) {
-                    refined_center[2] = (parent_center[2] + k) / cells[2];
+                for (int k = 0; k < cells_per_dim[2]; k++) {
+                    Geometry<3, cdim>::LocalCoordinate refined_corners[8];
+                    Geometry<3, cdim>::LocalCoordinate refined_center(0.0);
+
+                    refined_center[2] = (parent_center[2] + k) / cells_per_dim[2];
                     for (int h = 0; h < 8; h++) {
-                        refined_corners[h][2] = (parent_corners[h][2] + k) / cells[2];
+                        refined_corners[h][2] = (parent_corners[h][2] + k) / cells_per_dim[2];
                     }
-                    for (int j = 0; j < cells[1]; j++) {
-                        refined_center[1] = (parent_center[1] + j) / cells[1];
+                    for (int j = 0; j < cells_per_dim[1]; j++) {
+                        refined_center[1] = (parent_center[1] + j) / cells_per_dim[1];
                         for (int h = 0; h < 8; h++) {
-                            refined_corners[h][1] = (parent_corners[h][1] + j) / cells[1];
+                            refined_corners[h][1] = (parent_corners[h][1] + j) / cells_per_dim[1];
                         }
-                        for (int i = 0; i < cells[0]; i++) {
-                            refined_center[0] = (parent_center[0] + i) / cells[0];
+                        for (int i = 0; i < cells_per_dim[0]; i++) {
+                            refined_center[0] = (parent_center[0] + i) / cells_per_dim[0];
                             for (int h = 0; h < 8; h++) {
-                                refined_corners[h][0] = (parent_corners[h][0] + i) / cells[0];
+                                refined_corners[h][0] = (parent_corners[h][0] + i) / cells_per_dim[0];
                             }
 
                             auto& global_refined_corners = *pcs++;
@@ -546,7 +549,7 @@ namespace Dune
                                            hex_corners[tetra_edge_indices[f][e][1]].center(),
                                            face_centers[f],
                                            global_refined_center};
-                                    volume += fabs(simplex_volume(tetra_corners));
+                                    volume += std::fabs(simplex_volume(tetra_corners));
                                 }
                             }
                             total_volume += volume;
@@ -558,7 +561,8 @@ namespace Dune
                 }
 
                 // Rescale all volumes if the sum of volumes does not match the parent.
-                if (fabs(total_volume - this->volume()) > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
+                if (std::fabs(total_volume - this->volume())
+                    > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
                     Geometry<3, cdim>::ctype correction = this->volume() / total_volume;
                     for (auto& r : result) {
                         r.set_volume(r.volume() * correction);
