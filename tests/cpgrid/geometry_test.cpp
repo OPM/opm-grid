@@ -237,10 +237,208 @@ BOOST_AUTO_TEST_CASE(cellgeom)
             BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), Jit);
         }
     }
+}
 
 
+template <typename T>
+inline void
+check_coordinates(T c1, T c2)
+{
+    for (int c = 0; c < 3; c++) {
+        BOOST_CHECK_CLOSE(c1[c], c2[c], 1e-6);
+    }
+}
+
+void
+check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
+                   const std::vector<cpgrid::Geometry<3, 3>>& refined,
+                   const std::array<int, 3>& cells_per_dim)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    int count = cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2];
+    BOOST_CHECK_EQUAL(refined.size(), count);
+
+    // Check the corners of the refined grid with the parent corners.
+    int idx = 0;
+    for (int k = 0; k < 1; k++) {
+        int slice = cells_per_dim[0] * cells_per_dim[1];
+        for (int j = 0; j < 1; j++) {
+            for (int i = 0; i < 1; i++) {
+                auto& r = refined[k * slice + j * cells_per_dim[0] + i];
+                check_coordinates(r.corner(idx), parent.corner(idx));
+                idx++;
+            }
+        }
+    }
+
+    // Make sure the corners of neighboring cells overlap.
+    for (int k = 0; k < cells_per_dim[2]; k++) {
+        int slice = cells_per_dim[1] * cells_per_dim[0];
+        for (int j = 0; j < cells_per_dim[1]; j++) {
+            for (int i = 0; i < cells_per_dim[0]; i++) {
+                auto& r0 = refined[k * slice + cells_per_dim[0] * j + i];
+                if (i < cells_per_dim[0] - 1) {
+                    auto& r1 = refined[k * slice + cells_per_dim[0] * j + i + 1];
+                    check_coordinates(r0.corner(1), r1.corner(0));
+                    check_coordinates(r0.corner(3), r1.corner(2));
+                    check_coordinates(r0.corner(5), r1.corner(4));
+                    check_coordinates(r0.corner(7), r1.corner(6));
+                }
+                if (j < cells_per_dim[1] - 1) {
+                    auto& r1 = refined[k * slice + cells_per_dim[0] * (j + 1) + i];
+                    check_coordinates(r0.corner(2), r1.corner(0));
+                    check_coordinates(r0.corner(3), r1.corner(1));
+                    check_coordinates(r0.corner(6), r1.corner(4));
+                    check_coordinates(r0.corner(7), r1.corner(5));
+                }
+                if (k < cells_per_dim[2] - 1) {
+                    auto& r1 = refined[(k + 1) * slice + cells_per_dim[0] * j + i];
+                    check_coordinates(r0.corner(4), r1.corner(0));
+                    check_coordinates(r0.corner(5), r1.corner(1));
+                    check_coordinates(r0.corner(6), r1.corner(2));
+                    check_coordinates(r0.corner(7), r1.corner(3));
+                }
+            }
+        }
+    }
+
+    // Check the centers of the cells.
+    for (auto r : refined) {
+        GlobalCoordinate center = {0.0, 0.0, 0.0};
+        for (int h = 0; h < 8; h++) {
+            for (int c = 0; c < 3; c++) {
+                center[c] += r.corner(h)[c] / 8.0;
+            }
+        }
+        check_coordinates(r.center(), center);
+    }
+
+    // Check that the weighted mean of all centers equals the parent center
+    GlobalCoordinate center = {0.0, 0.0, 0.0};
+    for (auto r : refined) {
+        for (int c = 0; c < 3; c++) {
+            center[c] += r.center()[c] * r.volume() / parent.volume();
+        }
+    }
+    check_coordinates(parent.center(), center);
+
+    // Check that mean of all corners equals the center of the parent.
+    center = {0.0, 0.0, 0.0};
+    for (auto r : refined) {
+        for (int h = 0; h < 8; h++) {
+            for (int c = 0; c < 3; c++) {
+                center[c] += r.corner(h)[c] / count / 8;
+            }
+        }
+    }
+    check_coordinates(parent.center(), center);
+
+    // Check the total volume against the parent volume.
+    Geometry::ctype volume = 0.0;
+    for (auto r : refined) {
+        volume += r.volume();
+    }
+    BOOST_CHECK_CLOSE(volume, parent.volume(), 1e-6);
+}
 
 
+BOOST_AUTO_TEST_CASE(refine_simple_cube)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    const GlobalCoordinate corners[8] = {
+        {0.0, 0.0, 0.0},
+        {1.0, 0.0, 0.0},
+        {0.0, 1.0, 0.0},
+        {1.0, 1.0, 0.0},
+        {0.0, 0.0, 1.0},
+        {1.0, 0.0, 1.0},
+        {0.0, 1.0, 1.0},
+        {1.0, 1.0, 1.0},
+    };
+    const GlobalCoordinate c = {0.5, 0.5, 0.5};
+    const Geometry::ctype v = 1.0;
+
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    for (const auto& crn : corners) {
+        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+    }
+
+    int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    Geometry g(c, v, pg, cor_idx);
+
+    {
+        std::array<int, 3> cells = {1, 1, 1};
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
+        std::vector<std::array<int, 8>> ci(1);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+
+    {
+        std::array<int, 3> cells = {2, 3, 4};
+        int cell_count = cells[0] * cells[1] * cells[2];
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
+        std::vector<std::array<int, 8>> ci(cell_count);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+}
 
 
+BOOST_AUTO_TEST_CASE(refine_distorted_cube)
+{
+    using Geometry = cpgrid::Geometry<3, 3>;
+    using GlobalCoordinate = Geometry::GlobalCoordinate;
+
+    // Distorted cube:
+    const GlobalCoordinate corners[8] = {
+        {0.1, 0.2, 0.3},
+        {1.2, 0.3, 0.4},
+        {0.3, 1.4, 0.5},
+        {1.4, 1.5, 0.6},
+        {0.5, 0.6, 1.7},
+        {1.6, 0.7, 1.8},
+        {0.7, 1.8, 1.9},
+        {1.8, 1.9, 2.0},
+    };
+
+    // Arbitrary volume:
+    const Geometry::ctype v = 123.0;
+
+    // Calculate the centroid:
+    GlobalCoordinate center = {0.0, 0.0, 0.0};
+    for (int h = 0; h < 8; h++) {
+        for (int c = 0; c < 3; c++) {
+            center[c] += corners[h][c] / 8.0;
+        }
+    }
+
+    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    for (const auto& crn : corners) {
+        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+    }
+
+    int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
+    Geometry g(center, v, pg, cor_idx);
+
+    {
+        std::array<int, 3> cells = {1, 1, 1};
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
+        std::vector<std::array<int, 8>> ci(1);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
+
+    {
+        std::array<int, 3> cells = {2, 3, 4};
+        int cell_count = cells[0] * cells[1] * cells[2];
+        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
+        std::vector<std::array<int, 8>> ci(cell_count);
+        std::vector<Geometry> refined = g.refine(cells, gi, ci);
+        check_refined_grid(g, refined, cells);
+    }
 }
