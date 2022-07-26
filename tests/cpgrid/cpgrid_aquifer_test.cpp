@@ -7,6 +7,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/ErrorGuard.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #if HAVE_MPI
