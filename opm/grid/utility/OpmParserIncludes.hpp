@@ -20,7 +20,6 @@
 #define OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
 
 #if HAVE_ECL_INPUT
-#include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
