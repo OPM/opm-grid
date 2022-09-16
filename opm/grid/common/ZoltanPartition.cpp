@@ -280,7 +280,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                EdgeWeightMethod edgeWeightsMethod,
                                int root,
                                const double zoltanImbalanceTol,
-                               bool allowDistributedWells)
+                               bool allowDistributedWells,
+                               const std::map<std::string,std::string>& params)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -298,6 +299,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
+    for (const auto& [key, value] : params)
+        Zoltan_Set_Param(zz, key.c_str(), value.c_str());
 
     // For the load balancer one process has the whole grid and
     // all others an empty partition before loadbalancing.
@@ -368,7 +371,8 @@ public:
                             int _root,
                             const double _zoltanImbalanceTol,
                             bool _allowDistributedWells,
-                            int _numParts)
+                            int _numParts,
+                            const std::map<std::string,std::string>& param)
         : cpgrid(_cpgrid)
         , wells(_wells)
         , transmissibilities(_transmissibilities)
@@ -378,6 +382,7 @@ public:
         , zoltanImbalanceTol(_zoltanImbalanceTol)
         , allowDistributedWells(_allowDistributedWells)
         , numParts(_numParts)
+        , params(param)
     {
         if (wells) {
             const bool partitionIsEmpty = cc.rank() != root;
@@ -470,12 +475,15 @@ private:
         Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
         if (numParts > 0) {
             Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(numParts).c_str());
-            Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(numParts).c_str());
             Zoltan_Set_Param(zz, "RETURN_LISTS", "PARTS");
             Zoltan_Set_Param(zz, "DEBUG_LEVEL", "2");
         }
         else
             Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
+
+        for (const auto& [key, value] : params)
+            Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+
         // For the load balancer one process has the whole grid and
         // all others an empty partition before loadbalancing.
         bool partitionIsEmpty = cc.rank() != root;
@@ -536,6 +544,7 @@ private:
     std::vector<ZoltanId> importGlobalGidsVector;
     bool allowDistributedWells;
     int numParts;
+    const std::map<std::string,std::string>& params;
 };
 
 
@@ -551,10 +560,11 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      EdgeWeightMethod edgeWeightsMethod,
                                      int root,
                                      const double zoltanImbalanceTol,
-                                     bool allowDistributedWells)
+                                     bool allowDistributedWells,
+                                     const std::map<std::string,std::string>& params)
 {
     ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
-                                        root, zoltanImbalanceTol, allowDistributedWells, 0);
+                                        root, zoltanImbalanceTol, allowDistributedWells, 0, params);
     return partitioner.partition();
 }
 
@@ -567,7 +577,7 @@ zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                int numParts, const double zoltanImbalanceTol)
 {
     ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
-                                        root, zoltanImbalanceTol, false, numParts);
+                                        root, zoltanImbalanceTol, false, numParts, {});
     return partitioner.partitionForInfo();
 }
 

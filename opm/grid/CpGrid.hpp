@@ -620,6 +620,10 @@ namespace Dune
             }
         }
 
+        void setZoltanParams(const std::map<std::string,std::string>& params)
+        {
+          zoltanParams = params;
+        }
 
         // loadbalance is not part of the grid interface therefore we skip it.
 
@@ -1607,6 +1611,12 @@ namespace Dune
          * @brief The global id set (also used as local one).
          */
         cpgrid::GlobalIdSet global_id_set_;
+
+        /**
+         * @brief Zoltan partitioning parameters
+         */
+        std::map<std::string,std::string> zoltanParams;
+
     }; // end Class CpGrid
 
 

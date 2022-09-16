@@ -132,7 +132,8 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
                                const double zoltanImbalanceTol,
-                               bool allowDistributedWells);
+                               bool allowDistributedWells,
+                               const std::map<std::string,std::string>& params);
 
 /// \brief Partition a CpGrid using Zoltan serially only on rank 0
 ///
@@ -174,7 +175,8 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                const CollectiveCommunication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
                                const double zoltanImbalanceTol,
-                               bool allowDistributedWells);
+                               bool allowDistributedWells,
+                               const std::map<std::string,std::string>& params);
 
 /// \brief Partition a CpGrid using Zoltan
 ///
