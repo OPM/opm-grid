@@ -1,5 +1,6 @@
 /*
   Copyright 2011 SINTEF ICT, Applied Mathematics.
+  Copyright 2022 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -27,6 +28,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 
 #include <sstream>
@@ -251,7 +253,7 @@ check_coordinates(T c1, T c2)
 
 void
 check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
-                   const std::vector<cpgrid::Geometry<3, 3>>& refined,
+                   const cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& refined,
                    const std::array<int, 3>& cells_per_dim)
 {
     using Geometry = cpgrid::Geometry<3, 3>;
@@ -266,7 +268,7 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         int slice = cells_per_dim[0] * cells_per_dim[1];
         for (int j = 0; j < 1; j++) {
             for (int i = 0; i < 1; i++) {
-                auto& r = refined[k * slice + j * cells_per_dim[0] + i];
+                auto& r = refined.get(k * slice + j * cells_per_dim[0] + i);
                 check_coordinates(r.corner(idx), parent.corner(idx));
                 idx++;
             }
@@ -278,23 +280,23 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         int slice = cells_per_dim[1] * cells_per_dim[0];
         for (int j = 0; j < cells_per_dim[1]; j++) {
             for (int i = 0; i < cells_per_dim[0]; i++) {
-                auto& r0 = refined[k * slice + cells_per_dim[0] * j + i];
+                auto& r0 = refined.get(k * slice + cells_per_dim[0] * j + i);
                 if (i < cells_per_dim[0] - 1) {
-                    auto& r1 = refined[k * slice + cells_per_dim[0] * j + i + 1];
+                    auto& r1 = refined.get(k * slice + cells_per_dim[0] * j + i + 1);
                     check_coordinates(r0.corner(1), r1.corner(0));
                     check_coordinates(r0.corner(3), r1.corner(2));
                     check_coordinates(r0.corner(5), r1.corner(4));
                     check_coordinates(r0.corner(7), r1.corner(6));
                 }
                 if (j < cells_per_dim[1] - 1) {
-                    auto& r1 = refined[k * slice + cells_per_dim[0] * (j + 1) + i];
+                    auto& r1 = refined.get(k * slice + cells_per_dim[0] * (j + 1) + i);
                     check_coordinates(r0.corner(2), r1.corner(0));
                     check_coordinates(r0.corner(3), r1.corner(1));
                     check_coordinates(r0.corner(6), r1.corner(4));
                     check_coordinates(r0.corner(7), r1.corner(5));
                 }
                 if (k < cells_per_dim[2] - 1) {
-                    auto& r1 = refined[(k + 1) * slice + cells_per_dim[0] * j + i];
+                    auto& r1 = refined.get((k + 1) * slice + cells_per_dim[0] * j + i);
                     check_coordinates(r0.corner(4), r1.corner(0));
                     check_coordinates(r0.corner(5), r1.corner(1));
                     check_coordinates(r0.corner(6), r1.corner(2));
@@ -370,21 +372,21 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     Geometry g(c, v, pg, cor_idx);
 
+    using cpgrid::DefaultGeometryPolicy;
     {
         std::array<int, 3> cells = {1, 1, 1};
-        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
-        std::vector<std::array<int, 8>> ci(1);
-        std::vector<Geometry> refined = g.refine(cells, gi, ci);
-        check_refined_grid(g, refined, cells);
+        DefaultGeometryPolicy geometries;
+        std::vector<std::array<int, 8>> ci;
+        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
     {
         std::array<int, 3> cells = {2, 3, 4};
-        int cell_count = cells[0] * cells[1] * cells[2];
-        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
-        std::vector<std::array<int, 8>> ci(cell_count);
-        std::vector<Geometry> refined = g.refine(cells, gi, ci);
-        check_refined_grid(g, refined, cells);
+        DefaultGeometryPolicy geometries;
+        std::vector<std::array<int, 8>> ci;
+        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
 
@@ -424,21 +426,21 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     Geometry g(center, v, pg, cor_idx);
+    using cpgrid::DefaultGeometryPolicy;
 
     {
         std::array<int, 3> cells = {1, 1, 1};
-        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(1);
-        std::vector<std::array<int, 8>> ci(1);
-        std::vector<Geometry> refined = g.refine(cells, gi, ci);
-        check_refined_grid(g, refined, cells);
+        DefaultGeometryPolicy geometries;
+        std::vector<std::array<int, 8>> ci;
+        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
     {
         std::array<int, 3> cells = {2, 3, 4};
-        int cell_count = cells[0] * cells[1] * cells[2];
-        std::vector<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> gi(cell_count);
-        std::vector<std::array<int, 8>> ci(cell_count);
-        std::vector<Geometry> refined = g.refine(cells, gi, ci);
-        check_refined_grid(g, refined, cells);
+        DefaultGeometryPolicy geometries;
+        std::vector<std::array<int, 8>> ci;
+        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }

@@ -70,6 +70,7 @@
 #include <opm/grid/utility/VariableSizeCommunicator.hpp>
 #endif
 #include <dune/grid/common/gridenums.hh>
+#include <dune/geometry/type.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 

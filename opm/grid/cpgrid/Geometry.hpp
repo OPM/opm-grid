@@ -48,6 +48,7 @@
 #include <dune/geometry/type.hh>
 
 #include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/common/Volumes.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
@@ -57,6 +58,8 @@ namespace Dune
 {
     namespace cpgrid
     {
+
+        //class DefaultGeometryPolicy;
 
         /// This class encapsulates geometry for both vertices,
         /// intersections and cells.  The main template is empty,
@@ -472,12 +475,22 @@ namespace Dune
              */
             /// @brief Refine a single cell with regular intervals.
             /// @param cells The number of sub-cells in each direction,
-            /// @param corner_storage A vector of mutable references to storage for the corners of each new cell.
-            /// @param indices_storage A vector of mutable references to storage for the indices of each new cell.
+            /// @param[out] refined_geom Geometry Policy for the refined geometries. Those will be added there.
+            /// @param[out] indices_storage A vector of mutable references to storage for the indices of each new cell.
+            /// @todo We do not need to return anything here.
             std::vector<Geometry<3, cdim>> refine(const std::array<int, 3>& cells_per_dim,
-                                                  std::vector<EntityVariable<Geometry<0, 3>, 3>>& corner_storage,
+                                                  DefaultGeometryPolicy& all_geom,
                                                   std::vector<std::array<int, 8>>& indices_storage)
             {
+
+                //std::vector<EntityVariable<Geometry<0, 3>, 3>>& corner_storage,
+                // Below are basically std::vector of Geometry. Use resize(), reserve(), push_back(), etc.
+                EntityVariable<cpgrid::Geometry<0, 3>, 3>& global_refined_corners = all_geom.geomVector(std::integral_constant<int, 3>()); // was called corner_storage before
+                EntityVariable<cpgrid::Geometry<2, 3>, 1>& refined_faces = all_geom.geomVector(std::integral_constant<int, 1>()); // Missed by Peter, we need to add the faces
+                EntityVariable<cpgrid::Geometry<3, 3>, 0>& refined_cells = all_geom.geomVector(std::integral_constant<int, 0>()); // Put the refined cells here.
+
+                // @todo Maybe use vector::reserve to prevent allocations (or not), and later use push_back to populate.
+
                 // The center of the parent in local coordinates.
                 const Geometry<3, cdim>::LocalCoordinate parent_center(this->local(this->center()));
 
@@ -522,7 +535,6 @@ namespace Dune
                 std::vector<Geometry<3, cdim>> result;
                 result.reserve(cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2]);
 
-                auto pcs = corner_storage.begin();
                 auto pis = indices_storage.begin();
 
                 Geometry<3, cdim>::ctype total_volume = 0.0;
@@ -545,16 +557,18 @@ namespace Dune
                                 refined_corners[h][0] = (parent_corners[h][0] + i) / cells_per_dim[0];
                             }
 
-                            auto& global_refined_corners = *pcs++;
-                            global_refined_corners.reserve(8);
                             for (const auto& corner : refined_corners) {
+                                // @todo Only push new corners.
                                 global_refined_corners.push_back(Geometry<0, 3>(this->global(corner)));
+                                // @todo add the correct index to indices!
                             }
 
                             // The indices must match the order of the constant
                             // arrays containing unit corners, face indices, and
                             // tetrahedron edge indices. Do not reorder.
                             auto& indices = *pis++;
+                            // @todo use the correct indices for the corner lookup!
+                            // global_refined_corner[indices[0]] has to be the Geometry of the first corner of the cell!
                             indices = {0, 1, 2, 3, 4, 5, 6, 7};
 
                             // Get the center of the cell.
@@ -572,6 +586,8 @@ namespace Dune
                                 face_centers[f] /= 4;
                             }
 
+                            // @todo Calculate face volume and add the face geometries to refined_faces!
+
                             // Calculate the volume of the cell by adding the 4 tetrahedrons at each face.
                             Geometry<3, cdim>::ctype volume = 0.0;
                             for (int f = 0; f < 6; f++) {
@@ -586,6 +602,7 @@ namespace Dune
                             }
                             total_volume += volume;
 
+                            // @todo the geometries should go to refined_cells instead
                             result.push_back(Geometry<3, cdim>(
                                 global_refined_center, volume, global_refined_corners, indices.data()));
                         }
