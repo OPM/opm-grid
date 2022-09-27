@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(intersectiongeom)
     // Verification of properties.
     BOOST_CHECK(g.type().isNone());
     BOOST_CHECK(g.affine());
-    BOOST_CHECK_EQUAL(g.corners(), 0);
+    BOOST_CHECK_EQUAL(g.corners(), 0); // "corners()" returns '0' (None Type -> singular geometry -> no corners)
     // BOOST_CHECK_THROW(g.corner(0), std::exception);
     Geometry::LocalCoordinate lc(0.0);
     BOOST_CHECK_THROW(g.global(lc), std::exception);
@@ -88,6 +88,7 @@ BOOST_AUTO_TEST_CASE(intersectiongeom)
     BOOST_CHECK_EQUAL(g.center(), c);
     BOOST_CHECK_THROW(g.jacobianTransposed(lc), std::exception);
     BOOST_CHECK_THROW(g.jacobianInverseTransposed(lc), std::exception);
+
 }
 
 
@@ -100,11 +101,18 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     // Construction from point and volume.
     // This is a dangerous constructor kept for backwards compatibility,
     // these checks may be removed if constructor removed.
+    // This possibly dangerous constructor is available for the benefit of
+    // CpGrid::readSintefLegacyFormat().
     Geometry::GlobalCoordinate c(3.0);
     Geometry::ctype v = 8.0;
     Geometry g_dangerous(c, v);
 
     // Construction from point, volume, points and pointindices.
+    // Construction from
+    // 1. center
+    // 2. volume
+    // 3. all corners (a pointer of type 'const cpgrid::Geometry<0, 3>')
+    // 4. corner indices (a pointer to the first element of "global_refined_cell8corners_indices_storage")
     // First a unit cube, i.e. the mapping represented is the identity.
     typedef Geometry::GlobalCoordinate GC;
     c = GC(0.5);
@@ -139,34 +147,35 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     BOOST_CHECK(!g.affine());
     BOOST_CHECK_EQUAL(g.corners(), 8);
     for (int i = 0; i < 8; ++i) {
-        BOOST_CHECK_EQUAL(g.corner(i), corners[i]);
+        BOOST_CHECK_EQUAL(g.corner(i), corners[i]);   // "corner(i)" returns 'pg[cor_idx_[i]].center()'
     }
     BOOST_CHECK_EQUAL(g.volume(), v);
     BOOST_CHECK_EQUAL(g.center(), c);
 
-    // Verification of properties that depend on the mapping.
+    // Verification of properties that depend on the mapping.'
+    // Construction refined (local) corners.
     typedef Geometry::LocalCoordinate LC;
-    const int N = 5;
-    const int num_pts = N*N*N;
+    const int N = 5;  //  4 in each direction
+    const int num_pts = N*N*N;  // total amount of corners
     LC testpts[num_pts] = { LC(0.0) };
     LC pt(0.0);
-    for (int i = 0; i < N; ++i) {
-        pt[0] = double(i)/double(N-1);
+    for (int k = 0; k < N; ++k) {
+        pt[2] = double(k)/double(N-1);
         for (int j = 0; j < N; ++j) {
             pt[1] = double(j)/double(N-1);
-            for (int k = 0; k < N; ++k) {
-                pt[2] = double(k)/double(N-1);
-                testpts[i*N*N + j*N + k] = pt;
+            for (int i = 0; i < N; ++i) {
+                pt[0] = double(i)/double(N-1);
+                testpts[k*N*N + j*N + i] = pt;
 //                 std::cout << pt << std::endl;
             }
         }
     }
     Geometry::JacobianTransposed id(0.0);
     id[0][0] = id[1][1] = id[2][2] = 1.0;
-    for (int i = 0; i < num_pts; ++i) {
+    for (int i = 0; i < num_pts; ++i) { // all refined corners
         BOOST_CHECK_EQUAL(g.global(testpts[i]), testpts[i]);
         BOOST_CHECK_EQUAL(g.local(g.global(testpts[i])), testpts[i]);
-        BOOST_CHECK_EQUAL(g.integrationElement(testpts[i]), 1.0);
+        BOOST_CHECK_EQUAL(g.integrationElement(testpts[i]), 1.0);   // 'MatrixHelperType::template sqrtDetAAT<3, 3>(testpts[i])'
         BOOST_CHECK_EQUAL(g.jacobianTransposed(testpts[i]), id);
         BOOST_CHECK_EQUAL(g.jacobianInverseTransposed(testpts[i]), id);
     }
@@ -177,7 +186,7 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     v = 0.5;
     corners[5][2] = 0.0;
     corners[7][2] = 0.0;
-    
+
     cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg1;
     pg1.reserve(8);
     for (const auto& crn : corners)
@@ -254,26 +263,49 @@ check_coordinates(T c1, T c2)
 void
 check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
                    const cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& refined,
+                   // const cpgrid::DefaultGeometryPolicy& refined_faces,
                    const std::array<int, 3>& cells_per_dim)
 {
+    // Check for faces
+    //
+    // @todo Check amount of refined faces.
+    /* int count_faces = (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1)) // 'bottom/top faces'
+                    + (cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2]) // 'front/back faces'
+                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]);  // 'left/right faces'
+                    BOOST_CHECK_EQUAL(refined_faces.size(), count_faces);*/
+    // @todo Check centroids of refined faces.
+    // @todo Check volume (area) of (corresponding) children faces sum up area of parent face.
+    // @todo Check the corners of the refined faces that coincide with parent face corners.
+
+
     using Geometry = cpgrid::Geometry<3, 3>;
     using GlobalCoordinate = Geometry::GlobalCoordinate;
 
     int count = cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2];
     BOOST_CHECK_EQUAL(refined.size(), count);
 
-    // Check the corners of the refined grid with the parent corners.
-    int idx = 0;
-    for (int k = 0; k < 1; k++) {
-        int slice = cells_per_dim[0] * cells_per_dim[1];
-        for (int j = 0; j < 1; j++) {
-            for (int i = 0; i < 1; i++) {
-                auto& r = refined.get(k * slice + j * cells_per_dim[0] + i);
-                check_coordinates(r.corner(idx), parent.corner(idx));
-                idx++;
-            }
-        }
-    }
+
+    // Check that the corresponding refined corners match the
+    // the parent cell corners.
+    // (k *(cells_per_dim[2]-1)* slice) + (j*(cells_per_dim[1]-1) * cells_per_dim[0]) + (i*cells_per_dim[0]-1)
+    auto& cell_corn0 = refined.get(0); // k=0,j=0,i=0
+    auto& cell_corn1 = refined.get(cells_per_dim[0]-1); // k=0,j=0,i=1
+    auto& cell_corn2 = refined.get((cells_per_dim[1]-1) * cells_per_dim[0]); // k=0,j=1,i=0
+    auto& cell_corn3 = refined.get(((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // k=0,j=1,i=1
+    auto& cell_corn4 = refined.get((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]); // k=1,j=0,i=0
+    auto& cell_corn5 = refined.get(((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]) +(cells_per_dim[0]-1)); // k=1,j=0,i=1
+    auto& cell_corn6 = refined.get(((cells_per_dim[2]-1)*  cells_per_dim[0] * cells_per_dim[1])
+                                   +((cells_per_dim[1]-1) * cells_per_dim[0])); // k=1,j=1,i=0
+    auto& cell_corn7 = refined.get(((cells_per_dim[2]-1)*  cells_per_dim[0] * cells_per_dim[1])
+                                   +((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // k=1,j=1,i=1
+    check_coordinates(cell_corn0.corner(0), parent.corner(0));
+    check_coordinates(cell_corn1.corner(1), parent.corner(1));
+    check_coordinates(cell_corn2.corner(2), parent.corner(2));
+    check_coordinates(cell_corn3.corner(3), parent.corner(3));
+    check_coordinates(cell_corn4.corner(4), parent.corner(4));
+    check_coordinates(cell_corn5.corner(5), parent.corner(5));
+    check_coordinates(cell_corn6.corner(6), parent.corner(6));
+    check_coordinates(cell_corn7.corner(7), parent.corner(7));
 
     // Make sure the corners of neighboring cells overlap.
     for (int k = 0; k < cells_per_dim[2]; k++) {
@@ -343,6 +375,7 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         volume += r.volume();
     }
     BOOST_CHECK_CLOSE(volume, parent.volume(), 1e-6);
+
 }
 
 
@@ -377,7 +410,7 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        g.refine(cells, geometries, ci);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
@@ -385,7 +418,7 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        g.refine(cells, geometries, ci);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
@@ -432,7 +465,7 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        g.refine(cells, geometries, ci);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
@@ -440,7 +473,7 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        std::vector<Geometry> refined = g.refine(cells, geometries, ci);
+        g.refine(cells, geometries, ci);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
