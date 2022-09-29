@@ -445,11 +445,11 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
                 BOOST_REQUIRE(iit->geometry().volume() == siit->geometry().volume());
                 BOOST_REQUIRE(iit.boundary() == siit.boundary());
                 BOOST_REQUIRE(iit.outerNormal({0, 0}) == siit.outerNormal({0, 0}));
-                BOOST_REQUIRE(idSet.id(*iit.inside()) == seqIdSet.id(*siit.inside()));
+                BOOST_REQUIRE(idSet.id(iit.inside()) == seqIdSet.id(siit.inside()));
                 if (iit->neighbor())
                 {
                     assert(siit->neighbor());
-                    BOOST_REQUIRE(idSet.id(*iit.outside()) == seqIdSet.id(*siit.outside()));
+                    BOOST_REQUIRE(idSet.id(iit.outside()) == seqIdSet.id(siit.outside()));
                 }
             }
 
@@ -793,7 +793,7 @@ BOOST_AUTO_TEST_CASE(intersectionOverlap)
             if (isIt->neighbor())
             {
                 GlobalPosition distVec = eIt->geometry().center() -
-                    isIt->outside()->geometry().center();
+                    isIt->outside().geometry().center();
                 // Make sure that Coordinates of an element and its neighbor are not identical
                 BOOST_REQUIRE(distVec.two_norm2()>=1e-8);
             }

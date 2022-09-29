@@ -19,7 +19,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013 Statoil ASA.
+  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
   Copyright 2013 Dr. Blatt - HPC-Simulation-Software & Services
 
   This file is part of The Open Porous Media project  (OPM).
@@ -556,7 +556,6 @@ private:
     friend class Dune::CpGrid;
     template<int> friend class Entity;
     template<int> friend class EntityRep;
-    template<int> friend class EntityPointer;
     friend class Intersection;
     friend class PartitionTypeIndicator;
 };

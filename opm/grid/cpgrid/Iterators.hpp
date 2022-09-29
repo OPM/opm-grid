@@ -15,7 +15,7 @@
 
 /*
 Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-Copyright 2009, 2010 Statoil ASA.
+Copyright 2009, 2010, 2022 Equinor ASA.
 
 This file is part of The Open Porous Media project  (OPM).
 
@@ -52,9 +52,10 @@ namespace Dune
         /// This could have been a random access iterator, perhaps we will
         /// use a facade to do this later.
         template<int cd, PartitionIteratorType pitype>
-        class Iterator : public EntityPointer<cd>
+        class Iterator : public Entity<cd>
         {
         public:
+            using Reference = const Entity<cd>&;
             /// @brief
             /// @todo Doc me!
             /// @param
@@ -75,6 +76,20 @@ namespace Dune
                     EntityRep<cd>::increment();
                 return *this;
             }
+            /// Const member by pointer operator.
+            const Entity<cd>* operator->() const
+            {
+                assert(Entity<cd>::isValid());
+                return (this);
+            }
+
+            /// Const dereferencing operator.
+            const Entity<cd>& operator*() const
+            {
+                assert(Entity<cd>::isValid());
+                return (*this);
+            }
+
         private:
             /// \brief The number of Entities with codim cd.
             int noEntities_;
@@ -85,14 +100,15 @@ namespace Dune
 
 
         /// Only needs to provide interface for doing nothing.
-        class HierarchicIterator : public EntityPointer<0>
+        class HierarchicIterator : public Entity<0>
         {
         public:
+            using Reference = const Entity<0>&;
             /// @brief
             /// @todo Doc me!
             /// @param
             HierarchicIterator(const CpGridData& grid)
-                : EntityPointer<0>(grid, EntityRep<0>::InvalidIndex, true )
+                : Entity<0>(grid, EntityRep<0>::InvalidIndex, true )
             {
             }
 
@@ -103,6 +119,19 @@ namespace Dune
             {
                 OPM_THROW(std::runtime_error, "Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
                 return *this;
+            }
+            /// Const member by pointer operator.
+            const Entity<0>* operator->() const
+            {
+                assert(Entity<0>::isValid());
+                return (this);
+            }
+
+            /// Const dereferencing operator.
+            const Entity<0>& operator*() const
+            {
+                assert(Entity<0>::isValid());
+                return (*this);
             }
         };
 
@@ -147,10 +176,10 @@ namespace cpgrid {
 
 template<int cd, PartitionIteratorType pitype>
 Iterator<cd, pitype>::Iterator(const CpGridData& grid, int index, bool orientation)
-    : EntityPointer<cd>(grid,
-                        // If the partition is empty, goto to end iterator!
-                        EntityRep<cd>(PartitionIteratorRule<pitype>::emptySet?grid.size(cd):index,
-                                      orientation)),
+    : Entity<cd>(grid,
+                 // If the partition is empty, goto to end iterator!
+                 EntityRep<cd>(PartitionIteratorRule<pitype>::emptySet?grid.size(cd):index,
+                               orientation)),
       noEntities_(grid.size(cd))
 {
     if(rule_.fullSet || rule_.emptySet)

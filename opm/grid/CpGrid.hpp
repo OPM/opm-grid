@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2014 Statoil ASA.
+  Copyright 2009, 2010, 2014, 2022 Euinor ASA.
   Copyright 2014, 2015 Dr. Blatt - HPC-Simulartion-Software & Services
   Copyright 2015       NTNU
 
@@ -135,10 +135,7 @@ namespace Dune
             typedef cpgrid::Iterator<cd, All_Partition> LeafIterator;
 
             /// \brief The type of the entity pointer for entities of this codim.
-            typedef cpgrid::EntityPointer<cd> EntityPointer;
-
-            /// \brief The type of the entity pointer for entities of this codim.
-            typedef cpgrid::EntityPointer<cd> EntitySeed;
+            typedef cpgrid::Entity<cd> EntitySeed;
 
             /// \brief Traits associated with a specific grid partition type.
             /// \tparam pitype The type of the grid partition.
@@ -532,13 +529,13 @@ namespace Dune
 
         /// given an EntitySeed (or EntityPointer) return an entity object
         template <int codim>
-        cpgrid::Entity<codim> entity( const cpgrid::EntityPointer< codim >& seed ) const
+        cpgrid::Entity<codim> entity( const cpgrid::Entity< codim >& seed ) const
         {
-            return cpgrid::Entity<codim>( *seed );
+            return seed;
         }
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
-
+x
         /// \brief Mark entity for refinement
         ///
         /// This only works for entities of codim 0.
