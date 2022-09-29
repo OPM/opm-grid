@@ -181,8 +181,13 @@ namespace Dune
         /// \brief The type of the collective communication.
 
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
-    typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using Communication = Dune::Communication<MPICommunicator>;
+    using CollectiveCommunication = Dune::Communication<MPICommunicator>;
+#else
+    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
     using Communication = Dune::CollectiveCommunication<MPICommunicator>;
+#endif
     };
 
     ////////////////////////////////////////////////////////////////////////
@@ -931,7 +936,7 @@ namespace Dune
         }
 
         /// \brief Get the collective communication object.
-        const CollectiveCommunication& comm () const
+        const typename CpGridTraits::Communication& comm () const
         {
             return current_view_data_->ccobj_;
         }

@@ -504,9 +504,14 @@ private:
 
     /// \brief The type of the collective communication.
     typedef MPIHelper::MPICommunicator MPICommunicator;
-    typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
+    #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using Communication = Dune::Communication<MPICommunicator>;
+#else
+    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
+    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
+#endif
     /// \brief Object for collective communication operations.
-    CollectiveCommunication ccobj_;
+    Communication ccobj_;
 
     // Boundary information (optional).
     bool use_unique_boundary_ids_;

@@ -44,8 +44,14 @@ namespace Dune
     typedef typename Traits::IndexSet IndexSet;
     typedef typename Traits::Intersection Intersection;
     typedef typename Traits::IntersectionIterator IntersectionIterator;
-    typedef typename Traits::CollectiveCommunication CollectiveCommunication;
 
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using Communication = typename Traits::Communication;
+    using CollectiveCommunication = Communication; // deprecated
+#else
+    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
+    using Communication = CollectiveCommunication;
+#endif
     template< int codim >
     struct Codim
     : public Traits::template Codim< codim >
@@ -165,7 +171,8 @@ namespace Dune
     typedef Dune::Intersection< const Grid, IntersectionImpl > Intersection;
     typedef Dune::IntersectionIterator< const Grid, IntersectionIteratorImpl, IntersectionImpl > IntersectionIterator;
 
-    typedef typename Grid::CollectiveCommunication CollectiveCommunication;
+    using Communication = typename Grid::Communication;
+    using CollectiveCommunication = Communication;
 
     template< int codim >
     struct Codim

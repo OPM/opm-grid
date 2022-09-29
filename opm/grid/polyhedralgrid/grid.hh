@@ -122,7 +122,12 @@ namespace Dune
       typedef GlobalIdSet  LocalIdSet;
 
       typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
-      typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+      using Communication = Dune::Communication<MPICommunicator>;
+      using CollectiveCommunication = Dune::Communication<MPICommunicator>;
+#else
+      using CollectiveCommunication = CollectiveCommunication< MPICommunicator>;
+#endif
 
       template< PartitionIteratorType pitype >
       struct Partition
@@ -307,7 +312,13 @@ namespace Dune
     typedef typename Traits::ctype ctype;
 
     //! communicator with all other processes having some part of the grid
-    typedef typename Traits::CollectiveCommunication CollectiveCommunication;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using Communication = typename Traits::Communication;
+    using CommunicationType = Communication;
+#else
+    using CollectiveCommunication = typename Traits::CollectiveCommunication;
+    using CommunicationType = CollectiveCommunication;
+#endif
 
     typedef typename Traits :: GlobalCoordinate GlobalCoordinate;
 
@@ -706,7 +717,7 @@ namespace Dune
      *  \note The CollectiveCommunication object returned is identical to the
      *        one returned by the host grid.
      */
-    const CollectiveCommunication &comm () const
+    const CommunicationType &comm () const
     {
       return comm_;
     }
@@ -1659,7 +1670,7 @@ namespace Dune
     UnstructuredGridPtr gridPtr_;
     const UnstructuredGridType& grid_;
 
-    CollectiveCommunication comm_;
+    CommunicationType comm_;
     std::array< int, 3 > cartDims_;
     std::vector< std::vector< GeometryType > > geomTypes_;
     std::vector< std::vector< int > > cellVertices_;

@@ -154,7 +154,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 const WellConnections& well_connections,
                                 std::vector<std::tuple<int,int,char>>& exportList,
                                 std::vector<std::tuple<int,int,char,int>>& importList,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                                const Communication<MPI_Comm>& cc)
+#else
                                 const CollectiveCommunication<MPI_Comm>& cc)
+#endif
 {
     auto no_procs = cc.size();
     auto noCells = parts.size();
@@ -371,7 +375,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 std::vector<std::pair<std::string,bool>>
 computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
                      const std::vector<OpmWellType>& wells,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                     const Communication<MPI_Comm>& cc,
+#else
                      const CollectiveCommunication<MPI_Comm>& cc,
+#endif
                      int root)
 {
     // We need to use well names as only they are consistent.

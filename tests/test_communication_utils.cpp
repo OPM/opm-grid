@@ -23,6 +23,7 @@
 #define BOOST_TEST_MODULE CommunicationUtilities
 #include <boost/test/unit_test.hpp>
 #include <dune/common/parallel/mpihelper.hh>
+#include <dune/common/version.hh>
 #include <opm/grid/common/CommunicationUtils.hpp>
 #include <tuple> // Should be included via CommunicationUtils.hpp but you never know.
 #include <numeric> // Should be included via CommunicationUtils.hpp but you never know.
@@ -182,18 +183,34 @@ void testGatherv(const C& comm)
 
 BOOST_AUTO_TEST_CASE(FakeAllGatherv)
 {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    testAllGatherv(Dune::FakeMPIHelper::getCommunication());
+#else
     testAllGatherv(Dune::FakeMPIHelper::getCollectiveCommunication());
+#endif
 }
 BOOST_AUTO_TEST_CASE(FakeGatherv)
 {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    testGatherv(Dune::FakeMPIHelper::getCommunication());
+#else
     testGatherv(Dune::FakeMPIHelper::getCollectiveCommunication());
+#endif
 }
 BOOST_AUTO_TEST_CASE(AllGatherv)
 {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    testAllGatherv(Dune::MPIHelper::getCommunication());
+#else
     testAllGatherv(Dune::MPIHelper::getCollectiveCommunication());
+#endif
 }
 BOOST_AUTO_TEST_CASE(Gatherv)
 {
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    testGatherv(Dune::MPIHelper::getCommunication());
+#else
     testGatherv(Dune::MPIHelper::getCollectiveCommunication());
+#endif
 }
 

@@ -165,7 +165,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 const WellConnections& well_connections,
                                 std::vector<std::tuple<int,int,char>>& exportList,
                                 std::vector<std::tuple<int,int,char,int>>& importList,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                                const Communication<MPI_Comm>& cc);
+#else
                                 const CollectiveCommunication<MPI_Comm>& cc);
+#endif
 
 /// \brief Computes whether wells are perforating cells on this process.
 /// \param wells_on_proc well indices assigned to each process
@@ -178,7 +182,11 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 std::vector<std::pair<std::string,bool>>
 computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
                      const std::vector<OpmWellType>&  wells,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                     const Communication<MPI_Comm>& cc,
+#else
                      const CollectiveCommunication<MPI_Comm>& cc,
+#endif
                      int root);
 #endif
 } // end namespace cpgrid

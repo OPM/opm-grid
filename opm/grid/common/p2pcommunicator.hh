@@ -149,7 +149,11 @@ public:
     typedef MsgBuffer MessageBufferType ;
 
   protected:
-    typedef CollectiveCommunication< MPICommunicator >   BaseType;
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using BaseType = Dune::Communication<MPICommunicator>;
+#else
+    using BaseType = CollectiveCommunication< MPICommunicator>;
+#endif
     typedef Point2PointCommunicator< MessageBufferType > ThisType;
 
     // starting message tag
