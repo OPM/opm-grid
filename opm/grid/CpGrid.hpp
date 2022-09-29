@@ -182,6 +182,7 @@ namespace Dune
 
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
     typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
+    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
     };
 
     ////////////////////////////////////////////////////////////////////////
