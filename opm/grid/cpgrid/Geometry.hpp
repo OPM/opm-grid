@@ -177,7 +177,7 @@ namespace Dune
             {
 
                 // Meaningless to call jacobianTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, mydimension, coorddimension>();
+                return {};
             }
 
             /// This method is meaningless for singular geometries.
@@ -185,14 +185,14 @@ namespace Dune
             jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
             {
                 // Meaningless to call jacobianInverseTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, coorddimension, mydimension>();
+                return {};
             }
 
             /// This method is meaningless for singular geometries.
             Jacobian
             jacobian(const LocalCoordinate& /*local*/) const
             {
-                return{};
+                return {};
             }
             
             /// This method is meaningless for singular geometries.

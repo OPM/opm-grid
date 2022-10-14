@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2014, 2022 Euinor ASA.
+  Copyright 2009, 2010, 2014, 2022 Equinor ASA.
   Copyright 2014, 2015 Dr. Blatt - HPC-Simulartion-Software & Services
   Copyright 2015       NTNU
 
@@ -180,7 +180,6 @@ namespace Dune
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using Communication = Dune::Communication<MPICommunicator>;
-    using CollectiveCommunication = Dune::Communication<MPICommunicator>;
 #else
     using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
     using Communication = Dune::CollectiveCommunication<MPICommunicator>;
@@ -535,7 +534,7 @@ namespace Dune
         }
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
-x
+
         /// \brief Mark entity for refinement
         ///
         /// This only works for entities of codim 0.
