@@ -180,6 +180,7 @@ namespace Dune
     typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using Communication = Dune::Communication<MPICommunicator>;
+    using CollectiveCommunication = Communication;
 #else
     using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
     using Communication = Dune::CollectiveCommunication<MPICommunicator>;
