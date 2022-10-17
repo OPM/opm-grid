@@ -15,7 +15,7 @@
 
 /*
 Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-Copyright 2009, 2010 Statoil ASA.
+Copyright 2009, 2010, 2022 Equinor ASA.
 
 This file is part of The Open Porous Media project  (OPM).
 
@@ -302,10 +302,10 @@ namespace Dune
                 assert(view_ == e.pgrid_);
 
                 switch (cc) {
-                case 0: return id(*e.subEntity<0>(i));
+                case 0: return id(e.subEntity<0>(i));
                 //case 1: return id(*e.subEntity<1>(i));
                 //case 2: return id(*e.subEntity<2>(i));
-                case 3: return id(*e.subEntity<3>(i));
+                case 3: return id(e.subEntity<3>(i));
                 default: OPM_THROW(std::runtime_error, "Cannot get subId of codimension " << cc);
                 }
                 return -1;

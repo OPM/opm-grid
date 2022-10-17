@@ -19,7 +19,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013 Statoil ASA.
+  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
   Copyright 2013 Dr. Blatt - HPC-Simulation-Software & Services
 
   This file is part of The Open Porous Media project  (OPM).
@@ -504,9 +504,14 @@ private:
 
     /// \brief The type of the collective communication.
     typedef MPIHelper::MPICommunicator MPICommunicator;
-    typedef Dune::CollectiveCommunication<MPICommunicator> CollectiveCommunication;
+    #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    using Communication = Dune::Communication<MPICommunicator>;
+#else
+    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
+    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
+#endif
     /// \brief Object for collective communication operations.
-    CollectiveCommunication ccobj_;
+    Communication ccobj_;
 
     // Boundary information (optional).
     bool use_unique_boundary_ids_;
@@ -551,7 +556,6 @@ private:
     friend class Dune::CpGrid;
     template<int> friend class Entity;
     template<int> friend class EntityRep;
-    template<int> friend class EntityPointer;
     friend class Intersection;
     friend class PartitionTypeIndicator;
 };

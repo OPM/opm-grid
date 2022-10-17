@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2022 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -57,8 +57,6 @@ namespace Dune
     {
     template<int>
     class Entity;
-    template<int>
-    class EntityPointer;
     class CpGridData;
 
         /// @brief
@@ -74,9 +72,8 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             typedef cpgrid::Entity<0> Entity;
-            typedef cpgrid::EntityPointer<0> EntityPointer;
-             typedef cpgrid::Geometry<2,3> Geometry;
-             typedef cpgrid::Geometry<2,3> LocalGeometry;
+            typedef cpgrid::Geometry<2,3> Geometry;
+            typedef cpgrid::Geometry<2,3> LocalGeometry;
             typedef double ctype;
             typedef FieldVector<ctype, 2> LocalCoordinate;
             typedef FieldVector<ctype, 3> GlobalCoordinate;
@@ -145,12 +142,12 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @return
-            EntityPointer inside() const;
+            Entity inside() const;
 
             /// @brief
             /// @todo Doc me!
             /// @return
-            EntityPointer outside() const;
+            Entity outside() const;
 
             /// @brief
             /// @todo Doc me!

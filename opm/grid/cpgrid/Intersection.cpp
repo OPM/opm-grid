@@ -1,3 +1,22 @@
+/*
+Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
+Copyright 2009, 2010, 2022 Equinor ASA.
+
+This file is part of The Open Porous Media project  (OPM).
+
+OPM is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+OPM is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+*/
 #ifdef HAVE_CONFIG_H
 #include"config.h"
 #endif
@@ -162,14 +181,14 @@ FieldVector<Intersection::ctype, 3> Intersection::centerUnitOuterNormal() const
     return pgrid_->face_normals_[faces_of_cell_[subindex_]];
 }
 
-Intersection::EntityPointer Intersection::inside() const
+Intersection::Entity Intersection::inside() const
 {
-    return EntityPointer(*pgrid_, index_, true);
+    return Entity(*pgrid_, index_, true);
 }
 
-Intersection::EntityPointer Intersection::outside() const
+Intersection::Entity Intersection::outside() const
 {
-    return EntityPointer(*pgrid_, nbcell(), true);
+    return Entity(*pgrid_, nbcell(), true);
 }
 } // end namespace cpgrid
 } // end namespace Dune

@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010, 2011 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2011 Statoil ASA.
+  Copyright 2009, 2010, 2011, 2022 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -99,6 +99,8 @@ namespace Dune
 
             /// Type of Jacobian matrix.
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
+            /// Type of inverse of Jacobian matrix.
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverse;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
             /// Type of the inverse of the transposed Jacobian matrix
@@ -170,22 +172,36 @@ namespace Dune
             }
 
             /// This method is meaningless for singular geometries.
-            FieldMatrix<ctype, mydimension, coorddimension>
+            JacobianTransposed
             jacobianTransposed(const LocalCoordinate& /* local */) const
             {
 
                 // Meaningless to call jacobianTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, mydimension, coorddimension>();
+                return {};
             }
 
             /// This method is meaningless for singular geometries.
-            FieldMatrix<ctype, coorddimension, mydimension>
+            JacobianInverseTransposed
             jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
             {
                 // Meaningless to call jacobianInverseTransposed() on singular geometries. But we need to make DUNE happy.
-                return FieldMatrix<ctype, coorddimension, mydimension>();
+                return {};
             }
 
+            /// This method is meaningless for singular geometries.
+            Jacobian
+            jacobian(const LocalCoordinate& /*local*/) const
+            {
+                return {};
+            }
+            
+            /// This method is meaningless for singular geometries.
+            JacobianInverse
+            jacobianInverse(const LocalCoordinate& /*local*/) const
+            {
+                return {};
+            }
+            
             /// The mapping implemented by this geometry is constant, therefore affine.
             bool affine() const
             {
@@ -224,6 +240,8 @@ namespace Dune
 
             /// Type of Jacobian matrix.
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
+            /// Type of inverse of Jacobian matrix.
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverse;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
             /// Type of the inverse of the transposed Jacobian matrix
@@ -420,6 +438,20 @@ namespace Dune
                 return Jti;
             }
 
+            /// @brief The jacobian.
+            Jacobian
+            jacobian(const LocalCoordinate& local_coord) const
+            {
+                return jacobianTransposed(local_coord).transposed();
+            }
+            
+            /// @brief The inverse of the jacobian
+            JacobianInverse
+            jacobianInverse(const LocalCoordinate& local_coord) const
+            {
+                return jacobianInverseTransposed(local_coord).transposed();
+            }
+            
             /// The mapping implemented by this geometry is not generally affine.
             bool affine() const
             {
@@ -609,6 +641,8 @@ namespace Dune
 
             /// Type of Jacobian matrix.
             typedef FieldMatrix< ctype, coorddimension, mydimension >         Jacobian;
+            /// Type of Jacobian matrix.
+            typedef FieldMatrix< ctype, coorddimension, mydimension >         JacobianInverse;
             /// Type of transposed Jacobian matrix.
             typedef FieldMatrix< ctype, mydimension, coorddimension >         JacobianTransposed;
             /// Type of the inverse of the transposed Jacobian matrix
@@ -696,6 +730,20 @@ namespace Dune
                 OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
             }
 
+            /// @brief The jacobian.
+            Jacobian
+            jacobian(const LocalCoordinate& /*local*/) const
+            {
+                return jacobianTransposed({}).transposed();
+            }
+            
+            /// @brief The inverse of the jacobian
+            JacobianInverse
+            jacobianInverse(const LocalCoordinate& /*local*/) const
+            {
+                return jacobianInverseTransposed({}).transposed();
+            }
+            
             /// Since integrationElement() is constant, returns true.
             bool affine() const
             {

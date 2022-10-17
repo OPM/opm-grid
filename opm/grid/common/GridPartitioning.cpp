@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013 Statoil ASA.
+  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
   Copyright 2013, 2015 Dr. Markus Blatt - HPC-Simulation-Software & Services
   Copyright 2015       NTNU
   Copyright 2020, 2021 OPM-OP AS
@@ -100,12 +100,12 @@ namespace Dune
                                         std::vector<int>& cell_colour)
         {
             const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-            int my_index = ix.index(*c);
+            int my_index = ix.index(c);
             cell_colour[my_index] = colour;
             // For each neighbour...
-            for (CpGrid::LeafIntersectionIterator it = c->ileafbegin(); it != c->ileafend(); ++it) {
+            for (CpGrid::LeafIntersectionIterator it = c.ileafbegin(); it != c.ileafend(); ++it) {
                 if (it->neighbor()) {
-                    int nb_index = ix.index(*(it->outside()));
+                    int nb_index = ix.index(it->outside());
                     if (cell_part[my_index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
                         colourMyComponentRecursive(grid, it->outside(), colour, cell_part, cell_colour);
                     }
@@ -137,7 +137,7 @@ namespace Dune
                 while (cur != end) {
                     bool visit_nb = false;
                     if (cur->neighbor()) {
-                        int nb_index = ix.index(*(cur->outside()));
+                        int nb_index = ix.index(cur->outside());
                         if (cell_part[index] == cell_part[nb_index] && cell_colour[nb_index] == -1) {
                             visit_nb = true;
                         }
@@ -145,9 +145,9 @@ namespace Dune
                     if (visit_nb) {
                         NbIter cur_cp = cur;
                         v_stack.push(std::make_pair(index, std::make_pair(++cur, end)));
-                        index = ix.index(*(cur_cp->outside()));
-                        cur = cur_cp->outside()->ileafbegin();
-                        end = cur_cp->outside()->ileafend();
+                        index = ix.index(cur_cp->outside());
+                        cur = cur_cp->outside().ileafbegin();
+                        end = cur_cp->outside().ileafend();
                         cell_colour[index] = colour;
                     } else {
                         ++cur;
@@ -258,11 +258,11 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     const int num_from_subs = from.subEntities(CpGrid::dimension);
     for ( int i = 0; i < num_from_subs ; i++ )
     {
-        int mypoint = ix.index(*from.subEntity<CpGrid::dimension>(i));
+        int mypoint = ix.index(from.subEntity<CpGrid::dimension>(i));
         const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
         for ( int j = 0; j < num_nb_subs; j++)
         {
-            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(j));
+            int otherpoint = ix.index(neighbor.subEntity<CpGrid::dimension>(j));
             if ( mypoint == otherpoint )
             {
                 cell_overlap[nb_index].insert(owner);
@@ -297,11 +297,11 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     const int num_from_subs = from.subEntities(CpGrid::dimension);
     for ( int i = 0; i < num_from_subs ; i++ )
     {
-        int mypoint = ix.index(*from.subEntity<CpGrid::dimension>(i));
+        int mypoint = ix.index(from.subEntity<CpGrid::dimension>(i));
         const int num_nb_subs = neighbor.subEntities(CpGrid::dimension);
         for ( int j = 0; j < num_nb_subs; j++)
         {
-            int otherpoint = ix.index(*neighbor.subEntity<CpGrid::dimension>(j));
+            int otherpoint = ix.index(neighbor.subEntity<CpGrid::dimension>(j));
             if ( mypoint == otherpoint )
             {
                 // Note: multiple adds for same process are possible
@@ -320,7 +320,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
             if ( iit->neighbor() ) {
-                int nb_index = ix.index(*(iit->outside()));
+                int nb_index = ix.index(iit->outside());
                 if ( cell_part[nb_index]!=owner )
                 {
                     cell_overlap[nb_index].insert(owner);
@@ -328,20 +328,20 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                     if ( recursion_deps>0 )
                     {
                         // Add another layer
-                        addOverlapLayer(grid, nb_index, *(iit->outside()), owner,
+                        addOverlapLayer(grid, nb_index, iit->outside(), owner,
                                         cell_part, cell_overlap, recursion_deps-1);
                     }
                     else
                     {
                         // Add cells to the overlap that just share a corner with e.
-                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
-                             iit2 != iit->outside()->ileafend(); ++iit2)
+                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
+                             iit2 != iit->outside().ileafend(); ++iit2)
                         {
                            if ( iit2->neighbor() )
                            {
-                               int nb_index2 = ix.index(*(iit2->outside()));
+                               int nb_index2 = ix.index(iit2->outside( ));
                                if( cell_part[nb_index2]==owner ) continue;
-                               addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
+                               addOverlapCornerCell(grid, owner, e, iit2->outside(),
                                                     cell_part, cell_overlap);
                            }
                        }
@@ -383,7 +383,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
             if ( iit->neighbor() ) {
-                int nb_index = ix.index(*(iit->outside()));
+                int nb_index = ix.index(iit->outside());
                 if ( cell_part[nb_index]!=owner )
                 {
                     // Note: multiple adds for same process are possible
@@ -392,20 +392,20 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                     if ( recursion_deps>0 )
                     {
                         // Add another layer
-                        addOverlapLayer(grid, nb_index, *(iit->outside()), owner,
+                        addOverlapLayer(grid, nb_index, iit->outside(), owner,
                                         cell_part, exportList, addCornerCells, recursion_deps-1);
                     }
                     else if (addCornerCells)
                     {
                         // Add cells to the overlap that just share a corner with e.
-                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
-                             iit2 != iit->outside()->ileafend(); ++iit2)
+                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
+                             iit2 != iit->outside().ileafend(); ++iit2)
                         {
                             if ( iit2->neighbor() )
                             {
-                                int nb_index2 = ix.index(*(iit2->outside()));
+                                int nb_index2 = ix.index(iit2->outside());
                                 if( cell_part[nb_index2]!=owner ) {
-                                    addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
+                                    addOverlapCornerCell(grid, owner, e, iit2->outside(),
                                                          cell_part, exportList);
                                 }
                             }
@@ -432,7 +432,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                 // zero transmissibility -> no flux over the face -> zero offdiagonal.
                 // This is a reservoir simulation spesific thing that reduce parallel overhead.
                 if ( trans[faceId] != 0.0 ) {
-                    int nb_index = ix.index(*(iit->outside()));
+                    int nb_index = ix.index(iit->outside());
                     if ( cell_part[nb_index]!=owner )
                     {
                         // Note: multiple adds for same process are possible
@@ -447,14 +447,14 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                         else if (addCornerCells)
                         {
                             // Add cells to the overlap that just share a corner with e.
-                            for (CpGrid::LeafIntersectionIterator iit2 = iit->outside()->ileafbegin();
-                                 iit2 != iit->outside()->ileafend(); ++iit2)
+                            for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
+                                 iit2 != iit->outside().ileafend(); ++iit2)
                             {
                                 if ( iit2->neighbor() )
                                 {
-                                    int nb_index2 = ix.index(*(iit2->outside()));
+                                    int nb_index2 = ix.index(iit2->outside());
                                     if( cell_part[nb_index2]!=owner ) {
-                                        addOverlapCornerCell(grid, owner, e, *(iit2->outside()),
+                                        addOverlapCornerCell(grid, owner, e, iit2->outside(),
                                                              cell_part, exportList);
                                     }
                                 }
@@ -469,7 +469,11 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                        const Communication<Dune::MPIHelper::MPICommunicator>& cc,
+#else
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
+#endif
                         [[maybe_unused]] bool addCornerCells,
                         [[maybe_unused]] const double* trans, int layers)
     {

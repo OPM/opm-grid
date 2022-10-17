@@ -110,6 +110,11 @@ namespace Dune
     //! type of jacobian transposed
     typedef FieldMatrix< ctype, mydim, cdim > JacobianTransposed;
 
+    //! type of jacobian inverse transposed
+    using JacobianInverse = FieldMatrix< ctype, mydim, cdim >;
+
+    //! type of jacobian transposed
+    using Jacobian = FieldMatrix< ctype, cdim, mydim >;
 
     typedef Dune::Impl::FieldMatrixHelper< ctype >  MatrixHelperType;
 
@@ -211,6 +216,21 @@ namespace Dune
 
       DUNE_THROW(NotImplemented,"jacobianInverseTransposed not implemented");
       return JacobianInverseTransposed( 0 );
+    }
+
+
+    /// @brief The jacobian.
+    Jacobian
+    jacobian(const LocalCoordinate&  local ) const
+    {
+      return jacobianTransposed(local).transposed();
+    }
+
+    /// @brief The inverse of the jacobian
+    JacobianInverse
+    jacobianInverse(const LocalCoordinate& local) const
+    {
+      return jacobianInverseTransposed(local).transposed();
     }
 
     ExtraData data() const { return storage_.data(); }

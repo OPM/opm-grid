@@ -105,14 +105,14 @@ void evolve(const G& grid, const M& mapper, V& c, double t, double& dt)
 
                 // compute flux from one side only
                 // this should become easier with the new IntersectionIterator functionality!
-                if (it->level()>outside->level() ||
-                        (it->level()==outside->level() && indexi<indexj))
+                if (it->level()>outside.level() ||
+                        (it->level()==outside.level() && indexi<indexj))
                 {
                     // compute factor in neighbor
-                    Dune::GeometryType nbgt = outside->type();
+                    Dune::GeometryType nbgt = outside.type();
                     const Dune::FieldVector<ct,dim>&
                     nblocal = Dune::ReferenceElements<ct,dim>::general(nbgt).position(0,0);
-                    double nbvolume = outside->geometry().integrationElement(nblocal)
+                    double nbvolume = outside.geometry().integrationElement(nblocal)
                                       *Dune::ReferenceElements<ct,dim>::general(nbgt).volume();
 
                     double nbfactor = velocity*integrationOuterNormal/nbvolume;

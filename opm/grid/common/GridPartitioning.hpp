@@ -104,7 +104,11 @@ namespace Dune
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
+#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+                        const Communication<Dune::MPIHelper::MPICommunicator>& cc,
+#else
                         const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
+#endif
                         bool addCornerCells, const double* trans, int layers = 1);
 
 namespace cpgrid

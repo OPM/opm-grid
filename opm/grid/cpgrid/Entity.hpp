@@ -15,7 +15,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010 Statoil ASA.
+  Copyright 2009, 2010, 2022 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -48,18 +48,12 @@ namespace Dune
     namespace cpgrid
     {
 
-       template <int> class EntityPointer;
        template<int,int> class Geometry;
        template<int,PartitionIteratorType> class Iterator;
        class IntersectionIterator;
        class HierarchicIterator;
        class CpGridData;
        class LevelGlobalIdSet;
-
-        /// @brief
-        /// @todo Doc me!
-        /// @tparam
-        template <int codim> class EntityPointer;
 
 
         /// @brief
@@ -79,12 +73,8 @@ namespace Dune
             enum { mydimension = dimension - codimension };
             enum { dimensionworld = 3 };
 
-
-            typedef cpgrid::EntityPointer<codim> EntityPointerType;
-
             // the official DUNE names
-            typedef EntityPointerType    EntityPointer;
-            typedef EntityPointerType    EntitySeed;
+            typedef Entity    EntitySeed;
 
             /// @brief
             /// @todo Doc me!
@@ -92,7 +82,6 @@ namespace Dune
             template <int cd>
             struct Codim
             {
-                typedef cpgrid::EntityPointer<cd> EntityPointer;
                 typedef cpgrid::Entity<cd> Entity;
             };
 
@@ -191,7 +180,7 @@ namespace Dune
 
             /// Obtain subentity.
             template <int cc>
-            typename Codim<cc>::EntityPointer subEntity(int i) const;
+            typename Codim<cc>::Entity subEntity(int i) const;
 
             /// Start iterator for the cell-cell intersections of this entity.
             inline LevelIntersectionIterator ilevelbegin() const;
@@ -231,9 +220,9 @@ namespace Dune
 
 
             /// Dummy, returning this.
-            EntityPointerType father() const
+            Entity father() const
             {
-                return EntityPointerType(*this);
+                return *this;
             }
 
 
@@ -269,67 +258,6 @@ namespace Dune
             const CpGridData* pgrid_;
         };
 
-
-
-
-        /// \brief Class representing a pointer to an entity.
-        /// Implementation note:
-        /// Since our entities are quite lightweight, we have chosen
-        /// to implement EntityPointer by inheritance from
-        /// Entity. Thus all dereferencing operators return the object
-        /// itself as an Entity.
-        template <int codim>
-        class EntityPointer : public cpgrid::Entity<codim>
-        {
-            friend class LevelGlobalIdSet;
-        public:
-            typedef cpgrid::Entity<codim> Entity;
-            typedef const Entity& Reference;
-
-            /// Construction empty entity pointer
-            EntityPointer() : Entity()
-            {
-            }
-
-            /// Construction from entity.
-            explicit EntityPointer(const Entity& e)
-                : Entity(e)
-            {
-            }
-
-            /// Constructor taking a grid and an entity representation.
-            EntityPointer(const CpGridData& grid, EntityRep<codim> entityrep)
-                : Entity(grid, entityrep)
-            {
-            }
-
-            /// Constructor taking a grid, entity index and orientation.
-            EntityPointer(const CpGridData& grid, int index_arg, bool orientation_arg)
-                : Entity(grid, index_arg, orientation_arg)
-            {
-            }
-
-            /// Const member by pointer operator.
-            const Entity* operator->() const
-            {
-                assert(Entity::isValid());
-                return (this);
-            }
-
-            /// Const dereferencing operator.
-            const Entity& operator*() const
-            {
-                assert(Entity::isValid());
-                return (*this);
-            }
-
-
-            /// Minimizes memory usage.
-            /// Nothing to do in our case.
-            void compactify()
-            {
-            }
-        };
     } // namespace cpgrid
 } // namespace Dune
 
@@ -437,17 +365,17 @@ const typename Entity<codim>::Geometry& Entity<codim>::geometry() const
 
 template <int codim>
 template <int cc>
-typename Entity<codim>::template Codim<cc>::EntityPointer Entity<codim>::subEntity(int i) const
+typename Entity<codim>::template Codim<cc>::Entity Entity<codim>::subEntity(int i) const
 {
     static_assert(codim == 0, "");
     if (cc == 0) {
         assert(i == 0);
-        typename Codim<cc>::EntityPointer se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
+        typename Codim<cc>::Entity se(*pgrid_, EntityRep<codim>::index(), EntityRep<codim>::orientation());
         return se;
     } else if (cc == 3) {
         assert(i >= 0 && i < 8);
         int corner_index = pgrid_->cell_to_point_[EntityRep<codim>::index()][i];
-        typename Codim<cc>::EntityPointer se(*pgrid_, corner_index, true);
+        typename Codim<cc>::Entity se(*pgrid_, corner_index, true);
         return se;
     } else {
         OPM_THROW(std::runtime_error, "No subentity exists of codimension " << cc);
