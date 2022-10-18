@@ -126,7 +126,7 @@ namespace Dune
       using Communication = Dune::Communication<MPICommunicator>;
       using CollectiveCommunication = Dune::Communication<MPICommunicator>;
 #else
-      using CollectiveCommunication = CollectiveCommunication< MPICommunicator>;
+      using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
 #endif
 
       template< PartitionIteratorType pitype >
@@ -317,6 +317,7 @@ namespace Dune
     using CommunicationType = Communication;
 #else
     using CollectiveCommunication = typename Traits::CollectiveCommunication;
+    using Communication = CollectiveCommunication;
     using CommunicationType = CollectiveCommunication;
 #endif
 

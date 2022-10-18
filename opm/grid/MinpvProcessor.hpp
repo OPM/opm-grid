@@ -25,6 +25,9 @@
 #include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <array>
+#include <cstddef>
+#include <map>
+#include <vector>
 
 namespace Opm
 {
