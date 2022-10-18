@@ -762,7 +762,7 @@ namespace Dune
                 // "global_refined_cells"'s size is cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2].
                 // To build each global refined cell, we need
                 // 1. its global refined CENTER
-                // 2. its VOLUME [available in "global_refined_cell_volumes"
+                // 2. its VOLUME
                 // 3. all global refined corners [available in "global_refined_corners"]
                 // 4. indices of its 8 corners [available in "global_refined_corner_indices"]
                 //
@@ -797,10 +797,8 @@ namespace Dune
                 // the 6 corners of the tetrahedron as arguments. Summing up the 24 volumes,
                 // we get the volumne of the hexahedorn (global refined 'cell').
                 //
-                // Vector to store the volumes of the global refined 'cells'.
-                std::vector<double> global_refined_cell_volumes;
-                // Determine the size of "global_refined_cell_volumes" (same as total amount of refined cells).
-                global_refined_cell_volumes.resize(cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2]);
+                // Sum of all the volumes of all the (children) global refined cells.
+                double sum_all_global_refined_cell_volumes = 0.0;
                 //
                 // For each (global refined 'cell') hexahedron, to create 24 tetrahedra and their volumes,
                 // we introduce
@@ -920,7 +918,7 @@ namespace Dune
                             } // end face-for-loop
                             // Add the volume of the hexahedron (global refined 'cell')
                             // to the container with of all volumes of all the refined cells.
-                            global_refined_cell_volumes[global_refined_cell_idx] = global_refined_cell_volume;
+                            sum_all_global_refined_cell_volumes += global_refined_cell_volume;
                             // Create a pointer to the first element of "global_refined_cell8corners_indices_storage"
                             // (required as the fourth argement to construct a Geometry<3,3> type object).
                             int* indices_storage_ptr = global_refined_cell8corners_indices_storage[global_refined_cell_idx].data();
@@ -935,11 +933,6 @@ namespace Dune
                 } // end k-for-loop
                 // Rescale all volumes if the sum of volume of all the global refined 'cells' does not match the
                 // volume of the 'parent cell'.
-                // Sum of all the volumes of all the (children) global refined cells.
-                double sum_all_global_refined_cell_volumes = 0.0;
-                for (auto& volume : global_refined_cell_volumes) {
-                    sum_all_global_refined_cell_volumes += volume;
-                }
                 // Compare the sum of all the volumes of all refined cells with 'parent cell' volume.
                 if (std::fabs(sum_all_global_refined_cell_volumes - this->volume())
                     > std::numeric_limits<Geometry<3, cdim>::ctype>::epsilon()) {
