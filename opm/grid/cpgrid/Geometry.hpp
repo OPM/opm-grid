@@ -351,32 +351,9 @@ namespace Dune
                 return true;
             }
 
-            /* @todiscuss Possible re-definition of the constructor
-            /// @brief Construct from centroid, volume,
-            ///        corners, and '4 corner indices per face'
-            /// @param pos the centroid of the entity
-            /// @param vol the volume(area) of the entity
-            /// @param allcorners array of all corner positions in the grid
-            /// @param face4corners_indices array of 4 indices into allcorners array.
-            Geometry(const GlobalCoordinate& pos,
-                     ctype vol,
-                     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners,
-                     const int* face4corners_indices)
-                : pos_(pos), vol_(vol), allcorners_(allcorners.data()), cor_idx_(face4corners_indices)
-            {
-                assert(allcorners_ && corner_indices);
-            }
-            /// Default constructor, giving a non-valid geometry.
-            Geometry()
-                : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
-            {
-            }*/
-
         private:
             GlobalCoordinate pos_;
             ctype vol_;
-            //const cpgrid::Geometry<0, 3>* allcorners_; @todiscuss
-            // const int* cor_idx_;
         };
 
 
@@ -643,7 +620,6 @@ namespace Dune
             void refine(const std::array<int,3>& cells_per_dim,
                         DefaultGeometryPolicy& all_geom,
                         std::vector<std::array<int,8>>&  global_refined_cell8corners_indices_storage)
-            // std::vector<std::array<int,4>>& global_refined_face4corners_indices_storage) @todiscuss potential extra argument
             {
                 EntityVariableBase<cpgrid::Geometry<0,3>>& global_refined_corners =
                     all_geom.geomVector(std::integral_constant<int,3>());
@@ -770,10 +746,6 @@ namespace Dune
                                     global_refined_face_area += std::fabs(simplex_volume(trian_corners));
                                 } // end edge-for-loop
                                 //
-                                /*/// THINK ABOUT CHANGES IN THE FACE CONSTRUCTOR
-                                // Create a pointer to the first element of "global_refined_face4corners_indices_storage"
-                                // (required as the fourth argement to construct a Geometry<2,3> type object).
-                                int* indices_storage_ptr = global_refined_face4corners_indices_storage[global_refined_face_idx].data(); */
                                 //
                                 // Construct the Geometry<2,3> of the global refined face.
                                 global_refined_faces[idx] = Geometry<2,cdim>(this->global(local_refined_face_centroid),
