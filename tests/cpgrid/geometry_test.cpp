@@ -286,18 +286,19 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
 
 
     // Check that the corresponding refined corners match the
-    // the parent cell corners.
-    // (k *(cells_per_dim[2]-1)* slice) + (j*(cells_per_dim[1]-1) * cells_per_dim[0]) + (i*cells_per_dim[0]-1)
-    auto& cell_corn0 = refined.get(0); // k=0,j=0,i=0
-    auto& cell_corn1 = refined.get(cells_per_dim[0]-1); // k=0,j=0,i=1
-    auto& cell_corn2 = refined.get((cells_per_dim[1]-1) * cells_per_dim[0]); // k=0,j=1,i=0
-    auto& cell_corn3 = refined.get(((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // k=0,j=1,i=1
-    auto& cell_corn4 = refined.get((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]); // k=1,j=0,i=0
-    auto& cell_corn5 = refined.get(((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]) +(cells_per_dim[0]-1)); // k=1,j=0,i=1
+    // the parent cell corners. Notice that 'each parent corner' coincide with
+    // one refined corner of one of (at most 8 different) refined cells.
+    // (l *(cells_per_dim[2]-1)* slice) + (m*(cells_per_dim[1]-1) * cells_per_dim[0]) + (n*cells_per_dim[0]-1)
+    auto& cell_corn0 = refined.get(0); // l=0,m=0,n=0
+    auto& cell_corn1 = refined.get(cells_per_dim[0]-1); // l=0,m=0,n=1
+    auto& cell_corn2 = refined.get((cells_per_dim[1]-1) * cells_per_dim[0]); // l=0,m=1,n=0
+    auto& cell_corn3 = refined.get(((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // l=0,m=1,n=1
+    auto& cell_corn4 = refined.get((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]); // l=1,m=0,n=0
+    auto& cell_corn5 = refined.get(((cells_per_dim[2]-1)*cells_per_dim[0] * cells_per_dim[1]) +(cells_per_dim[0]-1)); // l=1,m=0,n=1
     auto& cell_corn6 = refined.get(((cells_per_dim[2]-1)*  cells_per_dim[0] * cells_per_dim[1])
-                                   +((cells_per_dim[1]-1) * cells_per_dim[0])); // k=1,j=1,i=0
+                                   +((cells_per_dim[1]-1) * cells_per_dim[0])); // l=1,m=1,n=0
     auto& cell_corn7 = refined.get(((cells_per_dim[2]-1)*  cells_per_dim[0] * cells_per_dim[1])
-                                   +((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // k=1,j=1,i=1
+                                   +((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // l=1,m=1,n=1
     check_coordinates(cell_corn0.corner(0), parent.corner(0));
     check_coordinates(cell_corn1.corner(1), parent.corner(1));
     check_coordinates(cell_corn2.corner(2), parent.corner(2));
@@ -349,14 +350,16 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         check_coordinates(r.center(), center);
     }
 
+    //  @todo Current Geometry.hpp does not pass this test:
     // Check that the weighted mean of all centers equals the parent center
     GlobalCoordinate center = {0.0, 0.0, 0.0};
     for (auto r : refined) {
         for (int c = 0; c < 3; c++) {
-            center[c] += r.center()[c] * r.volume() / parent.volume();
+            center[c] += r.center()[c] * r.volume()
+                / parent.volume();
         }
     }
-    check_coordinates(parent.center(), center);
+    check_coordinates(parent.center(), center); 
 
     // Check that mean of all corners equals the center of the parent.
     center = {0.0, 0.0, 0.0};
