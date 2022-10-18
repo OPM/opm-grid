@@ -386,7 +386,7 @@ public:
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using CommunicationType = Communication<MPI_Comm>;
 #else
-    using CommunicationType = CollectiveCommunication<MPI_Comm>& cc;
+    using CommunicationType = CollectiveCommunication<MPI_Comm>;
 #endif
 
     ZoltanSerialPartitioner(const CpGrid& _cpgrid,

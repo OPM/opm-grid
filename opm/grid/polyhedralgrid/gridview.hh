@@ -49,7 +49,7 @@ namespace Dune
     using Communication = typename Traits::Communication;
     using CollectiveCommunication = Communication; // deprecated
 #else
-    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
+    using CollectiveCommunication = Dune::CollectiveCommunication<MPI_Comm>;
     using Communication = CollectiveCommunication;
 #endif
     template< int codim >
