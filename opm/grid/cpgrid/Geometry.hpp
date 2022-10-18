@@ -634,8 +634,6 @@ namespace Dune
                 // Determine the size of the vector containing all the corners
                 // of all the global refined cells (children cells).
                 global_refined_corners.resize((cells_per_dim[0] + 1) *(cells_per_dim[1] + 1) * (cells_per_dim[2] + 1));
-                // Vector to store the indices of all the global refined corners.
-                std::vector<int> global_refined_corner_indices;
                 // The nummbering starts at the botton, so k=0 (z-axis), and j=0 (y-axis), i=0 (x-axis).
                 // Then, increasing k ('going up'), followed by increasing i ('going right->'),
                 // and finally, increasing j ('going back'). This order criteria for corners
@@ -647,8 +645,6 @@ namespace Dune
                             // Compute the index of each global refined corner associated with 'jik'.
                             int global_refined_corner_idx =
                                 (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) +k;
-                            // Incorporate the index in "global_refined_corner_indices".
-                            global_refined_corner_indices.push_back(global_refined_corner_idx);
                             // Compute the local refined corner of the unit/reference cube associated with 'jik'.
                             const LocalCoordinate& local_refined_corner = {
                                 double(i)/cells_per_dim[0], double(j)/cells_per_dim[1], double(k)/cells_per_dim[2] };
