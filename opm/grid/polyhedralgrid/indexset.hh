@@ -6,6 +6,7 @@
 #include <vector>
 
 #include <dune/common/typetraits.hh>
+#include <dune/common/version.hh>
 
 #include <dune/grid/common/gridenums.hh>
 #include <dune/grid/common/indexidset.hh>
