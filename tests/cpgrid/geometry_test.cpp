@@ -27,9 +27,10 @@
 #else
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
-#include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/grid/cpgrid/Geometry.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -410,18 +411,26 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
 
     using cpgrid::DefaultGeometryPolicy;
     {
+        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
+        Opm::SparseTable<int> face_to_point;
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        g.refine(cells, geometries, ci);
+        //cpgrid::CpGridData child_grid;
+        g.refine(cells, geometries, ci,
+                 cell_to_face, face_to_point);// child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
     {
+        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
+        Opm::SparseTable<int> face_to_point;
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        g.refine(cells, geometries, ci);
+        cpgrid::CpGridData child_grid;
+        g.refine(cells, geometries, ci,
+                 cell_to_face, face_to_point);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
@@ -465,18 +474,26 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
     using cpgrid::DefaultGeometryPolicy;
 
     {
+        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
+        Opm::SparseTable<int> face_to_point;
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        g.refine(cells, geometries, ci);
+        cpgrid::CpGridData child_grid;
+        g.refine(cells, geometries, ci,
+                 cell_to_face, face_to_point);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
     {
+        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
+        Opm::SparseTable<int> face_to_point;
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        g.refine(cells, geometries, ci);
+        cpgrid::CpGridData child_grid;
+        g.refine(cells, geometries, ci,
+                 cell_to_face, face_to_point);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }

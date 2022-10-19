@@ -49,8 +49,10 @@
 
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
+#include <opm/grid/cpgrid/OrientedEntityTable.hpp>
 #include <opm/grid/common/Volumes.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
+#include <opm/grid/utility/SparseTable.hpp>
 
 #include <opm/grid/utility/ErrorMacros.hpp>
 
@@ -615,12 +617,34 @@ namespace Dune
              *
              * @param cells_per_dim                                The number of sub-cells in each direction,
              * @param all_geom                                     Geometry Policy for the refined geometries. Those will be added there.
+             * @param cell_to_face                                 Mapping from cell to oriented faces.
+             *                                                     later be used to construct inverse map
+             *                                                     with makeInverseRelation.
+             * @param face_to_point                                Map from face to its points.
+             *
              * @param global_refined_cell8corners_indices_storage  A vector to store the indices of the 8 corners of each new cell.
              */
             void refine(const std::array<int,3>& cells_per_dim,
                         DefaultGeometryPolicy& all_geom,
-                        std::vector<std::array<int,8>>&  global_refined_cell8corners_indices_storage)
+                        std::vector<std::array<int,8>>&  global_refined_cell8corners_indices_storage,
+                        cpgrid::OrientedEntityTable<0, 1>& cell_to_face,
+                        Opm::SparseTable<int>& face_to_point)
+            //cpgrid::CpGridData& child_grid)
+            // Don't CpGridData
             {
+                // SOme fake code to demonstrate the usage
+                int next_row_index = face_to_point.size();
+                // Points for next_row_index
+                std::vector<int> points_of_one_face = { 0, 4, 8};
+                // append row with index next_row_index
+                face_to_point.appendRow(points_of_one_face.begin(), points_of_one_face.end());
+                // Now to the OrientEntityTable. Not sure how the orientation is correct, yet.
+                using cpgrid::EntityRep;
+                // first value is index, second is orientation
+                // Still have to find out what the orientation should be.
+                std::vector<cpgrid::EntityRep<1>> faces_of_one_cell = {{3, true}, {4, false}};
+                cell_to_face.appendRow(faces_of_one_cell.begin(), faces_of_one_cell.end());
+                // end fake
                 EntityVariableBase<cpgrid::Geometry<0,3>>& global_refined_corners =
                     all_geom.geomVector(std::integral_constant<int,3>());
                 EntityVariableBase<cpgrid::Geometry<2,3>>& global_refined_faces =
