@@ -621,36 +621,29 @@ namespace Dune
              *                                                     later be used to construct inverse map
              *                                                     with makeInverseRelation.
              * @param face_to_point                                Map from face to its points.
+             * @param face_to_cell                                 Map from face to its neighboring cells.
              *
              * @param global_refined_cell8corners_indices_storage  A vector to store the indices of the 8 corners of each new cell.
              */
+            typedef Dune::FieldVector<double,3> PointType;
             void refine(const std::array<int,3>& cells_per_dim,
                         DefaultGeometryPolicy& all_geom,
                         std::vector<std::array<int,8>>&  global_refined_cell8corners_indices_storage,
-                        cpgrid::OrientedEntityTable<0, 1>& cell_to_face,
-                        Opm::SparseTable<int>& face_to_point)
-            //cpgrid::CpGridData& child_grid)
-            // Don't CpGridData
+                        cpgrid::OrientedEntityTable<0,1>& cell_to_face,
+                        Opm::SparseTable<int>& face_to_point,
+                        cpgrid::OrientedEntityTable<1,0>& face_to_cell,
+                        cpgrid::EntityVariable<enum face_tag, 1>& global_refined_face_tags,
+                        cpgrid::SignedEntityVariable<PointType, 1>& global_refined_face_normals)
             {
-                // SOme fake code to demonstrate the usage
-                int next_row_index = face_to_point.size();
-                // Points for next_row_index
-                std::vector<int> points_of_one_face = { 0, 4, 8};
-                // append row with index next_row_index
-                face_to_point.appendRow(points_of_one_face.begin(), points_of_one_face.end());
-                // Now to the OrientEntityTable. Not sure how the orientation is correct, yet.
-                using cpgrid::EntityRep;
-                // first value is index, second is orientation
-                // Still have to find out what the orientation should be.
-                std::vector<cpgrid::EntityRep<1>> faces_of_one_cell = {{3, true}, {4, false}};
-                cell_to_face.appendRow(faces_of_one_cell.begin(), faces_of_one_cell.end());
-                // end fake
                 EntityVariableBase<cpgrid::Geometry<0,3>>& global_refined_corners =
                     all_geom.geomVector(std::integral_constant<int,3>());
                 EntityVariableBase<cpgrid::Geometry<2,3>>& global_refined_faces =
                     all_geom.geomVector(std::integral_constant<int,1>());
                 EntityVariableBase<cpgrid::Geometry<3,3>>& global_refined_cells =
                     all_geom.geomVector(std::integral_constant<int,0>());
+                EntityVariableBase<enum face_tag>& mutable_face_tags = global_refined_face_tags;
+                EntityVariableBase<PointType>& mutable_face_normals = global_refined_face_normals;
+                // @todo CHECK PointType definition/construction.
 
                 /// --- GLOBAL REFINED CORNERS ---
                 // The strategy is to compute the local refined corners
@@ -686,6 +679,8 @@ namespace Dune
                     + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]) // 'left/right faces'
                     + (cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2]); // 'front/back faces'
                 global_refined_faces.resize(global_refined_faces_size);
+                global_refined_face_tags.resize(global_refined_faces_size);
+                global_refined_face_normals.resize(global_refined_faces_size);
                 //
                 // To create a face as a Geometry<2,3> type object we need its CENTROID and its VOLUME(area).
                 // We store the centroids/areas  in the following order:
@@ -695,7 +690,7 @@ namespace Dune
                 //
                 // Container to store, in each entry, the 4 indices of the 4 corners
                 // of each global refined face (same size as "global_refined_faces").
-                std::vector<std::array<int,4>> global_refined_face4corners_indices_storage; // @todiscuss add to constructor!?
+                std::vector<std::array<int,4>> global_refined_face4corners_indices_storage; 
                 global_refined_face4corners_indices_storage.resize(global_refined_faces_size);
                 //
                 // REFINED FACE AREAS
@@ -742,11 +737,35 @@ namespace Dune
                         for (int m = 0; m < cells_per_dim_mixed[1]; ++m) {
                             for (int n = 0; n < cells_per_dim_mixed[2]; ++n) {
                                 // Compute the index of the face and its 4 corners.
-                                auto [idx, global_refined_face4corners_indices, local_refined_face_centroid] =
+                                auto [face_type, idx, global_refined_face4corners_indices,
+                                      neighboring_cells_of_one_face, local_refined_face_centroid] =
                                     getIndicesFace(l, m, n, constant_direction, cells_per_dim);
+                                // Add the tag to "face_tag_"
+                                mutable_face_tags[idx]= face_type;
                                 // Add 4 corner indices to "global_refined_face4corners_indices_storage".
                                 global_refined_face4corners_indices_storage[idx] = global_refined_face4corners_indices;
-                                // We construct "global_refined_face4edges_indices"
+                                // Add the 4 corners of the face to "face_to_point".
+                                face_to_point.appendRow(global_refined_face4corners_indices.begin(),
+                                                        global_refined_face4corners_indices.end());
+                                // Add the neighboring cells of the face to "face_to_cell".
+                                face_to_cell.appendRow(neighboring_cells_of_one_face.begin(),
+                                                       neighboring_cells_of_one_face.end());
+                                // Construct global face normal(s) (only one 'needed') and add it to "face_normals_"
+                                // Construct two vectors in the face, e.g. difference of two conners with the centroid,
+                                // then obtain an orthogonal vector to both of them. Finally, normalize.
+                                // Auxuliary vectors on the face:
+                                GlobalCoordinate face_vector0 =
+                                    global_refined_corners[global_refined_face4corners_indices[0]].center()
+                                    - global(local_refined_face_centroid);
+                                GlobalCoordinate face_vector1 =
+                                    global_refined_corners[global_refined_face4corners_indices[1]].center()
+                                    - global(local_refined_face_centroid);
+                                mutable_face_normals[idx] = {
+                                    (face_vector0[1]*face_vector1[2]) -  (face_vector0[2]*face_vector1[1]),
+                                    (face_vector0[2]*face_vector1[0]) -  (face_vector0[0]*face_vector1[2]),
+                                    (face_vector0[0]*face_vector1[1]) -  (face_vector0[1]*face_vector1[0])};
+                                mutable_face_normals[idx] /= mutable_face_normals[idx].two_norm();
+                                // Construct "global_refined_face4edges_indices"
                                 // with the {edge_indix[0], edge_index[1]} for each edge of the refined face.
                                 std::vector<std::array<int,2>> global_refined_face4edges_indices = {
                                     { global_refined_face4corners_indices[0], global_refined_face4corners_indices[1]},
@@ -880,11 +899,24 @@ namespace Dune
                                 // index face '5' top
                                 ((k+1)*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i};
                             //
+                            //  We add the 6 faces of the cell into "cell_to_face".
+                            using cpgrid::EntityRep;
+                            // First value is index, Second is orientation.
+                            // Still have to find out what the orientation should be.
+                            // right face ('3') outer normal points 'from left to right' -> orientation true
+                            // back face ('4') outer normal points 'from front to back' -> orientation true
+                            // top face ('5') outer normal points 'from bottom to top' -> orientation true
+                            // (the other cases are false)
+                            std::vector<cpgrid::EntityRep<1>> faces_of_one_cell = {
+                                { hexa_face_0to5_indices[0], false}, {hexa_face_0to5_indices[1], false},
+                                { hexa_face_0to5_indices[2], false}, {hexa_face_0to5_indices[3], true},
+                                { hexa_face_0to5_indices[4], true}, {hexa_face_0to5_indices[5], true} };
+                            cell_to_face.appendRow(faces_of_one_cell.begin(), faces_of_one_cell.end());
+                            //
                             // Vol2. CENTROIDS of the faces of the hexahedron.
                             // (one of the 6 corners of all 4 tetrahedra based on that face).
                             std::vector<Geometry<0,3>::GlobalCoordinate> hexa_face_centroids;
                             for (auto& idx : hexa_face_0to5_indices) {
-                                //auto aux = ;
                                 hexa_face_centroids.push_back(global_refined_faces[idx].center());
                             }
                             // Indices of the 4 edges of each face of the hexahedron.
@@ -969,49 +1001,81 @@ namespace Dune
             double vol_;
             const cpgrid::Geometry<0, 3>* allcorners_; // For dimension 3 only
             const int* cor_idx_;               // For dimension 3 only
-
+            
             // Auxiliary function to reduce "refine()"-code
             // "getIndicesFace" returns the index of the face, the 4 indices of the corners of the face,
             // and the local_refined_centroid. Each face is contant in one direction.
             // @param constant_coordinate -> 0,1,2 means constant in z,x,y respectively
-            // @return Face index of a refined cell 'lmn' generated with "refine()".
+            // @return Type of face: LEFT, BACK, or TOP
+            //         Face index of a refined cell 'lmn' generated with "refine()".
             //         Four corner indices of the corners of the refined face 'lmn'.
+            //         For each face, the (at most 2) neighboring cells (used in "face_to_cell").
             //         Local centroid of the face of refined cell 'lmn' of the unit cube. 
-            std::tuple<int, std::array<int, 4>, LocalCoordinate >
+            std::tuple< enum face_tag, int,
+                        std::array<int, 4>, std::vector<cpgrid::EntityRep<0>>,
+                        LocalCoordinate>
             getIndicesFace(int l, int m, int n, int constant_direction, const std::array<int, 3>& cells_per_dim)
             {
-                std::array<int,4> face4corners;
+                using cpgrid::EntityRep;
+                std::vector<cpgrid::EntityRep<0>> neighboring_cells_of_one_face; // {index, orientation}
                 switch(constant_direction) {
                 case 0:  // {l,m,n} = {k,j,i}, constant in z-direction
-                    face4corners = {
-                        (m*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l,
+                    // Orientation true when outer normal points 'from bottom to top'
+                    // Orientation false when outer normal points 'from top to bottom'
+                    if (l != 0) { 
+                        neighboring_cells_of_one_face.push_back({((l-1)*cells_per_dim[0]*cells_per_dim[1])
+                                + (m*cells_per_dim[0]) + n, true});
+                    }
+                    if (l != cells_per_dim[2]) {
+                        neighboring_cells_of_one_face.push_back({ (l*cells_per_dim[0]*cells_per_dim[1])
+                                + (m*cells_per_dim[0]) + n, false});
+                    }
+                    return { face_tag::K_FACE, (l*cells_per_dim[0]*cells_per_dim[1]) + (m*cells_per_dim[0]) + n,
+                        {(m*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l,
                         (m*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l,
                         ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (n*(cells_per_dim[2]+1)) +l,
-                        ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l};
-                    return { (l*cells_per_dim[0]*cells_per_dim[1]) + (m*cells_per_dim[0]) + n,
-                        face4corners,
-                        {(.5 + n)/cells_per_dim[0], (.5 + m)/cells_per_dim[1], double(l)/cells_per_dim[2]}};
+                        ((m+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((n+1)*(cells_per_dim[2]+1)) +l},
+                        neighboring_cells_of_one_face,
+                        {(.5 + n)/cells_per_dim[0], (.5 + m)/cells_per_dim[1], double(l)/cells_per_dim[2]}};                    
                 case 1:  // {l,m,n} = {i,k,j}, constant in the x-direction
-                    face4corners =  {
-                        (n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m,
+                    // Orientation true when outer normal points 'from left to right'
+                    // Orientation false when outer normal points 'from right to left'
+                    if (l != 0) {
+                        neighboring_cells_of_one_face.push_back({(m*cells_per_dim[0]*cells_per_dim[1])
+                                + (n*cells_per_dim[0]) +l-1, true});
+                    }
+                    if (l != cells_per_dim[0]) {
+                        neighboring_cells_of_one_face.push_back({ (m*cells_per_dim[0]*cells_per_dim[1])
+                                + (n*cells_per_dim[0]) + l, false});
+                    }
+                    return { face_tag::I_FACE, (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
+                        + (l*cells_per_dim[1]*cells_per_dim[2]) + (m*cells_per_dim[1]) + n,
+                        {(n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m,
                         ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m,
                         (n*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1,
-                        ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1};
-                    return { (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
-                        + (l*cells_per_dim[1]*cells_per_dim[2]) + (m*cells_per_dim[1]) + n,
-                        face4corners,
-                        { double(l)/cells_per_dim[0], (.5 + n)/cells_per_dim[1], (.5 + m)/cells_per_dim[2]}};
+                        ((n+1)*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (l*(cells_per_dim[2]+1)) +m+1},
+                        neighboring_cells_of_one_face,
+                        { double(l)/cells_per_dim[0], (.5 + n)/cells_per_dim[1], (.5 + m)/cells_per_dim[2]}};   
                 case 2: // {l,m,n} = {j,i,k}, constant in the y-direction
-                    face4corners = {
-                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n,
-                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n,
-                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1,
-                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1};
-                    return { (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
+                    // Orientation true when outer normal points 'from front to back'
+                    // Orientation false when outer normal points 'from back to front'
+                    if (l != 0) {
+                        neighboring_cells_of_one_face.push_back({(n*cells_per_dim[0]*cells_per_dim[1])
+                                + ((l-1)*cells_per_dim[0]) +m, true});
+                    }
+                    if (l != cells_per_dim[1]) {
+                        neighboring_cells_of_one_face.push_back({(n*cells_per_dim[0]*cells_per_dim[1])
+                                + (l*cells_per_dim[0]) + m, false});
+                    }
+                    return { face_tag::J_FACE, (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
                         + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
                         + (l*cells_per_dim[0]*cells_per_dim[2]) + (m*cells_per_dim[2]) + n,
-                        face4corners,
-                        {(.5 + m)/cells_per_dim[0], double(l)/cells_per_dim[1], (.5 + n)/cells_per_dim[2]}};
+                        {(l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n,
+                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n,
+                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (m*(cells_per_dim[2]+1)) +n+1,
+                        (l*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ((m+1)*(cells_per_dim[2]+1)) +n+1},
+                        neighboring_cells_of_one_face,
+                        {(.5 + m)/cells_per_dim[0], double(l)/cells_per_dim[1], (.5 + n)/cells_per_dim[2]}};   
                 default:
                     // Should never be reached, but prevents compiler warning
                     OPM_THROW(std::logic_error, "Unhandled dimension. This should never happen!");

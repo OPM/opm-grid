@@ -416,9 +416,13 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
+        cpgrid::OrientedEntityTable<1,0> face_to_cell;
+        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
+        
         //cpgrid::CpGridData child_grid;
         g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point);// child_grid);
+                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);// child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
@@ -428,9 +432,12 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        cpgrid::CpGridData child_grid;
+        cpgrid::OrientedEntityTable<1,0> face_to_cell;
+        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
+        //cpgrid::CpGridData child_grid;
         g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point);//, child_grid);
+                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
@@ -479,9 +486,12 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         std::array<int, 3> cells = {1, 1, 1};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        cpgrid::CpGridData child_grid;
+        // cpgrid::CpGridData child_grid;
+        cpgrid::OrientedEntityTable<1,0> face_to_cell;
+        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
         g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point);//, child_grid);
+                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 
@@ -491,9 +501,12 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         std::array<int, 3> cells = {2, 3, 4};
         DefaultGeometryPolicy geometries;
         std::vector<std::array<int, 8>> ci;
-        cpgrid::CpGridData child_grid;
+        // cpgrid::CpGridData child_grid;
+        cpgrid::OrientedEntityTable<1,0> face_to_cell;
+        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
         g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point);//, child_grid);
+                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
     }
 }
