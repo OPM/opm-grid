@@ -439,6 +439,9 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
         g.refine(cells, geometries, ci,
                  cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
+        auto face_to_cell_computed = face_to_cell;
+        cell_to_face.makeInverseRelation(face_to_cell_computed);
+        BOOST_CHECK(face_to_cell_computed == face_to_cell);
     }
 }
 
@@ -508,5 +511,8 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         g.refine(cells, geometries, ci,
                  cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
         check_refined_grid(g, geometries.template geomVector<0>(), cells);
+        auto face_to_cell_computed = face_to_cell;
+        cell_to_face.makeInverseRelation(face_to_cell_computed);
+        BOOST_CHECK(face_to_cell_computed == face_to_cell);
     }
 }
