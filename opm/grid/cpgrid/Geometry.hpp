@@ -633,7 +633,7 @@ namespace Dune
                         Opm::SparseTable<int>& face_to_point,
                         cpgrid::OrientedEntityTable<1,0>& face_to_cell,
                         cpgrid::EntityVariable<enum face_tag, 1>& global_refined_face_tags,
-                        cpgrid::SignedEntityVariable<PointType, 1>& global_refined_face_normals)
+                        cpgrid::SignedEntityVariable<PointType, 1>& global_refined_face_normals) const
             {
                 EntityVariableBase<cpgrid::Geometry<0,3>>& global_refined_corners =
                     all_geom.geomVector(std::integral_constant<int,3>());
@@ -1015,7 +1015,7 @@ namespace Dune
             std::tuple< enum face_tag, int,
                         std::array<int, 4>, std::vector<cpgrid::EntityRep<0>>,
                         LocalCoordinate>
-            getIndicesFace(int l, int m, int n, int constant_direction, const std::array<int, 3>& cells_per_dim)
+            getIndicesFace(int l, int m, int n, int constant_direction, const std::array<int, 3>& cells_per_dim) const
             {
                 using cpgrid::EntityRep;
                 std::vector<cpgrid::EntityRep<0>> neighboring_cells_of_one_face; // {index, orientation}
