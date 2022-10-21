@@ -80,6 +80,9 @@
 #include <list>
 #endif
 
+void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                      const std::array<int, 3>&,
+                      bool);
 namespace Dune
 {
 
@@ -211,6 +214,10 @@ namespace Dune
         friend class cpgrid::CpGridData;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
+        friend
+        void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                                const std::array<int, 3>&,
+                                bool);
 
     public:
 

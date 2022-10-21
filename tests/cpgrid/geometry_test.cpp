@@ -27,6 +27,7 @@
 #else
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
+#include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
@@ -35,6 +36,25 @@
 #include <sstream>
 #include <iostream>
 
+struct Fixture
+{
+    Fixture()
+    {
+        int m_argc = boost::unit_test::framework::master_test_suite().argc;
+        char** m_argv = boost::unit_test::framework::master_test_suite().argv;
+        Dune::MPIHelper::instance(m_argc, m_argv);
+        Opm::OpmLog::setupSimpleDefaultLogging();
+    }
+
+    static int rank()
+    {
+        int m_argc = boost::unit_test::framework::master_test_suite().argc;
+        char** m_argv = boost::unit_test::framework::master_test_suite().argv;
+        return Dune::MPIHelper::instance(m_argc, m_argv).rank();
+    }
+};
+
+BOOST_GLOBAL_FIXTURE(Fixture);
 using namespace Dune;
 
 class Null;
@@ -382,6 +402,29 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
 
 }
 
+void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
+                      const std::array<int, 3>& cells,
+                      bool is_simple = false)
+{
+    using cpgrid::DefaultGeometryPolicy;
+    CpGrid refined_grid;
+    auto& child_view_data = *refined_grid.current_view_data_;
+    cpgrid::OrientedEntityTable<0, 1>& cell_to_face = child_view_data.cell_to_face_;
+    Opm::SparseTable<int>& face_to_point = child_view_data.face_to_point_;
+    DefaultGeometryPolicy& geometries = child_view_data.geometry_;
+    std::vector<std::array<int, 8>>& ci = child_view_data.cell_to_point_;
+    cpgrid::OrientedEntityTable<1,0>& face_to_cell = child_view_data.face_to_cell_;
+    cpgrid::EntityVariable<enum face_tag, 1>& face_tags = child_view_data.face_tag_;
+    cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& face_normals = child_view_data.face_normals_;
+
+    parent_geometry.refine(cells, geometries, ci,
+                           cell_to_face, face_to_point, face_to_cell,
+                           face_tags, face_normals);
+    check_refined_grid(parent_geometry, geometries.template geomVector<0>(), cells);
+    cpgrid::OrientedEntityTable<1,0> face_to_cell_computed;
+    cell_to_face.makeInverseRelation(face_to_cell_computed);
+    BOOST_CHECK(face_to_cell_computed == face_to_cell);
+}
 
 BOOST_AUTO_TEST_CASE(refine_simple_cube)
 {
@@ -409,40 +452,8 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     Geometry g(c, v, pg, cor_idx);
 
-    using cpgrid::DefaultGeometryPolicy;
-    {
-        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
-        Opm::SparseTable<int> face_to_point;
-        std::array<int, 3> cells = {1, 1, 1};
-        DefaultGeometryPolicy geometries;
-        std::vector<std::array<int, 8>> ci;
-        cpgrid::OrientedEntityTable<1,0> face_to_cell;
-        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
-        
-        //cpgrid::CpGridData child_grid;
-        g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);// child_grid);
-        check_refined_grid(g, geometries.template geomVector<0>(), cells);
-    }
-
-    {
-        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
-        Opm::SparseTable<int> face_to_point;
-        std::array<int, 3> cells = {2, 3, 4};
-        DefaultGeometryPolicy geometries;
-        std::vector<std::array<int, 8>> ci;
-        cpgrid::OrientedEntityTable<1,0> face_to_cell;
-        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
-        //cpgrid::CpGridData child_grid;
-        g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
-        check_refined_grid(g, geometries.template geomVector<0>(), cells);
-        auto face_to_cell_computed = face_to_cell;
-        cell_to_face.makeInverseRelation(face_to_cell_computed);
-        BOOST_CHECK(face_to_cell_computed == face_to_cell);
-    }
+    refine_and_check(g, {1, 1, 1});
+    refine_and_check(g, {2, 3, 4});
 }
 
 
@@ -481,38 +492,6 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     Geometry g(center, v, pg, cor_idx);
-    using cpgrid::DefaultGeometryPolicy;
-
-    {
-        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
-        Opm::SparseTable<int> face_to_point;
-        std::array<int, 3> cells = {1, 1, 1};
-        DefaultGeometryPolicy geometries;
-        std::vector<std::array<int, 8>> ci;
-        // cpgrid::CpGridData child_grid;
-        cpgrid::OrientedEntityTable<1,0> face_to_cell;
-        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
-        g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
-        check_refined_grid(g, geometries.template geomVector<0>(), cells);
-    }
-
-    {
-        cpgrid::OrientedEntityTable<0, 1> cell_to_face;
-        Opm::SparseTable<int> face_to_point;
-        std::array<int, 3> cells = {2, 3, 4};
-        DefaultGeometryPolicy geometries;
-        std::vector<std::array<int, 8>> ci;
-        // cpgrid::CpGridData child_grid;
-        cpgrid::OrientedEntityTable<1,0> face_to_cell;
-        cpgrid::EntityVariable<enum face_tag, 1> face_tags;
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1> face_normals;
-        g.refine(cells, geometries, ci,
-                 cell_to_face, face_to_point, face_to_cell, face_tags, face_normals);//, child_grid);
-        check_refined_grid(g, geometries.template geomVector<0>(), cells);
-        auto face_to_cell_computed = face_to_cell;
-        cell_to_face.makeInverseRelation(face_to_cell_computed);
-        BOOST_CHECK(face_to_cell_computed == face_to_cell);
-    }
+    refine_and_check(g, {1, 1, 1});
+    refine_and_check(g, {2, 3, 4});
 }

@@ -110,7 +110,16 @@ class PartitionTypeIndicator;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
+}
+}
 
+void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                      const std::array<int, 3>&,
+                      bool);
+namespace Dune
+{
+namespace cpgrid
+{
 namespace mover
 {
 template<class T, int i> struct Mover;
@@ -125,6 +134,11 @@ class CpGridData
     template<class T, int i> friend struct mover::Mover;
 
     friend class GlobalIdSet;
+
+    friend
+    void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                            const std::array<int, 3>&,
+                            bool);
 
 private:
     CpGridData(const CpGridData& g);
