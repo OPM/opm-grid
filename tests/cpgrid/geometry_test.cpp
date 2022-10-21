@@ -424,6 +424,24 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
     cpgrid::OrientedEntityTable<1,0> face_to_cell_computed;
     cell_to_face.makeInverseRelation(face_to_cell_computed);
     BOOST_CHECK(face_to_cell_computed == face_to_cell);
+
+    if (is_simple)
+    {
+        // Create a grid that is equivalent to the refinement
+        Dune::CpGrid equivalent_refined_grid;
+        std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+        std::size_t i = 0;
+        for (auto& size: cell_sizes)
+            size /= cells[i++];
+
+        equivalent_refined_grid.createCartesian(cells, cell_sizes);
+
+        // Check that the sizes match
+        BOOST_CHECK(equivalent_refined_grid.size(0) == refined_grid.size(0));
+        BOOST_CHECK(equivalent_refined_grid.size(1) == refined_grid.size(1));
+        BOOST_CHECK(equivalent_refined_grid.size(3) == refined_grid.size(3));
+        //for(const auto elements: child_grid.leafGridView());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(refine_simple_cube)
@@ -452,8 +470,8 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
     Geometry g(c, v, pg, cor_idx);
 
-    refine_and_check(g, {1, 1, 1});
-    refine_and_check(g, {2, 3, 4});
+    refine_and_check(g, {1, 1, 1}, true);
+    refine_and_check(g, {2, 3, 4}, true);
 }
 
 
