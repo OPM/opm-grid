@@ -450,6 +450,19 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             ++equiv_point_iter;
         }
 
+        // Check that cell to point matches (Implicitly checks for correct cell ordering)
+        BOOST_CHECK(refined_grid.current_view_data_->cell_to_point_ ==
+                    equivalent_refined_grid.current_view_data_->cell_to_point_);
+
+        // Check that the cell centers and volume match
+        auto equiv_cell_iter = equivalent_refined_grid.current_view_data_
+            ->geometry_.geomVector<0>().begin();
+        for(const auto& cell: geometries.geomVector<0>())
+        {
+            check_coordinates(cell.center(), equiv_cell_iter->center());
+            BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
+            ++equiv_cell_iter;
+        }
         //for(const auto elements: child_grid.leafGridView());
     }
 }
