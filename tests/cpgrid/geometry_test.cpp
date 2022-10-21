@@ -463,7 +463,50 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
             ++equiv_cell_iter;
         }
-        //for(const auto elements: child_grid.leafGridView());
+
+        const auto& grid_view = refined_grid.leafGridView();
+        const auto& equiv_grid_view = equivalent_refined_grid.leafGridView();
+
+        auto equiv_element_iter = equiv_grid_view.begin<0>();
+        for(const auto& element: elements(grid_view))
+        {
+            for(const auto& intersection: intersections(grid_view, element))
+            {
+                // find matching intersection (needed as ordering is allowed to be different
+                bool matching_intersection_found = false;
+                for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter))
+                {
+                    if(intersection_match.indexInInside() == intersection.indexInInside())
+                    {
+                        BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                        if(intersection.neighbor())
+                        {
+                            BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                        }
+
+                        check_coordinates(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
+                        const auto& geom_match = intersection_match.geometry();
+                        const auto& geom =  intersection.geometry();
+                        BOOST_CHECK(geom_match.volume() == geom.volume());
+                        check_coordinates(geom_match.center(), geom.center());
+                        BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                        decltype(geom.corner(0)) sum_match{}, sum{};
+
+                        for(int i=0; i < geom.corners(); ++i)
+                        {
+                            sum += geom.corner(i);
+                            sum_match += geom_match.corner(1);
+                        }
+                        check_coordinates(sum, sum_match);
+                        matching_intersection_found = true;
+                        break;
+                    }
+                }
+                BOOST_CHECK(matching_intersection_found);
+            }
+        }
     }
 }
 
