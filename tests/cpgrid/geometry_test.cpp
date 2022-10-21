@@ -412,12 +412,12 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
     cpgrid::OrientedEntityTable<0, 1>& cell_to_face = child_view_data.cell_to_face_;
     Opm::SparseTable<int>& face_to_point = child_view_data.face_to_point_;
     DefaultGeometryPolicy& geometries = child_view_data.geometry_;
-    std::vector<std::array<int, 8>>& ci = child_view_data.cell_to_point_;
+    std::vector<std::array<int, 8>>& cell_to_point = child_view_data.cell_to_point_;
     cpgrid::OrientedEntityTable<1,0>& face_to_cell = child_view_data.face_to_cell_;
     cpgrid::EntityVariable<enum face_tag, 1>& face_tags = child_view_data.face_tag_;
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& face_normals = child_view_data.face_normals_;
 
-    parent_geometry.refine(cells, geometries, ci,
+    parent_geometry.refine(cells, geometries, cell_to_point,
                            cell_to_face, face_to_point, face_to_cell,
                            face_tags, face_normals);
     check_refined_grid(parent_geometry, geometries.template geomVector<0>(), cells);
@@ -440,6 +440,16 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
         BOOST_CHECK(equivalent_refined_grid.size(0) == refined_grid.size(0));
         BOOST_CHECK(equivalent_refined_grid.size(1) == refined_grid.size(1));
         BOOST_CHECK(equivalent_refined_grid.size(3) == refined_grid.size(3));
+
+        // Check that the points (ordering/coordinates) matches
+        auto equiv_point_iter = equivalent_refined_grid.current_view_data_
+            ->geometry_.geomVector<3>().begin();
+        for(const auto& point: geometries.geomVector<3>())
+        {
+            check_coordinates(point.center(), equiv_point_iter->center());
+            ++equiv_point_iter;
+        }
+
         //for(const auto elements: child_grid.leafGridView());
     }
 }
