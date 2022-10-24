@@ -607,7 +607,7 @@ namespace Dune
             {
                 return false;
             }
-
+            
             /**
              * @brief Refine a single cell with regular intervals.
              *
@@ -643,7 +643,6 @@ namespace Dune
                     all_geom.geomVector(std::integral_constant<int,0>());
                 EntityVariableBase<enum face_tag>& mutable_face_tags = global_refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = global_refined_face_normals;
-                // @todo CHECK PointType definition/construction.
 
                 /// --- GLOBAL REFINED CORNERS ---
                 // The strategy is to compute the local refined corners
@@ -695,7 +694,7 @@ namespace Dune
                 //
                 // REFINED FACE AREAS
                 // To compute the area of each face, we divide it in 4 triangles,
-                // compute the area of those with "simplex_volume()", where the arguments
+                // compute the area of those with "area()", where the arguments
                 // are the 3 corners of each triangle. Then, sum them up to get the area
                 // of the global refined face.
                 // For each face, we construct 4 triangles with
@@ -765,6 +764,9 @@ namespace Dune
                                     (face_vector0[2]*face_vector1[0]) -  (face_vector0[0]*face_vector1[2]),
                                     (face_vector0[0]*face_vector1[1]) -  (face_vector0[1]*face_vector1[0])};
                                 mutable_face_normals[idx] /= mutable_face_normals[idx].two_norm();
+                                if (face_type == J_FACE) {
+                                    mutable_face_normals[idx] *= -1;
+                                }
                                 // Construct "global_refined_face4edges_indices"
                                 // with the {edge_indix[0], edge_index[1]} for each edge of the refined face.
                                 std::vector<std::array<int,2>> global_refined_face4edges_indices = {
@@ -778,18 +780,17 @@ namespace Dune
                                 for (int edge = 0; edge < 4; ++edge) {
                                     // Construction of each triangle on the current face with one
                                     // of its edges equal to "edge".
-                                    const Geometry<0,3>::GlobalCoordinate trian_corners[3] = {
+                                    Geometry<0,3>::GlobalCoordinate trian_corners[3] = {
                                         global_refined_corners[global_refined_face4edges_indices[edge][0]].center(),
                                         global_refined_corners[global_refined_face4edges_indices[edge][1]].center(),
-                                        this->global(local_refined_face_centroid)};
-                                    global_refined_face_area += std::fabs(simplex_volume(trian_corners));
+                                        global(local_refined_face_centroid)};
+                                    global_refined_face_area += std::fabs(area(trian_corners));
                                 } // end edge-for-loop
                                 //
                                 //
                                 // Construct the Geometry<2,3> of the global refined face.
                                 global_refined_faces[idx] = Geometry<2,cdim>(this->global(local_refined_face_centroid),
                                                                              global_refined_face_area);
-                                /// all_geom.geomVector(std::integral_constant<int,3>()), indices_storage_ptr);
                             } // end n-for-loop
                         } // end m-for-loop
                     } // end l-for-loop
@@ -995,7 +996,7 @@ namespace Dune
                 } // end if-statement
                 /// --- END GLOBAL REFINED CELLS ---
             } /// --- END of refine()
-
+            
         private:
             GlobalCoordinate pos_;
             double vol_;
