@@ -579,17 +579,26 @@ namespace Dune
   template <class MsgBuffer>
   inline void
   Point2PointCommunicator< MsgBuffer >::
-#if HAVE_MPI
-  exchange( DataHandleInterface& handle) const
-#else
-  exchange( DataHandleInterface&) const
-#endif
+  exchange( [[maybe_unused]] DataHandleInterface& handle,
+            [[maybe_unused]] const int            tag ) const
   {
-    assert( _recvBufferSizes.empty () );
+    assert( this->_recvBufferSizes.empty () );
+
 #if HAVE_MPI
-    NonBlockingExchangeImplementation< ThisType > nonBlockingExchange( *this, getMessageTag() );
+    NonBlockingExchangeImplementation< ThisType > nonBlockingExchange( *this, tag );
     nonBlockingExchange.exchange( handle );
-#endif
+#endif  // HAVE_MPI
+  }
+
+  template <class MsgBuffer>
+  inline void
+  Point2PointCommunicator< MsgBuffer >::
+  exchange( [[maybe_unused]] DataHandleInterface& handle) const
+  {
+    assert( this->_recvBufferSizes.empty () );
+#if HAVE_MPI
+    this->exchange( handle, getMessageTag() );
+#endif  // HAVE_MPI
   }
 
   // --exchange

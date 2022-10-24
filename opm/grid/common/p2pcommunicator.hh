@@ -238,6 +238,15 @@ public:
     /** \brief exchange data with peers, handle defines pack and unpack of data */
     virtual void exchange ( DataHandleInterface& ) const;
 
+    /** \brief exchange data with peers, handle defines pack and unpack of
+     * data.  User-defined message tag.
+     *
+     * \param[in,out] handle Message.
+     *
+     * \param[in] tag Message tag.
+     */
+    void exchange( DataHandleInterface& handle, const int tag ) const;
+
     /** \brief exchange data with peers, handle defines pack and unpack of data,
      *  if receive buffers are known from previous run and have not changed
      *  communication could be faster */

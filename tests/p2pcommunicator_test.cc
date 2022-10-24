@@ -156,6 +156,12 @@ void testCommunicator( const bool output )
     comm.exchange( handle );
   }
 
+  {
+    // use handle with custom message tag to perform the same operations as above
+    DataHandle handle( comm, output );
+    comm.exchange( handle, 1 << 12 );
+  }
+
   for( int i=0; i<5; ++i )
   {
     // use handle to perform the same operations as above
