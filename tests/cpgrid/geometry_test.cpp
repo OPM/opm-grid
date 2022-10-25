@@ -277,7 +277,7 @@ inline void
 check_coordinates(T c1, T c2)
 {
     for (int c = 0; c < 3; c++) {
-        BOOST_CHECK_CLOSE(c1[c], c2[c], 1e-6);
+        BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12));
     }
 }
 
