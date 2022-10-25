@@ -272,14 +272,10 @@ BOOST_AUTO_TEST_CASE(cellgeom)
 }
 
 
-template <typename T>
-inline void
-check_coordinates(T c1, T c2)
-{
-    for (int c = 0; c < 3; c++) {
-        BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12));
+#define CHECK_COORDINATES(c1, c2)                                        \
+    for (int c = 0; c < 3; c++) {                                        \
+        BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
     }
-}
 
 void
 check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
@@ -320,14 +316,14 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
                                    +((cells_per_dim[1]-1) * cells_per_dim[0])); // l=1,m=1,n=0
     auto& cell_corn7 = refined.get(((cells_per_dim[2]-1)*  cells_per_dim[0] * cells_per_dim[1])
                                    +((cells_per_dim[1]-1) * cells_per_dim[0]) + (cells_per_dim[0]-1)); // l=1,m=1,n=1
-    check_coordinates(cell_corn0.corner(0), parent.corner(0));
-    check_coordinates(cell_corn1.corner(1), parent.corner(1));
-    check_coordinates(cell_corn2.corner(2), parent.corner(2));
-    check_coordinates(cell_corn3.corner(3), parent.corner(3));
-    check_coordinates(cell_corn4.corner(4), parent.corner(4));
-    check_coordinates(cell_corn5.corner(5), parent.corner(5));
-    check_coordinates(cell_corn6.corner(6), parent.corner(6));
-    check_coordinates(cell_corn7.corner(7), parent.corner(7));
+    CHECK_COORDINATES(cell_corn0.corner(0), parent.corner(0));
+    CHECK_COORDINATES(cell_corn1.corner(1), parent.corner(1));
+    CHECK_COORDINATES(cell_corn2.corner(2), parent.corner(2));
+    CHECK_COORDINATES(cell_corn3.corner(3), parent.corner(3));
+    CHECK_COORDINATES(cell_corn4.corner(4), parent.corner(4));
+    CHECK_COORDINATES(cell_corn5.corner(5), parent.corner(5));
+    CHECK_COORDINATES(cell_corn6.corner(6), parent.corner(6));
+    CHECK_COORDINATES(cell_corn7.corner(7), parent.corner(7));
 
     // Make sure the corners of neighboring cells overlap.
     for (int k = 0; k < cells_per_dim[2]; k++) {
@@ -337,24 +333,24 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
                 auto& r0 = refined.get(k * slice + cells_per_dim[0] * j + i);
                 if (i < cells_per_dim[0] - 1) {
                     auto& r1 = refined.get(k * slice + cells_per_dim[0] * j + i + 1);
-                    check_coordinates(r0.corner(1), r1.corner(0));
-                    check_coordinates(r0.corner(3), r1.corner(2));
-                    check_coordinates(r0.corner(5), r1.corner(4));
-                    check_coordinates(r0.corner(7), r1.corner(6));
+                    CHECK_COORDINATES(r0.corner(1), r1.corner(0));
+                    CHECK_COORDINATES(r0.corner(3), r1.corner(2));
+                    CHECK_COORDINATES(r0.corner(5), r1.corner(4));
+                    CHECK_COORDINATES(r0.corner(7), r1.corner(6));
                 }
                 if (j < cells_per_dim[1] - 1) {
                     auto& r1 = refined.get(k * slice + cells_per_dim[0] * (j + 1) + i);
-                    check_coordinates(r0.corner(2), r1.corner(0));
-                    check_coordinates(r0.corner(3), r1.corner(1));
-                    check_coordinates(r0.corner(6), r1.corner(4));
-                    check_coordinates(r0.corner(7), r1.corner(5));
+                    CHECK_COORDINATES(r0.corner(2), r1.corner(0));
+                    CHECK_COORDINATES(r0.corner(3), r1.corner(1));
+                    CHECK_COORDINATES(r0.corner(6), r1.corner(4));
+                    CHECK_COORDINATES(r0.corner(7), r1.corner(5));
                 }
                 if (k < cells_per_dim[2] - 1) {
                     auto& r1 = refined.get((k + 1) * slice + cells_per_dim[0] * j + i);
-                    check_coordinates(r0.corner(4), r1.corner(0));
-                    check_coordinates(r0.corner(5), r1.corner(1));
-                    check_coordinates(r0.corner(6), r1.corner(2));
-                    check_coordinates(r0.corner(7), r1.corner(3));
+                    CHECK_COORDINATES(r0.corner(4), r1.corner(0));
+                    CHECK_COORDINATES(r0.corner(5), r1.corner(1));
+                    CHECK_COORDINATES(r0.corner(6), r1.corner(2));
+                    CHECK_COORDINATES(r0.corner(7), r1.corner(3));
                 }
             }
         }
@@ -368,7 +364,7 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
                 center[c] += r.corner(h)[c] / 8.0;
             }
         }
-        check_coordinates(r.center(), center);
+        CHECK_COORDINATES(r.center(), center);
     }
 
     //  @todo Current Geometry.hpp does not pass this test:
@@ -380,7 +376,7 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
                 / parent.volume();
         }
     }
-    check_coordinates(parent.center(), center); 
+    CHECK_COORDINATES(parent.center(), center);
 
     // Check that mean of all corners equals the center of the parent.
     center = {0.0, 0.0, 0.0};
@@ -391,7 +387,7 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
             }
         }
     }
-    check_coordinates(parent.center(), center);
+    CHECK_COORDINATES(parent.center(), center);
 
     // Check the total volume against the parent volume.
     Geometry::ctype volume = 0.0;
@@ -446,7 +442,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             ->geometry_.geomVector<3>().begin();
         for(const auto& point: geometries.geomVector<3>())
         {
-            check_coordinates(point.center(), equiv_point_iter->center());
+            CHECK_COORDINATES(point.center(), equiv_point_iter->center());
             ++equiv_point_iter;
         }
 
@@ -459,7 +455,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             ->geometry_.geomVector<0>().begin();
         for(const auto& cell: geometries.geomVector<0>())
         {
-            check_coordinates(cell.center(), equiv_cell_iter->center());
+            CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
             BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
             ++equiv_cell_iter;
         }
@@ -485,11 +481,12 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
                             BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
                         }
 
-                        check_coordinates(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
+                        CHECK_COORDINATES(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
                         const auto& geom_match = intersection_match.geometry();
+                        BOOST_TEST(0 == 1e-11, boost::test_tools::tolerance(1e-8));
                         const auto& geom =  intersection.geometry();
                         BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
-                        check_coordinates(geom_match.center(), geom.center());
+                        CHECK_COORDINATES(geom_match.center(), geom.center());
                         BOOST_CHECK(geom_match.corners() == geom.corners());
 
                         decltype(geom.corner(0)) sum_match{}, sum{};
@@ -499,7 +496,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
                             sum += geom.corner(i);
                             sum_match += geom_match.corner(1);
                         }
-                        check_coordinates(sum, sum_match);
+                        CHECK_COORDINATES(sum, sum_match);
                         matching_intersection_found = true;
                         break;
                     }
