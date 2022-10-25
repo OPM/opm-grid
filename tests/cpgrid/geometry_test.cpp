@@ -506,6 +506,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
                 }
                 BOOST_CHECK(matching_intersection_found);
             }
+            ++equiv_element_iter;
         }
     }
 }
