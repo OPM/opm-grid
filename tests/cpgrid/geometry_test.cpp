@@ -279,20 +279,19 @@ BOOST_AUTO_TEST_CASE(cellgeom)
 
 void
 check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
-                   const cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& refined,
-                   // const cpgrid::DefaultGeometryPolicy& refined_faces,
+                   const cpgrid::EntityVariable<cpgrid::Geometry<3, 3>,0>& refined,
+                   const cpgrid::EntityVariable<cpgrid::Geometry<2,3>,1>& refined_faces,
+                   const cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners,
                    const std::array<int, 3>& cells_per_dim)
 {
-    // Check for faces
-    //
-    // @todo Check amount of refined faces.
-    /* int count_faces = (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1)) // 'bottom/top faces'
+    // Check amount of refined faces.
+    int count_faces = (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1)) // 'bottom/top faces'
                     + (cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2]) // 'front/back faces'
                     + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]);  // 'left/right faces'
-                    BOOST_CHECK_EQUAL(refined_faces.size(), count_faces);*/
-    // @todo Check centroids of refined faces.
-    // @todo Check volume (area) of (corresponding) children faces sum up area of parent face.
-    // @todo Check the corners of the refined faces that coincide with parent face corners.
+    BOOST_CHECK_EQUAL(refined_faces.size(), count_faces);
+    // Check amount of refined corners.
+    int count_corners = (cells_per_dim[0]+1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
+    BOOST_CHECK_EQUAL(refined_corners.size(), count_corners);
 
 
     using Geometry = cpgrid::Geometry<3, 3>;
@@ -367,7 +366,6 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         CHECK_COORDINATES(r.center(), center);
     }
 
-    //  @todo Current Geometry.hpp does not pass this test:
     // Check that the weighted mean of all centers equals the parent center
     GlobalCoordinate center = {0.0, 0.0, 0.0};
     for (auto r : refined) {
@@ -395,7 +393,6 @@ check_refined_grid(const cpgrid::Geometry<3, 3>& parent,
         volume += r.volume();
     }
     BOOST_CHECK_CLOSE(volume, parent.volume(), 1e-6);
-
 }
 
 void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
@@ -416,7 +413,9 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
     parent_geometry.refine(cells, geometries, cell_to_point,
                            cell_to_face, face_to_point, face_to_cell,
                            face_tags, face_normals);
-    check_refined_grid(parent_geometry, geometries.template geomVector<0>(), cells);
+    check_refined_grid(parent_geometry, geometries.template geomVector<0>(),
+                       geometries.template geomVector<1>(),
+                       geometries.template geomVector<3>(), cells);
     cpgrid::OrientedEntityTable<1,0> face_to_cell_computed;
     cell_to_face.makeInverseRelation(face_to_cell_computed);
     BOOST_CHECK(face_to_cell_computed == face_to_cell);
@@ -506,6 +505,32 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             ++equiv_element_iter;
         }
     }
+    // Create a grid that is equivalent to the refinement
+    /*  Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes_new = {1.0, 1.0, 1.0};
+    std::array<int, 3> coarse_grid_dim = {4,3,3};
+    std::array<int, 3> cells_per_dim_patch = {2,2,2};
+    std::array<int, 3> start_ijk = {1,0,1};
+    std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1,2-0,3-1} ={2,2,2}
+    coarse_grid.createCartesian(coarse_grid_dim, cell_sizes_new);
+    // Call refinedBlockPatch()
+    coarse_grid.current_view_data_->refineBlockPatch(cells_per_dim_patch, start_ijk, end_ijk);
+    // Create a pointer pointing at the CpGridData object coarse_grid.current_view_data_.
+    std::shared_ptr<Dune::cpgrid::CpGridData> coarse_grid_ptr =  std::make_shared<Dune::cpgrid::CpGridData>();
+    *coarse_grid.current_view_data_ = *coarse_grid_ptr;
+    // Create a vector of shared pointers of CpGridData type.
+    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> data;
+    // Add coarse_grid_ptr to data.
+    data.push_back(coarse_grid_ptr);
+    // Call getLeafView2Levels()
+    coarse_grid.getLeafView2Levels(data, cells_per_dim_patch, start_ijk, end_ijk);
+    // Call addLevel()
+    const int level_to_refine = 0;
+    std::vector<std::array<int,2>> future_leaf_corners;
+    std::vector<std::array<int,2>> future_leaf_faces;
+    std::vector<std::array<int,2>> future_leaf_cells;
+    coarse_grid.addLevel(data, level_to_refine, cells_per_dim_patch, start_ijk, end_ijk,
+    future_leaf_corners, future_leaf_faces, future_leaf_cells);*/
 }
 
 BOOST_AUTO_TEST_CASE(refine_simple_cube)
@@ -576,4 +601,26 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
     Geometry g(center, v, pg, cor_idx);
     refine_and_check(g, {1, 1, 1});
     refine_and_check(g, {2, 3, 4});
+
+}
+
+void refinePatch_and_check(const std::array<int,3>&,
+                           const std::array<int,3>&,
+                           const std::array<int,3>&)
+{
+    // Create a grid that is equivalent to the refinement
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes_new = {1.0, 1.0, 1.0};
+    std::array<int, 3> coarse_grid_dim = {4,3,3};
+    std::array<int, 3> cells_per_dim_patch = {2,2,2};
+    std::array<int, 3> start_ijk = {1,0,1};
+    std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1,2-0,3-1} ={2,2,2}
+    coarse_grid.createCartesian(coarse_grid_dim, cell_sizes_new);
+    // Call refinedBlockPatch()
+    coarse_grid.current_view_data_->refineBlockPatch(cells_per_dim_patch, start_ijk, end_ijk);
+
+}
+BOOST_AUTO_TEST_CASE(refine_patch)
+{
+    refinePatch_and_check({}, {}, {});
 }
