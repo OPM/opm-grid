@@ -718,10 +718,10 @@ namespace Dune
                 // "refined_faces".
                 //
                 for (int constant_direction = 0; constant_direction < 3; ++constant_direction){
-                    // adding %3 and r, we go through the 3 type of faces.
-                    // r = 0 -> 3rd coordinate constant: l('k') < cells_per_dim[2]+1, m('j') < cells_per_dim[1], n('i') < cells_per_dim[0]
-                    // r = 1 -> 1rt coordinate constant: l('i') < cells_per_dim[0]+1, m('k') < cells_per_dim[2], n('j') < cells_per_dim[1]
-                    // r = 2 -> 2nd coordinate constant: l('j') < cells_per_dim[1]+1, m('i') < cells_per_dim[0], n('k') < cells_per_dim[2]
+                    // adding %3 and constant_direction, we go through the 3 type of faces.
+                    // 0 -> 3rd coordinate constant: l('k') < cells_per_dim[2]+1, m('j') < cells_per_dim[1], n('i') < cells_per_dim[0]
+                    // 1 -> 1rt coordinate constant: l('i') < cells_per_dim[0]+1, m('k') < cells_per_dim[2], n('j') < cells_per_dim[1]
+                    // 2 -> 2nd coordinate constant: l('j') < cells_per_dim[1]+1, m('i') < cells_per_dim[0], n('k') < cells_per_dim[2]
                     std::array<int,3> cells_per_dim_mixed = {
                         cells_per_dim[(2+constant_direction)%3],
                         cells_per_dim[(1+constant_direction)%3],
@@ -729,7 +729,7 @@ namespace Dune
                     for (int l = 0; l < cells_per_dim_mixed[0] + 1; ++l) {
                         for (int m = 0; m < cells_per_dim_mixed[1]; ++m) {
                             for (int n = 0; n < cells_per_dim_mixed[2]; ++n) {
-                                // Compute the index of the face and its 4 corners.
+                                // Compute the face data.
                                 auto [face_type, idx, face4corners,
                                       neighboring_cells_of_one_face, local_refined_face_centroid] =
                                     getIndicesFace(l, m, n, constant_direction, cells_per_dim);
@@ -785,7 +785,7 @@ namespace Dune
                     } // end l-for-loop
                 } // end r-for-loop
                 /// --- END REFINED FACES ---
-
+                
                 /// --- REFINED CELLS ---
                 // We need to populate "refined_cells"
                 // "refined_cells"'s size is cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2].
@@ -986,7 +986,7 @@ namespace Dune
                 } // end if-statement
                 /// --- END REFINED CELLS ---
             } /// --- END of refine()
-
+            
         private:
             GlobalCoordinate pos_;
             double vol_;

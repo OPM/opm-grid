@@ -76,9 +76,10 @@ namespace Dune
 /// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
 {
+
     namespace cpgrid
     {
-
+    
         /// @brief Represents an entity of a given codim, with positive or negative orientation.
         ///
         /// This class is not a part of the Dune interface, but of our implementation.
@@ -92,7 +93,7 @@ namespace Dune
         /// We may consider changing this representation to using something like a
         /// std::pair<int, bool> instead.
         /// @tparam codim Codimension
-
+    
         template <int codim>
         class EntityRep
         {
