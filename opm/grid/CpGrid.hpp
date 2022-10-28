@@ -308,8 +308,12 @@ namespace Dune
         /// Create a cartesian grid.
         /// \param dims the number of cells in each cartesian direction.
         /// \param cellsize the size of each cell in each dimension.
+        /// \param shift Number of cell widths the left-most front-most lowest
+        ///             corner of the grid should be shifted to the right, back,
+        ///             and top
         void createCartesian(const std::array<int, 3>& dims,
-                             const std::array<double, 3>& cellsize);
+                             const std::array<double, 3>& cellsize,
+                             const std::array<int, 3>& shift = {0,0,0});
 
         /// The logical cartesian size of the global grid.
         /// This function is not part of the Dune grid interface,
