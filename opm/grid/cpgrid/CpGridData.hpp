@@ -515,18 +515,7 @@ private:
     /** @brief The global id set (used also as local id set). */
     LevelGlobalIdSet* global_id_set_;
     /** @brief The indicator of the partition type of the entities */
-    PartitionTypeIndicator* partition_type_indicator_;
-
-    /*// Refine a patch of cells.
-    void refine_patch(const std::array<int,3>& cells_per_dim,
-                      DefaultGeometryPolicy& all_geom,
-                      std::vector<std::array<int,8>>&  global_refined_cell8corners_indices_storage,
-                      cpgrid::OrientedEntityTable<0,1>& cell_to_face,
-                      Opm::SparseTable<int>& face_to_point,
-                      cpgrid::OrientedEntityTable<1,0>& face_to_cell,
-                      cpgrid::EntityVariable<enum face_tag, 1>& global_refined_face_tags,
-                      cpgrid::SignedEntityVariable<PointType, 1>& global_refined_face_normals); */
-    
+    PartitionTypeIndicator* partition_type_indicator_;   
 
     /// \brief The type of the collective communication.
     typedef MPIHelper::MPICommunicator MPICommunicator;
