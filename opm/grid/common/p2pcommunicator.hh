@@ -247,25 +247,32 @@ public:
     inline void computeDestinations( const linkage_t& linkage, vector_t& dest );
 
     // return new tag number for the exchange messages
-    static int getMessageTag( const unsigned int increment )
+    int getMessageTag(const unsigned int increment) const
     {
-      static int tag = messagetag + 2 ;
-      // increase tag counter
-      const int retTag = tag;
-      tag += increment ;
-      // the MPI standard guaratees only up to 2^15-1
-      if( tag >= 32767 )
-      {
-        // reset tag to initial value
-        tag = messagetag + 2 ;
-      }
+      const int retTag = this->tag_;
+      this->generateNextMessageTag(increment);
       return retTag;
     }
 
     // return new tag number for the exchange messages
-    static int getMessageTag()
+    int getMessageTag() const
     {
-      return getMessageTag( 1 );
+      return this->getMessageTag(1u);
+    }
+
+  private:
+    mutable int tag_{messagetag + 2};
+
+    void generateNextMessageTag(const unsigned int increment) const
+    {
+      this->tag_ += increment;
+
+      // Reset to initial value if next tag exceeds MPI standard's maximum
+      // message tag guarantee of 2^15-1.
+      if (this->tag_ >= (1 << 15) - 1)
+      {
+        this->tag_ = messagetag + 2;
+      }
     }
   };
 
