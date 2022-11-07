@@ -80,9 +80,6 @@
 #include <list>
 #endif
 
-void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
-                      const std::array<int, 3>&,
-                      bool);
 namespace Dune
 {
 
