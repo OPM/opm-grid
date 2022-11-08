@@ -15,7 +15,7 @@
 
 /*
 Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-Copyright 2009, 2010 Statoil ASA.
+Copyright 2009, 2010, 2022 Equinor ASA.
 
 This file is part of The Open Porous Media project  (OPM).
 
@@ -36,18 +36,21 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #ifndef OPM_DEFAULTGEOMETRYPOLICY_HEADER
 #define OPM_DEFAULTGEOMETRYPOLICY_HEADER
 
-#include "Geometry.hpp"
 #include "EntityRep.hpp"
 
 namespace Dune
 {
     namespace cpgrid
     {
+        template<int mydim, int dim>
+        class Geometry;
         /// @brief
         /// @todo Doc me!
         class DefaultGeometryPolicy
         {
             friend class CpGridData;
+            template<int mydim, int dim>
+            friend class Geometry;
         public:
             /// @brief
             /// @todo Doc me

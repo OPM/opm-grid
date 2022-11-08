@@ -42,6 +42,7 @@
 
 #include <opm/grid/utility/ErrorMacros.hpp>
 #include "CpGridData.hpp"
+#include "Geometry.hpp"
 
 namespace Dune
 {

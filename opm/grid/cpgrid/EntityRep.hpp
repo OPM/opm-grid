@@ -106,7 +106,7 @@ namespace Dune
             }
             /// @brief Constructor taking an entity index and an orientation.
             /// @param index_arg Entity index
-            /// @param orientation_arg True if the entity's orientations is positive.
+            /// @param orientation_arg True if the entity's orientation is positive.
             EntityRep(int index_arg, bool orientation_arg)
                 : entityrep_(orientation_arg ? index_arg : ~index_arg)
             {
@@ -114,7 +114,7 @@ namespace Dune
             }
             /// @brief Set entity value.
             /// @param index Entity index
-            /// @param orientation True if the entity's orientations is positive.
+            /// @param orientation True if the entity's orientation is positive.
             void setValue(int index_arg, bool orientation_arg)
             {
                 assert(index_arg >= 0);
@@ -231,6 +231,8 @@ namespace Dune
             using V::reserve;
             using V::push_back;
             using V::data;
+            using V::operator[];
+            using V::resize;
 
             /// Default constructor.
             EntityVariableBase()

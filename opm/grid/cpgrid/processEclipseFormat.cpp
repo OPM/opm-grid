@@ -39,6 +39,7 @@
 #endif
 
 #include "CpGridData.hpp"
+#include "Geometry.hpp"
 
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 

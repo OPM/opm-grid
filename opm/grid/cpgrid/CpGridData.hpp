@@ -70,6 +70,7 @@
 #include <opm/grid/utility/VariableSizeCommunicator.hpp>
 #endif
 #include <dune/grid/common/gridenums.hh>
+#include <dune/geometry/type.hh>
 
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
@@ -109,7 +110,16 @@ class PartitionTypeIndicator;
 template<int,int> class Geometry;
 template<int> class Entity;
 template<int> class EntityRep;
+}
+}
 
+void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                      const std::array<int, 3>&,
+                      bool);
+namespace Dune
+{
+namespace cpgrid
+{
 namespace mover
 {
 template<class T, int i> struct Mover;
@@ -124,6 +134,11 @@ class CpGridData
     template<class T, int i> friend struct mover::Mover;
 
     friend class GlobalIdSet;
+
+    friend
+    void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                            const std::array<int, 3>&,
+                            bool);
 
 private:
     CpGridData(const CpGridData& g);
@@ -500,7 +515,7 @@ private:
     /** @brief The global id set (used also as local id set). */
     LevelGlobalIdSet* global_id_set_;
     /** @brief The indicator of the partition type of the entities */
-    PartitionTypeIndicator* partition_type_indicator_;
+    PartitionTypeIndicator* partition_type_indicator_;   
 
     /// \brief The type of the collective communication.
     typedef MPIHelper::MPICommunicator MPICommunicator;
