@@ -491,9 +491,9 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
 
                         decltype(geom.corner(0)) sum_match{}, sum{};
 
-                        for(int i=0; i < geom.corners(); ++i)
+                        for(int cor = 0; cor < geom.corners(); ++cor)
                         {
-                            sum += geom.corner(i);
+                            sum += geom.corner(cor);
                             sum_match += geom_match.corner(1);
                         }
                         CHECK_COORDINATES(sum, sum_match);
