@@ -23,11 +23,7 @@ cmake_minimum_required (VERSION 3.10)
 # the build starts, so it makes sense to keep the data there then.
 
 option(SIBLING_SEARCH "Search for other modules in sibling directories?" ON)
-option(ENABLE_3DPROPS_TESTING "Build and use the new experimental 3D properties" OFF)
 option(REQUIRE_ZOLTAN "Require Zoltan to be found (needed for productive run" ON)
-if (ENABLE_3DPROPS_TESTING)
-  add_definitions(-DENABLE_3DPROPS_TESTING)
-endif()
 
 if(SIBLING_SEARCH AND NOT opm-common_DIR)
   # guess the sibling dir
