@@ -83,11 +83,14 @@ namespace Dune
 
         cellz_t getCellZvals(const coord_t& c, const coord_t& n, const double* z);
 
+#if HAVE_ECL_INPUT
         void addOuterCellLayer(const grdecl& original,
                                std::vector<double>& new_coord,
                                std::vector<double>& new_zcorn,
                                std::vector<int>& new_actnum,
                                grdecl& output);
+#endif
+
         void removeOuterCellLayer(processed_grid& grid);
         // void removeUnusedNodes(processed_grid& grid); // NOTE: not deleted, see comment at definition.
         void buildTopo(const processed_grid& output,
@@ -247,7 +250,10 @@ namespace cpgrid
 
 
     /// Read the Eclipse grid format ('.grdecl').
-    void CpGridData::processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
+    void CpGridData::processEclipseFormat(const grdecl& input_data,
+#if HAVE_ECL_INPUT
+                                          Opm::EclipseState* ecl_state,
+#endif
                                           NNCMaps& nnc, bool remove_ij_boundary, bool turn_normals,
                                           bool pinchActive)
     {
@@ -260,6 +266,7 @@ namespace cpgrid
         std::cout << "Processing eclipse data." << std::endl;
 #endif
         processed_grid output;
+#if HAVE_ECL_INPUT
         if (ecl_state && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto aquifer_cell_volumes = ecl_state->aquifer().numericalAquifers().aquiferCellVolumes();
             const size_t global_nc = input_data.dims[0] * input_data.dims[1] * input_data.dims[2];
@@ -268,14 +275,16 @@ namespace cpgrid
                 is_aquifer_cell[global_index] = 1;
             }
             process_grdecl(&input_data, 0, is_aquifer_cell.data(), &output, pinchActive);
-        } else {
+        } else
+#endif
             process_grdecl(&input_data, 0, nullptr, &output, pinchActive);
-        }
+
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
             // removeUnusedNodes(output);
         }
 
+#if HAVE_ECL_INPUT
         if (ecl_state) {
             const auto& aquifer = ecl_state->aquifer();
             if (aquifer.hasNumericalAquifer()) {
@@ -295,6 +304,7 @@ namespace cpgrid
                 }
             }
         }
+#endif
 
         // Move data into the grid's structures.
 #ifdef VERBOSE
@@ -309,6 +319,7 @@ namespace cpgrid
 #endif
         // here we need the cell volumes based on the active index order
         std::unordered_map<size_t, double> aquifer_cell_volumes_local;
+#if HAVE_ECL_INPUT
         if (ecl_state && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto& aquifer_cell_volumes = ecl_state->aquifer().numericalAquifers().aquiferCellVolumes();
             aquifer_cells_.reserve(aquifer_cell_volumes.size());
@@ -320,6 +331,7 @@ namespace cpgrid
                 }
             }
         }
+#endif
         std::sort(aquifer_cells_.begin(), aquifer_cells_.end());
         buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, aquifer_cell_volumes_local, geometry_.geomVector(std::integral_constant<int,0>()),
                   geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
@@ -469,6 +481,7 @@ namespace cpgrid
         }
 
 
+#if HAVE_ECL_INPUT
         /// Add an outer cell layer in the (i, j) directions,
         /// repeating the cells on the other side (for periodic
         /// boundary conditions).
@@ -593,6 +606,7 @@ namespace cpgrid
             output.zcorn = &new_zcorn[0];
             output.actnum = &new_actnum[0];
         }
+#endif
 
 
 

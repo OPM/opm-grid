@@ -78,9 +78,9 @@ WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
     init(wells, cpgdim, cartesian_to_compressed);
 }
 
-void WellConnections::init(const std::vector<OpmWellType>& wells,
-                           const std::array<int, 3>& cartesianSize,
-                           const std::vector<int>& cartesian_to_compressed)
+void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& wells,
+                           [[maybe_unused]] const std::array<int, 3>& cartesianSize,
+                           [[maybe_unused]] const std::vector<int>& cartesian_to_compressed)
 {
 #if HAVE_ECL_INPUT
     well_indices_.resize(wells.size());
@@ -149,11 +149,11 @@ perforatingWellIndicesOnProc(const std::vector<int>& parts,
 }
 std::vector<std::vector<int> >
 postProcessPartitioningForWells(std::vector<int>& parts,
-                                std::function<int(int)> gid,
-                                const std::vector<OpmWellType>& wells,
-                                const WellConnections& well_connections,
-                                std::vector<std::tuple<int,int,char>>& exportList,
-                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                [[maybe_unused]] std::function<int(int)> gid,
+                                [[maybe_unused]] const std::vector<OpmWellType>& wells,
+                                [[maybe_unused]] const WellConnections& well_connections,
+                                [[maybe_unused]] std::vector<std::tuple<int,int,char>>& exportList,
+                                [[maybe_unused]] std::vector<std::tuple<int,int,char,int>>& importList,
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                                 const Communication<MPI_Comm>& cc)
 #else
@@ -162,7 +162,6 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 {
     auto no_procs = cc.size();
     auto noCells = parts.size();
-    const auto& mpiType =  MPITraits<std::size_t>::getType();
     std::vector<std::size_t> cellsPerProc(no_procs);
     cc.allgather(&noCells, 1, cellsPerProc.data());
 
@@ -170,6 +169,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     std::vector<std::vector<int> > well_indices_on_proc(no_procs);
 
 #if HAVE_ECL_INPUT
+    const auto& mpiType =  MPITraits<std::size_t>::getType();
     std::map<int, std::vector<int>> addCells, removeCells;
     using AttributeSet = CpGridData::AttributeSet;
 
@@ -373,16 +373,17 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 }
 
 std::vector<std::pair<std::string,bool>>
-computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
-                     const std::vector<OpmWellType>& wells,
+computeParallelWells([[maybe_unused]] const std::vector<std::vector<int> >& wells_on_proc,
+                     [[maybe_unused]] const std::vector<OpmWellType>& wells,
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-                     const Communication<MPI_Comm>& cc,
+                     [[maybe_unused]] const Communication<MPI_Comm>& cc,
 #else
-                     const CollectiveCommunication<MPI_Comm>& cc,
+                     [[maybe_unused]] const CollectiveCommunication<MPI_Comm>& cc,
 #endif
-                     int root)
+                     [[maybe_unused]] int root)
 {
     // We need to use well names as only they are consistent.
+    std::vector<std::pair<std::string,bool>> parallel_wells;
 
 #if HAVE_ECL_INPUT
     std::vector<int> my_well_indices;
@@ -465,7 +466,6 @@ computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
 
     // Compute wells active/inactive in parallel run.
     // boolean indicates whether the well perforates local cells
-    std::vector<std::pair<std::string,bool>> parallel_wells;
     parallel_wells.reserve(wells.size());
 
     for(const auto& well_name: globalWellNames)
