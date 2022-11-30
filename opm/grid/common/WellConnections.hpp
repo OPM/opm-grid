@@ -191,4 +191,5 @@ computeParallelWells(const std::vector<std::vector<int> >& wells_on_proc,
 #endif
 } // end namespace cpgrid
 } // end namespace Dune
+
 #endif

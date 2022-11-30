@@ -122,7 +122,7 @@ if(MPI_FOUND)
   add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
 endif()
 
-if(MPI_FOUND AND HAVE_OPM_TESTS)
+if(MPI_FOUND AND HAVE_OPM_TESTS AND HAVE_ECL_INPUT)
   # opm_add_test would need a driver script to run the
   # parallel test (tests/run-parallel-unitTest.sh which
   # is in opm-simulators and needs to be moved) until

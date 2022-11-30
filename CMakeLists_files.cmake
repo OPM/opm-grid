@@ -66,7 +66,6 @@ if (opm-common_FOUND)
 		opm/grid/transmissibility/trans_tpfa.c)
 endif()
 
-
 # originally generated with the command:
 # find tests/not-unit/ -name \*.cpp -o \*.cc
 list (APPEND ATTIC_FILES
@@ -89,7 +88,6 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/grid_pinch.cpp
   tests/cpgrid/geometry_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
@@ -111,6 +109,7 @@ if(HAVE_ECL_INPUT)
 		tests/test_regionmapping.cpp
 		tests/test_ug.cpp
 		tests/cpgrid/grid_nnc.cpp
+		tests/cpgrid/grid_pinch.cpp
 	)
 endif()
 
@@ -154,6 +153,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/Volumes.hpp
   opm/grid/common/p2pcommunicator.hh
   opm/grid/common/p2pcommunicator_impl.hh
+  opm/grid/common/WellConnections.hpp
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
   opm/grid/cpgrid/DataHandleWrappers.hpp
@@ -175,7 +175,6 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
-  opm/grid/common/WellConnections.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
   opm/grid/polyhedralgrid/capabilities.hh

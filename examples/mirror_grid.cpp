@@ -406,7 +406,7 @@ int main(int argc, char** argv)
 #else
 int main () {
     std::cerr << "Program need activated ECL input. (Configure opm-common "
-              << " with -DENABLE_ECL_INPUT=ON)"<<std::endl
+              << " with -DENABLE_ECL_INPUT=ON)"<<std::endl;
     return 1;
 }
 #endif // #if HAVE_OPM_COMMON

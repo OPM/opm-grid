@@ -229,6 +229,7 @@ public:
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param input_data the data in grdecl format, declared in preprocess.h.
+    ///
     /// \param ecl_state the object from opm-parser provide information regarding to pore volume, NNC,
     ///        aquifer information when ecl_state is available. NNC and aquifer connection
     ///        information will also be updated during the function call when available and necessary.
@@ -236,7 +237,10 @@ public:
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
     /// \param pinchActive If true, we will add faces between vertical cells that have only inactive cells or cells
     ///            with zero volume between them. If false these cells will not be connected.
-    void processEclipseFormat(const grdecl& input_data, Opm::EclipseState* ecl_state,
+    void processEclipseFormat(const grdecl& input_data,
+#if HAVE_ECL_INPUT
+                              Opm::EclipseState* ecl_state,
+#endif
                               std::array<std::set<std::pair<int, int>>, 2>& nnc,
                               bool remove_ij_boundary, bool turn_normals, bool pinchActive);
 

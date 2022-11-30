@@ -109,11 +109,13 @@ const int* cartDims(const UnstructuredGrid& grid);
 /// in the underlying structured grid.
 const int* globalCell(const UnstructuredGrid& grid);
 
+#if HAVE_ECL_INPUT
 /// \brief Create Eclipse style ACTNUM array.
 ///
 /// Create a vector with global cartesian number of elements,
 /// the value is 0 for inactive cells and one for active cells.
 std::vector<int> createACTNUM(const UnstructuredGrid& grid);
+#endif
 
 
 /// \brief Traits of the cell centroids of a grid.
