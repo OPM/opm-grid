@@ -25,6 +25,10 @@
 #include <unordered_map>
 #include <vector>
 
+#if HAVE_MPI
+#include <mpi.h>
+#endif
+
 namespace Opm
 {
 
@@ -47,12 +51,29 @@ namespace Opm
          *
          * \param[in] reg Forward region mapping, restricted to
          *                active cells only.
+         * \param[in] comm Global communicator to base region communicator on.
          */
         explicit
-        RegionMapping(const Region& reg)
+        RegionMapping(const Region& reg
+#if HAVE_MPI
+                      , MPI_Comm comm = MPI_COMM_WORLD
+#endif
+                     )
             : reg_(reg)
         {
+#if HAVE_MPI
+            rev_.init(reg_, comm);
+#else
             rev_.init(reg_);
+#endif
+        }
+
+        ~RegionMapping()
+        {
+#if HAVE_MPI
+            if (rev_.comm_ != MPI_COMM_NULL)
+                MPI_Comm_free(&rev_.comm_);
+#endif
         }
 
         /**
@@ -113,6 +134,10 @@ namespace Opm
                          rev_.c.begin() + rev_.p[i + 1]);
         }
 
+#if HAVE_MPI
+        MPI_Comm comm() const { return rev_.comm_; }
+#endif
+
     private:
         /**
          * Copy of forward region mapping (cell-to-region).
@@ -131,12 +156,21 @@ namespace Opm
             std::vector<Pos>    p;   /**< Region start pointers */
             std::vector<CellId> c;   /**< Region cells */
 
+#if HAVE_MPI
+            MPI_Comm comm_;
+#endif
+
             /**
              * Compute reverse mapping.  Standard linear insertion
              * sort algorithm.
              */
+#if HAVE_MPI
+            void
+            init(const Region& reg, MPI_Comm comm)
+#else
             void
             init(const Region& reg)
+#endif
             {
                 binid.clear();
                 for (const auto& r : reg) {
@@ -154,6 +188,10 @@ namespace Opm
                         id.second = n++;
                     }
                 }
+#if HAVE_MPI
+                MPI_Comm_split(comm, reg.empty() ? MPI_UNDEFINED : 1,
+                               0, &comm_);
+#endif
 
                 for (decltype(p.size()) i = 1, sz = p.size(); i < sz; ++i) {
                     p[0] += p[i];
