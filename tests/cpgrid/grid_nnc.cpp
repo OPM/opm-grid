@@ -122,29 +122,29 @@ BOOST_FIXTURE_TEST_CASE(NNCAtExistingFace, Fixture)
     Opm::NNC nnc;
     // Should not change grid since cells are already neighbours.
     // Repeated NNCs do not change the grid further.
-    nnc.addNNC(2, 3, 1.0);
-    nnc.addNNC(3, 2, 1.0);
-    nnc.addNNC(2, 3, 1.0);
+    nnc.addNNC(2, 3, 1.0, 0);
+    nnc.addNNC(3, 2, 1.0, 0);
+    nnc.addNNC(2, 3, 1.0, 0);
     testCase("FIVE.DATA", nnc, 5, 30, 22, { {0,1}, {1,2}, {2,3}, {3,4} });
 }
 
 BOOST_FIXTURE_TEST_CASE(NNCAtNewFace, Fixture)
 {
     Opm::NNC nnc;
-    nnc.addNNC(2, 4, 1.0);
+    nnc.addNNC(2, 4, 1.0, 0);
     testCase("FIVE.DATA", nnc, 5, 30 + 2, 22, { {0,1}, {1,2}, {2,3}, {2,4}, {3,4} });
 }
 
 BOOST_FIXTURE_TEST_CASE(NNCAtSeveralFaces, Fixture)
 {
     Opm::NNC nnc;
-    nnc.addNNC(2, 4, 1.0);   // new connection
-    nnc.addNNC(3, 4, 1.0);
-    nnc.addNNC(2, 1, 1.0);
-    nnc.addNNC(1, 2, 1.0);
-    nnc.addNNC(1, 4, 1.0);   // new connection
-    nnc.addNNC(999, 2, 1.0); // invalid
-    nnc.addNNC(-1, 2, 1.0);  // invalid
+    nnc.addNNC(2, 4, 1.0, 0);   // new connection
+    nnc.addNNC(3, 4, 1.0, 0);
+    nnc.addNNC(2, 1, 1.0, 0);
+    nnc.addNNC(1, 2, 1.0, 0);
+    nnc.addNNC(1, 4, 1.0, 0);   // new connection
+    nnc.addNNC(999, 2, 1.0, 0); // invalid
+    nnc.addNNC(-1, 2, 1.0, 0);  // invalid
     testCase("FIVE.DATA", nnc, 5, 30 + 4, 22, { {0,1}, {1,2}, {1,4}, {2,3}, {2,4}, {3,4} });
 }
 
@@ -160,29 +160,29 @@ BOOST_FIXTURE_TEST_CASE(ActnumNNCAtExistingFace, Fixture)
     // Should not change grid since cells are already neighbours.
     // Note that cells 3 and 4 in the NNC spec are logical cartesian (global) faces,
     // since global cell 2 is inactive, this becomes cells 2 and 3 in active numbering.
-    nnc.addNNC(3, 4, 1.0);
+    nnc.addNNC(3, 4, 1.0, 0);
     testCase("FIVE_ACTNUM.DATA", nnc, 4, 24, 20, { {0,1}, {2,3} });
 }
 
 BOOST_FIXTURE_TEST_CASE(ActnumNNCAtNewFace, Fixture)
 {
     Opm::NNC nnc;
-    nnc.addNNC(2, 4, 1.0); // inactive cell 2, no new connection
-    nnc.addNNC(1, 4, 1.0); // new connection
+    nnc.addNNC(2, 4, 1.0, 0); // inactive cell 2, no new connection
+    nnc.addNNC(1, 4, 1.0, 0); // new connection
     testCase("FIVE_ACTNUM.DATA", nnc, 4, 24 + 2, 20, { {0,1}, {1,3}, {2,3} });
 }
 
 BOOST_FIXTURE_TEST_CASE(ActnumNNCAtSeveralFaces, Fixture)
 {
     Opm::NNC nnc;
-    nnc.addNNC(2, 4, 1.0);   // inactive cell 2, no new connection
-    nnc.addNNC(3, 4, 1.0);
-    nnc.addNNC(2, 1, 1.0);
-    nnc.addNNC(1, 2, 1.0);
-    nnc.addNNC(1, 4, 1.0);   // new connection
-    nnc.addNNC(1, 3, 1.0);   // new connection
-    nnc.addNNC(999, 2, 1.0); // invalid
-    nnc.addNNC(-1, 2, 1.0);  // invalid
+    nnc.addNNC(2, 4, 1.0, 0);   // inactive cell 2, no new connection
+    nnc.addNNC(3, 4, 1.0, 0);
+    nnc.addNNC(2, 1, 1.0, 0);
+    nnc.addNNC(1, 2, 1.0, 0);
+    nnc.addNNC(1, 4, 1.0, 0);   // new connection
+    nnc.addNNC(1, 3, 1.0, 0);   // new connection
+    nnc.addNNC(999, 2, 1.0, 0); // invalid
+    nnc.addNNC(-1, 2, 1.0, 0);  // invalid
     testCase("FIVE_ACTNUM.DATA", nnc, 4, 24 + 4, 20, { {0,1}, {1,2}, {1,3}, {2,3} });
 }
 
@@ -213,13 +213,13 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP3, Fixture)
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHAndMore, Fixture)
 {
     Opm::NNC nnc;
-    nnc.addNNC(2, 4, 1.0);   // new connection
-    nnc.addNNC(3, 4, 1.0);
+    nnc.addNNC(2, 4, 1.0, 0);   // new connection
+    nnc.addNNC(3, 4, 1.0, 0);
     // The next causes trouble, and I have disabled it because I do not know
     // what should be the correct behaviour for that case.
     // nnc.addNNC(0, 2, 1.0);   // connection added from pinchout already
-    nnc.addNNC(999, 2, 1.0); // invalid
-    nnc.addNNC(-1, 2, 1.0);  // invalid
+    nnc.addNNC(999, 2, 1.0, 0); // invalid
+    nnc.addNNC(-1, 2, 1.0, 0);  // invalid
     testCase("FIVE_PINCH.DATA", nnc, 4, 24 + 2 + 1, 18 + 1, { {0,1}, {1,2}, {1,3}, {2,3} }, true);
 }
 
