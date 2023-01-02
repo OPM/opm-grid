@@ -6,7 +6,7 @@
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Halvor M Nilsen     <hnil@sintef.no>
-//            Bjørn Spjelkavik    <bsp@sintef.no>
+//            BjÃ¸rn Spjelkavik    <bsp@sintef.no>
 //
 // $Date$
 //
