@@ -103,7 +103,9 @@ namespace Opm
                                SparseTable<int>& nb)
     {
         if (grid.dimensions != 2) {
-            OPM_THROW(std::logic_error, "Cannot use orderCounterClockwise in " << grid.dimensions << " dimensions.");
+            OPM_THROW(std::logic_error,
+                      "Cannot use orderCounterClockwise in " +
+                      std::to_string(grid.dimensions) + " dimensions.");
         }
         const int num_cells = grid.number_of_cells;
         if (nb.size() != num_cells) {
