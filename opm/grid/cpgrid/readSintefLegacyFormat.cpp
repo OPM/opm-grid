@@ -74,7 +74,7 @@ namespace Dune
         {
             std::ifstream file(topofilename.c_str());
             if (!file) {
-                OPM_THROW(std::runtime_error, "Could not open file " << topofilename);
+                OPM_THROW(std::runtime_error, "Could not open file " + topofilename);
             }
             readTopo(file, cell_to_face_, face_to_cell_, cell_to_point_);
         }
@@ -82,7 +82,7 @@ namespace Dune
         {
             std::ifstream file(geomfilename.c_str());
             if (!file) {
-                OPM_THROW(std::runtime_error, "Could not open file " << geomfilename);
+                OPM_THROW(std::runtime_error, "Could not open file " + geomfilename);
             }
             readGeom(file, geometry_, face_normals_);
         }
@@ -123,9 +123,11 @@ namespace Dune
             std::getline(topo, topo_header);
             std::string correct_header("topology 3 2o 2 0 3-2o 2o-2 2-0");
             if (topo_header.compare(correct_header)) {
-                OPM_THROW(std::runtime_error, "Header of topology file does not match what we expect, file possibly in wrong format.\n"
-                      << "Header is :" << topo_header << ":\n"
-                      << "Should be :" << correct_header << ":\n");
+                OPM_THROW(std::runtime_error,
+                          "Header of topology file does not match what we expect, "
+                          "file possibly in wrong format.\n"
+                          "Header is :" + topo_header + ":\n"
+                          "Should be :" + correct_header + ":\n");
             }
 
             // Read numbers of entities.
@@ -176,7 +178,9 @@ namespace Dune
                     int face = hface2face[cell2hface[i][j]].first;
                     int ind = hface2face[cell2hface[i][j]].second ? 0 : 1;
                     if (face2cell[face][ind] != -1) {
-                        OPM_THROW(std::runtime_error, "Error in creating faces to cells mapping for face " << face);
+                        OPM_THROW(std::runtime_error,
+                                  "Error in creating faces to cells mapping for face " +
+                                  std::to_string(face));
                     }
                     face2cell[face][ind] = i;
                 }

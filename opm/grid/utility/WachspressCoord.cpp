@@ -100,7 +100,9 @@ namespace Opm
         enum { Maxdim = 3 };
         const int dim = grid.dimensions;
         if (dim > Maxdim) {
-            OPM_THROW(std::runtime_error, "Grid has more than " << Maxdim << " dimensions.");
+            OPM_THROW(std::runtime_error,
+                      "Grid has more than " +
+                      std::to_string(Maxdim) + " dimensions.");
         }
         // Compute static data for each corner.
         const int num_cells = grid.number_of_cells;
@@ -134,8 +136,11 @@ namespace Opm
                 std::vector<int> vert_adj_faces(dim);
                 for (MMIt face_it = frange.first; face_it != frange.second; ++face_it, ++fi) {
                     if (fi >= dim) {
-                        OPM_THROW(std::runtime_error, "In cell " << cell << ", vertex " << ci.vertex << " has "
-                              << " more than " << dim << " adjacent faces.");
+                        OPM_THROW(std::runtime_error,
+                                  "In cell " + std::to_string(cell) +
+                                  ", vertex " + std::to_string(ci.vertex) +
+                                  " has more than " + std::to_string(dim) +
+                                  " adjacent faces.");
                     }
                     fnorm[fi] = grid_.face_normals + dim*(face_it->second);
                     vert_adj_faces[fi] = face_it->second;

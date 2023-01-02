@@ -104,7 +104,8 @@ namespace Opm
     {
         ug_ = read_grid(input_filename.c_str());
         if (!ug_) {
-            OPM_THROW(std::runtime_error, "Failed to read grid from file " << input_filename);
+            OPM_THROW(std::runtime_error,
+                      "Failed to read grid from file " + input_filename);
         }
     }
 

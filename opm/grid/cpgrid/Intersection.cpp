@@ -156,7 +156,8 @@ int Intersection::indexInInside() const
         // for non-neighbouring "intersections".
         return -1;
     default:
-        OPM_THROW(std::runtime_error, "Unhandled face tag: " << tag);
+        OPM_THROW(std::runtime_error,
+                  "Unhandled face tag: " + std::to_string(tag));
     }
 }
 

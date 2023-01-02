@@ -378,7 +378,8 @@ typename Entity<codim>::template Codim<cc>::Entity Entity<codim>::subEntity(int 
         typename Codim<cc>::Entity se(*pgrid_, corner_index, true);
         return se;
     } else {
-        OPM_THROW(std::runtime_error, "No subentity exists of codimension " << cc);
+        OPM_THROW(std::runtime_error,
+                  "No subentity exists of codimension " + std::to_string(cc));
     }
 }
 

@@ -204,7 +204,10 @@ namespace Dune
         const coord_t& lc_size = grid.logicalCartesianSize();
         for (int i = 0; i < 3; ++i) {
             if (initial_split[i] > lc_size[i]) {
-                OPM_THROW(std::runtime_error, "In direction " << i << " requested splitting " << initial_split[i] << " size " << lc_size[i]);
+                OPM_THROW(std::runtime_error,
+                          "In direction "  + std::to_string(i) +
+                          " requested splitting " + std::to_string(initial_split[i]) +
+                          " size " + std::to_string(lc_size[i]));
             }
         }
 

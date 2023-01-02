@@ -68,9 +68,11 @@ void condWriteDoubleField(std::vector<double>& fieldvector,
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
-            OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
-                  "logical cartesian size of the grid: "
-                  << eclVector.size() << " != " << num_global_cells);
+            OPM_THROW(std::runtime_error,
+                      fieldname + " field must have the same size as the "
+                      "logical cartesian size of the grid: " +
+                      std::to_string(eclVector.size()) + " != " +
+                      std::to_string(num_global_cells));
         }
 
         for (size_t i = 0; i < global_cell.size(); ++i) {
@@ -95,9 +97,11 @@ void condWriteIntegerField(std::vector<double>& fieldvector,
         fieldvector.resize(global_cell.size());
         int num_global_cells = dims[0]*dims[1]*dims[2];
         if (int(eclVector.size()) != num_global_cells) {
-            OPM_THROW(std::runtime_error, fieldname << " field must have the same size as the "
-                  "logical cartesian size of the grid: "
-                  << eclVector.size() << " != " << num_global_cells);
+            OPM_THROW(std::runtime_error,
+                      fieldname + " field must have the same size as the "
+                      "logical cartesian size of the grid: " +
+                      std::to_string(eclVector.size()) + " != " +
+                      std::to_string(num_global_cells));
         }
 
         for (size_t i = 0; i < global_cell.size(); ++i) {
