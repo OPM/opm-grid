@@ -36,7 +36,7 @@
 #include "config.h"
 #endif
 #include <opm/grid/utility/StopWatch.hpp>
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 namespace Opm
 {
