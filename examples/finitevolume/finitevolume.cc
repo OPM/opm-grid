@@ -139,7 +139,7 @@ void initGrid(const Dune::ParameterTree &param, GridType& grid)
                                      param.get<double>("dz", 1.0) }};
         grid.createCartesian(dims, cellsz);
     } else {
-        OPM_THROW(std::runtime_error, "Unknown file format string: " << fileformat);
+        OPM_THROW(std::runtime_error, "Unknown file format string: " + fileformat);
     }
 }
 
