@@ -39,8 +39,9 @@
 
 #include <cmath>
 
-#include <opm/grid/utility/ErrorMacros.hpp>
 #include "Volumes.hpp"
+
+#include <cassert>
 
 namespace Dune
 {

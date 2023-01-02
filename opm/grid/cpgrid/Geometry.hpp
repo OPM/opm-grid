@@ -54,7 +54,7 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <opm/grid/utility/SparseTable.hpp>
 
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 
 namespace Dune
 {

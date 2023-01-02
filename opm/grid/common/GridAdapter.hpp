@@ -22,7 +22,6 @@
 
 
 #include <opm/grid/UnstructuredGrid.h>
-#include <opm/grid/utility/ErrorMacros.hpp>
 #include <opm/grid/CpGrid.hpp>
 #include <stdexcept>
 #include <vector>

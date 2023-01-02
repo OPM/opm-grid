@@ -41,7 +41,7 @@
 #include <fstream>
 #include <vector>
 
-#include <opm/grid/utility/ErrorMacros.hpp>
+#include <opm/common/ErrorMacros.hpp>
 #include "CpGridData.hpp"
 #include "Geometry.hpp"
 
