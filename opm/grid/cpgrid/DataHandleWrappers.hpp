@@ -34,7 +34,6 @@
 
 #include <array>
 #include <vector>
-#include <iostream>
 
 #include "OrientedEntityTable.hpp"
 #include "EntityRep.hpp"
@@ -144,18 +143,7 @@ private:
 struct PointViaCellWarner
 {
     static bool printWarn;
-    void warn()
-    {
-        if (printWarn)
-        {
-            std::cerr << "Communication of variable data attached to points is "
-                      << "not fully supported. Your code/handle must not use the"
-                      << "last parameter of "
-                      << "DataHandle::scatter(B& buffer, E& entity, int size) "
-                      << "as it will not be correct!";
-            printWarn =false;
-        }
-    }
+    void warn();
 };
 
 /// \brief A data handle to send data attached to points via cell communication
