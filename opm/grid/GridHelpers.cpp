@@ -18,11 +18,10 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
+
 #include "config.h"
-#include <iostream>
-
-
 #include <opm/grid/GridHelpers.hpp>
+
 #include <opm/grid/common/Volumes.hpp>
 
 namespace Opm
