@@ -150,7 +150,7 @@ namespace cpgrid
         Opm::MinpvProcessor::Result minpv_result;
 
         // Possibly process MINPV
-        if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             // Currently PINCH is always assumed to be active
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
@@ -162,7 +162,7 @@ namespace cpgrid
             const bool nogap = ecl_grid.getPinchGapMode() ==  Opm::PinchMode::ModeEnum::NOGAP;
             const auto& poreVolume = ecl_state->fieldProps().porv(true);
             minpv_result = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
-            if (minpv_result.nnc.size() > 0) {
+            if (!minpv_result.nnc.empty()) {
                 this->zcorn = zcornData;
             }
         }

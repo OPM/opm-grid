@@ -913,7 +913,7 @@ namespace Dune
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
 
-        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive))
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive))
         {
           Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
           const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
@@ -931,7 +931,7 @@ namespace Dune
         }
 
         /*
-        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::ModeEnum::Inactive)) {
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive)) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const double minpv_value  = inputGrid.getMinpvValue();
             // Currently the pinchProcessor is not used and only opmfil is supported

@@ -147,7 +147,7 @@ namespace Opm
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
 
-        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != MinpvMode::ModeEnum::Inactive)) {
+        if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != MinpvMode::Inactive)) {
             MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
