@@ -22,7 +22,6 @@
 #if HAVE_ECL_INPUT
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
-#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 #include <opm/common/utility/ActiveGridCells.hpp>
 
