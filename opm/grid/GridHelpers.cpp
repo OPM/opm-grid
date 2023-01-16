@@ -22,6 +22,8 @@
 #include "config.h"
 #include <opm/grid/GridHelpers.hpp>
 
+#include <opm/common/utility/ActiveGridCells.hpp>
+
 #include <opm/grid/common/Volumes.hpp>
 
 namespace Opm
