@@ -23,19 +23,17 @@
 #include <opm/input/eclipse/Parser/ParseContext.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
-#include <opm/common/utility/ActiveGridCells.hpp>
-
 
 namespace Dune {
     namespace cpgrid {
-        typedef Opm::Well OpmWellType;
+        using OpmWellType = Opm::Well;
     }
 }
 #else // #if HAVE_ECL_INPUT
 
 namespace Dune {
     namespace cpgrid {
-        typedef int OpmWellType;
+        using OpmWellType = int;
     }
 }
 
