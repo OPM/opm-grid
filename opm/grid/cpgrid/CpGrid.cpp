@@ -43,6 +43,10 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #endif
 
+#if HAVE_ECL_INPUT
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
+
 #include "../CpGrid.hpp"
 #include "CpGridData.hpp"
 #include <opm/grid/common/ZoltanPartition.hpp>
