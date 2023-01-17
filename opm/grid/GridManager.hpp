@@ -20,8 +20,6 @@
 #ifndef OPM_GRIDMANAGER_HEADER_INCLUDED
 #define OPM_GRIDMANAGER_HEADER_INCLUDED
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
 #include <string>
 
 struct UnstructuredGrid;
@@ -29,6 +27,11 @@ struct grdecl;
 
 namespace Opm
 {
+
+#if HAVE_ECL_INPUT
+class EclipseGrid;
+#endif
+
     /// This class manages an Opm::UnstructuredGrid in the sense that it
     /// encapsulates creation and destruction of the grid.
     /// The following grid types can be constructed:
@@ -82,8 +85,8 @@ namespace Opm
 
     private:
         // Disable copying and assignment.
-        GridManager(const GridManager& other);
-        GridManager& operator=(const GridManager& other);
+        GridManager(const GridManager& other) = delete;
+        GridManager& operator=(const GridManager& other) = delete;
 
 #if HAVE_ECL_INPUT
         // Construct corner-point grid from EclipseGrid.

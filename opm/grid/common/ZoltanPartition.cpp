@@ -21,7 +21,7 @@
 #include <config.h>
 #endif
 #include <opm/grid/common/ZoltanPartition.hpp>
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <algorithm>

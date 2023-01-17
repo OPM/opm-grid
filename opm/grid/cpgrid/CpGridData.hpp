@@ -87,8 +87,6 @@
 #include "DefaultGeometryPolicy.hpp"
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
 #include "Entity2IndexDataHandle.hpp"
 #include "DataHandleWrappers.hpp"
 #include "GlobalIdMapping.hpp"

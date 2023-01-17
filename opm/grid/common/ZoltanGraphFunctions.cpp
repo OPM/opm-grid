@@ -23,7 +23,7 @@
 #endif
 #include <limits>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>

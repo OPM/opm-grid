@@ -45,7 +45,7 @@
 
 #include <dune/common/parallel/mpihelper.hh>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
 namespace Dune

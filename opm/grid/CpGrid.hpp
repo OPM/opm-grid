@@ -72,8 +72,7 @@
 #include "common/GridEnums.hpp"
 #include "common/Volumes.hpp"
 #include <opm/grid/cpgpreprocess/preprocess.h>
-
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 
 #include <iostream>
 #if ! HAVE_MPI

@@ -23,7 +23,6 @@
 #include <opm/grid/common/WellConnections.hpp>
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
-#include <opm/grid/utility/OpmParserIncludes.hpp>
 
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 

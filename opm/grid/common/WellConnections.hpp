@@ -38,9 +38,8 @@
 #include <dune/common/parallel/mpicollectivecommunication.hh>
 #endif
 
-
-#include <opm/grid/utility/OpmParserIncludes.hpp>
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 
 namespace Dune
 {
