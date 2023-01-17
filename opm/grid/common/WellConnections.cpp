@@ -24,6 +24,7 @@
 
 #include <opm/grid/cpgrid/CpGridData.hpp>
 
+#include <opm/input/eclipse/Schedule/Well/Well.hpp>
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 
 #include <dune/common/parallel/mpitraits.hh>

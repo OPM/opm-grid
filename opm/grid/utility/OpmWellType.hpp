@@ -20,7 +20,10 @@
 #define OPM_GRID_WELLTYPE_HEADER_INCLUDED
 
 #if HAVE_ECL_INPUT
-#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+
+namespace Opm {
+class Well;
+}
 
 namespace Dune {
     namespace cpgrid {
