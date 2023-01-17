@@ -24,8 +24,6 @@
 #include <functional>
 
 #include <opm/grid/GridHelpers.hpp>
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
 
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 

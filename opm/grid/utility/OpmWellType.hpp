@@ -16,11 +16,14 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
-#define OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
+#ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED
+#define OPM_GRID_WELLTYPE_HEADER_INCLUDED
 
 #if HAVE_ECL_INPUT
-#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+
+namespace Opm {
+class Well;
+}
 
 namespace Dune {
     namespace cpgrid {
@@ -37,4 +40,4 @@ namespace Dune {
 
 #endif // #if HAVE_ECL_INPUT
 
-#endif // #ifndef OPM_GRID_OPMPARSERINCLUDES_HEADER_INCLUDED
+#endif // #ifndef OPM_GRID_WELLTYPE_HEADER_INCLUDED

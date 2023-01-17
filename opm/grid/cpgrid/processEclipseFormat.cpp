@@ -51,8 +51,6 @@
 #include <opm/grid/RepairZCORN.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
 #include <cstddef>
 #include <fstream>
 #include <iostream>

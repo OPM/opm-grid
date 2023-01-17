@@ -21,7 +21,7 @@
 #ifndef DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 #define DUNE_CPGRID_ZOLTAN_GRAPH_FUNCTIONS_HEADER
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/grid/utility/OpmWellType.hpp>
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/common/WellConnections.hpp>

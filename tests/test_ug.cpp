@@ -24,7 +24,6 @@
 #include <opm/grid/GridHelpers.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/Deck/Deck.hpp>

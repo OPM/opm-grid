@@ -26,9 +26,6 @@
 
 #include "opm/grid/CpGrid.hpp"
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
-
 typedef Dune::CpGrid GridType;
 
 //===============================================================

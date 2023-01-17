@@ -26,11 +26,12 @@
 #include <opm/grid/UnstructuredGrid.h>
 
 #include <opm/grid/utility/IteratorRange.hpp>
-#include <opm/grid/utility/OpmParserIncludes.hpp>
-
 
 namespace Opm
 {
+
+class EclipseGrid;
+
 namespace UgGridHelpers
 {
 
