@@ -18,7 +18,7 @@
 // Re-enable warnings.
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
 #include <iostream>
 

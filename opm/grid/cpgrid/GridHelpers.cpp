@@ -22,6 +22,8 @@
 #include <config.h>
 #include <opm/grid/cpgrid/GridHelpers.hpp>
 
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+
 #include <opm/common/utility/ActiveGridCells.hpp>
 
 namespace Opm

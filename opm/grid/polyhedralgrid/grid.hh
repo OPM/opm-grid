@@ -43,6 +43,10 @@
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/MinpvProcessor.hpp>
 
+#if HAVE_ECL_INPUT
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
+
 namespace Dune
 {
 

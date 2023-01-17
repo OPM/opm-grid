@@ -26,6 +26,10 @@
 
 #include <opm/grid/common/Volumes.hpp>
 
+#if HAVE_ECL_INPUT
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
+
 namespace Opm
 {
 namespace UgGridHelpers

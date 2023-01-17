@@ -27,7 +27,9 @@
 #include <opm/grid/MinpvProcessor.hpp>
 #include <opm/common/ErrorMacros.hpp>
 
-#include <opm/grid/utility/OpmParserIncludes.hpp>
+#if HAVE_ECL_INPUT
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+#endif
 
 #include <array>
 #include <algorithm>
