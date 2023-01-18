@@ -116,6 +116,8 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
 
 #ifndef NDEBUG
             int index = 0;
+            std::unordered_set<int> distributed_wells;
+
             for( auto well : gridAndWells->getWellsGraph() )
             {
                 int part=parts[index];
@@ -129,10 +131,19 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                 }
                 if ( cells_on_other.size() )
                 {
-                    OPM_THROW(std::domain_error, "Well is distributed between processes, which should not be the case!");
+                    distributed_wells.insert(index);
                 }
                 ++index;
             }
+            auto num_dist_wells = cc.sum(distributed_wells.size());
+            if (num_dist_wells) {
+                OPM_THROW(std::domain_error,
+                          std::to_string(num_dist_wells) + " well"
+                              +  ((num_dist_wells >= 2) ? "s are" : " is")
+                              + " distributed between processes, which should not be the case!");
+            }
+
+
 #endif
         }
     }
