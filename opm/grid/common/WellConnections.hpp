@@ -162,6 +162,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 std::function<int(int)> gid,
                                 const std::vector<OpmWellType>&  wells,
                                 const WellConnections& well_connections,
+                                const std::vector<std::set<int> >& wellGraph,
                                 std::vector<std::tuple<int,int,char>>& exportList,
                                 std::vector<std::tuple<int,int,char,int>>& importList,
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)

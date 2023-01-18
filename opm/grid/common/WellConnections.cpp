@@ -31,6 +31,7 @@
 #include <dune/istl/owneroverlapcopy.hh>
 
 #include <map>
+#include <forward_list>
 
 namespace
 {
@@ -154,6 +155,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                                 [[maybe_unused]] std::function<int(int)> gid,
                                 [[maybe_unused]] const std::vector<OpmWellType>& wells,
                                 [[maybe_unused]] const WellConnections& well_connections,
+                                [[maybe_unused]] const std::vector<std::set<int> >& wellGraph,
                                 [[maybe_unused]] std::vector<std::tuple<int,int,char>>& exportList,
                                 [[maybe_unused]] std::vector<std::tuple<int,int,char,int>>& importList,
 #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
@@ -173,9 +175,18 @@ postProcessPartitioningForWells(std::vector<int>& parts,
 #if HAVE_ECL_INPUT
     const auto& mpiType =  MPITraits<std::size_t>::getType();
     std::map<int, std::vector<int>> addCells, removeCells;
+    std::vector<int> visited(noCells, false);
     using AttributeSet = CpGridData::AttributeSet;
 
     if (noCells && well_connections.size()) {
+        std::vector<std::unordered_set<int>> old_owners(wells.size());
+
+        for (std::size_t well_index = 0; well_index < wells.size(); ++well_index) {
+            const auto& connections = well_connections[well_index];
+            for (const auto& cell : connections) {
+                old_owners[well_index].insert(parts[cell]);
+            }
+        }
 
         // prevent memory allocation
         for (auto &well_indices : well_indices_on_proc) {
@@ -185,38 +196,63 @@ postProcessPartitioningForWells(std::vector<int>& parts,
         // Check that all connections of a well have ended up on one process.
         // If that is not the case for well then move them manually to the
         // process that already has the most connections on it.
-        int well_index = 0;
-
-        for (const auto &well : wells) {
-            const auto &connections = well_connections[well_index];
-            if (connections.empty()) {
-                // No connections, nothing to move or worry about.
-                ++well_index;
+        for (std::size_t well_index = 0; well_index < wells.size(); ++well_index) {
+            const auto& connections = well_connections[well_index];
+            if (connections.size() <= 1 || visited[*connections.begin()]) {
+                // Well does not connect cells or was visited before,
+                // nothing to move or worry about.
                 continue;
             }
-            std::map<int, std::size_t> no_connections_on_proc;
-            for (auto connection_index : connections) {
-                ++no_connections_on_proc[parts[connection_index]];
-            }
-            assert(!no_connections_on_proc.empty());
-            int owner = no_connections_on_proc.begin()->first;
 
-            if (no_connections_on_proc.size() > 1) {
+            // Note that a cell might be perforated by multiple wells. In that
+            // case all wells need to end up on the same process.
+            // We need to process not just the perforated cells of this well,
+            // but any perforated well reachable by a path via wells from the
+            // cells of this well. Classic breadth first search.
+            std::forward_list<int> visited_cells;
+            std::map<int, std::size_t> num_connections_on_proc;
+            auto visitor = [&num_connections_on_proc, &parts](int cell) { ++num_connections_on_proc[parts[cell]]; };
+            visited_cells.push_front(*connections.begin());
+
+            auto current = visited_cells.begin();
+            auto last = current;
+            auto end = visited_cells.end();
+            int last_size = 1;
+            int idx = 0;
+
+            visitor(*current);
+            visited[*current] = true;
+
+            while (current != end) {
+                int new_size = last_size;
+                for (; idx < last_size; ++current, ++idx) {
+                    for (auto neighbor : wellGraph[*current]) {
+                        if (!visited[neighbor]) {
+                            ++new_size;
+                            last = visited_cells.insert_after(last, neighbor);
+                            visitor(neighbor);
+                            visited[neighbor] = true;
+                        }
+                    }
+                }
+                last_size = new_size;
+            }
+            assert(!num_connections_on_proc.empty());
+
+            if (num_connections_on_proc.size() > 1) {
                 // partition with the most connections on it becomes new owner
-                int new_owner = std::max_element(no_connections_on_proc.begin(),
-                                                 no_connections_on_proc.end(),
+                int new_owner = std::max_element(num_connections_on_proc.begin(),
+                                                 num_connections_on_proc.end(),
                                                  [](const auto& p1, const auto& p2)
                                                  { return (p1.second < p2.second); })
                                     ->first;
-                std::cout << "Manually moving well " << well.name()
-                          << " to partition " << new_owner << std::endl;
 
                 // all cells moving to new_owner. Might already contain cells from
                 // previous wells.
                 auto &add = addCells[new_owner];
                 auto addOldSize = add.size(); // remember beginning of this well
 
-                for (auto connection_cell : connections) {
+                for (auto connection_cell : visited_cells) {
                     const auto &global = gid(connection_cell);
                     auto old_owner = parts[connection_cell];
                     if (old_owner != new_owner) // only parts might be moved
@@ -236,11 +272,7 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                     assert(exportCandidate != exportList.end() && std::get<0>(*exportCandidate) == *movedCell);
                     std::get<1>(*exportCandidate) = new_owner;
                 }
-                owner = new_owner;
             }
-
-            well_indices_on_proc[owner].push_back(well_index);
-            ++well_index;
         }
         auto sorter = [](std::pair<const int, std::vector<int>> &pair) {
                           auto &vec = pair.second;
@@ -248,6 +280,34 @@ postProcessPartitioningForWells(std::vector<int>& parts,
                       };
         std::for_each(addCells.begin(), addCells.end(), sorter);
         std::for_each(removeCells.begin(), removeCells.end(), sorter);
+
+        // prevent memory allocation
+        for (auto& well_indices : well_indices_on_proc) {
+            well_indices.reserve(wells.size());
+        }
+
+        // Check that all connections of a well have ended up on one process.
+        // If that is not the case for well then move them manually to the
+        // process that already has the most connections on it.
+        std::size_t well_index = 0;
+
+        for (const auto& well : wells) {
+            const auto& connections = well_connections[well_index];
+            if (connections.empty()) {
+                // Well does not perforate cells, nothing to worry about.
+                ++well_index;
+                continue;
+            } else {
+                int new_owner = parts[*connections.begin()];
+                well_indices_on_proc[new_owner].push_back(well_index);
+                const auto& old_owners_well = old_owners[well_index];
+                if (old_owners_well.size() > 1 || old_owners_well.find(new_owner) == old_owners_well.end()) {
+                    ::Opm::OpmLog::info("Manually moved well " + well.name() + " to partition "
+                                        + std::to_string( new_owner ));
+                }
+            }
+            ++well_index;
+        }
     }
 
     // setup receives for each process that owns cells of the original grid
