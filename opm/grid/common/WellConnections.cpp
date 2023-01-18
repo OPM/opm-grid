@@ -201,17 +201,13 @@ postProcessPartitioningForWells(std::vector<int>& parts,
             assert(!no_connections_on_proc.empty());
             int owner = no_connections_on_proc.begin()->first;
 
-            // \todo remove trigger code for #476 that moves all wells to the last rank
             if (no_connections_on_proc.size() > 1) {
                 // partition with the most connections on it becomes new owner
-                int new_owner =
-                    std::max_element(no_connections_on_proc.begin(),
-                                     no_connections_on_proc.end(),
-                                     [](const std::pair<int, std::size_t> &p1,
-                                        const std::pair<int, std::size_t> &p2) {
-                                         return (p1.second > p2.second);
-                                     })
-                    ->first;
+                int new_owner = std::max_element(no_connections_on_proc.begin(),
+                                                 no_connections_on_proc.end(),
+                                                 [](const auto& p1, const auto& p2)
+                                                 { return (p1.second < p2.second); })
+                                    ->first;
                 std::cout << "Manually moving well " << well.name()
                           << " to partition " << new_owner << std::endl;
 
