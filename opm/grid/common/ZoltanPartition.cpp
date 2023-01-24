@@ -110,12 +110,13 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                                                 gidGetter,
                                                 *wells,
                                                 gridAndWells->getWellConnections(),
+                                                gridAndWells->getWellsGraph(),
                                                 myExportList, myImportList,
                                                 cc);
 
 
 #ifndef NDEBUG
-            int index = 0;
+            std::size_t index = 0;
             std::unordered_set<int> distributed_wells;
 
             for( auto well : gridAndWells->getWellsGraph() )
