@@ -505,32 +505,6 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
             ++equiv_element_iter;
         }
     }
-    // Create a grid that is equivalent to the refinement
-    /*  Dune::CpGrid coarse_grid;
-    std::array<double, 3> cell_sizes_new = {1.0, 1.0, 1.0};
-    std::array<int, 3> coarse_grid_dim = {4,3,3};
-    std::array<int, 3> cells_per_dim_patch = {2,2,2};
-    std::array<int, 3> start_ijk = {1,0,1};
-    std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1,2-0,3-1} ={2,2,2}
-    coarse_grid.createCartesian(coarse_grid_dim, cell_sizes_new);
-    // Call refinedBlockPatch()
-    coarse_grid.current_view_data_->refineBlockPatch(cells_per_dim_patch, start_ijk, end_ijk);
-    // Create a pointer pointing at the CpGridData object coarse_grid.current_view_data_.
-    std::shared_ptr<Dune::cpgrid::CpGridData> coarse_grid_ptr =  std::make_shared<Dune::cpgrid::CpGridData>();
-    *coarse_grid.current_view_data_ = *coarse_grid_ptr;
-    // Create a vector of shared pointers of CpGridData type.
-    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> data;
-    // Add coarse_grid_ptr to data.
-    data.push_back(coarse_grid_ptr);
-    // Call getLeafView2Levels()
-    coarse_grid.getLeafView2Levels(data, cells_per_dim_patch, start_ijk, end_ijk);
-    // Call addLevel()
-    const int level_to_refine = 0;
-    std::vector<std::array<int,2>> future_leaf_corners;
-    std::vector<std::array<int,2>> future_leaf_faces;
-    std::vector<std::array<int,2>> future_leaf_cells;
-    coarse_grid.addLevel(data, level_to_refine, cells_per_dim_patch, start_ijk, end_ijk,
-    future_leaf_corners, future_leaf_faces, future_leaf_cells);*/
 }
 
 BOOST_AUTO_TEST_CASE(refine_simple_cube)
@@ -616,8 +590,8 @@ void refinePatch_and_check(const std::array<int,3>&,
     std::array<int, 3> start_ijk = {1,0,1};
     std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1,2-0,3-1} ={2,2,2}
     coarse_grid.createCartesian(coarse_grid_dim, cell_sizes_new);
-    // Call refinedBlockPatch()
-    coarse_grid.current_view_data_->refineBlockPatch(cells_per_dim_patch, start_ijk, end_ijk);
+    // Call refinePatch()
+    coarse_grid.current_view_data_->refinePatch(cells_per_dim_patch, start_ijk, end_ijk);
 
 }
 BOOST_AUTO_TEST_CASE(refine_patch)

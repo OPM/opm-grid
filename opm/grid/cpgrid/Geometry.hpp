@@ -457,7 +457,7 @@ namespace Dune
                                         { 1, 1, 1 } };
                 GlobalCoordinate xyz(0.0);
                 for (int i = 0; i < 8; ++i) {
-                    GlobalCoordinate corner_contrib = corner(i);
+                    GlobalCoordinate corner_contrib = corner(i);  
                     double factor = 1.0;
                     for (int j = 0; j < 3; ++j) {
                         factor *= uvw[pat[i][j]][j];
@@ -615,16 +615,14 @@ namespace Dune
              * must be externally managed, since the newly created geometry structures only store pointers and do
              * not free them on destruction.
              *
-             * @param cells_per_dim                                The number of sub-cells in each direction,
-             * @param all_geom                                     Geometry Policy for the refined geometries. Those will be added there.
-             * @param refined_cell_to_point                        Map from cell to its 8 corners.
-             * @param refined_cell_to_face                         Map from cell to its oriented faces,
-             *                                                     later be used to construct inverse map
-             *                                                     with makeInverseRelation.
-             * @param refined_face_to_point                        Map from face to its points.
-             * @param refined_face_to_cell                         Map from face to its neighboring cells.
-             * @param refined_face_tags                            Face tags (I_FACE, J_FACE, K_FACE).
-             * @param refined_face_normals                         Face normal(s) (only one per face is computed).
+             * @param cells_per_dim                  The number of sub-cells in each direction,
+             * @param all_geom                       Geometry Policy for the refined geometries. Those will be added there.
+             * @param refined_cell_to_point          Map from cell to its 8 corners.
+             * @param refined_cell_to_face           Map from cell to its oriented faces, used to build face_to_cell_.
+             * @param refined_face_to_point          Map from face to its points.
+             * @param refined_face_to_cell           Map from face to its neighboring cells.
+             * @param refined_face_tags              Face tags (I_FACE, J_FACE, K_FACE).
+             * @param refined_face_normals           Face normal(s) (only one per face is computed).
              */
             typedef Dune::FieldVector<double,3> PointType;
             void refine(const std::array<int,3>& cells_per_dim,
@@ -644,7 +642,6 @@ namespace Dune
                     all_geom.geomVector(std::integral_constant<int,0>());
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
-
                 /// --- REFINED CORNERS ---
                 // The strategy is to compute the local refined corners
                 // of the unit/reference cube, and then apply the map global().
@@ -671,10 +668,10 @@ namespace Dune
                     } // end i-for-loop
                 } // end j-for-loop
                 /// --- END REFINED CORNERS ---
-
+                //
                 /// --- REFINED FACES ---
                 // We want to populate "refined_faces". The size of "refined_faces" is
-                int refined_faces_size =
+                const int refined_faces_size =
                     (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1)) // 'bottom/top faces'
                     + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]) // 'left/right faces'
                     + (cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2]); // 'front/back faces'
@@ -785,7 +782,7 @@ namespace Dune
                     } // end l-for-loop
                 } // end r-for-loop
                 /// --- END REFINED FACES ---
-                
+                //
                 /// --- REFINED CELLS ---
                 // We need to populate "refined_cells"
                 // "refined_cells"'s size is cells_per_dim[0] * cells_per_dim[1] * cells_per_dim[2].
@@ -993,18 +990,20 @@ namespace Dune
             const cpgrid::Geometry<0, 3>* allcorners_; // For dimension 3 only
             const int* cor_idx_;               // For dimension 3 only
             
-            // Auxiliary function to reduce "refine()"-code
-            // "getIndicesFace" returns the index of the face, the 4 indices of the corners of the face,
-            // and the local_refined_centroid. Each face is contant in one direction.
-            // @param l,m,n                Play the role of kji, ikj, or jik.
-            // @param constant_direction   Takes values 0,1, or 2, meaning constant in z,x,y respectively.
-            // @param cells_per_dim        Refined cells in each direction.
-            // @return Type of face: LEFT, BACK, or TOP
-            //         Face index of a refined cell 'lmn' generated with "refine()".
-            //         Four corner indices of the corners of the refined face 'lmn'.
-            //         For each face, the (at most 2) neighboring cells (used in "face_to_cell").
-            //         Local centroid of the face of refined cell 'lmn' of the unit cube.
-            std::tuple< enum face_tag, int,
+            /// @brief
+            ///   Auxiliary function to get refined_face information: tag, index, face_to_point_, face_to_cell, face centroid,
+            ///   meant to reduce "refine()"-code.
+            ///                     
+            /// @param [in] l,m,n                Play the role of kji, ikj, or jik. (i~xDirect, j~yDirect, k~zDirect)
+            /// @param [in] constant_direction   Takes values 0,1, or 2, meaning constant in z,x,y respectively.
+            /// @param [in] cells_per_dim        Refined cells in each direction.
+            ///
+            /// @param [out] refined_face_tag            I_FACE, J_FACE, K_FACE
+            /// @param [out] refined_face_index          Face index of a refined cell 'lmn' generated with "refine()".
+            /// @param [out] refined_face_to_point       Four corner indices of the corners of the refined face 'lmn'.
+            /// @param [out] refined_face_to_cell        For each face, the (at most 2) neighboring cells (used in "face_to_cell").
+            /// @param [out] refined_face_centroid       Local centroid of the face of refined cell 'lmn' of the unit cube.
+            const std::tuple< enum face_tag, int,
                         std::array<int, 4>, std::vector<cpgrid::EntityRep<0>>,
                         LocalCoordinate>
             getIndicesFace(int l, int m, int n, int constant_direction, const std::array<int, 3>& cells_per_dim) const
