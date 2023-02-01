@@ -223,8 +223,12 @@ namespace Opm
                                 }
                             }
 
+                            bool c_thin = thickness[c] < z_tolerance;
                             // Add a connection if the cell above and below is active and has porv > minpv
-                            if ((actnum.empty() || (actnum[c_above] && actnum[c_below])) && pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
+                            // In the case of PichNOGAP this cell must be thin, too.
+                            if ( (! pinchNOGAP || c_thin) &&
+                                 (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
+                                 pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                                 result.add_nnc(c_above, c_below);
                             }
                         }
