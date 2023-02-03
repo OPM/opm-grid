@@ -37,11 +37,10 @@
 #ifndef OPM_GEOMETRYHELPERS_HEADER
 #define OPM_GEOMETRYHELPERS_HEADER
 
-#include <cmath>
-
 #include "Volumes.hpp"
 
 #include <cassert>
+#include <cmath>
 
 namespace Dune
 {
@@ -105,7 +104,14 @@ namespace Dune
                 tot_area += tri_area;
                 tot_centroid += tri_w_mid;
             }
-            tot_centroid /= tot_area;        
+
+            if (std::abs(tot_area) > 0.0) {
+                tot_centroid /= tot_area;
+            }
+            else {
+                tot_centroid = inpoint;
+            }
+
             return tot_centroid;
         }
 
@@ -129,7 +135,11 @@ namespace Dune
                 w_normal *= area(tri);
                 tot_normal += w_normal;
             }
-            tot_normal /= tot_normal.two_norm();        
+
+            if (const auto length = tot_normal.two_norm(); length > 0.0) {
+                tot_normal /= length;
+            }
+
             return tot_normal;
         }
 
@@ -185,7 +195,6 @@ namespace Dune
             centroid /= tot_volume;
             assert(tot_volume>=0);
             return centroid;
-        
         }
 
 
