@@ -33,9 +33,11 @@
 */
 
 #include "config.h"
+
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,7 +45,6 @@
 #include "preprocess.h"
 #include "uniquepoints.h"
 #include "facetopology.h"
-
 
 #define MIN(i,j) ((i)<(j) ? (i) : (j))
 #define MAX(i,j) ((i)>(j) ? (i) : (j))
@@ -716,29 +717,178 @@ vert_size(const struct grdecl *in,
 
 
 /* ---------------------------------------------------------------------- */
-static int
-is_lefthanded(const struct grdecl *in, const double sign)
+static void
+vertex_coord(const struct grdecl *in,
+             const size_t         pillar,
+             const double         z,
+             double              *coord)
 /* ---------------------------------------------------------------------- */
 {
-    int           active, searching;
-    size_t        nx, ny, nz, c;
-    size_t        origin, imax, jmax;
-    size_t        off[8];
-    double        dx[2], dy[2], dz, triple;
-    const double *pt_coord;
+    const double *top = &in->coord[6*pillar + 0];
+    const double *bot = &in->coord[6*pillar + 3]; /* == top + 3 */
+
+    const int coincide = fabs(top[2] - bot[2]) < 1.0e-6;
+
+    const double t = coincide
+        ? 0.0 /* coincide => vertical */
+        : (z - top[2]) / (bot[2] - top[2]); /* straight line */
+
+    coord[0] = (1.0 - t)*top[0] + t*bot[0];
+    coord[1] = (1.0 - t)*top[1] + t*bot[1];
+    coord[2] = z;
+}
+
+
+static void
+bounding_box_cross_axes(const double *origin,
+                        const double *i_axis,
+                        const double *j_axis,
+                        double       *cross)
+{
+    cross[0] = (i_axis[1] - origin[1]) * (j_axis[2] - origin[2])
+        -      (i_axis[2] - origin[2]) * (j_axis[1] - origin[1]);
+
+    cross[1] = (i_axis[2] - origin[2]) * (j_axis[0] - origin[0])
+        -      (i_axis[0] - origin[0]) * (j_axis[2] - origin[2]);
+
+    cross[2] = (i_axis[0] - origin[0]) * (j_axis[1] - origin[1])
+        -      (i_axis[1] - origin[1]) * (j_axis[0] - origin[0]);
+}
+
+
+static double
+bounding_box_triple_product(const double *origin,
+                            const double *i_axis,
+                            const double *j_axis,
+                            const double *k_axis)
+{
+    double cross[3];
+
+    bounding_box_cross_axes(origin, i_axis, j_axis, cross);
+
+    return cross[0]*(k_axis[0] - origin[0])
+        +  cross[1]*(k_axis[1] - origin[1])
+        +  cross[2]*(k_axis[2] - origin[2]);
+}
+
+
+/* ---------------------------------------------------------------------- */
+enum CoordinateSystemType { Inconclusive, RightHanded, LeftHanded };
+/* ---------------------------------------------------------------------- */
+
+
+/* ---------------------------------------------------------------------- */
+static enum CoordinateSystemType
+classify_geometry(const double triple)
+/* ---------------------------------------------------------------------- */
+{
+    if (triple > 0.0) {
+        return RightHanded;
+    }
+    else if (triple < 0.0) {
+        return LeftHanded;
+    }
+    else {
+        return Inconclusive;
+    }
+}
+
+
+/* ---------------------------------------------------------------------- */
+static enum CoordinateSystemType
+get_cell_type(const struct grdecl *in,
+              const size_t         i,
+              const size_t         j,
+              const size_t         k,
+              const double         sign,
+              const size_t         off[8])
+/* ---------------------------------------------------------------------- */
+{
+    const size_t p0 = i + j*(in->dims[0] + 1);
+    const size_t pi = p0 + 1;
+    const size_t pj = p0 + in->dims[0] + 1;
+    const size_t io = 2*i + 2*in->dims[0]*(2*j + 2*in->dims[1]*2*k);
+
+    double triple, origin[3], I[3], J[3], K[3];
+
+    vertex_coord(in, p0, in->zcorn[io + off[0]], origin);
+    vertex_coord(in, pi, in->zcorn[io + off[1]], I);
+    vertex_coord(in, pj, in->zcorn[io + off[2]], J);
+    vertex_coord(in, p0, in->zcorn[io + off[4]], K);
+
+    triple = sign * bounding_box_triple_product(origin, I, J, K);
+
+    return classify_geometry(triple);
+}
+
+
+/* ---------------------------------------------------------------------- */
+static enum CoordinateSystemType
+coodinate_system_type_cell_criterion(const struct grdecl *in,
+                                     const double         sign,
+                                     const size_t         off[8])
+/* ---------------------------------------------------------------------- */
+{
+    size_t i, nx, j, ny, k, nz, c;
+    size_t ctype[3] = {0};
 
     nx = in->dims[0];
     ny = in->dims[1];
     nz = in->dims[2];
 
-    off[0] = 0;
-    off[1] = off[0] + 1;
-    off[2] = off[0] + (2 * nx);
-    off[3] = off[2] + 1;
-    off[4] = off[0] + ((2 * nx) * (2 * ny));
-    off[5] = off[4] + 1;
-    off[6] = off[4] + (2 * nx);
-    off[7] = off[6] + 1;
+    if (in->actnum == NULL) {
+        for (k = 0, c = 0; k < nz; k++) {
+            for (j = 0; j < ny; j++) {
+                for (i = 0; i < nx; i++, c++) {
+                    if (vert_size(in, c, off) > 0.0) {
+                        ++ ctype[get_cell_type(in, i, j, k, sign, off)];
+                    }
+                }
+            }
+        }
+    }
+    else {
+        for (k = 0, c = 0; k < nz; k++) {
+            for (j = 0; j < ny; j++) {
+                for (i = 0; i < nx; i++, c++) {
+                    if ((in->actnum[c] != 0) && (vert_size(in, c, off) > 0.0)) {
+                        ++ ctype[get_cell_type(in, i, j, k, sign, off)];
+                    }
+                }
+            }
+        }
+    }
+
+    if ((ctype[Inconclusive] > ctype[RightHanded]) &&
+        (ctype[Inconclusive] > ctype[LeftHanded]))
+    {
+        return Inconclusive;
+    }
+    else if (ctype[RightHanded] > ctype[LeftHanded]) {
+        return RightHanded;
+    }
+    else {
+        return LeftHanded;
+    }
+}
+
+
+/* ---------------------------------------------------------------------- */
+static enum CoordinateSystemType
+coordinate_system_type_model_bounding_box(const struct grdecl *in,
+                                          const double         sign,
+                                          const size_t         off[8])
+/* ---------------------------------------------------------------------- */
+{
+    int           active, searching;
+    size_t        nx, ny, nc, c;
+    size_t        origin, imax, jmax;
+    double        dx[2], dy[2], dz, triple;
+    const double *pt_coord;
+
+    nx = in->dims[0];
+    ny = in->dims[1];
+    nc = nx * ny * in->dims[2];
 
     pt_coord = in->coord;
 
@@ -763,7 +913,7 @@ is_lefthanded(const struct grdecl *in, const double sign)
         searching = ! (active && (fabs(dz) > 0.0));
 
         c += 1;
-    } while (searching && (c < (nx * ny * nz)));
+    } while (searching && (c < nc));
 
     assert (! searching);       /* active && (fabs(dz) > 0) */
 
@@ -771,9 +921,37 @@ is_lefthanded(const struct grdecl *in, const double sign)
      * from right-handed (>0) coordinate systems. */
     triple = sign * dz * (dx[0]*dy[1] - dx[1]*dy[0]);
 
-    assert (fabs(triple) > 0.0);
+    return classify_geometry(triple);
+}
 
-    return triple < 0.0;
+
+/* ---------------------------------------------------------------------- */
+static enum CoordinateSystemType
+grid_coordinate_system_type(const struct grdecl *in, const double sign)
+/* ---------------------------------------------------------------------- */
+{
+    size_t                    nx, ny;
+    size_t                    off[8];
+    enum CoordinateSystemType coord_system_type;
+
+    nx = in->dims[0];
+    ny = in->dims[1];
+
+    off[0] = 0;
+    off[1] = off[0] + 1;
+    off[2] = off[0] + (2 * nx);
+    off[3] = off[2] + 1;
+    off[4] = off[0] + ((2 * nx) * (2 * ny));
+    off[5] = off[4] + 1;
+    off[6] = off[4] + (2 * nx);
+    off[7] = off[6] + 1;
+
+    coord_system_type =
+        coordinate_system_type_model_bounding_box(in, sign, off);
+
+    return (coord_system_type != Inconclusive)
+        ?  coord_system_type
+        :  coodinate_system_type_cell_criterion(in, sign, off);
 }
 
 
@@ -802,16 +980,16 @@ reverse_face_nodes(struct processed_grid *out)
 }
 
 
-/*-----------------------------------------------------------------
-  Public interface
-*/
+/* ----------------------------------------------------------------------
+ * Public interface
+ * ---------------------------------------------------------------------- */
 void process_grdecl(const struct grdecl   *in,
-                    double                tolerance,
-                    const int*     is_aquifer_cell,
+                    double                 tolerance,
+                    const int             *is_aquifer_cell,
                     struct processed_grid *out,
-                    int pinchActive)
+                    int                    pinchActive)
 {
-    struct grdecl g;
+    struct grdecl g = {0};
 
     size_t i;
     int    sign, error, left_handed;
@@ -821,6 +999,8 @@ void process_grdecl(const struct grdecl   *in,
     int    *global_cell_index;
 
     double *zcorn;
+
+    enum CoordinateSystemType coord_sys_type;
 
     const size_t BIGNUM = 64;
     const int    nx = in->dims[0];
@@ -834,6 +1014,8 @@ void process_grdecl(const struct grdecl   *in,
     int    *intersections;
 
 
+    sign = get_zcorn_sign(nx, ny, nz, in->actnum, in->zcorn, &error);
+    coord_sys_type = grid_coordinate_system_type(in, sign);
 
 
     /* -----------------------------------------------------------------*/
@@ -898,7 +1080,7 @@ void process_grdecl(const struct grdecl   *in,
     free (actnum);
 
     /* Determine if coordinate system is left handed or not. */
-    left_handed = is_lefthanded(in, sign);
+    left_handed = coord_sys_type == LeftHanded;
     if (left_handed) {
         /* Reflect Y coordinates about XZ plane to create right-handed
          * coordinate system whilst processing intersections. */
@@ -987,8 +1169,9 @@ void process_grdecl(const struct grdecl   *in,
     }
 }
 
-/*-------------------------------------------------------*/
+/* ---------------------------------------------------------------------- */
 void free_processed_grid(struct processed_grid *g)
+/* ---------------------------------------------------------------------- */
 {
     if( g ){
         free ( g->face_nodes       );

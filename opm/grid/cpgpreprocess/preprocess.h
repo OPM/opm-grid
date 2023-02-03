@@ -145,13 +145,12 @@ extern "C" {
      *                  call to function process_grdecl().
      */
     void free_processed_grid(struct processed_grid *g);
+
 #ifdef __cplusplus
 }
 #endif
 
-
 #endif /* OPM_PREPROCESS_HEADER */
-
 
 /* Local Variables:    */
 /* c-basic-offset:4    */
