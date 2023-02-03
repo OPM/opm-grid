@@ -983,11 +983,11 @@ reverse_face_nodes(struct processed_grid *out)
 /* ----------------------------------------------------------------------
  * Public interface
  * ---------------------------------------------------------------------- */
-void process_grdecl(const struct grdecl   *in,
-                    double                 tolerance,
-                    const int             *is_aquifer_cell,
-                    struct processed_grid *out,
-                    int                    pinchActive)
+int process_grdecl(const struct grdecl   *in,
+                   double                 tolerance,
+                   const int             *is_aquifer_cell,
+                   struct processed_grid *out,
+                   int                    pinchActive)
 {
     struct grdecl g = {0};
 
@@ -1017,6 +1017,9 @@ void process_grdecl(const struct grdecl   *in,
     sign = get_zcorn_sign(nx, ny, nz, in->actnum, in->zcorn, &error);
     coord_sys_type = grid_coordinate_system_type(in, sign);
 
+    if (error || (coord_sys_type == Inconclusive)) {
+        return 0;
+    }
 
     /* -----------------------------------------------------------------*/
     /* Initialize output structure:
@@ -1043,7 +1046,14 @@ void process_grdecl(const struct grdecl   *in,
     out->node_coordinates = NULL;
     out->local_cell_index = malloc(nc * sizeof *out->local_cell_index);
 
-
+    if ((out->face_neighbors   == NULL) ||
+        (out->face_nodes       == NULL) ||
+        (out->face_ptr         == NULL) ||
+        (out->face_tag         == NULL) ||
+        (out->local_cell_index == NULL))
+    {
+        return 0;
+    }
 
     /* Do actual work here:*/
 
@@ -1060,24 +1070,35 @@ void process_grdecl(const struct grdecl   *in,
     g.dims[1] = in->dims[1];
     g.dims[2] = in->dims[2];
 
-    actnum    = malloc (nc *     sizeof *actnum);
-    g.actnum  = copy_and_permute_actnum(nx, ny, nz, in->actnum, actnum);
+    actnum = malloc(nc * sizeof *actnum);
+    if (actnum == NULL) {
+        return 0;
+    }
 
-    zcorn     = malloc (nc * 8 * sizeof *zcorn);
-    sign      = get_zcorn_sign(nx, ny, nz, in->actnum, in->zcorn, &error);
-    g.zcorn   = copy_and_permute_zcorn(nx, ny, nz, in->zcorn, sign, zcorn);
+    g.actnum = copy_and_permute_actnum(nx, ny, nz, in->actnum, actnum);
 
-    g.coord   = in->coord;
+    zcorn = malloc (nc * 8 * sizeof *zcorn);
+    if (zcorn == NULL) {
+        free(actnum);
+        return 0;
+    }
 
+    g.zcorn = copy_and_permute_zcorn(nx, ny, nz, in->zcorn, sign, zcorn);
+    g.coord = in->coord;
 
     /* allocate space for cornerpoint numbers plus INT_MIN (INT_MAX)
      * padding */
     plist = malloc(8 * (nc + ((size_t)nx)*((size_t)ny)) * sizeof *plist);
+    if (plist == NULL) {
+        free(zcorn);
+        free(actnum);
+        return 0;
+    }
 
     finduniquepoints(&g, plist, tolerance, out);
 
-    free (zcorn);
-    free (actnum);
+    free(zcorn);  zcorn  = NULL;
+    free(actnum); actnum = NULL;
 
     /* Determine if coordinate system is left handed or not. */
     left_handed = coord_sys_type == LeftHanded;
@@ -1094,26 +1115,34 @@ void process_grdecl(const struct grdecl   *in,
 
     /* internal */
     work = malloc(2 * ((size_t) (2*nz + 2)) * sizeof *work);
-    for(i = 0; i < ((size_t)4) * (nz + 1); ++i) { work[i] = -1; }
+    if (work == NULL) {
+        free(plist);
+        return 0;
+    }
+
+    for (i = 0; i < ((size_t)4) * (nz + 1); ++i) { work[i] = -1; }
 
     /* internal array to store intersections */
     intersections = malloc(BIGNUM* sizeof(*intersections));
-
-
+    if (intersections == NULL) {
+        free(plist);
+        free(work);
+        return 0;
+    }
 
     process_vertical_faces   (0, &intersections, plist, work, out);
     process_vertical_faces   (1, &intersections, plist, work, out);
     process_horizontal_faces (   &intersections, plist, is_aquifer_cell, out, pinchActive);
 
-    free (plist);
-    free (work);
+    free(work);   work  = NULL;
+    free(plist);  plist = NULL;
 
     /* -----------------------------------------------------------------*/
     /* (re)allocate space for and compute coordinates of nodes that
      * arise from intersecting cells (faults) */
     compute_intersection_coordinates(intersections, out);
 
-    free (intersections);
+    free(intersections);  intersections = NULL;
 
     /* -----------------------------------------------------------------*/
     /* Enumerate compressed cells:
@@ -1122,6 +1151,10 @@ void process_grdecl(const struct grdecl   *in,
        lexicographically ordered, used to remap out->face_neighbors
     */
     global_cell_index = malloc(nc * sizeof *global_cell_index);
+    if (global_cell_index == NULL) {
+        return 0;
+    }
+
     cellnum = 0;
     for (i = 0; i < nc; ++i) {
         if (out->local_cell_index[i] != -1) {
@@ -1138,7 +1171,6 @@ void process_grdecl(const struct grdecl   *in,
             *iptr = out->local_cell_index[*iptr];
         }
     }
-
 
     free(out->local_cell_index);
     out->local_cell_index = global_cell_index;
@@ -1167,6 +1199,8 @@ void process_grdecl(const struct grdecl   *in,
     if (left_handed ^ (sign == -1)) {
         reverse_face_nodes(out);
     }
+
+    return 1;
 }
 
 /* ---------------------------------------------------------------------- */

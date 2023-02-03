@@ -127,12 +127,15 @@ extern "C" {
      *                    mapping.
      * @param[in] pinchActive Whether cells with zero volume should be pinched out
      *                    and neighboring cells should be connected.
+     *
+     * @return One (1, true) if grid successfully generated, zero (0, false)
+     * otherwise.
      */
-    void process_grdecl(const struct grdecl   *g  ,
-                        double                 tol,
-                        const int*   is_aquifer_cell,
-                        struct processed_grid *out,
-                        int pinchActive);
+    int process_grdecl(const struct grdecl   *g,
+                       double                 tol,
+                       const int             *is_aquifer_cell,
+                       struct processed_grid *out,
+                       int                    pinchActive);
 
     /**
      * Release memory resources acquired in previous grid processing using
