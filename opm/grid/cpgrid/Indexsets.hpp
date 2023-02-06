@@ -46,12 +46,14 @@ namespace Dune
 {
     namespace cpgrid
     {
-
+    // forward declaration
+    //class CpGridData;
         /// @brief
         /// @todo Doc me!
         /// @tparam
         class IndexSet
         {
+            //friend class Dune::cpgrid::CpGridData;
         public:
             /// @brief
             /// @todo Doc me!
@@ -71,11 +73,14 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @param
-            IndexSet(const CpGridData& grid)
-                : grid_(grid)
+            IndexSet(){}
+            
+            IndexSet(std::size_t numCells, std::size_t numPoints)
             {
                 geom_types_[0].emplace_back(Dune::GeometryTypes::cube(3));
                 geom_types_[3].emplace_back(Dune::GeometryTypes::cube(0));
+                size_codim_map_[0] =  numCells; 
+                size_codim_map_[3] = numPoints; 
             }
 
             /// \brief Destructor.
@@ -106,7 +111,11 @@ namespace Dune
             /// @return
             int size(GeometryType type) const
             {
-                return grid_.size(type);
+                if (type.isCube()) {
+                    return size(3 - type.dim());  // return grid_.size(type);
+                } else {
+                    return 0;
+                }
             }
 
 
@@ -116,7 +125,7 @@ namespace Dune
             /// @return
             int size(int codim) const
             {
-                return grid_.size(codim);
+                return size_codim_map_[codim]; //grid_.size(codim)
             }
 
 
@@ -186,12 +195,14 @@ namespace Dune
             template <class EntityType>
             bool contains(const EntityType& e) const
             {
-                return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
+                // return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
+                return index(e) >= 0 && index(e) < this->size(EntityType::codimension);
             }
 
         private:
-            const CpGridData& grid_;
+            // const CpGridData& grid_;
             Types geom_types_[4];
+            std::array<int,4> size_codim_map_{0,0,0,0};
         };
 
 
@@ -271,7 +282,7 @@ namespace Dune
                                       faceMapping,
                                       pointMapping);
             }
-            LevelGlobalIdSet(const IdSet* ids, const CpGridData* view)
+            LevelGlobalIdSet(std::shared_ptr<const IdSet> ids, const CpGridData* view)  
                 : idSet_(ids), view_(view)
             {}
             LevelGlobalIdSet()
@@ -314,7 +325,7 @@ namespace Dune
                 return -1;
             }
         private:
-            const IdSet* idSet_;
+            std::shared_ptr<const IdSet> idSet_;
             const CpGridData* view_;
         };
 
@@ -365,7 +376,7 @@ namespace Dune
             return *candidate->second;
         }
         /// \brief map of views onto idesets if the view.
-        std::map<const CpGridData* const, const LevelGlobalIdSet*> idSets_;
+        std::map<const CpGridData* const, std::shared_ptr<const LevelGlobalIdSet>> idSets_;
     };
 
     class ReversePointGlobalIdSet
