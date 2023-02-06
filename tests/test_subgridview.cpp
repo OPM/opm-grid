@@ -179,7 +179,7 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
 
 
 #if HAVE_ECL_INPUT
-BOOST_AUTO_TEST_CASE(deck)
+BOOST_AUTO_TEST_CASE(FromDeck)
 {
     // ------------ Test grid from deck. ------------
     const char* deckString =
