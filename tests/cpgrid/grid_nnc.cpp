@@ -195,7 +195,8 @@ BOOST_FIXTURE_TEST_CASE(NNCWithPINCH, Fixture)
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP, Fixture)
 {
     Opm::NNC nnc;
-    testCase("FIVE_PINCH_NOGAP.DATA", nnc, 4, 4 * 6 + 1, 2 * (4 + 5) + 1, { {0,1}, {1,2}, {2,3} }, true);
+    // Cell with cartindex 1 is isolated because of PINCH NOGAP
+    testCase("FIVE_PINCH_NOGAP.DATA", nnc, 4, 4 * 6, 2 * (4 + 5) + 2, { {1,2}, {2,3} }, true);
 }
 
 BOOST_FIXTURE_TEST_CASE(NNCWithPINCHNOGAP2, Fixture)

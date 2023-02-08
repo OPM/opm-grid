@@ -67,9 +67,9 @@ BOOST_AUTO_TEST_CASE(Pinch)
     pinch_no_gap = true;
     minpv_result = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
-    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0); // No nnc because deactivated cell thickness is too high
 
-    z_threshold = 0.4;
+    z_threshold = 0.51;
     pinch_no_gap = true;
     minpvv = std::vector(4, 0.6);
     z1 = zcorn;
@@ -77,6 +77,16 @@ BOOST_AUTO_TEST_CASE(Pinch)
 
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
     BOOST_CHECK_EQUAL(minpv_result.nnc[0], 2);
+    BOOST_CHECK(minpv_result.removed_cells == std::vector<std::size_t>{1});
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+
+    z_threshold = 0.4;
+    pinch_no_gap = false;
+    minpvv = std::vector(4, 0.6);
+    z1 = zcorn;
+    minpv_result = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
     BOOST_CHECK(minpv_result.removed_cells == std::vector<std::size_t>{1});
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
 
@@ -88,6 +98,24 @@ BOOST_AUTO_TEST_CASE(Pinch)
 
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcorn.begin(), zcorn.end());
+
+    z_threshold = 1.1;
+    pinch_no_gap = false;
+    minpvv = std::vector(4, 1.1);
+    z1 = zcorn;
+    minpv_result = mp1.process(thickness, z_threshold, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    zcornAfter =
+        {0, 0, 0, 0,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2, 2, 2, 2,
+         2.5, 2.5, 2.5, 2.5,
+         2.5, 2.5, 2.5, 2.5,
+         3.5, 3.5, 3.5, 3.5,
+         6, 6, 6, 6
+        };
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
 
     z_threshold = 1.1;
     pinch_no_gap = true;
@@ -106,6 +134,10 @@ BOOST_AUTO_TEST_CASE(Pinch)
         };
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
     BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcornAfter.begin(), zcornAfter.end());
+    auto exp =  std::vector<std::size_t>{1, 2};
+    BOOST_CHECK(minpv_result.removed_cells == exp);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1u);
+    BOOST_CHECK_EQUAL(minpv_result.nnc[0], 3);
 }
 
 BOOST_AUTO_TEST_CASE(Processing)
