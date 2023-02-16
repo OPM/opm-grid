@@ -173,11 +173,7 @@ namespace Dune
 
             /// The count of subentities of codimension cc
             unsigned int subEntities ( const unsigned int cc ) const;
-
-            /// The count of subentities of codimension cc
-            template <int cc>
-            int count() const { return subEntities( cc ); }
-
+            
             /// Obtain subentity.
             template <int cc>
             typename Codim<cc>::Entity subEntity(int i) const;
