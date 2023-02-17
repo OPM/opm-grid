@@ -322,31 +322,13 @@ namespace Dune
 namespace Dune {
 namespace cpgrid {
 
-namespace Detail
-{
-inline unsigned int numFaces(const OrientedEntityTable<0, 1>& cell_to_face,
-                             const Entity<0>& e)
-{
-    return  cell_to_face[e].size();
-}
-
-template<int codim>
-unsigned int numFaces(const OrientedEntityTable<0, 1>&, const Entity<codim>&)
-{
-    return 0;
-}
-} // end namespace Detail
-
 template<int codim>
 unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
 {
-    // static_assert(codim == 0, "");
-    if (cc == 0) {
+    if (cc == codim) {
         return 1;
     } else if ( codim == 0 ){
-        if ( cc == 1 ) {
-            return Detail::numFaces(pgrid_->cell_to_face_, *this);
-        } else if ( cc == 3 ) {
+        if ( cc == 3 ) {
             return 8;
         }
     }
