@@ -290,6 +290,10 @@ private:
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
     /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+
+
+
     ///
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
     const std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
@@ -301,6 +305,7 @@ private:
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
     /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
     /// @return {patch_corners, patch_faces, patch_cells} Indices of corners, faces, and cells of the patch of cells.
     const std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
@@ -601,6 +606,7 @@ public:
     /// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
     /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
     /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
+    ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
     /// @return refined_grid_ptr                   Shared pointer of CpGridData type, pointing at the refined_grid
     /// @return boundary_old_to_new_corners/faces  Corner/face indices on the patch-boundary associated with new-born-entity indices.
@@ -848,7 +854,7 @@ public:
                 parent_to_children_cells, child_to_parent_faces, child_to_parent_cells, isParent_faces, isParent_cells};
         }
     }
-    
+
     // Make unique boundary ids for all intersections.
     void computeUniqueBoundaryIds();
 
