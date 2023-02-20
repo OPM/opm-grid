@@ -566,6 +566,7 @@ namespace Dune
         /// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
         /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
         /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
+        ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
         void createGridWithLgr(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
         {
             if (!distributed_data_.empty()){
