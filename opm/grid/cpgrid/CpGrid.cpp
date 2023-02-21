@@ -1365,15 +1365,16 @@ template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // need
 
 
 void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
-                                  const std::array<int,3>& endIJK)
+                                  const std::array<int,3>& endIJK, const std::string& lgr_name)
 {
-    this -> addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK});
+    this -> addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 }
 
 
 void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
-                                   const std::vector<std::array<int,3>>& endIJK_vec)
+                                   const std::vector<std::array<int,3>>& endIJK_vec,
+                                   const std::vector<std::string>& lgr_name_vec)
 {
     if (!distributed_data_.empty()){
         if (comm().rank()==0){
@@ -1395,7 +1396,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     const int& num_patches = startIJK_vec.size();
     assert(cells_per_dim_vec.size() == startIJK_vec.size());
     assert(cells_per_dim_vec.size() == endIJK_vec.size());
-    //
+    assert(cells_per_dim_vec.size() == lgr_name_vec.size());
     // Map to relate boundary patches corners with their equivalent refined/new-born ones. {0,oldCornerIdx} -> {level,newCornerIdx}
     std::map<std::array<int,2>, std::array<int,2>> old_to_new_boundaryPatchCorners;
     // Map to relate boundary patch faces with their children refined/new-born ones. {0,oldFaceIdx} -> {level,{newFaceIdx0, ...}}
@@ -1431,8 +1432,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         (*data_[patch +1]).level_data_ptr_ = &(this -> data_);
         //          level_
         (*data_[patch +1]).level_ = patch +1;
-        //          global_cell_   Assuming ALL cells are active {0,1,...,total amount of cells in the LGr/patch}
-        std::vector<int> l_global_cell(data_[patch+1]->size(0), 0); // instantiate a vector with 0s: {0,0,0,0,...}
+        // Add the name of each LGR in this->lgr_names_
+        this -> lgr_names_[lgr_name_vec[patch]] = patch +1; // {"name_lgr", level}
         std::iota(l_global_cell.begin()+1, l_global_cell.end(), 1); // from entry[1], adds +1 per entry: {0,1,2,3,...}
         (*data_[patch+1]).global_cell_ = l_global_cell;
         //          index_set_
@@ -1770,6 +1771,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     (*data_[num_patches +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data_[num_patches+1]->size(0), data_[num_patches+1]->size(3));
     // Leaf local_id_set_
     (*data_[num_patches +1]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[num_patches+1]);
+}
+
+
+const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
+    return lgr_names_;
 }
 
 

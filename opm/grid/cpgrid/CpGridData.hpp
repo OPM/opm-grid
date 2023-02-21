@@ -101,7 +101,8 @@ void refinePatch_and_check(const std::array<int,3>&,
 void refinePatch_and_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
                            const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&);
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
 
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
@@ -140,7 +141,8 @@ class CpGridData
     void ::refinePatch_and_check(Dune::CpGrid&,
                                  const std::vector<std::array<int,3>>&,
                                  const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&);
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::string>&);
     
     friend
     void ::check_global_refine(const Dune::CpGrid&,
