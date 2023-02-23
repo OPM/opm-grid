@@ -76,6 +76,7 @@ namespace Dune
 /// The namespace Dune is the main namespace for all Dune code.
 namespace Dune
 {
+
     namespace cpgrid
     {
 

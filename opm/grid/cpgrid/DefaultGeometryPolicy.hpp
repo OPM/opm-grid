@@ -40,6 +40,9 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 namespace Dune
 {
+
+    class CpGrid;
+
     namespace cpgrid
     {
         template<int mydim, int dim>
@@ -51,6 +54,7 @@ namespace Dune
             friend class CpGridData;
             template<int mydim, int dim>
             friend class Geometry;
+            friend class ::Dune::CpGrid;
         public:
             /// @brief
             /// @todo Doc me
