@@ -580,8 +580,14 @@ namespace Dune
             (this-> data_).push_back(level1_ptr);
             // To store the leaf view (mixed grid, with coarse and refined entities).
             typedef Dune::FieldVector<double,3> PointType;
+            #if HAVE_MPI
             std::shared_ptr<Dune::cpgrid::CpGridData> leaf_view_ptr =
                 std::make_shared<Dune::cpgrid::CpGridData>((*(this-> data_[0])).ccobj_);
+            #else
+            // DUNE 2.7 is missing convertion to NO_COMM
+            std::shared_ptr<Dune::cpgrid::CpGridData> leaf_view_ptr =
+                std::make_shared<Dune::cpgrid::CpGridData>();
+            #endif
             auto& leaf_view = *leaf_view_ptr;
             Dune::cpgrid::DefaultGeometryPolicy& leaf_geometries = leaf_view.geometry_;
             std::vector<std::array<int,8>>& leaf_cell_to_point = leaf_view.cell_to_point_;
