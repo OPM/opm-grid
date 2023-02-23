@@ -473,7 +473,12 @@ public:
     refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const
     {
         // To store the LGR/refined-grid.
-        std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>(ccobj_);
+        #if HAVE_MPI
+         std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>(ccobj_);
+        #else
+        // DUNE 2.7 is missing convertion to NO_COMM
+         std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>();
+        #endif
         auto& refined_grid = *refined_grid_ptr;
         DefaultGeometryPolicy& refined_geometries = refined_grid.geometry_;
         std::vector<std::array<int,8>>& refined_cell_to_point = refined_grid.cell_to_point_;
@@ -633,7 +638,12 @@ public:
             OPM_THROW(std::logic_error, "Grid is not Cartesian. Patch cannot be refined.");
         }
         // To store LGR/refined-grid.
-        std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>(ccobj_);
+        #if HAVE_MPI
+         std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>(ccobj_);
+        #else
+        // DUNE 2.7 is missing convertion to NO_COMM
+         std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>();
+        #endif
         auto& refined_grid = *refined_grid_ptr;
         DefaultGeometryPolicy& refined_geometries = refined_grid.geometry_;
         std::vector<std::array<int,8>>& refined_cell_to_point = refined_grid.cell_to_point_;
