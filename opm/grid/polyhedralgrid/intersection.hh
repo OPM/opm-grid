@@ -4,10 +4,12 @@
 #define DUNE_POLYHEDRALGRID_INTERSECTION_HH
 
 //- dune-common includes
-#include <dune/common/version.hh>
+#include <dune/common/fvector.hh>
 
 //- local includes
 #include <opm/grid/polyhedralgrid/declaration.hh>
+
+#include <cstddef>
 
 namespace Dune
 {

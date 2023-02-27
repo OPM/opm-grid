@@ -41,7 +41,6 @@
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>  // Not really needed it seems, but alas.
 
-#include <dune/common/version.hh>
 #include <dune/grid/common/grid.hh>
 #include <opm/grid/cpgrid/CpGridDataTraits.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
@@ -190,7 +189,6 @@ namespace Dune
         /// \brief The type of the collective communication.
         using Communication = cpgrid::CpGridDataTraits::Communication;
         using CollectiveCommunication = cpgrid::CpGridDataTraits::CollectiveCommunication;
-
     };
 
     ////////////////////////////////////////////////////////////////////////
@@ -735,11 +733,7 @@ namespace Dune
         /// \warning May only be called once.
         template<class DataHandle>
         bool loadBalance(DataHandle& data,
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
                          decltype(data.fixedSize(0,0)) overlapLayers=1, bool useZoltan = true)
-#else
-                         decltype(data.fixedsize(0,0)) overlapLayers=1, bool useZoltan = true)
-#endif
         {
             // decltype usage needed to tell the compiler not to use this function if first
             // argument is std::vector but rather loadbalance by parts
@@ -1045,7 +1039,6 @@ namespace Dune
         ///         gathering and scattering the data.
         template<class DataHandle>
         void gatherData(DataHandle& handle) const;
-
 
         /// \brief The type of the map describing communication interfaces.
         using InterfaceMap = cpgrid::CpGridDataTraits::InterfaceMap;

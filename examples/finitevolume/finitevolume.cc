@@ -32,18 +32,6 @@ typedef Dune::CpGrid GridType;
 // the time loop function working for all types of grids
 //===============================================================
 
-#if ! DUNE_VERSION_NEWER(DUNE_GEOMETRY, 2, 6)
-//! Parameter for mapper class
-template<int dim>
-struct P0Layout
-{
-    bool contains(Dune::GeometryType gt)
-    {
-        return gt.dim() == dim;
-    }
-};
-#endif
-
 template<class G>
 void timeloop(const G& grid, double tend)
 {

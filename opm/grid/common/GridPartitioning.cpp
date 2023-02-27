@@ -472,11 +472,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
     int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                         const Communication<Dune::MPIHelper::MPICommunicator>& cc,
-#else
-                        const CollectiveCommunication<Dune::MPIHelper::MPICommunicator>& cc,
-#endif
                         [[maybe_unused]] bool addCornerCells,
                         [[maybe_unused]] const double* trans, int layers)
     {

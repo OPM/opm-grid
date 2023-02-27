@@ -38,8 +38,6 @@
 #include "OrientedEntityTable.hpp"
 #include "EntityRep.hpp"
 
-#include <dune/common/version.hh>
-
 namespace Dune
 {
 namespace cpgrid
@@ -73,11 +71,7 @@ struct FaceViaCellHandleWrapper
         : handle_(handle), c2fGather_(c2fGather), c2f_(c2f)
     {}
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
     bool fixedSize(int, int)
-#else
-    bool fixedsize(int, int)
-#endif
     {
         return false; // as the faces per cell differ
     }
@@ -171,7 +165,6 @@ struct PointViaCellHandleWrapper : public PointViaCellWarner
                              const C2PTable& c2p)
         : handle_(handle), c2pGather_(c2pGather), c2p_(c2p)
     {}
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
     bool fixedSize(int i, int j)
     {
         if( ! handle_.fixedSize(i, j))
@@ -180,16 +173,6 @@ struct PointViaCellHandleWrapper : public PointViaCellWarner
         }
         return handle_.fixedSize(i, j);
     }
-#else
-    bool fixedsize(int i, int j)
-    {
-        if( ! handle_.fixedsize(i, j))
-        {
-            this->warn();
-        }
-        return handle_.fixedsize(i, j);
-    }
-#endif
     template<class T>
     typename std::enable_if<T::codimension != 0, std::size_t>::type
     size(const T&)

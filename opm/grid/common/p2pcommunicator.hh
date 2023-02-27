@@ -25,24 +25,13 @@
 #include <set>
 #include <map>
 
-#include <dune/common/version.hh>
-
 #include <dune/common/parallel/mpihelper.hh>
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
 #include <dune/common/parallel/communication.hh>
-#else
-#include <dune/common/parallel/collectivecommunication.hh>
-#endif
 
 // the following implementation is only available in case MPI is available
 #if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
 #include <dune/common/parallel/mpicommunication.hh>
-#else
-#include <dune/common/parallel/mpicollectivecommunication.hh>
 #endif
-#endif
-
 
 namespace Dune
 {
@@ -149,11 +138,7 @@ public:
     typedef MsgBuffer MessageBufferType ;
 
   protected:
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using BaseType = Dune::Communication<MPICommunicator>;
-#else
-    using BaseType = CollectiveCommunication< MPICommunicator>;
-#endif
     typedef Point2PointCommunicator< MessageBufferType > ThisType;
 
     // starting message tag

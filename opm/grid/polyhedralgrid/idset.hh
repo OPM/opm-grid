@@ -7,6 +7,7 @@
 
 namespace Dune
 {
+  template <int dim, int dimworld, typename coord_t> class PolyhedralGrid;
 
   // PolyhedralGridIdSet
   // -------------------
@@ -59,11 +60,7 @@ namespace Dune
     template< class IntersectionImpl >
     IdType id ( const Dune::Intersection< const Grid, IntersectionImpl >& intersection ) const
     {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
       return intersection.impl().id();
-#else
-      return Grid::getRealImplementation( intersection ).id();
-#endif
     }
 
     //! subId method for entities

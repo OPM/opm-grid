@@ -36,6 +36,8 @@
 
 #include <dune/common/version.hh>
 
+#include <cstddef>
+
 namespace Dune
 {
 namespace cpgrid
@@ -70,11 +72,7 @@ public:
 #else
     bool fixedsize()
     {
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
         return data_.fixedSize(3, codim);
-#else
-        return data_.fixedsize(3, codim);
-#endif
     }
 #endif
     std::size_t size(std::size_t i)

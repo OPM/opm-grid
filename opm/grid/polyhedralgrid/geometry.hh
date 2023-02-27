@@ -5,7 +5,6 @@
 
 #include <memory>
 
-#include <dune/common/version.hh>
 #include <dune/common/fmatrix.hh>
 #include <dune/grid/common/geometry.hh>
 
@@ -146,11 +145,7 @@ namespace Dune
       }
       else
       {
-#if DUNE_VERSION_NEWER(DUNE_GRID,2,7)
         const auto refElem = Dune::referenceElement< ctype, mydim > ( type() );
-#else
-        const auto& refElem = Dune::ReferenceElements< ctype, mydim >::general( type() );
-#endif
         return global( refElem.position(0,0) );
       }
     }

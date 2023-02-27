@@ -41,11 +41,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char,int> >,
            WellConnections>
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                          const Dune::Communication<MPI_Comm>& cc,
-#else
-                         const Dune::CollectiveCommunication<MPI_Comm>& cc,
-#endif
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
                          const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
                          int root,
@@ -167,11 +163,7 @@ template<class Id>
 std::tuple<int, std::vector<Id> >
 scatterExportInformation(int numExport, const Id* exportGlobalGids,
                          const int* exportToPart, int root,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                          const Communication<MPI_Comm>& cc)
-#else
-                         const Dune::CollectiveCommunication<MPI_Comm>& cc)
-#endif
 {
     int numImport;
     std::vector<int> numberOfExportedVerticesPerProcess;
@@ -247,11 +239,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            std::vector<std::tuple<int,int,char,int> >,
            WellConnections>
 makeImportAndExportLists(const Dune::CpGrid&,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                          const Communication<MPI_Comm>&,
-#else
-                         const Dune::CollectiveCommunication<MPI_Comm>&,
-#endif
                          const std::vector<Dune::cpgrid::OpmWellType>*,
                          const Dune::cpgrid::CombinedGridWellGraph*,
                          int,
@@ -267,11 +255,7 @@ template
 std::tuple<int, std::vector<int> >
 scatterExportInformation(int numExport, const int*,
                          const int*, int,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                          const Communication<MPI_Comm>&);
-#else
-                         const Dune::CollectiveCommunication<MPI_Comm>&);
-#endif
 #endif // HAVE_MPI
 } // end namespace Dune
 } // end namespace cpgrid
@@ -306,11 +290,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                                const Communication<MPI_Comm>& cc,
-#else
-                               const CollectiveCommunication<MPI_Comm>& cc,
-#endif
                                EdgeWeightMethod edgeWeightsMethod,
                                int root,
                                const double zoltanImbalanceTol,
@@ -397,11 +377,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 class ZoltanSerialPartitioner
 {
 public:
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using CommunicationType = Communication<MPI_Comm>;
-#else
-    using CommunicationType = CollectiveCommunication<MPI_Comm>;
-#endif
 
     ZoltanSerialPartitioner(const CpGrid& _cpgrid,
                             const std::vector<OpmWellType>* _wells,
@@ -596,11 +572,7 @@ std::tuple<std::vector<int>,
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const std::vector<OpmWellType>* wells,
                                      const double* transmissibilities,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                                      const Dune::Communication<MPI_Comm>& cc,
-#else
-                                     const CollectiveCommunication<MPI_Comm>& cc,
-#endif
                                      EdgeWeightMethod edgeWeightsMethod,
                                      int root,
                                      const double zoltanImbalanceTol,
@@ -616,11 +588,7 @@ std::vector<int>
 zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
                                const double* transmissibilities,
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
                                const Dune::Communication<MPI_Comm>& cc,
-#else
-                               const CollectiveCommunication<MPI_Comm>& cc,
-#endif
                                EdgeWeightMethod edgeWeightsMethod, int root,
                                int numParts, const double zoltanImbalanceTol)
 {

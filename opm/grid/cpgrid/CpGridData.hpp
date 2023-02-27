@@ -48,22 +48,13 @@
 #define OPM_CPGRIDDATA_HEADER
 
 
-#include <dune/common/version.hh>
 #include <dune/common/parallel/mpihelper.hh>
 #ifdef HAVE_DUNE_ISTL
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
 #include <dune/common/parallel/communication.hh>
-#else
-#include <dune/common/parallel/collectivecommunication.hh>
-#endif
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
 #include <dune/common/parallel/variablesizecommunicator.hh>
-#else
-#include <opm/grid/utility/VariableSizeCommunicator.hpp>
-#endif
 #include <dune/grid/common/gridenums.hh>
 
 #if HAVE_ECL_INPUT

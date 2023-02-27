@@ -8,6 +8,9 @@
 
 #include <dune/common/typetraits.hh>
 #include <dune/common/version.hh>
+#if DUNE_VERSION_LT(DUNE_GRID, 2, 8)
+#include <dune/common/to_unique_ptr.hh>
+#endif
 
 #include <dune/grid/common/gridfactory.hh>
 #include <opm/grid/polyhedralgrid/grid.hh>
@@ -37,16 +40,11 @@ namespace Dune
     typedef Dune::FieldVector<ctype,dimensionworld> CoordinateType;
     typedef CoordinateType  Coordinate;
 
-#if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
 #if DUNE_VERSION_LT(DUNE_GRID, 2, 8)
     typedef ToUniquePtr<Grid>       UniquePtrType;
 #else
     using UniquePtrType = std::unique_ptr<Grid>;
 #endif
-#else // #if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
-    typedef Grid*  UniquePtrType;
-#endif // #else // #if DUNE_VERSION_GTE(DUNE_GRID, 2, 7)
-
 
     /** \brief Default constructor */
     explicit GridFactory ( const MPICommunicatorType& = MPIHelper::getCommunicator() )
