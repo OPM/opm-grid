@@ -418,8 +418,12 @@ private:
             // Compute the center of the 'cellified patch' and its corners.
             Geometry<0,3>::GlobalCoordinate cellifiedPatch_center = {0., 0.,0.};
             for (int corn = 0; corn < 8; ++corn) {
-                cellifiedPatch_center +=
-                    (this -> geometry_.geomVector(std::integral_constant<int,3>()).get(cellifiedPatch_to_point[corn]).center())/8.;
+                // FieldVector in DUNE 2.6 is missing operator/ using a loop
+                for(int i=0; i < 3; ++i)
+                {
+                    cellifiedPatch_center[i] +=
+                        (this -> geometry_.geomVector(std::integral_constant<int,3>()).get(cellifiedPatch_to_point[corn]).center())[i]/8.;
+                }
                 cellifiedPatch_corners[corn] =
                     this -> geometry_.geomVector(std::integral_constant<int,3>()).get(cellifiedPatch_to_point[corn]);
             }
