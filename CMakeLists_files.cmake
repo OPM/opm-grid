@@ -88,11 +88,8 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/geometry_test.cpp
-  tests/cpgrid/grid_lgr_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
-  tests/cpgrid/shifted_cart_test.cpp
   tests/cpgrid/zoltan_test.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
@@ -104,6 +101,14 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_quadratures.cpp
   tests/test_compressed_cartesian_mapping.cpp
 	)
+
+if(BOOST_VERSION VERSION_GREATER 1.53)
+	list(APPEND TEST_SOURCE_FILES
+	  tests/cpgrid/geometry_test.cpp
+	  tests/cpgrid/grid_lgr_test.cpp
+	  tests/cpgrid/shifted_cart_test.cpp
+  )
+endif()
 
 if(HAVE_ECL_INPUT)
   list(APPEND TEST_SOURCE_FILES
