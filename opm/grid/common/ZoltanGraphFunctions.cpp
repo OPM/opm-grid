@@ -23,12 +23,12 @@
 #endif
 #include <limits>
 
+
+#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 #include <opm/grid/utility/OpmWellType.hpp>
 
 #include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <dune/common/parallel/indexset.hh>
-
-#if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
 
 namespace Dune
 {
@@ -404,4 +404,4 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
 }
 } // end namespace cpgrid
 } // end namespace Dune
-#endif // HAVE_ZOLTAN
+#endif // defined(HAVE_ZOLTAN) && defined(HAVE_MPI)

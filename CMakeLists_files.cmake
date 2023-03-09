@@ -35,6 +35,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
+  opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/cpgrid/readSintefLegacyFormat.cpp
@@ -163,6 +164,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/WellConnections.hpp
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
+  opm/grid/cpgrid/CpGridDataTraits
   opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
   opm/grid/cpgrid/dgfparser.hh

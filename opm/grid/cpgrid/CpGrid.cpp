@@ -48,7 +48,6 @@
 #endif
 
 #include "../CpGrid.hpp"
-#include "CpGridData.hpp"
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
@@ -121,13 +120,11 @@ namespace Dune
 {
 
 CpGrid::CpGrid()
-    : //data_({std::make_shared<cpgrid::CpGridData>()}), // data_
-    //data_(),
-    current_view_data_(),// (data_[0].get()),
+    : current_view_data_(),
       distributed_data_(),
       cell_scatter_gather_interfaces_(new InterfaceMap),
       point_scatter_gather_interfaces_(new InterfaceMap),
-    global_id_set_ptr_()//std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_))
+      global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(data_));
     current_view_data_ = data_[0].get();
@@ -136,12 +133,11 @@ CpGrid::CpGrid()
 }
 
 CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
-    : //data_({std::make_shared<cpgrid::CpGridData>(comm)}),
-    current_view_data_(),//(data_[0].get()),
+    : current_view_data_(),
       distributed_data_(),
       cell_scatter_gather_interfaces_(new InterfaceMap),
       point_scatter_gather_interfaces_(new InterfaceMap),
-    global_id_set_ptr_()//std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_))
+      global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(comm, data_));
     current_view_data_= data_[0].get();
@@ -841,12 +837,12 @@ int CpGrid::size (GeometryType type) const
 
 const CpGridFamily::Traits::GlobalIdSet& CpGrid::globalIdSet() const
 {
-    return  *global_id_set_ptr_; //global_id_set_;
+    return  *global_id_set_ptr_;
 }
 
 const CpGridFamily::Traits::LocalIdSet& CpGrid::localIdSet() const
 {
-    return *global_id_set_ptr_;//global_id_set_;
+    return *global_id_set_ptr_;
 }
 
 const CpGridFamily::Traits::LevelIndexSet& CpGrid::levelIndexSet(int level) const
@@ -1243,36 +1239,34 @@ void CpGrid::switchToDistributedView()
     current_view_data_=distributed_data_[0].get();
 }
 
-const cpgrid::CpGridData::CommunicationType& CpGrid::cellCommunication() const
+#if HAVE_MPI
+
+const cpgrid::CpGridDataTraits::CommunicationType& CpGrid::cellCommunication() const
 {
     return current_view_data_->cellCommunication();
 }
 
-cpgrid::CpGridData::ParallelIndexSet& CpGrid::getCellIndexSet()
+cpgrid::CpGridDataTraits::ParallelIndexSet& CpGrid::getCellIndexSet()
 {
     return current_view_data_->cellIndexSet();
 }
 
-cpgrid::CpGridData::RemoteIndices& CpGrid::getCellRemoteIndices()
+cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices()
 {
     return current_view_data_->cellRemoteIndices();
 }
 
-const cpgrid::CpGridData::ParallelIndexSet& CpGrid::getCellIndexSet() const
+const cpgrid::CpGridDataTraits::ParallelIndexSet& CpGrid::getCellIndexSet() const
 {
     return current_view_data_->cellIndexSet();
 }
 
-const cpgrid::CpGridData::RemoteIndices& CpGrid::getCellRemoteIndices() const
+const cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices() const
 {
     return current_view_data_->cellRemoteIndices();
 }
 
-/*const std::vector<int>& CpGrid::sortedNumAquiferCells() const
-  {
-  return current_view_data_->sortedNumAquiferCells();
-  }*/
-
+#endif
 
 //
 void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
@@ -1346,17 +1340,7 @@ template cpgrid::Entity<0> Dune::createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<3> Dune::createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp 
 
-/// @brief Create a grid out of a coarse one and a refinement(LGR) of a selected block-shaped patch of cells from that coarse grid.
-///
-/// Level0 refers to the coarse grid, assumed to be this-> data_[0]. Level1 refers to the LGR (stored in this->data_[1]).
-/// LeafView (stored in this-> data_[2]) is built with the level0-entities which weren't involded in the
-/// refinenment, together with the new born entities created in level1.
-/// Old-corners and old-faces (from coarse grid) lying on the boundary of the patch, get replaced by new-born-equivalent corners
-/// and new-born-faces.
-///
-/// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
-/// @param [in] startIJK                 Cartesian triplet index where the patch starts.
-/// @param [in] endIJK                   Cartesian triplet index where the patch ends.
+
 void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
 {
     if (!distributed_data_.empty()){
@@ -1414,11 +1398,11 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     typedef Dune::FieldVector<double,3> PointType;
     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& leaf_data = this -> data_;
 #if HAVE_MPI
-    std::shared_ptr<Dune::cpgrid::CpGridData> leaf_view_ptr =
-        std::make_shared<Dune::cpgrid::CpGridData>((*(this-> data_[0])).ccobj_, leaf_data);
+    auto leaf_view_ptr =
+        std::make_shared<cpgrid::CpGridData>((*(this-> data_[0])).ccobj_, leaf_data);
 #else
     // DUNE 2.7 is missing convertion to NO_COMM
-    std::shared_ptr<CpGridData> refined_grid_ptr = std::make_shared<CpGridData>(leaf_data);
+    auto leaf_view_ptr = std::make_shared<cpgrid::CpGridData>(leaf_data);
 #endif
     auto& leaf_view = *leaf_view_ptr;
     Dune::cpgrid::DefaultGeometryPolicy& leaf_geometries = leaf_view.geometry_;
@@ -1676,8 +1660,6 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     (this-> data_).push_back(leaf_view_ptr);
     current_view_data_ = data_[2].get();
     (*data_[2]).level_ = 2;
-    // Define grid_ for leaf_view level 
-    // (*data_[2]).data_copy_ = &(this-> data_);
 }
 
 

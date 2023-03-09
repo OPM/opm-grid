@@ -44,7 +44,8 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
-#include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
+#include  <opm/grid/cpgrid/Indexsets.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>

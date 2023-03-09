@@ -102,10 +102,6 @@ CpGridData::~CpGridData()
     //freeInterfaces(face_interfaces_);
     freeInterfaces(point_interfaces_);
 #endif
-    // delete index_set_;
-    // delete local_id_set_;
-    // delete global_id_set_;
-    // delete partition_type_indicator_;
 }
 
 void CpGridData::populateGlobalCellIndexSet()

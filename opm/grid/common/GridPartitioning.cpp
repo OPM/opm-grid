@@ -41,7 +41,7 @@
 #include <dune/istl/owneroverlapcopy.hh>
 #include "GridPartitioning.hpp"
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/CpGridData.hpp>
+#include <opm/grid/cpgrid/CpGridDataTraits.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <stack>
 
@@ -293,7 +293,7 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     //  I I O E         I I O E 
     //  O O O E         O O E E
     //  E E E E         E E E E
-    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+    using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
     const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
     int my_index = ix.index(from);
     int nb_index = ix.index(neighbor);
@@ -382,7 +382,7 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                          std::vector<std::tuple<int,int,char>>& exportList,
                          bool addCornerCells, int recursion_deps)
     {
-        using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+        using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
         const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
         for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
             if ( iit->neighbor() ) {

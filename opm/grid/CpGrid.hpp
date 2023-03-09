@@ -38,43 +38,28 @@
 #ifndef OPM_CPGRID_HEADER
 #define OPM_CPGRID_HEADER
 
-//#include <string>  //OK
-//#include <map>  // OK
-//#include <array> // OK
-//#include <unordered_set>  // OK
-//#include <opm/common/ErrorMacros.hpp> // OK
-
 // Warning suppression for Dune includes.
-//#include <opm/grid/utility/platform_dependent/disable_warnings.h>  // OK
+#include <opm/grid/utility/platform_dependent/disable_warnings.h>  // Not really needed it seems, but alas.
 
 #include <dune/common/version.hh>
-
-#if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-#include <dune/common/parallel/variablesizecommunicator.hh>
-#else
-#include <opm/grid/utility/VariableSizeCommunicator.hpp>
-#endif
-#endif
-
-//#include <dune/grid/common/capabilities.hh> // OK
-#include <dune/grid/common/grid.hh>  // 
-//#include <dune/grid/common/gridenums.hh> // OK
-#include "cpgrid/CpGridData.hpp"
-//#include <opm/grid/utility/platform_dependent/reenable_warnings.h> // OK
-//#include "cpgrid/Intersection.hpp"   // OK
-//#include "cpgrid/Geometry.hpp"   // OK
-//#include "cpgrid/Indexsets.hpp"  // OK global_id_set_ turned into shared-pointer. 
-//#include "cpgrid/DefaultGeometryPolicy.hpp"  // OK
-#include "common/GridEnums.hpp"   // OK
-//#include "common/Volumes.hpp"   // OK
-//#include <opm/grid/cpgpreprocess/preprocess.h>  // OK
-#include <opm/grid/utility/OpmWellType.hpp>  // OK
+#include <dune/grid/common/grid.hh>
+#include <opm/grid/cpgrid/CpGridDataTraits.hpp>
+#include <opm/grid/cpgrid/OrientedEntityTable.hpp>
+#include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/utility/platform_dependent/reenable_warnings.h> //  Not really needed it seems, but alas.
+#include "common/GridEnums.hpp"   
+#include <opm/grid/utility/OpmWellType.hpp>  
 
 #include <iostream>
 #if ! HAVE_MPI
 #include <list>
 #endif
+
+namespace Opm
+{
+class EclipseGrid;
+class EclipseState;
+}
 
 namespace Dune
 {
@@ -90,8 +75,32 @@ namespace Dune
     class IntersectionIterator;
     template<int, PartitionIteratorType> class Iterator;
     class LevelGlobalIdSet;
+    class GlobalIdSet;
+    class Intersection;
+    class IntersectionIterator;
+    class IndexSet;
+    class IdSet;
+
     
     }
+}
+void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
+                      const std::array<int, 3>&,
+                      bool);
+
+void refinePatch_and_check(Dune::CpGrid&,
+                           const std::array<int,3>&,
+                           const std::array<int,3>&,
+                           const std::array<int,3>&);
+
+void refinePatch_and_check(const std::array<int,3>&,
+                           const std::array<int,3>&,
+                           const std::array<int,3>&);
+
+void check_global_refine(const Dune::CpGrid&,
+                         const Dune::CpGrid&);
+namespace Dune
+{
 
     ////////////////////////////////////////////////////////////////////////
     //
@@ -179,15 +188,9 @@ namespace Dune
         typedef GlobalIdSet LocalIdSet;
 
         /// \brief The type of the collective communication.
+        using Communication = cpgrid::CpGridDataTraits::Communication;
+        using CollectiveCommunication = cpgrid::CpGridDataTraits::CollectiveCommunication;
 
-    typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    using Communication = Dune::Communication<MPICommunicator>;
-    using CollectiveCommunication = Communication;
-#else
-    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
-    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
-#endif
     };
 
     ////////////////////////////////////////////////////////////////////////
@@ -727,6 +730,7 @@ namespace Dune
             }
             return ret;
         }
+
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
         /// \param data A data handle describing how to distribute attached data.
         /// \param overlapLayers The number of layers of overlap cells to be added
@@ -832,13 +836,10 @@ namespace Dune
         /// \param dir The direction of the communication along the interface (forward or backward).
         /// \param level discarded as CpGrid is not adaptive.
         template<class DataHandle>
-        void communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const
-        {
-            current_view_data_->communicate(data, iftype, dir);
-        }
+        void communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const;
 
         /// \brief Get the collective communication object.
-const typename CpGridTraits::Communication& comm () const;
+        const typename CpGridTraits::Communication& comm () const;
         //@}
 
         // ------------ End of Dune interface, start of simplified interface --------------
@@ -854,18 +855,18 @@ const typename CpGridTraits::Communication& comm () const;
         typedef Dune::FieldVector<double, 3> Vector;
 
 
-const std::vector<double>& zcornData() const;
+        const std::vector<double>& zcornData() const;
 
 
         // Topology
         /// \brief Get the number of cells.
-int numCells() const;
+        int numCells() const;
 
         /// \brief Get the number of faces.
-int numFaces() const;
+        int numFaces() const;
 
         /// \brief Get The number of vertices.
-int numVertices() const;
+        int numVertices() const;
 
 
         /// \brief Get the number of faces of a cell.
@@ -874,17 +875,17 @@ int numVertices() const;
         /// number is quite arbitrary. Its lower bound is 4, but there is
         /// no upper bound.
         /// \parame cell the index identifying the cell.
-int numCellFaces(int cell) const;
+        int numCellFaces(int cell) const;
 
         /// \brief Get a specific face of a cell.
         /// \param cell The index identifying the cell.
         /// \param local_index The local index (in [0,numFaces(cell))) of the face in this cell.
         /// \return The index identifying the face.
-int cellFace(int cell, int local_index) const;
+        int cellFace(int cell, int local_index) const;
 
         /// \brief Get a list of indices identifying all faces of a cell.
         /// \param cell The index identifying the cell.
-const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const;
+        const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const;
 
         /// \brief Get the index identifying a cell attached to a face.
         ///
@@ -896,7 +897,7 @@ const cpgrid::OrientedEntityTable<0,1>::row_type cellFaceRow(int cell) const;
         /// \return The index identifying a cell or -1 if there is no such
         /// cell due the face being part of the grid boundary or the
         /// cell being stored on another process.
-int faceCell(int face, int local_index) const;
+        int faceCell(int face, int local_index) const;
       
         /// \brief Get the sum of all faces attached to all cells.
         ///
@@ -904,52 +905,52 @@ int faceCell(int face, int local_index) const;
         /// as there are neigboring cells attached to it.
         /// \f$ numCellFaces()=\sum_{c} numCellFaces(c) \f$
         /// \see numCellFaces(int)const
-int numCellFaces() const;
+        int numCellFaces() const;
 
-int numFaceVertices(int face) const;
+        int numFaceVertices(int face) const;
 
         /// \brief Get the index identifying a vertex of a face.
         /// \param cell The index identifying the face.
         /// \param local_index The local_index (in [0,numFaceVertices(vertex) - 1]])
         ///  of the vertex.
-int faceVertex(int face, int local_index) const;
+        int faceVertex(int face, int local_index) const;
 
         /// \brief Get vertical position of cell center ("zcorn" average).
         /// \brief cell_index The index of the specific cell.
-double cellCenterDepth(int cell_index) const;
+        double cellCenterDepth(int cell_index) const;
 
 
-const Vector faceCenterEcl(int cell_index, int face) const;
+        const Vector faceCenterEcl(int cell_index, int face) const;
 
-const Vector faceAreaNormalEcl(int face) const;
+        const Vector faceAreaNormalEcl(int face) const;
 
 
         // Geometry
         /// \brief Get the Position of a vertex.
         /// \param cell The index identifying the cell.
         /// \return The coordinates of the vertex.
-const Vector& vertexPosition(int vertex) const;
+        const Vector& vertexPosition(int vertex) const;
 
         /// \brief Get the area of a face.
         /// \param cell The index identifying the face.
-double faceArea(int face) const;
+        double faceArea(int face) const;
 
         /// \brief Get the coordinates of the center of a face.
         /// \param cell The index identifying the face.
-const Vector& faceCentroid(int face) const;
+        const Vector& faceCentroid(int face) const;
 
         /// \brief Get the unit normal of a face.
         /// \param cell The index identifying the face.
         /// \see faceCell
-const Vector& faceNormal(int face) const;
+        const Vector& faceNormal(int face) const;
 
         /// \brief Get the volume of the cell.
         /// \param cell The index identifying the cell.
-double cellVolume(int cell) const;
+        double cellVolume(int cell) const;
 
         /// \brief Get the coordinates of the center of a cell.
         /// \param cell The index identifying the face.
-const Vector& cellCentroid(int cell) const;
+        const Vector& cellCentroid(int cell) const;
 
         /// \brief An iterator over the centroids of the geometry of the entities.
         /// \tparam codim The co-dimension of the entities.
@@ -1000,14 +1001,14 @@ const Vector& cellCentroid(int cell) const;
             GeometryIterator iter_;
         };
 
-/// \brief Get an iterator over the cell centroids positioned at the first one.
-CentroidIterator<0> beginCellCentroids() const;
+        /// \brief Get an iterator over the cell centroids positioned at the first one.
+        CentroidIterator<0> beginCellCentroids() const;
 
-/// \brief Get an iterator over the face centroids positioned at the first one.
-CentroidIterator<1> beginFaceCentroids() const;
+        /// \brief Get an iterator over the face centroids positioned at the first one.
+        CentroidIterator<1> beginFaceCentroids() const;
 
-// Extra
-int boundaryId(int face) const;
+        // Extra
+        int boundaryId(int face) const;
 
         /// \brief Get the cartesian tag associated with a face tag.
         ///
@@ -1017,59 +1018,7 @@ int boundaryId(int face) const;
         /// by iterating over Opm::UgGridHelpers::cell2Faces(grid).
         template<class Cell2FacesRowIterator>
         int
-        faceTag(const Cell2FacesRowIterator& cell_face) const
-        {
-            // Note that this relies on the following implementation detail:
-            // The grid is always constructed such that the interior faces constructed
-            // with orientation set to true are
-            // oriented along the positive IJK direction. Oriented means that
-            // the first cell attached to face has the lower index.
-            // For faces along the boundary (only one cell, always  attached at index 0)
-            // the orientation has to be determined by the orientation of the cell.
-            // If it is true then in UnstructuredGrid it would be stored at index 0,
-            // otherwise at index 1.
-            const int cell = cell_face.getCellIndex();
-            const int face = *cell_face;
-            assert (0 <= cell);  assert (cell < numCells());
-            assert (0 <= face);  assert (face < numFaces());
-
-            typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
-
-            const cpgrid::EntityRep<1> f(face, true);
-            const F2C&     f2c = current_view_data_->face_to_cell_[f];
-            const face_tag tag = current_view_data_->face_tag_[f];
-
-            assert ((f2c.size() == 1) || (f2c.size() == 2));
-
-            int inside_cell = 0;
-
-            if ( f2c.size() == 2 ) // Two cells => interior
-            {
-                if ( f2c[1].index() == cell )
-                {
-                    inside_cell = 1;
-                }
-            }
-            const bool normal_is_in = ! f2c[inside_cell].orientation();
-
-            switch (tag) {
-            case I_FACE:
-                //                    LEFT : RIGHT
-                return normal_is_in ? 0    : 1; // min(I) : max(I)
-            case J_FACE:
-                //                    BACK : FRONT
-                return normal_is_in ? 2    : 3; // min(J) : max(J)
-            case K_FACE:
-                // Note: TOP at min(K) as 'z' measures *depth*.
-                //                    TOP  : BOTTOM
-                return normal_is_in ? 4    : 5; // min(K) : max(K)
-            case NNC_FACE:
-                // For nnc faces we return the otherwise unused value -1.
-                return -1;
-            default:
-                OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
-            }
-        }
+        faceTag(const Cell2FacesRowIterator& cell_face) const;
 
         //@}
 
@@ -1092,18 +1041,7 @@ int boundaryId(int face) const;
         /// \param handle The data handle describing the data and responsible for
         ///         gathering and scattering the data.
         template<class DataHandle>
-        void scatterData(DataHandle& handle) const
-        {
-#if HAVE_MPI
-            if(distributed_data_.empty())
-                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-            distributed_data_[0]->scatterData(handle, data_[0].get(), distributed_data_[0].get(), cellScatterGatherInterface(),
-                                           pointScatterGatherInterface());
-#else
-            // Suppress warnings for unused argument.
-            (void) handle;
-#endif
-        }
+        void scatterData(DataHandle& handle) const;
 
         ///
         /// \brief Moves data from the distributed view to the global (all data on process) view.
@@ -1112,32 +1050,11 @@ int boundaryId(int face) const;
         /// \param handle The data handle describing the data and responsible for
         ///         gathering and scattering the data.
         template<class DataHandle>
-        void gatherData(DataHandle& handle) const
-        {
-#if HAVE_MPI
-            if(distributed_data_.empty())
-                OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
-            distributed_data_[0]->gatherData(handle, data_[0].get(), distributed_data_[0].get());
-#else
-            // Suppress warnings for unused argument.
-            (void) handle;
-#endif
-        }
-#if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-        /// \brief The type of the map describing communication interfaces.
-        using InterfaceMap = VariableSizeCommunicator<>::InterfaceMap;
-#else
-        /// \brief The type of the map describing communication interfaces.
-        using InterfaceMap = Opm::VariableSizeCommunicator<>::InterfaceMap;
-#endif
-#else
-        // bogus definition for the non parallel type. VariableSizeCommunicator not
-        // availabe
+        void gatherData(DataHandle& handle) const;
+
 
         /// \brief The type of the map describing communication interfaces.
-        typedef std::map<int, std::list<int> > InterfaceMap;
-#endif
+        using InterfaceMap = cpgrid::CpGridDataTraits::InterfaceMap;
 
         /// \brief Get an interface for gathering/scattering data attached to cells with communication.
         ///
@@ -1167,52 +1084,44 @@ int boundaryId(int face) const;
         ///                                       grid.cellScatterGatherInterface());
         /// comm.forward(handle);
         /// \endcode
-const InterfaceMap& cellScatterGatherInterface() const;
-/*
-        {
-            return *cell_scatter_gather_interfaces_;
-            }*/
+        const InterfaceMap& cellScatterGatherInterface() const;
 
         /// \brief Get an interface for gathering/scattering data attached to points with communication.
         /// \see cellScatterGatherInterface
-const InterfaceMap& pointScatterGatherInterface() const;
-
-/*  {
-            return *point_scatter_gather_interfaces_;
-            }*/
+        const InterfaceMap& pointScatterGatherInterface() const;
 
         /// \brief Switch to the global view.
-void switchToGlobalView();
+        void switchToGlobalView();
 
         /// \brief Switch to the distributed view.
-void switchToDistributedView();
+        void switchToDistributedView();
         //@}
 
 #if HAVE_MPI
         /// \brief The type of the parallel index set
-        typedef cpgrid::CpGridData::ParallelIndexSet ParallelIndexSet;
+        using ParallelIndexSet = cpgrid::CpGridDataTraits::ParallelIndexSet;
         /// \brief The type of the remote indices information
-        typedef cpgrid::CpGridData::RemoteIndices RemoteIndices;
+        using RemoteIndices = cpgrid::CpGridDataTraits::RemoteIndices;
 
         /// \brief The type of the owner-overlap-copy communication
-        using CommunicationType = cpgrid::CpGridData::CommunicationType;
+        using CommunicationType = cpgrid::CpGridDataTraits::CommunicationType;
 
         /// \brief Get the owner-overlap-copy communication for cells
         ///
         /// Suitable e.g. for parallel linear algebra used by CCFV
-const CommunicationType& cellCommunication() const;
+        const CommunicationType& cellCommunication() const;
 
-ParallelIndexSet& getCellIndexSet();
+        ParallelIndexSet& getCellIndexSet();
 
-RemoteIndices& getCellRemoteIndices();
+        RemoteIndices& getCellRemoteIndices();
 
-const ParallelIndexSet& getCellIndexSet() const;
+        const ParallelIndexSet& getCellIndexSet() const;
 
-const RemoteIndices& getCellRemoteIndices() const;
+        const RemoteIndices& getCellRemoteIndices() const;
 #endif
 
         /// \brief Get sorted active cell indices of numerical aquifer
-const std::vector<int>& sortedNumAquiferCells() const;
+        const std::vector<int>& sortedNumAquiferCells() const;
 
     private:
         /// \brief Scatter a global grid to all processors.
@@ -1277,8 +1186,7 @@ const std::vector<int>& sortedNumAquiferCells() const;
         /**
          * @brief The global id set (also used as local one).
          */
-// cpgrid::GlobalIdSet global_id_set_;
-std::shared_ptr<cpgrid::GlobalIdSet> global_id_set_ptr_;
+        std::shared_ptr<cpgrid::GlobalIdSet> global_id_set_ptr_;
 
 
         /**
@@ -1288,18 +1196,15 @@ std::shared_ptr<cpgrid::GlobalIdSet> global_id_set_ptr_;
 
     }; // end Class CpGrid
 
+} // end namespace Dune
 
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/Iterators.hpp>
-/*#include <opm/grid/cpgrid/PersistentContainer.hpp>
-#include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
-#include <opm/grid/cpgrid/GridHelpers.hpp>
-//#include <attic/BuildCpGrid.hpp> ../..
-#include <opm/grid/common/ZoltanPartition.hpp>
-#include <opm/grid/common/ZoltanGraphFunctions.hpp>
-#include <opm/grid/common/GridAdapter.hpp>
-#include <opm/grid/common/WellConnections.hpp>*/
+#include <opm/grid/cpgrid/CpGridData.hpp>
 
+
+namespace Dune
+{
 
     namespace Capabilities
     {
@@ -1338,6 +1243,97 @@ std::shared_ptr<cpgrid::GlobalIdSet> global_id_set_ptr_;
 
     }
 
+    template<class DataHandle>
+    void CpGrid::communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const
+    {
+        current_view_data_->communicate(data, iftype, dir);
+    }
+
+
+    template<class DataHandle>
+    void CpGrid::scatterData(DataHandle& handle) const
+    {
+#if HAVE_MPI
+        if(distributed_data_.empty())
+            OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
+        distributed_data_[0]->scatterData(handle, data_[0].get(), distributed_data_[0].get(), cellScatterGatherInterface(),
+                                          pointScatterGatherInterface());
+#else
+        // Suppress warnings for unused argument.
+        (void) handle;
+#endif
+    }
+
+    template<class DataHandle>
+    void CpGrid::gatherData(DataHandle& handle) const
+    {
+#if HAVE_MPI
+        if(distributed_data_.empty())
+            OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
+        distributed_data_[0]->gatherData(handle, data_[0].get(), distributed_data_[0].get());
+#else
+        // Suppress warnings for unused argument.
+        (void) handle;
+#endif
+    }
+
+
+    template<class Cell2FacesRowIterator>
+    int
+    CpGrid::faceTag(const Cell2FacesRowIterator& cell_face) const
+    {
+        // Note that this relies on the following implementation detail:
+        // The grid is always constructed such that the interior faces constructed
+        // with orientation set to true are
+        // oriented along the positive IJK direction. Oriented means that
+        // the first cell attached to face has the lower index.
+        // For faces along the boundary (only one cell, always  attached at index 0)
+        // the orientation has to be determined by the orientation of the cell.
+        // If it is true then in UnstructuredGrid it would be stored at index 0,
+        // otherwise at index 1.
+        const int cell = cell_face.getCellIndex();
+        const int face = *cell_face;
+        assert (0 <= cell);  assert (cell < numCells());
+        assert (0 <= face);  assert (face < numFaces());
+
+        typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
+
+        const cpgrid::EntityRep<1> f(face, true);
+        const F2C&     f2c = current_view_data_->face_to_cell_[f];
+        const face_tag tag = current_view_data_->face_tag_[f];
+
+        assert ((f2c.size() == 1) || (f2c.size() == 2));
+
+        int inside_cell = 0;
+
+        if ( f2c.size() == 2 ) // Two cells => interior
+        {
+            if ( f2c[1].index() == cell )
+            {
+                inside_cell = 1;
+            }
+        }
+        const bool normal_is_in = ! f2c[inside_cell].orientation();
+
+        switch (tag) {
+        case I_FACE:
+            //                    LEFT : RIGHT
+            return normal_is_in ? 0    : 1; // min(I) : max(I)
+        case J_FACE:
+            //                    BACK : FRONT
+            return normal_is_in ? 2    : 3; // min(J) : max(J)
+        case K_FACE:
+            // Note: TOP at min(K) as 'z' measures *depth*.
+            //                    TOP  : BOTTOM
+            return normal_is_in ? 4    : 5; // min(K) : max(K)
+        case NNC_FACE:
+            // For nnc faces we return the otherwise unused value -1.
+            return -1;
+        default:
+            OPM_THROW(std::logic_error, "Unhandled face tag. This should never happen!");
+        }
+    }
+
     template<int dim>
     cpgrid::Entity<dim> createEntity(const CpGrid&, int, bool);
 
@@ -1345,4 +1341,8 @@ std::shared_ptr<cpgrid::GlobalIdSet> global_id_set_ptr_;
 
 #include <opm/grid/cpgrid/PersistentContainer.hpp>
 #include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
+#include "cpgrid/Intersection.hpp"
+#include "cpgrid/Geometry.hpp"
+#include "cpgrid/Indexsets.hpp"
+
 #endif // OPM_CPGRID_HEADER

@@ -73,6 +73,7 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 
 #include "Entity2IndexDataHandle.hpp"
+#include "CpGridDataTraits.hpp"
 //#include "DataHandleWrappers.hpp"
 //#include "GlobalIdMapping.hpp"
 #include "Geometry.hpp"
@@ -178,17 +179,15 @@ public:
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
-    // explicit CpGridData(MPIHelper::MPICommunicator comm);
     explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
 
  
     
     /// Constructor
     CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);
-    //CpGridData();
     /// Destructor
     ~CpGridData();
-    /// Another constructor
+  
    
     
     
@@ -428,26 +427,29 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+    /// \brief The type of the mpi communicator.
+    using MPICommunicator = CpGridDataTraits::MPICommunicator ;
+    /// \brief The type of the collective communication.
+    using Communication = CpGridDataTraits::Communication;
+    using CollectiveCommunication = CpGridDataTraits::CollectiveCommunication;
 #if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
+    /// \brief The type of the set of the attributes
+    using AttributeSet = CpGridDataTraits::AttributeSet;
+
     /// \brief The type of the  Communicator.
-    using Communicator = VariableSizeCommunicator<>;
-#else
-    /// \brief The type of the Communicator.
-    using Communicator = Opm::VariableSizeCommunicator<>;
-#endif
+    using Communicator = CpGridDataTraits::Communicator;
 
     /// \brief The type of the map describing communication interfaces.
-    using InterfaceMap = Communicator::InterfaceMap;
+    using InterfaceMap = CpGridDataTraits::InterfaceMap;
 
     /// \brief type of OwnerOverlap communication for cells
-    using CommunicationType = Dune::OwnerOverlapCopyCommunication<int,int>;
+    using CommunicationType = CpGridDataTraits::CommunicationType;
 
     /// \brief The type of the parallel index set
-    using  ParallelIndexSet = CommunicationType::ParallelIndexSet;
+    using  ParallelIndexSet = CpGridDataTraits::ParallelIndexSet;
 
     /// \brief The type of the remote indices information
-    using RemoteIndices = Dune::RemoteIndices<ParallelIndexSet>;
+    using RemoteIndices = CpGridDataTraits::RemoteIndices;
 
     /// \brief Get the owner-overlap-copy communication for cells
     ///
@@ -484,14 +486,6 @@ public:
     {
             return cellCommunication().remoteIndices();
     }
-#endif
-
-#ifdef HAVE_DUNE_ISTL
-    /// \brief The type of the set of the attributes
-    typedef Dune::OwnerOverlapCopyAttributeSet::AttributeSet AttributeSet;
-#else
-    /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap, copy};
 #endif
 
     /// \brief Get sorted active cell indices of numerical aquifer
@@ -645,21 +639,8 @@ private:
     std::vector<std::array<int,2>> leaf_to_level_cells_; 
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1, -1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_; 
-     
-    
-    
-   
-    
-    
-    /// \brief The type of the collective communication.
-    typedef MPIHelper::MPICommunicator MPICommunicator;
-    #if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
-    using Communication = Dune::Communication<MPICommunicator>;
-#else
-    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
-    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
-#endif
+    std::vector<std::array<int,2>> child_to_parent_cells_;
+
     /// \brief Object for collective communication operations.
     Communication ccobj_;
 
