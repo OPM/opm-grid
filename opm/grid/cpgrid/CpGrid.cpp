@@ -140,23 +140,20 @@ namespace Dune
     {}
 
 std::vector<int>
-CpGrid::zoltanPartitionWithoutScatter([[maybe_unused]] const std::vector<cpgrid::OpmWellType> * wells,
+CpGrid::zoltanPartitionWithoutScatter([[maybe_unused]] const std::vector<cpgrid::OpmWellType>* wells,
                                       [[maybe_unused]] const double* transmissibilities,
-                                      [[maybe_unused]] int numParts,
-                                      [[maybe_unused]] const double zoltanImbalanceTol)
+                                      [[maybe_unused]] const int numParts,
+                                      [[maybe_unused]] const double zoltanImbalanceTol) const
 {
-    std::vector<int> cell_part(this->numCells());
-#if HAVE_MPI
-    auto& cc = data_[0]->ccobj_;
-#ifdef HAVE_ZOLTAN
-    EdgeWeightMethod met = EdgeWeightMethod(1);
+#if HAVE_MPI && HAVE_ZOLTAN
+    const auto met = EdgeWeightMethod(1);
 
-    return cpgrid::zoltanGraphPartitionGridForJac(*this, wells, transmissibilities, cc, met, 0,
-                                                  numParts, zoltanImbalanceTol);
-
+    return cpgrid::zoltanGraphPartitionGridForJac(*this, wells, transmissibilities,
+                                                  this->data_[0]->ccobj_, met,
+                                                  0, numParts, zoltanImbalanceTol);
+#else
+    return std::vector<int>(this->numCells(), 0);
 #endif
-#endif
-    return cell_part;
 }
 
 

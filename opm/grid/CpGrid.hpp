@@ -1196,9 +1196,11 @@ namespace Dune
          /// \param transmissibilities The transmissibilities used to calculate the edge weights.
          /// \param numParts Number of parts in the partition.
          /// \return An array with the domain index for each cell.
-         std::vector<int> zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType> * wells,
-                                                        const double* transmissibilities, int numParts,
-                                                        const double zoltanImbalanceTol);
+         std::vector<int>
+         zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
+                                       const double* transmissibilities,
+                                       const int     numParts,
+                                       const double  zoltanImbalanceTol) const;
 
         /// The new communication interface.
         /// \brief communicate objects for all codims on a given level
