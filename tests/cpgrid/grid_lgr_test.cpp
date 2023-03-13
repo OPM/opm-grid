@@ -36,6 +36,7 @@
 
 #include <sstream>
 #include <iostream>
+
 struct Fixture
 {
     Fixture()
@@ -82,107 +83,229 @@ void check_refinedPatch_grid(const std::array<int,3> cells_per_dim,
    
 }
 
-
 void refinePatch_and_check(Dune::CpGrid& coarse_grid,
-                           const std::array<int, 3>& cells_per_dim,
-                           const std::array<int,3>& start_ijk,
-                           const std::array<int,3>& end_ijk)
+                           const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                           const std::vector<std::array<int,3>>& startIJK_vec,
+                           const std::vector<std::array<int,3>>& endIJK_vec)
 {
-    
-    // Call createGridWithLgr()
     auto& data = coarse_grid.data_;
-    coarse_grid.addLgrUpdateLeafView(cells_per_dim, start_ijk, end_ijk);
-    BOOST_CHECK(data.size()==3);
-    check_refinedPatch_grid(cells_per_dim, start_ijk, end_ijk,
-                            (*coarse_grid.data_[1]).geometry_.template geomVector<0>(),
-                            (*coarse_grid.data_[1]).geometry_.template geomVector<1>(),
-                            (*coarse_grid.data_[1]).geometry_.template geomVector<3>());
+    // Add LGRs and update grid.
+    const bool are_disjoint = (*data[0]).disjointPatches(startIJK_vec, endIJK_vec);
+    if (are_disjoint){
+        coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec);
+      
+        BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
+        BOOST_CHECK( (*coarse_grid.data_[0]).child_to_parent_cells_.empty());
 
-    BOOST_CHECK( (*coarse_grid.data_[0]).child_to_parent_cells_.empty());
-    BOOST_CHECK( (*coarse_grid.data_[1]).parent_to_children_cells_.empty());
-    BOOST_CHECK( (*coarse_grid.data_[2]).parent_to_children_cells_.empty());
-    const auto& [patch_corners, patch_faces, patch_cells] = (*coarse_grid.data_[0]).getPatchGeomIndices(start_ijk, end_ijk);
-    for (int cell = 0; cell<  data[0]-> size(0); ++cell)
-    {
-        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
-        BOOST_CHECK( entity.hasFather() == false);
-        BOOST_CHECK_THROW(entity.father(), std::logic_error);
-        const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[cell]; 
-        if (std::find(patch_cells.begin(), patch_cells.end(), cell) == patch_cells.end()){
-            BOOST_CHECK_EQUAL(std::get<0>(parent_to_children), -1);
-            BOOST_CHECK_EQUAL(std::get<1>(parent_to_children)[0], -1);
-            BOOST_CHECK( entity.isLeaf() == true);
-        }
-        else{
-            BOOST_CHECK(std::get<1>(parent_to_children).size() > 0);
-            BOOST_CHECK(std::get<0>(parent_to_children) != -1);
-            BOOST_CHECK( entity.isLeaf() == false);
-        }
-        BOOST_CHECK( entity.level() == 0);
-    }
-
+        const auto& all_parent_cell_indices = (*coarse_grid.data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
+        // const std::vector<int>& no_children = {-1};
+        // const auto& noLevel_noChildren = std::make_tuple(-1, no_children); // {-1, {-1}} representing no level, no children
+        
     
-    for (int cell = 0; cell<  data[1]-> size(0); ++cell)
-    {
-        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[1]), cell, true);
-        BOOST_CHECK( entity.hasFather() == true);
-        BOOST_CHECK(entity.father().level() == 0);
-        BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
-        const auto& child_to_parent = (*coarse_grid.data_[1]).child_to_parent_cells_[cell];
-        BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
-        BOOST_CHECK( entity.level() == 1);
-        BOOST_CHECK( entity.level() == coarse_grid.maxLevel());
-        BOOST_CHECK( entity.isLeaf() == true);
-    }
+        for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
+        {
+            check_refinedPatch_grid(cells_per_dim_vec[level-1], startIJK_vec[level-1], endIJK_vec[level-1],
+                                    (*coarse_grid.data_[level]).geometry_.template geomVector<0>(),
+                                    (*coarse_grid.data_[level]).geometry_.template geomVector<1>(),
+                                    (*coarse_grid.data_[level]).geometry_.template geomVector<3>());
+            BOOST_CHECK( (*coarse_grid.data_[level]).parent_to_children_cells_.empty());
 
-    for (int cell = 0; cell<  data[2]-> size(0); ++cell)
-    {
-        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[2]), cell, true);
-        const auto& child_to_parent = (*coarse_grid.data_[2]).child_to_parent_cells_[cell];
-        if (entity.hasFather()){
-             BOOST_CHECK(entity.father().level() == 0);
-             BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
-             BOOST_CHECK(!(child_to_parent[0] == -1));
-             BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
-             BOOST_CHECK( entity.father().isLeaf() == false);
-             BOOST_CHECK( entity.level() == 1);
+            const auto& [patch_corners, patch_faces, patch_cells]
+                = (*coarse_grid.data_[0]).getPatchGeomIndices(startIJK_vec[level-1], endIJK_vec[level-1]);
+
+            // GLOBAL grid
+            for (int cell = 0; cell<  data[0]-> size(0); ++cell)
+            {
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
+                BOOST_CHECK( entity.hasFather() == false);
+                BOOST_CHECK_THROW(entity.father(), std::logic_error);
+                const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[cell]; 
+                if (std::find(all_parent_cell_indices.begin(), all_parent_cell_indices.end(), cell) == all_parent_cell_indices.end()){
+                    BOOST_CHECK_EQUAL(std::get<0>(parent_to_children), -1);
+                    BOOST_CHECK_EQUAL(std::get<1>(parent_to_children)[0], -1);
+                    BOOST_CHECK( entity.isLeaf() == true);
+                }
+                else{
+                    BOOST_CHECK( std::get<0>(parent_to_children) != -1);
+                    BOOST_CHECK( std::get<1>(parent_to_children).size() > 1 ); 
+                    for (long unsigned int child = 0; child < std::get<1>(parent_to_children).size(); ++child){
+                         BOOST_CHECK( std::get<1>(parent_to_children)[child] != -1);
+                    }
+                    BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
+                }
+                BOOST_CHECK( entity.level() == 0);
+            }
+            // LGRs
+            for (int cell = 0; cell<  data[level]-> size(0); ++cell)
+            {
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[level]), cell, true);
+                BOOST_CHECK( entity.hasFather() == true);
+                BOOST_CHECK(entity.father().level() == 0);
+                // Check entity.father().index() belongs to the patch_cells (corresponding LGR parents)
+                BOOST_CHECK_EQUAL((std::find(patch_cells.begin(), patch_cells.end(),
+                                            entity.father().index()) == patch_cells.end()) , false);
+                const auto& child_to_parent = (*coarse_grid.data_[level]).child_to_parent_cells_[cell];
+                BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
+                BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
+                BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
+                BOOST_CHECK( entity.level() == static_cast<int>(level));
+                BOOST_CHECK( entity.isLeaf() == true);
+            }
+            // LeafView
+            for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
+            {
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[startIJK_vec.size()+1]), cell, true);
+                const auto& child_to_parent = (*coarse_grid.data_[startIJK_vec.size()+1]).child_to_parent_cells_[cell];
+                if (entity.hasFather()){
+                    BOOST_CHECK(entity.father().level() == 0);
+                    BOOST_CHECK_EQUAL( (std::find(all_parent_cell_indices.begin(), all_parent_cell_indices.end(),
+                                                  entity.father().index()) == all_parent_cell_indices.end()), false);
+                    BOOST_CHECK(child_to_parent[0] != -1);
+                    BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
+                    BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
+                    BOOST_CHECK( entity.father().isLeaf() == false);
+                    BOOST_CHECK( (entity.level() > 0) || (entity.level() < static_cast<int>(startIJK_vec.size()) +1));
+                }
+                else{
+                    BOOST_CHECK_THROW(entity.father(), std::logic_error);
+                    BOOST_CHECK_EQUAL(child_to_parent[0], -1);
+                    BOOST_CHECK( entity.level() == 0);
+                }
+                BOOST_CHECK( entity.isLeaf() == true);
+       
+            }
         }
-        else{
-            BOOST_CHECK_THROW(entity.father(), std::logic_error);
-            BOOST_CHECK_EQUAL( child_to_parent[0], -1);
-            BOOST_CHECK( entity.level() == 0);
+
+        BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == coarse_grid.maxLevel());
+        BOOST_CHECK( (*coarse_grid.data_[data.size()-1]).parent_to_children_cells_.empty());
+   
+        for (long unsigned int l = 0; l < startIJK_vec.size() +1; ++l) // level 0,1,2,... , last patch
+        {
+            const auto& view = coarse_grid.levelGridView(l);
+            for (const auto& element: elements(view)){
+                BOOST_CHECK_EQUAL(element.level(), l);
+            }
         }
-        BOOST_CHECK( entity.isLeaf() == true);
-    }
 
-    for (int l = 0; l < 2; ++l)
-    {
-        const auto& view = coarse_grid.levelGridView(l);
-        for (const auto& element: elements(view)){
-            BOOST_CHECK_EQUAL(element.level(), l);
+        const auto& leaf_view = coarse_grid.leafGridView();
+        for (const auto& element: elements(leaf_view)){
+            BOOST_CHECK( ((element.level() >= 0) || (element.level() < static_cast<int>(startIJK_vec.size()) +1)));
         }
     }
+    
+}
 
-    const auto& leaf_view = coarse_grid.leafGridView();
-    for (const auto& element: elements(leaf_view)){
-         BOOST_CHECK( ((element.level() == 0) || (element.level() == 1)));
-    }
-
-} 
 
 BOOST_AUTO_TEST_CASE(refine_patch)
 {
-     // Create a grid
+    // Create a grid
     Dune::CpGrid coarse_grid;
     std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     std::array<int, 3> grid_dim = {4,3,3};
     const std::array<int, 3> cells_per_dim_patch = {2,2,2};   
     std::array<int, 3> start_ijk = {1,0,1};
-    std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1, 2-0, 3-1} ={2,2,2}
+    std::array<int, 3> end_ijk = {3,2,3};  // patch_dim = {3-1, 2-0, 3-1} ={2,2,2}
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid,
-                          cells_per_dim_patch,
-                          start_ijk, end_ijk);  
+                          {cells_per_dim_patch},
+                          {start_ijk}, {end_ijk});
+}
+
+BOOST_AUTO_TEST_CASE(refine_patch_one_cell)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    const std::array<int, 3> cells_per_dim_patch = {2,2,2};   
+    std::array<int, 3> start_ijk = {1,0,1};
+    std::array<int, 3> end_ijk = {2,1,2};  // patch_dim = {2-1, 1-0, 2-1} ={1,1,1} -> Single Cell!
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    refinePatch_and_check(coarse_grid,
+                          {cells_per_dim_patch},
+                          {start_ijk}, {end_ijk});
+}
+
+BOOST_AUTO_TEST_CASE(lgrs_disjointPatches)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec);
+}
+
+BOOST_AUTO_TEST_CASE(lgrs_disjointPatchesB)
+{
+     // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {3,2,0}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1}, {4,3,3}};
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec); 
+}
+
+BOOST_AUTO_TEST_CASE(patches_share_corner)
+{
+     // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,1,1}, {3,2,2}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,2,2}, {4,3,3}};
+    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec), std::logic_error);
+    std::cout << "Patches are NOT disjoint" << "\n";
+}
+
+BOOST_AUTO_TEST_CASE(patches_share_corners)
+{
+     // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}, {2,2,2}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {2,0,1}, {3,2,2}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,1}, {4,3,3}};
+    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec), std::logic_error);
+    std::cout << "Patches are NOT disjoint" << "\n";
+}
+
+BOOST_AUTO_TEST_CASE(pathces_share_face)
+{
+     // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}, {2,2,2}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {2,0,0}, {3,2,2}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,1}, {4,3,3}};
+    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec), std::logic_error);
+    std::cout << "Patches are NOT disjoint" << "\n";  
+}
+
+BOOST_AUTO_TEST_CASE(pathces_share_faceB)
+{
+     // Create a grid
+    Dune::CpGrid coarse_grid;
+    std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}, {2,2,2}};   
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,1}, {1,1,2}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1}, {3,2,1}, {4,3,3}};
+    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec), std::logic_error);
+    std::cout << "Patches are NOT disjoint" << "\n";
 }
 
 #define CHECK_COORDINATES(c1, c2)                                       \
@@ -219,7 +342,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
             std::cout << coord<< " ";
         std::cout <<std::endl;
         for(const auto& coord: point.center())
-        BOOST_TEST(std::isfinite(coord)); 
+            BOOST_TEST(std::isfinite(coord)); 
         ++equiv_point_iter;
     }
     auto j = 0u;
@@ -298,7 +421,7 @@ BOOST_AUTO_TEST_CASE(global_refine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrsUpdateLeafView({cells_per_dim_patch}, {start_ijk}, {end_ijk});
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;
@@ -321,7 +444,7 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrsUpdateLeafView({cells_per_dim_patch}, {start_ijk}, {end_ijk});
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;

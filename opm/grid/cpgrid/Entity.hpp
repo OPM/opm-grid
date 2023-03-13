@@ -55,7 +55,6 @@ namespace Dune
        class CpGridData;
        class LevelGlobalIdSet;
 
-
         /// @brief
         /// @todo Doc me!
         /// @tparam
@@ -412,6 +411,7 @@ int Entity<codim>::level() const
 // - if distrubuted_data_ is NOT empty: there may be children on a different process. Therefore,
 // isLeaf() returns true <-> the element is a leaf entity of the global refinement hierarchy. Equivalently,
 // it can be checked whether parent_to_children_cells_ is empty.
+
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
@@ -426,25 +426,26 @@ bool Entity<codim>::isLeaf() const
 template<int codim>
 bool Entity<codim>::hasFather() const
 {
-    if (pgrid_ -> child_to_parent_cells_.empty()){
+    if ((pgrid_ -> child_to_parent_cells_.empty()) || (pgrid_ -> child_to_parent_cells_[this->index()][0] == -1)){
         return false;
     }
     else{
-        const auto& [level, parent] = pgrid_-> child_to_parent_cells_[this->index()]; // {-1,-1};
-        return  (parent != -1);
+        return true;
     }
 }
 
 template<int codim>
 Entity<0> Entity<codim>::father() const
 {
-    if (!(this->hasFather())){
-        OPM_THROW(std::logic_error, "Entity has no father.");
+    if (this->hasFather()){
+        const int& coarse_level = pgrid_ -> child_to_parent_cells_[this->index()][0]; // currently, always 0
+        const int& parent_index = pgrid_ -> child_to_parent_cells_[this->index()][1];
+        const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[coarse_level].get(); 
+        return Entity<0>( *coarse_grid, parent_index, true);
     }
-    const int& coarse_level = pgrid_ -> child_to_parent_cells_[this->index()][0];
-    const int& parent_index = pgrid_ -> child_to_parent_cells_[this->index()][1];
-    const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[coarse_level].get(); 
-    return Entity<0>( *coarse_grid, parent_index, true); 
+    else{
+        OPM_THROW(std::logic_error, "Entity has no father.");
+    }   
 }
 
 template<int codim>
@@ -499,6 +500,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
                                            local_geometry.geomVector(std::integral_constant<int,3>()), localEntity_indices_storage_ptr);
     }
 }
+
 
 } // namespace cpgrid
 } // namespace Dune
