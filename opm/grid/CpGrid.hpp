@@ -88,9 +88,9 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       bool);
 
 void refinePatch_and_check(Dune::CpGrid&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&);
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
 
 void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&,
@@ -225,9 +225,9 @@ namespace Dune
                                 bool);
         friend
         void ::refinePatch_and_check(Dune::CpGrid&,
-                                     const std::array<int,3>&,
-                                     const std::array<int,3>&,
-                                     const std::array<int,3>&);
+                                     const std::vector<std::array<int,3>>&,
+                                     const std::vector<std::array<int,3>>&,
+                                     const std::vector<std::array<int,3>>&);
         friend
         void ::refinePatch_and_check(const std::array<int,3>&,
                                      const std::array<int,3>&,
@@ -460,7 +460,26 @@ namespace Dune
         /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
         /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
         ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-        void addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK);
+        void addLgrUpdateLeafView(std::array<int,3> cells_per_dim, std::array<int,3> startIJK, std::array<int,3> endIJK);
+
+        /// @brief Create a grid out of a coarse one and (at most) 2 refinements(LGRs) of selected block-shaped disjoint patches
+        ///        of cells from that coarse grid.
+        ///
+        /// Level0 refers to the coarse grid, assumed to be this-> data_[0]. Level1 and level2 refer to the LGRs (stored in this->data_[1]
+        /// data_[2]). LeafView (stored in this-> data_[3]) is built with the level0-entities which weren't involded in the
+        /// refinenment, together with the new born entities created in level1 and level2. 
+        /// Old-corners and old-faces (from coarse grid) lying on the boundary of the patches, get replaced by new-born-equivalent corners
+        /// and new-born-faces.
+        ///
+        /// @param [in] cells_per_dim_vec      Vector of Number of (refined) cells in each direction that each
+        ///                                    parent cell should be refined to.
+        /// @param [in] startIJK_vec           Vector of Cartesian triplet indices where each patch starts.
+        /// @param [in] endIJK_vec             Vector of Cartesian triplet indices where each patch ends.
+        ///                                    Last cell part of each patch(lgr) will be
+        ///                                    {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
+        void addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                   const std::vector<std::array<int,3>>& startIJK_vec,
+                                   const std::vector<std::array<int,3>>& endIJK_vec);
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 

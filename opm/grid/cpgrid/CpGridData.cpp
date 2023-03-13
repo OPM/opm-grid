@@ -1712,11 +1712,13 @@ CpGridData::getPatchGeomIndices(const std::array<int,3>& startIJK, const std::ar
     patch_faces.reserve(((patch_dim[0]+1)*patch_dim[1]*patch_dim[2])     // i_patch_faces
                         + (patch_dim[0]*(patch_dim[1]+1)*patch_dim[2])   // j_patch_faces
                         + (patch_dim[0]*patch_dim[1]*(patch_dim[2]+1))); // k_patch_faces
+    int face_idx;
     // I_FACES
     for (int j = startIJK[1]; j < endIJK[1]; ++j) {
         for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
             for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                patch_faces.push_back((j*(grid_dim[0]+1)*grid_dim[2]) +(i*grid_dim[2]) + k);
+                face_idx = (j*(grid_dim[0]+1)*grid_dim[2]) +(i*grid_dim[2]) + k;
+                patch_faces.push_back(face_idx);
             } // end k-for-loop
         } // end i-for-loop
     } // end j-for-loop
@@ -1724,8 +1726,9 @@ CpGridData::getPatchGeomIndices(const std::array<int,3>& startIJK, const std::ar
     for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
         for (int i = startIJK[0]; i < endIJK[0]; ++i) {
             for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                patch_faces.push_back(((grid_dim[0]+1)*grid_dim[1]*grid_dim[2]) // i_grid_faces
-                                      + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2]) + k);
+                face_idx = ((grid_dim[0]+1)*grid_dim[1]*grid_dim[2]) // i_grid_faces
+                    + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2]) + k;
+                patch_faces.push_back(face_idx);
             } // end k-for-loop
         } // end i-for-loop
     } // end j-for-loop
@@ -1733,9 +1736,10 @@ CpGridData::getPatchGeomIndices(const std::array<int,3>& startIJK, const std::ar
     for (int j = startIJK[1]; j < endIJK[1]; ++j) {
         for (int i = startIJK[0]; i < endIJK[0]; ++i) {
             for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                patch_faces.push_back((grid_dim[0]*(grid_dim[1]+1)*grid_dim[2]) //j_grid_faces
-                                      + ((grid_dim[0]+1)*grid_dim[1]*grid_dim[2])          // i_grid_faces
-                                      + (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ k);
+                face_idx = (grid_dim[0]*(grid_dim[1]+1)*grid_dim[2]) //j_grid_faces
+                    + ((grid_dim[0]+1)*grid_dim[1]*grid_dim[2])          // i_grid_faces
+                    + (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ k;
+                patch_faces.push_back(face_idx);
             } // end k-for-loop
         } // end i-for-loop
     } // end j-for-loop
@@ -1752,6 +1756,66 @@ CpGridData::getPatchGeomIndices(const std::array<int,3>& startIJK, const std::ar
     return {patch_corners, patch_faces, patch_cells};
 }
 
+const std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+{
+    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
+    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
+    // Get grid dimension (total cells in each direction).
+    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
+    /// PATCH CORNERS
+    std::vector<int> patch_boundary_corners;
+    patch_boundary_corners.reserve(((patch_dim[0]+1)*(patch_dim[2]+1)*2) + ((patch_dim[1]-1)*(patch_dim[2]+1)*2)
+                                   + ((patch_dim[0]-1)*(patch_dim[1]-1)*2));
+    for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
+            for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
+                if ( (j == startIJK[1]) || (j == endIJK[1])
+                     ||  (i == startIJK[0]) || (i == endIJK[0])
+                     ||  (k == startIJK[2]) || (k == endIJK[2])) {
+                    patch_boundary_corners.push_back((j*(grid_dim[0]+1)*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+k);
+                }
+            } // end i-for-loop
+        } // end j-for-loop
+    } // end k-for-loop
+    return patch_boundary_corners;
+}
+
+bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec,
+                                 const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    assert(startIJK_vec.size() == endIJK_vec.size());
+    if ((startIJK_vec.size() == 1) && (endIJK_vec.size() == 1)){
+        return true;
+    }
+    auto all_bound_corners_count = 0u;
+    std::set<int> no_repetition_bound_corners;
+    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
+        const auto& boundary_corners = getPatchBoundaryCorners(startIJK_vec[patch], endIJK_vec[patch]);
+        all_bound_corners_count += boundary_corners.size();
+        for (const auto& corner : boundary_corners){
+            no_repetition_bound_corners.insert(corner);
+        }
+    }
+    return (all_bound_corners_count == no_repetition_bound_corners.size());
+}
+
+const std::vector<int>
+CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    std::vector<int> all_cells;
+    //auto all_cells_tmp_size = 0u;
+    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
+        const auto& [cornes, faces, cells] = getPatchGeomIndices(startIJK_vec[patch], endIJK_vec[patch]);
+        //  all_cells_tmp_size += cells.size();
+        //  all_cells.reserve(all_cells_tmp_size);
+        for (const auto& cell : cells){
+            all_cells.push_back(cell);
+        }
+    }
+    return all_cells;
+}
+
+
 const Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
                                              const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
                                              std::array<int,8>& cellifiedPatch_to_point,
@@ -1759,6 +1823,10 @@ const Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, 
 {
     if (patch_cells.empty()){
         OPM_THROW(std::logic_error, "Empty patch. Cannot convert patch into cell.");
+    }
+    if (patch_cells.size() == 1){
+        return (this -> geometry_.geomVector(std::integral_constant<int,0>())
+                [EntityRep<0>(patch_cells[0], true)]);
     }
     else{
         // Get grid dimension.
@@ -1969,202 +2037,186 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& refined_face_normals = refined_grid.face_normals_;
     // Patch dimension (amount of cells in each direction).
     const auto& patch_dim = getPatchDim(startIJK, endIJK);
-    // If the patch contains only one cell, use refineSingleCell() to avoid unnecessary computations.
-    if ((patch_dim[0] == 1) && (patch_dim[1] == 1) && (patch_dim[2] == 1)){
-        auto [refined_grid_ptr0, parent_to_refined_corners, parent_to_children_faces, parent_to_children_cells,
-              child_to_parent_faces, child_to_parent_cell] =
-            this->refineSingleCell(cells_per_dim,(startIJK[2]*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + startIJK[0]);
-        // When the patch contains only one cell:
-        // - boundary_old_to_new_corners == parent_to_refined_corners.
-        // - boundary_old_to_new_faces == parent_to_children_faces.
-        // Fix the type of parent_to_children_cells to return it correctly.
-        const std::vector<std::tuple<int, std::vector<int>>> parent_to_children_cells_vec = {parent_to_children_cells};
-        return {refined_grid_ptr0, parent_to_refined_corners, parent_to_children_faces, parent_to_children_faces,
-            parent_to_children_cells_vec, child_to_parent_faces, child_to_parent_cell};
-    }
-    // When the patch consists in more than one cell:
-    else {
-        const auto& [patch_corners, patch_faces, patch_cells] = getPatchGeomIndices(startIJK, endIJK);
-        // Construct the Geometry of the cellified patch.
-        DefaultGeometryPolicy cellified_patch_geometry;
-        std::array<int,8> cellifiedPatch_to_point;
-        std::array<int,8> allcorners_cellifiedPatch;
-        cpgrid::Geometry<3,3> cellified_patch = this -> cellifyPatch(startIJK, endIJK, patch_cells, cellified_patch_geometry,
-                                                                     cellifiedPatch_to_point, allcorners_cellifiedPatch);
-        // Some integers to reduce notation later.
-        const int& xfactor = cells_per_dim[0]*patch_dim[0];
-        const int& yfactor = cells_per_dim[1]*patch_dim[1];
-        const int& zfactor = cells_per_dim[2]*patch_dim[2];
-        // Refine the "cellified_patch".
-        cellified_patch.refine({xfactor, yfactor, zfactor}, refined_geometries, refined_cell_to_point, refined_cell_to_face,
-                               refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals);
-        // To store the relation between old-corner-indices and the equivalent new-born ones (laying on the patch boundary).
-        std::vector<std::array<int,2>> boundary_old_to_new_corners;
-        boundary_old_to_new_corners.reserve((2*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))
-                                            + (2*(cells_per_dim[1]-1)*(cells_per_dim[2]+1))
-                                            + (2*(cells_per_dim[0]-1)*(cells_per_dim[1]-1)));
-        for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
-            for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
-                for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                    if ( (j == startIJK[1]) || (j == endIJK[1]) ){ // Corners in the front/back of the patch.
-                        boundary_old_to_new_corners.push_back({
-                                // Old corner index
-                                (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                                // New-born corner index (equivalent corner).
-                                (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                                + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                                + (cells_per_dim[2]*(k-startIJK[2])) });
-                    }
-                    if ( (i == startIJK[0]) || (i == endIJK[0]) ) { // Corners in the left/right of the patch.
-                        boundary_old_to_new_corners.push_back({
-                                // Old corner index.
-                                (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                                // New-born corner index (equivalent corner).
-                                (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                                + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                                + (cells_per_dim[2]*(k-startIJK[2]))});
-                    }
-                    if ( (k == startIJK[2]) || (k == endIJK[2]) ) { // Corners in the bottom/top of the patch.
-                        boundary_old_to_new_corners.push_back({
-                                // Old corner index.
-                                (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                                // New-born corner index (equivalent corner)
-                                (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                                + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                                + (cells_per_dim[2]*(k-startIJK[2]))});
-                    }
-                } // end k-for-loop
-            } // end i-for-loop
-        } // end j-for-loop
-        // To store face-indices of faces on the boundary of the patch.
-        std::vector<int> boundary_patch_faces;
-        // Auxiliary integers to simplify notation.
-        const int& bound_patch_faces = (2*patch_dim[1]*patch_dim[2]) + (patch_dim[0]*2*patch_dim[2]) + (patch_dim[0]*patch_dim[1]*2);
-        boundary_patch_faces.reserve(bound_patch_faces);
-        // To store relation between old-face-index and its new-born-face indices.
-        std::vector<std::tuple<int, std::vector<int>>> boundary_old_to_new_faces; // {face index, its children-indices}
-        boundary_old_to_new_faces.reserve(bound_patch_faces);
-        // Auxiliary integers to simplify notation.
-        const int& i_grid_faces =  (grid_dim[0]+1)*grid_dim[1]*grid_dim[2];
-        const int& j_grid_faces =  grid_dim[0]*(grid_dim[1]+1)*grid_dim[2];
-        // To store relation bewteen parent face and its children (all faces of the patch, not only the ones on the boundary).
-        std::vector<std::tuple<int,std::vector<int>>> parent_to_children_faces;
-        parent_to_children_faces.reserve(patch_faces.size());
-        // To store relation child-face-index and its parent-face-index.
-        std::vector<std::array<int,2>> child_to_parent_faces; // {child index (in 'level 1'), parent index (in 'level 0')}
-        child_to_parent_faces.reserve(refined_face_to_cell.size());
-        // Populate child_to_parent_faces, parent_to_children_faces, boundary_old_to_new_faces, boundary_faces.
-        // I_FACES
-        for (int j = startIJK[1]; j < endIJK[1]; ++j) {
-            for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
-                for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                    int face_idx = (j*grid_dim[1]*grid_dim[2]) + (i*grid_dim[2])+ k;
-                    // To store new born faces, per face. CHILDREN-FACES ARE ORDERED AS IN refine(), Geometry.hpp
-                    std::vector<int> children_list;  // I_FACE ikj (xzy-direction)
-                    // l,m,n play the role of 'x,y,z-direction', lnm = fake ikj (how I_FACES are 'ordered' in refine())
+    const auto& [patch_corners, patch_faces, patch_cells] = getPatchGeomIndices(startIJK, endIJK);
+    // Construct the Geometry of the cellified patch.
+    DefaultGeometryPolicy cellified_patch_geometry;
+    std::array<int,8> cellifiedPatch_to_point;
+    std::array<int,8> allcorners_cellifiedPatch;
+    cpgrid::Geometry<3,3> cellified_patch = this -> cellifyPatch(startIJK, endIJK, patch_cells, cellified_patch_geometry,
+                                                                 cellifiedPatch_to_point, allcorners_cellifiedPatch);
+    // Some integers to reduce notation later.
+    const int& xfactor = cells_per_dim[0]*patch_dim[0];
+    const int& yfactor = cells_per_dim[1]*patch_dim[1];
+    const int& zfactor = cells_per_dim[2]*patch_dim[2];
+    // Refine the "cellified_patch".
+    cellified_patch.refine({xfactor, yfactor, zfactor}, refined_geometries, refined_cell_to_point, refined_cell_to_face,
+                           refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals);
+    // To store the relation between old-corner-indices and the equivalent new-born ones (laying on the patch boundary).
+    std::vector<std::array<int,2>> boundary_old_to_new_corners;
+    boundary_old_to_new_corners.reserve((2*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))
+                                        + (2*(cells_per_dim[1]-1)*(cells_per_dim[2]+1))
+                                        + (2*(cells_per_dim[0]-1)*(cells_per_dim[1]-1)));
+    for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
+            for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
+                if ( (j == startIJK[1]) || (j == endIJK[1]) ){ // Corners in the front/back of the patch.
+                    boundary_old_to_new_corners.push_back({
+                            // Old corner index
+                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
+                            // New-born corner index (equivalent corner).
+                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
+                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
+                            + (cells_per_dim[2]*(k-startIJK[2])) });
+                }
+                if ( (i == startIJK[0]) || (i == endIJK[0]) ) { // Corners in the left/right of the patch.
+                    boundary_old_to_new_corners.push_back({
+                            // Old corner index.
+                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
+                            // New-born corner index (equivalent corner).
+                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
+                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
+                            + (cells_per_dim[2]*(k-startIJK[2]))});
+                }
+                if ( (k == startIJK[2]) || (k == endIJK[2]) ) { // Corners in the bottom/top of the patch.
+                    boundary_old_to_new_corners.push_back({
+                            // Old corner index.
+                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
+                            // New-born corner index (equivalent corner)
+                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
+                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
+                            + (cells_per_dim[2]*(k-startIJK[2]))});
+                }
+            } // end k-for-loop
+        } // end i-for-loop
+    } // end j-for-loop
+    // To store face-indices of faces on the boundary of the patch.
+    std::vector<int> boundary_patch_faces;
+    // Auxiliary integers to simplify notation.
+    const int& bound_patch_faces = (2*patch_dim[1]*patch_dim[2]) + (patch_dim[0]*2*patch_dim[2]) + (patch_dim[0]*patch_dim[1]*2);
+    boundary_patch_faces.reserve(bound_patch_faces);
+    // To store relation between old-face-index and its new-born-face indices.
+    std::vector<std::tuple<int, std::vector<int>>> boundary_old_to_new_faces; // {face index, its children-indices}
+    boundary_old_to_new_faces.reserve(bound_patch_faces);
+    // Auxiliary integers to simplify notation.
+    const int& i_grid_faces =  (grid_dim[0]+1)*grid_dim[1]*grid_dim[2];
+    const int& j_grid_faces =  grid_dim[0]*(grid_dim[1]+1)*grid_dim[2];
+    // To store relation bewteen parent face and its children (all faces of the patch, not only the ones on the boundary).
+    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_faces;
+    parent_to_children_faces.reserve(patch_faces.size());
+    // To store relation child-face-index and its parent-face-index.
+    std::vector<std::array<int,2>> child_to_parent_faces; // {child index (in 'level 1'), parent index (in 'level 0')}
+    child_to_parent_faces.reserve(refined_face_to_cell.size());
+    // Populate child_to_parent_faces, parent_to_children_faces, boundary_old_to_new_faces, boundary_faces.
+    // I_FACES
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
+            for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+                int face_idx = (j*grid_dim[1]*grid_dim[2]) + (i*grid_dim[2])+ k;
+                // To store new born faces, per face. CHILDREN-FACES ARE ORDERED AS IN refine(), Geometry.hpp
+                std::vector<int> children_list;  // I_FACE ikj (xzy-direction)
+                // l,m,n play the role of 'x,y,z-direction', lnm = fake ikj (how I_FACES are 'ordered' in refine())
+                for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {
+                    for (int n = (k-startIJK[2])*cells_per_dim[2];n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
+                        for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
+                            children_list.push_back((xfactor*yfactor*(zfactor+1)) +(l*yfactor*zfactor) + (n*yfactor) + m);
+                            child_to_parent_faces.push_back({(xfactor*yfactor*(zfactor+1)) +(l*yfactor*zfactor)
+                                    + (n*yfactor) + m, face_idx});
+                        } // end m-for-loop
+                    } // end n-for-loop
+                } // end l-for-loop
+                // Add parent information of each face to "parent_to_children_faces".
+                parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
+                if ((i == startIJK[0]) || (i == endIJK[0])) { // Detecting if the face is on the patch boundary.
+                    boundary_patch_faces.push_back(face_idx);
+                    // Associate each old face on the boundary of the patch with the new born ones.
+                    boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
+                }
+            } // end k-for-loop
+        } // end i-for-loop
+    } // end j-for-loop
+    // J_FACES
+    for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+            for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+                int face_idx = i_grid_faces + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k;
+                // To store new born faces, per face. CHILDREN FACES ARE ORDERED AS IN refine(), Geometry.hpp
+                std::vector<int> children_list;  // J_FACE jik (yxz-direction)
+                // l,m,n play the role of 'x,y,z-direction', mln = fake jik (how J_FACES are 'ordered' in refine())
+                for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
                     for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {
-                        for (int n = (k-startIJK[2])*cells_per_dim[2];n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
-                            for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
-                                children_list.push_back((xfactor*yfactor*(zfactor+1)) +(l*yfactor*zfactor) + (n*yfactor) + m);
-                                child_to_parent_faces.push_back({(xfactor*yfactor*(zfactor+1)) +(l*yfactor*zfactor)
-                                        + (n*yfactor) + m, face_idx});
-                            } // end m-for-loop
+                        for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
+                            children_list.push_back((xfactor*yfactor*(zfactor+1)) + ((xfactor+1)*yfactor*zfactor)
+                                                    + (m*xfactor*zfactor) + (l*zfactor)+n);
+                            child_to_parent_faces.push_back({(xfactor*yfactor*(zfactor+1)) + ((xfactor+1)*yfactor*zfactor)
+                                    + (m*xfactor*zfactor) + (l*zfactor)+n, face_idx});
                         } // end n-for-loop
                     } // end l-for-loop
-                    // Add parent information of each face to "parent_to_children_faces".
-                    parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
-                    if ((i == startIJK[0]) || (i == endIJK[0])) { // Detecting if the face is on the patch boundary.
-                        boundary_patch_faces.push_back(face_idx);
-                        // Associate each old face on the boundary of the patch with the new born ones.
-                        boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
-                    }
-                } // end k-for-loop
-            } // end i-for-loop
-        } // end j-for-loop
-        // J_FACES
-        for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
-            for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-                for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                    int face_idx = i_grid_faces + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k;
-                    // To store new born faces, per face. CHILDREN FACES ARE ORDERED AS IN refine(), Geometry.hpp
-                    std::vector<int> children_list;  // J_FACE jik (yxz-direction)
-                    // l,m,n play the role of 'x,y,z-direction', mln = fake jik (how J_FACES are 'ordered' in refine())
+                } // end m-for-loop
+                // Add parent information of each face to "parent_to_children_faces".
+                parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
+                if ((j == startIJK[1]) || (j == endIJK[1])) { // Detecting if face is on the patch boundary.
+                    boundary_patch_faces.push_back(face_idx);
+                    // Associate each old face on the boundary of the patch with the new born ones.
+                    boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
+                }
+            } // end k-for-loop
+        } // end i-for-loop
+    } // end j-for-loop
+    // K_FACES
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+            for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
+                int face_idx = i_grid_faces + j_grid_faces + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k;
+                // To store new born faces, per face. CHILDREN FACES ARE ORDERED AS IN refine(), Geometry.hpp
+                std::vector<int> children_list;  // K_FACE kji (zyx-direction)
+                // l,m,n play the role of 'x,y,z-direction', nml = fake kji (how K_FACES are 'ordered' in refine())
+                for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
                     for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
                         for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {
-                            for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
-                                children_list.push_back((xfactor*yfactor*(zfactor+1)) + ((xfactor+1)*yfactor*zfactor)
-                                                        + (m*xfactor*zfactor) + (l*zfactor)+n);
-                                child_to_parent_faces.push_back({(xfactor*yfactor*(zfactor+1)) + ((xfactor+1)*yfactor*zfactor)
-                                        + (m*xfactor*zfactor) + (l*zfactor)+n, face_idx});
-                            } // end n-for-loop
-                        } // end l-for-loop
-                    } // end m-for-loop
-                    // Add parent information of each face to "parent_to_children_faces".
-                    parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
-                    if ((j == startIJK[1]) || (j == endIJK[1])) { // Detecting if face is on the patch boundary.
-                        boundary_patch_faces.push_back(face_idx);
-                        // Associate each old face on the boundary of the patch with the new born ones.
-                        boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
-                    }
-                } // end k-for-loop
-            } // end i-for-loop
-        } // end j-for-loop
-        // K_FACES
-        for (int j = startIJK[1]; j < endIJK[1]; ++j) {
-            for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-                for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                    int face_idx = i_grid_faces + j_grid_faces + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k;
-                    // To store new born faces, per face. CHILDREN FACES ARE ORDERED AS IN refine(), Geometry.hpp
-                    std::vector<int> children_list;  // K_FACE kji (zyx-direction)
-                    // l,m,n play the role of 'x,y,z-direction', nml = fake kji (how K_FACES are 'ordered' in refine())
+                            children_list.push_back((n*xfactor*yfactor) + (m*xfactor)+ l);
+                            child_to_parent_faces.push_back({(n*xfactor*yfactor) + (m*xfactor)+ l, face_idx});
+                        } // end m-for-loop
+                    } // end n-for-loop
+                } // end l-for-loop
+                // Add parent information of each face to "parent_to_children_faces".
+                parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
+                if ((k == startIJK[2]) || (k == endIJK[2])) { // Detecting if the face is on the patch boundary.
+                    boundary_patch_faces.push_back(face_idx);
+                    // Associate each old face on the boundary of the patch with the new born ones.
+                    boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
+                }
+            } // end k-for-loop
+        } // end i-for-loop
+    } // end j-for-loop
+    // To store the relation between parent cell and its new-born-cells.
+    // {parent index (coarse grid), {child 0 index, child 1 index, ... (refined grid)}}
+    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells;
+    parent_to_children_cells.reserve(patch_dim[0]*patch_dim[1]*patch_dim[2]);
+    // To store the relation between a new-born-cell and its parent cell.
+    std::vector<std::array<int,2>> child_to_parent_cells; // {child index (refined grid), parent cell index (coarse grid)}
+    child_to_parent_cells.reserve(xfactor*yfactor*zfactor);
+    for (int k = 0; k < grid_dim[2]; ++k) {
+        for (int j = 0; j < grid_dim[1]; ++j) {
+            for (int i = 0; i < grid_dim[0]; ++i) {
+                int cell_idx = (k*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) +i;
+                std::vector<int> children_list;
+                if ( (i > startIJK[0]-1) && (i < endIJK[0]) && (j > startIJK[1]-1) && (j < endIJK[1])
+                     && (k > startIJK[2]-1) && (k < endIJK[2])) {
                     for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
                         for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
                             for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {
-                                children_list.push_back((n*xfactor*yfactor) + (m*xfactor)+ l);
-                                child_to_parent_faces.push_back({(n*xfactor*yfactor) + (m*xfactor)+ l, face_idx});
-                            } // end m-for-loop
-                        } // end n-for-loop
-                    } // end l-for-loop
-                    // Add parent information of each face to "parent_to_children_faces".
-                    parent_to_children_faces.push_back(std::make_tuple(face_idx, children_list));
-                    if ((k == startIJK[2]) || (k == endIJK[2])) { // Detecting if the face is on the patch boundary.
-                        boundary_patch_faces.push_back(face_idx);
-                        // Associate each old face on the boundary of the patch with the new born ones.
-                        boundary_old_to_new_faces.push_back(std::make_tuple(face_idx, children_list));
-                    }
-                } // end k-for-loop
+                                children_list.push_back((n*xfactor*yfactor) + (m*xfactor) + l);
+                                child_to_parent_cells.push_back({(n*xfactor*yfactor) + (m*xfactor) + l, cell_idx});
+                            }// end l-for-loop
+                        } // end m-for-loop
+                    } // end n-for-loop
+                    parent_to_children_cells.push_back(std::make_tuple(cell_idx, children_list));
+                }// end if 'patch cells'
             } // end i-for-loop
         } // end j-for-loop
-        // To store the relation between parent cell and its new-born-cells.
-        // {parent index (coarse grid), {child 0 index, child 1 index, ... (refined grid)}}
-        std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells;
-        parent_to_children_cells.reserve(patch_dim[0]*patch_dim[1]*patch_dim[2]);
-        // To store the relation between a new-born-cell and its parent cell.
-        std::vector<std::array<int,2>> child_to_parent_cells; // {child index (refined grid), parent cell index (coarse grid)}
-        child_to_parent_cells.reserve(xfactor*yfactor*zfactor);
-        for (int k = 0; k < grid_dim[2]; ++k) {
-            for (int j = 0; j < grid_dim[1]; ++j) {
-                for (int i = 0; i < grid_dim[0]; ++i) {
-                    int cell_idx = (k*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) +i;
-                    std::vector<int> children_list;
-                    if ( (i > startIJK[0]-1) && (i < endIJK[0]) && (j > startIJK[1]-1) && (j < endIJK[1])
-                         && (k > startIJK[2]-1) && (k < endIJK[2])) {
-                        for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
-                            for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
-                                for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {
-                                    children_list.push_back((n*xfactor*yfactor) + (m*xfactor) + l);
-                                    child_to_parent_cells.push_back({(n*xfactor*yfactor) + (m*xfactor) + l, cell_idx});
-                                }// end l-for-loop
-                            } // end m-for-loop
-                        } // end n-for-loop
-                        parent_to_children_cells.push_back(std::make_tuple(cell_idx, children_list));
-                    }// end if 'patch cells'
-                } // end i-for-loop
-            } // end j-for-loop
-        } // end k-for-loop
-        return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
-            parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
-    }
+    } // end k-for-loop
+    return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
+        parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
 }
    
 

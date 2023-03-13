@@ -98,9 +98,9 @@ void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&);
 
 void refinePatch_and_check(Dune::CpGrid&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&);
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
 
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
@@ -131,15 +131,15 @@ class CpGridData
                             const std::array<int, 3>&,
                             bool);
     friend
-    void::refinePatch_and_check(const std::array<int,3>&,
+    void ::refinePatch_and_check(const std::array<int,3>&,
                         const std::array<int,3>&,
                         const std::array<int,3>&);
 
     friend
     void ::refinePatch_and_check(Dune::CpGrid&,
-                                 const std::array<int,3>&,
-                                 const std::array<int,3>&,
-                                 const std::array<int,3>&);
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&);
     
     friend
     void ::check_global_refine(const Dune::CpGrid&,
@@ -170,12 +170,13 @@ public:
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
     /// Default constructor.
-    explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
+    // explicit
+    CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
 
  
     
     /// Constructor
-    CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);  // make it explicit?
     /// Destructor
     ~CpGridData();
   
@@ -280,15 +281,35 @@ private:
     ///
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
     const std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-    
-    /// @brief Compute corner, face, and cell indices of a patch of cells. (Cartesian grid required).
+
+    /// @brief Compute corner, face, and cell indices of a patch of cells, as well as patch boundary face indices
+    ///        (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
     /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
     ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
-    /// @return {patch_corners, patch_faces, patch_cells} Indices of corners, faces, and cells of the patch of cells.
+    /// @return {patch_corners, patch_faces, patch_cells, patch_boundary_Ifaces, patch_boundary_Jfaces, patch_boundary_Kfaces}
     const std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute patch boundary corner indices (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
+    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+    ///
+    /// @return patch_boundary_corners
+    const std::vector<int> getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+    
+    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face. 
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+    const std::vector<int>
+    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
     ///
@@ -616,21 +637,23 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
-    /** Level of the current CpGridData (0 when it's "GLOBAL", 1 for LGR, 2 for LeafView, created via CpGrid::createGridWithLgr()). */
+    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs, created via CpGrid::createGridWithLgrs()). */
     int level_;
-    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgr(). */
+    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgrs(). */
     std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
     /** Map between level and leafview (maxLevel) cell indices. Only cells (from that level) that appear in leafview count. */  
     std::map<int,int> level_to_leaf_cells_; // {level cell index, leafview cell index}
     /** Parent cells and their children. Entry is {-1, {-1}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
-    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_;
+    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_; 
     // SUITABLE ONLY FOR LEAFVIEW
     /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
-    std::vector<std::array<int,2>> leaf_to_level_cells_; 
+    std::vector<std::array<int,2>> leaf_to_level_cells_;
+     /** Relation between all level cells and leafview cell indices. */ // {level, cell index in that level} -> leafview index
+    std::map<std::array<int,2>,int> allLevels_to_leaf_cells_; 
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
-    /** Child cells and their parents. Entry is {-1, -1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_;
+    /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
+    std::vector<std::array<int,2>> child_to_parent_cells_; 
 
     /// \brief Object for collective communication operations.
     Communication ccobj_;
