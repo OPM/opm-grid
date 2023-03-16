@@ -1357,7 +1357,6 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     (this-> data_).push_back(level1_ptr);
     //
     // LEVEL 0, definition/declaration of some members:
-    // std::vector<std::shared_ptr<CpGridData>> l0_data;
     (*data_[0]).data_copy_ = &(this -> data_);
     (*data_[0]).level_ = 0;
     // Relation between level and leafview cell indices.
@@ -1389,7 +1388,6 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     }
     // LEVEL 1, definition/declaration of some members:
     (*data_[1]).data_copy_ = &(this -> data_);
-    //std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> l1_data = this -> data_;
     (*data_[1]).level_ = 1;
     // Relation between level and leafview cell indices.
     std::map<int,int>& l1_to_leaf_cells = (*data_[1]).level_to_leaf_cells_;
@@ -1413,7 +1411,6 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     cpgrid::EntityVariable<enum face_tag,1>& leaf_face_tags = leaf_view.face_tag_;
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& leaf_face_normals = leaf_view.face_normals_;
     //
-    //leaf_view.grid_ = this;
     std::vector<std::array<int,2>>& leaf_to_level_cells = leaf_view.leaf_to_level_cells_; // {level, cell index in that level}
     // leaf_child_to_parent_cells[ cell index ] must be {-1,-1} when the cell has no father.
     std::vector<std::array<int,2>>& leaf_child_to_parent_cells = leaf_view.child_to_parent_cells_;
@@ -1659,7 +1656,7 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     //  Add Leaf View to data_.
     (this-> data_).push_back(leaf_view_ptr);
     current_view_data_ = data_[2].get();
-    (*data_[2]).level_ = 2;
+    (*data_[2]).level_ = 2; // LeafView 'does not have an actual "level"'. "Temporary" assignment.TO BE MODIFIED.
 }
 
 

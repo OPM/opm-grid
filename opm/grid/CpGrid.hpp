@@ -463,12 +463,6 @@ namespace Dune
         /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
         ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
         void createGridWithLgr(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK);
-            #if HAVE_MPI
-            #else
-            // DUNE 2.7 is missing convertion to NO_COMM
-            std::shared_ptr<Dune::cpgrid::CpGridData> leaf_view_ptr =
-                std::make_shared<Dune::cpgrid::CpGridData>();
-            #endif
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
