@@ -155,11 +155,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK_EQUAL(element.level(), l);
         }
     }
-    
-    /* const auto& view = coarse_grid.levelGridView(1);
-    for (const auto& element: elements(view)){
-        BOOST_CHECK_EQUAL(element.level(), 1);
-        }*/
 
     const auto& leaf_view = coarse_grid.leafGridView();
     for (const auto& element: elements(leaf_view)){
