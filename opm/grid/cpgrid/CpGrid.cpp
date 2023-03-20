@@ -579,9 +579,12 @@ int CpGrid::maxLevel() const
     if (!distributed_data_.empty()){
         return 0;
     }
-    else { // add assert to check data_.size() =  1 or 3 ? If 1, maxLevel =0, if 3, maxLevel =1. 
-        return double(this -> data_.size() - 1)/2; // last entry is leafView, and it starts in level 0 
-    } // Assuming last entry of data_ is the LeafView, recall it starts with level 0
+    if (data_.size() == 1){
+        return 0; // "GLOBAL" grid is the unique one
+    }
+    else {  // There are multiple LGRs
+        return double(this -> data_.size() - 2); // last entry is leafView, and it starts in level 0 = GLOBAL grid.
+    }
 }
 
 template<int codim>
@@ -1656,7 +1659,6 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     //  Add Leaf View to data_.
     (this-> data_).push_back(leaf_view_ptr);
     current_view_data_ = data_[2].get();
-    (*data_[2]).level_ = 2; // LeafView 'does not have an actual "level"'. "Temporary" assignment.TO BE MODIFIED.
 }
 
 
