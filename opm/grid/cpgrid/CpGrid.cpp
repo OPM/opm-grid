@@ -190,6 +190,18 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
+    if (data_.size() > 1)
+    {
+        if (comm().rank() == 0)
+        {
+            OPM_THROW(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
+        }
+        else
+        {
+            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
+        }
+    }
+
 #if HAVE_MPI
     auto& cc = data_[0]->ccobj_;
 
@@ -1347,7 +1359,14 @@ template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // need
 void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
 {
     if (!distributed_data_.empty()){
-        OPM_THROW(std::logic_error, "Grid has been distributed. Cannot created LGR.");
+        if (comm().rank()==0)
+        {
+            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
+        else
+        {
+            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
     }
     // Get patch corner, face, and cell indices.
     const auto& [patch_corners, patch_faces, patch_cells] = (*(this->data_[0])).getPatchGeomIndices(startIJK, endIJK);
