@@ -102,7 +102,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_compressed_cartesian_mapping.cpp
 	)
 
-if(BOOST_VERSION VERSION_GREATER 1.53)
+if(BOOST_VERSION VERSION_GREATER 1.53 OR Boost_VERSION VERSION_GREATER 1.53)
 	list(APPEND TEST_SOURCE_FILES
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
