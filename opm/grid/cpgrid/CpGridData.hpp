@@ -628,7 +628,7 @@ private:
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1 for LGR, 2 for LeafView, created via CpGrid::createGridWithLgr()). */
     int level_;
     /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgr(). */
-    std::vector<std::shared_ptr<CpGridData>>* data_copy_;
+    std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
     /** Map between level and leafview (maxLevel) cell indices. Only cells (from that level) that appear in leafview count. */  
     std::map<int,int> level_to_leaf_cells_; // {level cell index, leafview cell index}

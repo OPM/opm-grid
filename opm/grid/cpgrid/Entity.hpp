@@ -392,11 +392,11 @@ bool Entity<codim>::isValid() const
 template <int codim>
 int Entity<codim>::level() const
 {
-    // if distributed_data_ is not empty, data_copy_ has size 1.
-    if ((*(pgrid_ -> data_copy_)).size() == 1){
+    // if distributed_data_ is not empty, level_data_ptr_ has size 1.
+    if ((*(pgrid_ -> level_data_ptr_)).size() == 1){
         return 0; // when there is no refinenment, level_ is not automatically instantiated 
     }
-    if (pgrid_ == (*(pgrid_->data_copy_)).back().get()) { // entity on the leafview -> get the level where it was born:
+    if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) { // entity on the leafview -> get the level where it was born:
         return pgrid_ -> leaf_to_level_cells_[this-> index()][0]; // leaf_to_level_cells_ leafIdx -> {level/LGR, cell index in LGR}
     }
     else {
@@ -443,7 +443,7 @@ Entity<0> Entity<codim>::father() const
     }
     const int& coarse_level = pgrid_ -> child_to_parent_cells_[this->index()][0];
     const int& parent_index = pgrid_ -> child_to_parent_cells_[this->index()][1];
-    const auto& coarse_grid = (*(pgrid_ -> data_copy_))[coarse_level].get(); 
+    const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[coarse_level].get(); 
     return Entity<0>( *coarse_grid, parent_index, true); 
 }
 

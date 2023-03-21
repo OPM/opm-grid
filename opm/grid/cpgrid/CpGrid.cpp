@@ -1379,7 +1379,7 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
     (this-> data_).push_back(level1_ptr);
     //
     // LEVEL 0, definition/declaration of some members:
-    (*data_[0]).data_copy_ = &(this -> data_);
+    (*data_[0]).level_data_ptr_ = &(this -> data_);
     (*data_[0]).level_ = 0;
     // Relation between level and leafview cell indices.
     std::map<int,int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
@@ -1409,7 +1409,7 @@ void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std
         }
     }
     // LEVEL 1, definition/declaration of some members:
-    (*data_[1]).data_copy_ = &(this -> data_);
+    (*data_[1]).level_data_ptr_ = &(this -> data_);
     (*data_[1]).level_ = 1;
     // Relation between level and leafview cell indices.
     std::map<int,int>& l1_to_leaf_cells = (*data_[1]).level_to_leaf_cells_;
