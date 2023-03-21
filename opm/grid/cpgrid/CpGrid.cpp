@@ -1356,7 +1356,7 @@ template cpgrid::Entity<3> Dune::createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp 
 
 
-void CpGrid::createGridWithLgr(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
+void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
 {
     if (!distributed_data_.empty()){
         if (comm().rank()==0)

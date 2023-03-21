@@ -91,7 +91,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     
     // Call createGridWithLgr()
     auto& data = coarse_grid.data_;
-    coarse_grid.createGridWithLgr(cells_per_dim, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim, start_ijk, end_ijk);
     BOOST_CHECK(data.size()==3);
     check_refinedPatch_grid(cells_per_dim, start_ijk, end_ijk,
                             (*coarse_grid.data_[1]).geometry_.template geomVector<0>(),
@@ -298,7 +298,7 @@ BOOST_AUTO_TEST_CASE(global_refine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.createGridWithLgr(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;
@@ -321,7 +321,7 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.createGridWithLgr(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;
