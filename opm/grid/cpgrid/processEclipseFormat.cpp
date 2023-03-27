@@ -362,7 +362,7 @@ namespace cpgrid
         if(ccobj_.size()>1)
             populateGlobalCellIndexSet();
 
-        index_set_.reset(new IndexSet(cell_to_face_.size(), geomVector<3>().size()));
+        index_set_ = std::make_unique<IndexSet>(cell_to_face_.size(), geomVector<3>().size());
 
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
