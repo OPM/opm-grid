@@ -363,6 +363,7 @@ namespace cpgrid
             populateGlobalCellIndexSet();
 
         index_set_.reset(new IndexSet(cell_to_face_.size(), geomVector<3>().size()));
+
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;
 #endif

@@ -321,7 +321,7 @@ namespace Dune
     } // namespace cpgrid
 } // namespace Dune
 
-#include <opm/grid/CpGrid.hpp>
+
 #include <opm/grid/cpgrid/CpGridData.hpp>
 
 namespace Dune {

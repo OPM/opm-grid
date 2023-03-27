@@ -618,7 +618,7 @@ private:
     /** @brief The boundary ids. */
     cpgrid::EntityVariable<int, 1> unique_boundary_ids_;
     /** @brief The index set of the grid (level). */
-    std::shared_ptr<cpgrid::IndexSet> index_set_;
+    std::unique_ptr<cpgrid::IndexSet> index_set_;
     /** @brief The internal local id set (not exported). */
     std::shared_ptr<const cpgrid::IdSet> local_id_set_;
     /** @brief The global id set (used also as local id set). */

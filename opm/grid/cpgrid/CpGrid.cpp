@@ -610,6 +610,9 @@ typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lbegin (int 
         return cpgrid::Iterator<codim, All_Partition>(*data_[level], 0, true);
     }
 }
+template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lbegin<0>(int) const;
+template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lbegin<1>(int) const;
+template typename CpGridTraits::template Codim<3>::LevelIterator CpGrid::lbegin<3>(int) const;
 
 template<int codim>
 typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lend (int level) const
@@ -623,6 +626,9 @@ typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lend (int le
         return cpgrid::Iterator<codim,All_Partition>(*data_[level], size(level, codim), true );
     }
 }
+template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lend<0>(int) const;
+template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lend<1>(int) const;
+template typename CpGridTraits::template Codim<3>::LevelIterator CpGrid::lend<3>(int) const;
 
 template<int codim>
 typename CpGridTraits::template Codim<codim>::LeafIterator CpGrid::leafbegin() const
