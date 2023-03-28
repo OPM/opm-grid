@@ -64,6 +64,12 @@ namespace Opm
         /// \param[in]       mergeMinPVCells flag to determine whether cells below minpv
         /// should be included in the cell below
         /// \param[in, out]  zcorn    ZCORN array to be manipulated
+        /// \param[in]       pinchNOGAP whether PINCH has option NOGAP (default false)
+        /// \param[in]       pinchOption4ALL Whether option 4 of PINCH is set to all. In that case we do not create NNCs if
+        ///                             zero transmissibility in Z direction betwenn the cells is expected.
+        ///                             (default: false)
+        /// \param[in]       permz     Cell permeability in Z direction.
+        /// \oaram[in]       multz     transmissiblity multipliers in Z direction
         /// After processing, all cells that have lower pore volume than minpv
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
@@ -76,7 +82,10 @@ namespace Opm
                        const std::vector<int>& actnum,
                        const bool mergeMinPVCells,
                        double* zcorn,
-                       bool pinchNOGAP = false) const;
+                       bool pinchNOGAP = false,
+                       bool pinchOption4ALL = false,
+                       const std::vector<double>& permz = {},
+                       const std::function<double(int)>& multZ = [](int){ return 0;}) const;
     private:
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
@@ -100,7 +109,10 @@ namespace Opm
                                                           const std::vector<int>& actnum,
                                                           const bool mergeMinPVCells,
                                                           double* zcorn,
-                                                          bool pinchNOGAP) const
+                                                          bool pinchNOGAP,
+                                                          bool pinchOption4ALL,
+                                                          const std::vector<double>& permz,
+                                                          const std::function<double(int)>& multz) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -135,6 +147,10 @@ namespace Opm
         if (!actnum.empty() && actnum.size() != log_size) {
             OPM_THROW(std::runtime_error, "Wrong size of ACTNUM input, must have one element per logical cartesian cell.");
         }
+        if (pinchOption4ALL && permz.empty()) {
+            OPM_THROW(std::runtime_error,
+                      "If option 4 of PINCH keyword is ALL, then the deck needs to specify PERMZ or PERMX");
+            }
 
         // Main loop.
         for (int jj = 0; jj < dims_[1]; ++jj) {
@@ -166,7 +182,8 @@ namespace Opm
                         bool thin_inactive = !active && thin;
                         bool low_pv_active = pv[c_below] < minpvv[c_below] && active;
                         // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
-                        bool nnc_allowed = !pinchNOGAP || thickness[c] <= z_tolerance;
+                        bool nnc_allowed = (!pinchNOGAP || thickness[c] <= z_tolerance)
+                            && (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
 
 
                         while ( (thin_inactive || low_pv_active) && kk_iter < dims_[2] )
@@ -203,6 +220,10 @@ namespace Opm
                                 }
                                 result.removed_cells.push_back(c_below);
                             }
+                            // Skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
+                            // be zero
+                            nnc_allowed = nnc_allowed &&
+                                (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) != 0.0) );
                             total_gap += thickness[c_below];
                             // move to next lower cell
                             kk_iter = kk_iter + 1;
@@ -262,6 +283,8 @@ namespace Opm
                                         break;
                                     }
                                     total_gap += thickness[c_above];
+                                    nnc_allowed = nnc_allowed &&
+                                        (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) == 0.0) );
                                 }
                             }
 
