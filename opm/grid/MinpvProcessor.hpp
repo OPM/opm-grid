@@ -57,6 +57,7 @@ namespace Opm
         /// Change zcorn so that it respects the minpv property.
         /// \param[in]       thickness thickness of the cell
         /// \param[in]       z_tolerance cells with thickness below z_tolerance will be bypassed in the minpv process.
+        /// \param[in]       max_gap  Maximum gap of pinched out layers allowed when creating NNCs
         /// \param[in]       pv       pore volumes of all logical cartesian cells
         /// \param[in]       minpvv   minimum pore volume to accept a cell
         /// \param[in]       actnum   active cells, inactive cells are not considered
@@ -69,6 +70,7 @@ namespace Opm
         /// els the volume will be lost
         Result process(const std::vector<double>& thickness,
                        const double z_tolerance,
+                       const double max_gap,
                        const std::vector<double>& pv,
                        const std::vector<double>& minpvv,
                        const std::vector<int>& actnum,
@@ -92,6 +94,7 @@ namespace Opm
 
     inline MinpvProcessor::Result MinpvProcessor::process(const std::vector<double>& thickness,
                                                           const double z_tolerance,
+                                                          const double max_gap,
                                                           const std::vector<double>& pv,
                                                           const std::vector<double>& minpvv,
                                                           const std::vector<int>& actnum,
@@ -149,6 +152,11 @@ namespace Opm
                         setCellZcorn(ii, jj, kk, cz, zcorn);
                         result.removed_cells.push_back(c);
 
+                        // \todo revisit. Maybe instead of keeping track based on cell thickness
+                        // we should rather calculate that based on the appropriate corners of the
+                        // upper and lower cell
+                        double total_gap = thickness[c];
+
                         // Find the next cell
                         int kk_iter = kk + 1;
 
@@ -159,6 +167,7 @@ namespace Opm
                         bool low_pv_active = pv[c_below] < minpvv[c_below] && active;
                         // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
                         bool nnc_allowed = !pinchNOGAP || thickness[c] <= z_tolerance;
+
 
                         while ( (thin_inactive || low_pv_active) && kk_iter < dims_[2] )
                         {
@@ -194,6 +203,7 @@ namespace Opm
                                 }
                                 result.removed_cells.push_back(c_below);
                             }
+                            total_gap += thickness[c_below];
                             // move to next lower cell
                             kk_iter = kk_iter + 1;
                             if (kk_iter == dims_[2])
@@ -251,11 +261,14 @@ namespace Opm
                                     if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
                                         break;
                                     }
+                                    total_gap += thickness[c_above];
                                 }
                             }
 
                             // Add a connection if the cell above and below is active and has porv > minpv
                             // In the case of PichNOGAP this cell must be thin, too.
+                            nnc_allowed = nnc_allowed && (total_gap < max_gap);
+
                             if ( nnc_allowed &&
                                  (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
                                  pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {

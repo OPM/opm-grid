@@ -149,6 +149,8 @@ namespace Opm
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
 
+        const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
+
         if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != MinpvMode::Inactive)) {
             MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
             const std::vector<double>& minpvv  = inputGrid.getMinpvVector();
@@ -160,11 +162,10 @@ namespace Opm
 
             // The legacy code only supports the opmfil option
             bool opmfil = true; //inputGrid.getMinpvMode() == MinpvMode::OpmFIL;
-            const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
-            mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
+            mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap(), poreVolumes, minpvv,
+                       actnum, opmfil, zcorn.data());
         }
 
-        const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
         ug_ = create_grid_cornerpoint(&g, z_tolerance);
         if (!ug_) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");

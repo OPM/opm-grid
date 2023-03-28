@@ -917,6 +917,8 @@ namespace Dune
         g.zcorn = zcorn.data();
         g.actnum = actnum.data();
 
+        const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
+
         if (!poreVolumes.empty() && (inputGrid.getMinpvMode() != Opm::MinpvMode::Inactive))
         {
           Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
@@ -930,8 +932,8 @@ namespace Dune
           for (size_t i = 0; i < cartGridSize; ++i) {
               thickness[i] = inputGrid.getCellThickness(i);
           }
-          const double z_tolerance = inputGrid.isPinchActive() ? inputGrid.getPinchThresholdThickness() : 0.0;
-          mp.process(thickness, z_tolerance, poreVolumes, minpvv, actnum, opmfil, zcorn.data());
+          mp.process(thickness, z_tolerance, inputGrid.getPinchMaxEmptyGap() , poreVolumes,
+                     minpvv, actnum, opmfil, zcorn.data());
         }
 
         /*
@@ -945,8 +947,6 @@ namespace Dune
         }
         */
 
-        const double z_tolerance = inputGrid.isPinchActive() ?
-            inputGrid.getPinchThresholdThickness() : 0.0;
         UnstructuredGridType* cgrid = create_grid_cornerpoint(&g, z_tolerance);
         if (!cgrid) {
             OPM_THROW(std::runtime_error, "Failed to construct grid.");
