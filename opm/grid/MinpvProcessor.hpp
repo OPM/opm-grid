@@ -156,6 +156,7 @@ namespace Opm
         for (int jj = 0; jj < dims_[1]; ++jj) {
             for (int ii = 0; ii < dims_[0]; ++ii) {
                 for (int kk = 0; kk < dims_[2]; ++kk) {
+                    bool option4ALLSupported = false;
                     const int c = ii + dims_[0] * (jj + dims_[1] * kk);
                     if (pv[c] < minpvv[c] && (actnum.empty() || actnum[c])) {
                         // Cell is made inactive due to MINPV
@@ -182,9 +183,15 @@ namespace Opm
                         bool thin_inactive = !active && thin;
                         bool low_pv_active = pv[c_below] < minpvv[c_below] && active;
                         // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
+                        // In addition skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
+                        // be zero because of multz or permz
                         bool nnc_allowed = (!pinchNOGAP || thickness[c] <= z_tolerance)
                             && (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
 
+                        if (pinchOption4ALL)
+                        {
+                            option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
+                        }
 
                         while ( (thin_inactive || low_pv_active) && kk_iter < dims_[2] )
                         {
@@ -221,9 +228,13 @@ namespace Opm
                                 result.removed_cells.push_back(c_below);
                             }
                             // Skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
-                            // be zero
+                            // be zero because of multz or permz
                             nnc_allowed = nnc_allowed &&
-                                (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) != 0.0) );
+                                (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0));
+
+                            if (pinchOption4ALL) {
+                                option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
+                            }
                             total_gap += thickness[c_below];
                             // move to next lower cell
                             kk_iter = kk_iter + 1;
@@ -284,18 +295,29 @@ namespace Opm
                                     }
                                     total_gap += thickness[c_above];
                                     nnc_allowed = nnc_allowed &&
-                                        (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) == 0.0) );
+                                        (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
+
+                                    if (pinchOption4ALL) {
+                                        option4ALLSupported =  option4ALLSupported || permz[c] == 0.0 || multz(c) == 0.0;
+                                    }
                                 }
                             }
 
-                            // Add a connection if the cell above and below is active and has porv > minpv
-                            // In the case of PichNOGAP this cell must be thin, too.
+                            // Allow nnc only of total thickness of pinched out cells is below threshold.
                             nnc_allowed = nnc_allowed && (total_gap < max_gap);
 
                             if ( nnc_allowed &&
                                  (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
                                  pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                                 result.add_nnc(c_above, c_below);
+                                if (pinchOption4ALL)
+                                {
+                                    // Transmissiblities would be calculated wrong in the simulator in this case.
+                                    // They would be deduced from top and bottom cells while they should be calculated as
+                                    // the harmonic average of the pinched out cells.
+                                    OPM_THROW(std::runtime_error, "Support for ALL as option 4 of PINCH is only supported in OPM flow "
+                                              "if one of the pinched out cells has 0 MULTZ or PERMZ.");
+                                }
                             }
                             kk = kk_iter;
                         }
