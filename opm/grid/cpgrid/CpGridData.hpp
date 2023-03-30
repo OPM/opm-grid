@@ -296,7 +296,7 @@ private:
 
     ///
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
-    const std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+    std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
     {
         return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
     }
@@ -308,7 +308,7 @@ private:
     ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
     /// @return {patch_corners, patch_faces, patch_cells} Indices of corners, faces, and cells of the patch of cells.
-    const std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+    std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
     {
         // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
         const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
@@ -383,10 +383,10 @@ private:
     /// @param [out] allcorners_cellifiedPatch Required to build a Geometry<3,3> object.
     ///
     /// @return 'cellifiedPatchCell'         Geometry<3,3> object.
-    const Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
-                                     const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
-                                     std::array<int,8>& cellifiedPatch_to_point,
-                                     std::array<int,8>& allcorners_cellifiedPatch) const
+    Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
+                               const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
+                               std::array<int,8>& cellifiedPatch_to_point,
+                               std::array<int,8>& allcorners_cellifiedPatch) const
     {
         if (patch_cells.empty()){
             OPM_THROW(std::logic_error, "Empty patch. Cannot convert patch into cell.");
@@ -466,14 +466,14 @@ public:
     ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells   {child index, parent index}
     /// @return isParent_faces/cells          Map with all the face/cell indices. True when the face/cell got refined.
-    const std::tuple< const std::shared_ptr<CpGridData>,
-                      const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
-                      const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
-                      const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
-                      const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                      const std::vector<std::array<int,2>>,                // child_to_parent_cells
-                      const std::vector<int>,                              // isParent_faces
-                      const std::vector<int>>                               // isParent_cells
+    std::tuple<const std::shared_ptr<CpGridData>,
+               const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
+               const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
+               const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
+               const std::vector<std::array<int,2>>,                // child_to_parent_faces
+               const std::vector<std::array<int,2>>,                // child_to_parent_cells
+               const std::vector<int>,                              // isParent_faces
+               const std::vector<int>>                               // isParent_cells
     refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const
     {
         // To store the LGR/refined-grid.
@@ -623,15 +623,15 @@ public:
     ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells        {child index, parent index}
     /// @return isParent_faces/cells               Map with all the face/cell indices. True when the face/cell got refined.
-    const std::tuple<std::shared_ptr<CpGridData>,
-                     const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
-                     const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
-                     const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
-                     const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
-                     const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                     const std::vector<std::array<int,2>>,                // child_to_parent_cells
-                     const std::vector<int>,                            // isParent_faces
-                     const std::vector<int>>                            // isParent_cells
+    std::tuple<std::shared_ptr<CpGridData>,
+               const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
+               const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
+               const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
+               const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
+               const std::vector<std::array<int,2>>,                // child_to_parent_faces
+               const std::vector<std::array<int,2>>,                // child_to_parent_cells
+               const std::vector<int>,                            // isParent_faces
+               const std::vector<int>>                            // isParent_cells
     refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
     {
         // Coarse grid dimension (amount of cells in each direction).
