@@ -670,12 +670,24 @@ get_zcorn_sign(int nx, int ny, int nz, const int *actnum,
 }
 
 
+/* ---------------------------------------------------------------------- */
+/* Compute (I,J,K) Cartesian coordinate of a single cell.
+ *
+ * @param[in] nx Number of Cartesian cells in model's X direction
+ * @param[in] ny Number of Cartesian cells in model's Y direction
+ * @param[in] nz Number of Cartesian cells in model's Z direction
+ * @param[in] c Linear Cartesian index, natural ordering, of model cell
+ * @param[out] i Cartesian I coordinate of cell \c c
+ * @param[out] j Cartesian J coordinate of cell \c c
+ * @param[out] k Cartesian K coordinate of cell \c c */
+/* ---------------------------------------------------------------------- */
 static void
 ind2sub(const size_t nx,
         const size_t ny,
         const size_t nz,
         size_t       c ,
         size_t *i, size_t *j, size_t *k)
+/* ---------------------------------------------------------------------- */
 {
     assert (c < (nx * ny * nz));
 
@@ -717,6 +729,14 @@ vert_size(const struct grdecl *in,
 
 
 /* ---------------------------------------------------------------------- */
+/* Compute (X,Y,Z) coordinate of a single vertex on a pillar.
+ *
+ * @param[in] in Corner-point grid structure
+ * @param[in] pillar Pillar ID.  Zero to (nx+1)*(ny+1) - 1, inclusive.
+ * @param[in] z Z coordinate of vertex
+ * @param[out] coord Vertex coordinate.  Expected to point to the start of
+ *   an array of size at least 3. */
+/* ---------------------------------------------------------------------- */
 static void
 vertex_coord(const struct grdecl *in,
              const size_t         pillar,
@@ -727,6 +747,8 @@ vertex_coord(const struct grdecl *in,
     const double *top = &in->coord[6*pillar + 0];
     const double *bot = &in->coord[6*pillar + 3]; /* == top + 3 */
 
+    /* Deem top and bottom pillar points coincident if Z coordinates along
+     * pillar differ by less than 1 micrometre */
     const int coincide = fabs(top[2] - bot[2]) < 1.0e-6;
 
     const double t = coincide
@@ -739,6 +761,23 @@ vertex_coord(const struct grdecl *in,
 }
 
 
+/* ------------------------------------------------------------------------ */
+/* Calculate cross product (I - O) x (J - O) when I and J are points on the
+ * I and J axes respectively, and O is the coordinate system origin.
+ *
+ * @param[in] origin Location of coordinate system's origin.  Expected to
+ *   point to the start of an array of size at least 3.
+ *
+ * @param[in] i_axis Location of point on coordinate system's I axis.
+ *   Expected to point to the start of an array of size at least 3.
+ *
+ * @param[in] j_axis Location of point on coordinate system's J axis.
+ *   Expected to point to the start of an array of size at least 3.
+ *
+ * @param[out] cross Resulting cross product.  Expected to point to the
+ *   start of an array of size at least 3.
+ */
+/* ------------------------------------------------------------------------ */
 static void
 bounding_box_cross_axes(const double *origin,
                         const double *i_axis,
@@ -756,6 +795,25 @@ bounding_box_cross_axes(const double *origin,
 }
 
 
+/* ------------------------------------------------------------------------ */
+/* Calculate triple product ((I - O) x (J - O)) . (K - O) when I,J,K are
+ * points on the I, J, and K axes respectively and O is the coordinate
+ * system origin.
+ *
+ * @param[in] origin Location of coordinate system's origin.  Expected to
+ *   point to the start of an array of size at least 3.
+ *
+ * @param[in] i_axis Location of point on coordinate system's I axis.
+ *   Expected to point to the start of an array of size at least 3.
+ *
+ * @param[in] j_axis Location of point on coordinate system's J axis.
+ *   Expected to point to the start of an array of size at least 3.
+ *
+ * @param[in] k_axis Location of point on coordinate system's K axis.
+ *   Expected to point to the start of an array of size at least 3.
+ *
+ * @return Triple product. */
+/* ------------------------------------------------------------------------ */
 static double
 bounding_box_triple_product(const double *origin,
                             const double *i_axis,
@@ -773,10 +831,17 @@ bounding_box_triple_product(const double *origin,
 
 
 /* ---------------------------------------------------------------------- */
+/* Known coordinate system types.  The 'Inconclusive' type is the
+ * default/failure type when we're not able to infer the actual type. */
+/* ---------------------------------------------------------------------- */
 enum CoordinateSystemType { Inconclusive, RightHanded, LeftHanded };
 /* ---------------------------------------------------------------------- */
 
 
+/* ---------------------------------------------------------------------- */
+/* Classify the coordinate system geometry type based on sign of triple
+ * product.  Positive value is right-handed, negative value is left-handed,
+ * and zero is inconclusive. */
 /* ---------------------------------------------------------------------- */
 static enum CoordinateSystemType
 classify_geometry(const double triple)
@@ -794,6 +859,18 @@ classify_geometry(const double triple)
 }
 
 
+/* ---------------------------------------------------------------------- */
+/* Classify the coordinate system geometry type of a single active cell
+ * based on sign of cell's triple product
+ *
+ * @param[in] in Corner-point geometry.
+ * @param[in] i Cell's Cartesian I index.
+ * @param[in] j Cell's Cartesian J index.
+ * @param[in] k Cell's Cartesian K index.
+ * @param[in] sign ZCORN ordering sign.
+ * @param[in] off ZCORN vertex offsets for each of the cell's vertices.
+ * @return Coordinate system type.
+ */
 /* ---------------------------------------------------------------------- */
 static enum CoordinateSystemType
 get_cell_type(const struct grdecl *in,
@@ -822,6 +899,17 @@ get_cell_type(const struct grdecl *in,
 }
 
 
+/* ---------------------------------------------------------------------- */
+/* Fallback coordinate system classification.  Computes the triple product
+ * of a bounding box around each active cell and forms a heuristic
+ * classification based on the number of cells of each type.  This
+ * classification is not backed by theory.
+ *
+ * @param[in] in Corner-point geometry.
+ * @param[in] sign ZCORN ordering sign.
+ * @param[in] off ZCORN vertex offsets for each of a cell's vertices.
+ * @return Coordinate system type.
+ */
 /* ---------------------------------------------------------------------- */
 static enum CoordinateSystemType
 coodinate_system_type_cell_criterion(const struct grdecl *in,
@@ -874,6 +962,14 @@ coodinate_system_type_cell_criterion(const struct grdecl *in,
 
 
 /* ---------------------------------------------------------------------- */
+/* Primary coordinate system classification.  Computes the triple product of
+ * a bounding box around the model's geometry.
+ *
+ * @param[in] in Corner-point geometry.
+ * @param[in] sign ZCORN ordering sign.
+ * @param[in] off ZCORN vertex offsets for each of a cell's vertices.
+ * @return Coordinate system type. */
+/* ---------------------------------------------------------------------- */
 static enum CoordinateSystemType
 coordinate_system_type_model_bounding_box(const struct grdecl *in,
                                           const double         sign,
@@ -925,6 +1021,14 @@ coordinate_system_type_model_bounding_box(const struct grdecl *in,
 }
 
 
+/* ---------------------------------------------------------------------- */
+/* Coordinate system classification.  Computes the triple product of a
+ * bounding box around the model's geometry.  Falls back to a per-cell
+ * heuristic criterion if initial test is inconclusive.
+ *
+ * @param[in] in Corner-point geometry.
+ * @param[in] sign ZCORN ordering sign.
+ * @return Coordinate system type. */
 /* ---------------------------------------------------------------------- */
 static enum CoordinateSystemType
 grid_coordinate_system_type(const struct grdecl *in, const double sign)
