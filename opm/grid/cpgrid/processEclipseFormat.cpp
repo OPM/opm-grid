@@ -263,7 +263,10 @@ namespace cpgrid
 #ifdef VERBOSE
         std::cout << "Processing eclipse data." << std::endl;
 #endif
+
         processed_grid output;
+        int process_ok;
+
 #if HAVE_ECL_INPUT
         if (ecl_state && ecl_state->aquifer().hasNumericalAquifer()) {
             const auto aquifer_cell_volumes = ecl_state->aquifer().numericalAquifers().aquiferCellVolumes();
@@ -272,10 +275,18 @@ namespace cpgrid
             for ([[maybe_unused]]const auto&[global_index, volume] : aquifer_cell_volumes) {
                 is_aquifer_cell[global_index] = 1;
             }
-            process_grdecl(&input_data, 0, is_aquifer_cell.data(), &output, pinchActive);
+            process_ok = process_grdecl(&input_data, 0, is_aquifer_cell.data(), &output, pinchActive);
         } else
 #endif
-            process_grdecl(&input_data, 0, nullptr, &output, pinchActive);
+        {
+            process_ok = process_grdecl(&input_data, 0, nullptr, &output, pinchActive);
+        }
+
+        if (process_ok == 0) {
+            OPM_THROW(std::runtime_error,
+                      "Failed to build unstructured "
+                      "grid from COORD/ZCORN");
+        }
 
         if (remove_ij_boundary) {
             removeOuterCellLayer(output);
