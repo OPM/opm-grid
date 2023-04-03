@@ -1799,6 +1799,11 @@ namespace Dune
                 OPM_THROW(std::logic_error, "No distributed view available in grid");
             current_view_data_=distributed_data_[0].get();
         }
+
+        void setAllowEmptyPartitions(bool allow)
+        {
+            allowEmptyPartitions_ = allow;
+        }
         //@}
 
 #if HAVE_MPI
@@ -1916,6 +1921,10 @@ namespace Dune
          */
         std::map<std::string,std::string> zoltanParams;
 
+        /**
+         * @brief Allow empty partitions
+         */
+        bool allowEmptyPartitions_ = false;
     }; // end Class CpGrid
 
 

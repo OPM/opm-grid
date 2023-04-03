@@ -411,20 +411,23 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         procsWithZeroCells = cc.sum(procsWithZeroCells);
 
         if (procsWithZeroCells) {
-            std::string msg = "At least one process has zero cells. Aborting. \n"
-                     " Try decreasing the imbalance tolerance for zoltan with \n"
-                     " --zoltan-imbalance-tolerance. The current value is "
-                     + std::to_string(zoltanImbalanceTol);
-            if (cc.rank()==0)
-            {
-                OPM_THROW(std::runtime_error, msg );
-            }
-            else
-            {
-                OPM_THROW_NOLOG(std::runtime_error, msg);
+            if (allowEmptyPartitions_) {
+                Opm::OpmLog::warning("At least one process has zero cells. Continuing as requested.");
+            } else {
+                std::string msg = "At least one process has zero cells. Aborting. \n"
+                         " Try decreasing the imbalance tolerance for zoltan with \n"
+                         " --zoltan-imbalance-tolerance. The current value is "
+                         + std::to_string(zoltanImbalanceTol);
+                if (cc.rank()==0)
+                {
+                    OPM_THROW(std::runtime_error, msg );
+                }
+                else
+                {
+                    OPM_THROW_NOLOG(std::runtime_error, msg);
+                }
             }
         }
-
 
         // distributed_data should be empty at this point.
         distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc));
