@@ -134,11 +134,12 @@ namespace Opm
         }
 
         // Main loop.
-        for (int kk = 0; kk < dims_[2]; ++kk) {
-            for (int jj = 0; jj < dims_[1]; ++jj) {
-                for (int ii = 0; ii < dims_[0]; ++ii) {
+        for (int jj = 0; jj < dims_[1]; ++jj) {
+            for (int ii = 0; ii < dims_[0]; ++ii) {
+                for (int kk = 0; kk < dims_[2]; ++kk) {
                     const int c = ii + dims_[0] * (jj + dims_[1] * kk);
                     if (pv[c] < minpvv[c] && (actnum.empty() || actnum[c])) {
+                        // Cell is made inactive due to MINPV
                         // Move deeper (higher k) coordinates to lower k coordinates.
                         // i.e remove the cell
                         std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
@@ -146,93 +147,69 @@ namespace Opm
                             cz[count + 4] = cz[count];
                         }
                         setCellZcorn(ii, jj, kk, cz, zcorn);
+                        result.removed_cells.push_back(c);
 
                         // Find the next cell
                         int kk_iter = kk + 1;
-                        if (kk_iter == dims_[2]) { // we are at the end of the pillar.
-                            result.removed_cells.push_back(c);
-                            continue;
-                        }
 
                         int c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
-                        // bypass inactive cells with thickness less then the tolerance
-                        while ( ((actnum.empty() || !actnum[c_below]) && (thickness[c_below] <= z_tolerance))  ){
-                            // move these cell to the posistion of the first cell to make the
-                            // coordinates strictly sorted
-                            setCellZcorn(ii, jj, kk_iter, cz, zcorn);
-                            kk_iter ++;
+                        bool active = actnum.empty() || actnum[c_below];
+                        bool thin = (thickness[c_below] <= z_tolerance);
+                        bool thin_inactive = !active && thin;
+                        bool low_pv_active = pv[c_below] < minpvv[c_below] && active;
+                        // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
+                        bool nnc_allowed = !pinchNOGAP || thickness[c] <= z_tolerance;
+
+                        while ( (thin_inactive || low_pv_active) && kk_iter < dims_[2] )
+                        {
+                            // bypass inactive cells with thickness less then the tolerance
+                            if (thin_inactive)
+                            {
+                                // move these cell to the position of the first cell to make the
+                                // coordinates strictly sorted
+                                setCellZcorn(ii, jj, kk_iter, cz, zcorn);
+                            }
+                            if (low_pv_active)
+                            {
+                                // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
+                                nnc_allowed = nnc_allowed && (!pinchNOGAP || thin);
+                                // Cell is made inactive due to MINPV
+                                // It might make sense to always proceed as in the else branch,
+                                // but we try to keep changes due to refactoring smalle here and
+                                // mimic the old approach
+                                if (mergeMinPVCells)
+                                {
+                                    // original algorithm would have extended this cells before
+                                    // the collapsing. Doing the same.
+                                    setCellZcorn(ii, jj, kk_iter, cz, zcorn);
+                                }
+                                else
+                                {
+                                    // original algorithm collapses the unextended cell
+                                    cz = getCellZcorn(ii, jj, kk_iter, zcorn);
+                                    for (int count = 0; count < 4; ++count) {
+                                        cz[count + 4] = cz[count];
+                                    }
+                                    setCellZcorn(ii, jj, kk_iter, cz, zcorn);
+                                }
+                                result.removed_cells.push_back(c_below);
+                            }
+                            // move to next lower cell
+                            kk_iter = kk_iter + 1;
                             if (kk_iter == dims_[2])
+                            {
                                 break;
+                            }
 
                             c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
-                        }
-
-                        if (kk_iter == dims_[2]) { // we have come to the end of the pillar.
-                            result.removed_cells.push_back(c);
-                            continue;
+                            active = actnum.empty() || actnum[c_below];
+                            thin = (thickness[c_below] <= z_tolerance);
+                            thin_inactive = (!actnum.empty() && !actnum[c_below]) && thin;
+                            low_pv_active = pv[c_below] < minpvv[c_below] && active;
                         }
 
                         // create nnc if false or merge the cells if true
-                        if (!mergeMinPVCells) {
-
-                            // We are at the top, so no nnc is created.
-                            if (kk == 0) {
-                                result.removed_cells.push_back(c);
-                                continue;
-                            }
-
-                            int c_above = ii + dims_[0] * (jj + dims_[1] * (kk - 1));
-
-                            // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            auto above_active = actnum.empty() || actnum[c_above];
-                            auto above_inactive = actnum.empty() || !actnum[c_above]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_above]
-                            auto above_thin = thickness[c_above] < z_tolerance;
-                            auto above_small_pv = pv[c_above] < minpvv[c_above];
-                            if ((above_inactive && above_thin) || (above_active && above_small_pv
-                                                                   && (!pinchNOGAP || above_thin) ) ) {
-                                for (int topk = kk - 2; topk > 0; --topk) {
-                                    c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
-                                    above_active = actnum.empty() || actnum[c_above];
-                                    above_inactive = actnum.empty() || !actnum[c_above];
-                                    auto above_significant_pv = pv[c_above] > minpvv[c_above];
-                                    auto above_broad = thickness[c_above] > z_tolerance;
-                                    // \todo if condition seems wrong and should be the negation of above?
-                                    if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
-                            auto below_active = actnum.empty() || actnum[c_below];
-                            auto below_inactive = actnum.empty() || !actnum[c_below]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_below]
-                            auto below_thin = thickness[c_below] < z_tolerance;
-                            auto below_small_pv = pv[c_below] < minpvv[c];
-                            if ((below_inactive && below_thin) || (below_active && below_small_pv
-                                                                   && (!pinchNOGAP || below_thin ) ) ) {
-                                for (int botk = kk_iter + 1; botk <  dims_[2]; ++botk) {
-                                    c_below = ii + dims_[0] * (jj + dims_[1] * (botk));
-                                    below_active = actnum.empty() || actnum[c_below];
-                                    below_inactive = actnum.empty() || !actnum[c_below]; // \todo Kept original, but should be !actnum.empty() && !actnum[c_below]
-                                    auto below_significant_pv = pv[c_below] > minpvv[c_below];
-                                    auto below_broad = thickness[c_above] > z_tolerance;
-                                    // \todo if condition seems wrong and should be the negation of above?
-                                    if ( (below_active && (below_significant_pv || (pinchNOGAP && below_broad) ) ) || (below_inactive && below_broad)) {
-                                        break;
-                                    }
-                                }
-                            }
-
-                            bool c_thin = thickness[c] < z_tolerance;
-                            // Add a connection if the cell above and below is active and has porv > minpv
-                            // In the case of PichNOGAP this cell must be thin, too.
-                            if ( (! pinchNOGAP || c_thin) &&
-                                 (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
-                                 pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
-                                result.add_nnc(c_above, c_below);
-                            }
-                        }
-                        else {
+                        if (mergeMinPVCells) {
                             // Set lower k coordinates of cell below to upper cells's coordinates.
                             // i.e fill the void using the cell below
                             std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
@@ -242,8 +219,50 @@ namespace Opm
 
                             setCellZcorn(ii, jj, kk_iter, cz_below, zcorn);
                         }
+                        else
+                        {
 
-                        result.removed_cells.push_back(c);
+                            // No top or bottom cell, so no nnc is created.
+                            if (kk == 0 || kk_iter == dims_[2]) {
+                                kk = kk_iter;
+                                continue;
+                            }
+                            // top or bottom cell not active, hence no ncc is created
+                            if (!actnum.empty() && (!actnum[c] ||  !actnum[c_below])) {
+                                kk = kk_iter;
+                                continue;
+                            }
+
+                            // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                            int c_above = ii + dims_[0] * (jj + dims_[1] * (kk-1));
+                            auto above_active = actnum.empty() || actnum[c_above];
+                            auto above_inactive = !actnum.empty() && !actnum[c_above];
+                            auto above_thin = thickness[c_above] < z_tolerance;
+                            auto above_small_pv = pv[c_above] < minpvv[c_above];
+                            if ((above_inactive && above_thin) || (above_active && above_small_pv
+                                                                   && (!pinchNOGAP || above_thin) ) ) {
+                                for (int topk = kk - 2; topk > 0; --topk) {
+                                    c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
+                                    above_active = actnum.empty() || actnum[c_above];
+                                    above_inactive = !actnum.empty() && !actnum[c_above];
+                                    auto above_significant_pv = pv[c_above] > minpvv[c_above];
+                                    auto above_broad = thickness[c_above] > z_tolerance;
+                                    // \todo if condition seems wrong and should be the negation of above?
+                                    if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
+                                        break;
+                                    }
+                                }
+                            }
+
+                            // Add a connection if the cell above and below is active and has porv > minpv
+                            // In the case of PichNOGAP this cell must be thin, too.
+                            if ( nnc_allowed &&
+                                 (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
+                                 pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
+                                result.add_nnc(c_above, c_below);
+                            }
+                            kk = kk_iter;
+                        }
                     }
                 }
             }
