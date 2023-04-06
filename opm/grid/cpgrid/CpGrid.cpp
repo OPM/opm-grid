@@ -1688,10 +1688,3 @@ void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const 
 
 
 } // namespace Dune
-
-#define OPM_INSTANTIATE_PARTITION_ITERATE(method, Method)               \
-    template CpGridTraits::template Codim<0>:: Method CpGrid:: method<0>() const; \
-    template CpGridTraits::template Codim<1>:: Method CpGrid:: method<1>() const; \
-    template CpGridTraits::template Codim<3>:: Method CpGrid:: method<3>() const; \
-    OPM_INSTANTIATE_PARTITION_ITERATE(lbegin, LevelIterator);           \
-    OPM_INSTANTIATE_PARTITION_ITERATE(lend, LevelIterator);
