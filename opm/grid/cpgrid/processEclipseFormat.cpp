@@ -44,7 +44,8 @@
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
-#include <opm/grid/cpgrid/EntityRep.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
+#include  <opm/grid/cpgrid/Indexsets.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>
@@ -371,6 +372,8 @@ namespace cpgrid
 
         if(ccobj_.size()>1)
             populateGlobalCellIndexSet();
+
+        index_set_ = std::make_unique<IndexSet>(cell_to_face_.size(), geomVector<3>().size());
 
 #ifdef VERBOSE
         std::cout << "Done with grid processing." << std::endl;

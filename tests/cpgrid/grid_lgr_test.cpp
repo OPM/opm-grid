@@ -29,8 +29,10 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
+#include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+
 
 #include <sstream>
 #include <iostream>
@@ -76,6 +78,8 @@ void check_refinedPatch_grid(const std::array<int,3> cells_per_dim,
 
     int count_cells = cells_per_dim[0]*patch_dim[0]*cells_per_dim[1]*patch_dim[1]*cells_per_dim[2]*patch_dim[2];
     BOOST_CHECK_EQUAL(refined_cells.size(), count_cells);
+
+   
 }
 
 
@@ -87,17 +91,83 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     
     // Call createGridWithLgr()
     auto& data = coarse_grid.data_;
-    coarse_grid.createGridWithLgr(cells_per_dim, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim, start_ijk, end_ijk);
     BOOST_CHECK(data.size()==3);
     check_refinedPatch_grid(cells_per_dim, start_ijk, end_ijk,
                             (*coarse_grid.data_[1]).geometry_.template geomVector<0>(),
                             (*coarse_grid.data_[1]).geometry_.template geomVector<1>(),
                             (*coarse_grid.data_[1]).geometry_.template geomVector<3>());
+
+    BOOST_CHECK( (*coarse_grid.data_[0]).child_to_parent_cells_.empty());
+    BOOST_CHECK( (*coarse_grid.data_[1]).parent_to_children_cells_.empty());
+    BOOST_CHECK( (*coarse_grid.data_[2]).parent_to_children_cells_.empty());
+    const auto& [patch_corners, patch_faces, patch_cells] = (*coarse_grid.data_[0]).getPatchGeomIndices(start_ijk, end_ijk);
+    for (int cell = 0; cell<  data[0]-> size(0); ++cell)
+    {
+        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
+        BOOST_CHECK( entity.hasFather() == false);
+        BOOST_CHECK_THROW(entity.father(), std::logic_error);
+        const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[cell]; 
+        if (std::find(patch_cells.begin(), patch_cells.end(), cell) == patch_cells.end()){
+            BOOST_CHECK_EQUAL(std::get<0>(parent_to_children), -1);
+            BOOST_CHECK_EQUAL(std::get<1>(parent_to_children)[0], -1);
+            BOOST_CHECK( entity.isLeaf() == true);
+        }
+        else{
+            BOOST_CHECK(std::get<1>(parent_to_children).size() > 0);
+            BOOST_CHECK(std::get<0>(parent_to_children) != -1);
+            BOOST_CHECK( entity.isLeaf() == false);
+        }
+        BOOST_CHECK( entity.level() == 0);
+    }
+
     
-    /*cpgrid::OrientedEntityTable<1,0> face_to_cell_computed;
-    cpgrid::OrientedEntityTable<0,1> cell_to_face_computed;
-    cell_to_face_computed.makeInverseRelation(face_to_cell_computed);
-    BOOST_CHECK(face_to_cell_computed == ((*coarse_grid.data_[1]).face_to_cell_)); */
+    for (int cell = 0; cell<  data[1]-> size(0); ++cell)
+    {
+        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[1]), cell, true);
+        BOOST_CHECK( entity.hasFather() == true);
+        BOOST_CHECK(entity.father().level() == 0);
+        BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
+        const auto& child_to_parent = (*coarse_grid.data_[1]).child_to_parent_cells_[cell];
+        BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
+        BOOST_CHECK( entity.level() == 1);
+        BOOST_CHECK( entity.level() == coarse_grid.maxLevel());
+        BOOST_CHECK( entity.isLeaf() == true);
+    }
+
+    for (int cell = 0; cell<  data[2]-> size(0); ++cell)
+    {
+        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[2]), cell, true);
+        const auto& child_to_parent = (*coarse_grid.data_[2]).child_to_parent_cells_[cell];
+        if (entity.hasFather()){
+             BOOST_CHECK(entity.father().level() == 0);
+             BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
+             BOOST_CHECK(!(child_to_parent[0] == -1));
+             BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
+             BOOST_CHECK( entity.father().isLeaf() == false);
+             BOOST_CHECK( entity.level() == 1);
+        }
+        else{
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_EQUAL( child_to_parent[0], -1);
+            BOOST_CHECK( entity.level() == 0);
+        }
+        BOOST_CHECK( entity.isLeaf() == true);
+    }
+
+    for (int l = 0; l < 2; ++l)
+    {
+        const auto& view = coarse_grid.levelGridView(l);
+        for (const auto& element: elements(view)){
+            BOOST_CHECK_EQUAL(element.level(), l);
+        }
+    }
+
+    const auto& leaf_view = coarse_grid.leafGridView();
+    for (const auto& element: elements(leaf_view)){
+         BOOST_CHECK( ((element.level() == 0) || (element.level() == 1)));
+    }
+
 } 
 
 BOOST_AUTO_TEST_CASE(refine_patch)
@@ -228,7 +298,7 @@ BOOST_AUTO_TEST_CASE(global_refine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.createGridWithLgr(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;
@@ -251,7 +321,7 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     std::array<int, 3> start_ijk = {0,0,0};
     std::array<int, 3> end_ijk = {4,3,3};  
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.createGridWithLgr(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.addLgrUpdateLeafView(cells_per_dim_patch, start_ijk, end_ijk);
 
     // Create a 8x6x6 grid with length 4x3x3
     Dune::CpGrid fine_grid;

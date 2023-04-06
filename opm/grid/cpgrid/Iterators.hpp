@@ -39,6 +39,10 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include <dune/grid/common/gridenums.hh>
 #include "PartitionIteratorRule.hpp"
 #include <opm/common/ErrorMacros.hpp>
+#include "CpGridData.hpp"
+
+
+#include <stack>
 
 namespace Dune
 {
@@ -91,7 +95,7 @@ namespace Dune
             }
 
         private:
-            /// \brief The number of Entities with codim cd.
+            /// \brief The number of Entities with codim cd.   (no = number)
             int noEntities_;
             PartitionIteratorRule<pitype> rule_;
         };
@@ -112,14 +116,56 @@ namespace Dune
             {
             }
 
+            // Constructor with Entity<0> target and maxLevel (begin iterator).
+            HierarchicIterator(Entity<0> target, int maxLevel)
+                : maxLevel_(maxLevel)
+            {
+                // Load sons of target onto the iterator stack
+                stackChildren_(target);
+
+                // Set entity target to the next child if exists
+                resetEntity_();
+            }
+            
+
+            // Constructor without valid element (end iterator). 
+            HierarchicIterator(int maxLevel)
+                : maxLevel_(maxLevel)
+            {
+                resetEntity_();
+            }
+
+
+             
+
+            // COMPARISON ON TARGET ENTITY. hierarchiIt == other is target is the same, or both are invalid
+            /// Equality.
+            //  bool operator==(const HierarchicIterator& other) const
+            //  {
+            //      return (pgrid_ == other.pgrid_) || (/* bath invalid entitties*/);
+            // }
+            // Check wheter  one of them if invalid, the other has to be also invalid.
+            // If both are valid, check that they are equal.
+
             /// @brief
             /// @todo Doc me!
             /// @param
-            HierarchicIterator& operator++()
-            {
-                OPM_THROW(std::runtime_error, "Calling operator++() on HierarchicIterator for CpGrid, which has no refinement.");
+            HierarchicIterator& operator++()  
+            {   
+                if (elemStack_.empty()){
+                    return *this;
+                }
+                // Reference to the top element of elemStack_
+                auto target = elemStack_.top();
+                // Remove the element on top of elemStack_
+                elemStack_.pop();
+                // Load sons of previous target onto elemStack_
+                stackChildren_(target);
+                // Set entity target to the next stacked element if exists
+                resetEntity_();
                 return *this;
             }
+            
             /// Const member by pointer operator.
             const Entity<0>* operator->() const
             {
@@ -133,11 +179,22 @@ namespace Dune
                 assert(Entity<0>::isValid());
                 return (*this);
             }
-        };
 
+        private:
+            void stackChildren_(const Entity<0>& target);
+            
+            void resetEntity_();
 
+            //! The entity that the iterator is pointing to
+            Entity<0> virtualEntity_;
 
+            //! max level to iterate over
+            int maxLevel_;
 
+            // For depth-first search
+            std::stack<Entity<0>> elemStack_;
+            
+        }; // end class HierarchicIterator
 
     } // namespace cpgrid
 } // namespace Dune

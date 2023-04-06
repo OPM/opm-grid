@@ -20,12 +20,14 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#if HAVE_MPI // no code in this file without MPI. Skip includes-
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <algorithm>
 #include <type_traits>
+#endif
 
 namespace Dune
 {
@@ -630,4 +632,4 @@ zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
 
 } // namespace cpgrid
 } // namespace Dune
-#endif // HAVE_ZOLTAN
+#endif // defined(HAVE_ZOLTAN) && defined(HAVE_MPI)

@@ -46,12 +46,14 @@ namespace Dune
 {
     namespace cpgrid
     {
-
+    // forward declaration
+    //class CpGridData;
         /// @brief
         /// @todo Doc me!
         /// @tparam
         class IndexSet
         {
+            //friend class Dune::cpgrid::CpGridData;
         public:
             /// @brief
             /// @todo Doc me!
@@ -71,11 +73,14 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @param
-            IndexSet(const CpGridData& grid)
-                : grid_(grid)
+            IndexSet(){}
+            
+            IndexSet(std::size_t numCells, std::size_t numPoints)
             {
                 geom_types_[0].emplace_back(Dune::GeometryTypes::cube(3));
                 geom_types_[3].emplace_back(Dune::GeometryTypes::cube(0));
+                size_codim_map_[0] =  numCells; 
+                size_codim_map_[3] = numPoints; 
             }
 
             /// \brief Destructor.
@@ -106,7 +111,11 @@ namespace Dune
             /// @return
             int size(GeometryType type) const
             {
-                return grid_.size(type);
+                if (type.isCube()) {
+                    return size(3 - type.dim());  // return grid_.size(type);
+                } else {
+                    return 0;
+                }
             }
 
 
@@ -116,7 +125,7 @@ namespace Dune
             /// @return
             int size(int codim) const
             {
-                return grid_.size(codim);
+                return size_codim_map_[codim]; //grid_.size(codim)
             }
 
 
@@ -158,18 +167,7 @@ namespace Dune
             /// @tparam
             /// @return
             /// @param
-            IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const
-            {
-                switch(cc) {
-                case 0: return index(e.subEntity<0>(i));
-                case 1: return index(e.subEntity<1>(i));
-                case 2: return index(e.subEntity<2>(i));
-                case 3: return index(e.subEntity<3>(i));
-                default: OPM_THROW(std::runtime_error,
-                              "Codimension " + std::to_string(cc) + " not supported.");
-                }
-
-            }
+            IndexType subIndex(const cpgrid::Entity<0>& e, int i, unsigned int cc) const;
 
 
             template<int codim>
@@ -186,12 +184,14 @@ namespace Dune
             template <class EntityType>
             bool contains(const EntityType& e) const
             {
-                return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
+                // return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
+                return index(e) >= 0 && index(e) < this->size(EntityType::codimension);
             }
 
         private:
-            const CpGridData& grid_;
+            // const CpGridData& grid_;
             Types geom_types_[4];
+            std::array<int,4> size_codim_map_{0,0,0,0};
         };
 
 
@@ -230,18 +230,7 @@ namespace Dune
                 return id(e.template subEntity<cc>(i));
             }
 
-            IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
-            {
-                switch (cc) {
-                case 0: return id(e.subEntity<0>(i));
-                case 1: return id(e.subEntity<1>(i));
-                case 2: return id(e.subEntity<2>(i));
-                case 3: return id(e.subEntity<3>(i));
-                default: OPM_THROW(std::runtime_error,
-                                  "Cannot get subId of codimension " + std::to_string(cc));
-                }
-                return -1;
-            }
+            IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
         private:
             template<class EntityType>
             IdType computeId(const EntityType& e) const
@@ -271,7 +260,7 @@ namespace Dune
                                       faceMapping,
                                       pointMapping);
             }
-            LevelGlobalIdSet(const IdSet* ids, const CpGridData* view)
+            LevelGlobalIdSet(std::shared_ptr<const IdSet> ids, const CpGridData* view)  
                 : idSet_(ids), view_(view)
             {}
             LevelGlobalIdSet()
@@ -299,22 +288,9 @@ namespace Dune
                 return id(e.template subEntity<cc>(i));
             }
 
-            IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
-            {
-                assert(view_ == e.pgrid_);
-
-                switch (cc) {
-                case 0: return id(e.subEntity<0>(i));
-                //case 1: return id(*e.subEntity<1>(i));
-                //case 2: return id(*e.subEntity<2>(i));
-                case 3: return id(e.subEntity<3>(i));
-                default: OPM_THROW(std::runtime_error,
-                                   "Cannot get subId of codimension " + std::to_string(cc));
-                }
-                return -1;
-            }
+            IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
         private:
-            const IdSet* idSet_;
+            std::shared_ptr<const IdSet> idSet_;
             const CpGridData* view_;
         };
 
@@ -330,10 +306,7 @@ namespace Dune
         /// \brief The type of the id.
         using IdType = typename LevelGlobalIdSet::IdType;
 
-        GlobalIdSet(const CpGridData& view)
-        {
-            idSets_.insert(std::make_pair(&view,view.global_id_set_));
-        }
+        GlobalIdSet(const CpGridData& view);
 
         template<int codim>
         IdType id(const Entity<codim>& e) const
@@ -347,15 +320,9 @@ namespace Dune
             return levelIdSet(e.pgrid_).template subId<cc>(e, i);
         }
 
-        IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const
-        {
-            return levelIdSet(e.pgrid_).subId(e, i, cc);
-        }
+        IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
 
-        void insertIdSet(const CpGridData& view)
-        {
-            idSets_.insert(std::make_pair(&view,view.global_id_set_));
-        }
+        void insertIdSet(const CpGridData& view);
     private:
         /// \brief Get the correct id set of a level (global or distributed)
         const LevelGlobalIdSet& levelIdSet(const CpGridData* const data) const
@@ -365,7 +332,7 @@ namespace Dune
             return *candidate->second;
         }
         /// \brief map of views onto idesets if the view.
-        std::map<const CpGridData* const, const LevelGlobalIdSet*> idSets_;
+        std::map<const CpGridData* const, std::shared_ptr<const LevelGlobalIdSet>> idSets_;
     };
 
     class ReversePointGlobalIdSet
