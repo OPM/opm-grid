@@ -1362,13 +1362,10 @@ template cpgrid::Entity<3> Dune::createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp 
 
 
-void CpGrid::addLgrUpdateLeafView(std::array<int,3> cells_per_dim, std::array<int,3> startIJK, std::array<int,3> endIJK)
+void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
+                                  const std::array<int,3>& endIJK)
 {
-    const std::vector<std::array<int,3>> cells_per_dim_vec{{cells_per_dim}};
-    const std::vector<std::array<int,3>> startIJK_vec{{startIJK}};
-    const std::vector<std::array<int,3>> endIJK_vec{{endIJK}};
-    
-    this -> addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec);
+    this -> addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK});
 }
 
 
@@ -1377,48 +1374,56 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::array<int,3>>& endIJK_vec)
 {
     if (!distributed_data_.empty()){
-        OPM_THROW(std::logic_error, "Grid has been distributed. Cannot create LGRs.");
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
     }
-    if (startIJK_vec.size() > 0){
-        if (!(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
-        OPM_THROW(std::logic_error, "Patches are not disjoint.");
+    if (startIJK_vec.size() > 0 && !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "LGRs are not disjoint.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "LGRs are not disjoint.");
         }
     }
     // Total amount of patches:
     const int& num_patches = startIJK_vec.size();
     assert(cells_per_dim_vec.size() == startIJK_vec.size());
     assert(cells_per_dim_vec.size() == endIJK_vec.size());
-    std::vector<int> all_patch_corners; 
-    std::vector<int> all_patch_faces; 
+    std::vector<int> all_patch_corners;
+    std::vector<int> all_patch_faces;
     std::vector<int> all_patch_cells;
-    std::vector<std::vector<std::array<int,2>>> all_patch_boundary_old_to_new_corners;
-    std::vector<std::vector<std::tuple<int,std::vector<int>>>> all_patch_boundary_old_to_new_faces;
+    
+    // Map to relate boundary patches corners with their equivalent refined/new-born ones. {0,oldCornerIdx} -> {level,newCornerIdx}
+    std::map<std::array<int,2>, std::array<int,2>> old_to_new_boundaryPatchCorners;
+    // Map to relate boundary patch faces with their children refined/new-born ones. {0,oldFaceIdx} -> {level,{newFaceIdx0, ...}}
+    std::map<std::array<int,2>, std::tuple<int, std::vector<int>>> old_to_new_boundaryPatchFaces;
+    
     std::vector<std::vector<std::tuple<int,std::vector<int>>>> all_patch_parent_to_children_cells;
     std::vector<std::vector<std::array<int,2>>> all_patch_child_to_parent_cells;
-    all_patch_boundary_old_to_new_corners.reserve(num_patches);
-    all_patch_boundary_old_to_new_faces.reserve(num_patches);
     all_patch_parent_to_children_cells.resize(num_patches);
     all_patch_child_to_parent_cells.resize(num_patches);
-    // For level0, attach children to each parent cell. For no parents, entry {-1, {-1}} representing {no level, {no children}}
+    
+    // For level0, attach children to each parent cell. For no parents, entry {-1, {}} representing {no level, {no children}}
     auto& l0_parent_to_children_cells = (*data_[0]).parent_to_children_cells_;
-    l0_parent_to_children_cells.resize(data_[0]-> size(0));
-    const std::vector<int> no_children = {-1};    
-    const std::tuple<int,std::vector<int>> has_no_children = std::make_tuple(-1, no_children);
-    for (int cell = 0; cell < data_[0]-> size(0); ++cell){
-        l0_parent_to_children_cells[cell] = has_no_children;
-    }
+    l0_parent_to_children_cells.resize(data_[0]-> size(0), std::make_tuple(-1, std::vector<int>()));
     // Get patches corner, face, and cell indices.
     for (int patch = 0; patch < num_patches; ++patch){
-        const auto& [corners, faces, cells] = (*(this->data_[0])).getPatchGeomIndices(startIJK_vec[patch], endIJK_vec[patch]);
-        all_patch_corners.reserve(corners.size());
+        const auto& corners  = (*(this->data_[0])).getPatchCorners(startIJK_vec[patch], endIJK_vec[patch]);
+        const auto& faces = (*(this->data_[0])).getPatchFaces(startIJK_vec[patch], endIJK_vec[patch]);
+        const auto& cells = (*(this->data_[0])).getPatchCells(startIJK_vec[patch], endIJK_vec[patch]);
+        all_patch_corners.reserve(all_patch_corners.size() + corners.size());
         for (const auto& corner : corners){
             all_patch_corners.push_back(corner);
         }
-        all_patch_faces.reserve(faces.size());
+        all_patch_faces.reserve(all_patch_faces.size() + faces.size());
         for (const auto& face : faces){
             all_patch_faces.push_back(face);
         }
-        all_patch_cells.reserve(cells.size());
+        all_patch_cells.reserve(all_patch_cells.size() + cells.size());
         for (const auto& cell : cells){
             all_patch_cells.push_back(cell);
         }
@@ -1436,12 +1441,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Extension of container all_patch_child_to_parent_cells, adding {-1,-1} entries for each NO-CHILD cell, in each level/patch.
         (all_patch_child_to_parent_cells[patch]).resize(child_to_parent_cells.size()); // To consider all cells in the LGR.
         // True parent cells have entries: {level of the LGR the parent cell has its children, {child0, child1, ...}}
-        // False parent cells (NO PARENT CELLS) have {-1,{-1}} entries.
+        // False parent cells (NO PARENT CELLS) have {-1,{}} entries.
         // parent_to_children_cells entries look like {parent cell index (in level 0), {child0, child1,..}}
         // True child cells have entries: {0, parent cell index} (0 represents the "GLOBAL" coarse grid)
         // False child cells (with no parent) have {-1,-1} entries.
-        // child_to_parent_cells entries look like {child index in the LGR, parent cell index} 
-        // Re-write entries of actual parent/Create the ones for child cells in each level (not default value {-1,-1} needed).
+        // child_to_parent_cells entries look like {child index in the LGR, parent cell index}
+        // Re-write entries of actual parent/Create the ones for child cells in each level (not default value {-1,-1} needed for LGRs).
         assert(!parent_to_children_cells.empty());
         for (const auto& [trueParent, children_list] : parent_to_children_cells){
             l0_parent_to_children_cells[trueParent] = std::make_tuple(patch +1, children_list); // {level/LGR, {child0, child1, ...}}
@@ -1455,18 +1460,22 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Add this family information [child_to_parent_cells_] in each CpGridData object representing each LGR
         (*data_[patch +1]).child_to_parent_cells_ =  all_patch_child_to_parent_cells[patch];
         // shifted +1 since "GLOBAL" is level0 (coarse grid). Levels are 1,2,..., num_patches.
-        //
-        all_patch_boundary_old_to_new_corners.push_back(boundary_old_to_new_corners);
-        all_patch_boundary_old_to_new_faces.push_back(boundary_old_to_new_faces);
+        // Populate old_to_new_boundaryPatchCorners
+        for (const auto& [oldCorner, newCorner] : boundary_old_to_new_corners) {
+            old_to_new_boundaryPatchCorners[{0, oldCorner}] = {patch +1, newCorner};
+            // (shifted) [patch +1] since coarse grid is level 0, levels/LGRs are 1,2, ..., num_patches.
+        }
+        // Populate old_to_new_boundaryPatchFaces
+        for (const auto& [face, children_list] : boundary_old_to_new_faces) {
+            old_to_new_boundaryPatchFaces[{0,face}] = {patch+1, children_list};
+        }
     } // end-patch-forloop
-    // LEVEL 0, definition/declaration of some members:
-    (*data_[0]).level_data_ptr_ = &(this -> data_);
-    (*data_[0]).level_ = 0;
     // Relation between level and leafview cell indices.
-    std::map<int,int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
+    std::vector<int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
+    l0_to_leaf_cells.resize(data_[0]->size(0));
     // To store the leaf view (mixed grid: with (non parents) coarse and (children) refined entities).
     typedef Dune::FieldVector<double,3> PointType;
-        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& leaf_data = this -> data_;
+    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& leaf_data = this -> data_;
 #if HAVE_MPI
     auto leaf_view_ptr =
         std::make_shared<Dune::cpgrid::CpGridData>((*(this-> data_[0])).ccobj_, leaf_data);
@@ -1499,8 +1508,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     //
     // Integer to count leaf view corners (mixed between corners from level0 not involved in LGRs, and new-born-corners).
     int corner_count = 0;
-    // Map between {level0/level1, old-corner-index/new-born-corner-index}  and its corresponding leafview-corner-index.
-    std::map<std::array<int,2>, int> level_to_leaf_corners;
+    // Relation between {level0/level1, old-corner-index/new-born-corner-index} and its corresponding leafview-corner-index.
+    std::vector<std::vector<int>> level_to_leaf_corners; // level_to_leaf_corners[level][corner] = leaf_corner_index
+    level_to_leaf_corners.resize(num_patches +1); // level 0 + LGRs
+    level_to_leaf_corners[0].resize(this -> data_[0]-> size(3),-1); // Entry '-1' for corners not appearing in the leafview
     // Corners coming from the level0, excluding patch_corners, i.e., the old-corners involved in the LGR.
     for (int corner = 0; corner < this-> data_[0]->size(3); ++corner) {
         // Auxiliary bool to discard ANY CORNER COMING FROM ANY PATCH
@@ -1511,41 +1522,39 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 break;
         }
         if(!is_there_allPatchCorn) { // corner is not involved in any refinement, so we store it.
-            level_to_leaf_corners[{0, corner}] = corner_count;
+            level_to_leaf_corners[0][corner] = corner_count; // Only write entries of corners that appear in the LeafView
             corner_count +=1;
         }
     } // end corner-forloop
     // Corners coming from LGRs, i.e. refined (new-born) corners.
     for (int patch = 0; patch < num_patches; ++patch){
+        level_to_leaf_corners[patch +1].resize(this -> data_[patch +1] -> size(3));
         for (int corner = 0; corner < this -> data_[patch+1]->size(3); ++corner) {
-            level_to_leaf_corners[{patch + 1, corner}] = corner_count;
+            level_to_leaf_corners[patch + 1][corner] = corner_count;
             corner_count +=1;
         }
     }
     // Resize the container of the leaf view corners.
     leaf_corners.resize(corner_count);
-    for (const auto& [level_cornIdx, leafCornIdx] : level_to_leaf_corners) { // level_cornIdx[0] = level, level_cornIdx[1] = corner index
-        const auto& level_data = *(this->data_[level_cornIdx[0]]);
-        leaf_corners[leafCornIdx] = level_data.geometry_.geomVector(std::integral_constant<int,3>()).get(level_cornIdx[1]);
+    for (long unsigned int corner = 0; corner < level_to_leaf_corners[0].size(); ++corner) {
+        if (level_to_leaf_corners[0][corner] != -1){ // ONLY NEEDED FOR LEVEL 0
+            leaf_corners[level_to_leaf_corners[0][corner]]
+                = (*(this->data_[0])).geometry_.geomVector(std::integral_constant<int,3>()).get(corner);
+        }
     }
-    // Map to relate boundary patches corners with their equivalent refined/new-born ones. {0,oldCornerIdx} -> {level,newCornerIdx}
-    std::map<std::array<int,2>, std::array<int,2>> old_to_new_boundaryPatchCorners;
-    // To store (indices of) boundary patch corners.
-    std::vector<std::vector<int>> all_boundary_corners; // CHANGE NAME
-    all_boundary_corners.resize(num_patches);
-    for (int patch = 0; patch < num_patches; ++patch){
-        all_boundary_corners[patch].reserve(all_patch_boundary_old_to_new_corners[patch].size());
-        for (int corner = 0; corner < static_cast<int>(all_patch_boundary_old_to_new_corners[patch].size()); ++corner) {
-            old_to_new_boundaryPatchCorners[{0, all_patch_boundary_old_to_new_corners[patch][corner][0]}]
-                = {patch +1, all_patch_boundary_old_to_new_corners[patch][corner][1]};
-            // shifted +1 since coarse grid is level 0, levels/LGRs are 1,2, ..., num_patches. 
-            all_boundary_corners[patch].push_back(all_patch_boundary_old_to_new_corners[patch][corner][0]);
+    for (int l = 1; l < num_patches +1; ++l) {
+        for (long unsigned int corner = 0; corner < level_to_leaf_corners[l].size(); ++corner) {
+            const auto& level_data = *(this->data_[l]);
+            leaf_corners[level_to_leaf_corners[l][corner]]
+                = level_data.geometry_.geomVector(std::integral_constant<int,3>()).get(corner);
         }
     }
     // Integer to count leaf view faces (mixed between faces from level0 not involved in LGR, and new-born-faces).
     int face_count = 0;
-    // Map between {level0/level1/..., old-face-index/new-born-face-index}  and its corresponding leafview-face-index.
-    std::map<std::array<int,2>, int> level_to_leaf_faces;
+    // Relation between {level0/level1/..., old-face-index/new-born-face-index} and its corresponding leafview-face-index.
+    std::vector<std::vector<int>> level_to_leaf_faces; // level_to_leaf_faces[level][face] = leaf_face_index
+    level_to_leaf_faces.resize(num_patches +1); // Level 0 + LGRs
+    level_to_leaf_faces[0].resize(this -> data_[0]->face_to_cell_.size(), -1); // Entry -1 for faces that do not appear in leafView
     // Faces coming from the level0, that do not belong to any patch.
     for (int face = 0; face < this->data_[0]->face_to_cell_.size(); ++face) {
         // Auxiliary bool to discard patch faces OF ANY PATCH
@@ -1556,14 +1565,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 break;
         }
         if(!is_there_allPatchFace) { // false-> face was not involved in any LGRs, so we store it.
-            level_to_leaf_faces[{0, face}] = face_count;
+            level_to_leaf_faces[0][face] = face_count;
             face_count +=1;
         }
     } //end-face-forloop
     // Faces coming from LGRs, i.e. refined faces.
     for (int patch = 0; patch < num_patches; ++patch) {
+        level_to_leaf_faces[patch +1].resize(this -> data_[patch +1]->face_to_cell_.size());
         for (int face = 0; face < this->data_[patch +1]-> face_to_cell_.size(); ++face) {
-            level_to_leaf_faces[{patch +1, face}] = face_count;
+            level_to_leaf_faces[patch +1][face] = face_count;
             face_count +=1;
         }
     }
@@ -1576,114 +1586,109 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Auxiliary vector to store face_to_point with non consecutive indices.
     std::vector<std::vector<int>> aux_face_to_point;
     aux_face_to_point.resize(face_count);
-    for (const auto& [level_faceIdx, leafFaceIdx] : level_to_leaf_faces) { // level_faceIdx[0] = level, level_faceIdx[1] = face index 
-        // Get the level data.
-        const auto& level_data = *(this->data_[level_faceIdx[0]]);
-        // Get the (face) entity (from level data).
-        const auto& entity = Dune::cpgrid::EntityRep<1>(level_faceIdx[1], true);
-        // Get the face geometry.
-        leaf_faces[leafFaceIdx] = level_data.geometry_.geomVector(std::integral_constant<int,1>())[entity];
-        // Get the face tag.
-        mutable_face_tags[leafFaceIdx] = level_data.face_tag_[entity];
-        // Get the face normal.
-        mutable_face_normals[leafFaceIdx] = level_data.face_normals_[entity];
-        // Get old_face_to_point.
-        auto old_face_to_point = level_data.face_to_point_[level_faceIdx[1]];
-        aux_face_to_point[leafFaceIdx].reserve(old_face_to_point.size());
-        // Add the amount of points to the count num_points.
-        num_points += old_face_to_point.size();
-        if (level_faceIdx[0] == 0) { // Face comes from level0, check if some of its corners got refined.
+    // FACES COMING FROM LEVEL 0
+    for (int face = 0; face < static_cast<int>(this -> data_[0]->face_to_cell_.size()); ++face){
+        if (level_to_leaf_faces[0][face] != -1){ // ONLY NEEDED FOR LEVEL 0
+            const auto& leafFaceIdx =  level_to_leaf_faces[0][face];
+            // Get the level data.
+            const auto& level_data =  *(this->data_[0]);
+            // Get the (face) entity (from level data).
+            const auto& entity =  Dune::cpgrid::EntityRep<1>(face, true);
+            // Get the face geometry.
+            leaf_faces[leafFaceIdx] = level_data.geometry_.geomVector(std::integral_constant<int,1>())[entity];
+            // Get the face tag.
+            mutable_face_tags[leafFaceIdx] = level_data.face_tag_[entity];
+            // Get the face normal.
+            mutable_face_normals[leafFaceIdx] = level_data.face_normals_[entity];
+            // Get old_face_to_point.
+            auto old_face_to_point = level_data.face_to_point_[face];
+            aux_face_to_point[leafFaceIdx].reserve(old_face_to_point.size());
+            // Add the amount of points to the count num_points.
+            num_points += old_face_to_point.size();
             for (int corn = 0; corn < 4; ++corn) {
                 // Auxiliary bool to identify boundary patch corners.
                 bool is_there_allPatchBoundCorn = false;
-                for (int patch = 0; patch < num_patches; ++patch) {
-                    for(const auto& patchBoundCorn : all_boundary_corners[patch]) {
-                        is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (corn == patchBoundCorn);
-                        //true-> boundary patch corner
-                        if (is_there_allPatchBoundCorn) {
-                            break;
-                            aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners
-                                                                     [old_to_new_boundaryPatchCorners[{0, old_face_to_point[corn]}]]);
-                        }
-                        else { // Corner not involded in any LGR.
-                            aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[{0, old_face_to_point[corn]}]);
-                        }
-                    } // end-patchBoundCorn-forloop
-                } // end-patch-forloop
-            } // end-corner-forloop
-        } // end if-level_facaIdx[0]==0        
-        else { // Face comes from level1/leavel2/....
+                for(const auto& [l0_oldCorner, level_newCorner] : old_to_new_boundaryPatchCorners){
+                    is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (corn == l0_oldCorner[1]);
+                    //true-> boundary patch corner
+                    if (is_there_allPatchBoundCorn) {
+                        aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[level_newCorner[0]][level_newCorner[1]]);
+                        break; // Go to the next corner (on the boundary of a patch)
+                    }
+                }
+                if (!is_there_allPatchBoundCorn) {// Corner not involded in any LGR.
+                    aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[0][old_face_to_point[corn]]);
+                }
+            } // end-corn-forloop
+        } // end-if
+    } // end-face-for-loop
+    // FACES COMING FROM LGRS
+    for (int level = 1; level < num_patches +1; ++level) {
+        for (int face = 0; face < static_cast<int>(this -> data_[level]->face_to_cell_.size()); ++face){
+            const auto& leafFaceIdx =  level_to_leaf_faces[level][face];
+            // Get the level data.
+            const auto& level_data =  *(this->data_[level]);
+            // Get the (face) entity (from level data).
+            const auto& entity =  Dune::cpgrid::EntityRep<1>(face, true);
+            // Get the face geometry.
+            leaf_faces[leafFaceIdx] = level_data.geometry_.geomVector(std::integral_constant<int,1>())[entity];
+            // Get the face tag.
+            mutable_face_tags[leafFaceIdx] = level_data.face_tag_[entity];
+            // Get the face normal.
+            mutable_face_normals[leafFaceIdx] = level_data.face_normals_[entity];
+            // Get old_face_to_point.
+            auto old_face_to_point = level_data.face_to_point_[face];
+            aux_face_to_point[leafFaceIdx].reserve(old_face_to_point.size());
+            // Add the amount of points to the count num_points.
+            num_points += old_face_to_point.size();
+            // Face comes from level1/leavel2/....
             for (int corn = 0; corn < static_cast<int>(old_face_to_point.size()); ++corn) {
-                aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[{level_faceIdx[0], old_face_to_point[corn]}]);
+                aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[level][old_face_to_point[corn]]);
             }
-        }
-    } // end-level_to_leaf_faces-forloop
+        } // end-face-for-loop
+    } // end-level-forloop
     // Leaf view face_to_point.
     leaf_face_to_point.reserve(face_count, num_points);
     for (int face = 0; face < face_count; ++face) {
         leaf_face_to_point.appendRow(aux_face_to_point[face].begin(), aux_face_to_point[face].end());
     }
-    // Map to relate boundary patch faces with their children refined/new-born ones. {0,oldFaceIdx} -> {level,{newFaceIdx0, ...}}
-    std::map<std::array<int,2>, std::tuple<int, std::vector<int>>> old_to_new_boundaryPatchFaces;
-    // To store (indices of) boundary patch faces.
-    std::vector<std::vector<int>> all_boundary_faces;
-    all_boundary_faces.resize(num_patches);
-    for (int patch = 0; patch < num_patches; ++patch){
-        all_boundary_faces[patch].reserve(all_patch_boundary_old_to_new_faces[patch].size());
-        for (const auto& [face, children_list] : all_patch_boundary_old_to_new_faces[patch]) {
-                old_to_new_boundaryPatchFaces[{0,face}] = {patch+1, children_list};
-            all_boundary_faces[patch].push_back(face);
-        }
-    }
     // Integer to count leaf view cells (mixed between cells from level0 not involved in LGR, and new-born-cells).
     int cell_count = 0;
-    // Map between {level0/level1/.., old-cell-index/new-born-cell-index}  and its corresponding leafview-cell-index.
-    // std::map<std::array<int,2>> level_to_leaf_cells_; // CHANGE NAME NOT TO CONFUSE WITH ATTRIBUTE OF CPGRIDDATA
-     // Map between {level0/level1/.., old-cell-index/new-born-cell-index}  and its corresponding leafview-cell-index.
-    std::map<std::array<int,2>,int> allLevels_to_leaf_cells = leaf_view.allLevels_to_leaf_cells_ ;
+    // Map between leafCellIndices and {level0/level1/.., old-cell-index/new-born-cell-index}.
+    leaf_to_level_cells.reserve((this ->data_[0] ->size(0)) + all_patch_cells.size()); // MORE ENTRIES THAT ACTUALLY NEEDED
     // Cells coming from the level0, that do not belong to the patch.
     for (int cell = 0; cell < this->data_[0]-> size(0); ++cell) {
         // Auxiliary bool to identify cells of the patch1.
         bool is_there_allPatchCell = false;
-        //  for (int patch = 0; patch < num_patches; ++patch) {
-            for(const auto& patch_cell : all_patch_cells) {
-                is_there_allPatchCell = is_there_allPatchCell || (cell == patch_cell); //true-> coincides with one patch-cell
-                if (is_there_allPatchCell)
-                    break;
-            }
-            // }
+        for(const auto& patch_cell : all_patch_cells) {
+            is_there_allPatchCell = is_there_allPatchCell || (cell == patch_cell); //true-> coincides with one patch-cell
+            if (is_there_allPatchCell)
+                break;
+        }
         if(!is_there_allPatchCell) {// Cell does not belong to any patch, so we store it.
-            allLevels_to_leaf_cells[{0, cell}] = cell_count;
             l0_to_leaf_cells[cell] = cell_count;
+            leaf_to_level_cells.push_back({0,cell});
             cell_count +=1;
         }
     }
-    std::vector<std::map<int,int>> lgrs_to_leaf_cells_vec; // Each entry of the vector corresponds to a patch.
-    // cell level idx -> cell leafview index (PER EACH LEVEL) 
-    lgrs_to_leaf_cells_vec.resize(num_patches);
     // Cells coming from LGRs, i.e. refined cells.
     for (int patch = 0; patch < num_patches; ++patch){
+        (*data_[patch +1]).level_to_leaf_cells_.resize(this->data_[patch+1]-> size(0));
+        // shifted +1 since "GLOBAL" is level0 (coarse grid). Levels are 1,2,..., num_patches.
         for (int cell = 0; cell < this->data_[patch+1]-> size(0); ++cell) {
-            lgrs_to_leaf_cells_vec[patch][cell] = cell_count;
-            allLevels_to_leaf_cells[{patch +1, cell}] = cell_count;
+            (*data_[patch +1]).level_to_leaf_cells_[cell] = cell_count;
+            leaf_to_level_cells.push_back({patch +1, cell});
             cell_count +=1;
         }
-        (*data_[patch +1]).level_to_leaf_cells_ =  lgrs_to_leaf_cells_vec[patch]; // {cell index in its level, cell index in leafview}
-        // shifted +1 since "GLOBAL" is level0 (coarse grid). Levels are 1,2,..., num_patches.
     }
     leaf_cells.resize(cell_count);
     leaf_cell_to_point.resize(cell_count);
-    leaf_to_level_cells.resize(cell_count);
-    leaf_child_to_parent_cells.resize(cell_count);
     // For cells that do not have a parent, we set {-1,-1} by defualt and rewrite later for actual children
-     const std::array<int,2>& has_no_parent = {-1,-1}; // To populate by defualt child_to_parent_cells_ for LeafView.
-    for (int cell = 0; cell < cell_count; ++cell){
-        leaf_child_to_parent_cells[cell] = has_no_parent;
-    }
+    leaf_child_to_parent_cells.resize(cell_count, std::array<int,2>({-1,-1}));
     // Auxiliary vector to store cell_to_face with non consecutive indices.
     std::map<int,std::vector<cpgrid::EntityRep<1>>> aux_cell_to_face;
-    for (const auto& [level_cellIdx, leafCellIdx] : allLevels_to_leaf_cells) {// level_cellIdx = {level0/1/.., cell index}
-        leaf_to_level_cells[leafCellIdx] = level_cellIdx;
+    for (int leafCellIdx = 0; leafCellIdx < cell_count; ++leafCellIdx){
+        const auto& level_cellIdx = leaf_to_level_cells[leafCellIdx]; // {level, cellIdx}
         const auto& level_data =  *(this->data_[level_cellIdx[0]]);
         const auto& entity =  Dune::cpgrid::EntityRep<0>(level_cellIdx[1], true);
         // Get the cell geometry.
@@ -1697,55 +1702,48 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             for (int corn = 0; corn < 8; ++corn) {
                 // Auxiliary bool to identity boundary patch corners
                 bool is_there_allPatchBoundCorn = false;
-                for (int patch = 0; patch < num_patches; ++patch) {
-                for(const auto& patch_corn : all_boundary_corners[patch]) {
-                    is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (old_cell_to_point[corn] == patch_corn);
+                for(const auto& [l0_oldCorner, level_newCorner] : old_to_new_boundaryPatchCorners) {
+                    is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (old_cell_to_point[corn] == l0_oldCorner[1]);
                     if (is_there_allPatchBoundCorn) { //true-> coincides with one boundary patch corner
-                        break; // Corner belongs to the patch boundary.
-                     leaf_cell_to_point[leafCellIdx][corn] =
-                        level_to_leaf_corners[old_to_new_boundaryPatchCorners[{0, old_cell_to_point[corn]}]];
+                        leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level_newCorner[0]][level_newCorner[1]];
+                        break; // Go to the next corner (of the bondary of a patch)
                     }
                 }
-                }
                 if(!is_there_allPatchBoundCorn) { // Corner does not belong to any patch boundary.
-                    leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[{0, old_cell_to_point[corn]}];
+                    leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[0][old_cell_to_point[corn]];
                 }
             } // end-corn-forloop
             // Cell to face.
             for (const auto& face : old_cell_to_face) {   // Auxiliary bool to identity boundary patch faces
                 bool is_there_allPatchBoundFace = false;
-                for (int patch = 0; patch < num_patches; ++patch) {
-                    //   for(const auto& bound_face : all_boundary_faces[patch]) {
-                    for (const auto& [bound_face, children_list] : all_patch_boundary_old_to_new_faces[patch]){
-                        is_there_allPatchBoundFace = is_there_allPatchBoundFace || (face.index() == bound_face);
-                        //true-> coincides with one boundary patch face
-                        if (is_there_allPatchBoundFace) { // Face belongs to one of the patch boundaries.
-                            break;
-                            for (const auto& new_face : children_list) {
-                                aux_cell_to_face[leafCellIdx].
-                                    push_back({level_to_leaf_faces[{patch +1, new_face}], face.orientation()});
-                            }
+                for (const auto& [l0_boundFace, level_childrenList] : old_to_new_boundaryPatchFaces) {
+                    // l0_boundFace = {0,face},  level_childrenList = {patch +1, children_list}
+                    is_there_allPatchBoundFace = is_there_allPatchBoundFace || (face.index() == l0_boundFace[1]);
+                    //true-> coincides with one boundary patch face
+                    if (is_there_allPatchBoundFace) { // Face belongs to one of the patch boundaries.
+                        for (const auto& new_face : std::get<1>(level_childrenList)) {
+                            aux_cell_to_face[leafCellIdx].push_back({new_face, face.orientation()});
                         }
+                        is_there_allPatchBoundFace = true;
+                        break; // Go to the next corner (on the boundary of a patch)
                     }
                 }
                 if (!is_there_allPatchBoundFace) { // Face does not belong to any of the patch boundaries.
-                    aux_cell_to_face[leafCellIdx].push_back({level_to_leaf_faces[{0, face.index()}], face.orientation()});
+                    aux_cell_to_face[leafCellIdx].push_back({level_to_leaf_faces[0][face.index()], face.orientation()});
                 }
             } // end-old_cell_to_face-forloop
         }
-            else { // Refined cells. (Cell comes from LGRs)
+        else { // Refined cells. (Cell comes from LGRs)
             // Get level where cell was created and its local index, to later deduce its parent.
             auto& [level, levelIdx]  = leaf_to_level_cells[leafCellIdx]; // {level, cell index in that level} (level != 0)
-            // int shiftedLevel = level -1;
-            leaf_child_to_parent_cells[leafCellIdx] = //all_patch_child_to_parent_cells[shiftedLevel][levelIdx]; // shifted! 
-                (*data_[level]).child_to_parent_cells_[levelIdx]; //{0, parent cell index}
+            leaf_child_to_parent_cells[leafCellIdx] = (*data_[level]).child_to_parent_cells_[levelIdx]; //{0, parent cell index}
             // Cell to point.
             for (int corn = 0; corn < 8; ++corn) {
-                leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[{level, old_cell_to_point[corn]}];
+                leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level][old_cell_to_point[corn]];
             }
             // Cell to face.
             for (auto& face : old_cell_to_face) {
-                aux_cell_to_face[leafCellIdx].push_back({level_to_leaf_faces[{level, face.index()}], face.orientation()});
+                aux_cell_to_face[leafCellIdx].push_back({level_to_leaf_faces[level][face.index()], face.orientation()});
             }
         }
     }
