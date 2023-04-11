@@ -462,7 +462,8 @@ namespace Dune
         /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
         /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
         ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-        void addLgrUpdateLeafView(std::array<int,3> cells_per_dim, std::array<int,3> startIJK, std::array<int,3> endIJK);
+        void addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
+                                  const std::array<int,3>& endIJK);
 
         /// @brief Create a grid out of a coarse one and (at most) 2 refinements(LGRs) of selected block-shaped disjoint patches
         ///        of cells from that coarse grid.

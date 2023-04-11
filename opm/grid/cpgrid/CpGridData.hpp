@@ -291,15 +291,16 @@ private:
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
     const std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief Compute corner, face, and cell indices of a patch of cells, as well as patch boundary face indices
-    ///        (Cartesian grid required).
+    /// @brief Compute corner/face/cell indices of a patch of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
     /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
     ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
-    /// @return {patch_corners, patch_faces, patch_cells, patch_boundary_Ifaces, patch_boundary_Jfaces, patch_boundary_Kfaces}
-    const std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+    /// @return patch_corners/patch_faces/patch_cells
+    const std::vector<int> getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+    const std::vector<int> getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+    const std::vector<int> getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
     /// @brief Compute patch boundary corner indices (Cartesian grid required).
     ///
@@ -647,19 +648,17 @@ private:
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs, created via CpGrid::createGridWithLgrs()). */
-    int level_;
+    int level_{0};
     /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgrs(). */
     std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
-    /** Map between level and leafview (maxLevel) cell indices. Only cells (from that level) that appear in leafview count. */  
-    std::map<int,int> level_to_leaf_cells_; // {level cell index, leafview cell index}
-    /** Parent cells and their children. Entry is {-1, {-1}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
+    /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. */  
+    std::vector<int> level_to_leaf_cells_; // In entry 'level cell index', we store 'leafview cell index'
+    /** Parent cells and their children. Entry is {-1, {}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
     std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_; 
     // SUITABLE ONLY FOR LEAFVIEW
     /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
     std::vector<std::array<int,2>> leaf_to_level_cells_;
-     /** Relation between all level cells and leafview cell indices. */ // {level, cell index in that level} -> leafview index
-    std::map<std::array<int,2>,int> allLevels_to_leaf_cells_; 
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
     std::vector<std::array<int,2>> child_to_parent_cells_; 
