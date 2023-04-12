@@ -76,11 +76,7 @@ namespace Dune
   protected:
     EntityImpl &entityImpl () const
     {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
       return entity_.impl();
-#else
-      return Grid::getRealImplementation( entity_ );
-#endif
     }
 
     ExtraData data () const { return entityImpl().data(); }

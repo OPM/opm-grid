@@ -40,30 +40,22 @@
 #include <dune/istl/owneroverlapcopy.hh>
 #endif
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 7)
 #include <dune/common/parallel/communication.hh>
 #include <dune/common/parallel/variablesizecommunicator.hh>
-#else
-#include <dune/common/parallel/collectivecommunication.hh>
-#include <opm/grid/utility/VariableSizeCommunicator.hpp>
-#endif
 
-namespace Dune
-{
-namespace cpgrid
-{
+#include <list>
+#include <map>
+
+namespace Dune {
+namespace cpgrid {
+
 struct CpGridDataTraits
 {
     /// \brief The type of the collective communication.
     using MPICommunicator = MPIHelper::MPICommunicator;
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using Communication = Dune::Communication<MPICommunicator>;
     using CollectiveCommunication = Dune::Communication<MPICommunicator>;
-#else
-    using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
-    using Communication = Dune::CollectiveCommunication<MPICommunicator>;
-#endif
 
 #ifdef HAVE_DUNE_ISTL
     /// \brief The type of the set of the attributes
@@ -74,13 +66,8 @@ struct CpGridDataTraits
 #endif
 
 #if HAVE_MPI
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     /// \brief The type of the  Communicator.
     using Communicator = Dune::VariableSizeCommunicator<>;
-#else
-    /// \brief The type of the Communicator.
-    using Communicator = Opm::VariableSizeCommunicator<>;
-#endif
 
     /// \brief The type of the map describing communication interfaces.
     using InterfaceMap = Communicator::InterfaceMap;

@@ -37,12 +37,7 @@ void initialize(const G& grid, const M& mapper, V& c)
             it->geometry().global(local);
         // Dune::FieldVector<ct, dimworld> global = it->geometry().position();
 
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 4)
         // initialize cell concentration
         c[mapper.index(*it)] = c0(global);
-#else
-        // initialize cell concentration
-        c[mapper.map(*it)] = c0(global);
-#endif
     }
 }

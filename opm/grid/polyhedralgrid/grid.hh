@@ -16,11 +16,7 @@
 //- dune-grid includes
 #include <dune/grid/common/grid.hh>
 
-#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 7)
 #include <dune/common/parallel/communication.hh>
-#else
-#include <dune/common/parallel/collectivecommunication.hh>
-#endif
 
 //- polyhedralgrid includes
 #include <opm/grid/polyhedralgrid/capabilities.hh>
@@ -126,12 +122,8 @@ namespace Dune
       typedef GlobalIdSet  LocalIdSet;
 
       typedef Dune::MPIHelper::MPICommunicator MPICommunicator;
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
       using Communication = Dune::Communication<MPICommunicator>;
       using CollectiveCommunication = Dune::Communication<MPICommunicator>;
-#else
-      using CollectiveCommunication = Dune::CollectiveCommunication<MPICommunicator>;
-#endif
 
       template< PartitionIteratorType pitype >
       struct Partition
@@ -316,14 +308,8 @@ namespace Dune
     typedef typename Traits::ctype ctype;
 
     //! communicator with all other processes having some part of the grid
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
     using Communication = typename Traits::Communication;
     using CommunicationType = Communication;
-#else
-    using CollectiveCommunication = typename Traits::CollectiveCommunication;
-    using Communication = CollectiveCommunication;
-    using CommunicationType = CollectiveCommunication;
-#endif
 
     typedef typename Traits :: GlobalCoordinate GlobalCoordinate;
 

@@ -67,11 +67,7 @@ namespace Dune
   protected:
     IntersectionImpl &intersectionImpl () const
     {
-#if DUNE_VERSION_NEWER(DUNE_GRID, 2, 7)
       return intersection_.impl();
-#else
-      return Grid::getRealImplementation( intersection_ );
-#endif
     }
 
     mutable Intersection intersection_;
