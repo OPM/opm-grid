@@ -458,7 +458,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
         DefaultGeometryPolicy local_geometry;
         std::array<int,8> localEntity_to_point;
         std::array<int,8> allcorners_localEntity;
-        EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners = local_geometry.geomVector(std::integral_constant<int,3>());
+        EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners = local_geometry.geomVector<codim>();
         local_corners.resize(8);
         // Get IJK index of the entity.
         std::array<int,3> eIJK;
@@ -466,7 +466,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
         // Get dimension of the grid.
         const auto& grid_dim = pgrid_ -> logicalCartesianSize(); // {cells_per_dim[0]*patch_dim[0] ...[1], ...[2]}
         // Get the local coordinates of the entity (in the reference unit cube).
-        local_corners = {
+        const std::vector<FieldVector<double, 3>>& local_corners_temp = {
             // corner '0'
             { double(eIJK[0])/grid_dim[0], double(eIJK[1])/grid_dim[1], double(eIJK[2])/grid_dim[2] },
             // corner '1'
@@ -486,6 +486,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
         // Compute the center of the 'local-entity'.
         Dune::FieldVector<double, 3> local_center = {0., 0.,0.};
         for (int corn = 0; corn < 8; ++corn) {
+            local_corners[corn] = local_corners_temp[corn];
             local_center += local_corners[corn].center()/8.;
         }
         // Compute the volume of the 'local-entity'.
@@ -496,7 +497,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
         const int* localEntity_indices_storage_ptr = &allcorners_localEntity[0];
         // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
         return Dune::cpgrid::Geometry<3,3>(local_center, local_volume,
-                                           local_geometry.geomVector(std::integral_constant<int,3>()), localEntity_indices_storage_ptr);
+                                           local_geometry.geomVector<codim>(), localEntity_indices_storage_ptr);
     }
 }
 
