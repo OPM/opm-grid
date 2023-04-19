@@ -230,7 +230,7 @@ namespace Dune
             ///        Currently, LGR is built via refinement of a block-shaped patch from the coarse grid. So the LocalGeometry
             ///        of an entity coming from the LGR is one of the refined cells of the unit cube, with suitable amount of cells
             ///        in each direction.
-            Dune::cpgrid::Geometry<3,3> geometryInFather();
+            Dune::cpgrid::Geometry<3,3> geometryInFather() const;
             
             /// Returns true if any of my intersections are on the boundary.
             /// Implementation note:
@@ -302,7 +302,7 @@ namespace Dune
   HierarchicIterator Entity<codim>::hbegin(int maxLevel) const 
   {
       // Creates iterator with first child as target if there is one. Otherwise empty stack and target.
-      return HierarchicIterator(*pgrid_, *this, maxLevel);
+      return HierarchicIterator(*this, maxLevel);
   }
 
   /// Dummy beyond last child iterator.
@@ -448,12 +448,13 @@ Entity<0> Entity<codim>::father() const
 }
 
 template<int codim>
-Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() 
+Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() const
 {
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
     else{
+#if 0
         //
         DefaultGeometryPolicy local_geometry;
         std::array<int,8> localEntity_to_point;
@@ -498,6 +499,9 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
         // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
         return Dune::cpgrid::Geometry<3,3>(local_center, local_volume,
                                            local_geometry.geomVector<codim>(), localEntity_indices_storage_ptr);
+#endif
+        OPM_THROW(std::logic_error, "geometryInFather() not implemented");
+        return {};
     }
 }
 
