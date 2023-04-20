@@ -156,6 +156,10 @@ namespace Opm
         for (int jj = 0; jj < dims_[1]; ++jj) {
             for (int ii = 0; ii < dims_[0]; ++ii) {
                 for (int kk = 0; kk < dims_[2]; ++kk) {
+                    // We only support a corner case for option ALL
+                    // (where one of cells in-between has 0 transmissibility)
+                    // This bool is to keep track whether this is such
+                    // a case
                     bool option4ALLSupported = false;
                     const int c = ii + dims_[0] * (jj + dims_[1] * kk);
                     if (pv[c] < minpvv[c] && (actnum.empty() || actnum[c])) {
