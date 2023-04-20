@@ -102,30 +102,79 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     BOOST_CHECK( (*coarse_grid.data_[1]).parent_to_children_cells_.empty());
     BOOST_CHECK( (*coarse_grid.data_[2]).parent_to_children_cells_.empty());
     const auto& [patch_corners, patch_faces, patch_cells] = (*coarse_grid.data_[0]).getPatchGeomIndices(start_ijk, end_ijk);
+    double referenceElem_cellifiedPatch_volume = 0.; // Expected volume = patch_dim[0]*...[1]*...[2] (= patch_cells.size())
     for (int cell = 0; cell<  data[0]-> size(0); ++cell)
     {
         Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
         BOOST_CHECK( entity.hasFather() == false);
         BOOST_CHECK_THROW(entity.father(), std::logic_error);
-        const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[cell]; 
+        BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+        auto it = entity.hbegin(coarse_grid.maxLevel());
+        auto endIt = entity.hend(coarse_grid.maxLevel());
+        const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[entity.index()];
         if (std::find(patch_cells.begin(), patch_cells.end(), cell) == patch_cells.end()){
             BOOST_CHECK_EQUAL(std::get<0>(parent_to_children), -1);
             BOOST_CHECK_EQUAL(std::get<1>(parent_to_children)[0], -1);
-            BOOST_CHECK( entity.isLeaf() == true);
+            BOOST_CHECK( entity.isLeaf() == true);   
+            // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
+            BOOST_CHECK( it == endIt);
         }
         else{
             BOOST_CHECK(std::get<1>(parent_to_children).size() > 0);
             BOOST_CHECK(std::get<0>(parent_to_children) != -1);
             BOOST_CHECK( entity.isLeaf() == false);
+            // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
+            BOOST_CHECK_EQUAL( it == endIt, false);
+            // Auxiliary int to check amount of children
+            int total_children = 0;
+            for (; it != endIt; ++it)
+            {
+                // Do something with the son available through it->
+                BOOST_CHECK(it ->hasFather() == true);
+                BOOST_CHECK(it ->level() == 1);
+                std::cout << it->index() << '\n';
+                total_children += 1;
+            }
+            std::cout << "Entity Index: " << entity.index() << " has " << total_children << " children" << '\n';
+            double referenceElem_entity_volume = 0.;
+            std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
+            for (const auto& child : std::get<1>(parent_to_children))
+            {
+                Dune::cpgrid::Entity<0> child_entity = Dune::cpgrid::Entity<0>(*data[1], child, true);
+                BOOST_CHECK( child_entity.hasFather() == true);
+                const auto& child_entity_geomInFather = child_entity.geometryInFather();
+                referenceElem_entity_volume += child_entity_geomInFather.volume();
+                referenceElem_cellifiedPatch_volume += child_entity_geomInFather.volume();
+                for (int c = 0; c < 3; ++c)
+                {
+                    referenceElem_entity_center[c] += child_entity_geomInFather.center()[c];
+                }
+            }
+            for (int c = 0; c < 3; ++c)
+            {
+                referenceElem_entity_center[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
+            }
+            BOOST_CHECK( referenceElem_entity_volume == 1);
+            BOOST_CHECK( referenceElem_entity_center[0] == 0.5);
+            BOOST_CHECK( referenceElem_entity_center[1] == 0.5);
+            BOOST_CHECK( referenceElem_entity_center[2] == 0.5);
         }
         BOOST_CHECK( entity.level() == 0);
     }
+    BOOST_CHECK( referenceElem_cellifiedPatch_volume == patch_cells.size());
+   
+
+
 
     
     for (int cell = 0; cell<  data[1]-> size(0); ++cell)
     {
         Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[1]), cell, true);
         BOOST_CHECK( entity.hasFather() == true);
+        const auto& entity_geomInFather = entity.geometryInFather();
+        BOOST_CHECK(entity_geomInFather.volume() == 1./((*data[1]).parent_to_children_cells_dim_[0]*
+                                                        (*data[1]).parent_to_children_cells_dim_[1]*
+                                                        (*data[1]).parent_to_children_cells_dim_[2]));
         BOOST_CHECK(entity.father().level() == 0);
         BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
         const auto& child_to_parent = (*coarse_grid.data_[1]).child_to_parent_cells_[cell];
@@ -140,15 +189,42 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[2]), cell, true);
         const auto& child_to_parent = (*coarse_grid.data_[2]).child_to_parent_cells_[cell];
         if (entity.hasFather()){
+            const auto& entity_geomInFather = entity.geometryInFather();
+            BOOST_CHECK(entity_geomInFather.volume() == 1./((*data[1]).parent_to_children_cells_dim_[0]*
+                               (*data[1]).parent_to_children_cells_dim_[1]*(*data[1]).parent_to_children_cells_dim_[2]));
              BOOST_CHECK(entity.father().level() == 0);
              BOOST_CHECK_EQUAL( (std::find(patch_cells.begin(), patch_cells.end(), entity.father().index()) == patch_cells.end()), false);
              BOOST_CHECK(!(child_to_parent[0] == -1));
              BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
              BOOST_CHECK( entity.father().isLeaf() == false);
              BOOST_CHECK( entity.level() == 1);
+             const auto& parent_to_children = (*coarse_grid.data_[0]).parent_to_children_cells_[entity.father().index()];
+             double referenceElem_entity_volume = 0.;
+             std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
+             for (const auto& child : std::get<1>(parent_to_children))
+             {
+                 Dune::cpgrid::Entity<0> child_entity = Dune::cpgrid::Entity<0>(*data[1], child, true);
+                 BOOST_CHECK( child_entity.hasFather() == true);
+                 const auto& child_entity_geomInFather = child_entity.geometryInFather();
+                 referenceElem_entity_volume += child_entity_geomInFather.volume();
+                 referenceElem_cellifiedPatch_volume += child_entity_geomInFather.volume();
+                 for (int c = 0; c < 3; ++c)
+                 {
+                     referenceElem_entity_center[c] += child_entity_geomInFather.center()[c];
+                 }
+             }
+             for (int c = 0; c < 3; ++c)
+             {
+                 referenceElem_entity_center[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
+             }
+             BOOST_CHECK( referenceElem_entity_volume == 1);
+             BOOST_CHECK( referenceElem_entity_center[0] == 0.5);
+             BOOST_CHECK( referenceElem_entity_center[1] == 0.5);
+             BOOST_CHECK( referenceElem_entity_center[2] == 0.5);
         }
         else{
             BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
             BOOST_CHECK_EQUAL( child_to_parent[0], -1);
             BOOST_CHECK( entity.level() == 0);
         }
@@ -217,7 +293,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
         std::cout <<"point "<<i++<<": ";
         for(const auto& coord: point.center())
             std::cout << coord<< " ";
-        std::cout <<std::endl;
+            std::cout <<std::endl;
         for(const auto& coord: point.center())
         BOOST_TEST(std::isfinite(coord)); 
         ++equiv_point_iter;
@@ -230,7 +306,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
         std::cout <<"cell "<<j++<<": ";
         for(const auto& coord: cell.center())
             std::cout << coord<< " ";
-        std::cout <<std::endl;
+            std::cout <<std::endl;
         for(const auto& coord: cell.center())
         BOOST_TEST(std::isfinite(coord));
         BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);

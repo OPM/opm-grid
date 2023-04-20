@@ -83,8 +83,7 @@ namespace Dune
                 static_assert(codim != 2, "");
                 return geomVector(std::integral_constant<int,codim>());
             }
-
-        private:
+            
             /// \brief Get cell geometry
             const EntityVariable<cpgrid::Geometry<3, 3>, 0>& geomVector(const std::integral_constant<int, 0>&) const
             {
@@ -119,6 +118,8 @@ namespace Dune
                 static_assert(codim==3, "Codim has to be 3");
                 return point_geom_;
             }
+            
+        private:
             EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
             EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
             EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;

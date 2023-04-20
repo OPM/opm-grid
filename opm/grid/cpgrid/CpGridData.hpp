@@ -625,6 +625,8 @@ private:
     std::map<int,int> level_to_leaf_cells_; // {level cell index, leafview cell index}
     /** Parent cells and their children. Entry is {-1, {-1}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
     std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_;
+    /** Amount of children cells per parent cell in each direction. */ // {# children in x-direction, ... y-, ... z-}
+    std::array<int,3> parent_to_children_cells_dim_;
     // SUITABLE ONLY FOR LEAFVIEW
     /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
     std::vector<std::array<int,2>> leaf_to_level_cells_; 

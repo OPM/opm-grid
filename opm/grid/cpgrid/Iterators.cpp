@@ -4,7 +4,7 @@
 //
 // Created: Mon February 20  14:02:00 2023
 //
-// Author(s): Antonella Ritorto <antonella.ritortoopm-op.com>  ??? TO BE DOUBLE-CHECKED 
+// Author(s): Antonella Ritorto <antonella.ritorto.opm-op.com> 
 //            
 //
 // $Date$
@@ -43,11 +43,12 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 void Dune::cpgrid::HierarchicIterator::stackChildren_(const Entity<0>& target)
 {
     // Load sons of target onto the iterator stack
-    if (target.level() < maxLevel_ && !target.isLeaf()){
-        const auto& children_list_indices = std::get<1>(target.pgrid_ -> parent_to_children_cells_[target.index()]);
+    if (!target.isLeaf()){
+        const auto& [lgr_level, children_list] = target.pgrid_-> parent_to_children_cells_[target.index()];
         // GET CHILD GRID
-        for (const auto& child : children_list_indices){
-            this->elemStack_.push(Entity<0>(*(target.pgrid_), child, true)); // CORRECT THE CPGRIDDATA, GET THE CHILD-GRID
+        const auto& lgr_grid =  (*(target.pgrid_-> level_data_ptr_))[lgr_level];
+        for (const auto& child : children_list){
+            this->elemStack_.push(Entity<0>(*lgr_grid, child, true));
         }
     }
 }
@@ -55,6 +56,6 @@ void Dune::cpgrid::HierarchicIterator::resetEntity_()
 {
     // Create an invalid entity, to set in case elemStack_ is empty.
     // Otherwise, a pointer pointing at the to element of elemStack_.
-    virtualEntity_ = elemStack_.empty() ? Entity<0>() : elemStack_.top();
+    virtualEntity_ = elemStack_.empty() ? Entity<0>(Entity<0>::InvalidIndex, true) : elemStack_.top();
 }
 

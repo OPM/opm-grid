@@ -41,6 +41,7 @@
 #include <dune/grid/common/gridenums.hh>
 
 #include "PartitionTypeIndicator.hpp"
+#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 
 
 namespace Dune
@@ -121,6 +122,12 @@ namespace Dune
             /// Constructor taking a grid, entity index, and orientation.
             Entity(const CpGridData& grid, int index_arg, bool orientation_arg)
                 : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid)
+            {
+            }
+
+            /// Constructor taking a entity index, and orientation.
+            Entity(int index_arg, bool orientation_arg)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_()
             {
             }
 
@@ -225,12 +232,12 @@ namespace Dune
             /// @return father-entity
             Entity<0> father() const; 
 
-            /// @brief Return LocalGeometry representing the embedding of the entity inti its father (when hasFather() is true).
+            /// @brief Return LocalGeometry representing the embedding of the entity into its father (when hasFather() is true).
             ///        Map from the entity's reference element into the reference element of its father.
             ///        Currently, LGR is built via refinement of a block-shaped patch from the coarse grid. So the LocalGeometry
             ///        of an entity coming from the LGR is one of the refined cells of the unit cube, with suitable amount of cells
             ///        in each direction.
-            Dune::cpgrid::Geometry<3,3> geometryInFather();
+            Dune::cpgrid::Geometry<3,3> geometryInFather() const;
             
             /// Returns true if any of my intersections are on the boundary.
             /// Implementation note:
@@ -253,9 +260,11 @@ namespace Dune
             /// isValid method for EntitySeed
             /// \return return true if seed is pointing to a valid entity
             bool isValid () const;
-
+            
         protected:
             const CpGridData* pgrid_;
+            DefaultGeometryPolicy local_geometry_;
+            const int* local_geometry_indices_storage_ptr;
         };
 
     } // namespace cpgrid
@@ -302,7 +311,7 @@ namespace Dune
   HierarchicIterator Entity<codim>::hbegin(int maxLevel) const 
   {
       // Creates iterator with first child as target if there is one. Otherwise empty stack and target.
-      return HierarchicIterator(*pgrid_, *this, maxLevel);
+      return HierarchicIterator(*this, maxLevel);
   }
 
   /// Dummy beyond last child iterator.
@@ -384,7 +393,7 @@ bool Entity<codim>::hasBoundaryIntersections() const
 template <int codim>
 bool Entity<codim>::isValid() const
 {
-    return pgrid_ ? EntityRep<codim>::index() < pgrid_->size(codim) : false;
+    return pgrid_ ?  EntityRep<codim>::index() < pgrid_->size(codim) : false;
 }
 
 
@@ -443,46 +452,74 @@ Entity<0> Entity<codim>::father() const
     }
     const int& coarse_level = pgrid_ -> child_to_parent_cells_[this->index()][0];
     const int& parent_index = pgrid_ -> child_to_parent_cells_[this->index()][1];
-    const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[coarse_level].get(); 
-    return Entity<0>( *coarse_grid, parent_index, true); 
+    const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[coarse_level].get();
+    return Entity<0>( *coarse_grid, parent_index, true);
 }
 
 template<int codim>
-Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() 
+Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() const
 {
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
     else{
         //
-        DefaultGeometryPolicy local_geometry;
-        std::array<int,8> localEntity_to_point;
+        DefaultGeometryPolicy local_geometry = this -> local_geometry_;
         std::array<int,8> allcorners_localEntity;
-        EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners = local_geometry.geomVector<codim>();
+        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners
+            = local_geometry.geomVector(std::integral_constant<int,3>());
         local_corners.resize(8);
         // Get IJK index of the entity.
         std::array<int,3> eIJK;
-        pgrid_ -> getIJK(this->index(), eIJK);
-        // Get dimension of the grid.
-        const auto& grid_dim = pgrid_ -> logicalCartesianSize(); // {cells_per_dim[0]*patch_dim[0] ...[1], ...[2]}
+        // Get the amount of children cell in each direction of the parent cell of the entity (same for all parents of each LGR)
+        std::array<int,3> cells_per_dim;
+        // Get "child0" IJK in the LGR
+        std::array<int,3> child0_IJK;
+        const auto& level0_grid =  (*(pgrid_->level_data_ptr_))[0];
+        const auto& child0_Idx = std::get<1>((*level0_grid).parent_to_children_cells_[this->father().index()])[0];
+        // If pgrid_ is the leafview, go to the LGR where the entity was born to get its IJK index in the LGR and the LGR dimension.
+        if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) // checking if pgrid_ is the LeafView 
+        {
+           const auto& lgr_grid = (*(pgrid_->level_data_ptr_))[this -> level()];
+           cells_per_dim = (*lgr_grid).parent_to_children_cells_dim_;
+           const auto& entity_lgrIdx = pgrid_ -> leaf_to_level_cells_[this->index()][1];
+           (*lgr_grid).getIJK(entity_lgrIdx, eIJK);
+           (*lgr_grid).getIJK(child0_Idx, child0_IJK);
+        }
+        else // Getting grid dimension and IJK entity index when pgrid_ is an LGR
+        {
+            pgrid_ -> getIJK(this->index(), eIJK);
+            cells_per_dim = pgrid_ -> parent_to_children_cells_dim_;
+            pgrid_ -> getIJK(child0_Idx, child0_IJK);
+        }
+        // Transform the local coordinates that comes from the refinemnet in such a way that the
+        // reference element of each parent cell is the unit cube. Here, eIJK[*]/cells_per_dim[*]
         // Get the local coordinates of the entity (in the reference unit cube).
         const std::vector<FieldVector<double, 3>>& local_corners_temp = {
             // corner '0'
-            { double(eIJK[0])/grid_dim[0], double(eIJK[1])/grid_dim[1], double(eIJK[2])/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
             // corner '1'
-            { (double(eIJK[0])+1)/grid_dim[0], double(eIJK[1])/grid_dim[1], double(eIJK[2])/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
             // corner '2'
-            { double(eIJK[0])/grid_dim[0], (double(eIJK[1])+1)/grid_dim[1], double(eIJK[2])/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
             // corner '3'
-            { (double(eIJK[0])+1)/grid_dim[0], (double(eIJK[1])+1)/grid_dim[1], double(eIJK[2])/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
             // corner '4'
-            { double(eIJK[0])/grid_dim[0], double(eIJK[1])/grid_dim[1], (double(eIJK[2])+1)/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
             // corner '5'
-            { (double(eIJK[0])+1)/grid_dim[0], double(eIJK[1])/grid_dim[1], (double(eIJK[2])+1)/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
             // corner '6'
-            { double(eIJK[0])/grid_dim[0], (double(eIJK[1])+1)/grid_dim[1], (double(eIJK[2])+1)/grid_dim[2] },
+            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
             // corner '7'
-            { (double(eIJK[0])+1)/grid_dim[0], (double(eIJK[1])+1)/grid_dim[1], (double(eIJK[2])+1)/grid_dim[2] }};
+            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
+              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] }};
         // Compute the center of the 'local-entity'.
         Dune::FieldVector<double, 3> local_center = {0., 0.,0.};
         for (int corn = 0; corn < 8; ++corn) {
@@ -490,15 +527,17 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather()
             local_center += local_corners[corn].center()/8.;
         }
         // Compute the volume of the 'local-entity'.
-        double local_volume = double(1)/(grid_dim[0]*grid_dim[1]*grid_dim[2]);
+        double local_volume = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
         // Indices of 'all the corners', in this case, 0-7 (required to construct a Geometry<3,3> object).
-        allcorners_localEntity= {0,1,2,3,4,5,6,7};
+        allcorners_localEntity = {0,1,2,3,4,5,6,7};
         // Create a pointer to the first element of "cellfiedPatch_to_point" (required to construct a Geometry<3,3> object).
-        const int* localEntity_indices_storage_ptr = &allcorners_localEntity[0];
+        const int* localEntity_indices_storage_ptr = this -> local_geometry_indices_storage_ptr;
+        localEntity_indices_storage_ptr = &allcorners_localEntity[0];
         // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
-        return Dune::cpgrid::Geometry<3,3>(local_center, local_volume,
-                                           local_geometry.geomVector<codim>(), localEntity_indices_storage_ptr);
+        return Dune::cpgrid::Geometry<3,3>(local_center, local_volume, local_geometry.geomVector(std::integral_constant<int,3>()),
+                                           localEntity_indices_storage_ptr);
     }
+    
 }
 
 } // namespace cpgrid

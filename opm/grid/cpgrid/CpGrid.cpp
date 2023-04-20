@@ -1362,7 +1362,8 @@ template cpgrid::Entity<3> Dune::createEntity(const CpGrid&, int, bool);
 template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp 
 
 
-void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
+void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
+                                  const std::array<int,3>& endIJK)
 {
     if (!distributed_data_.empty()){
         if (comm().rank()==0)
@@ -1404,8 +1405,12 @@ void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const 
     // For cells with no parent, we set {-1,-1}. Entries with actual parents will be rewritten.
     const std::array<int,2>& no_parent = {-1,-1};
     l1_child_to_parent_cells.resize(data_[1]-> size(0));
+    // Assuming ALL cells are active
+    std::vector<int>& l1_global_cell = (*data_[1]).global_cell_;
+    l1_global_cell.reserve(data_[1]->size(0));
     for (int cell = 0; cell < data_[1]->size(0); ++cell){
         l1_child_to_parent_cells[cell] = no_parent;
+        l1_global_cell[cell] = cell;
     }
     // Rewrite entries for actual parents in level0 and actual children in level1.
     for (const auto& [parent, children] : parent_to_children_cells) {
@@ -1417,6 +1422,10 @@ void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const 
     // LEVEL 1, definition/declaration of some members:
     (*data_[1]).level_data_ptr_ = &(this -> data_);
     (*data_[1]).level_ = 1;
+    (*data_[1]).parent_to_children_cells_dim_ = cells_per_dim;
+    // Assuming Cartesian Grid Shape (GLOBAL grid is required to be Cartesian)
+    (*data_[1]).logical_cartesian_size_ = {cells_per_dim[0]*(endIJK[0]-startIJK[0]),
+        cells_per_dim[1]*(endIJK[1]-startIJK[1]), cells_per_dim[2]*(endIJK[2]-startIJK[2])};
     // Relation between level and leafview cell indices.
     std::map<int,int>& l1_to_leaf_cells = (*data_[1]).level_to_leaf_cells_;
     //
