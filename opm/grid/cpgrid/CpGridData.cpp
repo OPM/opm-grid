@@ -1685,12 +1685,12 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 #endif
 }
 
-const std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
 }
 
-const std::vector<int> CpGridData::getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::vector<int> CpGridData::getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
     const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
@@ -1709,7 +1709,7 @@ const std::vector<int> CpGridData::getPatchCorners(const std::array<int,3>& star
     return patch_corners;
 }
 
-const std::vector<int> CpGridData::getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::vector<int> CpGridData::getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
     const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
@@ -1754,7 +1754,7 @@ const std::vector<int> CpGridData::getPatchFaces(const std::array<int,3>& startI
     return patch_faces;
 }
 
-const std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
     const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
@@ -1773,7 +1773,7 @@ const std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startI
     return patch_cells;
 }
 
-const std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
     const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
@@ -1809,36 +1809,35 @@ bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_
     for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
         // Auxiliary bool
         bool patch_disjoint_with_otherPatches = true;
-         for (long unsigned int other_patch = 0; other_patch < startIJK_vec.size(); ++other_patch){
-             if (patch!=other_patch){
-              patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches &&
-                  ((startIJK_vec[patch] < startIJK_vec[other_patch]) || (startIJK_vec[patch] > endIJK_vec[other_patch]))
-                  &&  ((endIJK_vec[patch] < startIJK_vec[other_patch]) || (endIJK_vec[patch] > endIJK_vec[other_patch]));
-             }
-         }
-         disjoint = disjoint && patch_disjoint_with_otherPatches; // false if one of them is false
+        for (long unsigned int other_patch = 0; other_patch < startIJK_vec.size(); ++other_patch){
+            if (patch!=other_patch){
+                patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches &&
+                    ((startIJK_vec[patch] < startIJK_vec[other_patch]) || (startIJK_vec[patch] > endIJK_vec[other_patch]))
+                    &&  ((endIJK_vec[patch] < startIJK_vec[other_patch]) || (endIJK_vec[patch] > endIJK_vec[other_patch]));
+            }
+        }
+        disjoint = disjoint && patch_disjoint_with_otherPatches; // false if one of them is false
     }
     return disjoint;
 }
 
-const std::vector<int>
+std::vector<int>
 CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
 {
     std::vector<int> all_cells;
     for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
         /// PATCH CELLS
-        for (const auto& cell : CpGridData::getPatchCells(startIJK_vec[patch], endIJK_vec[patch])){
-            all_cells.push_back(cell);
-        }
+        const auto& patch_cells = CpGridData::getPatchCells(startIJK_vec[patch], endIJK_vec[patch]);
+        all_cells.insert(all_cells.end(), patch_cells.begin(), patch_cells.end());
     }
     return all_cells;
 }
 
 
-const Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
-                                             const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
-                                             std::array<int,8>& cellifiedPatch_to_point,
-                                             std::array<int,8>& allcorners_cellifiedPatch) const
+Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
+                                       const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
+                                       std::array<int,8>& cellifiedPatch_to_point,
+                                       std::array<int,8>& allcorners_cellifiedPatch) const
 {
     if (patch_cells.empty()){
         OPM_THROW(std::logic_error, "Empty patch. Cannot convert patch into cell.");
@@ -1898,12 +1897,12 @@ const Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, 
     }
 }
 
-const std::tuple< const std::shared_ptr<CpGridData>,
-                  const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
-                  const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
-                  const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
-                  const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                  const std::vector<std::array<int,2>>>                // child_to_parent_cells
+std::tuple< const std::shared_ptr<CpGridData>,
+            const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
+            const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
+            const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
+            const std::vector<std::array<int,2>>,                // child_to_parent_faces
+            const std::vector<std::array<int,2>>>                // child_to_parent_cells
 CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const
 {
     // To store the LGR/refined-grid.
@@ -2026,13 +2025,13 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
         child_to_parent_faces, child_to_parent_cell};
 }
 
-const std::tuple< std::shared_ptr<CpGridData>,
-                  const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
-                  const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
-                  const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
-                  const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
-                  const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                  const std::vector<std::array<int,2>>>                // child_to_parent_cells
+std::tuple< std::shared_ptr<CpGridData>,
+            const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
+            const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
+            const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
+            const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
+            const std::vector<std::array<int,2>>,                // child_to_parent_faces
+            const std::vector<std::array<int,2>>>                // child_to_parent_cells
 CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
                         const std::array<int,3>& endIJK) const
 {
@@ -2056,7 +2055,6 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& refined_face_normals = refined_grid.face_normals_;
     // Patch dimension (amount of cells in each direction).
     const auto& patch_dim = getPatchDim(startIJK, endIJK);
-    const auto& patch_corners = getPatchCorners(startIJK, endIJK);
     const auto& patch_faces = getPatchFaces(startIJK, endIJK);
     const auto& patch_cells = getPatchCells(startIJK, endIJK);
     // Construct the Geometry of the cellified patch.
