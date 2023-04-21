@@ -42,6 +42,7 @@
 #include "Geometry.hpp"
 
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FaceDir.hpp>
 
 #include <opm/grid/common/GeometryHelpers.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
@@ -160,7 +161,21 @@ namespace cpgrid
             const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
             const bool nogap = !pinchActive || ecl_grid.getPinchGapMode() ==  Opm::PinchMode::NOGAP;
             const auto& poreVolume = ecl_state->fieldProps().porv(true);
-            minpv_result = mp.process(thickness, z_tolerance, poreVolume, ecl_grid.getMinpvVector(), actnumData, false, zcornData.data(), nogap);
+            const auto& fp = ecl_state->fieldProps();
+            const auto& permZ = fp.has_double("PERMX") ? (fp.has_double("PERMZ") ?
+                                                          fp.get_global_double("PERMZ") :
+                                                          fp.get_global_double("PERMX"))
+                : std::vector<double>();
+            const bool pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
+            auto& transMult = ecl_state->getTransMult();
+            auto multZ =[ &transMult] (int cartindex) {
+                return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
+                    transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
+            };
+            minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
+                                      poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
+                                      zcornData.data(), nogap, pinchOptionALL,
+                                      permZ, multZ);
             if (!minpv_result.nnc.empty()) {
                 this->zcorn = zcornData;
             }
