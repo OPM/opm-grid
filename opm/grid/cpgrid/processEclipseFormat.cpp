@@ -149,10 +149,10 @@ namespace cpgrid
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
         Opm::MinpvProcessor::Result minpv_result;
 
-        // Possibly process MINPV
-        if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::Inactive)) {
+        // Possibly process MINPV and PINCH
+        // This even needs to be done if neither of them is specified.
+        if (ecl_state ) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            // Currently PINCH is always assumed to be active
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
