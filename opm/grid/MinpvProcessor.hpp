@@ -173,6 +173,12 @@ namespace Opm
                         setCellZcorn(ii, jj, kk, cz, zcorn);
                         result.removed_cells.push_back(c);
 
+                        if (kk == dims_[2] - 1) {
+                            // this is cell at the bottom of the grid
+                            // no neighbor below for an NNC.
+                            continue;
+                        }
+
                         // \todo revisit. Maybe instead of keeping track based on cell thickness
                         // we should rather calculate that based on the appropriate corners of the
                         // upper and lower cell
