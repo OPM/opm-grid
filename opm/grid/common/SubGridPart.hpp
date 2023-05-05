@@ -100,6 +100,16 @@ struct SubGridPartTraits {
 };
 
 
+/// \brief A class to represent a part of a grid, similar to a GridView.
+///
+/// The differences from a GridView are:
+///   - The SubGridPart consists of a set of elements (codim 0 entities),
+///     considered to be Interior, and their neighbours, considered to be Overlap.
+///   - When iterating over intersections on the elements, and accessing the outside()
+///     elements, this can give you access to grid entities that are not in the
+///     SubGridPart itself. This can only happen for intersections in the Overlap part.
+///     For intersections of elements in the Interior part, the outside() element will
+///     be either Interior or Overlap.
 template <class GridImp>
 class SubGridPart
 {
