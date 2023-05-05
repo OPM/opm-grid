@@ -102,7 +102,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_sparsetable.cpp
   tests/test_quadratures.cpp
   tests/test_compressed_cartesian_mapping.cpp
-  tests/test_subgridview.cpp
+  tests/test_subgridpart.cpp
 	)
 
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
@@ -185,7 +185,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
-  opm/grid/common/SubGridView.hpp
+  opm/grid/common/SubGridPart.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp
   opm/grid/polyhedralgrid/capabilities.hh

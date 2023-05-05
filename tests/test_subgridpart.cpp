@@ -10,7 +10,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 
-#include <opm/grid/common/SubGridView.hpp>
+#include <opm/grid/common/SubGridPart.hpp>
 
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
@@ -157,23 +157,23 @@ void testGrid(Grid& grid, const std::string& name, const std::size_t nElem, cons
 
     {
         // Testing with overlap
-        Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), true);
+        Dune::SubGridPart<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), true);
         const std::size_t sz = sgv.size(0);
         BOOST_CHECK(sz > 3);
         const std::size_t overlap = sgv.overlapSize(0);
         BOOST_CHECK_EQUAL(sz, overlap + 3);
         testGridInteriorIteration(sgv, 3);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Interior_Partition>(sgv, 3);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::All_Partition>(sgv, sz);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Overlap_Partition>(sgv, overlap);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::Interior_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::All_Partition>(sgv, sz);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::Overlap_Partition>(sgv, overlap);
     }
     {
         // Testing without overlap
-        Dune::SubGridView<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), false);
+        Dune::SubGridPart<Grid> sgv(grid, getSeeds(grid, {0, 1, 2}), false);
         testGridInteriorIteration(sgv, 3);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Interior_Partition>(sgv, 3);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::All_Partition>(sgv, 3);
-        testGridPartitionIteration<Dune::SubGridView<Grid>, Dune::Overlap_Partition>(sgv, 0);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::Interior_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::All_Partition>(sgv, 3);
+        testGridPartitionIteration<Dune::SubGridPart<Grid>, Dune::Overlap_Partition>(sgv, 0);
     }
 }
 

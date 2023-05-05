@@ -8,8 +8,8 @@
 // Copyright 2021 Dune contributors.
 // Copyright 2021 SINTEF Digital, Mathematics and Cybernetics.
 
-#ifndef OPM_SUBGRIDVIEW_HEADER
-#define OPM_SUBGRIDVIEW_HEADER
+#ifndef OPM_SUBGRIDPART_HEADER
+#define OPM_SUBGRIDPART_HEADER
 
 #include <dune/common/exceptions.hh>
 #include <dune/common/typetraits.hh>
@@ -31,11 +31,11 @@ namespace Dune
 {
 
 template <class GridImp>
-class SubGridView;
+class SubGridPart;
 
 template <class GridImp>
-struct SubGridViewTraits {
-    using GridViewImp = SubGridView<GridImp>;
+struct SubGridPartTraits {
+    using GridPartImp = SubGridPart<GridImp>;
 
     /** \brief type of the grid */
     using Grid = typename std::remove_const<GridImp>::type;
@@ -101,12 +101,12 @@ struct SubGridViewTraits {
 
 
 template <class GridImp>
-class SubGridView
+class SubGridPart
 {
-    using ThisType = SubGridView<GridImp>;
+    using ThisType = SubGridPart<GridImp>;
 
 public:
-    using Traits = SubGridViewTraits<GridImp>;
+    using Traits = SubGridPartTraits<GridImp>;
 
     /** \brief type of the grid */
     using Grid = typename Traits::Grid;
@@ -131,7 +131,7 @@ public:
         class SubIterator
         {
         public:
-            SubIterator(const SubGridView& view, std::size_t index)
+            SubIterator(const SubGridPart& view, std::size_t index)
                 : view_(&view)
                 , index_(index)
             {
@@ -168,7 +168,7 @@ public:
                 return index_ != other.index_;
             }
         private:
-            const SubGridView* view_;
+            const SubGridPart* view_;
             std::size_t index_;
             mutable Entity entity_; // This may be low-performing for grids with large Entity objects.
         };
@@ -191,7 +191,7 @@ public:
     /// Construct a view of the codim 0 entities that can be constructed from the seeds input.
     ///
     /// The seeds input is moved from and will be in a valid but indeterminate state after the call.
-    SubGridView(const Grid& grid,
+    SubGridPart(const Grid& grid,
                 std::vector<typename Codim<0>::Entity::EntitySeed>&& seeds,
                 const bool overlap = true)
         : grid_(&grid)
@@ -269,7 +269,7 @@ public:
     template <int cd>
     typename Codim<cd>::Iterator begin() const
     {
-        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridPart.");
         using Iterator = typename Codim<cd>::Iterator;
         return Iterator(*this, 0);
     }
@@ -278,7 +278,7 @@ public:
     template <int cd>
     typename Codim<cd>::Iterator end() const
     {
-        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridPart.");
         using Iterator = typename Codim<cd>::Iterator;
         return Iterator(*this, subset_.size());
     }
@@ -289,7 +289,7 @@ public:
     template <int cd, PartitionIteratorType pit>
     typename Codim<cd>::template Partition<pit>::Iterator begin() const
     {
-        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridPart.");
         static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
         if constexpr (pit == Interior_Partition || pit == All_Partition) {
             return begin<0>();
@@ -304,7 +304,7 @@ public:
     template <int cd, PartitionIteratorType pit>
     typename Codim<cd>::template Partition<pit>::Iterator end() const
     {
-        static_assert(cd == 0, "Only codimension 0 iterators for SubGridView.");
+        static_assert(cd == 0, "Only codimension 0 iterators for SubGridPart.");
         static_assert(pit == Interior_Partition || pit == Overlap_Partition || pit == All_Partition);
         if constexpr (pit == Overlap_Partition || pit == All_Partition) {
             return end<0>();
@@ -368,4 +368,4 @@ private:
 
 } // namespace Dune
 
-#endif // OPM_SUBGRIDVIEW_HEADER
+#endif // OPM_SUBGRIDPART_HEADER
