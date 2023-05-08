@@ -1434,6 +1434,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         (*data_[patch +1]).level_ = patch +1;
         // Add the name of each LGR in this->lgr_names_
         this -> lgr_names_[lgr_name_vec[patch]] = patch +1; // {"name_lgr", level}
+        std::vector<int> l_global_cell(data_[patch+1]->size(0), 0); 
         std::iota(l_global_cell.begin()+1, l_global_cell.end(), 1); // from entry[1], adds +1 per entry: {0,1,2,3,...}
         (*data_[patch+1]).global_cell_ = l_global_cell;
         //          index_set_

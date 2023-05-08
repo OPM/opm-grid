@@ -128,7 +128,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                                     (*data[level]).geometry_.template geomVector<1>(),
                                     (*data[level]).geometry_.template geomVector<3>());
             BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
-            BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == level);
+            BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == static_cast<int>(level));
 
             const auto& patch_cells = (*data[0]).getPatchCells(startIJK_vec[level-1], endIJK_vec[level-1]);
 
