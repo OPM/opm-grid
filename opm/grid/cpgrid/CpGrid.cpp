@@ -891,8 +891,9 @@ const std::vector< Dune :: GeometryType >& CpGrid::geomTypes( const int codim ) 
 template <int codim>
 cpgrid::Entity<codim> CpGrid::entity( const cpgrid::Entity< codim >& seed ) const
 {
-    return seed;
+    return cpgrid::Entity<codim>( *(this->current_view_data_), seed );
 }
+
 template cpgrid::Entity<0> CpGrid::entity<0>( const cpgrid::Entity<0>&) const;
 template cpgrid::Entity<3> CpGrid::entity<3>( const cpgrid::Entity<3>&) const;
 

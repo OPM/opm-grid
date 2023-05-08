@@ -36,10 +36,6 @@ Intersection::Intersection(const CpGridData& grid, const EntityRep<0>& cell, int
                   index_(cell.index()),
                   subindex_(subindex),
                   faces_of_cell_(grid.cell_to_face_[cell]),
-                  global_geom_(cpgrid::Entity<1>(grid, faces_of_cell_[subindex_]).geometry()),
-//                   in_inside_geom_(global_geom_.center()
-//                                   - cpgrid::Entity<0>(grid, index_).geometry().center(),
-//                                   global_geom_.volume()),
                   nbcell_(cell.index()), // Init to self, which is invalid.
                   is_on_boundary_(false)
             {
@@ -102,8 +98,6 @@ int Intersection::boundarySegmentIndex() const
 void Intersection::update()
             {
                 const EntityRep<1>& face = faces_of_cell_[subindex_];
-                //global_geom_ = cpgrid::Entity<1>(*pgrid_, face).geometry();
-                global_geom_ = pgrid_->geometry_.geomVector<1>()[face];
                 OrientedEntityTable<1,0>::row_type cells_of_face = pgrid_->face_to_cell_[face];
                 is_on_boundary_ = cells_of_face.size() == 1;
                 // Wether there is no nother nbcell for this intersection
@@ -120,9 +114,6 @@ void Intersection::update()
                     } else {
                         nbcell_ = cells_of_face[0].index();
                     }
-//                     in_outside_geom_ = LocalGeometry(global_geom_.center()
-//                                                      - outside().geometry().center(),
-//                                                      global_geom_.volume());
                 }
             }
 
@@ -189,7 +180,14 @@ Intersection::Entity Intersection::inside() const
 
 Intersection::Entity Intersection::outside() const
 {
-    return Entity(*pgrid_, nbcell(), true);
+    return Entity(*pgrid_, nbcell_, true);
 }
+
+Intersection::Geometry Intersection::geometry() const
+{
+    return pgrid_->geometry_.geomVector<1>()[faces_of_cell_[subindex_]];
+}
+
+
 } // end namespace cpgrid
 } // end namespace Dune
