@@ -245,8 +245,8 @@ public:
         }
         subset_.resize(subset_.size() + unowned_neighbors.size());
         std::size_t count = num_owned_;
-        for (const auto& [index, seed] : unowned_neighbors) {
-            subset_[count] = seed;
+        for (const auto& neighbor : unowned_neighbors) {
+            subset_[count] = neighbor.second;
             ++count;
         }
         assert(count == subset_.size());
