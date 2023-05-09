@@ -320,10 +320,30 @@ struct UnstructuredGrid *
 read_grid(const char *fname);
 
 
-
-
+/**
+ * Determine whether or not two grid structures represent the same
+ * underlying geometry and topology.
+ *
+ * The grids are declared equal if all of the following conditions hold:
+ *
+ *   -# They have the same physical dimensions, the same number of cells,
+ *      the same number of faces, and the same number of nodes.
+ *
+ *   -# All cell, face, and node topology arrays are exactly equal.
+ *
+ *   -# All node coordinate, centroid, face normal, face area and cell
+ *      volume arrays differ by a relative distance of at most @code 1.0e-5
+ *      @endcode in each element.
+ *
+ * @param[in] grid1 First grid.
+ * @param[in] grid2 Second grid.
+ *
+ * @return True (integer one) if the grids are equal and false
+ * (integer zero) otherwise.
+ */
 bool
-grid_equal(const struct UnstructuredGrid * grid1 , const struct UnstructuredGrid * grid2);
+grid_equal(const struct UnstructuredGrid *grid1,
+           const struct UnstructuredGrid *grid2);
 
 #ifdef __cplusplus
 }

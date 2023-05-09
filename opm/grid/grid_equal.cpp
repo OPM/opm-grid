@@ -2,7 +2,9 @@
 
 #if HAVE_ECL_INPUT
 
-#include <string.h>  // C string.h to get memcmp()
+#include <algorithm>
+#include <cstddef>
+#include <type_traits>
 
 #include <opm/common/utility/numeric/cmp.hpp>
 
@@ -15,68 +17,136 @@
    implementation compiles.
 */
 
+template <typename T>
+bool array_equal_helper(const T*          x,
+                        const T*          y,
+                        const std::size_t n,
+                        std::true_type)
+{
+    return Opm::cmp::array_equal(x, y, n);
+}
 
-bool
-grid_equal(const struct UnstructuredGrid * grid1 , const struct UnstructuredGrid * grid2) {
-    if ((grid1->dimensions      == grid2->dimensions)      &&
-        (grid1->number_of_cells == grid2->number_of_cells) &&
-        (grid1->number_of_faces == grid2->number_of_faces) &&
-        (grid1->number_of_nodes == grid2->number_of_nodes)) {
+template <typename T>
+bool array_equal_helper(const T*          x,
+                        const T*          y,
+                        const std::size_t n,
+                        std::false_type)
+{
+    return std::equal(x, x + n, y);
+}
 
-        // Exact integer comparisons
-        {
-            if (memcmp(grid1->face_nodepos , grid2->face_nodepos , (grid1->number_of_faces + 1) * sizeof * grid1->face_nodepos) != 0)
-            return false;
+template <typename T>
+bool array_equal(const T* x, const T* y, const std::size_t n)
+{
+    using Float_P = typename std::is_floating_point<T>::type;
 
-            if (memcmp(grid1->face_nodes , grid2->face_nodes , grid1->face_nodepos[grid1->number_of_faces] * sizeof * grid1->face_nodes) != 0)
-                return false;
+    return array_equal_helper(x, y, n, Float_P());
+}
 
-            if (memcmp(grid1->face_cells , grid2->face_cells , 2 * grid1->number_of_faces * sizeof * grid1->face_cells) != 0)
-                return false;
+template <typename T>
+bool equal_alloc_status(const T* x, const T* y)
+{
+    return (x == nullptr) == (y == nullptr);
+}
 
-            if (memcmp(grid1->cell_faces , grid2->cell_faces ,  grid1->cell_facepos[grid1->number_of_cells] * sizeof * grid1->cell_faces) != 0)
-                return false;
+template <typename T>
+bool equal_vector(const T* x, const T* y, const std::size_t n)
+{
+    return equal_alloc_status(x, y) &&
+           ((x == nullptr) || array_equal(x, y, n));
+}
 
-            if (memcmp(grid1->cell_facepos , grid2->cell_facepos , (grid1->number_of_cells + 1) * sizeof * grid1->cell_facepos) != 0)
-                return false;
+// ----------------------------------------------------------------------
+bool grid_equal(const UnstructuredGrid* g1, const UnstructuredGrid* g2)
+// ----------------------------------------------------------------------
+{
+    if ((g1 == nullptr) || (g2 == nullptr)) {
+        // Grids must be allocated to qualify as equal.
+        //
+        // Note: We also return false if *neither* are allocated even
+        // though nullptr==nullptr.
 
-            if (grid1->global_cell && grid2->global_cell) {
-                if (memcmp(grid1->global_cell , grid2->global_cell , grid1->number_of_cells * sizeof * grid1->global_cell) != 0)
-                    return false;
-            } else if (grid1->global_cell != grid2->global_cell)
-                return false;
-
-            if (grid1->cell_facetag && grid2->cell_facetag) {
-                if (memcmp(grid1->cell_facetag , grid2->cell_facetag , grid1->cell_facepos[grid1->number_of_cells] * sizeof * grid1->cell_facetag) != 0)
-                    return false;
-            } else if (grid1->cell_facetag != grid2->cell_facetag)
-                return false;
-        }
-
-
-        // Floating point comparisons.
-        {
-	    if (!Opm::cmp::array_equal<double>( grid1->node_coordinates , grid2->node_coordinates , static_cast<size_t>(grid1->dimensions * grid1->number_of_nodes)))
-                return false;
-
-  	    if (!Opm::cmp::array_equal<double>( grid1->face_centroids , grid2->face_centroids , static_cast<size_t>(grid1->dimensions * grid1->number_of_faces)))
-                return false;
-
-            if (!Opm::cmp::array_equal<double>( grid1->face_areas , grid2->face_areas , static_cast<size_t>(grid1->number_of_faces)))
-                return false;
-
-            if (!Opm::cmp::array_equal<double>( grid1->face_normals , grid2->face_normals , static_cast<size_t>(grid1->dimensions * grid1->number_of_faces)))
-                return false;
-
-            if (!Opm::cmp::array_equal<double>( grid1->cell_centroids , grid2->cell_centroids , static_cast<size_t>(grid1->dimensions * grid1->number_of_cells)))
-                return false;
-
-            if (!Opm::cmp::array_equal<double>( grid1->cell_volumes , grid2->cell_volumes , static_cast<size_t>(grid1->number_of_cells)))
-                return false;
-        }
-        return true;
-    } else
         return false;
+    }
+
+    bool        eq;
+    std::size_t n;
+
+    // Basic sanity check.  Array dimensions.
+    {
+        eq = ((g1->dimensions      == g2->dimensions)      &&
+              (g1->number_of_nodes == g2->number_of_nodes) &&
+              (g1->number_of_faces == g2->number_of_faces) &&
+              (g1->number_of_cells == g2->number_of_cells));
+    }
+
+    // ============================================================
+
+    // Topology checks.  Exact integer equality.
+    {
+        // 1) Face->node topology
+        n  =       g1->number_of_faces + 1;
+        eq = eq && equal_vector(g1->face_nodepos, g2->face_nodepos, n);
+
+        n  =       g1->face_nodepos[ g1->number_of_faces ];
+        eq = eq && equal_vector(g1->face_nodes, g2->face_nodes, n);
+
+        // 2) Cell->face topology
+        n  =       g1->number_of_cells + 1;
+        eq = eq && equal_vector(g1->cell_facepos, g2->cell_facepos, n);
+
+        n  =       g1->cell_facepos[ g1->number_of_cells ];
+        eq = eq && equal_vector(g1->cell_faces, g2->cell_faces, n);
+
+        // 3) Face->cell topology
+        n  =       2 * g1->number_of_faces;
+        eq = eq && equal_vector(g1->face_cells, g2->face_cells, n);
+
+        // 4) Local-to-global cell map
+        n  =       1 * g1->number_of_cells;
+        eq = eq && equal_vector(g1->global_cell, g2->global_cell, n);
+
+        // 5) Connection's cardinal directions per cell
+        n  =       g1->cell_facepos[ g1->number_of_cells ];
+        eq = eq && equal_vector(g1->cell_facetag, g2->cell_facetag, n);
+    }
+
+    // ============================================================
+
+    // Geometry checks.  Approximate, floating point comparisons.
+    {
+        // 1) Node coordinates.
+        n  =       g1->dimensions * g1->number_of_nodes;
+        eq = eq && equal_vector(g1->node_coordinates,
+                                g2->node_coordinates, n);
+
+        // 2) Face centroids
+        n  =       g1->dimensions * g1->number_of_faces;
+        eq = eq && equal_vector(g1->face_centroids,
+                                g2->face_centroids, n);
+
+        // 3) Face normals
+        n  =       g1->dimensions * g1->number_of_faces;
+        eq = eq && equal_vector(g1->face_normals,
+                                g2->face_normals, n);
+
+        // 4) Face areas
+        n  =       1 * g1->number_of_faces;
+        eq = eq && equal_vector(g1->face_areas,
+                                g2->face_areas, n);
+
+        // 5) Cell centroids
+        n  =       g1->dimensions * g1->number_of_cells;
+        eq = eq && equal_vector(g1->cell_centroids,
+                                g2->cell_centroids, n);
+
+        // 6) Cell volumes
+        n  =       1 * g1->number_of_cells;
+        eq = eq && equal_vector(g1->cell_volumes,
+                                g2->cell_volumes, n);
+    }
+
+    return eq;
 }
 
 #endif // #if HAVE_ECL_INPUT
