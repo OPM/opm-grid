@@ -104,21 +104,22 @@ namespace Dune
 
 
         /// Only needs to provide interface for doing nothing.
-        class HierarchicIterator : public Entity<0>
+    class HierarchicIterator
         {
+
         public:
             using Reference = const Entity<0>&;
             /// @brief
             /// @todo Doc me!
             /// @param
             HierarchicIterator(const CpGridData& grid)
-                : Entity<0>(grid, EntityRep<0>::InvalidIndex, true )
+                : virtualEntity_(grid, EntityRep<0>::InvalidIndex, true )
             {
             }
 
             // Constructor with Entity<0> target and maxLevel (begin iterator).
             HierarchicIterator(Entity<0> target, int maxLevel)
-                : maxLevel_(maxLevel)
+                : virtualEntity_(target), maxLevel_(maxLevel)
             {
                 // Load sons of target onto the iterator stack
                 stackChildren_(target);
@@ -126,32 +127,32 @@ namespace Dune
                 // Set entity target to the next child if exists
                 resetEntity_();
             }
-            
 
-            // Constructor without valid element (end iterator). 
+
+            // Constructor without valid element (end iterator).
             HierarchicIterator(int maxLevel)
                 : maxLevel_(maxLevel)
             {
                 resetEntity_();
             }
 
-
-             
-
-            // COMPARISON ON TARGET ENTITY. hierarchiIt == other is target is the same, or both are invalid
             /// Equality.
-            //  bool operator==(const HierarchicIterator& other) const
-            //  {
-            //      return (pgrid_ == other.pgrid_) || (/* bath invalid entitties*/);
-            // }
-            // Check wheter  one of them if invalid, the other has to be also invalid.
-            // If both are valid, check that they are equal.
+            bool operator==(const HierarchicIterator& other) const
+            {
+                return virtualEntity_ == other.virtualEntity_;
+            }
+
+            /// Inequality.
+            bool operator!=(const HierarchicIterator& other) const
+            {
+                return !this->operator==(other);
+            }
 
             /// @brief
             /// @todo Doc me!
             /// @param
-            HierarchicIterator& operator++()  
-            {   
+            HierarchicIterator& operator++()
+            {
                 if (elemStack_.empty()){
                     return *this;
                 }
@@ -165,27 +166,46 @@ namespace Dune
                 resetEntity_();
                 return *this;
             }
-            
+
+            /// @brief
+            /// @todo Doc me!
+            /// @param
+            HierarchicIterator operator++(int)
+            {
+                if (elemStack_.empty()){
+                    return *this;
+                }
+                auto copy = *this;
+                // Reference to the top element of elemStack_
+                auto target = elemStack_.top();
+                // Remove the element on top of elemStack_
+                elemStack_.pop();
+                // Load sons of previous target onto elemStack_
+                stackChildren_(target);
+                // Set entity target to the next stacked element if exists
+                resetEntity_();
+                return copy;
+            }
+
             /// Const member by pointer operator.
             const Entity<0>* operator->() const
             {
-                assert(Entity<0>::isValid());
-                return (this);
+                assert(this -> virtualEntity_.isValid());
+                return &virtualEntity_;
             }
 
             /// Const dereferencing operator.
             const Entity<0>& operator*() const
             {
-                assert(Entity<0>::isValid());
-                return (*this);
+                assert(this-> virtualEntity_.isValid());
+                return virtualEntity_;
             }
 
         private:
             void stackChildren_(const Entity<0>& target);
-            
+
             void resetEntity_();
 
-            //! The entity that the iterator is pointing to
             Entity<0> virtualEntity_;
 
             //! max level to iterate over
@@ -193,7 +213,7 @@ namespace Dune
 
             // For depth-first search
             std::stack<Entity<0>> elemStack_;
-            
+
         }; // end class HierarchicIterator
 
     } // namespace cpgrid
@@ -216,7 +236,7 @@ namespace std
     struct iterator_traits< Dune::cpgrid::HierarchicIterator >
     {
         typedef ptrdiff_t                                   difference_type;
-        typedef Dune::cpgrid::HierarchicIterator::Entity    value_type;
+        typedef Dune::cpgrid::Entity<0>                     value_type;
         typedef value_type*                                 pointer;
         typedef value_type&                                 reference;
         typedef forward_iterator_tag                        iterator_category;

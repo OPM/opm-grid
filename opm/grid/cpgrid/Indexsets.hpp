@@ -73,7 +73,7 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @param
-            IndexSet(){}
+            IndexSet() : IndexSet(0,0){}
             
             IndexSet(std::size_t numCells, std::size_t numPoints)
             {

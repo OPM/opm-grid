@@ -6,6 +6,7 @@
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            B�rd Skaflestad     <bard.skaflestad@sintef.no>
+//            Antonella Ritorto   <antonella.ritorto@opm-op.com>
 //
 // $Date$
 //

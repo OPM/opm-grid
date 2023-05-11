@@ -7,6 +7,7 @@
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            Bård Skaflestad     <bard.skaflestad@sintef.no>
 //            Markus Blatt        <markus@dr-blatt.de>
+//            Antonella Ritorto   <antonella.ritorto@opm-op.com>
 //
 // Comment: Major parts of this file originated in dune/grid/CpGrid.hpp
 //          and got transfered here during refactoring for the parallelization.
@@ -98,9 +99,9 @@ void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&);
 
 void refinePatch_and_check(Dune::CpGrid&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&);
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
 
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
@@ -131,15 +132,15 @@ class CpGridData
                             const std::array<int, 3>&,
                             bool);
     friend
-    void::refinePatch_and_check(const std::array<int,3>&,
+    void ::refinePatch_and_check(const std::array<int,3>&,
                         const std::array<int,3>&,
                         const std::array<int,3>&);
 
     friend
     void ::refinePatch_and_check(Dune::CpGrid&,
-                                 const std::array<int,3>&,
-                                 const std::array<int,3>&,
-                                 const std::array<int,3>&);
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&);
     
     friend
     void ::check_global_refine(const Dune::CpGrid&,
@@ -172,10 +173,10 @@ public:
     /// Default constructor.
     explicit CpGridData(MPIHelper::MPICommunicator comm,  std::vector<std::shared_ptr<CpGridData>>& data);
 
- 
+
     
     /// Constructor
-    CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);
+    explicit CpGridData(std::vector<std::shared_ptr<CpGridData>>& data);  
     /// Destructor
     ~CpGridData();
   
@@ -279,16 +280,60 @@ private:
     ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
-    const std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-    
-    /// @brief Compute corner, face, and cell indices of a patch of cells. (Cartesian grid required).
+    std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute corner indices of a patch of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
     /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
     ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
-    /// @return {patch_corners, patch_faces, patch_cells} Indices of corners, faces, and cells of the patch of cells.
-    const std::array<std::vector<int>,3> getPatchGeomIndices(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+    /// @return patch_corners
+    std::vector<int> getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute face indices of a patch of cells (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
+    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+    ///
+    /// @return patch_faces
+    std::vector<int> getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute cell indices of a patch of cells (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
+    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endIJK[0]-1, ... endIJK[2]-1}.
+    ///
+    /// @return patch_cells
+    std::vector<int> getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute patch boundary corner indices (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
+    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+    ///
+    /// @return patch_boundary_corners
+    std::vector<int> getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+    /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... endIJK_vec[<patch>][2]-1}.
+    ///
+    /// @return allPatches_cells
+    std::vector<int>
+    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
     ///
@@ -304,10 +349,10 @@ private:
     /// @param [out] allcorners_cellifiedPatch Required to build a Geometry<3,3> object.
     ///
     /// @return 'cellifiedPatchCell'         Geometry<3,3> object.
-    const Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
-                                     const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
-                                     std::array<int,8>& cellifiedPatch_to_point,
-                                     std::array<int,8>& allcorners_cellifiedPatch) const;
+    Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
+                               const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
+                               std::array<int,8>& cellifiedPatch_to_point,
+                               std::array<int,8>& allcorners_cellifiedPatch) const;
 
 public:
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
@@ -331,12 +376,12 @@ public:
     /// @return parent_to_children_faces/cell     For each parent face/cell, we store its child-face/cell indices.
     ///                                           {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells       {child index, parent index}
-    const std::tuple< const std::shared_ptr<CpGridData>,
-                      const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
-                      const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
-                      const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
-                      const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                      const std::vector<std::array<int,2>>>                // child_to_parent_cells
+    std::tuple< const std::shared_ptr<CpGridData>,
+                const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
+                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
+                const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
+                const std::vector<std::array<int,2>>,                // child_to_parent_faces
+                const std::vector<std::array<int,2>>>                // child_to_parent_cells
     refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const;
 
     /// @brief Refine a (connected block-shaped) patch of cells. Based on the patch, a Geometry<3,3> object is created and refined.
@@ -351,15 +396,15 @@ public:
     /// @return parent_to_children_faces/cell      For each parent face/cell, we store its child-face/cell indices.
     ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells        {child index, parent index}
-    const std::tuple< std::shared_ptr<CpGridData>,
-                      const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
-                      const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
-                      const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
-                      const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
-                      const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                      const std::vector<std::array<int,2>>>                // child_to_parent_cells
+    std::tuple< std::shared_ptr<CpGridData>,
+                const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
+                const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
+                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
+                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
+                const std::vector<std::array<int,2>>,                // child_to_parent_faces
+                const std::vector<std::array<int,2>>>                // child_to_parent_cells
     refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-    
+
     // Make unique boundary ids for all intersections.
     void computeUniqueBoundaryIds();
 
@@ -599,7 +644,7 @@ private:
      */
     std::vector<int>                  global_cell_;
     /** @brief The tag of the faces. */
-    cpgrid::EntityVariable<enum face_tag, 1> face_tag_; 
+    cpgrid::EntityVariable<enum face_tag, 1> face_tag_;
     /** @brief The geometries representing the grid. */
     cpgrid::DefaultGeometryPolicy geometry_;
     /** @brief The type of a point in the grid. */
@@ -616,21 +661,23 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
-    /** Level of the current CpGridData (0 when it's "GLOBAL", 1 for LGR, 2 for LeafView, created via CpGrid::createGridWithLgr()). */
-    int level_;
-    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgr(). */
+    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs, created via CpGrid::createGridWithLgrs()). */
+    int level_{0};
+    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgrs(). */
     std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
-    /** Map between level and leafview (maxLevel) cell indices. Only cells (from that level) that appear in leafview count. */  
-    std::map<int,int> level_to_leaf_cells_; // {level cell index, leafview cell index}
-    /** Parent cells and their children. Entry is {-1, {-1}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
-    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_;
+    /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. */  
+    std::vector<int> level_to_leaf_cells_; // In entry 'level cell index', we store 'leafview cell index'
+    /** Parent cells and their children. Entry is {-1, {}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
+    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_; 
+    /** Amount of children cells per parent cell in each direction. */ // {# children in x-direction, ... y-, ... z-}
+    std::array<int,3> cells_per_dim_;
     // SUITABLE ONLY FOR LEAFVIEW
     /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
-    std::vector<std::array<int,2>> leaf_to_level_cells_; 
+    std::vector<std::array<int,2>> leaf_to_level_cells_;
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
-    /** Child cells and their parents. Entry is {-1, -1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_;
+    /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
+    std::vector<std::array<int,2>> child_to_parent_cells_; 
 
     /// \brief Object for collective communication operations.
     Communication ccobj_;
