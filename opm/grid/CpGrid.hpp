@@ -90,7 +90,8 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
 void refinePatch_and_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
                            const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&);
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
 
 void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&,
@@ -227,7 +228,8 @@ namespace Dune
         void ::refinePatch_and_check(Dune::CpGrid&,
                                      const std::vector<std::array<int,3>>&,
                                      const std::vector<std::array<int,3>>&,
-                                     const std::vector<std::array<int,3>>&);
+                                     const std::vector<std::array<int,3>>&,
+                                     const std::vector<std::string>&);
         friend
         void ::refinePatch_and_check(const std::array<int,3>&,
                                      const std::array<int,3>&,
@@ -460,8 +462,9 @@ namespace Dune
         /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
         /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
         ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+        /// @param [in] lgr_name                 Name (std::string) for the lgr/level1
         void addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
-                                  const std::array<int,3>& endIJK);
+                                  const std::array<int,3>& endIJK,  const std::string& lgr_name);
 
         /// @brief Create a grid out of a coarse one and (at most) 2 refinements(LGRs) of selected block-shaped disjoint patches
         ///        of cells from that coarse grid.
@@ -478,9 +481,14 @@ namespace Dune
         /// @param [in] endIJK_vec             Vector of Cartesian triplet indices where each patch ends.
         ///                                    Last cell part of each patch(lgr) will be
         ///                                    {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
+        /// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels
         void addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
-                                   const std::vector<std::array<int,3>>& endIJK_vec);
+                                   const std::vector<std::array<int,3>>& endIJK_vec,
+                                   const std::vector<std::string>& lgr_name_vec);
+
+
+        const std::map<std::string,int>& getLgrNameToLevel() const;
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
@@ -1178,10 +1186,12 @@ namespace Dune
         cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
+        /** @brief To get the level given the lgr-name. Default, {"GLOBAL", 0}. */
+        std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         /**
          * @brief Interface for scattering and gathering cell data.
          *
-         * @warning Will only update owner cells
+         * @warning Will only update owner cells.
          */
         std::shared_ptr<InterfaceMap> cell_scatter_gather_interfaces_;
         /*
