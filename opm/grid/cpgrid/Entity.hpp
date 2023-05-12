@@ -115,19 +115,19 @@ namespace Dune
 
             /// Constructor taking a grid and an entity representation.
             Entity(const CpGridData& grid, EntityRep<codim> entityrep)
-                : EntityRep<codim>(entityrep), pgrid_(&grid), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(entityrep), pgrid_(&grid)//, local_geometry_indices_storage_ptr(0)
             {
             }
 
             /// Constructor taking a grid, entity index, and orientation.
             Entity(const CpGridData& grid, int index_arg, bool orientation_arg)
-                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid)//, local_geometry_indices_storage_ptr(0)
             {
             }
 
             /// Constructor taking a entity index, and orientation.
             Entity(int index_arg, bool orientation_arg)
-                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_()//, local_geometry_indices_storage_ptr(0)
             {
             }
 
@@ -263,8 +263,6 @@ namespace Dune
 
         protected:
             const CpGridData* pgrid_;
-            DefaultGeometryPolicy local_geometry_;
-            const int* local_geometry_indices_storage_ptr;
         };
 
     } // namespace cpgrid
@@ -466,11 +464,9 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     }
     else{
         //
-        DefaultGeometryPolicy local_geometry = this -> local_geometry_;
-        std::array<int,8> allcorners_localEntity;
-        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners
-            = local_geometry.geomVector(std::integral_constant<int,3>());
-        local_corners.resize(8);
+        EntityVariable<cpgrid::Geometry<0, 3>, 3> geometry_in_father_reference_elem;
+        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>> corners_in_father_reference_elem;
+        corners_in_father_reference_elem.resize(8);
         // Get IJK index of the entity.
         std::array<int,3> eIJK;
         // Get the amount of children cell in each direction of the parent cell of the entity (same for all parents of each LGR)
@@ -498,7 +494,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         // Transform the local coordinates that comes from the refinemnet in such a way that the
         // reference element of each parent cell is the unit cube. Here, eIJK[*]/cells_per_dim[*]
         // Get the local coordinates of the entity (in the reference unit cube).
-        const std::vector<FieldVector<double, 3>>& local_corners_temp = {
+        const std::vector<FieldVector<double, 3>>& corners_in_father_reference_elem_temp = {
             // corner '0'
             { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
               double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
@@ -524,21 +520,20 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
             { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
               double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] }};
         // Compute the center of the 'local-entity'.
-        Dune::FieldVector<double, 3> local_center = {0., 0.,0.};
+        Dune::FieldVector<double, 3> center_in_father_reference_elem = {0., 0.,0.};
         for (int corn = 0; corn < 8; ++corn) {
-            local_corners[corn] = local_corners_temp[corn];
-            local_center += local_corners[corn].center()/8.;
+            corners_in_father_reference_elem[corn] = corners_in_father_reference_elem_temp[corn];
+            center_in_father_reference_elem += corners_in_father_reference_elem[corn].center()/8.;
         }
         // Compute the volume of the 'local-entity'.
-        double local_volume = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-        // Indices of 'all the corners', in this case, 0-7 (required to construct a Geometry<3,3> object).
-        allcorners_localEntity = {0,1,2,3,4,5,6,7};
-        // Create a pointer to the first element of "cellfiedPatch_to_point" (required to construct a Geometry<3,3> object).
-        const int* localEntity_indices_storage_ptr = this -> local_geometry_indices_storage_ptr;
-        localEntity_indices_storage_ptr = &allcorners_localEntity[0];
-        // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
-        return Dune::cpgrid::Geometry<3,3>(local_center, local_volume, local_geometry.geomVector(std::integral_constant<int,3>()),
-                                           localEntity_indices_storage_ptr);
+        double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
+        // Set the indices identical as the indices of the entity in its grid (It could be {0,1,..,7} as well, it does not matter)
+        // Create a pointer to the first element of corner_in_father_reference_elem_indices (required to construct a Geometry<3,3> object).
+        const int* corn_indices_ptr = &((this -> pgrid_ -> cell_to_point_[this->index()])[0]);
+        // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
+        return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
+                                           geometry_in_father_reference_elem,
+                                           corn_indices_ptr);
     }
     
 }
