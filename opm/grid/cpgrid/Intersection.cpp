@@ -185,7 +185,7 @@ Intersection::Entity Intersection::outside() const
 
 Intersection::Geometry Intersection::geometry() const
 {
-    return pgrid_->geometry_.geomVector<1>()[faces_of_cell_[subindex_]];
+    return pgrid_-> geometry_.geomVector<1>()[faces_of_cell_[subindex_]];
 }
 
 

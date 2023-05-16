@@ -108,7 +108,7 @@ namespace Dune
                        const std::unordered_map<size_t, double>& aquifer_cell_volumes,
                        cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
-                       cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
+                       std::shared_ptr<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> point_geom,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3> , 1>& normals,
                        bool turn_normals);
     } // anon namespace
@@ -358,8 +358,8 @@ namespace cpgrid
         }
 #endif
         std::sort(aquifer_cells_.begin(), aquifer_cells_.end());
-        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, aquifer_cell_volumes_local, geometry_.geomVector(std::integral_constant<int,0>()),
-                  geometry_.geomVector(std::integral_constant<int,1>()), geometry_.geomVector(std::integral_constant<int,3>()),
+        buildGeom(output, cell_to_face_, cell_to_point_, face_to_output_face, aquifer_cell_volumes_local, *(geometry_.geomVector(std::integral_constant<int,0>())),
+                  *( geometry_.geomVector(std::integral_constant<int,1>())), geometry_.geomVector(std::integral_constant<int,3>()),
                   face_normals_, turn_normals);
 
 #ifdef VERBOSE
@@ -1067,8 +1067,8 @@ namespace cpgrid
         template <>
         struct MakeGeometry<3>
         {
-            const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners_;
-            MakeGeometry(const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners)
+            std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_;
+            MakeGeometry(std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners)
                 : allcorners_(allcorners)
             {
             }
@@ -1099,7 +1099,7 @@ namespace cpgrid
                        const std::unordered_map<size_t, double>& aquifer_cell_volumes,
                        cpgrid::EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
                        cpgrid::EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
-                       cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom,
+                       std::shared_ptr<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> point_geom_ptr,
                        cpgrid::SignedEntityVariable<FieldVector<double, 3>, 1>& normals,
                        bool turn_normals)
         {
@@ -1110,6 +1110,7 @@ namespace cpgrid
             std::vector<double>  face_areas;
             std::vector<point_t> cell_centroids;
             std::vector<double>  cell_volumes;
+            auto& point_geom = *point_geom_ptr;
             using namespace GeometryHelpers;
 #ifdef VERBOSE
             Opm::time::StopWatch clock;
@@ -1239,7 +1240,7 @@ namespace cpgrid
                            std::back_inserter(point_geom), mpointg);
             // Cells
             cell_geom.reserve(nc);
-            MakeGeometry<3> mcellg(point_geom);
+            MakeGeometry<3> mcellg(point_geom_ptr);
 //             std::transform(cell_centroids.begin(), cell_centroids.end(),
 //                            cell_volumes.begin(),
 //                            std::back_inserter(cell_geom, mcellg);

@@ -1512,11 +1512,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     //
     // Mutable containers for leaf view corners, faces, cells, face tags, and face normals.
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& leaf_corners =
-        leaf_geometries.geomVector(std::integral_constant<int,3>());
+        *(leaf_geometries.geomVector(std::integral_constant<int,3>()));
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& leaf_faces =
-        leaf_geometries.geomVector(std::integral_constant<int,1>());
+        *(leaf_geometries.geomVector(std::integral_constant<int,1>()));
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& leaf_cells =
-        leaf_geometries.geomVector(std::integral_constant<int,0>());
+        *(leaf_geometries.geomVector(std::integral_constant<int,0>()));
     Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags = leaf_face_tags;
     Dune::cpgrid::EntityVariableBase<PointType>& mutable_face_normals = leaf_face_normals;
     //
@@ -1553,14 +1553,14 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     for (long unsigned int corner = 0; corner < level_to_leaf_corners[0].size(); ++corner) {
         if (level_to_leaf_corners[0][corner] != -1){ // ONLY NEEDED FOR LEVEL 0
             leaf_corners[level_to_leaf_corners[0][corner]]
-                = (*(this->data_[0])).geometry_.geomVector(std::integral_constant<int,3>()).get(corner);
+                = (*(this->data_[0])).geometry_.geomVector(std::integral_constant<int,3>()) -> get(corner);
         }
     }
     for (int l = 1; l < num_patches +1; ++l) {
         for (long unsigned int corner = 0; corner < level_to_leaf_corners[l].size(); ++corner) {
             const auto& level_data = *(this->data_[l]);
             leaf_corners[level_to_leaf_corners[l][corner]]
-                = level_data.geometry_.geomVector(std::integral_constant<int,3>()).get(corner);
+                = level_data.geometry_.geomVector(std::integral_constant<int,3>()) -> get(corner);
         }
     }
     // Integer to count leaf view faces (mixed between faces from level0 not involved in LGR, and new-born-faces).
@@ -1609,7 +1609,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Get the (face) entity (from level data).
             const auto& entity =  Dune::cpgrid::EntityRep<1>(face, true);
             // Get the face geometry.
-            leaf_faces[leafFaceIdx] = level_data.geometry_.geomVector(std::integral_constant<int,1>())[entity];
+            leaf_faces[leafFaceIdx] = (*(level_data.geometry_.geomVector(std::integral_constant<int,1>())))[entity];
             // Get the face tag.
             mutable_face_tags[leafFaceIdx] = level_data.face_tag_[entity];
             // Get the face normal.
@@ -1645,7 +1645,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Get the (face) entity (from level data).
             const auto& entity =  Dune::cpgrid::EntityRep<1>(face, true);
             // Get the face geometry.
-            leaf_faces[leafFaceIdx] = level_data.geometry_.geomVector(std::integral_constant<int,1>())[entity];
+            leaf_faces[leafFaceIdx] = (*(level_data.geometry_.geomVector(std::integral_constant<int,1>())))[entity];
             // Get the face tag.
             mutable_face_tags[leafFaceIdx] = level_data.face_tag_[entity];
             // Get the face normal.
@@ -1704,7 +1704,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         const auto& level_data =  *(this->data_[level_cellIdx[0]]);
         const auto& entity =  Dune::cpgrid::EntityRep<0>(level_cellIdx[1], true);
         // Get the cell geometry.
-        leaf_cells[leafCellIdx] = level_data.geometry_.geomVector(std::integral_constant<int,0>())[entity];
+        leaf_cells[leafCellIdx] = (*(level_data.geometry_.geomVector(std::integral_constant<int,0>())))[entity];
         // Get old corners of the cell that will be replaced with leaf view ones.
         auto old_cell_to_point = level_data.cell_to_point_[level_cellIdx[1]];
         // Get old faces of the cell that will be replaced with leaf view ones.
