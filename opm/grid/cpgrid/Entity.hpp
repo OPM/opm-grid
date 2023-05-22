@@ -115,19 +115,19 @@ namespace Dune
 
             /// Constructor taking a grid and an entity representation.
             Entity(const CpGridData& grid, EntityRep<codim> entityrep)
-                : EntityRep<codim>(entityrep), pgrid_(&grid), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(entityrep), pgrid_(&grid)
             {
             }
 
             /// Constructor taking a grid, entity index, and orientation.
             Entity(const CpGridData& grid, int index_arg, bool orientation_arg)
-                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(&grid)
             {
             }
 
             /// Constructor taking a entity index, and orientation.
             Entity(int index_arg, bool orientation_arg)
-                : EntityRep<codim>(index_arg, orientation_arg), pgrid_(), local_geometry_indices_storage_ptr(0)
+                : EntityRep<codim>(index_arg, orientation_arg), pgrid_()
             {
             }
 
@@ -163,7 +163,7 @@ namespace Dune
             ///        Serial: an element is a leaf <-> hbegin and hend return the same iterator
             ///        Parallel: true <-> the element is a leaf entity of the global refinement hierarchy.
             bool isLeaf() const;
-            
+
             /// Refinement is not defined for CpGrid.
             bool isRegular() const
             {
@@ -173,17 +173,17 @@ namespace Dune
             /// @brief For now, the grid is serial and the only partitionType() is InteriorEntity.
             ///        Only needed when distributed_data_ is not empty.
             PartitionType partitionType() const;
-            
+
             /// @brief Return marker object (GeometryType object) representing the reference element of the entity.
             ///        Currently, cube type for all entities (cells and vertices).
             GeometryType type() const
             {
                 return Dune::GeometryTypes::cube(3 - codim);
             }
-            
+
             /// @brief Return the number of all subentities of the entity of a given codimension cc.
             unsigned int subEntities ( const unsigned int cc ) const;
-            
+
             /// @brief Obtain subentity.
             ///        Example: If cc = 3 and i = 5, it returns the 5th corner/vertex of the entity.
             template <int cc>
@@ -201,12 +201,12 @@ namespace Dune
             /// End leaf-iterator for the cell-cell intersections of this entity.
             inline LeafIntersectionIterator ileafend() const;
 
-            
+
             /// @brief Iterator begin over the children. [If requested, also over descendants more than one generation away.]
             HierarchicIterator hbegin(int) const;
-            
+
             /// @brief Iterator end over the children/beyond last child iterator.
-            HierarchicIterator hend(int) const; 
+            HierarchicIterator hend(int) const;
 
             /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
             bool isNew() const
@@ -230,7 +230,7 @@ namespace Dune
             /// @brief  ONLY FOR CELLS (Entity<0>). Get the father Entity, in case entity.hasFather() is true.
             ///
             /// @return father-entity
-            Entity<0> father() const; 
+            Entity<0> father() const;
 
             /// @brief Return LocalGeometry representing the embedding of the entity into its father (when hasFather() is true).
             ///        Map from the entity's reference element into the reference element of its father.
@@ -238,7 +238,7 @@ namespace Dune
             ///        of an entity coming from the LGR is one of the refined cells of the unit cube, with suitable amount of cells
             ///        in each direction.
             Dune::cpgrid::Geometry<3,3> geometryInFather() const;
-            
+
             /// Returns true if any of my intersections are on the boundary.
             /// Implementation note:
             /// This is a slow, computed, function. Could be speeded
@@ -246,7 +246,7 @@ namespace Dune
             bool hasBoundaryIntersections() const;
 
             // Mimic Dune entity wrapper
-            /// @brief Access the actual implementation class behind Entity interface class. 
+            /// @brief Access the actual implementation class behind Entity interface class.
             const Entity& impl() const
             {
                 return *this;
@@ -263,8 +263,15 @@ namespace Dune
 
         protected:
             const CpGridData* pgrid_;
-            DefaultGeometryPolicy local_geometry_;
-            const int* local_geometry_indices_storage_ptr;
+        private:
+            // mutable as it is used in a const function
+            /// \brief stores the corner of the geometry in father if geometryInFather is called.
+            mutable std::shared_ptr<EntityVariable<cpgrid::Geometry<0, 3>, 3>> in_father_reference_elem_corners_;
+            // static to not need any extra storage per Enitity. One object used for all instances
+            // constexpr to allow for in-class instantiation
+            /// \brief Indices of corners in in_father_reference_elem_corners_ for the Geometry returned by geometryInFather
+            static constexpr std::array<int,8> in_father_reference_elem_corner_indices_ =
+                { 0, 1, 2, 3, 4, 5, 6, 7 };
         };
 
     } // namespace cpgrid
@@ -276,58 +283,58 @@ namespace Dune
 #include "Intersection.hpp"
 namespace Dune
 {
-  namespace cpgrid
-  {
-  template<int codim>
-  typename Entity<codim>::LevelIntersectionIterator Entity<codim>::ilevelbegin() const
-  {
-                static_assert(codim == 0, "");
-                return LevelIntersectionIterator(*pgrid_, *this, false);
-            }
+namespace cpgrid
+{
+template<int codim>
+typename Entity<codim>::LevelIntersectionIterator Entity<codim>::ilevelbegin() const
+{
+    static_assert(codim == 0, "");
+    return LevelIntersectionIterator(*pgrid_, *this, false);
+}
 
-  template<int codim>
-  typename Entity<codim>::LevelIntersectionIterator Entity<codim>::ilevelend() const
-  {
-      static_assert(codim == 0, "");
-      return LevelIntersectionIterator(*pgrid_, *this, true);
-  }
+template<int codim>
+typename Entity<codim>::LevelIntersectionIterator Entity<codim>::ilevelend() const
+{
+    static_assert(codim == 0, "");
+    return LevelIntersectionIterator(*pgrid_, *this, true);
+}
 
-  template<int codim>
-  typename Entity<codim>::LeafIntersectionIterator Entity<codim>::ileafbegin() const
-  {
-      static_assert(codim == 0, "");
-      return LeafIntersectionIterator(*pgrid_, *this, false);
-  }
+template<int codim>
+typename Entity<codim>::LeafIntersectionIterator Entity<codim>::ileafbegin() const
+{
+    static_assert(codim == 0, "");
+    return LeafIntersectionIterator(*pgrid_, *this, false);
+}
 
-  template<int codim>
-  typename Entity<codim>::LeafIntersectionIterator Entity<codim>::ileafend() const
-  {
-      static_assert(codim == 0, "");
-      return LeafIntersectionIterator(*pgrid_, *this, true);
-  }
+template<int codim>
+typename Entity<codim>::LeafIntersectionIterator Entity<codim>::ileafend() const
+{
+    static_assert(codim == 0, "");
+    return LeafIntersectionIterator(*pgrid_, *this, true);
+}
 
 
-  template<int codim>
-  HierarchicIterator Entity<codim>::hbegin(int maxLevel) const 
-  {
-      // Creates iterator with first child as target if there is one. Otherwise empty stack and target.
-      return HierarchicIterator(*this, maxLevel);
-  }
+template<int codim>
+HierarchicIterator Entity<codim>::hbegin(int maxLevel) const
+{
+    // Creates iterator with first child as target if there is one. Otherwise empty stack and target.
+    return HierarchicIterator(*this, maxLevel);
+}
 
-  /// Dummy beyond last child iterator.
-  template<int codim>
-  HierarchicIterator Entity<codim>::hend(int maxLevel) const
-  {
-      // Creates iterator with empty stack and target.
-      return HierarchicIterator(maxLevel);
-  }
+/// Dummy beyond last child iterator.
+template<int codim>
+HierarchicIterator Entity<codim>::hend(int maxLevel) const
+{
+    // Creates iterator with empty stack and target.
+    return HierarchicIterator(maxLevel);
+}
 
-    template <int codim>
-    PartitionType Entity<codim>::partitionType() const
-    {
-        return pgrid_->partition_type_indicator_->getPartitionType(*this);
-    }
-    } // namespace cpgrid
+template <int codim>
+PartitionType Entity<codim>::partitionType() const
+{
+    return pgrid_->partition_type_indicator_->getPartitionType(*this);
+}
+} // namespace cpgrid
 } // namespace Dune
 
 
@@ -340,7 +347,7 @@ template<int codim>
 unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
 {
     if (cc == codim) {
-            return 1;
+        return 1;
     }
     else if ( codim == 0 ){ // Cell/element/Entity<0>
         if ( cc == 3 ) { // Get number of corners of the element.
@@ -351,7 +358,7 @@ unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
 }
 
 template <int codim>
-const typename Entity<codim>::Geometry& Entity<codim>::geometry() const 
+const typename Entity<codim>::Geometry& Entity<codim>::geometry() const
 {
     return pgrid_->geomVector<codim>()[*this];
 }
@@ -403,7 +410,7 @@ int Entity<codim>::level() const
 {
     // if distributed_data_ is not empty, level_data_ptr_ has size 1.
     if ((*(pgrid_ -> level_data_ptr_)).size() == 1){
-        return 0; // when there is no refinenment, level_ is not automatically instantiated 
+        return 0; // when there is no refinenment, level_ is not automatically instantiated
     }
     if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) { // entity on the leafview -> get the level where it was born:
         return pgrid_ -> leaf_to_level_cells_[this-> index()][0]; // leaf_to_level_cells_ leafIdx -> {level/LGR, cell index in LGR}
@@ -414,10 +421,10 @@ int Entity<codim>::level() const
 }
 
 
-// isLeaf() 
+// isLeaf()
 // - if distributed_data_ is empty: an element is a leaf <-> hbegin and hend return the same iterator. Then,
 //    *cells from level 0 (coarse grid) that are not parents, are Leaf.
-//    *cells from any LGR are Leaf, since they do not children (nested refinement not supported). 
+//    *cells from any LGR are Leaf, since they do not children (nested refinement not supported).
 // - if distrubuted_data_ is NOT empty: there may be children on a different process. Therefore,
 // isLeaf() returns true <-> the element is a leaf entity of the global refinement hierarchy. Equivalently,
 // it can be checked whether parent_to_children_cells_ is empty.
@@ -426,7 +433,7 @@ template<int codim>
 bool Entity<codim>::isLeaf() const
 {
     if ((pgrid_ -> parent_to_children_cells_).empty()){ // LGR cells
-        return true; 
+        return true;
     }
     else {
         return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
@@ -455,7 +462,7 @@ Entity<0> Entity<codim>::father() const
     }
     else{
         OPM_THROW(std::logic_error, "Entity has no father.");
-    }   
+    }
 }
 
 template<int codim>
@@ -465,12 +472,6 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
     else{
-        //
-        DefaultGeometryPolicy local_geometry = this -> local_geometry_;
-        std::array<int,8> allcorners_localEntity;
-        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& local_corners
-            = local_geometry.geomVector(std::integral_constant<int,3>());
-        local_corners.resize(8);
         // Get IJK index of the entity.
         std::array<int,3> eIJK;
         // Get the amount of children cell in each direction of the parent cell of the entity (same for all parents of each LGR)
@@ -480,14 +481,14 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         const auto& level0_grid =  (*(pgrid_->level_data_ptr_))[0];
         const auto& child0_Idx = std::get<1>((*level0_grid).parent_to_children_cells_[this->father().index()])[0];
         // If pgrid_ is the leafview, go to the LGR where the entity was born to get its IJK index in the LGR and the LGR dimension.
-        if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) // checking if pgrid_ is the LeafView 
+        if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) // checking if pgrid_ is the LeafView
         {
-           const auto& lgr_grid = (*(pgrid_->level_data_ptr_))[this -> level()];
-           cells_per_dim = (*lgr_grid).cells_per_dim_;
-           
-           const auto& entity_lgrIdx = pgrid_ -> leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_[cell] = {level, index} 
-           (*lgr_grid).getIJK(entity_lgrIdx, eIJK);
-           (*lgr_grid).getIJK(child0_Idx, child0_IJK);
+            const auto& lgr_grid = (*(pgrid_->level_data_ptr_))[this -> level()];
+            cells_per_dim = (*lgr_grid).cells_per_dim_;
+
+            const auto& entity_lgrIdx = pgrid_ -> leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_[cell] = {level, index}
+            (*lgr_grid).getIJK(entity_lgrIdx, eIJK);
+            (*lgr_grid).getIJK(child0_Idx, child0_IJK);
         }
         else // Getting grid dimension and IJK entity index when pgrid_ is an LGR
         {
@@ -498,7 +499,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         // Transform the local coordinates that comes from the refinemnet in such a way that the
         // reference element of each parent cell is the unit cube. Here, eIJK[*]/cells_per_dim[*]
         // Get the local coordinates of the entity (in the reference unit cube).
-        const std::vector<FieldVector<double, 3>>& local_corners_temp = {
+        FieldVector<double, 3> corners_in_father_reference_elem_temp[8] = {
             // corner '0'
             { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
               double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
@@ -523,24 +524,26 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
             // corner '7'
             { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
               double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] }};
+        in_father_reference_elem_corners_ = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
+        EntityVariableBase<cpgrid::Geometry<0, 3>>& mutable_in_father_reference_elem_corners = *in_father_reference_elem_corners_;
+        // assign the corners. Make use of the fact that pointers behave like iterators.
+        mutable_in_father_reference_elem_corners.assign(corners_in_father_reference_elem_temp,
+                                                        corners_in_father_reference_elem_temp + 8);
         // Compute the center of the 'local-entity'.
-        Dune::FieldVector<double, 3> local_center = {0., 0.,0.};
+        Dune::FieldVector<double, 3> center_in_father_reference_elem = {0., 0.,0.};
         for (int corn = 0; corn < 8; ++corn) {
-            local_corners[corn] = local_corners_temp[corn];
-            local_center += local_corners[corn].center()/8.;
+            for (int c = 0; c < 3; ++c)
+            {
+                center_in_father_reference_elem[c] += corners_in_father_reference_elem_temp[corn][c]/8.;
+            }
         }
         // Compute the volume of the 'local-entity'.
-        double local_volume = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-        // Indices of 'all the corners', in this case, 0-7 (required to construct a Geometry<3,3> object).
-        allcorners_localEntity = {0,1,2,3,4,5,6,7};
-        // Create a pointer to the first element of "cellfiedPatch_to_point" (required to construct a Geometry<3,3> object).
-        const int* localEntity_indices_storage_ptr = this -> local_geometry_indices_storage_ptr;
-        localEntity_indices_storage_ptr = &allcorners_localEntity[0];
-        // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
-        return Dune::cpgrid::Geometry<3,3>(local_center, local_volume, local_geometry.geomVector(std::integral_constant<int,3>()),
-                                           localEntity_indices_storage_ptr);
+        double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
+        // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
+        return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
+                                           *in_father_reference_elem_corners_, in_father_reference_elem_corner_indices_.data());
     }
-    
+
 }
 
 
