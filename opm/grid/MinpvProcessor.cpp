@@ -243,8 +243,8 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                             kk = kk_iter;
                             continue;
                         }
-                        // top or bottom cell not active, hence no ncc is created
-                        if (!actnum.empty() && (!actnum[c] ||  !actnum[c_below])) {
+                        // bottom cell not active, hence no ncc is created
+                        if (!actnum.empty() && !actnum[c_below]) {
                             kk = kk_iter;
                             continue;
                         }
