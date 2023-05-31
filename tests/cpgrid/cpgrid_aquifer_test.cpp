@@ -87,7 +87,7 @@ BOOST_AUTO_TEST_CASE(CpGridAquiferTest)
 
     auto [gathered_aquifer_cells, offset] = Opm::allGatherv(load_balanced_aquifer_cells, CommandLineDataFileMpiInit::helper().getCollectiveCommunication());
 
-    offset.size();
+    (void)offset;
     std::sort(aquifer_cells.begin(), aquifer_cells.end());
     std::sort(gathered_aquifer_cells.begin(), gathered_aquifer_cells.end());
 
