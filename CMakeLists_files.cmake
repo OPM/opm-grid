@@ -46,6 +46,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/common/ZoltanGraphFunctions.cpp
   opm/grid/common/ZoltanPartition.cpp
   opm/grid/CellQuadrature.cpp
+  opm/grid/FaceQuadrature.cpp
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp
