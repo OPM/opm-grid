@@ -1355,13 +1355,13 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
 }
 
 template<int dim>
-cpgrid::Entity<dim> Dune::createEntity(const CpGrid& grid,int index,bool orientation)
+cpgrid::Entity<dim> createEntity(const CpGrid& grid,int index,bool orientation)
 {
     return cpgrid::Entity<dim>(*grid.current_view_data_, index, orientation);
 }
-template cpgrid::Entity<0> Dune::createEntity(const CpGrid&, int, bool);
-template cpgrid::Entity<3> Dune::createEntity(const CpGrid&, int, bool);
-template cpgrid::Entity<1> Dune::createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp 
+template cpgrid::Entity<0> createEntity(const CpGrid&, int, bool);
+template cpgrid::Entity<3> createEntity(const CpGrid&, int, bool);
+template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in distribution_test.cpp
 
 
 void CpGrid::addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,

@@ -397,7 +397,7 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     ElementIterator seqEIt = seqGridView.begin<0>();
     const auto& gc = grid.globalCell();
     const auto& seqGc = seqGrid.globalCell();
-    int i{}, seqI{};
+    int i{};
     BOOST_REQUIRE(gc.size() == std::size_t(grid.size(0)));
 
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
@@ -405,7 +405,6 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
         auto id = idSet.id(*eIt);
         while (seqIdSet.id(*seqEIt) < id && seqEIt != seqEndEIt)
         {
-            ++seqI;
             ++seqEIt;
         }
         BOOST_REQUIRE(id == seqIdSet.id(seqEIt));

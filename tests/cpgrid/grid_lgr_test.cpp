@@ -161,7 +161,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
                     BOOST_CHECK_EQUAL( it == endIt, false);
                     // Auxiliary int to check amount of children
-                    int total_children = 0;
                     double referenceElemOneParent_volume = 0.;
                     std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
                     for (; it != endIt; ++it)
@@ -175,7 +174,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                             referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
                         }
                         std::cout << it->index() << '\n';
-                        total_children += 1;
                     }
                     for (int c = 0; c < 3; ++c)
                     {
