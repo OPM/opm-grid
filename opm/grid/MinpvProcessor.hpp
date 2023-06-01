@@ -76,6 +76,7 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
+        /// \param[in]       tolerance_unique_points Tolerance used to identify points based on their cooridinates.
         Result process(const std::vector<double>& thickness,
                        const double z_tolerance,
                        const double max_gap,
@@ -87,7 +88,8 @@ namespace Opm
                        const bool pinchNOGAP = false,
                        const bool pinchOption4ALL = false,
                        const std::vector<double>& permz = {},
-                       const std::function<double(int)>& multZ = [](int){ return 0;}) const;
+                       const std::function<double(int)>& multZ = [](int){ return 0;},
+                       const double tolerance_unique_points = 0) const;
     private:
         double computeGap(const std::array<double,8>& coord_above, const std::array<double,8>& coord_below) const;
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
@@ -130,7 +132,8 @@ namespace Opm
                                                           const bool pinchNOGAP,
                                                           const bool pinchOption4ALL,
                                                           const std::vector<double>& permz,
-                                                          const std::function<double(int)>& multz) const
+                                                          const std::function<double(int)>& multz,
+                                                          const double tolerance_unique_points) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -360,7 +363,7 @@ namespace Opm
                             multz(c) != 0.0)
                         {
                             // Check whether there is a gap to the neighbor below whose thickness is less
-                            // than MAX_GAP. In that case we need to create an NNC.
+                            // than MAX_GAP. In that case we need to create an NNC if there is a gap between the two cells.
                             int kk_below = kk + 1;
                             int c_below = ii + dims_[0] * (jj + dims_[1] * kk_below);
 
@@ -369,8 +372,14 @@ namespace Opm
                                 // Check MAX_GAP threshold
                                 std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
                                 std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_below, zcorn);
+                                bool vertically_connected = true; // If true a connection will be there anyway -> Skip NNC
 
-                                if (computeGap(cz, cz_below) < max_gap) {
+                                for(int i = 0; i < 4; ++i) {
+                                    vertically_connected = vertically_connected && std::abs(cz_below[i] - cz[4+1])
+                                        <= tolerance_unique_points;
+                                }
+
+                                if (!vertically_connected && computeGap(cz, cz_below) < max_gap) {
                                     result.add_nnc(c, c_below);
                                 }
                             }
