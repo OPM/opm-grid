@@ -84,6 +84,9 @@ namespace Dune
     }
 }
 
+void disjointPatches_check(Dune::CpGrid&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
 
 void lookup_check(const Dune::CpGrid&);
 
@@ -224,6 +227,9 @@ namespace Dune
         friend class cpgrid::Entity<3>;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
+        friend void ::disjointPatches_check(Dune::CpGrid&,
+                                          const std::vector<std::array<int,3>>&,
+                                          const std::vector<std::array<int,3>>&);
         friend void ::lookup_check(const Dune::CpGrid&);
         friend
         void ::refine_and_check(const Dune::cpgrid::Geometry<3,3>&,

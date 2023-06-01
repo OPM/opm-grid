@@ -1800,25 +1800,50 @@ std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& st
 bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec,
                                  const std::vector<std::array<int,3>>& endIJK_vec) const
 {
-    assert(startIJK_vec.size() == endIJK_vec.size());
+    assert(!startIJK_vec.empty());
+    assert(!endIJK_vec.empty());
     if ((startIJK_vec.size() == 1) && (endIJK_vec.size() == 1)){
         return true;
     }
-    // Auxiliary bool
-    bool disjoint = true;
+    if (startIJK_vec.size() != endIJK_vec.size() ){
+        OPM_THROW(std::logic_error, "Sizes of the arguments differ. Not enough information provided.");
+    }
     for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
-        // Auxiliary bool
+        bool valid_patch = true;
+        for (int c = 0; c < 3; ++c){
+            valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
+        }
+        if (!valid_patch){
+            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+        }
+    }
+    bool are_disjoint = true;
+    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
         bool patch_disjoint_with_otherPatches = true;
-        for (long unsigned int other_patch = 0; other_patch < startIJK_vec.size(); ++other_patch){
-            if (patch!=other_patch){
-                patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches &&
-                    ((startIJK_vec[patch] < startIJK_vec[other_patch]) || (startIJK_vec[patch] > endIJK_vec[other_patch]))
-                    &&  ((endIJK_vec[patch] < startIJK_vec[other_patch]) || (endIJK_vec[patch] > endIJK_vec[other_patch]));
+        for (long unsigned int other_patch = patch+1; other_patch < startIJK_vec.size(); ++other_patch) {
+            bool otherPatch_on_rightOrLeft_of_patch = (startIJK_vec[other_patch][0] > endIJK_vec[patch][0]) ||
+                (endIJK_vec[other_patch][0] < startIJK_vec[patch][0]);
+            if (!otherPatch_on_rightOrLeft_of_patch) {
+                bool otherPatch_on_frontOrBack_of_patch = (startIJK_vec[other_patch][1] > endIJK_vec[patch][1]) ||
+                    (endIJK_vec[other_patch][1] < startIJK_vec[patch][1]);
+                if (!otherPatch_on_frontOrBack_of_patch) {
+                    bool otherPatch_on_topOrBottom_of_patch = (startIJK_vec[other_patch][2] > endIJK_vec[patch][2]) ||
+                        (endIJK_vec[other_patch][2] < startIJK_vec[patch][2]);
+                    patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches && otherPatch_on_topOrBottom_of_patch;
+                    // true for disjoint patches, false for overlapping ones.
+                }
+            }
+            else{
+                patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches && otherPatch_on_rightOrLeft_of_patch;
+                // true for disjoint patches
+            }
+            if (!patch_disjoint_with_otherPatches){
+                return patch_disjoint_with_otherPatches; // should be false
             }
         }
-        disjoint = disjoint && patch_disjoint_with_otherPatches; // false if one of them is false
+        are_disjoint = are_disjoint && patch_disjoint_with_otherPatches;
     }
-    return disjoint;
+    return are_disjoint; // should be true
 }
 
 

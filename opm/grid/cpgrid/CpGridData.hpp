@@ -91,6 +91,9 @@ template<int> class EntityRep;
 }
 }
 
+void disjointPatches_check(Dune::CpGrid&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
 
 void lookup_check(const Dune::CpGrid&);
 
@@ -132,6 +135,10 @@ class CpGridData
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
 
+    friend
+    void ::disjointPatches_check(Dune::CpGrid&,
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&);
 
     friend
     void ::lookup_check(const Dune::CpGrid&);
