@@ -1821,6 +1821,7 @@ bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_
     return disjoint;
 }
 
+
 std::vector<int>
 CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
 {

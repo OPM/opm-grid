@@ -20,7 +20,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
+  Copyright 2009, 2010, 2013, 2022-2023 Equinor ASA.
   Copyright 2013 Dr. Blatt - HPC-Simulation-Software & Services
 
   This file is part of The Open Porous Media project  (OPM).
@@ -91,9 +91,13 @@ template<int> class EntityRep;
 }
 }
 
+
+void lookup_check(const Dune::CpGrid&);
+
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
-                    bool);
+                      bool);
+
 void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&,
                            const std::array<int,3>&);
@@ -127,7 +131,11 @@ class CpGridData
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
-    
+
+
+    friend
+    void ::lookup_check(const Dune::CpGrid&);
+
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
