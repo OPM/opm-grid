@@ -24,7 +24,7 @@ namespace Dune
             int size = cartesianDimensions()[ 0 ];
             for( int d=1; d<dimension; ++d )
                 size *= cartesianDimensions()[ d ];
-            return size ;
+            return size;
         }
 
     public:
