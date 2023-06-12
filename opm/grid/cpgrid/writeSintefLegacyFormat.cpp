@@ -102,7 +102,7 @@ namespace Dune
             if (!file) {
                 OPM_THROW(std::runtime_error, "Could not open file " + vtkfilename);
             }
-            writeVtkVolumes(file, geometry_.geomVector(std::integral_constant<int,3>()), cell_to_point_);
+            writeVtkVolumes(file, *(geometry_.geomVector(std::integral_constant<int,3>())), cell_to_point_);
         }
     }
 

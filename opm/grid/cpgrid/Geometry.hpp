@@ -198,14 +198,14 @@ namespace Dune
             {
                 return {};
             }
-            
+
             /// This method is meaningless for singular geometries.
             JacobianInverse
             jacobianInverse(const LocalCoordinate& /*local*/) const
             {
                 return {};
             }
-            
+
             /// The mapping implemented by this geometry is constant, therefore affine.
             bool affine() const
             {
@@ -340,7 +340,7 @@ namespace Dune
             {
                 return jacobianTransposed({}).transposed();
             }
-            
+
             /// @brief The inverse of the jacobian
             JacobianInverse
             jacobianInverse(const LocalCoordinate& /*local*/) const
@@ -401,15 +401,16 @@ namespace Dune
             ///        corners.
             /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
-            /// @param allcorners array of all corner positions in the grid
-            /// @param corner_indices array of 8 indices into allcorners array. The
+            /// @param allcorners pointer of all corner positions in the grid
+            /// @param corner_indices array of 8 indices into allcorners. The
             ///                       indices must be given in lexicographical order
             ///                       by (kji), i.e. i running fastest.
             Geometry(const GlobalCoordinate& pos,
                      ctype vol,
-                     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners,
+                     std::shared_ptr<const EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_ptr,
                      const int* corner_indices)
-                : pos_(pos), vol_(vol), allcorners_(allcorners.data()), cor_idx_(corner_indices)
+                : pos_(pos), vol_(vol),
+                  allcorners_(allcorners_ptr), cor_idx_(corner_indices)
             {
                 assert(allcorners_ && corner_indices);
             }
@@ -458,7 +459,7 @@ namespace Dune
                                         { 1, 1, 1 } };
                 GlobalCoordinate xyz(0.0);
                 for (int i = 0; i < 8; ++i) {
-                    GlobalCoordinate corner_contrib = corner(i);  
+                    GlobalCoordinate corner_contrib = corner(i);
                     double factor = 1.0;
                     for (int j = 0; j < 3; ++j) {
                         factor *= uvw[pat[i][j]][j];
@@ -520,7 +521,7 @@ namespace Dune
             GlobalCoordinate corner(int cor) const
             {
                 assert(allcorners_ && cor_idx_);
-                return allcorners_[cor_idx_[cor]].center();
+                return (allcorners_->data())[cor_idx_[cor]].center();
             }
 
             /// Cell volume.
@@ -595,20 +596,20 @@ namespace Dune
             {
                 return jacobianTransposed(local_coord).transposed();
             }
-            
+
             /// @brief The inverse of the jacobian
             JacobianInverse
             jacobianInverse(const LocalCoordinate& local_coord) const
             {
                 return jacobianInverseTransposed(local_coord).transposed();
             }
-            
+
             /// The mapping implemented by this geometry is not generally affine.
             bool affine() const
             {
                 return false;
             }
-            
+
             /**
              * @brief Refine a single cell with regular intervals.
              *
@@ -636,11 +637,11 @@ namespace Dune
                         cpgrid::SignedEntityVariable<PointType, 1>& refined_face_normals) const
             {
                 EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners =
-                    all_geom.geomVector(std::integral_constant<int,3>());
+                    *(all_geom.geomVector(std::integral_constant<int,3>()));
                 EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces =
-                    all_geom.geomVector(std::integral_constant<int,1>());
+                    *(all_geom.geomVector(std::integral_constant<int,1>()));
                 EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells =
-                    all_geom.geomVector(std::integral_constant<int,0>());
+                    *(all_geom.geomVector(std::integral_constant<int,0>()));
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
                 /// --- REFINED CORNERS ---
@@ -984,17 +985,17 @@ namespace Dune
                 } // end if-statement
                 /// --- END REFINED CELLS ---
             } /// --- END of refine()
-            
+
         private:
             GlobalCoordinate pos_;
             double vol_;
-            const cpgrid::Geometry<0, 3>* allcorners_; // For dimension 3 only
-            const int* cor_idx_;               // For dimension 3 only
-            
+            std::shared_ptr<const EntityVariable<Geometry<0, 3>,3>> allcorners_; // For dimension 3 only
+            const int* cor_idx_; // For dimension 3 only
+
             /// @brief
             ///   Auxiliary function to get refined_face information: tag, index, face_to_point_, face_to_cell, face centroid,
             ///   meant to reduce "refine()"-code.
-            ///                     
+            ///
             /// @param [in] l,m,n                Play the role of kji, ikj, or jik. (i~xDirect, j~yDirect, k~zDirect)
             /// @param [in] constant_direction   Takes values 0,1, or 2, meaning constant in z,x,y respectively.
             /// @param [in] cells_per_dim        Refined cells in each direction.

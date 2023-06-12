@@ -41,93 +41,99 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 namespace Dune
 {
 
-    class CpGrid;
+class CpGrid;
 
-    namespace cpgrid
+namespace cpgrid
+{
+template<int mydim, int dim>
+class Geometry;
+/// @brief
+/// @todo Doc me!
+class DefaultGeometryPolicy
+{
+    friend class CpGridData;
+    template<int mydim, int dim>
+    friend class Geometry;
+    friend class ::Dune::CpGrid;
+public:
+    /// @brief
+    /// @todo Doc me
+    DefaultGeometryPolicy()
+        : cell_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<3, 3>, 0>>()),
+          face_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<2, 3>, 1>>()),
+          point_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>())
     {
-        template<int mydim, int dim>
-        class Geometry;
-        /// @brief
-        /// @todo Doc me!
-        class DefaultGeometryPolicy
-        {
-            friend class CpGridData;
-            template<int mydim, int dim>
-            friend class Geometry;
-            friend class ::Dune::CpGrid;
-        public:
-            /// @brief
-            /// @todo Doc me
-            DefaultGeometryPolicy()
-            {
-            }
+    }
 
-            /// @brief
-            /// @todo Doc me
-            /// @param
-            DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
-                                  const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
-                                  const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
-                : cell_geom_(cell_geom), face_geom_(face_geom), point_geom_(point_geom)
-            {
-            }
+    /// @brief
+    /// @todo Doc me
+    /// @param
+    DefaultGeometryPolicy(const EntityVariable<cpgrid::Geometry<3, 3>, 0>& cell_geom,
+                          const EntityVariable<cpgrid::Geometry<2, 3>, 1>& face_geom,
+                          const EntityVariable<cpgrid::Geometry<0, 3>, 3>& point_geom)
+        : cell_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<3, 3>, 0>>(cell_geom)),
+          face_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<2, 3>, 1>>(face_geom)),
+          point_geom_ptr_(std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>(point_geom))
+    {
+    }
 
-            /// @brief
-            /// @todo Doc me!
-            /// @tparam
-            /// @param
-            /// @return
-            template <int codim>
-            const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
-            {
-                static_assert(codim != 2, "");
-                return geomVector(std::integral_constant<int,codim>());
-            }
-            
-            /// \brief Get cell geometry
-            const EntityVariable<cpgrid::Geometry<3, 3>, 0>& geomVector(const std::integral_constant<int, 0>&) const
-            {
-                return cell_geom_;
-            }
-            /// \brief Get cell geometry
-            EntityVariable<cpgrid::Geometry<3, 3>, 0>& geomVector(const std::integral_constant<int, 0>&)
-            {
-                return cell_geom_;
-            }
-            /// \brief Get face geometry
-            const EntityVariable<cpgrid::Geometry<2, 3>, 1>& geomVector(const std::integral_constant<int, 1>&) const
-            {
-                return face_geom_;
-            }
-            /// \brief Get face geometry
-            EntityVariable<cpgrid::Geometry<2, 3>, 1>& geomVector(const std::integral_constant<int, 1>&)
-            {
-                return face_geom_;
-            }
+    /// @brief
+    /// @todo Doc me!
+    /// @tparam
+    /// @param
+    /// @return
+    template <int codim>
+    const EntityVariable<cpgrid::Geometry<3 - codim, 3>, codim>& geomVector() const
+    {
+        static_assert(codim != 2, "");
+        return *geomVector(std::integral_constant<int,codim>());
+    }
 
-            /// \brief Get point geometry
-            template<int codim>
-            const EntityVariable<cpgrid::Geometry<0, 3>, 3>& geomVector(const std::integral_constant<int, codim>&) const
-            {
-                static_assert(codim==3, "Codim has to be 3");
-                return point_geom_;
-            }/// \brief Get point geometry
-            template<int codim>
-            EntityVariable<cpgrid::Geometry<0, 3>, 3>& geomVector(const std::integral_constant<int, codim>&)
-            {
-                static_assert(codim==3, "Codim has to be 3");
-                return point_geom_;
-            }
-            
-        private:
-            EntityVariable<cpgrid::Geometry<3, 3>, 0> cell_geom_;
-            EntityVariable<cpgrid::Geometry<2, 3>, 1> face_geom_;
-            EntityVariable<cpgrid::Geometry<0, 3>, 3> point_geom_;
-        };
+    /// \brief Get cell geometry
+    std::shared_ptr<const EntityVariable<cpgrid::Geometry<3, 3>, 0>> geomVector(const std::integral_constant<int, 0>&) const
+    {
+        return cell_geom_ptr_;
+    }
+    /// \brief Get cell geometry
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<3, 3>, 0>> geomVector(const std::integral_constant<int, 0>&)
+    {
+        return cell_geom_ptr_;
+    }
+    /// \brief Get face geometry
+    std::shared_ptr<const EntityVariable<cpgrid::Geometry<2, 3>, 1>> geomVector(const std::integral_constant<int, 1>&) const
+    {
+        return face_geom_ptr_;
+    }
+    /// \brief Get face geometry
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<2, 3>, 1>> geomVector(const std::integral_constant<int, 1>&)
+    {
+        return face_geom_ptr_;
+    }
+
+    /// \brief Get point geometry
+    template<int codim>
+    std::shared_ptr<const EntityVariable<cpgrid::Geometry<0, 3>, 3>> geomVector(const std::integral_constant<int, codim>&) const
+    {
+        static_assert(codim==3, "Codim has to be 3");
+        return point_geom_ptr_;
+    }
+    /// \brief Get point geometry
+    template<int codim>
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<0, 3>, 3>> geomVector(const std::integral_constant<int, codim>&)
+    {
+        static_assert(codim==3, "Codim has to be 3");
+        return point_geom_ptr_;
+    }
+
+private:
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<3, 3>, 0>> cell_geom_ptr_;
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<2, 3>, 1>> face_geom_ptr_;
+    std::shared_ptr<EntityVariable<cpgrid::Geometry<0, 3>, 3>> point_geom_ptr_;
+};
 
 
 
-    } // namespace cpgrid
+} // namespace cpgrid
 } // namespace Dune
 
 

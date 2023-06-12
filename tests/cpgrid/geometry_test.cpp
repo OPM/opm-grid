@@ -153,11 +153,12 @@ BOOST_AUTO_TEST_CASE(cellgeom)
 //     for (int i = 0; i < 8; ++i) {
 //         std::cout << corners[i] << std::endl;
 //     }
-    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
-    pg.reserve(8);
+    // call empty constructor initialze an object that we point to.
+    auto pg = std::make_shared<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
+    (*pg).reserve(8);
     for (const auto& crn : corners)
     {
-        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+        (*pg).push_back(cpgrid::Geometry<0, 3>(crn));
     }
 
     int cor_idx[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
@@ -208,11 +209,12 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     corners[5][2] = 0.0;
     corners[7][2] = 0.0;
 
-    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg1;
-    pg1.reserve(8);
+    // call empty constructor initialze an object that we point to.
+    auto pg1 = std::make_shared<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
+    (*pg1).reserve(8);
     for (const auto& crn : corners)
     {
-        pg1.push_back(cpgrid::Geometry<0, 3>(crn));
+        (*pg1).push_back(cpgrid::Geometry<0, 3>(crn));
     }
     g = Geometry(c, v, pg1, cor_idx);
 
@@ -525,9 +527,10 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
     const GlobalCoordinate c = {0.5, 0.5, 0.5};
     const Geometry::ctype v = 1.0;
 
-    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    // call empty constructor initialze an object that we point to.
+    auto pg = std::make_shared<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
     for (const auto& crn : corners) {
-        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+        (*pg).push_back(cpgrid::Geometry<0, 3>(crn));
     }
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
@@ -566,9 +569,10 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
         }
     }
 
-    cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3> pg;
+    // call empty constructor initialze an object that we point to.
+    auto pg = std::make_shared<cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
     for (const auto& crn : corners) {
-        pg.push_back(cpgrid::Geometry<0, 3>(crn));
+        (*pg).push_back(cpgrid::Geometry<0, 3>(crn));
     }
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
