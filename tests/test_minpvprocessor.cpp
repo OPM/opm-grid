@@ -27,6 +27,39 @@
 
 #include <opm/grid/MinpvProcessor.hpp>
 
+
+BOOST_AUTO_TEST_CASE(GAP_MAXGAP)
+{
+    // Set up a simple example.
+    std::vector<double> zcorn = { 0, 0, 0, 0,
+                                  2, 2, 2, 2,
+                                  2, 2, 2, 2,
+                                  2.5, 2.5, 2.5, 2.5,
+                                  2.8, 2.8, 2.8, 2.8,
+                                  3.5, 3.5, 3.5, 3.5};
+    std::vector<double> pv = { 2, 0.5, 0.7};
+    std::vector<double> minpvv(3, 0.6);
+    std::vector<int> actnum = { 1, 1, 1 };
+    std::vector<double> thickness = {2, 0.5, 0.7};
+    double z_threshold = 0.4;
+
+    Opm::MinpvProcessor mp1(1, 1, 3);
+    auto z1 = zcorn;
+    double max_gap = 1e20;
+    bool fill_removed_cells = false;
+    bool pinch_no_gap = false;
+
+    auto minpv_result = mp1.process(thickness, z_threshold, max_gap, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
+    BOOST_CHECK_EQUAL(minpv_result.nnc[0], 2);
+
+    max_gap = .29;
+    zcorn = z1;
+    minpv_result = mp1.process(thickness, z_threshold, max_gap, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
+}
+
+    
 BOOST_AUTO_TEST_CASE(Pinch)
 {
     // Set up a simple example.
