@@ -237,7 +237,6 @@ public:
     ///        side. That is, i- faces will match i+ faces etc.
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-    /// \param pichActive Whether PINCH keyword was specified
     std::vector<std::size_t> processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state,
                                                   bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                                                   bool pinchActive = true);
@@ -253,14 +252,12 @@ public:
     /// \param remove_ij_boundary if true, will remove (i, j) boundaries. Used internally.
     /// \param pinchActive If true, we will add faces between vertical cells that have only inactive cells or cells
     ///            with zero volume between them. If false these cells will not be connected.
-    /// \param tolerance_unique_points Tolerance used to identify points based on their cooridinate
     void processEclipseFormat(const grdecl& input_data,
 #if HAVE_ECL_INPUT
                               Opm::EclipseState* ecl_state,
 #endif
                               std::array<std::set<std::pair<int, int>>, 2>& nnc,
-                              bool remove_ij_boundary, bool turn_normals, bool pinchActive,
-                              double tolerance_unique_points);
+                              bool remove_ij_boundary, bool turn_normals, bool pinchActive);
 
     /// @brief
     ///    Extract Cartesian index triplet (i,j,k) of an active cell.

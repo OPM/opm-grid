@@ -550,7 +550,7 @@ void CpGrid::createCartesian(const std::array<int, 3>& dims,
 #if HAVE_ECL_INPUT
                                              nullptr,
 #endif
-                                             nnc, false, false, false, 0.0);
+                                             nnc, false, false, false);
     // global grid only on rank 0
     current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                          current_view_data_->logical_cartesian_size_.size(),
@@ -1348,7 +1348,7 @@ void CpGrid::processEclipseFormat(const grdecl& input_data,
                                              nullptr,
 #endif
                                              nnc,
-                                             remove_ij_boundary, turn_normals, false, 0.0);
+                                             remove_ij_boundary, turn_normals, false);
     current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
                                          current_view_data_->logical_cartesian_size_.size(),
                                          0);
