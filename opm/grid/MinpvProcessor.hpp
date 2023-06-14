@@ -375,7 +375,7 @@ namespace Opm
                                 bool vertically_connected = true; // If true a connection will be there anyway -> Skip NNC
 
                                 for(int i = 0; i < 4; ++i) {
-                                    vertically_connected = vertically_connected && std::abs(cz_below[i] - cz[4+1])
+                                    vertically_connected = vertically_connected && std::abs(cz_below[i] - cz[4+i])
                                         <= tolerance_unique_points;
                                 }
 
