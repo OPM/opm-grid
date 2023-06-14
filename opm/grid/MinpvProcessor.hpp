@@ -27,6 +27,7 @@
 #include <functional>
 #include <map>
 #include <vector>
+#include <numeric>
 
 namespace Opm
 {
@@ -75,6 +76,7 @@ namespace Opm
         /// will have the zcorn numbers changed so they are zero-thickness. Any
         /// cell below will be changed to include the deleted volume if mergeMinPCCells is true
         /// els the volume will be lost
+        /// \param[in]       tolerance_unique_points Tolerance used to identify points based on their cooridinates.
         Result process(const std::vector<double>& thickness,
                        const double z_tolerance,
                        const double max_gap,
@@ -83,11 +85,13 @@ namespace Opm
                        const std::vector<int>& actnum,
                        const bool mergeMinPVCells,
                        double* zcorn,
-                       bool pinchNOGAP = false,
-                       bool pinchOption4ALL = false,
+                       const bool pinchNOGAP = false,
+                       const bool pinchOption4ALL = false,
                        const std::vector<double>& permz = {},
-                       const std::function<double(int)>& multZ = [](int){ return 0;}) const;
+                       const std::function<double(int)>& multZ = [](int){ return 0;},
+                       const double tolerance_unique_points = 0) const;
     private:
+        double computeGap(const std::array<double,8>& coord_above, const std::array<double,8>& coord_below) const;
         std::array<int,8> cornerIndices(const int i, const int j, const int k) const;
         std::array<double, 8> getCellZcorn(const int i, const int j, const int k, const double* z) const;
         void setCellZcorn(const int i, const int j, const int k, const std::array<double, 8>& cellz, double* z) const;
@@ -101,6 +105,21 @@ namespace Opm
     { }
 
 
+    inline double MinpvProcessor::computeGap(const std::array<double,8>& coord_above,
+                                             const std::array<double,8>& coord_below) const
+    {
+        std::array<double, 4> vertical_gap;
+        for (std::size_t i = 0; i < 4; ++i) {
+            vertical_gap[i] = coord_below[i] - coord_above[4 + i];
+            assert(vertical_gap[i] >= 0);
+        }
+        double min_val = *std::min_element(vertical_gap.begin(), vertical_gap.end());
+        if (min_val < 1e-6){
+            return 0;
+        }
+
+        return min_val;
+    }
 
     inline MinpvProcessor::Result MinpvProcessor::process(const std::vector<double>& thickness,
                                                           const double z_tolerance,
@@ -110,10 +129,11 @@ namespace Opm
                                                           const std::vector<int>& actnum,
                                                           const bool mergeMinPVCells,
                                                           double* zcorn,
-                                                          bool pinchNOGAP,
-                                                          bool pinchOption4ALL,
+                                                          const bool pinchNOGAP,
+                                                          const bool pinchOption4ALL,
                                                           const std::vector<double>& permz,
-                                                          const std::function<double(int)>& multz) const
+                                                          const std::function<double(int)>& multz,
+                                                          const double tolerance_unique_points) const
     {
         // Algorithm:
         // 1. Process each column of cells (with same i and j
@@ -136,6 +156,9 @@ namespace Opm
         // 6. If pinchNOGAP (only has an effect if mergeMinPVcells==false holds):
         //    is true active cells with porevolume less than minpvv will only be disregarded
         //    if their thickness is below z_tolerance and nncs will be created in this case.
+        // 7. Default maximum gap allowed if option 3 in PINCH is omitted is 1e20 in any unit
+        //    If pinch is not specified it is 1e20 in SI units, which should still behave similar
+        //    to infinity.
 
 
         Result result;
@@ -179,11 +202,6 @@ namespace Opm
                             // no neighbor below for an NNC.
                             continue;
                         }
-
-                        // \todo revisit. Maybe instead of keeping track based on cell thickness
-                        // we should rather calculate that based on the appropriate corners of the
-                        // upper and lower cell
-                        double total_gap = thickness[c];
 
                         // Find the next cell
                         int kk_iter = kk + 1;
@@ -246,7 +264,7 @@ namespace Opm
                             if (pinchOption4ALL) {
                                 option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
                             }
-                            total_gap += thickness[c_below];
+
                             // move to next lower cell
                             kk_iter = kk_iter + 1;
                             if (kk_iter == dims_[2])
@@ -287,24 +305,27 @@ namespace Opm
                             }
 
                             // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                            int k_above = kk-1;
                             int c_above = ii + dims_[0] * (jj + dims_[1] * (kk-1));
                             auto above_active = actnum.empty() || actnum[c_above];
                             auto above_inactive = !actnum.empty() && !actnum[c_above];
                             auto above_thin = thickness[c_above] < z_tolerance;
                             auto above_small_pv = pv[c_above] < minpvv[c_above];
+
                             if ((above_inactive && above_thin) || (above_active && above_small_pv
                                                                    && (!pinchNOGAP || above_thin) ) ) {
-                                for (int topk = kk - 2; topk > 0; --topk) {
-                                    c_above = ii + dims_[0] * (jj + dims_[1] * (topk));
+                                for (k_above = kk - 2; k_above > 0; --k_above) {
+                                    c_above = ii + dims_[0] * (jj + dims_[1] * (k_above));
                                     above_active = actnum.empty() || actnum[c_above];
                                     above_inactive = !actnum.empty() && !actnum[c_above];
                                     auto above_significant_pv = pv[c_above] > minpvv[c_above];
                                     auto above_broad = thickness[c_above] > z_tolerance;
+
                                     // \todo if condition seems wrong and should be the negation of above?
                                     if ( (above_active && (above_significant_pv || (pinchNOGAP && above_broad) ) ) || (above_inactive && above_broad)) {
                                         break;
                                     }
-                                    total_gap += thickness[c_above];
+
                                     nnc_allowed = nnc_allowed &&
                                         (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
 
@@ -315,7 +336,10 @@ namespace Opm
                             }
 
                             // Allow nnc only of total thickness of pinched out cells is below threshold.
-                            nnc_allowed = nnc_allowed && (total_gap < max_gap);
+                            // and sum of gaps is below threshold
+                            const std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
+                            const std::array<double, 8> cz_above = getCellZcorn(ii, jj, k_above, zcorn);
+                            nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap);
 
                             if ( nnc_allowed &&
                                  (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
@@ -333,12 +357,41 @@ namespace Opm
                             kk = kk_iter;
                         }
                     }
+                    else
+                    {
+                        if (kk < dims_[2] - 1 && (actnum.empty() || actnum[c]) && pv[c] > minpvv[c] &&
+                            multz(c) != 0.0)
+                        {
+                            // Check whether there is a gap to the neighbor below whose thickness is less
+                            // than MAX_GAP. In that case we need to create an NNC if there is a gap between the two cells.
+                            int kk_below = kk + 1;
+                            int c_below = ii + dims_[0] * (jj + dims_[1] * kk_below);
+
+                            if ((actnum.empty() || actnum[c_below]) && pv[c_below] > minpvv[c_below])
+                            {
+                                // Check MAX_GAP threshold
+                                std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
+                                std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_below, zcorn);
+                                bool vertically_connected = true; // If true a connection will be there anyway -> Skip NNC
+
+                                for(int i = 0; i < 4; ++i) {
+                                    vertically_connected = vertically_connected && std::abs(cz_below[i] - cz[4+i])
+                                        <= tolerance_unique_points;
+                                }
+
+                                if (!vertically_connected && computeGap(cz, cz_below) < max_gap) {
+                                    result.add_nnc(c, c_below);
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
 
         return result;
     }
+
 
 
 

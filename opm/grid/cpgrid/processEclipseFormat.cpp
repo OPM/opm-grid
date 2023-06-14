@@ -149,10 +149,11 @@ namespace cpgrid
         g.actnum = actnumData.empty() ? nullptr : &actnumData[0];
         Opm::MinpvProcessor::Result minpv_result;
 
-        // Possibly process MINPV
-        if (ecl_state && (ecl_grid.getMinpvMode() != Opm::MinpvMode::Inactive)) {
+        double tolerance_unique_points = 0;
+        // Possibly process MINPV and PINCH
+        // This even needs to be done if neither of them is specified.
+        if (ecl_state ) {
             Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            // Currently PINCH is always assumed to be active
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             std::vector<double> thickness(cartGridSize);
             for (size_t i = 0; i < cartGridSize; ++i) {
@@ -175,7 +176,7 @@ namespace cpgrid
             minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
                                       poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
                                       zcornData.data(), nogap, pinchOptionALL,
-                                      permZ, multZ);
+                                      permZ, multZ, tolerance_unique_points);
             if (!minpv_result.nnc.empty()) {
                 this->zcorn = zcornData;
             }
@@ -249,10 +250,10 @@ namespace cpgrid
             grdecl new_g;
             addOuterCellLayer(g, new_coord, new_zcorn, new_actnum, new_g);
             // Make the grid.
-            processEclipseFormat(new_g, ecl_state, nnc_cells, true, turn_normals, pinchActive);
+            processEclipseFormat(new_g, ecl_state, nnc_cells, true, turn_normals, pinchActive, tolerance_unique_points);
         } else {
             // Make the grid.
-            processEclipseFormat(g, ecl_state, nnc_cells, false, turn_normals, pinchActive);
+            processEclipseFormat(g, ecl_state, nnc_cells, false, turn_normals, pinchActive, tolerance_unique_points);
         }
 
         return minpv_result.removed_cells;
@@ -269,7 +270,8 @@ namespace cpgrid
                                           Opm::EclipseState* ecl_state,
 #endif
                                           NNCMaps& nnc, bool remove_ij_boundary, bool turn_normals,
-                                          bool pinchActive)
+                                          bool pinchActive,
+                                          double tolerance_unique_points)
     {
         if( ccobj_.rank() != 0 )
         {
@@ -291,11 +293,11 @@ namespace cpgrid
             for ([[maybe_unused]]const auto&[global_index, volume] : aquifer_cell_volumes) {
                 is_aquifer_cell[global_index] = 1;
             }
-            process_ok = process_grdecl(&input_data, 0, is_aquifer_cell.data(), &output, pinchActive);
+            process_ok = process_grdecl(&input_data, tolerance_unique_points, is_aquifer_cell.data(), &output, pinchActive);
         } else
 #endif
         {
-            process_ok = process_grdecl(&input_data, 0, nullptr, &output, pinchActive);
+            process_ok = process_grdecl(&input_data, tolerance_unique_points, nullptr, &output, pinchActive);
         }
 
         if (process_ok == 0) {
