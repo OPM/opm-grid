@@ -51,6 +51,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp
+  opm/grid/MinpvProcessor.cpp
   opm/grid/cart_grid.c
   opm/grid/cornerpoint_grid.c
   opm/grid/cpgpreprocess/facetopology.c
