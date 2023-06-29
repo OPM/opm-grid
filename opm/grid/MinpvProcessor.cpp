@@ -118,16 +118,26 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                 // a case
                 bool option4ALLSupported = false;
                 const int c = ii + dims_[0] * (jj + dims_[1] * kk);
-                if (pv[c] < minpvv[c] && (actnum.empty() || actnum[c])) {
-                    // Cell is made inactive due to MINPV
+                bool c_active = actnum.empty() || actnum[c];
+                bool c_thin = (thickness[c] <= z_tolerance);
+                bool c_thin_inactive = !c_active && c_thin;
+                bool c_low_pv_active = pv[c] < minpvv[c] && c_active;
+
+                if (c_low_pv_active || c_thin_inactive) {
+                    std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
+                    // Cell is either inactive or made inactive due to MINPV
+
                     // Move deeper (higher k) coordinates to lower k coordinates.
                     // i.e remove the cell
-                    std::array<double, 8> cz = getCellZcorn(ii, jj, kk, zcorn);
                     for (int count = 0; count < 4; ++count) {
                         cz[count + 4] = cz[count];
                     }
                     setCellZcorn(ii, jj, kk, cz, zcorn);
-                    result.removed_cells.push_back(c);
+
+                    if (c_low_pv_active) {
+                        // Inactive due to MINPV mark it as removed
+                        result.removed_cells.push_back(c);
+                    }
 
                     if (kk == dims_[2] - 1) {
                         // this is cell at the bottom of the grid
@@ -135,7 +145,19 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         continue;
                     }
 
-                    // Find the next cell
+                    // In the case of PinchNOGAP this cell must be thin to allow NNCs, if it was deactivated
+                    // via PINCH, too.
+                    // In addition skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
+                    // be zero because of multz or permz
+                    bool nnc_allowed = (!c_low_pv_active || (!pinchNOGAP || thickness[c] <= z_tolerance))
+                        && (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
+
+                    if (pinchOption4ALL)
+                    {
+                        option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
+                    }
+
+                    // Find the next cell below
                     int kk_iter = kk + 1;
 
                     int c_below = ii + dims_[0] * (jj + dims_[1] * (kk_iter));
@@ -143,16 +165,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                     bool thin = (thickness[c_below] <= z_tolerance);
                     bool thin_inactive = !active && thin;
                     bool low_pv_active = pv[c_below] < minpvv[c_below] && active;
-                    // In the case of PichNOGAP this cell must be thin to allow NNCs, too.
-                    // In addition skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
-                    // be zero because of multz or permz
-                    bool nnc_allowed = (!pinchNOGAP || thickness[c] <= z_tolerance)
-                        && (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
 
-                    if (pinchOption4ALL)
-                    {
-                        option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
-                    }
 
                     while ( (thin_inactive || low_pv_active) && kk_iter < dims_[2] )
                     {
@@ -212,7 +225,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                     }
 
                     // create nnc if false or merge the cells if true
-                    if (mergeMinPVCells) {
+                    if (mergeMinPVCells && c_low_pv_active) {
                         // Set lower k coordinates of cell below to upper cells's coordinates.
                         // i.e fill the void using the cell below
                         std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
@@ -230,13 +243,14 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                             kk = kk_iter;
                             continue;
                         }
-                        // top or bottom cell not active, hence no ncc is created
-                        if (!actnum.empty() && (!actnum[c] ||  !actnum[c_below])) {
+                        // bottom cell not active, hence no nnc is created
+                        if (!actnum.empty() && !actnum[c_below]) {
                             kk = kk_iter;
                             continue;
                         }
 
-                        // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                        // Bypass inactive cells with thickness below tolerance and
+                        // active cells with volume below minpv
                         int k_above = kk-1;
                         int c_above = ii + dims_[0] * (jj + dims_[1] * (kk-1));
                         auto above_active = actnum.empty() || actnum[c_above];

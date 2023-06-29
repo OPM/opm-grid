@@ -217,9 +217,25 @@ BOOST_AUTO_TEST_CASE(Processing)
                                   2, 2, 2, 2,
                                   3, 3, 3, 3,
                                   3, 3, 3, 3,
-                                  3, 3, 3, 3,
-                                  3, 3, 3, 3,
+                                  3.1, 3.1, 3.1, 3.1,
+                                  3.1, 3.1, 3.1, 3.1,
                                   6, 6, 6, 6 };
+    std::vector<double> zcorn1after = { 0, 0, 0, 0,
+                                        2, 2, 2, 2,
+                                        2, 2, 2, 2,
+                                        3, 3, 3, 3,
+                                        3, 3, 3, 3,
+                                        3, 3, 3, 3, // thin inactive cell collapsed
+                                        3.1, 3.1, 3.1, 3.1,
+                                        6, 6, 6, 6 };
+    std::vector<double> zcorn1bafter = { 0, 0, 0, 0,
+                                        2, 2, 2, 2,
+                                        2, 2, 2, 2,
+                                        3, 3, 3, 3,
+                                        3, 3, 3, 3,
+                                        3, 3, 3, 3, // collapsed thin active cell with small pv
+                                        3, 3, 3, 3, // pv filled,
+                                        6, 6, 6, 6 };
     std::vector<double> zcorn2after = { 0, 0, 0, 0,
                                         2, 2, 2, 2,
                                         2, 2, 2, 2,
@@ -242,7 +258,7 @@ BOOST_AUTO_TEST_CASE(Processing)
                                         2, 2, 2, 2,
                                         2, 2, 2, 2,
                                         2, 2, 2, 2,
-                                        3, 3, 3, 3,
+                                        3.1, 3.1, 3.1, 3.1,
                                         6, 6, 6, 6 };
     std::vector<double> zcorn5after = { 0, 0, 0, 0,
                                         0, 0, 0, 0,
@@ -250,7 +266,15 @@ BOOST_AUTO_TEST_CASE(Processing)
                                         2, 2, 2, 2,
                                         2, 2, 2, 2,
                                         2, 2, 2, 2,
+                                        3.1, 3.1, 3.1, 3.1,
+                                        6, 6, 6, 6 };
+    std::vector<double> zcorn7after = { 0, 0, 0, 0,
+                                        2, 2, 2, 2,
+                                        2, 2, 2, 2,
                                         3, 3, 3, 3,
+                                        3, 3, 3, 3,
+                                        3, 3, 3, 3,
+                                        3.1, 3.1, 3.1, 3.1,
                                         6, 6, 6, 6 };
 
     std::vector<double> pv = { 2, 1, 0, 3};
@@ -264,13 +288,13 @@ BOOST_AUTO_TEST_CASE(Processing)
     std::vector<double> minpvv1(4, 0.5);
     bool fill_removed_cells = true;
     mp1.process(thicknes, z_threshold, 1e20, pv, minpvv1, actnum, fill_removed_cells, z1.data());
-    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcorn.begin(), zcorn.end());
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1.begin(), z1.end(), zcorn1after.begin(), zcorn1after.end());
 
     // check that it is possible to pass empty actnum
     Opm::MinpvProcessor mp1b(1, 1, 4);
     auto z1b = zcorn;
     mp1b.process(thicknes, z_threshold, 1e20, pv, minpvv1, actnum_empty, fill_removed_cells, z1b.data());
-    BOOST_CHECK_EQUAL_COLLECTIONS(z1b.begin(), z1b.end(), zcorn.begin(), zcorn.end());
+    BOOST_CHECK_EQUAL_COLLECTIONS(z1b.begin(), z1b.end(), zcorn1bafter.begin(), zcorn1bafter.end());
 
     Opm::MinpvProcessor mp2(1, 1, 4);
     auto z2 = zcorn;
@@ -305,4 +329,13 @@ BOOST_AUTO_TEST_CASE(Processing)
     auto minpv_result6 = mp6.process(thicknes, z_threshold, 1e20, pv, minpvv6, actnum, !fill_removed_cells, z6.data());
     BOOST_CHECK_EQUAL(minpv_result6.nnc.size(), 1);
     BOOST_CHECK_EQUAL_COLLECTIONS(z6.begin(), z6.end(), zcorn4after.begin(), zcorn4after.end());
+
+    Opm::MinpvProcessor mp7(1, 1, 4);
+    auto z7 = zcorn;
+    std::vector<double> minpvv7(4, 0); // don't deactivate any cells
+    thicknes = {2, 1, 0.1, 3};
+    z_threshold = 0.2; // create NNC over it
+    auto minpv_result7 = mp7.process(thicknes, z_threshold, 1e20, pv, minpvv7, actnum, !fill_removed_cells, z7.data());
+    BOOST_CHECK_EQUAL(minpv_result7.nnc.size(), 1);
+    BOOST_CHECK_EQUAL_COLLECTIONS(z7.begin(), z7.end(), zcorn7after.begin(), zcorn7after.end());
 }
