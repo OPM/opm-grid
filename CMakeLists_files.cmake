@@ -111,8 +111,11 @@ list (APPEND TEST_SOURCE_FILES
 
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	list(APPEND TEST_SOURCE_FILES
+	  tests/cpgrid/disjointPatches_test.cpp
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
+	  tests/cpgrid/lookupdata_test.cpp
+	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
   )
 endif()
@@ -183,6 +186,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/LookUpData.hh
+  opm/grid/LookUpDataCpGrid.hh
   opm/grid/cpgrid/OrientedEntityTable.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp
   opm/grid/cpgrid/PartitionTypeIndicator.hpp

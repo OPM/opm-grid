@@ -6,6 +6,7 @@
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            B�rd Skaflestad     <bard.skaflestad@sintef.no>
+//            Antonella Ritorto   <antonella.ritorto>
 //
 // $Date$
 //
@@ -15,7 +16,7 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2014, 2022 Equinor ASA.
+  Copyright 2009, 2010, 2014, 2022-2023 Equinor ASA.
   Copyright 2014, 2015 Dr. Blatt - HPC-Simulartion-Software & Services
   Copyright 2015       NTNU
 
@@ -79,10 +80,16 @@ namespace Dune
     class IntersectionIterator;
     class IndexSet;
     class IdSet;
-
     
     }
 }
+
+void disjointPatches_check(Dune::CpGrid&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&);
+
+void lookup_check(const Dune::CpGrid&);
+
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
@@ -220,6 +227,10 @@ namespace Dune
         friend class cpgrid::Entity<3>;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
+        friend void ::disjointPatches_check(Dune::CpGrid&,
+                                          const std::vector<std::array<int,3>>&,
+                                          const std::vector<std::array<int,3>>&);
+        friend void ::lookup_check(const Dune::CpGrid&);
         friend
         void ::refine_and_check(const Dune::cpgrid::Geometry<3,3>&,
                                 const std::array<int,3>&,

@@ -261,6 +261,11 @@ public:
     /// \return return true if seed is pointing to a valid entity
     bool isValid () const;
 
+    /// getOrigin()
+    /// Returns parent entity in level 0, if the entity was born in any LGR.
+    /// Otherwise, returns itself. 
+    Entity<0> getOrigin() const;
+
 protected:
     const CpGridData* pgrid_;
 private:
@@ -541,6 +546,25 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     }
 }
 
+
+template<int codim>
+Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
+{
+    if (hasFather())
+    {
+        return this->father(); // currently, always a level 0 entity. 
+    }
+    if (!(pgrid_ -> leaf_to_level_cells_.empty()))//(pgrid_ == (*(pgrid_->level_data_ptr_)).back().get() ) // entity on the LeafView
+    {
+        const int& entityIdxInLevel0 = pgrid_->leaf_to_level_cells_[this->index()][1];
+        const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[0].get();
+        return Dune::cpgrid::Entity<0>( *coarse_grid, entityIdxInLevel0, true);
+    }
+    else
+    {
+        return *this; 
+    }
+}
 
 } // namespace cpgrid
 } // namespace Dune
