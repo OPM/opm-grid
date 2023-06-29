@@ -70,6 +70,10 @@
 //#include "GlobalIdMapping.hpp"
 #include "Geometry.hpp"
 
+#include <array>
+#include <set>
+#include <vector>
+
 namespace Opm
 {
 class EclipseState;
