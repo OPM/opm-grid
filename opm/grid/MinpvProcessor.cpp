@@ -243,13 +243,14 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                             kk = kk_iter;
                             continue;
                         }
-                        // bottom cell not active, hence no ncc is created
+                        // bottom cell not active, hence no nnc is created
                         if (!actnum.empty() && !actnum[c_below]) {
                             kk = kk_iter;
                             continue;
                         }
 
-                        // Bypass inactive cells with thickness below tolerance and active cells with volume below minpv
+                        // Bypass inactive cells with thickness below tolerance and
+                        // active cells with volume below minpv
                         int k_above = kk-1;
                         int c_above = ii + dims_[0] * (jj + dims_[1] * (kk-1));
                         auto above_active = actnum.empty() || actnum[c_above];
