@@ -6,7 +6,7 @@
 //
 // Author(s): Atgeirr F Rasmussen <atgeirr@sintef.no>
 //            B�rd Skaflestad     <bard.skaflestad@sintef.no>
-//            Antonella Ritorto   <antonella.ritorto>
+//            Antonella Ritorto   <antonella.ritorto@opm-op.com>
 //
 // $Date$
 //
@@ -500,6 +500,24 @@ namespace Dune
 
 
         const std::map<std::string,int>& getLgrNameToLevel() const;
+
+        // @breif Compute center of an entity/element/cell in the Eclipse way:
+        //        - Average of the 4 corners of the bottom face.
+        //        - Average of the 4 corners of the top face.
+        //        Return average of the previous computations.
+        // @param [in]   int   Index of a cell.
+        // @return            'eclipse centroid'
+        std::array<double,3> getEclCentroid(const int& idx) const;
+
+        // @breif Compute center of an entity/element/cell in the Eclipse way:
+        //        - Average of the 4 corners of the bottom face.
+        //        - Average of the 4 corners of the top face.
+        //        Return average of the previous computations.
+        // @param [in]   Entity<0>   Entity
+        // @return                   'eclipse centroid'
+        std::array<double,3> getEclCentroid(const cpgrid::Entity<0>& elem) const;
+
+
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 

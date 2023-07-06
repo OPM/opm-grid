@@ -166,6 +166,25 @@ int main(int argc, char** argv )
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
+    
+    const auto& grid_leafView = grid.leafGridView();
+    Dune::CartesianIndexMapper<Grid> grid_cartMapper =  Dune::CartesianIndexMapper<Grid>(grid);
+    for (const auto& element: Dune::elements(grid_leafView)){
+        const auto& elemEclCentroid = ecl_grid.getCellCenter(grid_cartMapper.cartesianIndex(element.index()));
+        const auto& elemCpGridEclCentroid_Entity = grid.getEclCentroid(element);
+        const auto& elemCpGridEclCentroid_Index = grid.getEclCentroid(element.index());
+        for (int coord = 0; coord < 3; ++coord)
+        {
+            assert(elemEclCentroid[coord] == elemCpGridEclCentroid_Entity[coord]);
+            assert(elemEclCentroid[coord] == elemCpGridEclCentroid_Index[coord]);
+            std::cout << "From Eclipse: " << elemEclCentroid[coord]
+                      << " From CpGrid (Entity): " << elemCpGridEclCentroid_Entity[coord]
+                      << " From CpGrid (Index): " << elemCpGridEclCentroid_Index[coord]<< '\n';
+        }
+        std::cout << " " << '\n';
+    }
+    
+    
 #endif
 
     std::stringstream dgfFile;

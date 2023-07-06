@@ -378,6 +378,12 @@ private:
                                std::array<int,8>& cellifiedPatch_to_point,
                                std::array<int,8>& allcorners_cellifiedPatch) const;
 
+    // @brief Compute the average of array<double,3>.
+    //
+    // @param [in] vector of array<double,3>
+    // @return     array<double,3> (average of the entries of the given vector).
+    std::array<double,3> getAverageArr(const std::vector<std::array<double,3>>& vec) const;
+
 public:
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
@@ -428,6 +434,22 @@ public:
                 const std::vector<std::array<int,2>>,                // child_to_parent_faces
                 const std::vector<std::array<int,2>>>                // child_to_parent_cells
     refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    // @breif Compute center of an entity/element/cell in the Eclipse way:
+    //        - Average of the 4 corners of the bottom face.
+    //        - Average of the 4 corners of the top face.
+    //        Return average of the previous computations.
+    // @param [in]   int   Index of a cell.
+    // @return            'eclipse centroid'
+    std::array<double,3> computeEclCentroid(const int& idx) const;
+
+    // @breif Compute center of an entity/element/cell in the Eclipse way:
+    //        - Average of the 4 corners of the bottom face.
+    //        - Average of the 4 corners of the top face.
+    //        Return average of the previous computations.
+    // @param [in]   Entity<0>   Entity
+    // @return                   'eclipse centroid'
+    std::array<double,3> computeEclCentroid(const Entity<0>& elem) const;
 
     // Make unique boundary ids for all intersections.
     void computeUniqueBoundaryIds();
