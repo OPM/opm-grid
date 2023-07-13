@@ -723,7 +723,8 @@ private:
     std::vector<std::array<int,2>> leaf_to_level_cells_;
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_; 
+    std::vector<std::array<int,2>> child_to_parent_cells_;
+
 
     /// \brief Object for collective communication operations.
     Communication ccobj_;

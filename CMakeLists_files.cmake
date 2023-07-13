@@ -112,6 +112,7 @@ list (APPEND TEST_SOURCE_FILES
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	list(APPEND TEST_SOURCE_FILES
 	  tests/cpgrid/disjointPatches_test.cpp
+	  tests/cpgrid/eclCentroid_test.cpp
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
 	  tests/cpgrid/lookupdata_test.cpp

@@ -498,7 +498,7 @@ namespace Dune
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec);
 
-
+        // @brief TO BE DONE
         const std::map<std::string,int>& getLgrNameToLevel() const;
 
         // @breif Compute center of an entity/element/cell in the Eclipse way:
