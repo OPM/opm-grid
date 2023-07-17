@@ -2267,40 +2267,33 @@ std::array<double,3> CpGridData::getAverageArr(const std::vector<std::array<doub
 {
     assert(!vec.empty());
     std::array<double,3> result = {0., 0., 0.};
-    for (int coord = 0; coord < 3; ++coord) {
-        for (const auto& arr : vec) {
-            result[coord] += (arr.at(coord))/static_cast<double>(vec.size());
+    for (const auto& arr : vec) {
+        for (int coord = 0; coord < 3; ++coord) {
+            result[coord] += (arr[coord])/static_cast<double>(vec.size());
         }
     }
     return result;
 }
 
-std::array<double,3> CpGridData::computeEclCentroid(const int& idx) const
+std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
 {
     const auto& cell_to_point_indices = this -> cell_to_point_[idx];
-    std::array<Dune::FieldVector<double, 3>, 8>
-        // std::array<std::array<double,3>, 8>
-        cell_to_point;
+    std::array<Dune::FieldVector<double, 3>,8> cell_to_point;
     for (int cornIdx = 0; cornIdx < 8; ++cornIdx) {
         cell_to_point[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
                                   -> get(cell_to_point_indices[cornIdx])).center();
     }
-
     assert(!cell_to_point.empty());
-    // Recall corners order: cell_to_point ~ {0,1,2,3,4,5,6,7}
-    //  Top face      6---7      Bottom face     2---3
-    //               /   /                      /   /
-    //              4---5                      0---1
-    std::vector<std::array<double,3>> topCorns; //(cell_to_point.begin()+4, cell_to_point.end());
-    std::vector<std::array<double,3>>  bottomCorns; //(cell_to_point.begin(), cell_to_point.begin()+3);
+    // Recall corners order: cell_to_point ~ { [top face 0,1,2,3], [bottom face 4,5,6,7]}
+    std::vector<std::array<double,3>> topCorns;
+    std::vector<std::array<double,3>>  bottomCorns;
     topCorns.resize(4);
     bottomCorns.resize(4);
     for (int i = 0; i < 4; ++i){
         for (int coord = 0; coord < 3; ++coord){
-            topCorns[i][coord] = cell_to_point[i+4][coord];
-            bottomCorns[i][coord] = cell_to_point[i][coord];
+            topCorns[i][coord] = cell_to_point[i][coord];
+            bottomCorns[i][coord] = cell_to_point[i+4][coord];
         }
-
     }
     std::array<double,3> averageTop = this-> getAverageArr(topCorns);
     std::array<double,3> averageBottom = this -> getAverageArr(bottomCorns);

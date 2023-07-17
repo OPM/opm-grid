@@ -94,15 +94,9 @@ void createEclGridCpGrid_and_checkEclCentroid(const std::string& deckString)
         for (int coord = 0; coord < 3; ++coord)
         {
             BOOST_CHECK_CLOSE(elemEclCentroid[coord],elemCpGridEclCentroid_Entity[coord] , 1e-6);
-            assert(elemCpGridEclCentroid_Entity[coord] == elemCpGridEclCentroid_Index[coord]);
-            std::cout << " From Eclipse: " << elemEclCentroid[coord]
-                      << " From CpGrid (Entity): " << elemCpGridEclCentroid_Entity[coord]
-                      << " From CpGrid (Index): " << elemCpGridEclCentroid_Index[coord]<< '\n';
+            BOOST_CHECK_CLOSE(elemEclCentroid[coord],elemCpGridEclCentroid_Index[coord] , 1e-6);
         }
-        std::cout << " CpGrid center: " << element.geometry().center() << '\n';
-        std::cout << " " << '\n';
-    }
-   
+    } 
 }
 
 
