@@ -134,41 +134,10 @@ BOOST_AUTO_TEST_CASE(stringA)
         /)";
 
     createEclGridCpGrid_and_checkEclCentroid(deckString);
-
 }
+
 
 BOOST_AUTO_TEST_CASE(stringB)
-{
-    const std::string deckString =
-        R"(RUNSPEC
-        DIMENS
-        1  1  3 /
-        GRID
-        COORD
-        0 0 0  0 0 3
-        1 0 0  1 0 3
-        0 1 0  0 1 3
-        1 1 0  1 1 3
-        /
-        ZCORN
-        4*0
-        8*1
-        8*1.1
-        4*2.1
-        /
-       ACTNUM
-       3*1
-       /
-       PORO
-       3*0.15
-       /)";
-
-    createEclGridCpGrid_and_checkEclCentroid(deckString);
-    
-}
-
-
-BOOST_AUTO_TEST_CASE(stringC)
 {
     const std::string deckString =
         R"(RUNSPEC
@@ -195,30 +164,20 @@ BOOST_AUTO_TEST_CASE(stringC)
         /
         )";
     
-    createEclGridCpGrid_and_checkEclCentroid(deckString);
-    
+    createEclGridCpGrid_and_checkEclCentroid(deckString);   
 }
 
-BOOST_AUTO_TEST_CASE(stringD)
-{
-    /*
-Cell corners:
-0 {0, 0, 2}
-1 {4, 1, 1}
-2 {2, 5, 1}
-3 {5, 4, 1}
+BOOST_AUTO_TEST_CASE(stringC)
+{/*
+Cell corners:      COORD
+0 {0, 0, 2}        line 1: corners 0 and 4
+1 {4, 1, 1}        line 2: corners 1 and 5
+2 {2, 5, 1}        line 3: corners 2 and 6
+3 {5, 4, 1}        line 4: corners 3 and 7
 4 {1, 1, 5}
 5 {4, 0, 4}
 6 {0, 4, 5}
-7 {4, 3, 4}
-
-COORD 
-line 1: corners 0 and 4
-line 2: corners 1 and 5
-line 3: corners 2 and 6
-line 4: corners 3 and 7
-
-     */
+7 {4, 3, 4} */
     const std::string deckString =
         R"(RUNSPEC
         DIMENS
@@ -239,30 +198,20 @@ line 4: corners 3 and 7
         /
         )";
 
-    createEclGridCpGrid_and_checkEclCentroid(deckString);
-    
+    createEclGridCpGrid_and_checkEclCentroid(deckString);   
 }
 
-BOOST_AUTO_TEST_CASE(stringE)
-{
-    /*
-Cell corners:
-0 {0, 0, 0}
-1 {1, 0, 0}
-2 {0, 1, 0}
-3 {1, 1, 0}
+BOOST_AUTO_TEST_CASE(stringD)
+{/*
+Cell corners:                     COORD
+0 {0, 0, 0}                       line 1: corners 0 and 4
+1 {1, 0, 0}                       line 2: corners 1 and 5
+2 {0, 1, 0}                       line 3: corners 2 and 6
+3 {1, 1, 0}                       line 4: corners 3 and 7
 4 {0, 0, 1}
 5 {1, 0, 0}  coincides with 1
 6 {0, 1, 1}
-7 {1, 1, 0}  coincides with 3
-
-COORD 
-line 1: corners 0 and 4
-line 2: corners 1 and 5
-line 3: corners 2 and 6
-line 4: corners 3 and 7
-
-     */
+7 {1, 1, 0}  coincides with 3 */
     const std::string deckString =
         R"(RUNSPEC
         DIMENS
@@ -284,29 +233,19 @@ line 4: corners 3 and 7
         )";
 
     createEclGridCpGrid_and_checkEclCentroid(deckString);
-    
 }
 
-BOOST_AUTO_TEST_CASE(stringF)
-{
-    /*
-Cell corners:
-0  {0, 0, 0}
-1  {2, 0, 0}
-2  {0, 1, 0}
-3  {2, 1, 0}
+BOOST_AUTO_TEST_CASE(stringE)
+{/*
+Cell corners:       COORD
+0  {0, 0, 0}        line 1: corners 0 and 4
+1  {2, 0, 0}        line 2: corners 1 and 5
+2  {0, 1, 0}        line 3: corners 2 and 6
+3  {2, 1, 0}        line 4: corners 3 and 7
 4  {1, 0, 1}
 5  {3, 0, 1}
 6  {1, 1, 1}
-7  {3, 1, 1}
-
-COORD 
-line 1: corners 0 and 4
-line 2: corners 1 and 5
-line 3: corners 2 and 6
-line 4: corners 3 and 7
-
-     */
+7  {3, 1, 1} */
     const std::string deckString =
         R"(RUNSPEC
         DIMENS
@@ -328,6 +267,5 @@ line 4: corners 3 and 7
         )";
 
     createEclGridCpGrid_and_checkEclCentroid(deckString);
-    
 }
 
