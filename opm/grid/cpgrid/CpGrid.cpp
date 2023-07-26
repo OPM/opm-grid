@@ -1800,7 +1800,7 @@ std::array<double,3> CpGrid::getEclCentroid(const int& elemIdx) const
 
 std::array<double,3> CpGrid::getEclCentroid(const cpgrid::Entity<0>& elem) const
 {
-    return this-> current_view_data_ -> computeEclCentroid(elem.index());
+    return this-> getEclCentroid(elem.index());
 }
 
 } // namespace Dune

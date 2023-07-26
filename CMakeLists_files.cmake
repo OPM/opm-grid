@@ -99,6 +99,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/zoltan_test.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
+  tests/test_cellCentroid_polyhedralGrid.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
   tests/p2pcommunicator_test.cc
@@ -115,6 +116,7 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/eclCentroid_test.cpp
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
+	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
 	  tests/test_lookupdata_polyhedral.cpp
@@ -187,6 +189,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/LookUpCellCentroid.hh
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/OrientedEntityTable.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp

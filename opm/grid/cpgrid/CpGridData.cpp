@@ -2262,44 +2262,24 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
         parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
 }
 
-
-std::array<double,3> CpGridData::getAverageArr(const std::vector<std::array<double,3>>& vec) const
-{
-    assert(!vec.empty());
-    std::array<double,3> result = {0., 0., 0.};
-    for (const auto& arr : vec) {
-        for (int coord = 0; coord < 3; ++coord) {
-            result[coord] += (arr[coord])/static_cast<double>(vec.size());
-        }
-    }
-    return result;
-}
-
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
 {
     const auto& cell_to_point_indices = this -> cell_to_point_[idx];
-    std::array<Dune::FieldVector<double, 3>,8> cell_to_point;
+    std::array<double,8> X;
+    std::array<double,8> Y;
+    std::array<double,8> Z;
     for (int cornIdx = 0; cornIdx < 8; ++cornIdx) {
-        cell_to_point[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
-                                  -> get(cell_to_point_indices[cornIdx])).center();
-    }
-    assert(!cell_to_point.empty());
-    // Recall corners order: cell_to_point ~ { [top face 0,1,2,3], [bottom face 4,5,6,7]}
-    std::vector<std::array<double,3>> topCorns;
-    std::vector<std::array<double,3>>  bottomCorns;
-    topCorns.resize(4);
-    bottomCorns.resize(4);
-    for (int i = 0; i < 4; ++i){
-        for (int coord = 0; coord < 3; ++coord){
-            topCorns[i][coord] = cell_to_point[i][coord];
-            bottomCorns[i][coord] = cell_to_point[i+4][coord];
-        }
-    }
-    std::array<double,3> averageTop = this-> getAverageArr(topCorns);
-    std::array<double,3> averageBottom = this -> getAverageArr(bottomCorns);
+        X[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
+                      -> get(cell_to_point_indices[cornIdx])).center()[0];
+        Y[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
+                      -> get(cell_to_point_indices[cornIdx])).center()[1];
+        Z[cornIdx] = (this-> geometry_.geomVector(std::integral_constant<int,3>())
+                      -> get(cell_to_point_indices[cornIdx])).center()[2];
 
-    std::vector<std::array<double,3>> topAndBottomAverage = {averageTop, averageBottom};
-    return this -> getAverageArr(topAndBottomAverage);
+    }
+    return std::array<double,3> { { std::accumulate(X.begin(), X.end(), 0.0) / 8.0,
+            std::accumulate(Y.begin(), Y.end(), 0.0) / 8.0,
+            std::accumulate(Z.begin(), Z.end(), 0.0) / 8.0 } };
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const Entity<0>& elem) const
