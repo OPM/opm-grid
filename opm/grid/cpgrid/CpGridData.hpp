@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: CpGrid.hpp
+// File: CpGridData.hpp
 //
 // Created: Sep 17 21:11:41 2013
 //
@@ -138,7 +138,7 @@ class CpGridData
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
-
+    
     friend
     void ::disjointPatches_check(Dune::CpGrid&,
                                  const std::vector<std::array<int,3>>&,

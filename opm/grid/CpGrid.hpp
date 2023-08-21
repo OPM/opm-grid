@@ -59,12 +59,16 @@ namespace Opm
 {
 class EclipseGrid;
 class EclipseState;
+template<typename Grid, typename GridView> class LookUpData;
+template<typename Grid, typename GridView> class LookUpCartesianData;
 }
 
 namespace Dune
 {
 
     class CpGrid;
+    template<typename Grid, typename GridView> class LookUpData;
+    template<typename Grid, typename GridView> class LookUpCartesianData;
 
     namespace cpgrid
     {
@@ -225,6 +229,8 @@ namespace Dune
         friend class cpgrid::Entity<1>;
         friend class cpgrid::Entity<2>;
         friend class cpgrid::Entity<3>;
+        template<typename Grid, typename GridView> friend class Opm::LookUpData;
+        template<typename Grid, typename GridView> friend class Opm::LookUpCartesianData;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
         friend void ::disjointPatches_check(Dune::CpGrid&,
