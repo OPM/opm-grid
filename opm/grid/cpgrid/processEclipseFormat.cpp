@@ -168,7 +168,7 @@ namespace cpgrid
                                                           fp.get_global_double("PERMX"))
                 : std::vector<double>();
             const bool pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
-            auto& transMult = ecl_state->getTransMult();
+            const auto& transMult = ecl_state->getTransMult();
             auto multZ =[ &transMult] (int cartindex) {
                 return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
                     transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
