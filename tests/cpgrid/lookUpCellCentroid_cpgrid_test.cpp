@@ -94,11 +94,6 @@ void createEclGridCpGrid_and_checkCentroid(const std::string& deckString)
         const auto& elemCpGridEclCentroid_Entity = grid.getEclCentroid(element);
         const auto& elemCpGridEclCentroid_Index = grid.getEclCentroid(element.index());
         const auto& centroid = lookUpCellCentroid(element.index());
-        auto old = std::cout.precision();
-        std::cout << std::setprecision(15);
-        std::cout<< "Eclipse Centroid (via getCellCenter) from CpGridTest: " << '\n';
-        std::cout<< elemEclCentroid[0] << " " << elemEclCentroid[1] << " " << elemEclCentroid[2] << std::endl;
-        std::cout << std::setprecision(old);
         for (int coord = 0; coord < 3; ++coord)
         {
             BOOST_CHECK_EQUAL(elemEclCentroid[coord], elemCpGridEclCentroid_Entity[coord]);

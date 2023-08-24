@@ -38,8 +38,6 @@
 
 
 #include <type_traits>
-#include <iostream>
-#include <iomanip> // to use setprecision
 
 namespace Dune
 {
@@ -117,12 +115,7 @@ typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, std::array<dou
 Opm::LookUpCellCentroid<Grid,GridView>::operator()(std::size_t elemIdx) const
 {
     static_assert(std::is_same_v<Grid,GridType>);
-
     const auto centroid = this -> eclGrid_ -> getCellCenter(this -> cartMapper_->cartesianIndex(elemIdx));
-    auto old = std::cout.precision();
-    std::cout << std::setprecision(10);
-    std::cout << "CentroidFromMyBranch: " << centroid[0] << " " << centroid[1] << " " << centroid[2] << '\n';
-    std::cout << std::setprecision(old);
     return centroid;
 }
 
@@ -132,11 +125,6 @@ typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,std::array<doubl
 Opm::LookUpCellCentroid<Grid,GridView>::operator()(std::size_t elemIdx) const
 {
     static_assert(std::is_same_v<Grid,GridType>);
-    const auto centroid =  this -> gridView_.grid().getEclCentroid(elemIdx); // Warning!
-                                                                             // grid() might need to be changed, due to parallel simulations
-    auto old = std::cout.precision();
-    std::cout << std::setprecision(15);
-    std::cout << "CentroidFromMyBranch: " << centroid[0] << " " << centroid[1] << " " << centroid[2] << '\n';
-    std::cout << std::setprecision(old);
+    const auto centroid =  this -> gridView_.grid().getEclCentroid(elemIdx); // Warning! might need to be changed, due to issue in simulators
     return centroid;
 }
