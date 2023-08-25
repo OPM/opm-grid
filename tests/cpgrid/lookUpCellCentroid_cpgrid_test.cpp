@@ -103,6 +103,32 @@ void createEclGridCpGrid_and_checkCentroid(const std::string& deckString)
     }
 }
 
+BOOST_AUTO_TEST_CASE(SPE1)
+{
+   const std::string deckString =
+        R"( RUNSPEC
+DIMENS
+   10 10 3 /
+
+GRID
+DX
+-- There are in total 300 cells with length 1000ft in x-direction
+        300*1000 /
+DY
+-- There are in total 300 cells with length 1000ft in y-direction
+        300*1000 /
+DZ
+-- The layers are 20, 30 and 50 ft thick, in each layer there are 100 cells
+        100*20 100*30 100*50 /
+
+TOPS
+-- The depth of the top of each grid block
+        100*8325 /
+)";
+
+    createEclGridCpGrid_and_checkCentroid(deckString);
+}
+
 
 BOOST_AUTO_TEST_CASE(stringA)
 {
