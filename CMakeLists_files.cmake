@@ -86,6 +86,7 @@ list (APPEND ATTIC_FILES
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
+  tests/p2pcommunicator_test.cc
   tests/test_cartgrid.cpp
   tests/test_cpgrid.cpp
   tests/test_communication_utils.cpp
@@ -97,15 +98,16 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
+  tests/test_cellCentroid_polyhedralGrid.cpp
+  tests/test_compressed_cartesian_mapping.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
+  tests/test_lookupdata_polyhedral.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
-  tests/p2pcommunicator_test.cc
+  tests/test_quadratures.cpp
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
-  tests/test_quadratures.cpp
-  tests/test_compressed_cartesian_mapping.cpp
   tests/test_subgridpart.cpp
 	)
 
@@ -115,9 +117,9 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/eclCentroid_test.cpp
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
+	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
-	  tests/test_lookupdata_polyhedral.cpp
   )
 endif()
 
@@ -187,6 +189,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+  opm/grid/LookUpCellCentroid.hh
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/OrientedEntityTable.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp
