@@ -103,7 +103,7 @@ void createEclGridPolyhedralGrid_and_checkCentroid(const std::string& deckString
         const auto& centroid = lookUpCellCentroid(idx);
         for (int coord = 0; coord < 3; ++coord)
         {
-            BOOST_CHECK_CLOSE(elemEclCentroid[coord], centroid[coord], 1e-9);
+            BOOST_CHECK_EQUAL(elemEclCentroid[coord], centroid[coord]);
         }
     }
 }

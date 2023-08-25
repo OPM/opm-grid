@@ -2264,6 +2264,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
 
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
 {
+    // The following computation is the same as the one used in Eclipse Grid.
     const auto& cell_to_point_indices = this -> cell_to_point_[idx];
     std::array<double,8> X;
     std::array<double,8> Y;
