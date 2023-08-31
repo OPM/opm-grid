@@ -99,8 +99,9 @@ void createEclGridPolyhedralGrid_and_checkCentroid(const std::string& deckString
 
     for (const auto& element: Dune::elements(leafGridView)){
         const int idx = mapper.index(element);
-        const auto& elemEclCentroid = eclGrid.getCellCenter(gridCartMapper.cartesianIndex(idx));
-        const auto& centroid = lookUpCellCentroid(idx);
+        const auto& cartIdx = gridCartMapper.cartesianIndex(idx);
+        const auto& elemEclCentroid = eclGrid.getCellCenter(cartIdx);
+        const auto& centroid = lookUpCellCentroid.getCentroidFromEclGrid(idx);
         for (int coord = 0; coord < 3; ++coord)
         {
             BOOST_CHECK_EQUAL(elemEclCentroid[coord], centroid[coord]);

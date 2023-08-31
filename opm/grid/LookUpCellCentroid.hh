@@ -35,8 +35,6 @@
 #include <dune/grid/common/mcmgmapper.hh>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
-
-
 #include <type_traits>
 
 namespace Dune
@@ -51,10 +49,8 @@ class EclipseGrid;
 
 /// LookUpCellCentroid struct - To search cell centroids via element index
 ///
-/// Instead of using a specialitation for Dune::CpGrid, we implement std::enable_if
-/// to overload methods with different definitions: for Dune:CpGrid and for other
-/// Grid types. An auxiliary defualt template parameter (GridType = Grid) is added
-/// to deal with the dependent names at template instantiation.
+/// Instead of using a specialitation for Dune::CpGrid, we implement to member
+/// functions: for Dune:CpGrid and for other Grid types.
 template <typename Grid, typename GridView>
 struct LookUpCellCentroid
 {
@@ -71,34 +67,23 @@ struct LookUpCellCentroid
     {
     }
 
-    /// \brief: Call operator
+    /// \brief: getCentroidFromEclGrid
     ///
     ///         For grids different from Dune::CpGrid, it takes an element index, and
     ///         returns its cell centroid, from an EclipseGrid.
     ///
-    /// \tparam     GridType     Auxiliary type to overload the method, distinguishing
-    ///                          general grids from CpGrid, with std::enable_if.
-    ///                          Default: GridType = Grid.
     /// \param [in] elemIdx      Element Index.
     /// \return     centroid     Centroid of the element, computed as in Eclipse.
-    template<typename GridType = Grid>
-    typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, std::array<double,3>>
-    operator()(std::size_t elemIdx) const;
+    std::array<double,3> getCentroidFromEclGrid(std::size_t elemIdx) const;
 
-    /// \brief: Call operator
+    /// \brief: getCentroidFromCpGrid
     ///
-    ///         For Dune::CpGrid, it returns a function, taking an integer,
-    ///         returning cell centroid, computed as in Eclipse.
+    ///         For  Dune::CpGrid, it takes an element index, and
+    ///         returns its cell centroid, computed as in EclipseGrid.
     ///
-    /// \tparam    GridType      Auxiliary type to overload the method, distinguishing
-    ///                          general grids from CpGrid, with std::enable_if.
-    ///                          Default: GridType = Grid.
-    // \param [in] elemIdx       Element Index.
-    /// \return    centroid      Element centroid, computed as in Eclipse.
-    template<typename GridType = Grid>
-    typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>, std::array<double,3>>
-    operator()(std::size_t elemIdx) const;
-
+    /// \param [in] elemIdx      Element Index.
+    /// \return     centroid     Centroid of the element, computed as in Eclipse.
+    std::array<double,3> getCentroidFromCpGrid(std::size_t elemIdx) const;
 
     const GridView& gridView_;
     const Dune::CartesianIndexMapper<Grid>* cartMapper_;
@@ -108,21 +93,15 @@ struct LookUpCellCentroid
 }
 // end namespace Opm
 
-
 template<typename Grid, typename GridView>
-template<typename GridType>
-typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, std::array<double,3>>
-Opm::LookUpCellCentroid<Grid,GridView>::operator()(std::size_t elemIdx) const
+std::array<double,3> Opm::LookUpCellCentroid<Grid,GridView>::getCentroidFromEclGrid(std::size_t elemIdx) const
 {
-    static_assert(std::is_same_v<Grid,GridType>);
-    return this -> eclGrid_ -> getCellCenter(this -> cartMapper_->cartesianIndex(elemIdx));
+    return eclGrid_ -> getCellCenter(cartMapper_ -> cartesianIndex(elemIdx));
 }
 
 template<typename Grid, typename GridView>
-template<typename GridType>
-typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,std::array<double,3>>
-Opm::LookUpCellCentroid<Grid,GridView>::operator()(std::size_t elemIdx) const
+std::array<double,3> Opm::LookUpCellCentroid<Grid,GridView>::getCentroidFromCpGrid(std::size_t elemIdx) const
 {
-    static_assert(std::is_same_v<Grid,GridType>);
-    return this -> gridView_.grid().getEclCentroid(elemIdx); // Warning! might need to be changed, due to issue in simulators
+    static_assert(std::is_same_v<Grid,Dune::CpGrid>);
+    return gridView_.grid().getEclCentroid(elemIdx);
 }
