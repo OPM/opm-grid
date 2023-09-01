@@ -115,6 +115,42 @@ void setupRecvInterface(const std::vector<std::tuple<int, int, char, int> >& lis
     }
 }
 #endif // HAVE_MPI
+
+/// Release memory resources from CpGrid::InterfaceMap.  Used as custom
+/// deleter for std::shared_ptr<InterfaceMap>.
+struct FreeInterfaces
+{
+#if !HAVE_MPI
+
+    /// Release memory resources for InterfaceMap object
+    ///
+    /// \param[in] interfaces Object for which to release memory resources.
+    void operator()([[maybe_unused]] Dune::CpGrid::InterfaceMap* interfaces) const
+    {
+        // Nothing to do in the sequential case as the CpGrid::InterfaceMap
+        // handles interface deletion in its destructor in this case.
+    }
+
+#else // HAVE_MPI
+
+    /// Release memory resources for InterfaceMap object
+    ///
+    /// \param[in] interfaces Object for which to release memory resources.
+    void operator()(Dune::CpGrid::InterfaceMap* interfaces) const
+    {
+        if (interfaces == nullptr) {
+            return;
+        }
+
+        for (auto& interface : *interfaces) {
+            auto& [scatter, gather] = interface.second;
+            scatter.free();
+            gather.free();
+        }
+    }
+
+#endif // HAVE_MPI
+};
 }
 
 namespace Dune
@@ -123,8 +159,8 @@ namespace Dune
 CpGrid::CpGrid()
     : current_view_data_(),
       distributed_data_(),
-      cell_scatter_gather_interfaces_(new InterfaceMap),
-      point_scatter_gather_interfaces_(new InterfaceMap),
+      cell_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
+      point_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
       global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(data_));
@@ -136,8 +172,8 @@ CpGrid::CpGrid()
 CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
     : current_view_data_(),
       distributed_data_(),
-      cell_scatter_gather_interfaces_(new InterfaceMap),
-      point_scatter_gather_interfaces_(new InterfaceMap),
+      cell_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
+      point_scatter_gather_interfaces_(new InterfaceMap, FreeInterfaces{}),
       global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(comm, data_));
