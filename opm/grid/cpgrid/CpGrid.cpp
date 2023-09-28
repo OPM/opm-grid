@@ -15,6 +15,7 @@
 //===========================================================================
 
 /*
+  Copyright 2023 Equinor ASA.
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
   Copyright 2009, 2010 Statoil ASA.
 
@@ -1510,6 +1511,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Re-write entries of actual parent/Create the ones for child cells in each level (not default value {-1,-1} needed for LGRs).
         assert(!parent_to_children_cells.empty());
         (*data_[patch +1]).child_to_parent_cells_.resize(child_to_parent_cells.size());
+        (*data_[patch +1]).global_cell_.resize(child_to_parent_cells.size());
         for (const auto& [trueParent, children_list] : parent_to_children_cells){
             l0_parent_to_children_cells[trueParent] = std::make_tuple(patch +1, children_list); // {level/LGR, {child0, child1, ...}}
             assert(!children_list.empty());
@@ -1559,6 +1561,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     std::vector<std::array<int,2>>& leaf_to_level_cells = leaf_view.leaf_to_level_cells_; // {level, cell index in that level}
     // leaf_child_to_parent_cells[ cell index ] must be {-1,-1} when the cell has no father.
     std::vector<std::array<int,2>>& leaf_child_to_parent_cells = leaf_view.child_to_parent_cells_;
+    // All active cells. leaf_global_cell[ leaf cell idx] = origin cell idx in level 0 (parent/equiv cell in level 0)
+    std::vector<int>& leaf_global_cell = leaf_view.global_cell_;
     //
     // Mutable containers for leaf view corners, faces, cells, face tags, and face normals.
     Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& leaf_corners =
@@ -1749,6 +1753,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     leaf_cell_to_point.resize(cell_count);
     // For cells that do not have a parent, we set {-1,-1} by defualt and rewrite later for actual children
     leaf_child_to_parent_cells.resize(cell_count, std::array<int,2>({-1,-1}));
+    leaf_global_cell.resize(cell_count);
     for (int leafCellIdx = 0; leafCellIdx < cell_count; ++leafCellIdx){
         const auto& level_cellIdx = leaf_to_level_cells[leafCellIdx]; // {level, cellIdx}
         const auto& level_data =  *(this->data_[level_cellIdx[0]]);
@@ -1762,6 +1767,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Auxiliary cell_to_face
         std::vector<cpgrid::EntityRep<1>> aux_cell_to_face;
         if (level_cellIdx[0] == 0) { // Cell comes from level0
+            leaf_global_cell[leafCellIdx] = (*data_[0]).global_cell_[level_cellIdx[1]]; // global_cell_[origin cell] in level0
             // Cell to point.
             for (int corn = 0; corn < 8; ++corn) {
                 // Auxiliary bool to identity boundary patch corners
@@ -1801,6 +1807,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Get level where cell was created and its local index, to later deduce its parent.
             auto& [level, levelIdx]  = leaf_to_level_cells[leafCellIdx]; // {level, cell index in that level} (level != 0)
             leaf_child_to_parent_cells[leafCellIdx] = (*data_[level]).child_to_parent_cells_[levelIdx]; //{0, parent cell index}
+            leaf_global_cell[leafCellIdx] = (*data_[0]).global_cell_[leaf_child_to_parent_cells[leafCellIdx][1]];
+            // global_cell_[parentCell in l0]
             // Cell to point.
             for (int corn = 0; corn < 8; ++corn) {
                 leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level][old_cell_to_point[corn]];
