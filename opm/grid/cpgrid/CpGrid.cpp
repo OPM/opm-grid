@@ -598,12 +598,7 @@ const std::array<int, 3>& CpGrid::logicalCartesianSize() const
 {
     // Temporary. For a grid with LGRs, we set the logical cartesian size of the LeafGridView as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
-    if (current_view_data_ == this-> data_.back().get()){
-        return this -> data_[0] -> logical_cartesian_size_;
-    }
-    else{
-        return this -> distributed_data_[0] ->logical_cartesian_size_;
-    }
+    return current_view_data_ -> logical_cartesian_size_;
 }
 
 const std::vector<int>& CpGrid::globalCell() const
@@ -611,7 +606,9 @@ const std::vector<int>& CpGrid::globalCell() const
     // Temporary. For a grid with LGRs, we set the globalCell() of the as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
     if (current_view_data_ == this-> data_.back().get()){
-        return this -> data_[0] -> global_cell_;
+        return current_view_data_
+            //this -> data_[0]
+            -> global_cell_;
     }
     else{
         return this -> distributed_data_[0] ->global_cell_;
