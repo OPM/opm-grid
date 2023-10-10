@@ -114,6 +114,10 @@ void lookup_check(const Dune::CpGrid& grid)
         BOOST_CHECK(featureInElemDoubleIDX == featureInElemDouble);
         BOOST_CHECK(featureInElemCartesianIDX == featureInElemCartesian);
         BOOST_CHECK(featureInElemDoubleCartesianIDX == featureInElemDoubleCartesian);
+        // Extra checks related to Cartesian Index
+        const auto cartIdx = cartMapper.cartesianIndex(elem.index());
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIdxFromEntity(elem));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIndex(elem.index()));
         // Extra checks related to ElemMapper
         BOOST_CHECK(featureInElem == level0Mapper.index(elem.getOrigin()) +3);
         BOOST_CHECK(featureInElem == fake_feature[lookUpData.getOriginIndexFromEntity(elem)]);
