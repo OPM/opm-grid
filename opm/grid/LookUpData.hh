@@ -182,7 +182,7 @@ public:
     FeatureType operator()(const EntityType& elem,const std::vector<FeatureType>& feature_vec) const;
 
     /// \brief: Call operator taking an Index and a FeatureVector.
-    /// 
+    ///
     ///         Return feature of the entity, via CARTESIAN INDEX
     ///         For general grids, the feature vector is given for the gridView_.
     ///         For CpGrid, the feature vector is given for level 0.
@@ -312,7 +312,7 @@ FeatureType Opm::LookUpCartesianData<Grid,GridView>::operator()
     assert(cartMapper_);
     assert( (0 <= this->getOriginIndexFromEntity<EntityType,Grid>(elem)) &&
             (static_cast<int>(feature_vec.size()) > this-> getOriginIndexFromEntity<EntityType,Grid>(elem)) );
-    return feature_vec[cartMapper_-> cartesianIndex(this->getOriginIndexFromEntity<EntityType,Grid>(elem))];
+    return feature_vec[cartMapper_-> cartesianIndex(this->elemMapper_.index(elem))]; 
 }
 
 template<typename Grid, typename GridView>
@@ -322,7 +322,7 @@ FeatureType Opm::LookUpCartesianData<Grid,GridView>::operator()(const int& elemI
     assert(cartMapper_);
     assert(0 <= this->getOriginIndex<Grid>(elemIdx) &&
            static_cast<int>(feature_vec.size()) > this-> getOriginIndex<Grid>(elemIdx));
-    return feature_vec[cartMapper_-> cartesianIndex(this->getOriginIndex<Grid>(elemIdx))];
+    return feature_vec[cartMapper_-> cartesianIndex(elemIdx)];
 }
 
 template<typename Grid, typename GridView>

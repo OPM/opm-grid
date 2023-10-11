@@ -554,9 +554,9 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
     {
         return this->father(); // currently, always a level 0 entity. 
     }
-    if (!(pgrid_ -> leaf_to_level_cells_.empty()))//(pgrid_ == (*(pgrid_->level_data_ptr_)).back().get() ) // entity on the LeafView
+    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
     {
-        const int& entityIdxInLevel0 = pgrid_->leaf_to_level_cells_[this->index()][1];
+        const int& entityIdxInLevel0 = pgrid_->leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_ [leaf idx] = {0, cell idx}
         const auto& coarse_grid = (*(pgrid_ -> level_data_ptr_))[0].get();
         return Dune::cpgrid::Entity<0>( *coarse_grid, entityIdxInLevel0, true);
     }

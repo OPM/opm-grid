@@ -134,7 +134,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             const auto& patch_cells = (*data[0]).getPatchCells(startIJK_vec[level-1], endIJK_vec[level-1]);
 
             // GLOBAL grid
-            for (int cell = 0; cell<  data[0]-> size(0); ++cell)
+            for (int cell = 0; cell <  data[0]-> size(0); ++cell)
             {
                 Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
                 BOOST_CHECK( entity.hasFather() == false);
@@ -192,11 +192,12 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             }
 
             // LGRs
-            for (int cell = 0; cell<  data[level]-> size(0); ++cell)
+            for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
                 Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[level]), cell, true);
                 BOOST_CHECK( entity.hasFather() == true);
                 BOOST_CHECK( entity.getOrigin() ==  entity.father());
+                BOOST_CHECK( entity.index() == (data[level] -> global_cell_[entity.index()])); // global_cell_ = {0,1,..., total cells -1}
                 BOOST_CHECK( entity.getOrigin().level() == 0);
                 BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
                                   1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
@@ -245,6 +246,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
                     BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
                     BOOST_CHECK( entity.father() == entity.getOrigin());
+                    BOOST_CHECK(  (data[startIJK_vec.size() +1] -> global_cell_[entity.index()]) ==
+                                  (data[0] -> global_cell_[entity.getOrigin().index()]) );
                     BOOST_CHECK( entity.getOrigin().level() == 0);
                     BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[child_to_parent[1]]) == entity.level());
                     BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).begin(),
