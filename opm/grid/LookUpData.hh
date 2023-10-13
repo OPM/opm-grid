@@ -233,6 +233,20 @@ public:
     template<typename GridType = Grid>
     typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int> getOriginIndex(const int& elemIdx) const;
 
+    /// \brief: It returns the Cartesian index of origin cell (parent/equivalent cell when elem has no father) in level 0.
+    ///
+    /// \tparam     EntityType
+    /// \param [in] element
+    /// \return     Cartesian Index of the origin cell (parent/equivalent cell when element has no father) in level 0.
+    template<typename EntityType>
+    int getCartesianOriginIdxFromEntity(const EntityType& elem) const;
+
+    /// \brief: It returns the Cartesian index of origin cell (parent/equivalent cell when elem has no father) in level 0.
+    ///
+    /// \param [in] element index
+    /// \return     Cartesian Index of the origin cell (parent/equivalent cell when element has no father) in level 0.
+    int getCartesianOriginIndex(const int& elemIdx) const;
+
 
 protected:
     const GridView& gridView_;
@@ -361,3 +375,17 @@ Opm::LookUpCartesianData<Grid,GridView>::getOriginIndex(const int& elemIdx) cons
     const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
     return elem.getOrigin().index(); // getOrign() returns parent Entity or the equivalent Entity in level 0.
 }
+
+template<typename Grid, typename GridView>
+template<typename EntityType>
+int Opm::LookUpCartesianData<Grid,GridView>::getCartesianOriginIdxFromEntity(const EntityType& elem) const
+{
+    return cartMapper_-> cartesianIndex(this->elemMapper_.index(elem));
+}
+
+template<typename Grid, typename GridView>
+int Opm::LookUpCartesianData<Grid,GridView>::getCartesianOriginIndex(const int& elemIdx) const
+{
+    return cartMapper_-> cartesianIndex(elemIdx);
+}
+

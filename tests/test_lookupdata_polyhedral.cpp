@@ -116,8 +116,11 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         BOOST_CHECK(featureInElemDoubleIDX == featureInElemDouble);
         BOOST_CHECK(featureInElemCartesianIDX == featureInElemCartesian);
         BOOST_CHECK(featureInElemDoubleCartesianIDX == featureInElemDoubleCartesian);
+        // Extra checks related to Cartesian Index
+        const auto cartIdx = cartMapper.cartesianIndex(idx);
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIdxFromEntity(elem));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIndex(idx));
     }
-
 }
 
 BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
