@@ -266,6 +266,14 @@ public:
     /// Otherwise, returns itself. 
     Entity<0> getOrigin() const;
 
+    /// getLgrElem()   ONLY FOR Entities in the leaf grid view.
+    /// Returns refined entity in level > 0 (equivalent to the leaf grid view entity), if the entity was born in any LGR.
+    Entity<0> getLgrElem() const;
+
+    /// getLgrCartesianIdx()   ONLY FOR Entities in the leaf grid view.
+    ///            Compute the Cartesian Index in the LGR where the Entity was born.
+    int getLgrCartesianIdx() const;
+
 protected:
     const CpGridData* pgrid_;
 private:
@@ -563,6 +571,38 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
     else
     {
         return *this; 
+    }
+}
+
+template<int codim>
+Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLgrElem() const
+{
+    // Check that the element belongs to the leaf grid view
+    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
+    {
+        const auto entityLevel = this -> level(); // pgrid_->leaf_to_level_cells_[this->index()][0]
+        const int& entityLgrIdx = pgrid_->leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_ [leaf idx] = {level, cell idx}
+        const auto& lgr_grid = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
+        return Dune::cpgrid::Entity<0>( *lgr_grid, entityLgrIdx, true);
+    }
+    else {
+        throw std::invalid_argument("The entity provided does not belong to the leaf grid view. ");
+    }
+}
+
+template<int codim>
+int Dune::cpgrid::Entity<codim>::getLgrCartesianIdx() const
+{
+    // Check that the element belongs to the leaf grid view
+    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
+    {
+        const auto entityLevel = this -> level(); // pgrid_->leaf_to_level_cells_[this->index()][0]
+        const auto lgr = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
+        const auto& elemInLgr = this->getLgrElem();
+        return lgr -> global_cell_[elemInLgr.index()];
+    }
+    else {
+        throw std::invalid_argument("The entity provided does not belong to the leaf grid view. ");
     }
 }
 
