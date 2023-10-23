@@ -413,7 +413,7 @@ namespace Dune
      */
     int maxLevel () const
     {
-      return 1;
+      return 0;
     }
 
     /** \brief obtain number of entites on a level
