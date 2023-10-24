@@ -265,14 +265,12 @@ public:
     /// Returns parent entity in level 0, if the entity was born in any LGR.
     /// Otherwise, returns itself. 
     Entity<0> getOrigin() const;
+    
+    /// \brief Get equivalent element on the level grid view for an element on the leaf grid view. 
+    Entity<0> getLevelElem() const;
 
-    /// getLgrElem()   ONLY FOR Entities in the leaf grid view.
-    /// Returns refined entity in level > 0 (equivalent to the leaf grid view entity), if the entity was born in any LGR.
-    Entity<0> getLgrElem() const;
-
-    /// getLgrCartesianIdx()   ONLY FOR Entities in the leaf grid view.
-    ///            Compute the Cartesian Index in the LGR where the Entity was born.
-    int getLgrCartesianIdx() const;
+    /// \brief Get Cartesian Index in the level grid view where the Entity was born. 
+    int getLevelCartesianIdx() const;
 
 protected:
     const CpGridData* pgrid_;
@@ -575,15 +573,15 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
 }
 
 template<int codim>
-Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLgrElem() const
+Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLevelElem() const
 {
     // Check that the element belongs to the leaf grid view
     if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
     {
         const auto entityLevel = this -> level(); // pgrid_->leaf_to_level_cells_[this->index()][0]
-        const int& entityLgrIdx = pgrid_->leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_ [leaf idx] = {level, cell idx}
-        const auto& lgr_grid = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
-        return Dune::cpgrid::Entity<0>( *lgr_grid, entityLgrIdx, true);
+        const int& entityLevelIdx = pgrid_->leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_ [leaf idx] = {level, cell idx}
+        const auto& level_grid = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
+        return Dune::cpgrid::Entity<0>( *level_grid, entityLevelIdx, true);
     }
     else {
         throw std::invalid_argument("The entity provided does not belong to the leaf grid view. ");
@@ -591,15 +589,15 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLgrElem() const
 }
 
 template<int codim>
-int Dune::cpgrid::Entity<codim>::getLgrCartesianIdx() const
+int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {
     // Check that the element belongs to the leaf grid view
     if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
     {
         const auto entityLevel = this -> level(); // pgrid_->leaf_to_level_cells_[this->index()][0]
-        const auto lgr = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
-        const auto& elemInLgr = this->getLgrElem();
-        return lgr -> global_cell_[elemInLgr.index()];
+        const auto level = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
+        const auto& elemInLevel = this->getLevelElem();
+        return level -> global_cell_[elemInLevel.index()];
     }
     else {
         throw std::invalid_argument("The entity provided does not belong to the leaf grid view. ");

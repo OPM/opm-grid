@@ -121,11 +121,11 @@ void lookup_check(const Dune::CpGrid& grid)
         const auto featureInElemDouble = lookUpData(elem, fake_feature_double);
         const auto featureInElemCartesian = lookUpCartesianData(elem, fake_feature);
         const auto featureInElemDoubleCartesian = lookUpCartesianData(elem,fake_feature_double);
-        BOOST_CHECK(featureInElem == lookUpData.getFieldPropIdxFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDouble == lookUpData.getFieldPropIdxFromEntity(elem) +.5);
-        BOOST_CHECK(featureInElemCartesian == lookUpData.getFieldPropIdxFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getFieldPropIdxFromEntity(elem) +.5);
-        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getFieldPropIdxFromEntity(elem));
+        BOOST_CHECK(featureInElem == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDouble == lookUpData.getFieldPropIdx(elem) +.5);
+        BOOST_CHECK(featureInElemCartesian == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getFieldPropIdx(elem) +.5);
+        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getFieldPropIdx(elem));
         // Search via INDEX
         const auto featureInElemIDX = lookUpData(elem.index(), fake_feature);
         const auto featureInElemDoubleIDX = lookUpData(elem.index(), fake_feature_double);
@@ -142,7 +142,7 @@ void lookup_check(const Dune::CpGrid& grid)
         BOOST_CHECK(featureInElemDoubleCartesianIDX == featureInElemDoubleCartesian);
         // Extra checks related to Cartesian Index
         const auto cartIdx = cartMapper.cartesianIndex(elem.index());
-        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdxFromEntity(elem));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem));
         BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem.index()));
         // Checks related to LGR field properties
         if (elem.level())
@@ -158,7 +158,7 @@ void lookup_check(const Dune::CpGrid& grid)
         }
         // Extra checks related to ElemMapper
         BOOST_CHECK(featureInElem == level0Mapper.index(elem.getOrigin()) +3);
-        BOOST_CHECK(featureInElem == fake_feature[lookUpData.getFieldPropIdxFromEntity(elem)]);
+        BOOST_CHECK(featureInElem == fake_feature[lookUpData.getFieldPropIdx(elem)]);
         if (elem.hasFather()) { // leaf_cell has a father!
             const auto& id = (*leaf_idSet).id(elem);
             const auto& parent_id = (*level0_idSet).id(elem.father());
@@ -273,6 +273,8 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
     const auto& poro = fpm.get_double("PORO");
+    // const auto& eqlnum =  fpm.get_int("EQLNUM");
+    
     // LookUpData
     auto leaf_view = grid.leafGridView();
     const Opm::LookUpData<Dune::CpGrid,Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpData(leaf_view);
@@ -287,10 +289,16 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     {
         const auto elemIdx = mapper.index(elem);
         const auto elemOriginIdx = elem.getOrigin().index();
-        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDoubleFromEntity<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
-        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble(fpm, "PORO", elemIdx));
-        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDoubleFromEntity<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
+        // PORO
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
+        /*// EQLNUM
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "EQLNUM", elemIdx));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));*/
     }
 }
 
@@ -323,9 +331,16 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
         5*1
         /
         PORO
-        5*0.15
+        1.0 2.0 3.0 4.0 5.0
         /)";
 
+    /*
+     /
+        PROPS
+
+        EQLNUM
+        1 2 3 4 5
+    */
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
@@ -363,8 +378,15 @@ ACTNUM
 5*1
 /
 PORO
-5*0.15
+1.0 2.0 3.0 4.0 5.0
 /)";
+
+    /*
+PROPS
+
+EQLNUM
+1 2 3 4 5
+     */
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
