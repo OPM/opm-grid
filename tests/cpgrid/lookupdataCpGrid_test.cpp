@@ -44,6 +44,15 @@
 
 #include <dune/grid/common/mcmgmapper.hh>
 
+
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Deck/DeckSection.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Deck/DeckKeyword.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
+
 struct Fixture
 {
     Fixture()
@@ -67,20 +76,37 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 void lookup_check(const Dune::CpGrid& grid)
 {
     const auto& data = grid.data_;
-    
+
     std::vector<int> fake_feature(data[0]->size(0), 0);
     std::iota(fake_feature.begin(), fake_feature.end(), 3);
 
     std::vector<double> fake_feature_double(data[0]->size(0), 0.);
     std::iota(fake_feature_double.begin(), fake_feature_double.end(), .5);
 
+    std::vector<std::vector<int>> fakeLgrFeatures;
+    fakeLgrFeatures.resize(data.size()-1);
+    // Creating fake field properties for each LGR
+    if (data.size()>1) {
+        for (long unsigned int lgr = 1; lgr < data.size(); ++lgr)
+        {
+            std::vector<int> fake_feature_lgr(data[lgr]->size(0), lgr);
+            fakeLgrFeatures[lgr-1] = fake_feature_lgr;
+        }
+    }
+
+
     // LookUpData
     const auto& leaf_view = grid.leafGridView();
     const Opm::LookUpData<Dune::CpGrid, Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpData(leaf_view);
+    // LookUpData with LGR field properties
+    const Opm::LookUpData<Dune::CpGrid, Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpDataLGR(leaf_view, true);
     // LookUpCartesianData
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapper(grid);
     const Opm::LookUpCartesianData<Dune::CpGrid, Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
         lookUpCartesianData(leaf_view, cartMapper);
+    // LookUpCartesianData with LGR field properties
+    const Opm::LookUpCartesianData<Dune::CpGrid, Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
+        lookUpCartesianDataLGR(leaf_view, cartMapper, true);
 
     const auto& level0_view = grid.levelGridView(0);
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> leafMapper(leaf_view, Dune::mcmgElementLayout());
@@ -95,32 +121,44 @@ void lookup_check(const Dune::CpGrid& grid)
         const auto featureInElemDouble = lookUpData(elem, fake_feature_double);
         const auto featureInElemCartesian = lookUpCartesianData(elem, fake_feature);
         const auto featureInElemDoubleCartesian = lookUpCartesianData(elem,fake_feature_double);
-        BOOST_CHECK(featureInElem == lookUpData.getOriginIndexFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDouble == lookUpData.getOriginIndexFromEntity(elem) +.5);
-        BOOST_CHECK(featureInElemCartesian == lookUpData.getOriginIndexFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getOriginIndexFromEntity(elem) +.5);
-        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getOriginIndexFromEntity(elem));
+        BOOST_CHECK(featureInElem == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDouble == lookUpData.getFieldPropIdx(elem) +.5);
+        BOOST_CHECK(featureInElemCartesian == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getFieldPropIdx(elem) +.5);
+        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getFieldPropIdx(elem));
         // Search via INDEX
         const auto featureInElemIDX = lookUpData(elem.index(), fake_feature);
         const auto featureInElemDoubleIDX = lookUpData(elem.index(), fake_feature_double);
         const auto featureInElemCartesianIDX = lookUpCartesianData(elem.index(), fake_feature);
         const auto featureInElemDoubleCartesianIDX = lookUpCartesianData(elem.index(),fake_feature_double);
-        BOOST_CHECK(featureInElemIDX == lookUpData.getOriginIndex(elem.index()) +3);
-        BOOST_CHECK(featureInElemDoubleIDX == lookUpData.getOriginIndex(elem.index()) +.5);
-        BOOST_CHECK(featureInElemCartesianIDX == lookUpData.getOriginIndex(elem.index()) +3);
-        BOOST_CHECK(featureInElemDoubleCartesianIDX == lookUpData.getOriginIndex(elem.index()) +.5);
-        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getOriginIndex(elem.index()));
+        BOOST_CHECK(featureInElemIDX == lookUpData.getFieldPropIdx(elem.index()) +3);
+        BOOST_CHECK(featureInElemDoubleIDX == lookUpData.getFieldPropIdx(elem.index()) +.5);
+        BOOST_CHECK(featureInElemCartesianIDX == lookUpData.getFieldPropIdx(elem.index()) +3);
+        BOOST_CHECK(featureInElemDoubleCartesianIDX == lookUpData.getFieldPropIdx(elem.index()) +.5);
+        BOOST_CHECK(elem.getOrigin().index() == lookUpData.getFieldPropIdx(elem.index()));
         BOOST_CHECK(featureInElemIDX == featureInElem);
         BOOST_CHECK(featureInElemDoubleIDX == featureInElemDouble);
         BOOST_CHECK(featureInElemCartesianIDX == featureInElemCartesian);
         BOOST_CHECK(featureInElemDoubleCartesianIDX == featureInElemDoubleCartesian);
         // Extra checks related to Cartesian Index
         const auto cartIdx = cartMapper.cartesianIndex(elem.index());
-        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIdxFromEntity(elem));
-        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIndex(elem.index()));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem.index()));
+        // Checks related to LGR field properties
+        if (elem.level())
+        {
+            const auto featureInLGR = lookUpDataLGR(elem, fakeLgrFeatures[elem.level()-1]);
+            const auto featureInLGR_Cartesian = lookUpCartesianDataLGR(elem, fakeLgrFeatures[elem.level()-1]);
+            const auto featureInLGR_FromIdx = lookUpDataLGR(elem.index(), fakeLgrFeatures[elem.level()-1]);
+            const auto featureInLGR_Cartesian_FromIdx = lookUpCartesianDataLGR(elem.index(), fakeLgrFeatures[elem.level()-1]);
+            BOOST_CHECK(featureInLGR == elem.level());
+            BOOST_CHECK(featureInLGR == featureInLGR_Cartesian);
+            BOOST_CHECK(featureInLGR == featureInLGR_FromIdx);
+            BOOST_CHECK(featureInLGR == featureInLGR_Cartesian_FromIdx);
+        }
         // Extra checks related to ElemMapper
         BOOST_CHECK(featureInElem == level0Mapper.index(elem.getOrigin()) +3);
-        BOOST_CHECK(featureInElem == fake_feature[lookUpData.getOriginIndexFromEntity(elem)]);
+        BOOST_CHECK(featureInElem == fake_feature[lookUpData.getFieldPropIdx(elem)]);
         if (elem.hasFather()) { // leaf_cell has a father!
             const auto& id = (*leaf_idSet).id(elem);
             const auto& parent_id = (*level0_idSet).id(elem.father());
@@ -132,7 +170,6 @@ void lookup_check(const Dune::CpGrid& grid)
         }
     }
 }
-
 
 BOOST_AUTO_TEST_CASE(one_lgr_grid)
 {
@@ -229,3 +266,142 @@ BOOST_AUTO_TEST_CASE(no_lgrs_grid)
     grid.createCartesian(grid_dim, cell_sizes);
     lookup_check(grid);
 }
+
+
+void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string)
+{
+    Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
+    Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
+    const auto& poro = fpm.get_double("PORO");
+    // const auto& eqlnum =  fpm.get_int("EQLNUM");
+
+    // LookUpData
+    auto leaf_view = grid.leafGridView();
+    const Opm::LookUpData<Dune::CpGrid,Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpData(leaf_view);
+    // LookUpCartesianData
+    const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapper(grid);
+    const Opm::LookUpCartesianData<Dune::CpGrid, Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
+        lookUpCartesianData(leaf_view, cartMapper);
+    // Element mapper
+    const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
+        mapper(leaf_view, Dune::mcmgElementLayout());
+    for (const auto& elem : elements(leaf_view))
+    {
+        const auto elemIdx = mapper.index(elem);
+        const auto elemOriginIdx = elem.getOrigin().index();
+        // PORO
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
+        /*// EQLNUM
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "EQLNUM", elemIdx));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));*/
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(fieldProp) {
+    std::string deckString =
+        R"( RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0
+        0 0 1
+        1 0 0
+        1 0 1
+        0 1 0
+        0 1 1
+        1 1 0
+        1 1 1
+        /
+        ZCORN
+        4*0
+        8*1
+        8*2
+        8*3
+        8*4
+        4*5
+        /
+        ACTNUM
+        5*1
+        /
+        PORO
+        1.0 2.0 3.0 4.0 5.0
+        /)";
+
+    /*
+     /
+      REGIONS
+
+      EQLNUM
+      1 2 3 4 5
+    */
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+
+    Dune::CpGrid grid;
+    Opm::EclipseGrid eclGrid(deck);
+
+    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
+
+    fieldProp_check(grid, eclGrid, deckString);
+}
+
+
+BOOST_AUTO_TEST_CASE(fieldPropLgr) {
+    std::string deckString = R"( RUNSPEC
+DIMENS
+1 1 5
+/
+GRID
+DX
+-- There are in total 1 cell with length 1ft in x-direction
+1*1
+/
+DY
+-- There are in total 1 cell with length 1ft in y-direction
+1*1
+/
+DZ
+-- The layers are 2 ft thick, in each layer there is 1 cell
+1*2 1*2 1*2 1*2 1*2
+/
+TOPS
+40*1
+/
+ACTNUM
+5*1
+/
+PORO
+1.0 2.0 3.0 4.0 5.0
+/)";
+    /*
+      REGIONS
+
+      EQLNUM
+      1 2 3 4 5
+    */
+
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+
+    Dune::CpGrid grid;
+    Opm::EclipseGrid eclGrid(deck);
+
+    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
+
+    // Add LGRs and update LeafGridView
+    const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}, {2,2,2}};
+    const std::vector<std::array<int,3>>& startIJK_vec = {{0,0,0}, {0,0,3}};
+    const std::vector<std::array<int,3>>& endIJK_vec = {{1,1,1}, {1,1,4}};
+    const std::vector<std::string>& lgr_name_vec = {"LGR1", "LGR2"};
+    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+    fieldProp_check(grid, eclGrid, deckString);
+}
+

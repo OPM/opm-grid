@@ -606,9 +606,7 @@ const std::vector<int>& CpGrid::globalCell() const
     // Temporary. For a grid with LGRs, we set the globalCell() of the as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
     if (current_view_data_ == this-> data_.back().get()){
-        return current_view_data_
-            //this -> data_[0]
-            -> global_cell_;
+        return current_view_data_ -> global_cell_;
     }
     else{
         return this -> distributed_data_[0] ->global_cell_;

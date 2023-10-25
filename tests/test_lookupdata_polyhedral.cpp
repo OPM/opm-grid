@@ -47,8 +47,17 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
+#include <dune/grid/common/mcmgmapper.hh>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
+
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/Deck/DeckSection.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Deck/DeckKeyword.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Tables/TableManager.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 
 #include <sstream>
 #include <iostream>
@@ -84,10 +93,10 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
     const auto& leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(grid.leafGridView())>::type>;
     // LookUpData
-    const Opm::LookUpData<Dune::PolyhedralGrid<3,3>, GridView> lookUpData(leaf_view);
+    const Opm::LookUpData<Dune::PolyhedralGrid<3,3>, GridView> lookUpData(leaf_view, false);
     // LookUpCartesianData
     const Dune::CartesianIndexMapper<Dune::PolyhedralGrid<3,3>> cartMapper(grid);
-    const Opm::LookUpCartesianData<Dune::PolyhedralGrid<3,3>, GridView> lookUpCartesianData(leaf_view, cartMapper);
+    const Opm::LookUpCartesianData<Dune::PolyhedralGrid<3,3>, GridView> lookUpCartesianData(leaf_view, cartMapper, false);
     // Mapper
     const Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgElementLayout());
 
@@ -97,29 +106,29 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         const auto featureInElemDouble = lookUpData(elem, fake_feature_double);
         const auto featureInElemCartesian = lookUpCartesianData(elem, fake_feature);
         const auto featureInElemDoubleCartesian = lookUpCartesianData(elem,fake_feature_double);
-        BOOST_CHECK(featureInElem == lookUpData.getOriginIndexFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDouble == lookUpData.getOriginIndexFromEntity(elem) +.5);
-        BOOST_CHECK(featureInElemCartesian == lookUpData.getOriginIndexFromEntity(elem) +3);
-        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getOriginIndexFromEntity(elem) +.5);
+        BOOST_CHECK(featureInElem == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDouble == lookUpData.getFieldPropIdx(elem) +.5);
+        BOOST_CHECK(featureInElemCartesian == lookUpData.getFieldPropIdx(elem) +3);
+        BOOST_CHECK(featureInElemDoubleCartesian == lookUpData.getFieldPropIdx(elem) +.5);
         // Search via INDEX
         const auto idx = mapper.index(elem);
         const auto featureInElemIDX = lookUpData(idx, fake_feature);
         const auto featureInElemDoubleIDX = lookUpData(idx, fake_feature_double);
         const auto featureInElemCartesianIDX = lookUpCartesianData(idx, fake_feature);
         const auto featureInElemDoubleCartesianIDX = lookUpCartesianData(idx, fake_feature_double);
-        BOOST_CHECK(featureInElemIDX == (lookUpData.getOriginIndex<Dune::PolyhedralGrid<3,3>>(idx))+3);
-        BOOST_CHECK(featureInElemDoubleIDX == (lookUpData.getOriginIndex<Dune::PolyhedralGrid<3,3>>(idx)) +.5);
-        BOOST_CHECK(featureInElemCartesianIDX == (lookUpData.getOriginIndex<Dune::PolyhedralGrid<3,3>>(idx)) +3);
-        BOOST_CHECK(featureInElemDoubleCartesianIDX == (lookUpData.getOriginIndex<Dune::PolyhedralGrid<3,3>>(idx)) +.5);
-        BOOST_CHECK(idx == (lookUpData.getOriginIndex<Dune::PolyhedralGrid<3,3>>(idx)));
+        BOOST_CHECK(featureInElemIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx))+3);
+        BOOST_CHECK(featureInElemDoubleIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)) +.5);
+        BOOST_CHECK(featureInElemCartesianIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)) +3);
+        BOOST_CHECK(featureInElemDoubleCartesianIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)) +.5);
+        BOOST_CHECK(idx == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)));
         BOOST_CHECK(featureInElemIDX == featureInElem);
         BOOST_CHECK(featureInElemDoubleIDX == featureInElemDouble);
         BOOST_CHECK(featureInElemCartesianIDX == featureInElemCartesian);
         BOOST_CHECK(featureInElemDoubleCartesianIDX == featureInElemDoubleCartesian);
         // Extra checks related to Cartesian Index
         const auto cartIdx = cartMapper.cartesianIndex(idx);
-        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIdxFromEntity(elem));
-        BOOST_CHECK(cartIdx == lookUpCartesianData.getCartesianOriginIndex(idx));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem));
+        BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(idx));
     }
 }
 
@@ -149,5 +158,59 @@ BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
     Dune::PolyhedralGrid<3,3> grid(eclgrid, porv);
     lookup_check(grid);
 #endif
+}
+
+void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid, Opm::EclipseGrid eclGrid, std::string deck_string)
+{
+
+    Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
+    Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
+    const auto& poro = fpm.get_double("PORO");
+    //const auto& eqlnum = fpm.get_int("EQLNUM");
+
+    // LookUpData
+    auto leaf_view = grid.leafGridView();
+    using GridView = std::remove_cv_t< typename std::remove_reference<decltype(leaf_view)>>::type;
+    const Opm::LookUpData<Dune::PolyhedralGrid<3,3>, GridView> lookUpData(leaf_view);
+    // LookUpCartesianData
+    const Dune::CartesianIndexMapper<Dune::PolyhedralGrid<3,3>> cartMapper(grid);
+    const Opm::LookUpCartesianData<Dune::PolyhedralGrid<3,3>, GridView> lookUpCartesianData(leaf_view, cartMapper);
+    // Element mapper
+    const Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(leaf_view, Dune::mcmgElementLayout());
+    for (const auto& elem : elements(leaf_view))
+    {
+        const auto elemIdx = mapper.index(elem);
+        // PORO
+        BOOST_CHECK_EQUAL(poro[elemIdx], lookUpData.fieldPropDouble(fpm, "PORO", elem));
+        BOOST_CHECK_EQUAL(poro[elemIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
+        BOOST_CHECK_EQUAL(poro[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elem));
+        BOOST_CHECK_EQUAL(poro[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
+        /*// EQLNUM
+        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpData.fieldPropDouble(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpData.fieldPropDouble<int>(fpm, "EQLNUM", elemIdx));
+        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));*/
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(fieldProp) {
+    std::string deck_string = R"(
+GRID
+
+PORO
+   1.0 2.0 3.0 4.0 5.0 6.0
+        /
+)";
+    /*REGIONS
+      EQLNUM
+      1 2 3 4 5 6*/
+    std::vector<int> actnum1 = {1,1,1,1,1,1};
+    Opm::EclipseGrid eclGrid(3,2,1);
+    eclGrid.resetACTNUM(actnum1);
+    std::vector<double> porv;
+
+    Dune::PolyhedralGrid<3,3> grid(eclGrid, porv);
+    fieldProp_check(grid, eclGrid, deck_string);
 }
 
