@@ -166,8 +166,8 @@ void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid, Opm::EclipseGrid ecl
     Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
     const auto& poro = fpm.get_double("PORO");
-    // const auto& eqlnum = fpm.get_int("EQLNUM");
-    
+    //const auto& eqlnum = fpm.get_int("EQLNUM");
+
     // LookUpData
     auto leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(leaf_view)>>::type;
@@ -185,11 +185,11 @@ void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid, Opm::EclipseGrid ecl
         BOOST_CHECK_EQUAL(poro[elemIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
         BOOST_CHECK_EQUAL(poro[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elem));
         BOOST_CHECK_EQUAL(poro[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
-        /* // EQLNUM
+        /*// EQLNUM
         BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpData.fieldPropDouble(fpm, "EQLNUM", elem));
         BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpData.fieldPropDouble<int>(fpm, "EQLNUM", elemIdx));
         BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elem));
-        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));  */
+        BOOST_CHECK_EQUAL(eqlnum[elemIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));*/
     }
 }
 
@@ -202,12 +202,9 @@ PORO
    1.0 2.0 3.0 4.0 5.0 6.0
         /
 )";
-    /*
-       PROPS
-
-        EQLNUM
-        1 2 3 4 5 6
-     */
+    /*REGIONS
+      EQLNUM
+      1 2 3 4 5 6*/
     std::vector<int> actnum1 = {1,1,1,1,1,1};
     Opm::EclipseGrid eclGrid(3,2,1);
     eclGrid.resetACTNUM(actnum1);

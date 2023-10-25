@@ -274,7 +274,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
     const auto& poro = fpm.get_double("PORO");
     // const auto& eqlnum =  fpm.get_int("EQLNUM");
-    
+
     // LookUpData
     auto leaf_view = grid.leafGridView();
     const Opm::LookUpData<Dune::CpGrid,Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpData(leaf_view);
@@ -336,10 +336,10 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
 
     /*
      /
-        PROPS
+      REGIONS
 
-        EQLNUM
-        1 2 3 4 5
+      EQLNUM
+      1 2 3 4 5
     */
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
@@ -380,13 +380,12 @@ ACTNUM
 PORO
 1.0 2.0 3.0 4.0 5.0
 /)";
-
     /*
-PROPS
+      REGIONS
 
-EQLNUM
-1 2 3 4 5
-     */
+      EQLNUM
+      1 2 3 4 5
+    */
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
