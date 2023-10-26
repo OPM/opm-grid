@@ -273,7 +273,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
     const auto& poro = fpm.get_double("PORO");
-    // const auto& eqlnum =  fpm.get_int("EQLNUM");
+    const auto& eqlnum =  fpm.get_int("EQLNUM");
 
     // LookUpData
     auto leaf_view = grid.leafGridView();
@@ -285,6 +285,13 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     // Element mapper
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
         mapper(leaf_view, Dune::mcmgElementLayout());
+
+    const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0),0.0);
+    const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0),0.0);
+
+    const auto& eqlnumOnLeaf = lookUpData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", leaf_view.size(0), true);
+    const auto& eqlnumOnLeafCart = lookUpCartesianData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", leaf_view.size(0), true);
+
     for (const auto& elem : elements(leaf_view))
     {
         const auto elemIdx = mapper.index(elem);
@@ -294,11 +301,15 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "PORO", elemIdx));
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORO", elem));
         BOOST_CHECK_EQUAL(poro[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "PORO", elemIdx));
-        /*// EQLNUM
-        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
-        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "EQLNUM", elemIdx));
-        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
-        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropDouble(fpm, "EQLNUM", elemIdx));*/
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], poroOnLeaf[elemIdx]);
+        BOOST_CHECK_EQUAL(poro[elemOriginIdx], poroOnLeafCart[elemIdx]);
+        // EQLNUM
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropInt<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpData.fieldPropInt<int>(fpm, "EQLNUM", elemIdx));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropInt<Dune::cpgrid::Entity<0>>(fpm, "EQLNUM", elem));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropInt(fpm, "EQLNUM", elemIdx));
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeaf[elemIdx]);
+        BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeafCart[elemIdx]);
     }
 }
 
@@ -332,15 +343,14 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
         /
         PORO
         1.0 2.0 3.0 4.0 5.0
+        /
+        REGIONS
+
+        EQLNUM
+        1 2 3 4 5
         /)";
 
-    /*
-     /
-      REGIONS
-
-      EQLNUM
-      1 2 3 4 5
-    */
+    
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
@@ -379,13 +389,12 @@ ACTNUM
 /
 PORO
 1.0 2.0 3.0 4.0 5.0
-/)";
-    /*
-      REGIONS
+/
+REGIONS
 
-      EQLNUM
-      1 2 3 4 5
-    */
+EQLNUM
+1 2 3 4 5
+/)";
 
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
