@@ -67,8 +67,6 @@ namespace Dune
 {
 
     class CpGrid;
-    template<typename Grid, typename GridView> class LookUpData;
-    template<typename Grid, typename GridView> class LookUpCartesianData;
 
     namespace cpgrid
     {
