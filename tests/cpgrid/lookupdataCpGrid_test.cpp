@@ -286,8 +286,8 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
         mapper(leaf_view, Dune::mcmgElementLayout());
 
-    const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0),0.0);
-    const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0),0.0);
+    const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0));
+    const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO", leaf_view.size(0));
 
     const auto& eqlnumOnLeaf = lookUpData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", leaf_view.size(0), true);
     const auto& eqlnumOnLeafCart = lookUpCartesianData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", leaf_view.size(0), true);
