@@ -77,6 +77,7 @@
 namespace Opm
 {
 class EclipseState;
+class NNC;
 }
 namespace Dune
 {
@@ -94,6 +95,12 @@ template<int> class Entity;
 template<int> class EntityRep;
 }
 }
+
+void noNNC_check(Dune::CpGrid&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::string>&);
 
 void disjointPatches_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
@@ -138,7 +145,14 @@ class CpGridData
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
-    
+
+    friend
+    void ::noNNC_check(Dune::CpGrid&,
+                       const std::vector<std::array<int,3>>&,
+                       const std::vector<std::array<int,3>>&,
+                       const std::vector<std::array<int,3>>&,
+                       const std::vector<std::string>&);
+
     friend
     void ::disjointPatches_check(Dune::CpGrid&,
                                  const std::vector<std::array<int,3>>&,
@@ -358,6 +372,18 @@ private:
     /// @return allPatches_cells
     std::vector<int>
     getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+    /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
+    ///        Assumption: all grid cells are active.
+    bool hasNNCs(const std::vector<int>& cellIndices) const;
+
+    /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
+    ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
     ///

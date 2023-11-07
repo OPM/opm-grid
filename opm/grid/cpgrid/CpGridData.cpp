@@ -1,6 +1,8 @@
 #include"config.h"
 #include <algorithm>
+#include <array>
 #include <map>
+#include <set>
 #include <vector>
 #include"CpGridData.hpp"
 #include"DataHandleWrappers.hpp"
@@ -1859,6 +1861,41 @@ CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, 
     return all_cells;
 }
 
+bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
+{
+    bool hasNNC = false;
+    for (const auto cellIdx : cellIndices)
+    {
+        bool cellHasNNC = false;
+        Dune::cpgrid::Entity<0> entity(*this, cellIdx, true);
+        auto cellFaces = this->cell_to_face_[entity];
+        for (const auto face : cellFaces) {
+            Dune::cpgrid::Entity<1> f(face.index(), true);
+            enum face_tag tag = this->face_tag_[f];
+            if (tag == face_tag::NNC_FACE) {
+                cellHasNNC = true;
+                break;
+            }
+        }
+        hasNNC = hasNNC || cellHasNNC;
+        if (hasNNC){
+            break;
+        }
+    }
+    return hasNNC;
+}
+
+void CpGridData::validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec,
+                                   const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    assert(startIJK_vec.size() == endIJK_vec.size());
+    for (unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
+        for (int c = 0; c < 3; ++c) {
+            // valid startIJK and endIJK for each patch
+            assert(startIJK_vec[patch][c] < endIJK_vec[patch][c]);
+        }
+    }
+}
 
 Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
                                        const std::vector<int>& patch_cells,
@@ -1947,7 +1984,8 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     const cpgrid::Geometry<3,3>& parent_cell = (*(geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(parent_idx, true)];
     // Get parent cell corners.
     const std::array<int,8>& parent_to_point = this->cell_to_point_[parent_idx];
-    if (parent_to_point.size() != 8){
+    const std::set<int> nonRepeated_parentCorners(parent_to_point.begin(), parent_to_point.end());
+    if (nonRepeated_parentCorners.size() != 8){
         OPM_THROW(std::logic_error, "Cell is not a hexahedron. Cannot be refined (yet).");
     }
     // Refine parent cell
