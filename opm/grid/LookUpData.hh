@@ -31,6 +31,8 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
+#ifndef OPM_LOOKUPDATA_HH
+#define OPM_LOOKUPDATA_HH
 
 #include <dune/grid/common/mcmgmapper.hh>
 
@@ -535,3 +537,5 @@ Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const int& ele
     const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
     return this -> getFieldPropCartesianIdx<Dune::cpgrid::Entity<0>,Dune::CpGrid>(elem);
 }
+
+#endif
