@@ -1429,6 +1429,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec)
 {
+    // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
+    (*data_[0]).validStartEndIJKs(startIJK_vec, endIJK_vec);
     if (!distributed_data_.empty()){
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
@@ -1437,6 +1439,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
+    // Check LGRs are disjoint
     if (startIJK_vec.size() > 0 && !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "LGRs are not disjoint.");
@@ -1444,6 +1447,23 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         else{
             OPM_THROW_NOLOG(std::logic_error, "LGRs are not disjoint.");
         }
+    }
+    // Check grid is Cartesian
+    const std::array<int,3>& coarseGrid_dim =  (*data_[0]).logical_cartesian_size_;
+    long unsigned int coarseGridXYZ = coarseGrid_dim[0]*coarseGrid_dim[1]*coarseGrid_dim[2];
+    if ((*data_[0]).global_cell_.size() != coarseGridXYZ){
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Grid is not Cartesian. This type of refinement is not supported yet.");
+        }
+        else {
+            // No cells on rank > 0
+            return;
+        }
+    }
+    // Check all the cells to be refined have no NNC (no neighbouring connections).
+    std::vector<int> all_patch_cells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
+    if ((*data_[0]).hasNNCs(all_patch_cells)){
+        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
     // Total amount of patches:
     const int& num_patches = startIJK_vec.size();
@@ -1459,18 +1479,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     auto& l0_parent_to_children_cells = (*data_[0]).parent_to_children_cells_;
     l0_parent_to_children_cells.resize(data_[0]-> size(0), std::make_tuple(-1, std::vector<int>()));
     //
-    // Get patches corner, face, and cell indices. We instantiate them with level1 info and then insert other levels info. 
+    // Get patches corner and face indices. We instantiate them with level1 info and then insert other levels info.
     std::vector<int> all_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[0], endIJK_vec[0]);
     std::vector<int> all_patch_faces = (*data_[0]).getPatchFaces(startIJK_vec[0], endIJK_vec[0]);
-    std::vector<int> all_patch_cells = (*data_[0]).getPatchCells(startIJK_vec[0], endIJK_vec[0]);
     for (int patch = 0; patch < num_patches; ++patch){
         if (patch+1 < num_patches) { // Populate last pacht information at the end of the for-loop
             const auto& next_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[patch+1], endIJK_vec[patch+1]);
             const auto& next_patch_faces = (*data_[0]).getPatchFaces(startIJK_vec[patch+1], endIJK_vec[patch+1]);
-            const auto& next_patch_cells = (*data_[0]).getPatchCells(startIJK_vec[patch+1], endIJK_vec[patch+1]);
             all_patch_corners.insert(all_patch_corners.end(), next_patch_corners.begin(), next_patch_corners.end());
             all_patch_faces.insert(all_patch_faces.end(), next_patch_faces.begin(), next_patch_faces.end());
-            all_patch_cells.insert(all_patch_cells.end(), next_patch_cells.begin(), next_patch_cells.end());
         }
         // Build each LGR from the selected patche of cells from level0 (level0 = this->data_[0]).
         const auto& [level_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,

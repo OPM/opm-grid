@@ -61,6 +61,7 @@ class EclipseGrid;
 class EclipseState;
 template<typename Grid, typename GridView> class LookUpData;
 template<typename Grid, typename GridView> class LookUpCartesianData;
+class NNC;
 }
 
 namespace Dune
@@ -85,6 +86,20 @@ namespace Dune
     
     }
 }
+
+void noNNC_check(Dune::CpGrid&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::array<int,3>>&,
+                 const std::vector<std::string>&);
+
+void testCase(const std::string&,
+              const Opm::NNC&,
+              const std::vector<std::array<int,3>>&,
+              const std::vector<std::array<int,3>>&,
+              const std::vector<std::array<int,3>>&,
+              const std::vector<std::string>&,
+              bool);
 
 void disjointPatches_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
@@ -231,9 +246,21 @@ namespace Dune
         template<typename Grid, typename GridView> friend class Opm::LookUpCartesianData;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
+        friend void ::noNNC_check(Dune::CpGrid&,
+                                  const std::vector<std::array<int,3>>&,
+                                  const std::vector<std::array<int,3>>&,
+                                  const std::vector<std::array<int,3>>&,
+                                  const std::vector<std::string>&);
+        friend void ::testCase(const std::string&,
+                               const Opm::NNC&,
+                               const std::vector<std::array<int,3>>&,
+                               const std::vector<std::array<int,3>>&,
+                               const std::vector<std::array<int,3>>&,
+                               const std::vector<std::string>&,
+                               bool);
         friend void ::disjointPatches_check(Dune::CpGrid&,
-                                          const std::vector<std::array<int,3>>&,
-                                          const std::vector<std::array<int,3>>&);
+                                            const std::vector<std::array<int,3>>&,
+                                            const std::vector<std::array<int,3>>&);
         friend void ::lookup_check(const Dune::CpGrid&);
         friend
         void ::refine_and_check(const Dune::cpgrid::Geometry<3,3>&,
