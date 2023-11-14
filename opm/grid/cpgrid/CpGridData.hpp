@@ -477,6 +477,9 @@ public:
     // @return                   'eclipse centroid'
     std::array<double,3> computeEclCentroid(const Entity<0>& elem) const;
 
+    // @brief Get face tag
+    enum face_tag getFaceTag(int faceIdx) const;
+
     // Make unique boundary ids for all intersections.
     void computeUniqueBoundaryIds();
 

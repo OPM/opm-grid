@@ -2326,5 +2326,11 @@ std::array<double,3> CpGridData::computeEclCentroid(const Entity<0>& elem) const
     return this->computeEclCentroid(elem.index());
 }
 
+enum face_tag CpGridData::getFaceTag(int faceIdx) const
+{
+    Dune::cpgrid::EntityRep<1> face(faceIdx, true);
+    return this->face_tag_[face];
+}
+
 } // end namespace cpgrid
 } // end namespace Dune

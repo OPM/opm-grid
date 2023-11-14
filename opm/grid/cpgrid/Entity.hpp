@@ -266,10 +266,10 @@ public:
     /// Otherwise, returns itself. 
     Entity<0> getOrigin() const;
     
-    /// \brief Get equivalent element on the level grid view for an element on the leaf grid view. 
+    /// \brief Get equivalent element on the level grid view for an element on the leaf grid view.
     Entity<0> getLevelElem() const;
 
-    /// \brief Get Cartesian Index in the level grid view where the Entity was born. 
+    /// \brief Get Cartesian Index in the level grid view where the Entity was born.
     int getLevelCartesianIdx() const;
 
 protected:

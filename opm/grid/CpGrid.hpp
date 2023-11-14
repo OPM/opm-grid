@@ -532,6 +532,9 @@ namespace Dune
         // @brief TO BE DONE
         const std::map<std::string,int>& getLgrNameToLevel() const;
 
+        // @bried Get leaf grid
+        Dune::cpgrid::CpGridData* getCurrentViewData() const;
+
         // @breif Compute center of an entity/element/cell in the Eclipse way:
         //        - Average of the 4 corners of the bottom face.
         //        - Average of the 4 corners of the top face.

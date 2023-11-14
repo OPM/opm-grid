@@ -1856,6 +1856,11 @@ const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
 }
 
+Dune::cpgrid::CpGridData* CpGrid::getCurrentViewData() const
+{
+    return  current_view_data_;
+}
+
 std::array<double,3> CpGrid::getEclCentroid(const int& elemIdx) const
 {
     return this-> current_view_data_ -> computeEclCentroid(elemIdx);
