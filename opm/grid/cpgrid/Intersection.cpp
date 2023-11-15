@@ -127,28 +127,18 @@ void Intersection::increment()
 
 int Intersection::indexInInside() const
 {
-    // Use the face tags to decide if an intersection is
+    // Use the face tags (I_FACE = 0, J_FACE = 1, K_FACE = 2)
+    // to decide if an intersection is
     // on an x, y, or z face and use orientations to decide
     // if its (for example) an xmin or xmax face.
-    typedef OrientedEntityTable<0,1>::ToType Face;
-    const Face& f = faces_of_cell_[subindex_];
-    const bool normal_is_in = !f.orientation();
-    enum face_tag tag = pgrid_->face_tag_[f];
-    switch (tag) {
-    case I_FACE:
-        return normal_is_in ? 0 : 1; // min(I) : max(I)
-    case J_FACE:
-        return normal_is_in ? 2 : 3; // min(J) : max(J)
-    case K_FACE:
-        return normal_is_in ? 4 : 5; // min(K) : max(K)
-    case NNC_FACE:
-        // For nnc faces we return the otherwise unused value -1.
-        // The Dune grid interface is essentially meaningless
-        // for non-neighbouring "intersections".
+    const auto& face = faces_of_cell_[subindex_];
+    const auto tag = pgrid_->face_tag_[face];
+    if (tag == NNC_FACE) {
         return -1;
-    default:
-        OPM_THROW(std::runtime_error,
-                  "Unhandled face tag: " + std::to_string(tag));
+    }
+    else {
+        return 2 * static_cast<int>(tag) +
+            static_cast<int>(face.orientation());
     }
 }
 
