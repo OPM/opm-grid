@@ -484,7 +484,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
 
                         CHECK_COORDINATES(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
                         const auto& geom_match = intersection_match.geometry();
-                        BOOST_TEST(0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                        BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
                         const auto& geom =  intersection.geometry();
                         BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
                         CHECK_COORDINATES(geom_match.center(), geom.center());
