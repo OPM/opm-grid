@@ -77,7 +77,6 @@
 namespace Opm
 {
 class EclipseState;
-class NNC;
 }
 namespace Dune
 {
@@ -95,18 +94,6 @@ template<int> class Entity;
 template<int> class EntityRep;
 }
 }
-
-void noNNC_check(Dune::CpGrid&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::string>&);
-
-void disjointPatches_check(Dune::CpGrid&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&);
-
-void lookup_check(const Dune::CpGrid&);
 
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
@@ -145,21 +132,6 @@ class CpGridData
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
-
-    friend
-    void ::noNNC_check(Dune::CpGrid&,
-                       const std::vector<std::array<int,3>>&,
-                       const std::vector<std::array<int,3>>&,
-                       const std::vector<std::array<int,3>>&,
-                       const std::vector<std::string>&);
-
-    friend
-    void ::disjointPatches_check(Dune::CpGrid&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&);
-
-    friend
-    void ::lookup_check(const Dune::CpGrid&);
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -310,6 +282,36 @@ public:
         ijk[2] = gc / logical_cartesian_size_[1];
     }
 
+    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+    /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... endIJK_vec[<patch>][2]-1}.
+    ///
+    /// @return allPatches_cells
+    std::vector<int>
+    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+    /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
+    ///        Assumption: all grid cells are active.
+    bool hasNNCs(const std::vector<int>& cellIndices) const;
+
+    /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
+    ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+
 private:
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///
@@ -355,35 +357,6 @@ private:
     ///
     /// @return patch_boundary_corners
     std::vector<int> getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
-    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
-    /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... endIJK_vec[<patch>][2]-1}.
-    ///
-    /// @return allPatches_cells
-    std::vector<int>
-    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
-    /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
-    ///        Assumption: all grid cells are active.
-    bool hasNNCs(const std::vector<int>& cellIndices) const;
-
-    /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
-    ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
-    void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
     ///
@@ -512,6 +485,13 @@ public:
     {
         return *index_set_;
     }
+
+    /// Get the local index set.
+    const cpgrid::IdSet& localIdSet() const
+    {
+        return *local_id_set_;
+    }
+
     /// The logical cartesian size of the grid.
     /// This function is not part of the Dune grid interface,
     /// and should be used with caution.
