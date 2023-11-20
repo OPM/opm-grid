@@ -43,6 +43,12 @@ namespace Dune
             return 0;
         }
 
+        /** \brief return number of cells in the active level zero grid. Only relevant for CpGrid specialization. */
+        int compressedLevelZeroSize() const
+        {
+            return 0;
+        }
+
         /** \brief return index of the cells in the logical Cartesian grid */
         int cartesianIndex( const int /* compressedElementIndex */) const
         {

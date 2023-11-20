@@ -66,7 +66,7 @@ class NNC;
 
 namespace Dune
 {
-
+    template<typename Grid> class CartesianIndexMapper;
     class CpGrid;
 
     namespace cpgrid
@@ -237,6 +237,7 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily>
     {
+        friend class Dune::CartesianIndexMapper<CpGrid>;
         friend class cpgrid::CpGridData;
         friend class cpgrid::Entity<0>;
         friend class cpgrid::Entity<1>;

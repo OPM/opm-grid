@@ -81,6 +81,7 @@ class NNC;
 }
 namespace Dune
 {
+template<typename Grid> class CartesianIndexMapper;
 class CpGrid;
 
 namespace cpgrid
@@ -141,7 +142,7 @@ template<class T, int i> struct Mover;
 class CpGridData
 {
     template<class T, int i> friend struct mover::Mover;
-
+    friend Dune::CartesianIndexMapper<CpGrid>;
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
