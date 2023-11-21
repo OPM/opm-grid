@@ -51,7 +51,8 @@ namespace Dune
 
         int compressedLevelZeroSize() const
         {
-            return (*(grid_.data_[0])).global_cell_.size();
+            
+            return (*grid_.chooseData()[0]).size(0);
         }
 
         int cartesianIndex( const int compressedElementIndex ) const

@@ -601,16 +601,21 @@ const std::array<int, 3>& CpGrid::logicalCartesianSize() const
     return current_view_data_ -> logical_cartesian_size_;
 }
 
+const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::chooseData() const
+{
+    if (current_view_data_ == this-> data_.back().get()){
+        return data_;
+    }
+    else{
+        return distributed_data_;
+    }
+}
+
 const std::vector<int>& CpGrid::globalCell() const
 {
     // Temporary. For a grid with LGRs, we set the globalCell() of the as the one for level 0.
     //            Goal: CartesianIndexMapper well-defined for CpGrid LeafView with LGRs.
-    if (current_view_data_ == this-> data_.back().get()){
-        return current_view_data_ -> global_cell_;
-    }
-    else{
-        return this -> distributed_data_[0] ->global_cell_;
-    }
+    return chooseData().back() -> global_cell_;
 }
 
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
@@ -917,14 +922,7 @@ const CpGridFamily::Traits::LevelIndexSet& CpGrid::levelIndexSet(int level) cons
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (current_view_data_ == data_.back().get())
-    {
-        return *data_[level] -> index_set_;
-    }
-    else
-    {
-        return *distributed_data_[level] -> index_set_;
-    }
+    return *chooseData()[level] -> index_set_;
 }
 
 const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const

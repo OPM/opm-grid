@@ -66,7 +66,6 @@ class NNC;
 
 namespace Dune
 {
-    template<typename Grid> class CartesianIndexMapper;
     class CpGrid;
 
     namespace cpgrid
@@ -237,7 +236,6 @@ namespace Dune
     class CpGrid
         : public GridDefaultImplementation<3, 3, double, CpGridFamily>
     {
-        friend class Dune::CartesianIndexMapper<CpGrid>;
         friend class cpgrid::CpGridData;
         friend class cpgrid::Entity<0>;
         friend class cpgrid::Entity<1>;
@@ -398,6 +396,9 @@ namespace Dune
         /// those dealing with permeability fields from the input deck
         /// from whence the current CpGrid was constructed.
         const std::vector<int>& globalCell() const;
+
+        /// @brief Returns either data_ or distributed_data_(if non empty).
+        const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& chooseData() const;
 
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.
