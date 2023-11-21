@@ -112,8 +112,8 @@ void lookup_check(const Dune::CpGrid& grid)
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> leafMapper(leaf_view, Dune::mcmgElementLayout());
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> level0Mapper(level0_view, Dune::mcmgElementLayout());
 
-    const auto& leaf_idSet = (*data.back()).local_id_set_;
-    const auto& level0_idSet = (*data[0]).local_id_set_;
+    const auto& leaf_idSet = (*data.back()).localIdSet();
+    const auto& level0_idSet = (*data[0]).localIdSet();
 
     for (const auto& elem : elements(leaf_view)) {
         // Search via Entity/Element
@@ -160,8 +160,8 @@ void lookup_check(const Dune::CpGrid& grid)
         BOOST_CHECK(featureInElem == level0Mapper.index(elem.getOrigin()) +3);
         BOOST_CHECK(featureInElem == fake_feature[lookUpData.getFieldPropIdx(elem)]);
         if (elem.hasFather()) { // leaf_cell has a father!
-            const auto& id = (*leaf_idSet).id(elem);
-            const auto& parent_id = (*level0_idSet).id(elem.father());
+            const auto& id = leaf_idSet.id(elem);
+            const auto& parent_id = level0_idSet.id(elem.father());
             BOOST_CHECK(elem.index() == id);
             BOOST_CHECK(elem.index() == leafMapper.index(elem));
             BOOST_CHECK(elem.father().index() == featureInElem -3);
