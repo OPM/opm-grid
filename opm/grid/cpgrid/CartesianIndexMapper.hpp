@@ -49,6 +49,12 @@ namespace Dune
             return grid_.globalCell().size();
         }
 
+        int compressedLevelZeroSize() const
+        {
+            
+            return (*grid_.chooseData()[0]).size(0);
+        }
+
         int cartesianIndex( const int compressedElementIndex ) const
         {
             assert(  compressedElementIndex >= 0 && compressedElementIndex < compressedSize() );

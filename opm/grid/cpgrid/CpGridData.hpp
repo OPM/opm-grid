@@ -128,7 +128,6 @@ template<class T, int i> struct Mover;
 class CpGridData
 {
     template<class T, int i> friend struct mover::Mover;
-
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;

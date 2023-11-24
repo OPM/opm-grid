@@ -44,6 +44,12 @@ namespace Dune
             return grid_.size( 0 );
         }
 
+        // Only for unifying calls with CartesianIndexMapper<CpGrid> where levels are relevant.
+        int compressedLevelZeroSize() const
+        {
+            return grid_.size( 0 );
+        }
+
         int cartesianIndex( const int compressedElementIndex ) const
         {
             assert( compressedElementIndex >= 0 && compressedElementIndex < compressedSize() );
