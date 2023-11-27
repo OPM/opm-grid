@@ -59,6 +59,12 @@ namespace Dune
         void cartesianCoordinate(const int /* compressedElementIndex */, std::array<int,dimension>& /* coords */) const
         {
         }
+
+        /** \brief return Cartesian coordinate, i.e. IJK, for a given cell. Only relevant for CpGrid specialization.*/
+        void cartesianCoordinateLevel(const int /* compressedElementIndexOnLevel */,
+                                      std::array<int,dimension>& /* coordsOnLevel */, int /*level*/) const
+        {
+        }
     };
 
 } // end namespace Opm

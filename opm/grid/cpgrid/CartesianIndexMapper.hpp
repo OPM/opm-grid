@@ -3,6 +3,7 @@
 
 #include <array>
 #include <cassert>
+#include <stdexcept>
 
 #include <opm/grid/common/CartesianIndexMapper.hpp>
 #include <opm/grid/CpGrid.hpp>
@@ -64,6 +65,14 @@ namespace Dune
         void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords) const
         {
             grid_.getIJK( compressedElementIndex, coords );
+        }
+
+        void cartesianCoordinateLevel(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
+        {
+            if ((level < 0) || (level > grid_.maxLevel())) {
+                throw std::invalid_argument("Invalid level.\n");
+            }
+            (*grid_.chooseData()[level]).getIJK( compressedElementIndexOnLevel, coordsOnLevel);
         }
     };
 

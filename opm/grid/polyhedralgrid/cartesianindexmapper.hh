@@ -72,6 +72,15 @@ namespace Dune
           else
               coords[ 0 ] = gc ;
         }
+
+        // Only for unifying calls with CartesianIndexMapper<CpGrid> where levels are relevant.
+        void cartesianCoordinateLevel(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
+        {
+            if (level) {
+                throw std::invalid_argument("Invalid level.\n");
+            }
+            cartesianCoordinate(compressedElementIndexOnLevel, coordsOnLevel);
+        }
     };
 
 } // end namespace Opm

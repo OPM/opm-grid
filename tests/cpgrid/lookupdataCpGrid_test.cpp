@@ -144,6 +144,16 @@ void lookup_check(const Dune::CpGrid& grid)
         const auto cartIdx = cartMapper.cartesianIndex(elem.index());
         BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem));
         BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem.index()));
+        // Extra checks related to Cartesian Coordinate
+        std::array<int,3> ijk;
+        cartMapper.cartesianCoordinate(elem.index(), ijk); // this ijk corresponds to the parent/equivalent cell in level 0.
+        std::array<int,3> ijkLevel0;
+        cartMapper.cartesianCoordinateLevel(elem.getOrigin().index(), ijkLevel0, 0);
+        BOOST_CHECK(ijk == ijkLevel0);
+        // Throw for level < 0 or level > maxLevel()
+        std::array<int,3> ijkThrow;
+        BOOST_CHECK_THROW(cartMapper.cartesianCoordinateLevel(elem.index(), ijkThrow, -3), std::invalid_argument);
+        BOOST_CHECK_THROW(cartMapper.cartesianCoordinateLevel(elem.index(), ijkThrow, grid.maxLevel() + 1), std::invalid_argument);
         // Checks related to LGR field properties
         if (elem.level())
         {
@@ -155,13 +165,20 @@ void lookup_check(const Dune::CpGrid& grid)
             BOOST_CHECK(featureInLGR == featureInLGR_Cartesian);
             BOOST_CHECK(featureInLGR == featureInLGR_FromIdx);
             BOOST_CHECK(featureInLGR == featureInLGR_Cartesian_FromIdx);
+            // Checks for CartesianCoordinateLevel
+            const auto idxOnLevel = elem.getLevelElem().index(); // getLevelElemt throws when entity does not belong to the leafGridView
+            std::array<int,3> ijkLevelGrid;
+            (*grid.data_[elem.level()]).getIJK(idxOnLevel, ijkLevelGrid);
+            std::array<int,3> ijkLevel;
+            cartMapper.cartesianCoordinateLevel(idxOnLevel, ijkLevel, elem.level());
+            BOOST_CHECK( ijkLevelGrid == ijkLevel);
         }
         // Extra checks related to ElemMapper
         BOOST_CHECK(featureInElem == level0Mapper.index(elem.getOrigin()) +3);
         BOOST_CHECK(featureInElem == fake_feature[lookUpData.getFieldPropIdx(elem)]);
         if (elem.hasFather()) { // leaf_cell has a father!
-            const auto& id = leaf_idSet.id(elem);
-            const auto& parent_id = level0_idSet.id(elem.father());
+            const auto id = leaf_idSet.id(elem);
+            const auto parent_id = level0_idSet.id(elem.father());
             BOOST_CHECK(elem.index() == id);
             BOOST_CHECK(elem.index() == leafMapper.index(elem));
             BOOST_CHECK(elem.father().index() == featureInElem -3);
@@ -248,10 +265,10 @@ BOOST_AUTO_TEST_CASE(lgrs_grid_C)
     const std::array<int, 3> grid_dim = {5,4,4};
     grid.createCartesian(grid_dim, cell_sizes);
     // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,3,4}, {3,2,4}, {4,3,2}};
-    const std::vector<std::array<int,3>>& startIJK_vec = {{0,0,0}, {4,0,0}, {4,3,3}};
-    const std::vector<std::array<int,3>>& endIJK_vec = {{3,2,2}, {5,2,1}, {5,4,4}};
-    const std::vector<std::string>& lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,3,4}, {3,2,4}, {4,3,2}};
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {4,0,0}, {4,3,3}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}, {5,2,1}, {5,4,4}};
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
     lookup_check(grid);
@@ -276,7 +293,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     const auto& eqlnum =  fpm.get_int("EQLNUM");
 
     // LookUpData
-    auto leaf_view = grid.leafGridView();
+    const auto& leaf_view = grid.leafGridView();
     const Opm::LookUpData<Dune::CpGrid,Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>> lookUpData(leaf_view);
     // LookUpCartesianData
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapper(grid);
@@ -315,7 +332,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
 
 
 BOOST_AUTO_TEST_CASE(fieldProp) {
-    std::string deckString =
+  const std::string deckString =
         R"( RUNSPEC
         DIMENS
         1  1  5 /
@@ -350,7 +367,7 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
         1 2 3 4 5
         /)";
 
-    
+
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
 
@@ -364,7 +381,7 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
 
 
 BOOST_AUTO_TEST_CASE(fieldPropLgr) {
-    std::string deckString = R"( RUNSPEC
+  const std::string deckString = R"( RUNSPEC
 DIMENS
 1 1 5
 /
@@ -405,10 +422,10 @@ EQLNUM
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
 
     // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}, {2,2,2}};
-    const std::vector<std::array<int,3>>& startIJK_vec = {{0,0,0}, {0,0,3}};
-    const std::vector<std::array<int,3>>& endIJK_vec = {{1,1,1}, {1,1,4}};
-    const std::vector<std::string>& lgr_name_vec = {"LGR1", "LGR2"};
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,4}};
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
     fieldProp_check(grid, eclGrid, deckString);
