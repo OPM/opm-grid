@@ -1546,13 +1546,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             old_to_new_boundaryPatchFaces[{0,face}] = {patch+1, children_list};
         }
     } // end-patch-forloop
-    // Last patch
+    // Last patch cornes and faces.
     const auto& last_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[num_patches-1], endIJK_vec[num_patches -1]);
     const auto& last_patch_faces = (*data_[0]).getPatchFaces(startIJK_vec[num_patches -1], endIJK_vec[num_patches -1]);
-    const auto& last_patch_cells = (*data_[0]).getPatchCells(startIJK_vec[num_patches -1], endIJK_vec[num_patches -1]);
     all_patch_corners.insert(all_patch_corners.end(), last_patch_corners.begin(), last_patch_corners.end());
-    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end());
-    all_patch_cells.insert(all_patch_cells.end(), last_patch_cells.begin(), last_patch_cells.end()); 
+    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end()); 
     // Relation between level and leafview cell indices.
     std::vector<int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
     l0_to_leaf_cells.resize(data_[0]->size(0));
