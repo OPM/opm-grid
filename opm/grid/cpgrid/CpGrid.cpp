@@ -1847,6 +1847,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     (*data_[num_patches +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data_[num_patches+1]->size(0), data_[num_patches+1]->size(3));
     // Leaf local_id_set_
     (*data_[num_patches +1]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[num_patches+1]);
+    // Leaf logical_cartesian_size_
+    (*data_[num_patches +1]).logical_cartesian_size_ =  (*data_[0]).logical_cartesian_size_;
 }
 
 
