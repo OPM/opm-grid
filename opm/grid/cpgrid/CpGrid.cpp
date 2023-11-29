@@ -1806,11 +1806,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     is_there_allPatchBoundFace = is_there_allPatchBoundFace || (face.index() == l0_boundFace[1]);
                     //true-> coincides with one boundary patch face
                     if (is_there_allPatchBoundFace) { // Face belongs to one of the patch boundaries.
+                        const auto levelTouched = std::get<0>(level_childrenList);
                         for (const auto& new_face : std::get<1>(level_childrenList)) {
-                            aux_cell_to_face.push_back({new_face, face.orientation()});
+                            //  level_to_leaf_faces[level][face] = leaf_face_index
+                            aux_cell_to_face.push_back({level_to_leaf_faces[levelTouched][new_face], face.orientation()});
                         }
                         is_there_allPatchBoundFace = true;
-                        break; // Go to the next corner (on the boundary of a patch)
+                        break; // Go to the next face (on the boundary of a patch)
                     }
                 }
                 if (!is_there_allPatchBoundFace) { // Face does not belong to any of the patch boundaries.
