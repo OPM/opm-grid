@@ -48,9 +48,10 @@
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h> //  Not really needed it seems, but alas.
 #include "common/GridEnums.hpp"   
-#include <opm/grid/utility/OpmWellType.hpp>  
+#include <opm/grid/utility/OpmWellType.hpp>
 
 #include <iostream>
+#include <limits>
 #if ! HAVE_MPI
 #include <list>
 #endif
@@ -1250,6 +1251,8 @@ namespace Dune
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
         /** @brief To get the level given the lgr-name. Default, {"GLOBAL", 0}. */
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
+        /** Invalid index. To be used when an entity lacks of certain index (level, parent, child, etc).*/
+        static constexpr int invalidIdx = std::numeric_limits<int>::min();
         /**
          * @brief Interface for scattering and gathering cell data.
          *

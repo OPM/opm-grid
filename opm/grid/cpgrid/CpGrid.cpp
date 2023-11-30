@@ -1473,9 +1473,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Map to relate boundary patch faces with their children refined/new-born ones. {0,oldFaceIdx} -> {level,{newFaceIdx0, ...}}
     std::map<std::array<int,2>, std::tuple<int, std::vector<int>>> old_to_new_boundaryPatchFaces;
     //
-    // For level0, attach children to each parent cell. For no parents, entry {-1, {}} representing {no level, {no children}}
+    // For level0, attach children to each parent cell. For no parents, entry {invalidIdx, {}} representing {no level, {no children}}
     auto& l0_parent_to_children_cells = (*data_[0]).parent_to_children_cells_;
-    l0_parent_to_children_cells.resize(data_[0]-> size(0), std::make_tuple(-1, std::vector<int>()));
+    l0_parent_to_children_cells.resize(data_[0]-> size(0), std::make_tuple(invalidIdx, std::vector<int>()));
     //
     // Get patches corner and face indices. We instantiate them with level1 info and then insert other levels info.
     std::vector<int> all_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[0], endIJK_vec[0]);
@@ -1519,13 +1519,14 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // POPULATING (*data_[0]).parent_to_children_cells_
         // POPULATING (*data_[patch +1]).child_to_parent_cells_
         //    True parent cells have entries: {level of the LGR the parent cell has its children, {child0, child1, ...}}
-        //    False parent cells (NO PARENT CELLS) have {-1,{}} entries.
+        //    False parent cells (NO PARENT CELLS) have {invalidIdx,{}} entries.
         //
         //    True child cells have entries: {0, parent cell index} (0 represents the "GLOBAL" coarse grid)
-        //    False child cells (with no parent) have {-1,-1} entries.
+        //    False child cells (with no parent) have {invalidIdx,invalidIdx} entries.
         //    child_to_parent_cells entries look like {child index in the LGR, parent cell index}
         //
-        // Re-write entries of actual parent/Create the ones for child cells in each level (not default value {-1,-1} needed for LGRs).
+        // Re-write entries of actual parent/Create the ones for child cells in each level
+        // (not default value {invalidIdx, invalidIdx} needed for LGRs).
         assert(!parent_to_children_cells.empty());
         (*data_[patch +1]).child_to_parent_cells_.resize(child_to_parent_cells.size());
         (*data_[patch +1]).global_cell_.resize(child_to_parent_cells.size());
@@ -1550,10 +1551,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     const auto& last_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[num_patches-1], endIJK_vec[num_patches -1]);
     const auto& last_patch_faces = (*data_[0]).getPatchFaces(startIJK_vec[num_patches -1], endIJK_vec[num_patches -1]);
     all_patch_corners.insert(all_patch_corners.end(), last_patch_corners.begin(), last_patch_corners.end());
-    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end()); 
+    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end());
     // Relation between level and leafview cell indices.
     std::vector<int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
-    l0_to_leaf_cells.resize(data_[0]->size(0));
+    //                Defualt value: invalidIdx, for level 0 cells that do not appear on the leaf grid view.
+    l0_to_leaf_cells.resize(data_[0]->size(0), invalidIdx);
     // To store the leaf view (mixed grid: with (non parents) coarse and (children) refined entities).
     typedef Dune::FieldVector<double,3> PointType;
     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& leaf_data = this -> data_;
@@ -1574,7 +1576,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& leaf_face_normals = leaf_view.face_normals_;
     //
     std::vector<std::array<int,2>>& leaf_to_level_cells = leaf_view.leaf_to_level_cells_; // {level, cell index in that level}
-    // leaf_child_to_parent_cells[ cell index ] must be {-1,-1} when the cell has no father.
+    // leaf_child_to_parent_cells[ cell index ] must be {invalidIdx,invalidIdx} when the cell has no father.
     std::vector<std::array<int,2>>& leaf_child_to_parent_cells = leaf_view.child_to_parent_cells_;
     // All active cells. leaf_global_cell[ leaf cell idx] = origin cell idx in level 0 (parent/equiv cell in level 0)
     std::vector<int>& leaf_global_cell = leaf_view.global_cell_;
@@ -1594,7 +1596,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Relation between {level0/level1, old-corner-index/new-born-corner-index} and its corresponding leafview-corner-index.
     std::vector<std::vector<int>> level_to_leaf_corners; // level_to_leaf_corners[level][corner] = leaf_corner_index
     level_to_leaf_corners.resize(num_patches +1); // level 0 + LGRs
-    level_to_leaf_corners[0].resize(this -> data_[0]-> size(3),-1); // Entry '-1' for corners not appearing in the leafview
+    level_to_leaf_corners[0].resize(this -> data_[0]-> size(3),invalidIdx); // Entry 'invalidIdx' for corners not appearing in the leafview
     // Corners coming from the level0, excluding patch_corners, i.e., the old-corners involved in the LGR.
     for (int corner = 0; corner < this-> data_[0]->size(3); ++corner) {
         // Auxiliary bool to discard ANY CORNER COMING FROM ANY PATCH
@@ -1620,7 +1622,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Resize the container of the leaf view corners.
     leaf_corners.resize(corner_count);
     for (long unsigned int corner = 0; corner < level_to_leaf_corners[0].size(); ++corner) {
-        if (level_to_leaf_corners[0][corner] != -1){ // ONLY NEEDED FOR LEVEL 0
+        if (level_to_leaf_corners[0][corner] != invalidIdx){ // ONLY NEEDED FOR LEVEL 0
             leaf_corners[level_to_leaf_corners[0][corner]]
                 = (*(this->data_[0])).geometry_.geomVector(std::integral_constant<int,3>()) -> get(corner);
         }
@@ -1637,7 +1639,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Relation between {level0/level1/..., old-face-index/new-born-face-index} and its corresponding leafview-face-index.
     std::vector<std::vector<int>> level_to_leaf_faces; // level_to_leaf_faces[level][face] = leaf_face_index
     level_to_leaf_faces.resize(num_patches +1); // Level 0 + LGRs
-    level_to_leaf_faces[0].resize(this -> data_[0]->face_to_cell_.size(), -1); // Entry -1 for faces that do not appear in leafView
+    //                        Entry invalidIdx for faces that do not appear in leafView
+    level_to_leaf_faces[0].resize(this -> data_[0]->face_to_cell_.size(), invalidIdx);
     // Faces coming from the level0, that do not belong to any patch.
     for (int face = 0; face < this->data_[0]->face_to_cell_.size(); ++face) {
         // Auxiliary bool to discard patch faces OF ANY PATCH
@@ -1671,7 +1674,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     aux_face_to_point.resize(face_count);
     // FACES COMING FROM LEVEL 0
     for (int face = 0; face < static_cast<int>(this -> data_[0]->face_to_cell_.size()); ++face){
-        if (level_to_leaf_faces[0][face] != -1){ // ONLY NEEDED FOR LEVEL 0
+        if (level_to_leaf_faces[0][face] != invalidIdx){ // ONLY NEEDED FOR LEVEL 0
             const auto& leafFaceIdx =  level_to_leaf_faces[0][face];
             // Get the level data.
             const auto& level_data =  *(this->data_[0]);
@@ -1766,8 +1769,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
     leaf_cells.resize(cell_count);
     leaf_cell_to_point.resize(cell_count);
-    // For cells that do not have a parent, we set {-1,-1} by defualt and rewrite later for actual children
-    leaf_child_to_parent_cells.resize(cell_count, std::array<int,2>({-1,-1}));
+    // For cells that do not have a parent, we set {invalidIdx, invalidIdx} by defualt and rewrite later for actual children
+    leaf_child_to_parent_cells.resize(cell_count, std::array<int,2>({invalidIdx,invalidIdx}));
     leaf_global_cell.resize(cell_count);
     for (int leafCellIdx = 0; leafCellIdx < cell_count; ++leafCellIdx){
         const auto& level_cellIdx = leaf_to_level_cells[leafCellIdx]; // {level, cellIdx}

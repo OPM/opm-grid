@@ -712,23 +712,30 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
-    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs, created via CpGrid::createGridWithLgrs()). */
+    
+    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs. */
     int level_{0};
-    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgrs(). */
+    /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
     std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
-    /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. */  
+    /** invalidIdx is a static member of CpGrid class. To be used when an entity lacks of certain index (level, parent, child, etc).
+     *
+     *
+     * Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count.
+     * For level 0, level_to_leaf_cells_[ cell from level 0 that got refined index ] = invalidElemIdx since it
+     * does not appear on the leaf grid view.
+     */
     std::vector<int> level_to_leaf_cells_; // In entry 'level cell index', we store 'leafview cell index'
-    /** Parent cells and their children. Entry is {-1, {}} when cell has no children.*/ // {level LGR, {child0, child1, ...}}
-    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_; 
-    /** Amount of children cells per parent cell in each direction. */ // {# children in x-direction, ... y-, ... z-}
-    std::array<int,3> cells_per_dim_;
+    /** Parent cells and their children. Entry is {invalidIdx, {}} when cell has no children.*/
+    std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells_; // {level LGR, {child0, child1, ...}}
+    /** Amount of children cells per parent cell in each direction. */ 
+    std::array<int,3> cells_per_dim_; // {# children in x-direction, ... y-, ... z-}
     // SUITABLE ONLY FOR LEAFVIEW
-    /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
-    std::vector<std::array<int,2>> leaf_to_level_cells_;
+    /** Relation between leafview and (possible different) level(s) cell indices. */
+    std::vector<std::array<int,2>> leaf_to_level_cells_;  // {level, cell index in that level}
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
-    /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
-    std::vector<std::array<int,2>> child_to_parent_cells_;
+    /** Child cells and their parents. Entry is {invalidIdx,invalidIdx} when cell has no father. */
+    std::vector<std::array<int,2>> child_to_parent_cells_;  // {level parent cell, parent cell index}
 
 
     /// \brief Object for collective communication operations.

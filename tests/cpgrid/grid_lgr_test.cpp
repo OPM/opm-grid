@@ -146,17 +146,17 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 auto endIt = entity.hend(coarse_grid.maxLevel());
                 const auto& [lgr, childrenList] = (*coarse_grid.data_[0]).parent_to_children_cells_[cell];
                 if (std::find(all_parent_cell_indices.begin(), all_parent_cell_indices.end(), cell) == all_parent_cell_indices.end()){
-                    BOOST_CHECK_EQUAL(lgr, -1);
+                    BOOST_CHECK_EQUAL(lgr, coarse_grid.invalidIdx);
                     BOOST_CHECK(childrenList.empty());
                     BOOST_CHECK( entity.isLeaf() == true);
                     // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                     BOOST_CHECK( it == endIt);
                 }
                 else{
-                    BOOST_CHECK(lgr != -1);
+                    BOOST_CHECK(lgr != coarse_grid.invalidIdx);
                     BOOST_CHECK(childrenList.size() > 1);
                     for (const auto& child : childrenList) {
-                        BOOST_CHECK( child != -1);
+                        BOOST_CHECK( child != coarse_grid.invalidIdx);
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][0] == 0);
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == cell);
                     }
@@ -176,7 +176,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                         {
                             referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
                         }
-                        // std::cout << it->index() << '\n';
                     }
                     for (int c = 0; c < 3; ++c)
                     {
@@ -206,7 +205,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL((std::find(patch_cells.begin(), patch_cells.end(),
                                              entity.father().index()) == patch_cells.end()) , false);
                 const auto& child_to_parent = (*data[level]).child_to_parent_cells_[cell];
-                BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
+                BOOST_CHECK_EQUAL( child_to_parent[0] == coarse_grid.invalidIdx, false);
                 BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
                 BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
                 BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[child_to_parent[1]]) == entity.level());
@@ -265,10 +264,10 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 else{
                     BOOST_CHECK_THROW(entity.father(), std::logic_error);
                     BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
-                    BOOST_CHECK_EQUAL(child_to_parent[0], -1);
-                    BOOST_CHECK_EQUAL(child_to_parent[1], -1);
+                    BOOST_CHECK_EQUAL(child_to_parent[0], coarse_grid.invalidIdx);
+                    BOOST_CHECK_EQUAL(child_to_parent[1], coarse_grid.invalidIdx);
                     BOOST_CHECK( level_cellIdx[0] == 0);
-                    BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[level_cellIdx[1]]) == -1);
+                    BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[level_cellIdx[1]]) == coarse_grid.invalidIdx);
                     BOOST_CHECK( std::get<1>((*data[0]).parent_to_children_cells_[level_cellIdx[1]]).empty());
                     BOOST_CHECK( entity.level() == 0);
                     // Get index of the cell in level 0

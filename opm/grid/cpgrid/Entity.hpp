@@ -279,6 +279,8 @@ private:
     // constexpr to allow for in-class instantiation
     /// \brief Indices of corners in entity's geometry in father reference element, for the Geometry returned by geometryInFather
     static constexpr std::array<int,8> in_father_reference_elem_corner_indices_ = {0,1,2,3,4,5,6,7};
+    /// \brief Invalid index. To be used when an entity lacks of certain index (level, parent, child, etc).*/
+    static constexpr int invalidIdx = std::numeric_limits<int>::min();
 };
 
 } // namespace cpgrid
@@ -442,15 +444,15 @@ bool Entity<codim>::isLeaf() const
     if ((pgrid_ -> parent_to_children_cells_).empty()){ // LGR cells
         return true;
     }
-    else {
-        return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
+    else { // Cells from GLOBAL, not involved in any LGR
+        return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == invalidIdx);  
     }
 }
 
 template<int codim>
 bool Entity<codim>::hasFather() const
 {
-    if ((pgrid_ -> child_to_parent_cells_.empty()) || (pgrid_ -> child_to_parent_cells_[this->index()][0] == -1)){
+    if ((pgrid_ -> child_to_parent_cells_.empty()) || (pgrid_ -> child_to_parent_cells_[this->index()][0] == invalidIdx)){
         return false;
     }
     else{
