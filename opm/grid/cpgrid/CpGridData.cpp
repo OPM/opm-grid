@@ -1775,6 +1775,39 @@ std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, co
     return patch_cells;
 }
 
+void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
+{
+    bool cuboidShape = true;
+    for (const auto cellIdx : cellIdx_vec)
+    {
+        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
+        // Compute 'cuboid' volume with corners: |corn[1]-corn[0]|x|corn[3]-corn[1]|x|corn[5]-corn[1]|
+        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
+        aFewCorners.resize(4); // {'0', '1', '3', '5'}
+        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+        aFewCorners[2] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+        aFewCorners[3] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
+        //  l = length. b = breadth. h = height.
+        double  length, breadth, height;
+        length = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
+                            ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
+                            ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
+        breadth = std::sqrt( ((aFewCorners[1][0] -aFewCorners[2][0])*(aFewCorners[1][0] -aFewCorners[2][0])) +
+                             ((aFewCorners[1][1] -aFewCorners[2][1])*(aFewCorners[1][1] -aFewCorners[2][1])) +
+                             ((aFewCorners[1][2] -aFewCorners[2][2])*(aFewCorners[1][2] -aFewCorners[2][2])));
+        height = std::sqrt( ((aFewCorners[1][0] -aFewCorners[3][0])*(aFewCorners[1][0] -aFewCorners[3][0])) +
+                            ((aFewCorners[1][1] -aFewCorners[3][1])*(aFewCorners[1][1] -aFewCorners[3][1])) +
+                            ((aFewCorners[1][2] -aFewCorners[3][2])*(aFewCorners[1][2] -aFewCorners[3][2])));
+        const double cuboidVolume = length*breadth*height;
+        const auto cellVolume =  (*(this -> geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(cellIdx, true)].volume();
+        cuboidShape = cuboidShape && (std::abs(cuboidVolume - cellVolume) <  1e-6);
+        if (!cuboidShape){
+            OPM_THROW(std::logic_error, "At least one cell has no cuboid shape. Its refinement is not supported yet.\n");
+        }
+    }
+}
+
 std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
@@ -1910,6 +1943,7 @@ Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const 
         return (*(this -> geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(patch_cells[0], true)];
     }
     else{
+        checkCuboidShape(patch_cells);
         // Get grid dimension.
         const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
         // Select 8 corners of the patch boundary to be the 8 corners of the 'cellified patch'.
@@ -2122,6 +2156,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     const auto& patch_dim = getPatchDim(startIJK, endIJK);
     const auto& patch_faces = getPatchFaces(startIJK, endIJK);
     const auto& patch_cells = getPatchCells(startIJK, endIJK);
+    checkCuboidShape(patch_cells);
     // Construct the Geometry of the cellified patch.
     DefaultGeometryPolicy cellified_patch_geometry;
     std::array<int,8> cellifiedPatch_to_point;
