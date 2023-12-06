@@ -127,6 +127,16 @@ namespace cpgrid
     {
         std::vector<std::size_t> removed_cells;
         if (ccobj_.rank() != 0 ) {
+            if (ecl_state) {
+                // Handle potential exception during MINPV processing
+                // Needed because later there is collective communication that will
+                // otherwise deadlock
+                int success = 1;
+                ccobj_.broadcast(&success, 1, 0);
+                if (success == 0) {
+                    throw std::runtime_error("Error during MINPV processing");
+                }
+            }
             // Store global grid only on rank 0
             return removed_cells;
         }
@@ -153,33 +163,43 @@ namespace cpgrid
         // Possibly process MINPV and PINCH
         // This even needs to be done if neither of them is specified.
         if (ecl_state ) {
-            Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-            const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
-            std::vector<double> thickness(cartGridSize);
-            for (size_t i = 0; i < cartGridSize; ++i) {
-                thickness[i] = ecl_grid.getCellThickness(i);
+            try {
+                Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
+                const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
+                std::vector<double> thickness(cartGridSize);
+                for (size_t i = 0; i < cartGridSize; ++i) {
+                    thickness[i] = ecl_grid.getCellThickness(i);
+                }
+                const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
+                const bool nogap = !pinchActive || ecl_grid.getPinchGapMode() ==  Opm::PinchMode::NOGAP;
+                const auto& poreVolume = ecl_state->fieldProps().porv(true);
+                const auto& fp = ecl_state->fieldProps();
+                const auto& permZ = fp.has_double("PERMX") ? (fp.has_double("PERMZ") ?
+                                                              fp.get_global_double("PERMZ") :
+                                                              fp.get_global_double("PERMX"))
+                    : std::vector<double>();
+                const bool pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
+                const auto& transMult = ecl_state->getTransMult();
+                auto multZ =[ &transMult] (int cartindex) {
+                    return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
+                        transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
+                };
+                minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
+                                          poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
+                                          zcornData.data(), nogap, pinchOptionALL,
+                                          permZ, multZ, tolerance_unique_points);
+                if (!minpv_result.nnc.empty()) {
+                    this->zcorn = zcornData;
+                }
+            }catch(const std::runtime_error& e){
+                int success = 0;
+                // comminicate failure to others.
+                ccobj_.broadcast(&success, 1, 0);
+                throw; // rethrow
             }
-            const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
-            const bool nogap = !pinchActive || ecl_grid.getPinchGapMode() ==  Opm::PinchMode::NOGAP;
-            const auto& poreVolume = ecl_state->fieldProps().porv(true);
-            const auto& fp = ecl_state->fieldProps();
-            const auto& permZ = fp.has_double("PERMX") ? (fp.has_double("PERMZ") ?
-                                                          fp.get_global_double("PERMZ") :
-                                                          fp.get_global_double("PERMX"))
-                : std::vector<double>();
-            const bool pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
-            const auto& transMult = ecl_state->getTransMult();
-            auto multZ =[ &transMult] (int cartindex) {
-                return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
-                    transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
-            };
-            minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
-                                      poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
-                                      zcornData.data(), nogap, pinchOptionALL,
-                                      permZ, multZ, tolerance_unique_points);
-            if (!minpv_result.nnc.empty()) {
-                this->zcorn = zcornData;
-            }
+            int success = 1;
+            // communicate success to others
+            ccobj_.broadcast(&success, 1, 0);
         }
 
         NNCMaps nnc_cells;
