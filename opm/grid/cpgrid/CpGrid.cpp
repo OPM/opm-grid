@@ -1689,17 +1689,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Add the amount of points to the count num_points.
             num_points += old_face_to_point.size();
             for (int corn = 0; corn < 4; ++corn) {
-                // Auxiliary bool to identify boundary patch corners.
-                bool is_there_allPatchBoundCorn = false;
-                for(const auto& [l0_oldCorner, level_newCorner] : old_to_new_boundaryPatchCorners){
-                    is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (corn == l0_oldCorner[1]);
-                    //true-> boundary patch corner
-                    if (is_there_allPatchBoundCorn) {
-                        aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[level_newCorner[0]][level_newCorner[1]]);
-                        break; // Go to the next corner (on the boundary of a patch)
-                    }
+                if (level_to_leaf_corners[0][old_face_to_point[corn]] == -1) {
+                    const auto [lgr, lgrCornIdx] = old_to_new_boundaryPatchCorners[{0, old_face_to_point[corn]}];
+                    aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[lgr][lgrCornIdx]);
                 }
-                if (!is_there_allPatchBoundCorn) {// Corner not involded in any LGR.
+                else{// Corner not involded in any LGR.
+                    assert(level_to_leaf_corners[0][old_face_to_point[corn]] != -1);
                     aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[0][old_face_to_point[corn]]);
                 }
             } // end-corn-forloop
