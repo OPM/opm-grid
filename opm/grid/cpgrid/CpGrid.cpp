@@ -1694,7 +1694,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[lgr][lgrCornIdx]);
                 }
                 else{// Corner not involded in any LGR.
-                    assert(level_to_leaf_corners[0][old_face_to_point[corn]] != -1);
                     aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[0][old_face_to_point[corn]]);
                 }
             } // end-corn-forloop
