@@ -224,10 +224,31 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 // If entity.isLeaf(), then it == endIt (when dristibuted_data_ is empty)
                 BOOST_CHECK( it == endIt);
             }
+
+            // LeafView faces
+            for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
+            {
+                const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
+                BOOST_CHECK(faceToPoint.size() == 4);
+                for (int i = 0; i < 4; ++i)
+                {
+                    BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
+                }
+            }
+
             // LeafView
             for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
             {
+                BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell].size() == 8);
+                for (int i = 0; i < 8; ++i)
+                {
+                    BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell][i] != -1);
+                }
                 Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[startIJK_vec.size()+1]), cell, true);
+                for (int i = 0; i < data[startIJK_vec.size()+1] -> cell_to_face_[entity].size(); ++i)
+                {
+                    BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_face_[entity][i].index() != -1);
+                }
                 const auto& child_to_parent = (*data[startIJK_vec.size()+1]).child_to_parent_cells_[cell];
                 const auto& level_cellIdx = (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()];
                 auto it = entity.hbegin(coarse_grid.maxLevel());
