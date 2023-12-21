@@ -110,8 +110,8 @@ BOOST_AUTO_TEST_CASE(nonCuboidCell)
         1 1 0  1 1 0
         /
         ZCORN
-        4*0
-        4*1
+        6*0
+        2*1
         /
         ACTNUM
         1*1
