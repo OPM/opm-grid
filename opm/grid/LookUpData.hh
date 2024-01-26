@@ -94,14 +94,12 @@ public:
 
     /// \brief: Get field property of type double from field properties manager by name.
     std::vector<double> assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
-                                                     const std::string& propString,
-                                                     const unsigned int& numElements) const;
+                                                     const std::string& propString) const;
 
     /// \brief: Get field property of type int from field properties manager by name.
     template<typename IntType>
     std::vector<IntType> assignFieldPropsIntOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                    const std::string& propString,
-                                                   const unsigned int& numElements,
                                                    const bool& needsTranslation,
                                                    std::function<void(IntType, int)> valueCheck = [](IntType, int){}) const;
 
@@ -211,14 +209,12 @@ public:
 
     /// \brief: Get field property of type double from field properties manager by name.
     std::vector<double> assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
-                                                     const std::string& propString,
-                                                     const unsigned int& numElements) const;
+                                                     const std::string& propString) const;
 
     /// \brief: Get field property of type int from field properties manager by name.
     template<typename IntType>
     std::vector<IntType> assignFieldPropsIntOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                    const std::string& propString,
-                                                   const unsigned int& numElements,
                                                    const bool& needsTranslation,
                                                    std::function<void(IntType, int)> valueCheck = [](IntType, int){}) const;
 
@@ -308,10 +304,10 @@ Opm::LookUpData<Grid,GridView>::operator()(const EntityType& elem,
 
 template<typename Grid, typename GridView>
 std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
-                                                                                 const std::string& propString,
-                                                                                 const unsigned int& numElements) const
+                                                                                 const std::string& propString) const
 {
     std::vector<double> fieldPropOnLeaf;
+    unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_double(propString);
     for (unsigned int elemIdx = 0; elemIdx < numElements; ++elemIdx) {
@@ -325,11 +321,11 @@ template<typename Grid, typename GridView>
 template<typename IntType>
 std::vector<IntType> Opm::LookUpData<Grid,GridView>::assignFieldPropsIntOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                                                const std::string& propString,
-                                                                               const unsigned int& numElements,
                                                                                const bool& needsTranslation,
                                                                                std::function<void(IntType, int)> valueCheck) const
 {
     std::vector<IntType> fieldPropOnLeaf;
+    unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_int(propString);
     for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
@@ -442,10 +438,10 @@ Opm::LookUpCartesianData<Grid,GridView>::operator()(const EntityType& elem,
 
 template<typename Grid, typename GridView>
 std::vector<double> Opm::LookUpCartesianData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
-                                                                                          const std::string& propString,
-                                                                                          const unsigned int& numElements) const
+                                                                                          const std::string& propString) const
 {
     std::vector<double> fieldPropOnLeaf;
+    unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_double(propString);
     for (unsigned int elemIdx = 0; elemIdx < numElements; ++elemIdx) {
@@ -459,11 +455,11 @@ template<typename Grid, typename GridView>
 template<typename IntType>
 std::vector<IntType> Opm::LookUpCartesianData<Grid,GridView>::assignFieldPropsIntOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                                                         const std::string& propString,
-                                                                                        const unsigned int& numElements,
                                                                                         const bool& needsTranslation,
                                                                                         std::function<void(IntType, int)> valueCheck) const
 {
     std::vector<IntType> fieldPropOnLeaf;
+    unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_int(propString);
     for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
