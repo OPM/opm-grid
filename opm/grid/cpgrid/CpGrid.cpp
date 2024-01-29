@@ -1845,8 +1845,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     (*data_[num_patches +1]).logical_cartesian_size_ =  (*data_[0]).logical_cartesian_size_;
 
     // Print total amount of cells on the leaf grid view
-    Opm::OpmLog::info( num_patches + " LGRs applied to global grid.\n");
-    Opm::OpmLog::info( cell_count  + " total cells on the refined grid.\n");
+    Opm::OpmLog::info(std::to_string(num_patches) + " LGRs applied to global grid.\n");
+    Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the refined grid.\n");
 }
 
 
