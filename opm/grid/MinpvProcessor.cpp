@@ -204,10 +204,10 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         // Skip NNC if PINCH option 4 is ALL and we know that Z transmissibilty will
                         // be zero because of multz or permz
                         nnc_allowed = nnc_allowed &&
-                            (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0));
+                            (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) != 0.0));
 
                         if (pinchOption4ALL) {
-                            option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
+                            option4ALLSupported = option4ALLSupported || permz[c_below] == 0 || multz(c_below) == 0;
                         }
 
                         // move to next lower cell
@@ -273,10 +273,10 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                                 }
 
                                 nnc_allowed = nnc_allowed &&
-                                    (!pinchOption4ALL || (permz[c] != 0.0 && multz(c) != 0.0) );
+                                    (!pinchOption4ALL || (permz[c_above] != 0.0 && multz(c_above) != 0.0) );
 
                                 if (pinchOption4ALL) {
-                                    option4ALLSupported =  option4ALLSupported || permz[c] == 0.0 || multz(c) == 0.0;
+                                    option4ALLSupported =  option4ALLSupported || permz[c_above] == 0.0 || multz(c_above) == 0.0;
                                 }
                             }
                         }
@@ -291,7 +291,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                              (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
                              pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                             result.add_nnc(c_above, c_below);
-                            if (pinchOption4ALL)
+                            if (pinchOption4ALL && !option4ALLSupported)
                             {
                                 // Transmissiblities would be calculated wrong in the simulator in this case.
                                 // They would be deduced from top and bottom cells while they should be calculated as
