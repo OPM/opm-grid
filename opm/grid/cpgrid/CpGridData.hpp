@@ -112,6 +112,8 @@ void refinePatch_and_check(Dune::CpGrid&,
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
 
+void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
+
 namespace Dune
 {
 namespace cpgrid
@@ -152,9 +154,12 @@ class CpGridData
     void ::check_global_refine(const Dune::CpGrid&,
                                const Dune::CpGrid&);
 
+    friend
+    void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
+
 private:
-    CpGridData(const CpGridData& g); 
-    
+    CpGridData(const CpGridData& g);
+
 public:
     enum{
 #ifndef MAX_DATA_COMMUNICATED_PER_ENTITY

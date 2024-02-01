@@ -291,6 +291,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
     const auto& poro = fpm.get_double("PORO");
     const auto& eqlnum =  fpm.get_int("EQLNUM");
+    const auto& porv = fpm.get_double("PORV");
 
     // LookUpData
     const auto& leaf_view = grid.leafGridView();
@@ -308,6 +309,8 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
 
     const auto& eqlnumOnLeaf = lookUpData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", true);
     const auto& eqlnumOnLeafCart = lookUpCartesianData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", true);
+
+    const auto& porvOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORV");
 
     for (const auto& elem : elements(leaf_view))
     {
@@ -327,6 +330,29 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx], lookUpCartesianData.fieldPropInt(fpm, "EQLNUM", elemIdx));
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeaf[elemIdx]);
         BOOST_CHECK_EQUAL(eqlnum[elemOriginIdx]-true, eqlnumOnLeafCart[elemIdx]);
+        // PORV
+        if (elem.hasFather()) {
+            // Pore volume of the father must be equalivalent to the sum of the pore volume of its chidren.
+            // TO BE MODIFIED - Repeted computation for children with the same parent cell.
+            //                  A (data/function) member will be added in CpGrid, to return list of child indices
+            //                  on the leaf grid view, given its parent cell index from level zero.
+            const auto& parentIdx = elem.father().index();
+            const auto& parentPorv = porv[parentIdx];
+            // Remark: children_list indices are the indices on the LGR - Not on the leaf grid View.
+            const auto& [lgr, children_list] = (*grid.chooseData()[0]).parent_to_children_cells_[parentIdx];
+            // Get child indices on the leaf grid view, get the porv value of each child, sum them up, and check.
+            double sumChildrenPorv = 0.;
+            for (const auto& child : children_list) {
+                const auto& childIdxOnLeaf = (*grid.chooseData()[lgr]).level_to_leaf_cells_[child];
+                sumChildrenPorv += porvOnLeaf[childIdxOnLeaf];
+            }
+            BOOST_CHECK_CLOSE(parentPorv, sumChildrenPorv, 1e-6);
+        }
+        else {
+            BOOST_CHECK_EQUAL(porv[elemOriginIdx], lookUpData.fieldPropDouble<Dune::cpgrid::Entity<0>>(fpm, "PORV", elem));
+            BOOST_CHECK_EQUAL(porv[elemOriginIdx], lookUpData.fieldPropDouble<int>(fpm, "PORV", elemIdx));
+            BOOST_CHECK_EQUAL(porv[elemOriginIdx], porvOnLeaf[elemIdx]);
+        }
     }
 }
 
@@ -360,6 +386,9 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
         /
         PORO
         1.0 2.0 3.0 4.0 5.0
+        /
+        PORV
+        .5 1.0 1.5 2.0 2.5
         /
         REGIONS
 
@@ -406,6 +435,9 @@ ACTNUM
 /
 PORO
 1.0 2.0 3.0 4.0 5.0
+/
+PORV
+0.5 1.0 1.5 2. 2.5
 /
 REGIONS
 
