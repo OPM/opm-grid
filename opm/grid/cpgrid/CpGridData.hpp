@@ -719,9 +719,9 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
-    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs, created via CpGrid::createGridWithLgrs()). */
+    /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
     int level_{0};
-    /** Copy of (CpGrid object).data_ associated with the CpGridData object, via created via CpGrid::createGridWithLgrs(). */
+    /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
     std::vector<std::shared_ptr<CpGridData>>* level_data_ptr_;
     // SUITABLE FOR ALL LEVELS EXCEPT FOR LEAFVIEW
     /** Map between level and leafview cell indices. Only cells (from that level) that appear in leafview count. */  

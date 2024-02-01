@@ -333,14 +333,13 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
         // PORV
         if (elem.hasFather()) {
             // Pore volume of the father must be equalivalent to the sum of the pore volume of its chidren.
-            // TO BE MODIFIED - Repeted computation for children with the same parent cell.
-            //                  A (data/function) member will be added in CpGrid, to return list of child indices
-            //                  on the leaf grid view, given its parent cell index from level zero.
+            // Remark: not optimal, repeted computation for children with the same parent cell.
             const auto& parentIdx = elem.father().index();
             const auto& parentPorv = porv[parentIdx];
             // Remark: children_list indices are the indices on the LGR - Not on the leaf grid View.
             const auto& [lgr, children_list] = (*grid.chooseData()[0]).parent_to_children_cells_[parentIdx];
-            // Get child indices on the leaf grid view, get the porv value of each child, sum them up, and check.
+            // Get child indices on the leaf grid view, get their porv value, sum them up, and compare
+            // the sum with the pore volume of their parent.
             double sumChildrenPorv = 0.;
             for (const auto& child : children_list) {
                 const auto& childIdxOnLeaf = (*grid.chooseData()[lgr]).level_to_leaf_cells_[child];
