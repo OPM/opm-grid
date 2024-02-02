@@ -310,9 +310,30 @@ std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_double(propString);
-    for (unsigned int elemIdx = 0; elemIdx < numElements; ++elemIdx) {
-        const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx);
-        fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+    if ( (propString == "PORV") && (gridView_.grid().maxLevel() > 0)) {
+        // PORV poreVolume. LGRs supported (so far) only for CpGrid.
+        // For CpGrid with LGRs, poreVolume of a cell on the leaf grid view which has a parent cell on level 0,
+        // is computed as  porv[parent] * leafCellVolume / parentCellVolume. In this way, the sum of the pore
+        // volume of a parent cell coincides with the sum of the pore volume of its children.
+        for (const auto& element : elements(gridView_)) {
+            const auto& elemIdx = this-> elemMapper_.index(element);
+            const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
+            if (element.hasFather()) {
+                const auto fatherVolume = element.father().geometry().volume();
+                const auto& elemVolume = element.geometry().volume();
+                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] * elemVolume / fatherVolume;
+            }
+            else {
+                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+            }
+        }
+    }
+    else {
+        for (const auto& element : elements(gridView_)) {
+            const auto& elemIdx = this-> elemMapper_.index(element);
+            const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
+            fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+        }
     }
     return fieldPropOnLeaf;
 }
@@ -328,8 +349,9 @@ std::vector<IntType> Opm::LookUpData<Grid,GridView>::assignFieldPropsIntOnLeaf(c
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
     const auto& fieldProp = fieldPropsManager.get_int(propString);
-    for (unsigned elemIdx = 0; elemIdx < numElements; ++elemIdx) {
-        const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx);
+    for (const auto& element : elements(gridView_)) {
+        const auto& elemIdx = this-> elemMapper_.index(element);
+        const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
         fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] - needsTranslation;
         valueCheck(fieldProp[fieldPropIdx], fieldPropIdx);
     }
