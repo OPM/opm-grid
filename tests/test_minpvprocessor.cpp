@@ -87,6 +87,48 @@ BOOST_AUTO_TEST_CASE(GAP_MAXGAP_no_pinched_cells)
       BOOST_CHECK_EQUAL(minpv_result.nnc[1], 2);
 }
 
+BOOST_AUTO_TEST_CASE(Pinch4ALL)
+{
+    // Set up a simple example.
+    std::vector<double> zcorn = { 0, 0, 0, 0,
+                                  2, 2, 2, 2,
+                                  2, 2, 2, 2,
+                                  2.5, 2.5, 2.5, 2.5,
+                                  2.5, 2.5, 2.5, 2.5,
+                                  3.5, 3.5, 3.5, 3.5,
+                                  3.5, 3.5, 3.5, 3.5,
+                                  6, 6, 6, 6 };
+
+    std::vector<double> pv = { 2, 0.5, 0.5, 2.5};
+    std::vector<int> actnum = { 1, 1, 1, 1 };
+    std::vector<double> thickness = {2, 0.5, 0.5, 2.5};
+    std::vector<double> permz = {2, 2, 0, 2.5};
+    auto multz = [](int){ return 1.0;};
+    double z_threshold = 0.4;
+
+    Opm::MinpvProcessor mp1(1, 1, 4);
+    auto z1 = zcorn;
+    std::vector<double> minpvv(4, 0.6);
+    bool fill_removed_cells = false;
+    bool pinch_no_gap = false;
+    bool option4all = true;
+
+    // THis is suported because one of the permz entries is zero.
+    auto minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+				    fill_removed_cells, z1.data(), pinch_no_gap,
+				    option4all, permz, multz);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
+
+    permz = {2, 2, 1, 2.5}; // Not supported
+    BOOST_CHECK_THROW(mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+				  fill_removed_cells, z1.data(), pinch_no_gap,
+				  option4all, permz, multz), std::runtime_error);
+    auto multz2 = [](int i){ if (i==2) return 0.0; else return 1.0;};
+    
+    minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+			       fill_removed_cells, z1.data(), pinch_no_gap,
+			       option4all, permz, multz2);
+}
 BOOST_AUTO_TEST_CASE(Pinch)
 {
     // Set up a simple example.
