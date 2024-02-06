@@ -21,6 +21,7 @@
 #define OPM_GRIDMANAGER_HEADER_INCLUDED
 
 #include <string>
+#include <vector>
 
 struct UnstructuredGrid;
 struct grdecl;
