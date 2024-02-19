@@ -154,7 +154,8 @@ compute_cell_index(const int dims[3], int i, int j,
 static int
 checkmemory(int nz, struct processed_grid *out, int **intersections)
 {
-    int r, m, n, ok;
+    size_t r, m, n;
+    int ok;
 
     /* Ensure there is enough space to manage the (pathological) case
      * of every single cell on one side of a fault connecting to all
