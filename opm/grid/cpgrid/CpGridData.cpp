@@ -1964,6 +1964,7 @@ Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const 
             (endIJK[1]*(grid_dim[0]+1)*(grid_dim[2]+1)) + (startIJK[0]*(grid_dim[2]+1)) + endIJK[2],
             // Index of corner '7' {endI, endJ, endK}
             (endIJK[1]*(grid_dim[0]+1)*(grid_dim[2]+1)) + (endIJK[0]*(grid_dim[2]+1)) + endIJK[2]};
+
         EntityVariableBase<cpgrid::Geometry<0,3>>& cellifiedPatch_corners =
             *(cellifiedPatch_geometry.geomVector(std::integral_constant<int,3>()));
         cellifiedPatch_corners.resize(8);
@@ -1996,7 +1997,7 @@ Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const 
 }
 
 std::tuple< const std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
+            const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~old_to_new_corners)
             const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
             const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
             const std::vector<std::array<int,2>>,                // child_to_parent_faces
@@ -2044,6 +2045,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
             // replacing parent-cell corner '7' {cells_per_dim[0], cells_per_dim[1], cells_per_dim[2]}
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
                 + cells_per_dim[2]}};
+
     // Get parent_cell_to_face = { {face, orientation}, {another face, its orientation}, ...}.
     const auto& parent_cell_to_face = (this-> cell_to_face_[EntityRep<0>(parent_idx, true)]);
     // To store relation old-face to new-born-faces (children faces).
@@ -2125,7 +2127,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
 }
 
 std::tuple< std::shared_ptr<CpGridData>,
-            const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
+            const std::vector<std::array<int,2>>,                // old_to_new_corners
             const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
             const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
             const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
@@ -2171,47 +2173,31 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     cellified_patch.refine({xfactor, yfactor, zfactor}, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                            refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals);
     // To store the relation between old-corner-indices and the equivalent new-born ones (laying on the patch boundary).
-    std::vector<std::array<int,2>> boundary_old_to_new_corners;
-    boundary_old_to_new_corners.reserve((2*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))
-                                        + (2*(cells_per_dim[1]-1)*(cells_per_dim[2]+1))
-                                        + (2*(cells_per_dim[0]-1)*(cells_per_dim[1]-1)));
+    std::vector<std::array<int,2>> old_to_new_corners;
+    old_to_new_corners.reserve((2*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))
+                               + (2*(cells_per_dim[1]-1)*(cells_per_dim[2]+1))
+                               + (2*(cells_per_dim[0]-1)*(cells_per_dim[1]-1)));
     for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
         for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
             for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                if ( (j == startIJK[1]) || (j == endIJK[1]) ){ // Corners in the front/back of the patch.
-                    boundary_old_to_new_corners.push_back({
-                            // Old corner index
-                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                            // New-born corner index (equivalent corner).
-                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                            + (cells_per_dim[2]*(k-startIJK[2])) });
-                }
-                if ( (i == startIJK[0]) || (i == endIJK[0]) ) { // Corners in the left/right of the patch.
-                    boundary_old_to_new_corners.push_back({
-                            // Old corner index.
-                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                            // New-born corner index (equivalent corner).
-                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                            + (cells_per_dim[2]*(k-startIJK[2]))});
-                }
-                if ( (k == startIJK[2]) || (k == endIJK[2]) ) { // Corners in the bottom/top of the patch.
-                    boundary_old_to_new_corners.push_back({
-                            // Old corner index.
-                            (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
-                            // New-born corner index (equivalent corner)
-                            (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
-                            + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
-                            + (cells_per_dim[2]*(k-startIJK[2]))});
-                }
+                old_to_new_corners.push_back({
+                        // Old corner index
+                        (j*(grid_dim[2]+1)*(grid_dim[0]+1)) + (i*(grid_dim[2]+1)) + k,
+                        // New-born corner index (equivalent corner).
+                        (cells_per_dim[1]*(j-startIJK[1])*(xfactor +1)*(zfactor +1))
+                        + (cells_per_dim[0]*(i-startIJK[0])*(zfactor +1))
+                        + (cells_per_dim[2]*(k-startIJK[2])) });
             } // end k-for-loop
         } // end i-for-loop
     } // end j-for-loop
+
+
     // To store face-indices of faces on the boundary of the patch.
     std::vector<int> boundary_patch_faces;
     // Auxiliary integers to simplify notation.
-    const int& bound_patch_faces = (2*patch_dim[1]*patch_dim[2]) + (patch_dim[0]*2*patch_dim[2]) + (patch_dim[0]*patch_dim[1]*2);
+    // const int& bound_patch_faces = (2*patch_dim[1]*patch_dim[2]) + (patch_dim[0]*2*patch_dim[2]) + (patch_dim[0]*patch_dim[1]*2);
+    // boundary_patch_faces.reserve(bound_patch_faces);
+    const int& bound_patch_faces = ((xfactor+1)*yfactor*zfactor) +  (xfactor*(yfactor+1)*zfactor) +  ((xfactor+1)*yfactor*(zfactor+1));
     boundary_patch_faces.reserve(bound_patch_faces);
     // To store relation between old-face-index and its new-born-face indices.
     std::vector<std::tuple<int, std::vector<int>>> boundary_old_to_new_faces; // {face index, its children-indices}
@@ -2304,6 +2290,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
             } // end k-for-loop
         } // end i-for-loop
     } // end j-for-loop
+
     // To store the relation between parent cell and its new-born-cells.
     // {parent index (coarse grid), {child 0 index, child 1 index, ... (refined grid)}}
     std::vector<std::tuple<int,std::vector<int>>> parent_to_children_cells;
@@ -2331,7 +2318,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
             } // end i-for-loop
         } // end j-for-loop
     } // end k-for-loop
-    return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
+    return {refined_grid_ptr, old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
         parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
 }
 

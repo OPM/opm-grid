@@ -35,10 +35,12 @@
 #define OPM_LOOKUPDATA_HH
 
 #include <dune/grid/common/mcmgmapper.hh>
+#include <dune/grid/common/intersection.hh>
 
 #include <opm/input/eclipse/EclipseState/Grid/FieldPropsManager.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 
+#include <algorithm>
 #include <functional>
 #include <string>
 #include <type_traits>
@@ -155,6 +157,51 @@ public:
     typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int>
     getFieldPropIdx(const int& elemIdx) const;
 
+
+    /// \brief: Throw for all grids different from CpGrid since LGRs are supported only for CpGrid. 
+    ///
+    /// \tparam     Intersection
+    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
+    ///                         Default: GridType = Grid.
+    template<typename Intersection, typename GridType>
+    typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, Intersection>
+    getParentFaceIdxFromLgrBoundaryFace(const Intersection& intersection [[maybe_unused]]) const;
+
+    /// \brief: Return the parent (coarse) intersection, for CpGrids, given a (refined) intersection on the leaf grid view,
+    ///         laying on the boundary of an LGR (with one coarse neighboring cell and one refined neighboring cell).
+    ///
+    /// \tparam     Intersection
+    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
+    ///                         Default: GridType = Grid.
+    template<typename Intersection, typename GridType = Grid>
+    typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,Intersection>
+    getParentFaceIdxFromLgrBoundaryFace(const Intersection& intersection) const;
+
+    /// \brief: Decide face on the leaf grid view is on the boundary of an LGR and on the interior of the grid
+    template <typename Intersection>
+    bool isOnLgrBoundaryInteriorGrid(const Intersection& intersection) const;
+
+    /// \brief: Given an intersection, ...
+    ///
+    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
+    ///                         Default: GridType = Grid.
+    /// \tparam     Intersection
+    /// \param [in] intersection
+    /// \param [in] neighboringElemIdx
+    template<typename Intersection, typename DimVector, typename GridType>
+    typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>,DimVector>
+    factorizedCenterElem(const Intersection& intersection, const int neighboringElemIdx) const;
+
+    /// \brief: Given an intersection, ...
+    ///
+    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
+    ///                         Default: GridType = Grid.
+    /// \tparam     Intersection
+    /// \param [in] intersection
+    /// \param [in] neighboringElemIdx
+    template<typename Intersection, typename DimVector, typename GridType = Grid>
+    typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,DimVector>
+    factorizedCenterElem(const Intersection& intersection, const int neighboringElemIdx) const;
 
 protected:
     const GridView& gridView_;
@@ -428,6 +475,108 @@ Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const int& elemIdx) const
     }
     else {
         return elem.getOrigin().index();
+    }
+}
+
+template<typename Grid, typename GridView>
+template<typename Intersection, typename GridType>
+typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>,Intersection>
+Opm::LookUpData<Grid,GridView>::getParentFaceIdxFromLgrBoundaryFace(const Intersection& intersection [[maybe_unused]]) const
+{
+    static_assert(std::is_same_v<Grid,GridType>);
+    OPM_THROW(std::logic_error, "Lgrs supported only for CpGrid");
+}
+
+
+template<typename Grid, typename GridView>
+template<typename Intersection, typename GridType>
+typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,Intersection>
+Opm::LookUpData<Grid,GridView>::getParentFaceIdxFromLgrBoundaryFace(const Intersection& intersection) const
+{
+    static_assert(std::is_same_v<Grid,GridType>); // Code below supports any DUNE grid, however LGRs are supported only for CpGrid 
+    if (!isOnLgrBoundaryInteriorGrid(intersection)) {
+        OPM_THROW(std::invalid_argument, "Face is not on the boundary of an LGR or it's on the boundary of the grid.");
+    }
+
+    const auto& cellIn = intersection.inside();
+    const auto& cellOut = intersection.outside();
+
+    // Identify the coarse and the refined neighboring cell
+    const auto coarseCell =  (cellIn.level() == 0) ? cellIn : cellOut;
+    const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
+    assert(coarseCell.level() == 0);
+    assert(refinedCell.level() > 0);
+
+    // Get parent cell (on level zero) of the refined cell
+    const auto parentCell = refinedCell.father();
+    assert(refinedCell.father().level() == 0);
+
+    // Get the index inside and orientation from the leaf grid (refined) face
+    const auto& intersectionIdxInInside = intersection.indexInInside();
+    
+    for(const auto& parentIntersection : intersections(gridView_.grid().levelGridView(0), parentCell)){
+        // Get the inInsideIdx and orientation from the parent intersection
+        const auto& parentIdxInInside = parentIntersection.indexInInside();
+        if (parentIdxInInside == intersectionIdxInInside) {
+            break;
+            return parentIntersection;
+        }
+    }
+    OPM_THROW(std::invalid_argument, "Parent intersection not found. Possible reason: grid type is not CpGrid");
+}
+
+template<typename Grid, typename GridView>
+template <typename Intersection>
+bool Opm::LookUpData<Grid,GridView>::isOnLgrBoundaryInteriorGrid(const Intersection& intersection) const
+{
+    return  intersection.neighbor() && (intersection.inside().level() != intersection.outside().level());
+}
+
+template<typename Grid, typename GridView>
+template<typename Intersection, typename DimVector, typename GridType>
+typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>,DimVector>
+Opm::LookUpData<Grid,GridView>::factorizedCenterElem(const Intersection& intersection [[maybe_unused]], const int neighboringElemIdx [[maybe_unused]]) const
+{
+    static_assert(std::is_same_v<Grid,GridType>);
+    OPM_THROW(std::logic_error, "Lgrs supported only for CpGrid");
+}
+
+template<typename Grid, typename GridView>
+template<typename Intersection, typename DimVector, typename GridType>
+typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,DimVector>
+Opm::LookUpData<Grid,GridView>::factorizedCenterElem(const Intersection& intersection, const int neighboringElemIdx) const
+{
+    if (isOnLgrBoundaryInteriorGrid(intersection))
+    {
+        // --- The following variables, faceIdx and dimIdx, could also be function arguments ---
+        const int faceIdx = intersection.indexInInside();
+        // 0 (I_FACE false), 1 (I_FACE false), 2 (J_FACE false), 3 (J_FACE true), 4 (K_FACE false), 5 (K_FACE true)
+        const int dimIdx = faceIdx/2; // 0 (I_FACE), 1 (J_FACE), or 2 (K_FACE)
+
+        // Intersection lays on the boundary of an LGR and in the interior of the grid. Then, it has a coarse neighboring cell and a refined one.
+        // Get the level of the neighboring element to decide if it's the coarse or the refined neighboring cell of the intersection.
+        const auto& neighboringElem = (intersection.inside().index() == neighboringElemIdx) ? intersection.inside() : intersection.outside();
+
+        // Level of the neighboring refined cell
+        const int level = std::max( intersection.inside().level(), intersection.outside().level());
+        assert(level > 0);
+        // Auxiliary factor
+        // - Implementation detail: chooseData() and cells_per_dim_.
+        const int factor = gridView_.grid().chooseData[level].cells_per_dim_[(dimIdx+1)%3] * gridView_.grid().chooseData[level].cells_per_dim_[(dimIdx+2)%3];
+
+        DimVector factorizedCenter;
+        if (neighboringElem.level()) { // neighboring element is a refined cell
+            // Get parent cell of the refined neighboring cell
+            factorizedCenter = neighboringElem.father().geometry().center();
+        }
+        else { // neighboring element is a coarse cell
+            factorizedCenter = neighboringElem.geometry().center();
+        }
+        factorizedCenter /= factor;
+        return factorizedCenter;
+    }
+    else {
+        OPM_THROW(std::invalid_argument, "Intersection is not on the boundary of an LGR");
     }
 }
 

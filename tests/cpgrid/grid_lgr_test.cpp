@@ -226,13 +226,57 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             }
 
             // LeafView faces
-            for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
+            for (int faceIdx = 0; faceIdx <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++faceIdx)
             {
-                const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
+                const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[faceIdx];
                 BOOST_CHECK(faceToPoint.size() == 4);
                 for (int i = 0; i < 4; ++i)
                 {
-                    BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
+                    BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[faceIdx][i] != -1);
+                }
+                const auto& face = Dune::cpgrid::EntityRep<1>(faceIdx, true);
+                const auto& faceToCell = (*data[startIJK_vec.size() +1]).face_to_cell_[face];
+                BOOST_CHECK(faceToCell.size() <= 2);
+                const auto& faceTag = data[startIJK_vec.size() +1]->face_tag_[face];
+                try {
+                    const auto& parentFace =  coarse_grid.getParentFaceFromLgrBoundaryFace(faceIdx);
+                    const auto& parentFaceTag =  data[0]->face_tag_[Dune::cpgrid::EntityRep<1>(parentFace.index(), true)];
+                    BOOST_CHECK_EQUAL( faceTag, parentFaceTag);
+                }
+                catch (const std::exception& e) {
+                    std::cout<< e.what() << std::endl;
+                }
+            }
+
+            // Center parent face =? average of refined children face centers - only checked on the boundary of an LGR
+            for (int faceIdx = 0; faceIdx <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++faceIdx)
+            {
+                Dune::FieldVector<double, 3> expectedCenter =  coarse_grid.faceCentroid(faceIdx);
+                try {
+                    const auto& parentFace =  coarse_grid.getParentFaceFromLgrBoundaryFace(faceIdx);
+                    const auto& parentFaceCenter =  data[0]->geomVector<1>()[Dune::cpgrid::EntityRep<1>(parentFace.index(), true)].center();
+                    int faceCount = 1;
+                    for (int otherFaceIdx = 0; otherFaceIdx <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++otherFaceIdx) {
+                        if (otherFaceIdx != faceIdx) {
+                            try {
+                                const auto& otherParentFace =  coarse_grid.getParentFaceFromLgrBoundaryFace(otherFaceIdx);
+                                if (parentFace == otherParentFace) {
+                                    expectedCenter +=  coarse_grid.faceCentroid(otherFaceIdx);
+                                    ++faceCount;
+                                }
+                            }
+                            catch (const std::exception& e) {
+                                std::cout<< e.what() << std::endl;
+                            }
+                        }
+                    }
+                    for (int i = 0; i < 3; ++i) {
+                        expectedCenter[i] /= faceCount;
+                        BOOST_CHECK_CLOSE( expectedCenter[i], parentFaceCenter[i], 1e-6);
+                    }
+                }
+                catch (const std::exception& e) {
+                    std::cout<< e.what() << std::endl;
                 }
             }
 
@@ -429,15 +473,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     {
                         face_count +=1;
                     }
-                    /*std::cout << "Entity old index: " << entityOldIdx << "Entity leaf idx: " << entity.index() << '\n';
-                    std::cout << "Leaf cell_to_face_.size(): " << leaf_cell_to_face.size() << '\n';
-                    std::cout << "Face count: " << face_count << '\n';
-                    std::cout << "touch_patch_onLeftFace: " << touch_patch_onLeftFace << '\n';
-                    std::cout << "touch_patch_onRightFace: " << touch_patch_onRightFace << '\n';
-                    std::cout << "touch_patch_onFrontFace: " << touch_patch_onFrontFace << '\n';
-                    std::cout << "touch_patch_onBackFace: " << touch_patch_onBackFace << '\n';
-                    std::cout << "touch_patch_onBottomFace: " << touch_patch_onBottomFace << '\n';
-                    std::cout << "touch_patch_onTopFace: " << touch_patch_onTopFace << '\n';*/
                     BOOST_CHECK( leaf_cell_to_face.size() == face_count);
                 } // end else
             }
@@ -596,7 +631,6 @@ BOOST_AUTO_TEST_CASE(pathces_share_faceB)
 }
 
 
-
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
 {
 
@@ -641,7 +675,6 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
     for(const auto& element: elements(grid_view))
     {
         BOOST_CHECK( element.getOrigin().level() == 0);
-        //BOOST_CHECK( element.getOrigin().index() == element.index());
         for(const auto& intersection: intersections(grid_view, element))
         {
             // find matching intersection (needed as ordering is allowed to be different
@@ -731,3 +764,4 @@ BOOST_AUTO_TEST_CASE(global_norefine)
 
     check_global_refine(coarse_grid, fine_grid);
 }
+

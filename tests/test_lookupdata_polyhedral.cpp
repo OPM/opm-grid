@@ -47,6 +47,7 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
+#include <opm/grid/polyhedralgrid/intersection.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -140,6 +141,18 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         std::array<int,3> ijkThrow;
         BOOST_CHECK_THROW(cartMapper.cartesianCoordinateLevel(idx, ijkThrow, 4), std::invalid_argument);
         BOOST_CHECK_THROW(cartMapper.cartesianCoordinateLevel(idx, ijkThrow, -3), std::invalid_argument);
+        // Lookupdata for parent faces - nothing changes for Polyhedral grid since LGRs are not supported yet
+        for(const auto& intersection: intersections(leaf_view, elem)){
+            using IntersectionType = std::remove_cv_t< typename std::remove_reference<decltype(intersection)>::type>;
+            try {
+                const auto& parentIntersection [[maybe_unused]] = lookUpData.template getParentFaceIdxFromLgrBoundaryFace<IntersectionType, Dune::PolyhedralGrid<3,3> >(intersection);
+            }
+            catch (const std::exception& e) {
+                std::cout<< e.what() << std::endl;
+            }
+            bool isOnLgrBoundary = lookUpData.template isOnLgrBoundaryInteriorGrid<IntersectionType>(intersection);
+            BOOST_CHECK_EQUAL(isOnLgrBoundary, false);
+        }
     }
 }
 

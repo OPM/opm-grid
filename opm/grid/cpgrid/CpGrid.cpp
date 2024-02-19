@@ -1098,9 +1098,9 @@ double CpGrid::cellCenterDepth(int cell_index) const
     return zz/nv;
 }
 
-const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face) const
+const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int faceIdxOnLeafGridView) const
 {
-    // This method is an alternative to the method faceCentroid(...).
+    /*// This method is an alternative to the method faceCentroid(...).
     // The face center is computed as a raw average of cell corners.
     // For faulted cells this gives different results then average of face nodes
     // that seems to agree more with eclipse.
@@ -1113,27 +1113,41 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
     //   0---1
 
     // this follows the DUNE reference cube
-    static const int faceVxMap[ 6 ][ 4 ] = { {0, 2, 4, 6}, // face 0
-                                             {1, 3, 5, 7}, // face 1
-                                             {0, 1, 4, 5}, // face 2
-                                             {2, 3, 6, 7}, // face 3
-                                             {0, 1, 2, 3}, // face 4
-                                             {4, 5, 6, 7}  // face 5
+    static const int faceVxMap[ 6 ][ 4 ] = { {0, 2, 4, 6}, // face 0 -- left
+                                             {1, 3, 5, 7}, // face 1 -- right
+                                             {0, 1, 4, 5}, // face 2 -- front
+                                             {2, 3, 6, 7}, // face 3 -- back
+                                             {0, 1, 2, 3}, // face 4 -- bottom
+                                             {4, 5, 6, 7}  // face 5 -- top
     };
-
+    // For CpGrid with LGRs, a refined face with a coarse neighboring cell and a refined neighboring cell
+    // (that is when the face belongs to the boundary of an LGR and is located in the interior of the grid),
+    // unfortunately leads us to a different order of the faces, in cell_to_face_, depending on if the
+    // neighboring cell, here with cell_index index, is the coarse one or the refined one. Preceisely,
+    // cell_to_face_[cell_index - coarse neighboring cell] = { left, right, front, back, bottom, top} = {0,1,2,3,4,5} with
+    // the notation above, and
+    // cell_to_face_[cell_index - refined neighboring cell] = {bottom, front, left, right, back, top} = {2,3,1,4,0,5} with
+    // the notation used in faceVxMap. Therefore, we should consider:
+    // --------- this follows the order created in Geometry::refine() for LGRs in CpGrid --------
+    static const int faceVxMapLGR[ 6 ][ 4 ] = { {0, 1, 4, 5}, // lgr_face 2 == face 0  -- left
+        {2, 3, 6, 7}, // lgr_face 3 == face 1  -- right
+        {1, 3, 5, 7}, // lgr_face 1 == face 2  -- front
+        {0, 1, 2, 3}, // lgr_face 4 == face 3  -- back
+        {0, 2, 4, 6}, // lgr_face 0 == face 4  -- bottom
+        {4, 5, 6, 7}  // lgr_face 5 == face 5  -- top
+    };
+    Instead, we compute the center of the face directly with its 4 corners. */
 
     assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
     Dune::FieldVector<double,3> center(0.0);
-    for( int i=0; i<4; ++i )
-    {
-        center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMap[ face ][ i ] ]);
+    for( int i=0; i<4; ++i ) {
+        center += vertexPosition(current_view_data_->face_to_point_[faceIdxOnLeafGridView][i]);
     }
-
+    
     for (int i=0; i<3; ++i) {
         center[i] /= 4;
     }
     return center;
-
 }
 
 const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
@@ -1852,6 +1866,91 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
+}
+
+const cpgrid::EntityRep<1> CpGrid::getParentFaceFromLgrBoundaryFace(int faceOnBoundaryLgrIdx) const
+{
+    // Check the face is actually on the boundary of an LGR and one of its neighboring cells is a coarse one.
+    // - Discard faces on the boundary of the grid.
+    const auto& faceToCell = current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(faceOnBoundaryLgrIdx, true)];
+    if (faceToCell.size() != 2) {
+        OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid.");
+    }
+    // - Discard the case when the face belongs to the interior of an LGR,
+    // or both cells are equivalent to their parent cells from level zero.
+    const auto& cell1 = Dune::cpgrid::Entity<0>(*current_view_data_,faceToCell[0].index(), true);
+    const auto& cell2 = Dune::cpgrid::Entity<0>(*current_view_data_,faceToCell[1].index(), true);
+    if ( cell1.level() == cell2.level() ) {
+        OPM_THROW(std::invalid_argument, "Face is not on the boundary of an LGR.");
+    }
+
+    // Identufy the coarse and the refined neighboring cell
+    const auto coarseCell =  (cell1.level() == 0) ? cell1 : cell2;
+    const auto refinedCell =  (coarseCell == cell1) ? cell2 : cell1;
+    assert(coarseCell.level() == 0);
+    assert(refinedCell.level() > 0);
+
+    // Get parent cell idx (on level zero) of the refined cell
+    const auto parentCellIdx = refinedCell.getOrigin().index();
+    assert(refinedCell.getOrigin().level() == 0);
+    // Get parentCell cell_to_face_
+    const auto& parentCell_CellToFace = this->data_[0]->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdx, true)];
+
+    // Get the face_tag and orientation from the leaf grid (refined) face
+    const auto& faceTag = current_view_data_->face_tag_[cpgrid::EntityRep<1>(faceOnBoundaryLgrIdx, true)];
+    bool faceOrientationWRTrefinedCell = (refinedCell.index() == cell1.index()) ? faceToCell[0].orientation() : faceToCell[1].orientation();
+    //
+    if( faceTag == face_tag::I_FACE) {
+        return faceOrientationWRTrefinedCell ? parentCell_CellToFace[1] : parentCell_CellToFace[0];
+    }
+    if (faceTag == face_tag::J_FACE) {
+        return faceOrientationWRTrefinedCell ? parentCell_CellToFace[3] : parentCell_CellToFace[2];
+    }
+    if (faceTag == face_tag::K_FACE) {
+        return faceOrientationWRTrefinedCell ? parentCell_CellToFace[5] : parentCell_CellToFace[4];
+    }
+    else /*(faceTag == face_tag::NNC_FACE)*/ {
+        OPM_THROW(std::logic_error, "Face tag type not supported on LGRs (yet)");
+    }
+}
+
+
+Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const
+{
+    if ( intersection.neighbor()) {
+        if ((intersection.inside().level() != intersection.outside().level())) {
+            // one coarse and one refined neighboring cell
+            const auto& cellIn = intersection.inside();
+            const auto& cellOut = intersection.outside();
+
+            // Identify the coarse and the refined neighboring cell
+            const auto coarseCell =  (cellIn.level() == 0) ? cellIn : cellOut;
+            const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
+            assert(coarseCell.level() == 0);
+            assert(refinedCell.level() > 0);
+
+            // Get parent cell (on level zero) of the refined cell
+            const auto& parentCell = refinedCell.father();
+            assert(refinedCell.father().level() == 0);
+
+            // Get the index inside and orientation from the leaf grid (refined) face
+            const auto& intersectionIdxInInside = intersection.indexInInside();
+
+            for(const auto& parentIntersection : intersections(this->levelGridView(0), parentCell)){
+                // Get the inInsideIdx and orientation from the parent intersection
+                const auto& parentIdxInInside = parentIntersection.indexInInside();
+                if (parentIdxInInside == intersectionIdxInInside) {
+                    return parentIntersection;
+                }
+            }
+        }
+        else {
+            OPM_THROW(std::invalid_argument, "Parent intersection not found");
+        }
+    }
+    else {
+        OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
+    }
 }
 
 std::array<double,3> CpGrid::getEclCentroid(const int& elemIdx) const

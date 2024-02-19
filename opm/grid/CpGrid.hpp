@@ -534,6 +534,19 @@ namespace Dune
         // @brief TO BE DONE
         const std::map<std::string,int>& getLgrNameToLevel() const;
 
+        /** To be removed - similar method has been introduce in LookUpData.hh for general grids **/
+        // @brief Return parent (coarse) face of a refined face on the leaf grid view, whose neighboring cells
+        //        are two: one coarse cell (equivalent to its origin cell from level 0), and one refined cell
+        //        from certain LGR.
+        //
+        // @param [in] faceOnBoundaryLgrIdx         Index of a refined face on the leaf grid view, 'touching' a coarse cell.
+        // @return     parent face                  'Parent' face on the level zero.
+        const cpgrid::EntityRep<1> getParentFaceFromLgrBoundaryFace(int faceOnBoundaryLgrIdx) const;
+
+
+        
+        Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
+
         // @breif Compute center of an entity/element/cell in the Eclipse way:
         //        - Average of the 4 corners of the bottom face.
         //        - Average of the 4 corners of the top face.
@@ -997,8 +1010,7 @@ namespace Dune
         /// \brief cell_index The index of the specific cell.
         double cellCenterDepth(int cell_index) const;
 
-
-        const Vector faceCenterEcl(int cell_index, int face) const;
+        const Vector faceCenterEcl(int cell_index, int faceIdxOnLeafGridView) const;
 
         const Vector faceAreaNormalEcl(int face) const;
 

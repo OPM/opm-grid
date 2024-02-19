@@ -185,6 +185,20 @@ void lookup_check(const Dune::CpGrid& grid)
             BOOST_CHECK(elem.father().index() == parent_id);
             BOOST_CHECK(elem.father().index() == level0Mapper.index(elem.father()));
         }
+        // Lookupdata for parent faces
+        for(const auto& intersection: intersections(leaf_view, elem)){
+            const auto& intersectionId = intersection.id();
+            try {
+                const auto& parentFace =  grid.getParentFaceFromLgrBoundaryFace(intersectionId);
+                const auto& parentFaceLookupIdx = lookUpData.getParentFaceIdxFromLgrBoundaryFace(intersection);
+                BOOST_CHECK_EQUAL( intersection.indexInInside(), parentFaceLookupIdx.indexInInside() );
+                BOOST_CHECK_EQUAL( parentFace.index(), parentFaceLookupIdx.id());
+                BOOST_CHECK_EQUAL( lookUpData.template isOnLgrBoundaryInteriorGrid(intersection), true);
+            }
+            catch (const std::exception& e) {
+                std::cout<< e.what() << std::endl;
+            }
+        }
     }
 }
 

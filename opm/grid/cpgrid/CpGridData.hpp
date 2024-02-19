@@ -412,7 +412,7 @@ public:
     ///                                           {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells       {child index, parent index}
     std::tuple< const std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
+                const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~old_to_new_corners)
                 const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
                 const std::tuple<int, std::vector<int>>,             // parent_to_children_cells
                 const std::vector<std::array<int,2>>,                // child_to_parent_faces
@@ -427,12 +427,13 @@ public:
     ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
     ///
     /// @return refined_grid_ptr                   Shared pointer of CpGridData type, pointing at the refined_grid
-    /// @return boundary_old_to_new_corners/faces  Corner/face indices on the patch-boundary associated with new-born-entity indices.
+    /// @return old_to_new_corners                 Corner indices on the patch associated with new-born-entity indices.
+    /// @return boundary_old_to_new_faces          Face indices on the patch-boundary associated with new-born-entity indices.
     /// @return parent_to_children_faces/cell      For each parent face/cell, we store its child-face/cell indices.
     ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
     /// @return child_to_parent_faces/cells        {child index, parent index}
     std::tuple< std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
+                const std::vector<std::array<int,2>>,                // old_to_new_corners
                 const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
                 const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
                 const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
