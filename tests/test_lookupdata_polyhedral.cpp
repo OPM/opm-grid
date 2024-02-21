@@ -122,6 +122,7 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         BOOST_CHECK(featureInElemCartesianIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)) +3);
         BOOST_CHECK(featureInElemDoubleCartesianIDX == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)) +.5);
         BOOST_CHECK(idx == (lookUpData.getFieldPropIdx<Dune::PolyhedralGrid<3,3>>(idx)));
+        BOOST_CHECK(idx == (lookUpData.getLevelIdx<Dune::PolyhedralGrid<3,3>>(idx)));
         BOOST_CHECK(featureInElemIDX == featureInElem);
         BOOST_CHECK(featureInElemDoubleIDX == featureInElemDouble);
         BOOST_CHECK(featureInElemCartesianIDX == featureInElemCartesian);

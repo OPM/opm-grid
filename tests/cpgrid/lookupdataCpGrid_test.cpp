@@ -184,6 +184,10 @@ void lookup_check(const Dune::CpGrid& grid)
             BOOST_CHECK(elem.father().index() == featureInElem -3);
             BOOST_CHECK(elem.father().index() == parent_id);
             BOOST_CHECK(elem.father().index() == level0Mapper.index(elem.father()));
+            BOOST_CHECK(elem.getLevelElem().index() == lookUpData.getLevelIdx(elem.index()));
+        }
+        else {
+            BOOST_CHECK(elem.getOrigin().index() == lookUpData.getLevelIdx(elem.index()));
         }
     }
 }

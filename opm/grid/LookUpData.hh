@@ -156,6 +156,20 @@ public:
     getFieldPropIdx(const int& elemIdx) const;
 
 
+    /// \brief: Return the same element index for all grids different from CpGrid.
+    ///
+    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
+    ///                         Default: GridType = Grid.
+    template<typename GridType>
+    std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>,int> getLevelIdx(const int& elemIdx) const;
+
+
+     /// \brief: Return the index on the LGR (when cell has father) or level zero (when cell has no father), for CpGrids.
+    template<typename GridType = Grid>
+    std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int> getLevelIdx(const int& elemIdx) const;
+
+
+
 protected:
     const GridView& gridView_;
     Dune::MultipleCodimMultipleGeomTypeMapper<GridView> elemMapper_;
@@ -422,7 +436,35 @@ Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const int& elemIdx) const
 {
     static_assert(std::is_same_v<Grid,GridType>);
     const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
-    if (isFieldPropInLgr_ && elem.level()) { // level > 0 == true ; level == 0 == false
+    if (isFieldPropInLgr_ && elem.level()) {
+        // In case some LGRs do not have refined field properties, the next line need to be modified.
+        return elem.getLevelElem().index();
+    }
+    else {
+        return elem.getOrigin().index();
+    }
+}
+
+
+template<typename Grid, typename GridView>
+template<typename GridType>
+typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>,int>
+Opm::LookUpData<Grid,GridView>::getLevelIdx(const int& elemIdx) const
+{
+    static_assert(std::is_same_v<Grid,GridType>);
+    // Check there are no LGRs. LGRs (level>0) only supported for CpGrid.
+    assert(gridView_.grid().maxLevel() == 0);
+    return elemIdx;
+}
+
+template<typename Grid, typename GridView>
+template<typename GridType>
+typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int>
+Opm::LookUpData<Grid,GridView>::getLevelIdx(const int& elemIdx) const
+{
+    static_assert(std::is_same_v<Grid,GridType>);
+    const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
+    if (elem.level()) {
         // In case some LGRs do not have refined field properties, the next line need to be modified.
         return elem.getLevelElem().index();
     }
