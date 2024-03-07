@@ -1010,7 +1010,7 @@ namespace Dune
         /// \brief cell_index The index of the specific cell.
         double cellCenterDepth(int cell_index) const;
 
-        const Vector faceCenterEcl(int cell_index, int faceIdxOnLeafGridView) const;
+        const Vector faceCenterEcl(int cell_index, int face, const Dune::cpgrid::Intersection& intersection) const;
 
         const Vector faceAreaNormalEcl(int face) const;
 

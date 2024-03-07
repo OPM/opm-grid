@@ -116,13 +116,13 @@ double cellCenterDepth(const Dune::CpGrid& grid, int cell_index)
 }
 
 
-Vector faceCenterEcl(const Dune::CpGrid& grid, int cell_index, int face_tag)
+Vector faceCenterEcl(const Dune::CpGrid& grid, int cell_index, int face_tag, const Dune::cpgrid::Intersection& intersection)
 {
     // This method is an alternative to the method faceCentroid(...) below.
     // The face center is computed as a raw average of cell corners.
     // For faulted grids, this is likely to give slightly different depths that seem
     // to agree with eclipse.
-    return grid.faceCenterEcl(cell_index, face_tag);
+    return grid.faceCenterEcl(cell_index, face_tag, intersection);
 }
 
 

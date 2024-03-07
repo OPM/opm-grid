@@ -1098,9 +1098,9 @@ double CpGrid::cellCenterDepth(int cell_index) const
     return zz/nv;
 }
 
-const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int faceIdxOnLeafGridView) const
+const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face, const Dune::cpgrid::Intersection& intersection) const
 {
-    /*// This method is an alternative to the method faceCentroid(...).
+    // This method is an alternative to the method faceCentroid(...).
     // The face center is computed as a raw average of cell corners.
     // For faulted cells this gives different results then average of face nodes
     // that seems to agree more with eclipse.
@@ -1120,6 +1120,23 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
                                              {0, 1, 2, 3}, // face 4 -- bottom
                                              {4, 5, 6, 7}  // face 5 -- top
     };
+
+    assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
+    Dune::FieldVector<double,3> center(0.0);
+
+    bool isCoarseCellInside = (intersection.inside().level() == 0);
+    bool isCoarseCellOutside = false;
+    if (intersection.neighbor()){
+        isCoarseCellOutside = (intersection.outside().level() == 0);
+    }
+    bool twoCoarseNeighboringCells = isCoarseCellInside && isCoarseCellOutside;
+
+    if ((maxLevel() == 0) || twoCoarseNeighboringCells) {
+        for( int i=0; i<4; ++i ) {
+            center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMap[ face ][ i ] ]);
+        }
+    }
+
     // For CpGrid with LGRs, a refined face with a coarse neighboring cell and a refined neighboring cell
     // (that is when the face belongs to the boundary of an LGR and is located in the interior of the grid),
     // unfortunately leads us to a different order of the faces, in cell_to_face_, depending on if the
@@ -1130,20 +1147,25 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
     // the notation used in faceVxMap. Therefore, we should consider:
     // --------- this follows the order created in Geometry::refine() for LGRs in CpGrid --------
     static const int faceVxMapLGR[ 6 ][ 4 ] = { {0, 1, 4, 5}, // lgr_face 2 == face 0  -- left
-        {2, 3, 6, 7}, // lgr_face 3 == face 1  -- right
-        {1, 3, 5, 7}, // lgr_face 1 == face 2  -- front
-        {0, 1, 2, 3}, // lgr_face 4 == face 3  -- back
-        {0, 2, 4, 6}, // lgr_face 0 == face 4  -- bottom
-        {4, 5, 6, 7}  // lgr_face 5 == face 5  -- top
+                                                {2, 3, 6, 7}, // lgr_face 3 == face 1  -- right
+                                                {1, 3, 5, 7}, // lgr_face 1 == face 2  -- front
+                                                {0, 1, 2, 3}, // lgr_face 4 == face 3  -- back
+                                                {0, 2, 4, 6}, // lgr_face 0 == face 4  -- bottom
+                                                {4, 5, 6, 7}  // lgr_face 5 == face 5  -- top
     };
-    Instead, we compute the center of the face directly with its 4 corners. */
 
-    assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
-    Dune::FieldVector<double,3> center(0.0);
-    for( int i=0; i<4; ++i ) {
-        center += vertexPosition(current_view_data_->face_to_point_[faceIdxOnLeafGridView][i]);
+    bool inInteriorLGR = (!isCoarseCellInside) && (!isCoarseCellOutside);
+    bool onGridBoundary_refinedCell = intersection.boundary() && (!isCoarseCellInside);
+    if (inInteriorLGR || onGridBoundary_refinedCell) { // (refined) intersection in the interior of an LGR, or on grid boundary
+        for( int i=0; i<4; ++i ) {
+            center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMapLGR[ face ][ i ] ]);
+        }
     }
-    
+    else { //  (refined) intersection with one coarse neighboring cell and one refined neighboring cell
+        for( int i=0; i<4; ++i ) {
+            center += vertexPosition(current_view_data_->face_to_point_[intersection.id()][i]);
+        }
+    }
     for (int i=0; i<3; ++i) {
         center[i] /= 4;
     }
@@ -1948,9 +1970,7 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
             OPM_THROW(std::invalid_argument, "Parent intersection not found");
         }
     }
-    else {
-        OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
-    }
+    OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
 
 std::array<double,3> CpGrid::getEclCentroid(const int& elemIdx) const
