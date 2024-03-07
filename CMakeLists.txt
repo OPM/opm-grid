@@ -14,10 +14,11 @@
 #                                                                         #
 ###########################################################################
 
+cmake_minimum_required (VERSION 3.10)
+
 # Mandatory call to project
 project(opm-grid C CXX)
 
-cmake_minimum_required (VERSION 3.10)
 # project information is in dune.module. Read this file and set variables.
 # we cannot generate dune.module since it is read by dunecontrol before
 # the build starts, so it makes sense to keep the data there then.
