@@ -39,19 +39,29 @@ namespace
 struct Less
 {
     template<typename T>
-    bool operator()( const T& t1, const T& t2 )
+    bool operator()(const T& t1, const T& t2)
     {
         return std::get<0>(t1) < std::get<0>(t2);
     }
     template<typename T>
-    bool operator()( const T& t, int i )
+    bool operator()(const T& t, int i)
     {
         return std::get<0>(t) < i;
     }
     template<typename T>
-    bool operator()( int i, const T& t )
+    bool operator()(int i, const T& t)
     {
         return i < std::get<0>(t);
+    }
+    template<typename T>
+    bool operator()(const T& t, std::size_t i)
+    {
+        return static_cast<std::size_t>(std::get<0>(t)) < i;
+    }
+    template<typename T>
+    bool operator()(std::size_t i, const T& t)
+    {
+        return i < static_cast<std::size_t>(std::get<0>(t));
     }
 };
 }
