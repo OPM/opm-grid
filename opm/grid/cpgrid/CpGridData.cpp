@@ -1808,6 +1808,67 @@ void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
     }
 }
 
+std::array<std::vector<double>,3> CpGridData::getDxDyDz(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+{
+    std::vector<double> dx;
+    dx.reserve(endIJK[0] - startIJK[0]);
+    std::vector<double> dy;
+    dy.reserve(endIJK[1] - startIJK[1]);
+    std::vector<double> dz;
+    dz.reserve(endIJK[2] - startIJK[2]);
+
+    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
+
+    for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+        int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + i;
+        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
+        // x = |corn[1]-corn[0]|
+        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
+        aFewCorners.resize(2); // {'0', '1'}
+        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+
+        double  x;
+        x = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
+                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
+                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
+        dx.push_back(x);
+    }
+    for (int j = startIJK[1]; j < endIJK[1]; ++j)
+    {
+        int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) + startIJK[0];
+        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
+        // y = |corn[3]-corn[1]|
+        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
+        aFewCorners.resize(2); // {'1', '3'}
+        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+
+        double y;
+        y = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
+                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
+                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
+        dy.push_back(y);
+    }
+    for (int k = startIJK[2]; k < endIJK[2]; ++k)
+    {
+        int cellIdx = (k*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + startIJK[0];
+        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
+        // z = |corn[4]-corn[0]|
+        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
+        aFewCorners.resize(2); // {'0', '4'}
+        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[4]).center();
+
+        double  z;
+        z = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
+                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
+                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
+        dz.push_back(z);
+    }
+    return {dx, dy, dz};
+}
+
 std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
@@ -2029,21 +2090,21 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
         // corIdx (J*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (I*(cells_per_dim[2]+1)) +K
         // replacing parent-cell corner '0' {0,0,0}
         {parent_to_point[0], 0},
-            // replacing parent-cell corner '1' {cells_per_dim[0], 0, 0}
+        // replacing parent-cell corner '1' {cells_per_dim[0], 0, 0}
         {parent_to_point[1], cells_per_dim[0]*(cells_per_dim[2]+1)},
-            // replacing parent-cell corner '2' {0, cells_perd_dim[1], 0}
+        // replacing parent-cell corner '2' {0, cells_perd_dim[1], 0}
         {parent_to_point[2], cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)},
-            // replacing parent-cell corner '3' {cells_per_dim[0], cells_per_dim[1], 0}
+        // replacing parent-cell corner '3' {cells_per_dim[0], cells_per_dim[1], 0}
         {parent_to_point[3], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))},
-            // replacing parent-cell corner '4' {0, 0, cells_per_dim[2]}
+        // replacing parent-cell corner '4' {0, 0, cells_per_dim[2]}
         {parent_to_point[4], cells_per_dim[2]},
-            // replacing parent-cell corner '5' {cells_per_dim[0], 0, cells_per_dim[2]}
+        // replacing parent-cell corner '5' {cells_per_dim[0], 0, cells_per_dim[2]}
         {parent_to_point[5], (cells_per_dim[0]*(cells_per_dim[2]+1)) + cells_per_dim[2]},
-            // replacing parent-cell corner '6' {0, cells_per_dim[1], cells_per_dim[2]}
+        // replacing parent-cell corner '6' {0, cells_per_dim[1], cells_per_dim[2]}
         {parent_to_point[6], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + cells_per_dim[2]},
-            // replacing parent-cell corner '7' {cells_per_dim[0], cells_per_dim[1], cells_per_dim[2]}
+        // replacing parent-cell corner '7' {cells_per_dim[0], cells_per_dim[1], cells_per_dim[2]}
         {parent_to_point[7], (cells_per_dim[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (cells_per_dim[0]*(cells_per_dim[2]+1))
-                + cells_per_dim[2]}};
+         + cells_per_dim[2]}};
     // Get parent_cell_to_face = { {face, orientation}, {another face, its orientation}, ...}.
     const auto& parent_cell_to_face = (this-> cell_to_face_[EntityRep<0>(parent_idx, true)]);
     // To store relation old-face to new-born-faces (children faces).
@@ -2121,7 +2182,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
         child_to_parent_cell.push_back({cell, parent_idx});
     }
     return {refined_grid_ptr, parent_to_refined_corners, parent_to_children_faces, parent_to_children_cells,
-        child_to_parent_faces, child_to_parent_cell};
+            child_to_parent_faces, child_to_parent_cell};
 }
 
 std::tuple< std::shared_ptr<CpGridData>,
@@ -2157,19 +2218,31 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     const auto& patch_faces = getPatchFaces(startIJK, endIJK);
     const auto& patch_cells = getPatchCells(startIJK, endIJK);
     checkCuboidShape(patch_cells);
+    // Get dx,dy,dz for each cell of the patch to be refined
+    const auto& [dx, dy, dz] = getDxDyDz(startIJK, endIJK);
     // Construct the Geometry of the cellified patch.
     DefaultGeometryPolicy cellified_patch_geometry;
     std::array<int,8> cellifiedPatch_to_point;
     std::array<int,8> allcorners_cellifiedPatch;
     cpgrid::Geometry<3,3> cellified_patch = this -> cellifyPatch(startIJK, endIJK, patch_cells, cellified_patch_geometry,
                                                                  cellifiedPatch_to_point, allcorners_cellifiedPatch);
+
+    // Refine the "cellified_patch".
+    cellified_patch.refineCellifiedPatch(cells_per_dim,
+                                         refined_geometries,
+                                         refined_cell_to_point,
+                                         refined_cell_to_face,
+                                         refined_face_to_point,
+                                         refined_face_to_cell,
+                                         refined_face_tags,
+                                         refined_face_normals,
+                                         patch_dim,
+                                         dx, dy, dz);
+
     // Some integers to reduce notation later.
     const int& xfactor = cells_per_dim[0]*patch_dim[0];
     const int& yfactor = cells_per_dim[1]*patch_dim[1];
     const int& zfactor = cells_per_dim[2]*patch_dim[2];
-    // Refine the "cellified_patch".
-    cellified_patch.refine({xfactor, yfactor, zfactor}, refined_geometries, refined_cell_to_point, refined_cell_to_face,
-                           refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals);
     // To store the relation between old-corner-indices and the equivalent new-born ones (laying on the patch boundary).
     std::vector<std::array<int,2>> boundary_old_to_new_corners;
     boundary_old_to_new_corners.reserve((2*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))
@@ -2331,8 +2404,9 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
             } // end i-for-loop
         } // end j-for-loop
     } // end k-for-loop
+
     return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
-        parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
+            parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
@@ -2352,8 +2426,8 @@ std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
 
     }
     return std::array<double,3> { { std::accumulate(X.begin(), X.end(), 0.0) / 8.0,
-            std::accumulate(Y.begin(), Y.end(), 0.0) / 8.0,
-            std::accumulate(Z.begin(), Z.end(), 0.0) / 8.0 } };
+                                        std::accumulate(Y.begin(), Y.end(), 0.0) / 8.0,
+                                        std::accumulate(Z.begin(), Z.end(), 0.0) / 8.0 } };
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const Entity<0>& elem) const

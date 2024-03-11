@@ -318,6 +318,9 @@ public:
     /// @brief Check that every cell to be refined has cuboid shape.
     void checkCuboidShape(const std::vector<int>& cellIdx_vec) const;
 
+    /// @brief For selected cell indices, computes the variation in x-,y-, and z-direction, assuming each cell has cubiod shape.
+    std::array<std::vector<double>,3> getDxDyDz(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
 private:
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///

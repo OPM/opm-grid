@@ -641,7 +641,6 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
     for(const auto& element: elements(grid_view))
     {
         BOOST_CHECK( element.getOrigin().level() == 0);
-        //BOOST_CHECK( element.getOrigin().index() == element.index());
         for(const auto& intersection: intersections(grid_view, element))
         {
             // find matching intersection (needed as ordering is allowed to be different
