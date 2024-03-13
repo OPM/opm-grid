@@ -1808,14 +1808,14 @@ void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
     }
 }
 
-std::array<std::vector<double>,3> CpGridData::getDxDyDz(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+std::array<std::vector<double>,3> CpGridData::getWidthsLengthsHeights(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
-    std::vector<double> dx;
-    dx.reserve(endIJK[0] - startIJK[0]);
-    std::vector<double> dy;
-    dy.reserve(endIJK[1] - startIJK[1]);
-    std::vector<double> dz;
-    dz.reserve(endIJK[2] - startIJK[2]);
+    std::vector<double> widthsX;
+    widthsX.reserve(endIJK[0] - startIJK[0]);
+    std::vector<double> lengthsY;
+    lengthsY.reserve(endIJK[1] - startIJK[1]);
+    std::vector<double> heightsZ;
+    heightsZ.reserve(endIJK[2] - startIJK[2]);
 
     const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
 
@@ -1823,50 +1823,35 @@ std::array<std::vector<double>,3> CpGridData::getDxDyDz(const std::array<int,3>&
         int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + i;
         const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
         // x = |corn[1]-corn[0]|
-        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
-        aFewCorners.resize(2); // {'0', '1'}
-        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-
-        double  x;
-        x = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
-                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
-                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
-        dx.push_back(x);
+        // Compute difference and dot using DUNE functionality
+        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+        auto x = difference.two_norm();
+        widthsX.push_back(x);
     }
     for (int j = startIJK[1]; j < endIJK[1]; ++j)
     {
         int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) + startIJK[0];
         const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
         // y = |corn[3]-corn[1]|
-        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
-        aFewCorners.resize(2); // {'1', '3'}
-        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-
-        double y;
-        y = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
-                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
-                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
-        dy.push_back(y);
+        // Compute difference and dot using DUNE functionality
+        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+        auto y = difference.two_norm();
+        lengthsY.push_back(y);
     }
     for (int k = startIJK[2]; k < endIJK[2]; ++k)
     {
         int cellIdx = (k*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + startIJK[0];
         const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
         // z = |corn[4]-corn[0]|
-        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
-        aFewCorners.resize(2); // {'0', '4'}
-        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[4]).center();
-
-        double  z;
-        z = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
-                       ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
-                       ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
-        dz.push_back(z);
+        // Compute difference and dot using DUNE functionality
+        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[4]).center();
+        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+        auto z = difference.two_norm();
+        heightsZ.push_back(z);
     }
-    return {dx, dy, dz};
+    return {widthsX, lengthsY, heightsZ};
 }
 
 std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
@@ -2219,7 +2204,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     const auto& patch_cells = getPatchCells(startIJK, endIJK);
     checkCuboidShape(patch_cells);
     // Get dx,dy,dz for each cell of the patch to be refined
-    const auto& [dx, dy, dz] = getDxDyDz(startIJK, endIJK);
+    const auto& [widthsX, lengthsY, heightsZ] = getWidthsLengthsHeights(startIJK, endIJK);
     // Construct the Geometry of the cellified patch.
     DefaultGeometryPolicy cellified_patch_geometry;
     std::array<int,8> cellifiedPatch_to_point;
@@ -2237,7 +2222,7 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
                                          refined_face_tags,
                                          refined_face_normals,
                                          patch_dim,
-                                         dx, dy, dz);
+                                         widthsX, lengthsY, heightsZ);
 
     // Some integers to reduce notation later.
     const int& xfactor = cells_per_dim[0]*patch_dim[0];

@@ -1014,9 +1014,9 @@ namespace Dune
                                       cpgrid::EntityVariable<enum face_tag, 1>& refined_face_tags,
                                       cpgrid::SignedEntityVariable<PointType, 1>& refined_face_normals,
                                       const std::array<int,3>& patch_dim, 
-                                      const std::vector<double>& dx,
-                                      const std::vector<double>& dy,
-                                      const std::vector<double>& dz) const
+                                      const std::vector<double>& widthsX,
+                                      const std::vector<double>& lengthsY,
+                                      const std::vector<double>& heightsZ) const
             {
                 EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners =
                     *(all_geom.geomVector(std::integral_constant<int,3>()));
@@ -1026,7 +1026,7 @@ namespace Dune
                     *(all_geom.geomVector(std::integral_constant<int,0>()));
                 EntityVariableBase<enum face_tag>& mutable_face_tags = refined_face_tags;
                 EntityVariableBase<PointType>& mutable_face_normals = refined_face_normals;
-    
+
                 /// --- REFINED CORNERS ---
                 // The strategy is to compute the local refined corners
                 // of the unit/reference cube, and then apply the map global().
@@ -1041,9 +1041,9 @@ namespace Dune
                 // 'Up [increasing k]- Right [incresing i]- Back [increasing j]'
                 // is consistant with cpgrid numbering.
                 //
-                assert(static_cast<int>(dx.size()) == patch_dim[0]);
-                assert(static_cast<int>(dy.size()) == patch_dim[1]);
-                assert(static_cast<int>(dz.size()) == patch_dim[2]);
+                assert(static_cast<int>(widthsX.size()) == patch_dim[0]);
+                assert(static_cast<int>(lengthsY.size()) == patch_dim[1]);
+                assert(static_cast<int>(heightsZ.size()) == patch_dim[2]);
                 const auto localCoordNumerator = []( const std::vector<double>& vec, int sumLimit, double multiplier) {
                     double lcn = 0;
                     assert(!vec.empty());
@@ -1056,33 +1056,46 @@ namespace Dune
                 };
                 // E.g. localCoordNumerator( dx, 3, 0.25) =  x0 + x1 + x2 + 0.25.x3
                 //
-                const double sum_dx = std::accumulate(dx.begin(), dx.end(), double(0)); // x0 + x1 + ... + xL, if dx = {x0, x1, ..., xL}
-                const double sum_dy = std::accumulate(dy.begin(), dy.end(), double(0)); // y0 + y1 + ... + yM, if dy = {y0, y1, ..., yM}
-                const double sum_dz = std::accumulate(dz.begin(), dz.end(), double(0)); // z0 + z1 + ... + zN, if dz = {z0, z1, ..., zN}
-                std::cout << "sum_x: " << sum_dx << " sum_y: " << sum_dy << " sum_z: " << sum_dz << std::endl;
+                const double sumWidths = std::accumulate(widthsX.begin(), widthsX.end(), double(0)); // x0 + x1 + ... + xL, if dx = {x0, x1, ..., xL}
+                const double sumLengths = std::accumulate(lengthsY.begin(), lengthsY.end(), double(0)); // y0 + y1 + ... + yM, if dy = {y0, y1, ..., yM}
+                const double sumHeights = std::accumulate(heightsZ.begin(), heightsZ.end(), double(0)); // z0 + z1 + ... + zN, if dz = {z0, z1, ..., zN}
+
                 for (int j = 0; j < refined_dim[1] +1; ++j) {
+                    double local_y = 0;
                     for (int i = 0; i < refined_dim[0] +1; ++i) {
+                        double local_x = 0.;
                         for (int k = 0; k < refined_dim[2] +1; ++k) {
+                            double local_z = 0.;
+
                             // Compute the index of each global refined corner associated with 'jik'.
                             int refined_corner_idx =
                                 (j*(refined_dim[0]+1)*(refined_dim[2]+1)) + (i*(refined_dim[2]+1)) + k;
+
                             // Compute the local refined corner of the unit/reference cube associated with 'jik'.
-                            const double local_x = localCoordNumerator(dx, i/cells_per_dim[0], double((i % cells_per_dim[0])) / cells_per_dim[0]);
-                            const double local_y = localCoordNumerator(dy, j/cells_per_dim[1], double((j % cells_per_dim[1])) / cells_per_dim[1]);
-                            const double local_z = localCoordNumerator(dz, k/cells_per_dim[2], double((k % cells_per_dim[2])) /cells_per_dim[2]);
-                            std::cout << "local_x, y, z: " << local_x << " " <<  local_y << " "<< local_z << std::endl;
-                            const LocalCoordinate& local_refined_corner = { local_x/sum_dx, local_y/sum_dy, local_z/sum_dz };
-                            assert(local_x/sum_dx <= 1.);
-                            assert(local_y/sum_dy <= 1.);
-                            assert(local_z/sum_dz <= 1.);
-                            // { (x0 ...+ x(l-1) + (l*xl / cells_per_dim[0]))/ (x0 +...+ xL),
-                            //   (y0+ ...+ y(m-1) + (m*ym / cells_per_dim[1]))/(y0 +...+ yM),
-                            //   (z0+ ...+ z(n-1) + (n*zn / cells_per_dim[2]))/(z0 +...+ zN)}
+                            local_x = localCoordNumerator(widthsX, i/cells_per_dim[0], double((i % cells_per_dim[0])) / cells_per_dim[0]);
+                            local_y = localCoordNumerator(lengthsY, j/cells_per_dim[1], double((j % cells_per_dim[1])) / cells_per_dim[1]);
+                            local_z = localCoordNumerator(heightsZ, k/cells_per_dim[2], double((k % cells_per_dim[2])) /cells_per_dim[2]);
+
+                            if ( i == refined_dim[0]) { // last corner in the x-direction
+                                local_x = sumWidths;
+                            }
+                            if ( j == refined_dim[1]) { // last corner in the y-direction
+                                local_y = sumLengths;
+                            }
+                            if ( k == refined_dim[2]) { // last corner in the z-direction
+                                local_z = sumHeights;
+                            }
+
+                            const LocalCoordinate& local_refined_corner = { local_x/sumWidths, local_y/sumLengths, local_z/sumHeights };
+                            assert(local_x/sumWidths <= 1.);
+                            assert(local_y/sumLengths <= 1.);
+                            assert(local_z/sumHeights <= 1.);
+
                             // Compute the global refined corner 'jik' and add it in its corresponfing entry in "refined_corners".
                             refined_corners[refined_corner_idx] = Geometry<0, 3>(this->global(local_refined_corner));
                         } // end k-for-loop
-                    } // end j-for-loop
-                } // end i-for-loop
+                    } // end i-for-loop
+                } // end j-for-loop
                 /// --- END REFINED CORNERS ---
                 //
                 /// --- REFINED FACES ---
