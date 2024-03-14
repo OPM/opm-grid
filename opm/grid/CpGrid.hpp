@@ -550,7 +550,10 @@ namespace Dune
         // @return                   'eclipse centroid'
         std::array<double,3> getEclCentroid(const cpgrid::Entity<0>& elem) const;
 
-
+        // @brief Return parent (coarse) intersection (face) of a refined face on the leaf grid view, whose neighboring cells
+        //        are two: one coarse cell (equivalent to its origin cell from level 0), and one refined cell
+        //        from certain LGR
+        Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
         /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
@@ -998,7 +1001,7 @@ namespace Dune
         double cellCenterDepth(int cell_index) const;
 
 
-        const Vector faceCenterEcl(int cell_index, int face) const;
+        const Vector faceCenterEcl(int cell_index, int face, const Dune::cpgrid::Intersection& intersection) const;
 
         const Vector faceAreaNormalEcl(int face) const;
 
