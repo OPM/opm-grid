@@ -1114,13 +1114,11 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                 }
             }
         }
-        else {
-            OPM_THROW(std::invalid_argument, "Parent intersection not found");
-        }
+        OPM_THROW(std::invalid_argument, "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
+                  " and index in inside: " + std::to_string(intersection.indexInInside()));
     }
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
-
 
 double CpGrid::cellCenterDepth(int cell_index) const
 {
