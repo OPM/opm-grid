@@ -412,9 +412,10 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
     cpgrid::EntityVariable<enum face_tag, 1>& face_tags = child_view_data.face_tag_;
     cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>, 1>& face_normals = child_view_data.face_normals_;
 
-    parent_geometry.refine(cells, geometries, cell_to_point,
-                           cell_to_face, face_to_point, face_to_cell,
-                           face_tags, face_normals);
+    parent_geometry.refineCellifiedPatch(cells, geometries, cell_to_point,
+                                         cell_to_face, face_to_point, face_to_cell,
+                                         face_tags, face_normals,
+                                         {1,1,1}, {1.}, {1.}, {1.});
     check_refined_grid(parent_geometry, geometries.template geomVector<0>(),
                        geometries.template geomVector<1>(),
                        geometries.template geomVector<3>(), cells);
