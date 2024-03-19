@@ -429,15 +429,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     {
                         face_count +=1;
                     }
-                    /*std::cout << "Entity old index: " << entityOldIdx << "Entity leaf idx: " << entity.index() << '\n';
-                    std::cout << "Leaf cell_to_face_.size(): " << leaf_cell_to_face.size() << '\n';
-                    std::cout << "Face count: " << face_count << '\n';
-                    std::cout << "touch_patch_onLeftFace: " << touch_patch_onLeftFace << '\n';
-                    std::cout << "touch_patch_onRightFace: " << touch_patch_onRightFace << '\n';
-                    std::cout << "touch_patch_onFrontFace: " << touch_patch_onFrontFace << '\n';
-                    std::cout << "touch_patch_onBackFace: " << touch_patch_onBackFace << '\n';
-                    std::cout << "touch_patch_onBottomFace: " << touch_patch_onBottomFace << '\n';
-                    std::cout << "touch_patch_onTopFace: " << touch_patch_onTopFace << '\n';*/
                     BOOST_CHECK( leaf_cell_to_face.size() == face_count);
                 } // end else
             }
@@ -477,6 +468,21 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             }
         }
     }
+}
+
+
+BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {2.0, 1.0, 4.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    const std::array<int, 3> cells_per_dim = {2,2,2};
+    const std::array<int, 3> startIJK = {1,0,1};
+    const std::array<int, 3> endIJK = {3,2,3};  // patch_dim = {3-1, 2-0, 3-1} ={2,2,2}
+    const std::string lgr_name = {"LGR1"};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 }
 
 BOOST_AUTO_TEST_CASE(refine_patch)
@@ -641,7 +647,6 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
     for(const auto& element: elements(grid_view))
     {
         BOOST_CHECK( element.getOrigin().level() == 0);
-        //BOOST_CHECK( element.getOrigin().index() == element.index());
         for(const auto& intersection: intersections(grid_view, element))
         {
             // find matching intersection (needed as ordering is allowed to be different
