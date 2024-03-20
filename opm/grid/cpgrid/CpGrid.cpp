@@ -1085,6 +1085,41 @@ int CpGrid::faceVertex(int face, int local_index) const
     return current_view_data_->face_to_point_[face][local_index];
 }
 
+Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const
+{
+    if ( intersection.neighbor()) {
+        if ((intersection.inside().level() != intersection.outside().level())) {
+            // one coarse and one refined neighboring cell
+            const auto& cellIn = intersection.inside();
+            const auto& cellOut = intersection.outside();
+
+            // Identify the coarse and the refined neighboring cell
+            const auto coarseCell =  (cellIn.level() == 0) ? cellIn : cellOut;
+            const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
+            assert(coarseCell.level() == 0);
+            assert(refinedCell.level() > 0);
+
+            // Get parent cell (on level zero) of the refined cell
+            const auto& parentCell = refinedCell.father();
+            assert(refinedCell.father().level() == 0);
+
+            // Get the index inside and orientation from the leaf grid (refined) face
+            const auto& intersectionIdxInInside = intersection.indexInInside();
+
+            for(const auto& parentIntersection : intersections(this->levelGridView(0), parentCell)){
+                // Get the inInsideIdx and orientation from the parent intersection
+                const auto& parentIdxInInside = parentIntersection.indexInInside();
+                if (parentIdxInInside == intersectionIdxInInside) {
+                    return parentIntersection;
+                }
+            }
+        }
+        OPM_THROW(std::invalid_argument, "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
+                  " and index in inside: " + std::to_string(intersection.indexInInside()));
+    }
+    OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
+}
+
 double CpGrid::cellCenterDepth(int cell_index) const
 {
     // Here cell center depth is computed as a raw average of cell corner depths.
@@ -1098,7 +1133,7 @@ double CpGrid::cellCenterDepth(int cell_index) const
     return zz/nv;
 }
 
-const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face) const
+const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face, const Dune::cpgrid::Intersection& intersection) const
 {
     // This method is an alternative to the method faceCentroid(...).
     // The face center is computed as a raw average of cell corners.
@@ -1113,20 +1148,42 @@ const Dune::FieldVector<double,3> CpGrid::faceCenterEcl(int cell_index, int face
     //   0---1
 
     // this follows the DUNE reference cube
-    static const int faceVxMap[ 6 ][ 4 ] = { {0, 2, 4, 6}, // face 0
-                                             {1, 3, 5, 7}, // face 1
-                                             {0, 1, 4, 5}, // face 2
-                                             {2, 3, 6, 7}, // face 3
-                                             {0, 1, 2, 3}, // face 4
-                                             {4, 5, 6, 7}  // face 5
+    static const int faceVxMap[ 6 ][ 4 ] = { {0, 2, 4, 6}, // face 0 - I_FACE false
+                                             {1, 3, 5, 7}, // face 1 - I_FACE true
+                                             {0, 1, 4, 5}, // face 2 - J_FACE false
+                                             {2, 3, 6, 7}, // face 3 - J_FACE true
+                                             {0, 1, 2, 3}, // face 4 - K_FACE false
+                                             {4, 5, 6, 7}  // face 5 - K_FACE true
     };
 
 
     assert (current_view_data_->cell_to_point_[cell_index].size() == 8);
     Dune::FieldVector<double,3> center(0.0);
-    for( int i=0; i<4; ++i )
-    {
-        center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMap[ face ][ i ] ]);
+
+    bool isCoarseCellInside = (intersection.inside().level() == 0);
+    bool isCoarseCellOutside = false;
+    if (intersection.neighbor()){
+        isCoarseCellOutside = (intersection.outside().level() == 0);
+    }
+    bool twoCoarseNeighboringCells = isCoarseCellInside && isCoarseCellOutside;
+    bool isOnGridBoundary_coarseNeighboringCell = intersection.boundary() && isCoarseCellInside && (!intersection.neighbor());
+
+    // For CpGrid with LGRs, a refined face with a coarse neighboring cell and a refined neighboring cell
+    // (that is when the face belongs to the boundary of an LGR and is located in the interior of the grid),
+    // unfortunately leads us to a different order of the faces, in cell_to_face_, depending on if the
+    // neighboring cell, here with cell_index index, is the coarse one or the refined one. Preceisely,
+    // cell_to_face_[cell_index - coarse neighboring cell] = { left, right, front, back, bottom, top} = {0,1,2,3,4,5} with
+    // the notation above, and
+    // cell_to_face_[cell_index - refined neighboring cell] = {bottom, front, left, right, back, top} = {2,3,1,4,0,5} with
+    // the notation used in faceVxMap.
+
+    for( int i=0; i<4; ++i ) {
+        if ((maxLevel() == 0) || twoCoarseNeighboringCells || isOnGridBoundary_coarseNeighboringCell) {
+            center += vertexPosition(current_view_data_->cell_to_point_[cell_index][ faceVxMap[ face ][ i ] ]);
+        }
+        else { //  (refined) intersection with one coarse neighboring cell and one refined neighboring cell
+            center += vertexPosition(current_view_data_->face_to_point_[intersection.id()][i]);
+        }
     }
 
     for (int i=0; i<3; ++i) {
