@@ -113,8 +113,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 {
     auto& data = coarse_grid.data_;
     // Add LGRs and update grid.
-    const bool are_disjoint = (*data[0]).disjointPatches(startIJK_vec, endIJK_vec);
-    if (are_disjoint){
+    const bool faceSharing = (*data[0]).patchesShareFace(startIJK_vec, endIJK_vec);
+    if (!faceSharing){
         coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
         BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
@@ -562,12 +562,11 @@ BOOST_AUTO_TEST_CASE(patches_share_corner)
     const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,1,1}, {3,2,2}};
     const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,2,2}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
-BOOST_AUTO_TEST_CASE(patches_share_corners)
+BOOST_AUTO_TEST_CASE(patches_share_edge)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -578,10 +577,8 @@ BOOST_AUTO_TEST_CASE(patches_share_corners)
     const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {2,0,1}, {3,2,2}};
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,2}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
-    std::cout << "Patches are NOT disjoint" << "\n";
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(pathces_share_face)
@@ -751,3 +748,4 @@ BOOST_AUTO_TEST_CASE(global_norefine)
 
     check_global_refine(coarse_grid, fine_grid);
 }
+
