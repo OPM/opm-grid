@@ -1878,6 +1878,50 @@ std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& st
     return patch_boundary_corners;
 }
 
+std::array<std::vector<int>,6> CpGridData::getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
+{
+    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
+    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
+    // Get grid dimension (total cells in each direction).
+    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
+    // Auxiliary integers to simplify notation.
+    const int& i_grid_faces =  (grid_dim[0]+1)*grid_dim[1]*grid_dim[2];
+    const int& j_grid_faces =  grid_dim[0]*(grid_dim[1]+1)*grid_dim[2];
+
+    std::array<std::vector<int>,6> boundary_patch_faces;
+    // { I_FACE false vector, I_FACE true vector, J_FACE false vector, J_FACE true vector, K_FACE false vector, K_FACE true vector}
+    boundary_patch_faces[0].reserve(2*patch_dim[1]*patch_dim[2]); // I_FACE false vector
+    boundary_patch_faces[1].reserve(2*patch_dim[1]*patch_dim[2]); // I_FACE true vector
+    boundary_patch_faces[2].reserve(2*patch_dim[0]*patch_dim[2]); // J_FACE false vector (front)
+    boundary_patch_faces[3].reserve(2*patch_dim[0]*patch_dim[2]); // J_FACE true vector  (back)
+    boundary_patch_faces[4].reserve(2*patch_dim[0]*patch_dim[1]); // K_FACE false vector (bottom)
+    boundary_patch_faces[5].reserve(2*patch_dim[0]*patch_dim[1]); // K_FACE true vector  (top)
+    // Boundary I_FACE faces
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+            boundary_patch_faces[0].push_back( (j*(grid_dim[0]+1)*grid_dim[2]) + (startIJK[0]*grid_dim[2])+ k); // I_FACE false
+            boundary_patch_faces[1].push_back( (j*(grid_dim[0]+1)*grid_dim[2]) + (endIJK[0]*grid_dim[2])+ k); // I_FACE true
+        }
+    }
+    // Boundary J_FACE faces
+    for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+        for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+            boundary_patch_faces[2].push_back(i_grid_faces + (startIJK[1]*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k); // J_FACE false
+            boundary_patch_faces[3].push_back(i_grid_faces + (endIJK[1]*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k); // J_FACE true
+        }
+    }
+    // Boundary K_FACE faces
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+            boundary_patch_faces[4].push_back( i_grid_faces + j_grid_faces +
+                                               (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ startIJK[2] ); // K_FACE false
+            boundary_patch_faces[5].push_back( i_grid_faces + j_grid_faces +
+                                               (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ endIJK[2]); // K_FACE true
+        }
+    }
+    return boundary_patch_faces;
+}
+
 bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec,
                                  const std::vector<std::array<int,3>>& endIJK_vec) const
 {
@@ -1927,6 +1971,71 @@ bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_
     return are_disjoint; // should be true
 }
 
+bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
+                                  const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    assert(!startIJK_vec.empty());
+    assert(!endIJK_vec.empty());
+    if ((startIJK_vec.size() == 1) && (endIJK_vec.size() == 1)){
+        return false;
+    }
+    if (startIJK_vec.size() != endIJK_vec.size() ){
+        OPM_THROW(std::logic_error, "Sizes of the arguments differ. Not enough information provided.");
+    }
+    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
+        bool valid_patch = true;
+        for (int c = 0; c < 3; ++c){
+            valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
+        }
+        if (!valid_patch){
+            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+        }
+    }
+
+    const auto& detectSharing = [](std::vector<int> faceIdxs, std::vector<int> otherFaceIdxs){
+        bool faceIsShared = false;
+        for (const auto& face : faceIdxs) {
+            for (const auto& otherFace : otherFaceIdxs) {
+                faceIsShared = faceIsShared || (face == otherFace);
+                if (faceIsShared) {
+                    return faceIsShared; // should be true here
+                }
+            }
+        }
+        return faceIsShared; // should be false here
+    };
+
+    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
+        const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_vec[patch], endIJK_vec[patch]);
+        for (long unsigned int other_patch = patch+1; other_patch < startIJK_vec.size(); ++other_patch) {
+            const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
+                getBoundaryPatchFaces(startIJK_vec[other_patch], endIJK_vec[other_patch]);
+            bool isShared = false;
+            if (startIJK_vec[other_patch][0] == endIJK_vec[patch][0]) {
+                isShared = isShared || detectSharing(iTrue, iFalseOther);
+            }
+            if (endIJK_vec[other_patch][0] == startIJK_vec[patch][0]) {
+                isShared = isShared || detectSharing(iFalse, iTrueOther);
+            }
+            if (startIJK_vec[other_patch][1] == endIJK_vec[patch][1]) {
+                isShared = isShared || detectSharing(jTrue, jFalseOther);
+            }
+            if (endIJK_vec[other_patch][1] == startIJK_vec[patch][1]) {
+                isShared = isShared || detectSharing(jFalse, jTrueOther);
+            }
+            if (startIJK_vec[other_patch][2] == endIJK_vec[patch][2]) {
+                isShared = isShared || detectSharing(kTrue, kFalseOther);
+            }
+            if (endIJK_vec[other_patch][2] == startIJK_vec[patch][2]) {
+                isShared = isShared || detectSharing(kFalse, kTrueOther);
+            }
+            if (isShared) {
+                return isShared;
+            }
+        } // other patch for-loop
+    } // patch for-loop
+    return false;
+}
 
 std::vector<int>
 CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const

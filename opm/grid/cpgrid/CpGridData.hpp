@@ -318,6 +318,13 @@ public:
     /// @brief Check that every cell to be refined has cuboid shape.
     void checkCuboidShape(const std::vector<int>& cellIdx_vec) const;
 
+    /// @brief Determine if a finite amount of patches (of cells) share a face.
+    ///
+    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+    bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
 private:
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///
@@ -363,6 +370,15 @@ private:
     ///
     /// @return patch_boundary_corners
     std::vector<int> getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
+
+    /// @brief Compute patch boundary face indices (Cartesian grid required).
+    ///
+    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
+    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
+    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+    ///
+    /// @return patch_boundary_faces
+    std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
     /// @brief For selected cell indices, computes the variation in x-,y-, and z-direction, assuming each cell has cubiod shape.
     std::array<std::vector<double>,3> getWidthsLengthsHeights(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;

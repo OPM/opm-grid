@@ -1494,13 +1494,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
-    // Check LGRs are disjoint
-    if (startIJK_vec.size() > 0 && !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
+    // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
+    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)){
         if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "LGRs are not disjoint.");
+            OPM_THROW(std::logic_error, "LGRs share at least one face.");
         }
         else{
-            OPM_THROW_NOLOG(std::logic_error, "LGRs are not disjoint.");
+            OPM_THROW_NOLOG(std::logic_error, "LGRs share at least one face.");
         }
     }
     // Check grid is Cartesian
@@ -1525,8 +1525,69 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     assert(cells_per_dim_vec.size() == startIJK_vec.size());
     assert(cells_per_dim_vec.size() == endIJK_vec.size());
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
-    // Map to relate boundary patches corners with their equivalent refined/new-born ones. {0,oldCornerIdx} -> {level,newCornerIdx}
-    std::map<std::array<int,2>, std::array<int,2>> old_to_new_boundaryPatchCorners;
+    // Leaf grid view corners are unique. They are stored with consecutives starting from zero.
+    // To update the leaf grid view corners after refinement, we store:
+    // 1) the level zero corners that do not belong to any LGR.
+    // 2) the refined corners from each LGR.
+    //
+    // Attention: LGRs are allowed to share corners (NOT faces!), that means that at least one corner from
+    //            level zero can appear on more than one LGR boundary.
+    //            With this in mind, we need to keep track of the relationships:
+    //            {level zero, corner index in level zero } <---> { level l, (refined) equivalent corner index in level l}
+    //            [for corners laying on boundary of LGRs that coincide with corners on level zero].
+    //
+    //            A corner from level zero is equivalent to a refined corner when their geometry().center() coincide.
+    //            (they have the same values in the x-,y-,and z-coordinates).
+    //
+    // We introduce a few containers to store level zero corners and their equivalent corners in different LGRs.
+    //
+    // Map to relate level zero corners laying on LGRs boundaries. Each entry looks like
+    // {0, corner index in level zero} -> {level, equivalent (refined) corner index in that level}
+    //    Notice that when the same corner from level zero appears in more than one LGR, the entry for
+    //    that corner, {0, corner index in level zero}, will be overwritten. In the end, this level zero
+    //    corner will be associated with the last LGR where it apperas, together with the corresponding
+    //    equivalent refined corner index in that last level.
+    //    Example: if the grid has 3 LGRs in total, and the level zero corner with index 67 appears
+    //    in LGR1 and LGR3 boundaries, with lgr1_corner_index 34 and lgr3_corner_index 23, then
+    //    {0, 67} -> {3, 23}.
+    //    This map will be key to count the correct amount of leaf grid view corners since it does not allow
+    //    any repetition. Recall that the corners on the leaf grid view are unique and store with consecutive
+    //    indices starting from 0.
+    // Attention: these containers involve only refined corners on the boundary of LGRs that coincide
+    //            with a corner in level zero. Namely, there might be refined corners that coincide
+    //            and lay on boundary of LGRs, but do not have an equivalent corner in level zero.
+    //            These are not taken into account (yet). A situation where this can happen is when
+    //            two LGRs share an edge, have similar widths, lengths, and heights, and the same
+    //            amount of children in the axis-direction that involve the shared edge.
+    std::map<std::array<int,2>, std::array<int,2>> levelZeroToLGRsBoundaryCorners_oneToOne;
+    // We need also the inverse relationship, namely, for each refined equivalent corner (stored
+    // ONLY ONCE), we associte the corresponding level zero corner, that is:
+    // {last level where that corner appears, its index in that level} -> {0, equivalent corner in level zero}.
+    // Example: if the grid has 3 LGRs in total, and the level zero corner with index 67 appears
+    //    in LGR1 and LGR3 boundaries, with lgr1_corner_index 34 and lgr3_corner_index 23, then
+    //    {3, 23}-> {0, 67}.
+    std::map<std::array<int,2>, std::array<int,2>> lgrsToLevelZeroBoundaryCorners_oneToOne;
+    // To be able to track the origin of a refined corner laying on the boundary an LGR,
+    // we store for each of those corners, the corresponding equivalent corner on level zero.
+    // For the same value {0, corner index in level zero}, there might be more than one key
+    // {level, refined equivalent corner index in that level}.
+    // Example: if the grid has 3 LGRs in total, and the level zero corner with index 67 appears
+    // in LGR1 and LGR3 boundaries, with lgr1_corner_index 34, and lgr3_corner_index 23, then:
+    // {1, 34} -> {0, 67}
+    // {3, 23} -> {0, 67}.
+    std::map<std::array<int,2>, std::array<int,2>> lgrsToLevelZeroBoundaryCorners_oneToMoreThanOne;
+    // The last container of this sequence to distinguish and relate corners laying on boundary of LGRs,
+    // separate such information per level. Namely, for each level, we store the indeces of the refined
+    // corners laying on the boundary of the corresponding LGR level, and associate it with the equivalent
+    // corner in level zero.
+    // Example: if the grid has 3 LGRs in total, and the level zero corner with index 67 appears
+    // in LGR1 and LGR3 boundaries, with lgr1_corner_index 34, and lgr3_corner_index 23, then:
+    // lgrBoundaryCornerWithEquivalentInLevelZero[0] contains 34
+    // lgrBoundaryCornerWithEquivalentInLevelZero[2] contains 23.
+    // Attetnion: LGR1 information is stored in entry 0, LGR2, in entry 1, LGR3 in 2, and so on.
+    std::vector<std::vector<int>> lgrBoundaryCornerWithEquivalentInLevelZero;
+    lgrBoundaryCornerWithEquivalentInLevelZero.resize(num_patches);
+
     // Map to relate boundary patch faces with their children refined/new-born ones. {0,oldFaceIdx} -> {level,{newFaceIdx0, ...}}
     std::map<std::array<int,2>, std::tuple<int, std::vector<int>>> old_to_new_boundaryPatchFaces;
     //
@@ -1559,19 +1620,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         (*data_[patch +1]).level_ = patch +1;
         // Add the name of each LGR in this->lgr_names_
         this -> lgr_names_[lgr_name_vec[patch]] = patch +1; // {"name_lgr", level}
-        std::vector<int> l_global_cell(data_[patch+1]->size(0), 0); 
+        std::vector<int> l_global_cell(data_[patch+1]->size(0), 0);
         std::iota(l_global_cell.begin()+1, l_global_cell.end(), 1); // from entry[1], adds +1 per entry: {0,1,2,3,...}
         (*data_[patch+1]).global_cell_ = l_global_cell;
         //          index_set_
         (*data_[patch+1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data_[patch+1]->size(0), data_[patch+1]->size(3));
         //          local_id_set_
         (*data_[patch+1]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[patch+1]);
-        //          cells_per_dim_ Determine the amount of cells per direction, per parent cell, of the corresponding LGR. 
+        //          cells_per_dim_ Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
         (*data_[patch +1]).cells_per_dim_ = cells_per_dim_vec[patch];
         //          logical_cartesian_size_ Assuming Cartesian Grid Shape (GLOBAL grid is required to be Cartesian)
         (*data_[patch+1]).logical_cartesian_size_ = {cells_per_dim_vec[patch][0]*(endIJK_vec[patch][0]-startIJK_vec[patch][0]),
-            cells_per_dim_vec[patch][1]*(endIJK_vec[patch][1]-startIJK_vec[patch][1]),
-            cells_per_dim_vec[patch][2]*(endIJK_vec[patch][2]-startIJK_vec[patch][2])};
+                                                     cells_per_dim_vec[patch][1]*(endIJK_vec[patch][1]-startIJK_vec[patch][1]),
+                                                     cells_per_dim_vec[patch][2]*(endIJK_vec[patch][2]-startIJK_vec[patch][2])};
         //
         // POPULATING (*data_[0]).parent_to_children_cells_
         // POPULATING (*data_[patch +1]).child_to_parent_cells_
@@ -1593,21 +1654,35 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 (*data_[patch +1]).child_to_parent_cells_[child] = {0, trueParent}; //{level parent-cell, parent-cell-index}
             }
         }
-        // Populate old_to_new_boundaryPatchCorners
-        for (const auto& [oldCorner, newCorner] : boundary_old_to_new_corners) {
-            old_to_new_boundaryPatchCorners[{0, oldCorner}] = {patch +1, newCorner};
+        // Populate levelZeroToLGRsBoundaryCorners_oneToOne
+        // Populate lgrsToLevelZeroBoundaryCorners_oneToMoreThanOne
+        // Populate lgrBoundaryCornerWithEquivalentInLevelZero
+        // For a description of these containers, see above.
+        for (const auto& [cornerIdxLevelZero, cornerIdxLgr] : boundary_old_to_new_corners) {
+            levelZeroToLGRsBoundaryCorners_oneToOne[{0, cornerIdxLevelZero}] = {patch +1, cornerIdxLgr};
             // (shifted) [patch +1] since coarse grid is level 0, levels/LGRs are 1,2, ..., num_patches.
+            lgrsToLevelZeroBoundaryCorners_oneToMoreThanOne[{patch +1, cornerIdxLgr}] = {0, cornerIdxLevelZero};
+            lgrBoundaryCornerWithEquivalentInLevelZero[patch].push_back(cornerIdxLgr);
         }
         // Populate old_to_new_boundaryPatchFaces
         for (const auto& [face, children_list] : boundary_old_to_new_faces) {
             old_to_new_boundaryPatchFaces[{0,face}] = {patch+1, children_list};
         }
     } // end-patch-forloop
+
+    // Populate lgrsToLevelZeroBoundaryCorners_oneToOne
+    // For a description of these containers, see above.
+    for (const auto [zeroLevelInfo, newLevelInfo] : levelZeroToLGRsBoundaryCorners_oneToOne) {
+        // zeroLevelInfo = { 0, corner index in level zero }
+        // newLevelInfo = { last level where the equivalent refined corner appears, its index in that level}
+        lgrsToLevelZeroBoundaryCorners_oneToOne[newLevelInfo] = zeroLevelInfo;
+    }
+
     // Last patch cornes and faces.
     const auto& last_patch_corners = (*data_[0]).getPatchCorners(startIJK_vec[num_patches-1], endIJK_vec[num_patches -1]);
     const auto& last_patch_faces = (*data_[0]).getPatchFaces(startIJK_vec[num_patches -1], endIJK_vec[num_patches -1]);
     all_patch_corners.insert(all_patch_corners.end(), last_patch_corners.begin(), last_patch_corners.end());
-    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end()); 
+    all_patch_faces.insert(all_patch_faces.end(), last_patch_faces.begin(), last_patch_faces.end());
     // Relation between level and leafview cell indices.
     std::vector<int>& l0_to_leaf_cells = (*data_[0]).level_to_leaf_cells_;
     l0_to_leaf_cells.resize(data_[0]->size(0));
@@ -1658,8 +1733,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         bool is_there_allPatchCorn = false;
         for(const auto& patchCorn : all_patch_corners) {
             is_there_allPatchCorn = is_there_allPatchCorn || (corner == patchCorn); //true->corn coincides with one patch corner
-            if (is_there_allPatchCorn)
+            if (is_there_allPatchCorn) {
                 break;
+            }
         }
         if(!is_there_allPatchCorn) { // corner is not involved in any refinement, so we store it.
             level_to_leaf_corners[0][corner] = corner_count; // Only write entries of corners that appear in the LeafView
@@ -1670,10 +1746,36 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     for (int patch = 0; patch < num_patches; ++patch){
         level_to_leaf_corners[patch +1].resize(this -> data_[patch +1] -> size(3));
         for (int corner = 0; corner < this -> data_[patch+1]->size(3); ++corner) {
-            level_to_leaf_corners[patch + 1][corner] = corner_count;
-            corner_count +=1;
+            // Auxiliary bool to detect if a refined corner (born in an LGR) lays on the boundary
+            // of the LGR and coincides with a corner from level zero.
+            bool isEquivCornerLevelZero_laysOnLgrBoundary = false;
+            for (const auto& boundaryCorner : lgrBoundaryCornerWithEquivalentInLevelZero[patch]) {
+                isEquivCornerLevelZero_laysOnLgrBoundary = isEquivCornerLevelZero_laysOnLgrBoundary || (corner == boundaryCorner);
+            }
+            // We store the refined corner
+            // 1. lays on the LGR boundary, but does not coincide with any corner from level zero, or
+            // 2. lays on the LGR boundary, it does coincide with a corner from level zero, BUT its
+            //    equivalent corner in level zero appeared in a later LGR, or
+            // 3. is in the interior of the LGR.
+            //
+            // Notice that condition 2. can be check via the lgrsToLevelZeroBoundaryConerns_oneToOne:
+            // for each refined equivalent corner (stored ONLY ONCE), we associte the corresponding level zero corner:
+            // {last level where that corner appears, its index in that level} -> {0, equivalent corner in level zero}.
+            // This means that
+            // - lgrsToLevelZeroBoundaryCorners_oneToOne.count({patch+1, corner}) takes the value 0
+            // when the refined corner appears in a latter level ( and lays on the lgr boundary, being equivalent to a
+            // corner in level zero).
+            // - lgrToLevelZeroBoundaryCorners_oneToOne.count({patch+1, corner}) takes the value 1
+            // when "patch+1" is the last level where the equivalent corner from level zero appears on an LGR boundary.
+            // In this way, we avoid storing repeated corners on the leaf grid view, except from the ones mentioned
+            // above levelZeroToLGRsBoundaryCorners_oneToOne declaration. See "Attention" comment.
+            if (!isEquivCornerLevelZero_laysOnLgrBoundary || (lgrsToLevelZeroBoundaryCorners_oneToOne.count({patch+1, corner}) == 1) ){
+                level_to_leaf_corners[patch + 1][corner] = corner_count;
+                corner_count +=1;
+            }
         }
     }
+
     // Resize the container of the leaf view corners.
     leaf_corners.resize(corner_count);
     for (long unsigned int corner = 0; corner < level_to_leaf_corners[0].size(); ++corner) {
@@ -1689,6 +1791,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 = level_data.geometry_.geomVector(std::integral_constant<int,3>()) -> get(corner);
         }
     }
+
     // Integer to count leaf view faces (mixed between faces from level0 not involved in LGR, and new-born-faces).
     int face_count = 0;
     // Relation between {level0/level1/..., old-face-index/new-born-face-index} and its corresponding leafview-face-index.
@@ -1747,7 +1850,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             num_points += old_face_to_point.size();
             for (int corn = 0; corn < 4; ++corn) {
                 if (level_to_leaf_corners[0][old_face_to_point[corn]] == -1) {
-                    const auto [lgr, lgrCornIdx] = old_to_new_boundaryPatchCorners[{0, old_face_to_point[corn]}];
+                    // In this case, the corner from level zero got replaced by a refined one.
+                    // Detect the corresponding LGR (if the corner appears in more than one LGR, then it's the last one)
+                    // and the refined corner index in that LGR, which is equivalen (meaning that both - corner
+                    // from level zero and refined corner - have exactly the same values in x-,y-, and z-coordinates.
+                    const auto [lgr, lgrCornIdx] = levelZeroToLGRsBoundaryCorners_oneToOne[{0, old_face_to_point[corn]}];
                     aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[lgr][lgrCornIdx]);
                 }
                 else{// Corner not involded in any LGR.
@@ -1777,7 +1884,54 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             num_points += old_face_to_point.size();
             // Face comes from level1/leavel2/....
             for (int corn = 0; corn < static_cast<int>(old_face_to_point.size()); ++corn) {
-                aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[level][old_face_to_point[corn]]);
+                // If the corner is on the LGR boundary and coincides with a corner from level zero,
+                // the corresponding equivalent leaf grid view corner could be associated to another level.
+                // Namely, the last LGR where this special corner appeared.
+                //
+                // We can distinguish the following three cases:
+                //
+                // 1. lays on the LGR boundary, it does coincide with a corner from level zero, BUT its
+                //    equivalent corner in level zero appeared in a later LGR, or
+                // 2. lays on the LGR boundary, but does not coincide with any corner from level zero, or
+                // 3. is in the interior of the LGR.
+                //
+                // Notice that part of conditions 1. and 2. can be check via the lgrsToLevelZeroBoundaryConerns_oneToOne:
+                // for each refined equivalent corner (stored ONLY ONCE), we associte the corresponding level zero corner:
+                // {last level where that corner appears, its index in that level} -> {0, equivalent corner in level zero}.
+                // This means that
+                // - lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) takes the value 0
+                // when the refined corner appears in a latter level ( and lays on the lgr boundary, being equivalent to a
+                // corner in level zero).
+                // - lgrToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) takes the value 1
+                // when "level" is the last level where the equivalent corner from level zero appears on an LGR boundary.
+                // In this way, we avoid storing repeated corners on the leaf grid view, except from the ones mentioned
+                // above levelZeroToLGRsBoundaryCorners_oneToOne declaration. See "Attention" comment.
+                //
+                // Auxiliary bool to detect if a refined corner (born in an LGR) lays on the boundary
+                // of the LGR and coincides with a corner from level zero.
+                bool isEquivCornerLevelZero_laysOnLgrBoundary = false;
+                for (const auto& boundaryCorner : lgrBoundaryCornerWithEquivalentInLevelZero[level-1]) {
+                    isEquivCornerLevelZero_laysOnLgrBoundary = isEquivCornerLevelZero_laysOnLgrBoundary
+                        || (old_face_to_point[corn] == boundaryCorner);
+                    // Case 1. described above.
+                    if (isEquivCornerLevelZero_laysOnLgrBoundary &&
+                        (lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) == 0)) {
+                        // --- Find corner in the later level ---
+                        // Get the equivalent corner in level zero (its index in level zero)
+                        const auto& levelZeroInfo = lgrsToLevelZeroBoundaryCorners_oneToMoreThanOne[{level, old_face_to_point[corn]}];
+                        // Use the info from the equivalent corner in level zero to find the (last) level where
+                        // the corner appeared for last time, and its index in that level.
+                        const auto& [updateLevel, newCornerIdx ] = levelZeroToLGRsBoundaryCorners_oneToOne[levelZeroInfo];
+                        // Get the leaf grid view corner, with the "updatedLevel" and the corresponding corner index in that level.
+                        aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[updateLevel][newCornerIdx]);
+                        break;
+                    }
+                }
+                // Cases 2. and 3. described above.
+                if (!isEquivCornerLevelZero_laysOnLgrBoundary
+                    || (lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) == 1) ){
+                    aux_face_to_point[leafFaceIdx].push_back(level_to_leaf_corners[level][old_face_to_point[corn]]);
+                }
             }
         } // end-face-for-loop
     } // end-level-forloop
@@ -1838,7 +1992,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             for (int corn = 0; corn < 8; ++corn) {
                 // Auxiliary bool to identity boundary patch corners
                 bool is_there_allPatchBoundCorn = false;
-                for(const auto& [l0_oldCorner, level_newCorner] : old_to_new_boundaryPatchCorners) {
+                for(const auto& [l0_oldCorner, level_newCorner] : levelZeroToLGRsBoundaryCorners_oneToOne) {
                     is_there_allPatchBoundCorn = is_there_allPatchBoundCorn || (old_cell_to_point[corn] == l0_oldCorner[1]);
                     if (is_there_allPatchBoundCorn) { //true-> coincides with one boundary patch corner
                         leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level_newCorner[0]][level_newCorner[1]];
@@ -1879,7 +2033,54 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // global_cell_[parentCell in l0]
             // Cell to point.
             for (int corn = 0; corn < 8; ++corn) {
-                leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level][old_cell_to_point[corn]];
+                // If the corner is on the LGR boundary and coincides with a corner from level zero,
+                // the corresponding equivalent leaf grid view corner could be associated to another level.
+                // Namely, the last LGR where this special corner appeared.
+                //
+                // We can distinguish the following three cases:
+                //
+                // 1. lays on the LGR boundary, it does coincide with a corner from level zero, BUT its
+                //    equivalent corner in level zero appeared in a later LGR, or
+                // 2. lays on the LGR boundary, but does not coincide with any corner from level zero, or
+                // 3. is in the interior of the LGR.
+                //
+                // Notice that part of conditions 1. and 2. can be check via the lgrsToLevelZeroBoundaryConerns_oneToOne:
+                // for each refined equivalent corner (stored ONLY ONCE), we associte the corresponding level zero corner:
+                // {last level where that corner appears, its index in that level} -> {0, equivalent corner in level zero}.
+                // This means that
+                // - lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) takes the value 0
+                // when the refined corner appears in a latter level ( and lays on the lgr boundary, being equivalent to a
+                // corner in level zero).
+                // - lgrToLevelZeroBoundaryCorners_oneToOne.count({level, old_face_to_point[corn]}) takes the value 1
+                // when "level" is the last level where the equivalent corner from level zero appears on an LGR boundary.
+                // In this way, we avoid storing repeated corners on the leaf grid view, except from the ones mentioned
+                // above levelZeroToLGRsBoundaryCorners_oneToOne declaration. See "Attention" comment.
+                //
+                // Auxiliary bool to detect if a refined corner (born in an LGR) lays on the boundary
+                // of the LGR and coincides with a corner from level zero.
+                bool isEquivCornerLevelZero_laysOnLgrBoundary = false;
+                for (const auto& boundaryCorner : lgrBoundaryCornerWithEquivalentInLevelZero[level-1]) {
+                    isEquivCornerLevelZero_laysOnLgrBoundary = isEquivCornerLevelZero_laysOnLgrBoundary
+                        || (old_cell_to_point[corn] == boundaryCorner);
+                    // Case 1. described above.
+                    if (isEquivCornerLevelZero_laysOnLgrBoundary &&
+                        (lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_cell_to_point[corn]}) == 0)) {
+                        // --- Find corner in the later level ---
+                        // Get the equivalent corner in level zero (its index in level zero)
+                        const auto& levelZeroInfo = lgrsToLevelZeroBoundaryCorners_oneToMoreThanOne[{level, old_cell_to_point[corn]}];
+                        // Use the info from the equivalent corner in level zero to find the (last) level where
+                        // the corner appeared for last time, and its index in that level.
+                        const auto& [updateLevel, newCornerIdx ] = levelZeroToLGRsBoundaryCorners_oneToOne[levelZeroInfo];
+                        // Get the leaf grid view corner, with the "updatedLevel" and the corresponding corner index in that level.
+                        leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[updateLevel][newCornerIdx];
+                        break;
+                    }
+                }
+                // Case 2. and 3. described above.
+                if (!isEquivCornerLevelZero_laysOnLgrBoundary ||
+                    (lgrsToLevelZeroBoundaryCorners_oneToOne.count({level, old_cell_to_point[corn]}) == 1) ){
+                    leaf_cell_to_point[leafCellIdx][corn] = level_to_leaf_corners[level][old_cell_to_point[corn]];
+                }
             }
             // Cell to face.
             for (auto& face : old_cell_to_face) {
