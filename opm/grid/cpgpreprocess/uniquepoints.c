@@ -277,7 +277,7 @@ int finduniquepoints(const struct grdecl *g,
     const int nx = out->dimensions[0];
     const int ny = out->dimensions[1];
     const int nz = out->dimensions[2];
-    const int nc = g->dims[0]*g->dims[1]*g->dims[2];
+    const size_t nc = g->dims[0]*g->dims[1]*g->dims[2];
 
 
     /* zlist may need extra space temporarily due to simple boundary
