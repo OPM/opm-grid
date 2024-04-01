@@ -673,7 +673,7 @@ namespace Dune
                 const auto localCoordNumerator = []( const std::vector<double>& vec, int sumLimit, double multiplier) {
                     double lcn = 0;
                     assert(!vec.empty());
-                    assert(sumLimit <= static_cast<int>(vec.size()));
+                    assert(sumLimit < static_cast<int>(vec.size()));
                     lcn += multiplier*vec[sumLimit];
                     for (int m = 0; m < sumLimit; ++m) {
                         lcn += vec[m];
@@ -701,18 +701,20 @@ namespace Dune
                                 (j*(refined_dim[0]+1)*(refined_dim[2]+1)) + (i*(refined_dim[2]+1)) + k;
 
                             // Compute the local refined corner of the unit/reference cube associated with 'jik'.
-                            local_x = localCoordNumerator(widthsX, i/cells_per_dim[0], double((i % cells_per_dim[0])) / cells_per_dim[0]);
-                            local_y = localCoordNumerator(lengthsY, j/cells_per_dim[1], double((j % cells_per_dim[1])) / cells_per_dim[1]);
-                            local_z = localCoordNumerator(heightsZ, k/cells_per_dim[2], double((k % cells_per_dim[2])) /cells_per_dim[2]);
-
                             if ( i == refined_dim[0]) { // last corner in the x-direction
                                 local_x = sumWidths;
+                            } else {
+                                local_x = localCoordNumerator(widthsX, i/cells_per_dim[0], double((i % cells_per_dim[0])) / cells_per_dim[0]);
                             }
                             if ( j == refined_dim[1]) { // last corner in the y-direction
                                 local_y = sumLengths;
+                            } else {
+                                local_y = localCoordNumerator(lengthsY, j/cells_per_dim[1], double((j % cells_per_dim[1])) / cells_per_dim[1]);
                             }
                             if ( k == refined_dim[2]) { // last corner in the z-direction
                                 local_z = sumHeights;
+                            } else {
+                                local_z = localCoordNumerator(heightsZ, k/cells_per_dim[2], double((k % cells_per_dim[2])) /cells_per_dim[2]);
                             }
 
                             const LocalCoordinate& local_refined_corner = { local_x/sumWidths, local_y/sumLengths, local_z/sumHeights };
