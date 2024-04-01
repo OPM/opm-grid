@@ -1352,7 +1352,7 @@ std::map<int,int> computeCell2Face(CpGrid& grid,
     int localId = 0;
     // \todo improve since we are inserting values by sorted keys.
     std::generate_n(std::inserter(map2Local, map2Local.begin()),
-                    newEnd - current_global,
+                    map2Global.size(),
                     [&localId, &current_global](){ return std::make_pair(*(current_global++), localId++); });
     // translate global to local ids
     for (int row = 0, size = cell2Faces.size(); row < size; ++row)
@@ -1473,7 +1473,7 @@ std::map<int,int> computeCell2Point(CpGrid& grid,
     int localId = 0;
     // \todo improve since we are inserting values by sorted keys.
     std::generate_n(std::inserter(map2Local, map2Local.begin()),
-                    newEnd - current_global,
+                    map2Global.size(),
                     [&localId, &current_global](){ return std::make_pair(*(current_global++), localId++); });
     for (auto&& points : cell2Points)
     {
