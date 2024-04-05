@@ -172,7 +172,7 @@ checkmemory(int nz, struct processed_grid *out, int **intersections)
         n += MAX(n / 2, 12 * r);
     }
 
-    ok = m == out->m;
+    ok = m == ((size_t)(out->m));
     if (! ok) {
         void *p1, *p2, *p3, *p4;
 
@@ -191,7 +191,7 @@ checkmemory(int nz, struct processed_grid *out, int **intersections)
         if (ok) { out->m = m; }
     }
 
-    if (ok && (n != out->n)) {
+    if (ok && (n != ((size_t)(out->n)))) {
         void *p1;
 
         p1 = realloc(out->face_nodes, n * sizeof *out->face_nodes);
