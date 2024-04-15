@@ -250,6 +250,11 @@ namespace Dune
                 return V::operator[](i);
             }
 
+            void swap(EntityVariableBase& other)
+            {
+                V::swap(static_cast<V&>(other));
+            }
+
         };
 
 

@@ -211,6 +211,12 @@ namespace Dune
                 return super_t::operator==(other);
             }
 
+            /// Swap contents for other OrientedEntityTable
+            void swap(OrientedEntityTable& other)
+            {
+                super_t::swap(other);
+            }
+
             /** @brief Prints the relation matrix corresponding to the table, sparse format.
 
              Let the entities of codimensions f and t be given by
