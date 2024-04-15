@@ -113,6 +113,7 @@ list (APPEND TEST_SOURCE_FILES
 
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	list(APPEND TEST_SOURCE_FILES
+	  tests/cpgrid/adapt_cpgrid_test.cpp
 	  tests/cpgrid/avoidNNCinLGRs_test.cpp
 	  tests/cpgrid/avoidNNCinLGRsCpGrid_test.cpp
 	  tests/cpgrid/cuboidShape_test.cpp

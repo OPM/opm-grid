@@ -1687,6 +1687,38 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 #endif
 }
 
+std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const
+{
+    // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
+    std::array<int,3> ijk = {0,0,0};
+    ijk[0] = idxInParentCell % cells_per_dim[0];
+    idxInParentCell -= ijk[0]; // k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0]
+    idxInParentCell /= cells_per_dim[0]; // k*cells_per_dim[1] + j
+    ijk[1] = idxInParentCell % cells_per_dim[1];
+    idxInParentCell -= ijk[1]; // k*cells_per_dim[1]
+    ijk[2] = idxInParentCell /cells_per_dim[1];
+
+    std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
+        {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '1'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '2'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '3'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '4'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '5'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '6'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '7'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] }
+        }
+    };
+    return corners_in_parent_reference_elem;
+}
+
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
@@ -2177,15 +2209,17 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     if (nonRepeated_parentCorners.size() != 8){
         OPM_THROW(std::logic_error, "Cell is not a hexahedron. Cannot be refined (yet).");
     }
+    /** When we refine only one cell, we do not need to compute width, length, height **/
     // Get ijk from parent cell (Cartesian index). Needed to compute width, length, and height of the parent cell.
-    std::array<int,3> ijk;
-    getIJK(parent_idx, ijk);
+    // std::array<int,3> ijk;
+    //getIJK(parent_idx, ijk);
     // Get dx,dy,dz for each cell of the patch to be refined
-    const auto& [widthX, lengthY, heightZ] = getWidthsLengthsHeights(ijk, {ijk[0]+1, ijk[1]+1, ijk[2]+1});
+    //const auto& [widthX, lengthY, heightZ] = getWidthsLengthsHeights(ijk, {ijk[0]+1, ijk[1]+1, ijk[2]+1});
+    /** --- end lines to be replaced, avoiding ijk use --- **/
     // Refine parent cell
     parent_cell.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                      refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
-                                     {1,1,1}, widthX, lengthY, heightZ);
+                                     {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
     const std::vector<std::array<int,2>>& parent_to_refined_corners{
         // corIdx (J*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (I*(cells_per_dim[2]+1)) +K
         // replacing parent-cell corner '0' {0,0,0}
@@ -2507,6 +2541,57 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
 
     return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
             parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
+}
+
+bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
+{
+    if (mark_.empty()) {
+        mark_.resize(this->size(0));
+    }
+    mark_[element.index()] = refCount;
+    return (mark_[element.index()] == refCount);
+}
+
+int CpGridData::getMark(const cpgrid::Entity<0>& element) const
+{
+    if (mark_.empty()) {
+        OPM_THROW(std::logic_error, "No element has been marked.");
+    }
+    else {
+        return mark_[element.index()]; // 1 refinement, 0 doing nothing, -1 coarsening (not supported yet)
+    }
+
+}
+
+bool CpGridData::preAdapt()
+{
+    // [Indirectly] Set mightVanish flags for elements that have been marked for refinement
+    if(mark_.empty()) {
+        return false;
+    }
+    else {
+        // Auxiliary bool. It will be rewritten in case an element has been marked for refinement
+        bool refinementOrCoarsening = false;
+        for (int elemIdx = 0; elemIdx <  this-> size(0); ++elemIdx) {
+            const auto& element = Dune::cpgrid::Entity<0>(*this, elemIdx, true);
+            const auto& elemMark = getMark(element);  // 1 (to be refined), 0 (do nothing), -1 (to be coarsened - not supported yet)
+            refinementOrCoarsening = refinementOrCoarsening || (elemMark != 0);
+            if (refinementOrCoarsening) {
+                break;
+            }
+        }
+        return refinementOrCoarsening;
+    }
+}
+
+bool CpGridData::adapt()
+{
+    return preAdapt();
+}
+
+void CpGridData::postAdapt()
+{
+    mark_.resize(this->size(0), 0);
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const

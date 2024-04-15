@@ -151,6 +151,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     BOOST_CHECK( entity.isLeaf() == true);
                     // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                     BOOST_CHECK( it == endIt);
+                    // Mark with 0 (not involved in refinement)
+                    coarse_grid.mark(0, entity);
                 }
                 else{
                     BOOST_CHECK(lgr != -1);
@@ -160,6 +162,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][0] == 0);
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == cell);
                     }
+                    // Mark with 0 (not involved in refinement)
+                    coarse_grid.mark(1, entity);
                     BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
                     // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
                     BOOST_CHECK_EQUAL( it == endIt, false);
@@ -625,7 +629,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
 
     const auto& refined_leaf = *refined_data[2];
     const auto& equiv_leaf = *equiv_data[0];
-
+    
     // Check the container sizes
     BOOST_CHECK_EQUAL(refined_leaf.face_to_cell_.size(), equiv_leaf.face_to_cell_.size());
     BOOST_CHECK_EQUAL(refined_leaf.face_to_point_.size(), equiv_leaf.face_to_point_.size());
@@ -643,7 +647,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
     }
     auto equiv_cell_iter = equiv_leaf.geomVector<3>().begin();
     for(const auto& cell: refined_leaf.geomVector<3>())
-    {
+    {       
         CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
         for(const auto& coord: cell.center())
             BOOST_TEST(std::isfinite(coord));
@@ -725,6 +729,36 @@ BOOST_AUTO_TEST_CASE(global_refine)
     check_global_refine(coarse_grid, fine_grid);
 }
 
+
+/*BOOST_AUTO_TEST_CASE(global_refine_with_adapt)
+{
+    // Create a 4x3x3 grid with length 4x3x3
+    // and refine each cells into 4 children cells
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    const std::array<int, 3> cells_per_dim = {2,2,2};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+
+    // Mark all the elements of the grid for refinement
+    for (int elemIdx = 0; elemIdx < 36; ++elemIdx)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[0]), elemIdx, true);
+        coarse_grid.mark(1, elem);
+        coarse_grid.getMark(elem);
+    }
+    coarse_grid.preAdapt();
+    coarse_grid.adapt(cells_per_dim);
+    coarse_grid.postAdapt();
+    
+    // Create a 8x6x6 grid with length 4x3x3
+    Dune::CpGrid fine_grid;
+    const std::array<double, 3> fine_cell_sizes = {0.5, 0.5, 0.5};
+    const std::array<int, 3> fine_grid_dim = {8,6,6};
+    fine_grid.createCartesian(fine_grid_dim, fine_cell_sizes);
+
+    check_global_refine(coarse_grid, fine_grid);
+}*/
 
 BOOST_AUTO_TEST_CASE(global_norefine)
 {
