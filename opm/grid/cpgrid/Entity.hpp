@@ -209,16 +209,10 @@ public:
     HierarchicIterator hend(int) const;
 
     /// \brief Returns true, if the entity has been created during the last call to adapt(). Dummy.
-    bool isNew() const
-    {
-        return false;
-    }
+    bool isNew() const;
 
     /// \brief Returns true, if entity might disappear during the next call to adapt(). Dummy.
-    bool mightVanish() const
-    {
-        return false;
-    }
+    bool mightVanish() const;
 
     /// @brief ONLY FOR CELLS (Entity<0>)
     ///        Check if the entity comes from an LGR, i.e., it has been created via refinement from coarser level.
@@ -448,6 +442,27 @@ bool Entity<codim>::isLeaf() const
 }
 
 template<int codim>
+bool Entity<codim>::isNew() const
+{
+    // WIP
+    // For an Entity "to be new" means that
+    // - it has a father
+    // - it has been created in the last call of adapt()
+    // To determine that, we track the level of the Entity and
+    // check if it was marked for refinement in the previos state
+    // of current_view_data_
+    return false;
+}
+
+
+template<int codim>
+bool Entity<codim>::mightVanish() const
+{
+    const auto refinementMark = pgrid_ -> getMark(*this);
+    return (refinementMark == 1);
+}
+
+template<int codim>
 bool Entity<codim>::hasFather() const
 {
     if ((pgrid_ -> child_to_parent_cells_.empty()) || (pgrid_ -> child_to_parent_cells_[this->index()][0] == -1)){
@@ -478,7 +493,39 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
-    else{
+    /** For refinement via adapt method. */
+    if (!(pgrid_ -> cell_to_idxInParentCell_.empty())) { 
+        if (pgrid_ -> cell_to_idxInParentCell_[this->index()] !=-1) {
+            int idxInParentCell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
+            assert(idxInParentCell>-1);
+            const auto& cells_per_dim = pgrid_->cells_per_dim_;
+            const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idxInParentCell, cells_per_dim);
+            FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
+                { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
+            auto in_father_reference_elem_corners = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
+            EntityVariableBase<cpgrid::Geometry<0, 3>>& mutable_in_father_reference_elem_corners = *in_father_reference_elem_corners;
+            // Assign the corners. Make use of the fact that pointers behave like iterators.
+            mutable_in_father_reference_elem_corners.assign(corners_in_father_reference_elem_temp,
+                                                            corners_in_father_reference_elem_temp + 8);
+            // Compute the center of the 'local-entity'.
+            Dune::FieldVector<double, 3> center_in_father_reference_elem = {0., 0.,0.};
+            for (int corn = 0; corn < 8; ++corn) {
+                for (int c = 0; c < 3; ++c)
+                {
+                    center_in_father_reference_elem[c] += corners_in_father_reference_elem_temp[corn][c]/8.;
+                }
+            }
+            // Compute the volume of the 'local-entity'.
+            double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
+            // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
+            return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
+                                               in_father_reference_elem_corners, in_father_reference_elem_corner_indices_.data());
+        }
+        else {
+             OPM_THROW(std::logic_error, "Entity has no father. Entry should be -1");
+        }
+    }
+    else {    /** For refinement via addLgrsUpdateLeafView method. Code will be refactored and unified. */
         // Get IJK index of the entity.
         std::array<int,3> eIJK;
         // Get the amount of children cell in each direction of the parent cell of the entity (same for all parents of each LGR)
@@ -506,7 +553,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         // Transform the local coordinates that comes from the refinemnet in such a way that the
         // reference element of each parent cell is the unit cube. Here, (eIJK[*]-"shift")/cells_per_dim[*]
         // Get the local coordinates of the entity (in the reference unit cube).
-        FieldVector<double, 3> corners_in_father_reference_elem_temp[8] = {
+        FieldVector<double, 3>  corners_in_father_reference_elem_temp[8] = {
             // corner '0'
             { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
               double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
@@ -551,6 +598,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
                                            in_father_reference_elem_corners, in_father_reference_elem_corner_indices_.data());
     }
 }
+
 
 
 template<int codim>

@@ -555,50 +555,197 @@ namespace Dune
         //        from certain LGR
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
-        /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
-        /// \brief Mark entity for refinement
+        /// @brief Mark entity for refinement (or coarsening).
         ///
+        /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.
+        /// Nested refinement is not supported yet, so the so-called "host grid" is defined by default
+        /// equal to the GLOBAL Grid (level zero). Therefore, we mark elements (from the GLOBAL grid)
+        /// for refinement.
         /// This only works for entities of codim 0.
-        /// The parameter is currently ignored
         ///
-        /// \return <ul>
-        /// <li> true, if marking was succesfull </li>
-        /// <li> false, if marking was not possible </li>
-        /// </ul>
+        /// @param [in] refCount   To mark the element for
+        ///                        - refinement, refCount == 1
+        ///                        - doing nothing, refCount == 0
+        ///                        - coarsening, refCount == -1 (not applicable yet)
+        /// @param [in] element    Entity<0>. Currently, an element from the GLOBAL grid (level zero).
+        /// @return true, if marking was succesfull.
+        ///         false, if marking was not possible.
+        bool mark(int refCount, const cpgrid::Entity<0>& element);
 
-        bool mark(int refCount, const typename Traits::template Codim<0>::EntityPointer & e)
-        {
-            return hostgrid_->mark(refCount, getHostEntity<0>(*e));
-        }
-
-        /// \brief Return refinement mark for entity
+        /// @brief Return refinement mark for entity.
         ///
-        /// \return refinement mark (1,0,-1)
+        /// @return refinement mark (1,0,-1)  Currently, only 1 (refinement), or 0 (doing nothing).
+        int getMark(const cpgrid::Entity<0>& element) const;
 
-        int getMark(const typename Traits::template Codim<0>::EntityPointer & e) const
-        {
-            return hostgrid_->getMark(getHostEntity<0>(*e));
-        }
+        /// @brief Set mightVanish flags for elements that will be refined in the next adapt() call
+        ///        Need to be called after elements have been marked for refinement. 
+        bool preAdapt();
 
-        /// \todo Please doc me !
-        bool preAdapt() {
-            return hostgrid_->preAdapt();
-        }
+        /// @brief Triggers the grid refinement process
+        ///
+        /// @param [in] cells_per_dim    Number of (refined) cells in each direction that each
+        ///                              parent cell should be refined to.
+        bool adapt(const std::array<int,3>& cells_per_dim);
+
+        /// @brief Clean up refinement markers - set every element to the mark 0 which represents 'doing nothing'
+        void postAdapt();
+
+    private:
+
+        void refineAndProvideMarkedRefinedRelations(  std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
+                                                      std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
+                                                      std::size_t& cell_count,
+                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_refinedCell,
+                                                      std::unordered_map<int,std::array<int,2>>& refinedCell_to_elemLgrAndElemLgrCell,
+                                                      std::size_t& refined_cell_count,
+                                                      int& markedElem_count,
+                                                      std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                                      std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
+                                                      std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                      const std::array<int,3>& cells_per_dim,
+                                                      std::vector<std::tuple<int,std::vector<int>>>& parent_to_refinedChildCells,
+                                                      std::vector<int>& preAdaptCells_to_adaptedCells,
+                                                      const int refinedLevel);
+
+        void defineChildToParentRelation( std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                          const std::size_t cell_count,
+                                          std::unordered_map<int,std::array<int,2>> refinedCell_to_elemLgrAndElemLgrCell,
+                                          const std::size_t refined_cell_count,
+                                          std::vector<std::array<int,2>>& adaptedChild_to_parentCell,
+                                          std::vector<std::array<int,2>>& refinedChild_to_parentCell,
+                                          std::vector<int>& adaptedChild_to_positionInParentCell, // {level parent cell, parent cell index}
+                                          std::vector<int>& refinedChild_to_positionInParentCell,
+                                          const int refinedLevel);
+
+        void defineRefinedAdaptedCellsRelation(  std::map<std::array<int,2>,int> elemLgrAndElemLgrCell_to_adaptedCell,
+                                                 std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                                 const std::size_t cell_count,
+                                                 std::map<std::array<int,2>,int> elemLgrAndElemLgrCell_to_refinedCell,
+                                                 std::unordered_map<int,std::array<int,2>> refinedCell_to_elemLgrAndElemLgrCell,
+                                                 const std::size_t refined_cell_count,
+                                                 std::vector<int>& refinedCells_to_adaptedCells,
+                                                 std::vector<std::array<int,2>>& adaptedCell_to_levelAndLevelCell,
+                                                 const int refinedLevel);
+
+        void definePreAdaptRefinedAndAdaptedCornerRelations(std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                                            std::size_t& corner_count,
+                                                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_refinedCorner,
+                                                            std::unordered_map<int,std::array<int,2>>& refinedCorner_to_elemLgrAndElemLgrCorner,
+                                                            std::size_t& refined_corner_count,
+                                                            std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                                                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                            const std::array<int,3>& cells_per_dim);
+
+        void definePreAdaptRefinedAndAdaptedFaceRelations(  std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
+                                                            std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
+                                                            std::size_t& face_count,
+                                                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_refinedFace,
+                                                            std::unordered_map<int,std::array<int,2>>& refinedFace_to_elemLgrAndElemLgrFace,
+                                                            std::size_t& refined_face_count,
+                                                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                            const std::array<int,3>& cells_per_dim);;
+
+        void populateAdaptedCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners,
+                                    const std::size_t& corners_count,
+                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                    std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner);
+
+        void populateRefinedCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners,
+                                    const std::size_t& refined_corner_count,
+                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                    std::unordered_map<int,std::array<int,2>> refinedCorner_to_elemLgrAndElemLgrCorner);
+
+        void populateAdaptedFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& adapted_faces,
+                                  Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
+                                  Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
+                                  Opm::SparseTable<int>& adapted_face_to_point,
+                                  const std::size_t& face_count,
+                                  std::unordered_map<int,std::array<int,2>> adaptedFace_to_elemLgrAndElemLgrFace,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  const std::array<int,3>& cells_per_dim);
+
+        void populateRefinedFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces,
+                                  Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_refined_face_tags,
+                                  Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_refine_face_normals,
+                                  Opm::SparseTable<int>& refined_face_to_point,
+                                  const std::size_t& refined_face_count,
+                                  std::unordered_map<int,std::array<int,2>> refinedFace_to_elemLgrAndElemLgrFace,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_refinedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner);
+
+        void populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
+                                  std::vector<std::array<int,8>>& adapted_cell_to_point,
+                                  std::vector<int>& adapted_global_cell,
+                                  const std::size_t& cell_count,
+                                  cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
+                                  cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
+                                  std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_adaptedFace,
+                                  const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  const std::array<int,3>& cells_per_dim);
+
+        void populateRefinedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells,
+                                  std::vector<std::array<int,8>>& refined_cell_to_point,
+                                  std::vector<int>& refined_global_cell,
+                                  const std::size_t& refined_cell_count,
+                                  cpgrid::OrientedEntityTable<0,1>& refined_cell_to_face,
+                                  cpgrid::OrientedEntityTable<1,0>& refined_face_to_cell,
+                                  std::unordered_map<int,std::array<int,2>> refinedCell_to_elemLgrAndElemLgrCell,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_refinedFace,
+                                  const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_refinedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  const std::array<int,3>&  cells_per_dim);
 
 
-        /// Triggers the grid refinement process
-        bool adapt()
-        {
-            return hostgrid_->adapt();
-        }
+        std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+        std::array<int,3> getRefinedFaceIJK(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+        bool isRefinedCornerInInteriorLgr(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+        bool isRefinedFaceInInteriorLgr(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                        const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+        
+        bool isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+        bool newRefinedCornerLaysOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+        
+        bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                        const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+        int getParentFaceWhereNewRefinedCornerLaysOn(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr,
+                                                     int parentCellIdxOnLevel0) const;
+        std::array<int,2> getParentFacesAssocWithNewRefinedCornLayingOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const;
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1) const;
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx) const;
+        int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim, int faceIdx,
+                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr1_ptr) const;
+        int getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cells_per_dim,
+                                                   int faceIdxInLgr,
+                                                   const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
+                                                   int parentCellIdxOnLevel0)  const;
+        
+    public:
+        
 
-        /// \brief Clean up refinement markers
-        void postAdapt() {
-            return hostgrid_->postAdapt();
-        }
-
-        end of refinement section */
 
         /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int) const;

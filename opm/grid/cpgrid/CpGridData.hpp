@@ -71,6 +71,7 @@
 #include "Geometry.hpp"
 
 #include <array>
+#include <initializer_list>
 #include <set>
 #include <vector>
 
@@ -94,6 +95,13 @@ template<int> class Entity;
 template<int> class EntityRep;
 }
 }
+
+
+void markAndAdapt_check(Dune::CpGrid&,
+                        const std::array<int,3>&,
+                        const std::vector<int>&,
+                        Dune::CpGrid&,
+                        bool);
 
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
@@ -135,13 +143,20 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
 
     friend
+    void ::markAndAdapt_check(Dune::CpGrid&,
+                              const std::array<int,3>&,
+                              const std::vector<int>&,
+                              Dune::CpGrid&,
+                              bool);
+
+    friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
                             bool);
     friend
     void ::refinePatch_and_check(const std::array<int,3>&,
-                        const std::array<int,3>&,
-                        const std::array<int,3>&);
+                                 const std::array<int,3>&,
+                                 const std::array<int,3>&);
 
     friend
     void ::refinePatch_and_check(Dune::CpGrid&,
@@ -149,7 +164,7 @@ class CpGridData
                                  const std::vector<std::array<int,3>>&,
                                  const std::vector<std::array<int,3>>&,
                                  const std::vector<std::string>&);
-    
+
     friend
     void ::check_global_refine(const Dune::CpGrid&,
                                const Dune::CpGrid&);
@@ -325,7 +340,38 @@ public:
     ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
     bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
+    /// @brief Mark entity for refinement or coarsening.
+    ///
+    /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.
+    /// This only works for entities of codim 0.
+    ///
+    /// @param [in] refCount   To mark the element for
+    ///                        - refinement, refCount == 1
+    ///                        - doing nothing, refCount == 0
+    ///                        - coarsening, refCount == -1 (not applicable yet)
+    /// @param [in] element    Entity<0>. Currently, an element from the GLOBAL grid (level zero).
+    /// @return true, if marking was succesfull.
+    ///         false, if marking was not possible.
+    bool mark(int refCount, const cpgrid::Entity<0>& element);
+
+    /// @brief Return refinement mark for entity.
+    ///
+    /// @return refinement mark (1 refinement, 0 doing nothing, -1 coarsening - not supported yet).
+    int getMark(const cpgrid::Entity<0>& element) const;
+
+    /// @brief Set mightVanish flags for elements that will be refined in the next adapt() call
+    ///        Need to be called after elements have been marked for refinement.
+    bool preAdapt();
+
+    /// TO DO: Documentation. Triggers the grid refinement process - Currently, returns preAdapt()
+    bool adapt();
+
+    /// @brief Clean up refinement/coarsening markers - set every element to the mark 0 which represents 'doing nothing'
+    void postAdapt();
+
 private:
+    std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const;
+
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
@@ -738,6 +784,8 @@ private:
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
+    /** Mark elements to be refined **/
+    std::vector<int> mark_;
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
     int level_{0};
     /** Copy of (CpGrid object).data_ associated with the CpGridData object. */
@@ -755,6 +803,10 @@ private:
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
     std::vector<std::array<int,2>> child_to_parent_cells_;
+    /** Level-grid or Leaf-grid cell to parent cell and refined-cell-in-parent-cell index (number between zero and total amount
+        of children per parent (cells_per_dim[0]_*cells_per_dim_[1]*cells_per_dim_[2])). Entry is -1 when cell has no father. */
+    std::vector<int> cell_to_idxInParentCell_;
+    
 
 
     /// \brief Object for collective communication operations.
