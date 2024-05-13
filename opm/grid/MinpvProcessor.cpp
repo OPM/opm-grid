@@ -21,6 +21,8 @@
 
 #include <opm/common/ErrorMacros.hpp>
 
+#include <algorithm>
+
 namespace Opm {
 
 void MinpvProcessor::Result::add_nnc(int cell1, int cell2)
