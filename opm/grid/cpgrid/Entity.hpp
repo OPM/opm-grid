@@ -451,7 +451,7 @@ bool Entity<codim>::isNew() const
     // To determine that, we track the level of the Entity and
     // check if it was marked for refinement in the previos state
     // of current_view_data_
-    return false;
+    return (isLeaf() && hasFather());
 }
 
 
