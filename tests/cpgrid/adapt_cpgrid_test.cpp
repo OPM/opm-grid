@@ -86,6 +86,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         coarse_grid.mark(1, elem);
         coarse_grid.getMark(elem);
         BOOST_CHECK( coarse_grid.getMark(elem) == 1);
+        BOOST_CHECK( elem.mightVanish() == true);
     }
     bool preAdapt = coarse_grid.preAdapt();
     const auto& data = coarse_grid.chooseData();
@@ -138,6 +139,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK(element.isLeaf());
             BOOST_CHECK(it == endIt);
             if (element.hasFather()){
+                BOOST_CHECK( element.isNew() == true);
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]), 1e-6);
                 BOOST_CHECK(element.father().level() == refinedLevel-1);
                 BOOST_CHECK_EQUAL( (std::find(markedCells.begin(), markedCells.end(), element.father().index()) == markedCells.end()), false);
@@ -175,7 +177,9 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 const auto& entityOldIdx =   adapted_leaf.leaf_to_level_cells_[element.index()][1];
                 BOOST_CHECK( element.getOrigin().index() == entityOldIdx);
                 BOOST_CHECK( element.getOrigin().level() == 0);
+                BOOST_CHECK( element.isNew() == false);
             }
+            BOOST_CHECK( element.mightVanish() == false); // marks get rewrtitten and set to 0 via postAdapt call
         } // end-element-for-loop
 
         // Some checks on the preAdapt grid
@@ -194,6 +198,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( element.isLeaf() == true);
                 // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                 BOOST_CHECK( it == endIt);
+                BOOST_CHECK( element.mightVanish() == false);
+                BOOST_CHECK( element.isNew() == false);
             }
             else{
                 BOOST_CHECK(lgr != -1);
@@ -206,6 +212,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
                 // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
                 BOOST_CHECK_EQUAL( it == endIt, false);
+                BOOST_CHECK( element.mightVanish() == true);
+                BOOST_CHECK( element.isNew() == false);
                 // Auxiliary int to check amount of children
                 double referenceElemOneParent_volume = 0.;
                 std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}

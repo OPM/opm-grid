@@ -1834,6 +1834,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec)
 {
+    /** Begin new approach */
+    // Check all the cells to be refined have no NNC (no neighbouring connections).
+    std::vector<int> all_patch_cells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
+    for (const auto& elemIdx : markedCells) {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[0]), elemIdx, true);
+        coarse_grid.mark(1, elem);
+    }
+
+
+    /** End new approach */
+    
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     (*data_[0]).validStartEndIJKs(startIJK_vec, endIJK_vec);
     if (!distributed_data_.empty()){
@@ -1980,6 +1991,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         (*data_[patch+1]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[patch+1]);
         //          cells_per_dim_ Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
         (*data_[patch +1]).cells_per_dim_ = cells_per_dim_vec[patch];
+        /** Logical Cartesian size is equal to cells_per_dim_ in the adapt-method */
         //          logical_cartesian_size_ Assuming Cartesian Grid Shape (GLOBAL grid is required to be Cartesian)
         (*data_[patch+1]).logical_cartesian_size_ = {cells_per_dim_vec[patch][0]*(endIJK_vec[patch][0]-startIJK_vec[patch][0]),
                                                      cells_per_dim_vec[patch][1]*(endIJK_vec[patch][1]-startIJK_vec[patch][1]),
