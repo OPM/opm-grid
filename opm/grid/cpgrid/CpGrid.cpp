@@ -3396,7 +3396,7 @@ bool CpGrid::isRefinedFaceInInteriorLgr(const std::array<int,3>& cells_per_dim, 
     bool isKface = (faceIdxInLgr < refined_k_faces);
     bool isIface = (faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces);
     bool isJface = (faceIdxInLgr >= refined_k_faces + refined_i_faces);
-    
+
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
     return ((ijk[0]%cells_per_dim[0] > 0 && isIface) ||  (ijk[1]%cells_per_dim[1]>0 && isJface) || (ijk[2]%cells_per_dim[2]>0 && isKface));
 }
@@ -3414,7 +3414,7 @@ bool CpGrid::isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_
     bool isOnParentCell_J_FACE = isOnParentCell_J_FACEfalse_and_newBornCorn || isOnParentCell_J_FACEtrue_and_newBornCorn;
     bool isOnParentCell_K_FACE = isOnParentCell_K_FACEfalse_and_newBornCorn || isOnParentCell_K_FACEtrue_and_newBornCorn;
     return (isOnParentCell_I_FACE || isOnParentCell_J_FACE || isOnParentCell_K_FACE);
-    }
+}
 
 bool CpGrid::newRefinedCornerLaysOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const
 {
@@ -3452,30 +3452,29 @@ bool CpGrid::isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, 
 
     int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-    
+
     bool isKface = (faceIdxInLgr < refined_k_faces);
     bool isIface = (faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces);
     bool isJface = (faceIdxInLgr >= refined_k_faces + refined_i_faces);
-    
+
     bool isOnParentCell_I_FACE = isIface && (ijk[0] % cells_per_dim[0] == 0) && (ijk[1]<cells_per_dim[1]) && (ijk[2]<cells_per_dim[2]);
     bool isOnParentCell_J_FACE = isJface && (ijk[1] % cells_per_dim[1] == 0) && (ijk[0]<cells_per_dim[0]) && (ijk[2]<cells_per_dim[2]);
     bool isOnParentCell_K_FACE = isKface && (ijk[2] % cells_per_dim[2] == 0) && (ijk[0]<cells_per_dim[0]) && (ijk[1]<cells_per_dim[1]);
-    
+
     return (isOnParentCell_I_FACE || isOnParentCell_J_FACE || isOnParentCell_K_FACE);
 }
 
 std::array<int,2> CpGrid::getParentFacesAssocWithNewRefinedCornLayingOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const
 {
     assert(newRefinedCornerLaysOnEdge(cells_per_dim, cornerIdxInLgr));
-   
-    /** This needs to be modified for a general current_view_data_ that does not necessarily coincide with level 0 grid (data_[0]).
-        Alternatively, the order of cell_to_face_ in Geometry::refine has to be refactored. Currently,
-        {{K_FACE, false}, {J_FACE, false}, {I_FACE, false}, {I_FACE, true}, {J_FACE, true}, {K_FACE, true}}**/
-    // parentCell_to_face = {{I_FACE, false}, {I_FACE, true}, {J_FACE, false}, {J_FACE, true}, {K_FACE, false}, {K_FACE, true}}
-    const auto& parentCell_to_face = this->data_[0]->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
 
+    const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
+    if(parentCell_to_face.size()>6){
+        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+    }
+    // Corners Order defined in Geometry::refine  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-     // Edges laying on bottom face
+    // Edges laying on bottom face
     bool isNewBornOnEdge01 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == 0) && (ijk[2] == 0);
     bool isNewBornOnEdge23 = (ijk[0] % cells_per_dim[0] != 0) && (ijk[1] == cells_per_dim[1]) && ( ijk[2] == 0);
     bool isNewBornOnEdge02 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == 0);
@@ -3493,97 +3492,87 @@ std::array<int,2> CpGrid::getParentFacesAssocWithNewRefinedCornLayingOnEdge(cons
     bool isNewBornOnEdge46 = (ijk[0] == 0) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
     bool isNewBornOnEdge57 = (ijk[0] == cells_per_dim[0]) && (ijk[1] % cells_per_dim[1] != 0) && (ijk[2] == cells_per_dim[2]);
 
-       // Corners Order defined in Geometry::refine  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    
-    // Edges laying on the bottom face
-    if (isNewBornOnEdge01) { // J_FACE false, K_FACE false
-        return {parentCell_to_face[2].index(), parentCell_to_face[4].index()};
-    }
-    if (isNewBornOnEdge23) { // J_FACE true, K_FACE false
-        return {parentCell_to_face[3].index(), parentCell_to_face[4].index()};
-    }
-    if (isNewBornOnEdge02) { // I_FACE false, K_FACE false
-        return  {parentCell_to_face[0].index(), parentCell_to_face[4].index()};
-    }
-    if (isNewBornOnEdge13) { // I_FACE true, K_FACE false
-        return  {parentCell_to_face[1].index(), parentCell_to_face[4].index()};
-    }
-    
-    // Edges connecting bottom and top faces
-    if (isNewBornOnEdge04) { // I_FACE false, J_FACE false
-        return {parentCell_to_face[0].index(), parentCell_to_face[2].index()};
-    }
-    if (isNewBornOnEdge26) { // I_FACE false, J_FACE true
-        return {parentCell_to_face[0].index(), parentCell_to_face[3].index()};
-    }
-    if (isNewBornOnEdge15) { // I_FACE true, J_FACE false
-        return  {parentCell_to_face[1].index(), parentCell_to_face[2].index()};
-    }
-    if (isNewBornOnEdge37) { // I_FACE true, J_FACE true
-        return  {parentCell_to_face[1].index(), parentCell_to_face[3].index()};
-    }
+    std::vector<int> auxFaces;
+    auxFaces.reserve(2);
 
-    // Edges laying on the top face
-    if (isNewBornOnEdge45) { // J_FACE false, K_FACE true
-        return {parentCell_to_face[2].index(), parentCell_to_face[5].index()};
+    for (const auto& face : parentCell_to_face) {
+        const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
+        const auto& faceTag = current_view_data_->face_tag_[faceEntity];
+        // Add I_FACE false
+        bool addIfalse = isNewBornOnEdge02 || isNewBornOnEdge04 || isNewBornOnEdge26 || isNewBornOnEdge46;
+        if( addIfalse && (faceTag == 0)  && (!face.orientation()))  {
+            auxFaces.push_back(face.index());
+        }
+        // Add J_FACE false
+        bool addJfalse = isNewBornOnEdge01 || isNewBornOnEdge04 || isNewBornOnEdge15 || isNewBornOnEdge45;
+        if( addJfalse && (faceTag == 1)  && (!face.orientation()))  {
+            auxFaces.push_back(face.index());
+        }
+        // Add K_FACE false
+        bool addKfalse = isNewBornOnEdge01 ||  isNewBornOnEdge13 || isNewBornOnEdge23 || isNewBornOnEdge02;
+        if( addKfalse && (faceTag == 2) && (!face.orientation())) {
+            auxFaces.push_back(face.index());
+        }
+        // Add I_FACE true
+        bool addItrue = isNewBornOnEdge13 || isNewBornOnEdge15 || isNewBornOnEdge37 || isNewBornOnEdge57;
+        if( addItrue && (faceTag == 0)  && (face.orientation()))  {
+            auxFaces.push_back(face.index());
+        }
+        // Add J_FACE true
+        bool addJtrue = isNewBornOnEdge23|| isNewBornOnEdge26 || isNewBornOnEdge37 || isNewBornOnEdge67;
+        if( addJtrue && (faceTag == 1)  && (face.orientation()))  {
+            auxFaces.push_back(face.index());
+        }
+        // Add K_FACE true
+        bool addKtrue = isNewBornOnEdge45 || isNewBornOnEdge67 || isNewBornOnEdge46 || isNewBornOnEdge57;
+        if(addKtrue && (faceTag == 2) && (face.orientation())) {
+            auxFaces.push_back(face.index());
+        }
     }
-    if (isNewBornOnEdge67) { // J_FACE true, K_FACE true
-        return {parentCell_to_face[3].index(), parentCell_to_face[5].index()};
-    }
-    if (isNewBornOnEdge46) { // I_FACE false, K_FACE true
-        return  {parentCell_to_face[0].index(), parentCell_to_face[5].index()};
-    }
-    if (isNewBornOnEdge57) { // I_FACE true, K_FACE true
-        return  {parentCell_to_face[1].index(), parentCell_to_face[5].index()};
-    }
-     else {
-        OPM_THROW(std::logic_error, "Cannot find parent face indices.");
-    }   
+    return {auxFaces[0], auxFaces[1]};
 }
-
 
 int CpGrid::getParentFaceWhereNewRefinedCornerLaysOn(const std::array<int,3>& cells_per_dim,
                                                      int cornerIdxInLgr, int parentCellIdxOnLevel0) const
 {
     assert(isRefinedNewBornCornerOnLgrBoundary(cells_per_dim, cornerIdxInLgr));
-   
-    /** This needs to be modified for a general current_view_data_ that does not necessarily coincide with level 0 grid (data_[0]).
-        Alternatively, the order of cell_to_face_ in Geometry::refine has to be refactored. Currently,
-        {{K_FACE, false}, {J_FACE, false}, {I_FACE, false}, {I_FACE, true}, {J_FACE, true}, {K_FACE, true}}**/
-    // parentCell_to_face = {{I_FACE, false}, {I_FACE, true}, {J_FACE, false}, {J_FACE, true}, {K_FACE, false}, {K_FACE, true}}
-    const auto& parentCell_to_face = this->data_[0]->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdxOnLevel0, true)];
 
+    const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdxOnLevel0, true)];
+    if(parentCell_to_face.size()>6){
+        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+    }
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
-    
+
     bool isOnParentCell_I_FACEfalse_and_newBornCorn = ( (ijk[0] == 0) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
     bool isOnParentCell_I_FACEtrue_and_newBornCorn = ( (ijk[0] == cells_per_dim[0]) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
     bool isOnParentCell_J_FACEfalse_and_newBornCorn = ( (ijk[1] == 0) && ((ijk[0] % cells_per_dim[0] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
     bool isOnParentCell_J_FACEtrue_and_newBornCorn = ( (ijk[1] == cells_per_dim[1]) && ((ijk[0] % cells_per_dim[0] != 0) || (ijk[2] % cells_per_dim[2] !=0) ));
     bool isOnParentCell_K_FACEfalse_and_newBornCorn = ( (ijk[2] == 0) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[0] % cells_per_dim[0] !=0) ));
     bool isOnParentCell_K_FACEtrue_and_newBornCorn = ( (ijk[2] == cells_per_dim[2]) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[0] % cells_per_dim[0] !=0) ));
-
     
-    if (isOnParentCell_I_FACEfalse_and_newBornCorn) {
-        return parentCell_to_face[0].index();
+    for (const auto& face : parentCell_to_face) {
+        const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
+        const auto& faceTag = current_view_data_->face_tag_[faceEntity];
+        if (isOnParentCell_I_FACEfalse_and_newBornCorn && (faceTag == 0) && !face.orientation()) { // I_FACE false
+            return face.index();
+        }
+        if (isOnParentCell_I_FACEtrue_and_newBornCorn && (faceTag == 0) && face.orientation()) { // I_FACE true
+            return face.index();
+        }
+        if (isOnParentCell_J_FACEfalse_and_newBornCorn && (faceTag == 1) && !face.orientation()) { // J_FACE false
+            return face.index();
+        }
+        if (isOnParentCell_J_FACEtrue_and_newBornCorn && (faceTag == 1) && face.orientation()) { // J_FACE true
+            return face.index();
+        }
+        if (isOnParentCell_K_FACEfalse_and_newBornCorn && (faceTag == 2) && !face.orientation()) { // K_FACE false
+            return face.index();
+        }
+        if (isOnParentCell_K_FACEtrue_and_newBornCorn && (faceTag == 2) && face.orientation()) { // K_FACE true
+            return face.index();
+        }
     }
-    if (isOnParentCell_I_FACEtrue_and_newBornCorn) {
-        return parentCell_to_face[1].index();
-    }
-    if (isOnParentCell_J_FACEfalse_and_newBornCorn) {
-        return  parentCell_to_face[2].index();
-    }
-    if (isOnParentCell_J_FACEtrue_and_newBornCorn) {
-        return  parentCell_to_face[3].index();
-    }
-    if (isOnParentCell_K_FACEfalse_and_newBornCorn) {
-        return  parentCell_to_face[4].index();
-    }
-    if (isOnParentCell_K_FACEtrue_and_newBornCorn) {
-        return  parentCell_to_face[5].index();
-    }
-    else {
-        OPM_THROW(std::logic_error, "Cannot find parent face index.");
-    }  
+    OPM_THROW(std::logic_error, "Cannot find parent face index where new refined corner lays on.");
 }
 
 int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cells_per_dim,
@@ -3593,11 +3582,11 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cell
 {
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-    /** This needs to be modified for a general current_view_data_ that does not necessarily coincide with level 0 grid (data_[0]).
-        Alternatively, the order of cell_to_face_ in Geometry::refine has to be refactored. Currently,
-        {{K_FACE, false}, {J_FACE, false}, {I_FACE, false}, {I_FACE, true}, {J_FACE, true}, {K_FACE, true}}**/
-    // parentCell_to_face = {{I_FACE, false}, {I_FACE, true}, {J_FACE, false}, {J_FACE, true}, {K_FACE, false}, {K_FACE, true}}
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdxOnLevel0, true)];
+    
+    if(parentCell_to_face.size()>6){
+        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+    }
 
     // Order defined in Geometry::refine
     // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
@@ -3610,65 +3599,37 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cell
     int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
     int refined_j_faces = cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
     assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
-   
-    if (faceIdxInLgr <  refined_k_faces) { // It's a K_FACE
-        if (ijk[2] == 0) { // Need to find {K_FACE, false}
-            return  parentCell_to_face[4].index();
+
+    for (const auto& face : parentCell_to_face) {
+        const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
+        const auto& faceTag = current_view_data_->face_tag_[faceEntity];
+        if (faceIdxInLgr <  refined_k_faces ) { // It's a K_FACE
+            if ((ijk[2] == 0) && (faceTag == 2) && !face.orientation()) { // {K_FACE, false}
+                return face.index();
+            }
+            if ((ijk[2] == cells_per_dim[2]) && (faceTag == 2) && face.orientation()) { // {K_FACE, true}
+                return face.index();
+            }
         }
-        if (ijk[2] == cells_per_dim[2]) { // Need to find {K_FACE, true}
-            return  parentCell_to_face[5].index();
+        if ((faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces)) { // It's I_FACE
+            if ((ijk[0] == 0) && (faceTag == 0) && !face.orientation()) { // {I_FACE, false}
+                return face.index();
+            }
+            if ((ijk[0] == cells_per_dim[0]) && (faceTag == 0) && face.orientation()) { // {I_FACE, true}
+                return face.index();
+            }
+        }
+        if (faceIdxInLgr >= refined_k_faces + refined_i_faces) {// It's J_FACE
+            if ((ijk[1] == 0) && (faceTag == 1) && !face.orientation()) { // {J_FACE, false}
+                return face.index();
+            }
+            if ((ijk[1] == cells_per_dim[1]) && (faceTag == 1) && face.orientation()) { // {J_FACE, true}
+                return face.index();
+            }
         }
     }
-    if ((faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces)) { // It's I_FACE
-        if (ijk[0] == 0) { // Need to find {I_FACE, false}
-            return parentCell_to_face[0].index();
-        }
-        if (ijk[0] == cells_per_dim[0]) { // Need to find {I_FACE, true}
-            return parentCell_to_face[1].index();
-        }
-    }
-    if (faceIdxInLgr >= refined_k_faces + refined_i_faces) {// It's J_FACE
-        if (ijk[1] == 0) { // Need to find {J_FACE, false}
-            return  parentCell_to_face[2].index();
-        }
-        if (ijk[1] == cells_per_dim[1]) { // Need to find {J_FACE, true}
-            return  parentCell_to_face[3].index();
-        }
-    }
-    OPM_THROW(std::logic_error, "Cannot find parent face index.");
+    OPM_THROW(std::logic_error, "Cannot find parent face index where the new refined face lays on.");
 }
-    
-/* WIP  Refactor previous function body to be based on current_view_data_ and not in data_[0],
-   in other words, to get rid of the dependency of how faces are ordered in cell_to_face_.
-   for (const auto& face : parentCell_to_face) {
-   const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr, true);
-   const auto& faceTag = current_view_data_ ->face_tag_[faceEntity];
-   switch(faceTag) {
-   case I_FACE:
-   if ((ijk[0] == 0) && !face.orientation()) { // Need {I_FACE, false}
-   return face.index();
-   }
-   if ((ijk[0] == cells_per_dim[0]) && face.orientation()) { // Need {I_FACE, true}
-   return face.index();
-   }
-   case J_FACE:
-   if ((ijk[1] == 0) && !face.orientation()) { // Need {J_FACE, false}
-   return face.index();
-   }
-   if ((ijk[1] == cells_per_dim[1]) && face.orientation()) { // Need {J_FACE, true}
-   return face.index();   
-   }
-   case K_FACE:
-   if ((ijk[2] == 0) && !face.orientation()) { // Need {K_FACE, false}
-   return face.index();
-   }
-   if ((ijk[2] == cells_per_dim[2]) && face.orientation()) { // Need {K_FACE, true}
-   return face.index();
-   }
-   default:
-   OPM_THROW(std::logic_error, "Cannot find parent face index.");
-   }
-   }*/
 
 int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1) const
 {   
@@ -3691,41 +3652,42 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
 
 int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx) const
 {
-     assert(newRefinedCornerLaysOnEdge(cells_per_dim, cornerIdxLgr1));
-     const auto& faces = getParentFacesAssocWithNewRefinedCornLayingOnEdge(cells_per_dim, cornerIdxLgr1, elemLgr1);
-     assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
-   
-    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxLgr1);
+    assert(newRefinedCornerLaysOnEdge(cells_per_dim, cornerIdxLgr1));
+    const auto& faces = getParentFacesAssocWithNewRefinedCornLayingOnEdge(cells_per_dim, cornerIdxLgr1, elemLgr1);
+    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
 
-      /** This needs to be modified for a general current_view_data_ that does not necessarily coincide with level 0 grid (data_[0]).
-        Alternatively, the order of cell_to_face_ in Geometry::refine has to be refactored. Currently,
-        {{K_FACE, false}, {J_FACE, false}, {I_FACE, false}, {I_FACE, true}, {J_FACE, true}, {K_FACE, true}}**/
-    // parentCell_to_face = {{I_FACE, false}, {I_FACE, true}, {J_FACE, false}, {J_FACE, true}, {K_FACE, false}, {K_FACE, true}}
+    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxLgr1);
     const auto& parentCell_to_face = this->data_[0]->cell_to_face_[cpgrid::EntityRep<0>(elemLgr1, true)];
 
+    if(parentCell_to_face.size()>6){
+        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+    }
     // Since lgr1 is associated with an element index smaller than "a last appearance lgr", then the only possibilities are
     // I_FACE true, J_FACE true, K_FACE true
-    
+
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-  
-    if (parentFaceLastAppearanceIdx == parentCell_to_face[1].index()) { // I_FACE true
-        // The same new born refined corner will have equal values of j and k, but i == 0 instead of cells_per_dim[0]
-        return  (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))  + ijk[2];
-    }
-    if (parentFaceLastAppearanceIdx == parentCell_to_face[3].index()) { // J_FACE true
-        // The same new born refined corner will have equal values of i and k, but j == 0 instead of cells_per_dim[1]
-        return  (ijk[0]*(cells_per_dim[2]+1)) + ijk[2];
-    }
-    if (parentFaceLastAppearanceIdx == parentCell_to_face[5].index()) { // K_FACE true
-        // The same new born refined corner will have equal values of i and j, but k == 0 instead of cells_per_dim[2]
-        return  (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (ijk[0]*(cells_per_dim[2]+1));
-    }
-    else {
-        OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");
-    }
-}
 
+    for (const auto& face : parentCell_to_face) {
+        const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
+        const auto& faceTag = current_view_data_->face_tag_[faceEntity];
+        if (parentFaceLastAppearanceIdx == face.index() && face.orientation()) {
+            if (faceTag == 0) { // I_FACE true
+                // The same new born refined corner will have equal values of j and k, but i == 0 instead of cells_per_dim[0]
+                return  (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1))  + ijk[2];
+            }
+            if (faceTag == 1) { // J_FACE true
+                // The same new born refined corner will have equal values of i and k, but j == 0 instead of cells_per_dim[1]
+                return  (ijk[0]*(cells_per_dim[2]+1)) + ijk[2];
+            }
+            if (faceTag == 2) { // K_FACE true
+                // The same new born refined corner will have equal values of i and j, but k == 0 instead of cells_per_dim[2]
+                return  (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (ijk[0]*(cells_per_dim[2]+1));
+            }
+        }
+    }
+    OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");
+}
 
 int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim, int faceIdxInLgr1,
                                              const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr) const
