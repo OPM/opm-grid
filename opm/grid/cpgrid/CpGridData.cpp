@@ -2545,6 +2545,10 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
 {
+    // Check the cell to be refined has no NNC (no neighbouring connections). Throw otherwise. 
+    if (hasNNCs({element.index()})) {
+        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+    }
     if (mark_.empty()) {
         mark_.resize(this->size(0));
     }
