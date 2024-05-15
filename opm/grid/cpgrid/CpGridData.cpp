@@ -2209,13 +2209,6 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     if (nonRepeated_parentCorners.size() != 8){
         OPM_THROW(std::logic_error, "Cell is not a hexahedron. Cannot be refined (yet).");
     }
-    /** When we refine only one cell, we do not need to compute width, length, height **/
-    // Get ijk from parent cell (Cartesian index). Needed to compute width, length, and height of the parent cell.
-    // std::array<int,3> ijk;
-    //getIJK(parent_idx, ijk);
-    // Get dx,dy,dz for each cell of the patch to be refined
-    //const auto& [widthX, lengthY, heightZ] = getWidthsLengthsHeights(ijk, {ijk[0]+1, ijk[1]+1, ijk[2]+1});
-    /** --- end lines to be replaced, avoiding ijk use --- **/
     // Refine parent cell
     parent_cell.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                      refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
