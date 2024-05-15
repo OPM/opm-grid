@@ -1493,6 +1493,15 @@ bool CpGrid::adapt(const std::array<int,3>& cells_per_dim)
 {
     // To do: support coarsening.
 
+    if (!distributed_data_.empty()){
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
+        }
+    }
+
     // To store/build one unique level with the refinement of all the marked elements.
     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> refined_data = this -> data_;
 #if HAVE_MPI
