@@ -1836,7 +1836,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 {
     /** Begin new approach */
     // Check all the cells to be refined have no NNC (no neighbouring connections).
-    std::vector<int> all_patch_cells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
+    std::vector<int> markedCells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
     for (const auto& elemIdx : markedCells) {
         const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[0]), elemIdx, true);
         coarse_grid.mark(1, elem);

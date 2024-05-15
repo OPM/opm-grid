@@ -2545,10 +2545,14 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
 {
-    // Check the cell to be refined has no NNC (no neighbouring connections). Throw otherwise. 
-    if (hasNNCs({element.index()})) {
+    if (refCount == -1) {
+        OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
+    }
+    // Check the cell to be marked for refinement has no NNC (no neighbouring connections). Throw otherwise.
+    if (hasNNCs({element.index()}) && (refCount == 1)) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
+    assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {
         mark_.resize(this->size(0));
     }
