@@ -101,6 +101,7 @@ void markAndAdapt_check(Dune::CpGrid&,
                         const std::array<int,3>&,
                         const std::vector<int>&,
                         Dune::CpGrid&,
+                        bool,
                         bool);
 
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
@@ -147,6 +148,7 @@ class CpGridData
                               const std::array<int,3>&,
                               const std::vector<int>&,
                               Dune::CpGrid&,
+                              bool,
                               bool);
 
     friend
