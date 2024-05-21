@@ -74,24 +74,34 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         const std::array<int,3>& cells_per_dim,
-                        const std::vector<int>& markedCells,
+                        const std::vector<int>& cellsForRefinement,
                         Dune::CpGrid& other_grid,
                         bool isBlockShape,
                         bool hasBeenRefinedAtLeastOnce)
 {
     int refinedLevel = coarse_grid.chooseData().size(); // size before calling adapt
 
-    for (const auto& elemIdx : markedCells)
+    for (const auto& elemIdx : cellsForRefinement)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[refinedLevel-1]), elemIdx, true);
         coarse_grid.mark(1, elem);
         coarse_grid.getMark(elem);
-        BOOST_CHECK( coarse_grid.getMark(elem) == 1);
-        BOOST_CHECK( elem.mightVanish() == true);
     }
     bool preAdapt = coarse_grid.preAdapt();
     const auto& data = coarse_grid.chooseData();
     if(preAdapt) {
+        for(int elemIdx = 0; elemIdx <  coarse_grid.chooseData()[refinedLevel-1]->size(0); ++elemIdx) {
+            const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[refinedLevel-1]), elemIdx, true);
+            if (std::find(cellsForRefinement.begin(), cellsForRefinement.end(), elemIdx) != cellsForRefinement.end()) {
+                BOOST_CHECK( coarse_grid.getMark(elem) > 0);
+                BOOST_CHECK( elem.mightVanish() == true);
+            }
+            else {
+                BOOST_CHECK( coarse_grid.getMark(elem) <= 0);
+                BOOST_CHECK( elem.mightVanish() == false); // Coarsening not supported yet
+            }
+        }
+        
         coarse_grid.adapt(cells_per_dim);
         coarse_grid.postAdapt();
         BOOST_CHECK(static_cast<int>(data.size()) == refinedLevel+2);
@@ -150,7 +160,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                     BOOST_CHECK(element.father().level() == 0);
                     BOOST_CHECK( element.getOrigin().level() == 0);  // To do: check Entity::getOrigin()
                 }
-                BOOST_CHECK_EQUAL( (std::find(markedCells.begin(), markedCells.end(), element.father().index()) == markedCells.end()), false);
+                BOOST_CHECK_EQUAL( (std::find(cellsForRefinement.begin(), cellsForRefinement.end(), element.father().index()) == cellsForRefinement.end()), false);
                 BOOST_CHECK(child_to_parent[0] != -1);
                 BOOST_CHECK_EQUAL( child_to_parent[0] == refinedLevel-1, true);
                 BOOST_CHECK_EQUAL( child_to_parent[1], element.father().index());
@@ -210,7 +220,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             auto it = element.hbegin(coarse_grid.maxLevel());
             auto endIt = element.hend(coarse_grid.maxLevel());
             const auto& [lgr, childrenList] = (*data[refinedLevel-1]).parent_to_children_cells_[element.index()];
-            if (std::find(markedCells.begin(), markedCells.end(), element.index()) == markedCells.end()){
+            if (std::find(cellsForRefinement.begin(), cellsForRefinement.end(), element.index()) == cellsForRefinement.end()){
                 BOOST_CHECK_EQUAL(lgr, -1);
                 BOOST_CHECK(childrenList.empty());
                 BOOST_CHECK( element.isLeaf() == true);

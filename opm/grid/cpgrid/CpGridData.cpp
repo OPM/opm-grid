@@ -2542,10 +2542,10 @@ bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
         OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
     }
     // Check the cell to be marked for refinement has no NNC (no neighbouring connections). Throw otherwise.
-    if (hasNNCs({element.index()}) && (refCount == 1)) {
+    if (hasNNCs({element.index()}) && (refCount > 0)) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
-    assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
+    assert(refCount>=0); // Do nothing (0), Refine (>1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {
         mark_.resize(this->size(0));
     }
@@ -2559,14 +2559,13 @@ int CpGridData::getMark(const cpgrid::Entity<0>& element) const
         OPM_THROW(std::logic_error, "No element has been marked.");
     }
     else {
-        return mark_[element.index()]; // 1 refinement, 0 doing nothing, -1 coarsening (not supported yet)
+        return mark_[element.index()]; // >1 refinement, 0 doing nothing, -1 coarsening (not supported yet)
     }
 
 }
 
 bool CpGridData::preAdapt()
 {
-    // [Indirectly] Set mightVanish flags for elements that have been marked for refinement
     if(mark_.empty()) {
         return false;
     }
@@ -2575,7 +2574,7 @@ bool CpGridData::preAdapt()
         bool refinementOrCoarsening = false;
         for (int elemIdx = 0; elemIdx <  this-> size(0); ++elemIdx) {
             const auto& element = Dune::cpgrid::Entity<0>(*this, elemIdx, true);
-            const auto& elemMark = getMark(element);  // 1 (to be refined), 0 (do nothing), -1 (to be coarsened - not supported yet)
+            const auto& elemMark = getMark(element);  // >1 (to be refined), 0 (do nothing), -1 (to be coarsened - not supported yet)
             refinementOrCoarsening = refinementOrCoarsening || (elemMark != 0);
             if (refinementOrCoarsening) {
                 break;

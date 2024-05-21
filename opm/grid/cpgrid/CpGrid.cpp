@@ -1473,8 +1473,6 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
-    // chooseData() is equal to 'data_' when the grid has not been distributed,
-    //                          'distributed_data_' otherwise.
     return current_view_data_-> mark(refCount, element);
 }
 
@@ -1821,7 +1819,7 @@ bool CpGrid::adapt(const std::array<int,3>& cells_per_dim)
     Opm::OpmLog::info(std::to_string(markedElem_count) + " marked elements have been refined.\n");
     Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the adapted grid.\n");
 
-    return preAdapt();
+    return (markedElem_count > 0);
 }
 
 void CpGrid::postAdapt()
