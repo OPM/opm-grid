@@ -586,81 +586,84 @@ namespace Dune
         ///
         /// @param [in] cells_per_dim    Number of (refined) cells in each direction that each
         ///                              parent cell should be refined to.
-        bool adapt(const std::array<int,3>& cells_per_dim);
+        bool adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                   const std::vector<int>& assignRefinedLevel,
+                   const std::vector<std::string>& lgr_name_vec);
 
         /// @brief Clean up refinement markers - set every element to the mark 0 which represents 'doing nothing'
         void postAdapt();
 
     private:
 
-        void refineAndProvideMarkedRefinedRelations(  std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                                      std::vector<int>& assignRefinedLevel,
-                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
-                                                      std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
-                                                      std::size_t& cell_count,
-                                                      std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell,
-                                                      std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                                      std::vector<std::size_t>& refined_cell_count_vec,
+        void refineAndProvideMarkedRefinedRelations(  /* Marked elements parameters */
+                                                      std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                                       int& markedElem_count,
                                                       std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                                       std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                                       std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                      /* Refined cells parameters */
+                                                      std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell,
+                                                      std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                      std::vector<int>& refined_cell_count_vec,
+                                                      const std::vector<int>& assignRefinedLevel,
                                                       std::vector<std::tuple<int,std::vector<int>>>& parent_to_refinedChildCells,
+                                                      /* Adapted cells parameters */
+                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
+                                                      std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
+                                                      int& cell_count,
                                                       std::vector<int>& preAdaptCells_to_adaptedCells,
-                                                      const int refinedLevel);
+                                                      /* Additional parameters */
+                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
-        void defineChildToParentRelation( std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
-                                          const std::size_t cell_count,
-                                          std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                          const std::vector<std::size_t> refined_cell_count_vec,
-                                          std::vector<std::array<int,2>>& adaptedChild_to_parentCell,
-                                          std::vector<std::vector<std::array<int,2>>>& refinedChild_to_parentCell_vec,
-                                          std::vector<int>& adaptedChild_to_idxInParentCell, // {level parent cell, parent cell index}
-                                          std::vector<std::vector<int>>& refinedChild_to_idxInParentCell_vec,
-                                          const int refinedLevel);
+        void defineChildToParentRelation(   std::vector<std::vector<std::array<int,2>>>& refinedChild_to_parentCell_vec,
+                                            std::vector<std::vector<int>>& refinedChild_to_idxInParentCell_vec,
+                                            std::vector<std::array<int,2>>& adaptedChild_to_parentCell,
+                                            std::vector<int>& adaptedChild_to_idxInParentCell, // {level parent cell, parent cell index}
+                                            std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                            const std::vector<int>& refined_cell_count_vec,
+                                            std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                            const int cell_count);
 
-        void defineRefinedAdaptedCellsRelation(  std::map<std::array<int,2>,int> elemLgrAndElemLgrCell_to_adaptedCell,
-                                                 std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
-                                                 const std::size_t cell_count,
-                                                 std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
-                                                 std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                                 const std::vector<std::size_t> refined_cell_count_vec,
-                                                 std::vector<std::vector<int>>& refinedCells_to_adaptedCells_vec,
-                                                 std::vector<std::array<int,2>>& adaptedCell_to_levelAndLevelCell,
-                                                 const int refinedLevel);
+        void defineRefinedAdaptedCellsRelation(   std::vector<std::vector<int>>& refinedCells_to_adaptedCells_vec,
+                                                  std::vector<std::array<int,2>>& adaptedCell_to_levelAndLevelCell,
+                                                  std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
+                                                  std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                  const std::vector<int> refined_cell_count_vec,
+                                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCell_to_adaptedCell,
+                                                  std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                                  const int cell_count);
 
-        void definePreAdaptRefinedAndAdaptedCornerRelations(std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                                            std::size_t& corner_count,
-                                                            std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+        void definePreAdaptRefinedAndAdaptedCornerRelations(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                                             std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                                            std::vector<std::size_t>& refined_corner_count_vec,
+                                                            std::vector<int>& refined_corner_count_vec,
                                                             std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                                                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                                            int& corner_count,
                                                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                                             const std::vector<int>& assignRefinedLevel,
                                                             const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                                             const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
-        void definePreAdaptRefinedAndAdaptedFaceRelations(  std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
-                                                            std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
-                                                            std::size_t& face_count,
-                                                            std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                                            std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                                            std::vector<std::size_t>& refined_face_count_vec,
-                                                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                                            const std::vector<int>& assignRefinedLevel,
-                                                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                                            const std::vector<std::array<int,3>>& cells_per_dim_vec);;
+        void definePreAdaptRefinedAndAdaptedFaceRelations(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                                          std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                                          std::vector<int>& refined_face_count_vec,
+                                                          std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
+                                                          std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
+                                                          int& face_count,
+                                                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                          const std::vector<int>& assignRefinedLevel,
+                                                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                          const std::vector<std::array<int,3>>& cells_per_dim_vec);;
 
         void populateAdaptedCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners,
-                                    const std::size_t& corners_count,
+                                    const int& corners_count,
                                     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                     std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner);
 
         void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
-                                    const std::vector<std::size_t>& refined_corner_count_vec,
+                                    const std::vector<int>& refined_corner_count_vec,
                                     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                     std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
 
@@ -668,7 +671,7 @@ namespace Dune
                                   Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
                                   Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
                                   Opm::SparseTable<int>& adapted_face_to_point,
-                                  const std::size_t& face_count,
+                                  const int& face_count,
                                   std::unordered_map<int,std::array<int,2>> adaptedFace_to_elemLgrAndElemLgrFace,
                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
@@ -682,7 +685,7 @@ namespace Dune
                                   std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
                                   std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refine_face_normals_vec,
                                   std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
-                                  const std::vector<std::size_t>& refined_face_count_vec,
+                                  const std::vector<int>& refined_face_count_vec,
                                   std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
@@ -693,7 +696,7 @@ namespace Dune
         void populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
                                   std::vector<std::array<int,8>>& adapted_cell_to_point,
                                   std::vector<int>& adapted_global_cell,
-                                  const std::size_t& cell_count,
+                                  const int& cell_count,
                                   cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
                                   cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
                                   std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
@@ -710,7 +713,7 @@ namespace Dune
         void populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
                                   std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
                                   std::vector<std::vector<int>>& refined_global_cell_vec,
-                                  const std::vector<std::size_t>& refined_cell_count_vec,
+                                  const std::vector<int>& refined_cell_count_vec,
                                   std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
                                   std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
                                   std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
@@ -719,7 +722,6 @@ namespace Dune
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                  const std::vector<int>& assignRefinedLevel,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   const std::vector<std::array<int,3>>&  cells_per_dim_vec);

@@ -433,12 +433,14 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    if ((pgrid_ -> parent_to_children_cells_).empty()){ // LGR cells
+    bool gridIsLeafView = (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()); // Entity's grid is the leaf grid view
+    return gridIsLeafView || (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);
+    /* if (gridIsLeafView && (pgrid_ -> parent_to_children_cells_).empty()){ // LGR cells
         return true;
     }
     else {
         return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
-    }
+        }*/
 }
 
 template<int codim>
@@ -498,7 +500,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         if (pgrid_ -> cell_to_idxInParentCell_[this->index()] !=-1) {
             int idxInParentCell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
             assert(idxInParentCell>-1);
-            const auto& cells_per_dim = pgrid_->cells_per_dim_;
+            const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
             const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idxInParentCell, cells_per_dim);
             FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
                 { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
