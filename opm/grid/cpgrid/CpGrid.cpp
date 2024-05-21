@@ -1487,6 +1487,20 @@ bool CpGrid::preAdapt()
     return current_view_data_-> preAdapt();
 }
 
+bool CpGrid::adapt()
+{
+    if(preAdapt()) {
+    int maxRefCount = 0; // maximum mark value
+    for (int elemIdx = 0; elemIdx < current_view_data_ ->size(0);) {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
+        maxRefCount = std::max(maxRefCount, this-> getMark(elem));
+    }
+    const std::array<int,3>& cells_per_dim  = {maxRefCount+1, maxRefCount+1, maxRefCount+1};
+    adapt(cells_per_dim);
+    }
+    return preAdapt();
+}
+
 bool CpGrid::adapt(const std::array<int,3>& cells_per_dim)
 {
     // To do: support coarsening.

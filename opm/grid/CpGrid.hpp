@@ -582,6 +582,7 @@ namespace Dune
         ///        Need to be called after elements have been marked for refinement. 
         bool preAdapt();
 
+        bool adapt();
         /// @brief Triggers the grid refinement process
         ///
         /// @param [in] cells_per_dim    Number of (refined) cells in each direction that each
