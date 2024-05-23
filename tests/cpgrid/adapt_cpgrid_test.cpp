@@ -72,6 +72,11 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+#define CHECK_COORDINATES(c1, c2)                                       \
+    for (int c = 0; c < 3; c++) {                                       \
+        BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
+    }
+
 void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         const std::array<int,3>& cells_per_dim,
                         const std::vector<int>& markedCells,
@@ -116,9 +121,94 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK_EQUAL(coarse_grid.size(0), other_grid.size(0));
             /** Checking amount of corners and cells in the refined grid fails fails. To be fixed.*/
             /*if(!hasBeenRefinedAtLeastOnce) {
-                BOOST_CHECK_EQUAL(coarse_grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
-                BOOST_CHECK_EQUAL(coarse_grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
-                }*/
+              BOOST_CHECK_EQUAL(coarse_grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
+              BOOST_CHECK_EQUAL(coarse_grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
+              }*/
+
+            for(const auto& point: adapted_leaf.geomVector<3>()){
+                auto equiv_point_iter = blockRefinement_leaf.geomVector<3>().begin();
+                while (point.center() != equiv_point_iter->center()) {
+                    ++equiv_point_iter;
+                }
+                CHECK_COORDINATES(point.center(), equiv_point_iter->center());
+                //  std::cout<< "point: " << point.center()[0] << " " << point.center()[1] << " " << point.center()[2]<<std::endl;
+                //  std::cout<< "equivPoint: "<< equiv_point_iter->center()[0] << " " << equiv_point_iter->center()[1] << " " << equiv_point_iter->center()[2] << std::endl;
+                for(const auto& coord: point.center())
+                    BOOST_TEST(std::isfinite(coord));
+
+            }
+            for(const auto& cell: adapted_leaf.geomVector<3>()) {
+                auto equiv_cell_iter = blockRefinement_leaf.geomVector<3>().begin();
+                while (cell.center() != equiv_cell_iter->center()) {
+                    ++equiv_cell_iter;
+                }
+                CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
+                //  std::cout<< "cell: " << cell.center()[0] << " " << cell.center()[1] << " " << cell.center()[2]<<std::endl;
+                // std::cout<< "equicell: "<< equiv_cell_iter->center()[0] << " " << equiv_cell_iter->center()[1] << " " << equiv_cell_iter->center()[2] << std::endl;
+                for(const auto& coord: cell.center())
+                    BOOST_TEST(std::isfinite(coord));
+                BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
+                // std::cout<< "vol: " << cell.volume() << " equal to " << equiv_cell_iter->volume() <<std::endl;
+            }
+
+            /* /////  THE FOLLOWING CODE WOULD FIT FOR TESTING GLOBAL REFINEMENT
+            const auto& grid_view = coarse_grid.leafGridView();
+            const auto& equiv_grid_view = other_grid.leafGridView();
+
+
+            for(const auto& element: elements(grid_view)) {
+                BOOST_CHECK( element.getOrigin().level() == 0);
+                auto equiv_element_iter = equiv_grid_view.begin<0>();
+                bool closedCenter =  (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+                    (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
+                    (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
+
+                while (!closedCenter) {
+                    ++equiv_element_iter;
+                    closedCenter = (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+                        (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
+                        (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
+                }
+                for(const auto& intersection: intersections(grid_view, element)) {
+                    // find matching intersection (needed as ordering is allowed to be different
+                    bool matching_intersection_found = false;
+                    for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter)) {
+                        if(intersection_match.indexInInside() == intersection.indexInInside()) {
+                            BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                            if(intersection.neighbor()) {
+                                BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                            }
+
+                            CHECK_COORDINATES(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
+                            const auto& geom_match = intersection_match.geometry();
+                            BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                            const auto& geom =  intersection.geometry();
+                             bool closedGeomCenter =  (std::abs(geom_match.center()[0] - geom.center()[0]) < 1e-12) &&
+                                 (std::abs(geom_match.center()[1] - geom.center()[1]) < 1e-12) &&
+                                 (std::abs(geom_match.center()[2] - geom.center()[2])< 1e-12);
+                             if (!closedGeomCenter) {
+                                 break; // Check next intersection_match
+                             }
+                            BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                            CHECK_COORDINATES(geom_match.center(), geom.center());
+                            BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                            decltype(geom.corner(0)) sum_match{}, sum{};
+
+                            for(int cor = 0; cor < geom.corners(); ++cor) {
+                                sum += geom.corner(cor);
+                                sum_match += geom_match.corner(1);
+                            }
+                            CHECK_COORDINATES(sum, sum_match);
+                            matching_intersection_found = true;
+                            break;
+                        }
+                    } // end-for-loop-intersection_match
+                    std::cout<< "Found? " << matching_intersection_found << " " << element.index() << std::endl;
+                    BOOST_CHECK(matching_intersection_found);
+                }
+                }    */   
         } // end-if-isBlockShape
 
         const auto& grid_view = coarse_grid.leafGridView();
