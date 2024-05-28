@@ -592,8 +592,13 @@ zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                EdgeWeightMethod edgeWeightsMethod, int root,
                                int numParts, const double zoltanImbalanceTol)
 {
+    // Parameters are empty, but must still have scope here since it
+    // (or rather a const reference to it) is queried in
+    // partitionForInfo() further down.
+    std::map<std::string,std::string> params;
+
     ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
-                                        root, zoltanImbalanceTol, false, numParts, {});
+                                        root, zoltanImbalanceTol, false, numParts, params);
     return partitioner.partitionForInfo();
 }
 
