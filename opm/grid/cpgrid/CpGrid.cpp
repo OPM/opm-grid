@@ -1837,6 +1837,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                          refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                          elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                          faceInMarkedElemAndRefinedFaces,
+                         refined_geometries_vec,
                          elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                          vanishedRefinedCorner_to_itsLastAppearance,
                          markedElem_to_itsLgr,
@@ -1854,6 +1855,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                          adaptedCell_to_elemLgrAndElemLgrCell,
                          elemLgrAndElemLgrFace_to_adaptedFace,
                          faceInMarkedElemAndRefinedFaces,
+                         adapted_geometries,
                          elemLgrAndElemLgrCorner_to_adaptedCorner,
                          vanishedRefinedCorner_to_itsLastAppearance,
                          markedElem_to_itsLgr,
@@ -2657,6 +2659,7 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                                   std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_adaptedFace,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                  Dune::cpgrid::DefaultGeometryPolicy adapted_geometries,
                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner, 
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance, 
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
@@ -2683,9 +2686,12 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         // Auxiliary cell_to_face
         std::vector<cpgrid::EntityRep<1>> aux_cell_to_face;
 
+         const auto& allCorners = adapted_geometries.geomVector(std::integral_constant<int,3>());
+         cpgrid::Geometry<3,3> cellGeom;
+
         if (elemLgr == -1) { // The value -1 represents the current_view_data_
             // Get the cell geometry.
-            adapted_cells[cell] =  (*(current_view_data_->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
+            cellGeom =  (*(current_view_data_->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             preAdapt_cell_to_point = current_view_data_->cell_to_point_[elemLgrCell];
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -2694,7 +2700,7 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         else {
             const auto& elemLgrData = markedElem_to_itsLgr[elemLgr]; // Recall elemLgr == elemIdx (from an element marked for refinement)
             // Get the cell geometry.
-            adapted_cells[cell] =  (*(elemLgrData->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
+            cellGeom =  (*(elemLgrData->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             preAdapt_cell_to_point = elemLgrData->cell_to_point_[elemLgrCell];
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -2788,6 +2794,12 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         } // end-cell_to_face
         // Adapted/Leaf-grid-view cell to face.
         adapted_cell_to_face.appendRow(aux_cell_to_face.begin(), aux_cell_to_face.end());
+
+          // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
+            int* indices_storage_ptr = adapted_cell_to_point[cell].data();
+            adapted_cells[cell] = cpgrid::Geometry<3,3>(cellGeom.center(), cellGeom.volume(),
+                                                                      allCorners,
+                                                                  indices_storage_ptr);
     } // adapted_cells
 
     // Adapted/Leaf-grid-view face to cell.
@@ -2804,6 +2816,7 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                                   std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                  const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner, 
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance, 
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
@@ -2818,6 +2831,8 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
         refined_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_cell_to_point_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_global_cell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
+
+        const auto& allLevelCorners = refined_geometries_vec[shiftedLevel].geomVector(std::integral_constant<int,3>());
     
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
         
@@ -2834,8 +2849,6 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
             std::vector<cpgrid::EntityRep<1>> aux_refined_cell_to_face;
 
             refined_global_cell_vec[shiftedLevel][cell] = cell; // current_view_data_ -> global_cell_[elemLgr]; instead?
-            // Get the cell geometry.
-            refined_cells_vec[shiftedLevel][cell] =  (*(elemLgrData->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             preAdapt_cell_to_point = elemLgrData->cell_to_point_[elemLgrCell];
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -2915,6 +2928,14 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
             } // end-cell_to_face
             // Refined cell to face.
             refined_cell_to_face_vec[shiftedLevel].appendRow(aux_refined_cell_to_face.begin(), aux_refined_cell_to_face.end());
+                // Get the cell geometry.
+            const auto& elemLgrGeom =  (*(elemLgrData->geometry_.geomVector(std::integral_constant<int,0>())))[elemLgrCellEntity];
+        
+             // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
+            int* indices_storage_ptr = refined_cell_to_point_vec[shiftedLevel][cell].data();
+            refined_cells_vec[shiftedLevel][cell] = cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(),
+                                                                    allLevelCorners     , /* allcorners_ */
+                                                                  indices_storage_ptr);
         } // refined_cells
         // Refined face to cell.
         refined_cell_to_face_vec[shiftedLevel].makeInverseRelation(refined_face_to_cell_vec[shiftedLevel]);
