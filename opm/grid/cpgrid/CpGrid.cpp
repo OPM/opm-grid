@@ -209,7 +209,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
-                    [[maybe_unused]] bool useZoltan,
+                    [[maybe_unused]] int partitionMethod,
                     double zoltanImbalanceTol,
                     [[maybe_unused]] bool allowDistributedWells,
                     [[maybe_unused]] const std::vector<int>& input_cell_part)
@@ -324,7 +324,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
         else
         {
-            if (useZoltan)
+            if (partitionMethod == Dune::PartitionMethod::zoltan)
             {
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)

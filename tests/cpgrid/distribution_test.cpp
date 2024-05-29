@@ -27,10 +27,12 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <dune/grid/common/mcmgmapper.hh>
 
-#ifdef HAVE_ZOLTAN
-bool USE_ZOLTAN = true;
-#else
-bool USE_ZOLTAN = false;
+#if defined(HAVE_ZOLTAN) && defined(HAVE_METIS)
+int partition_methods[] = {1,2};
+#elif defined (HAVE_ZOLTAN)
+int partition_methods[] = {1};
+#elif defined (HAVE_METIS)
+int partition_methods[] = {2};
 #endif
 
 #if HAVE_MPI
@@ -344,13 +346,14 @@ private:
 
 BOOST_AUTO_TEST_CASE(testDistributedComm)
 {
+for (auto partition_method : partition_methods) {
 #if HAVE_MPI
     Dune::CpGrid grid;
     std::array<int, 3> dims={{8, 4, 2}};
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
     //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     grid.createCartesian(dims, size);
-    grid.loadBalance(1, USE_ZOLTAN);
+    grid.loadBalance(1, partition_method);
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -371,9 +374,11 @@ BOOST_AUTO_TEST_CASE(testDistributedComm)
         BOOST_REQUIRE(cont[index.local()] == 1);
 #endif
 }
+}
 
 BOOST_AUTO_TEST_CASE(compareWithSequential)
 {
+for (auto partition_method : partition_methods) {
 #if HAVE_MPI
     Dune::CpGrid grid;
     Dune::CpGrid seqGrid(MPI_COMM_SELF);
@@ -382,7 +387,7 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     seqGrid.setUniqueBoundaryIds(true);
     grid.createCartesian(dims, size);
-    grid.loadBalance(1, USE_ZOLTAN);
+    grid.loadBalance(1, partition_method);
     seqGrid.createCartesian(dims, size);
 
     auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
@@ -461,10 +466,11 @@ BOOST_AUTO_TEST_CASE(compareWithSequential)
     }
 #endif
 }
+}
 
 BOOST_AUTO_TEST_CASE(distribute)
 {
-
+for (auto partition_method : partition_methods) {
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     Dune::MPIHelper::instance(m_argc, m_argv);
@@ -523,7 +529,7 @@ BOOST_AUTO_TEST_CASE(distribute)
     const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
 
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
-    grid.loadBalance(data, 1, USE_ZOLTAN);
+    grid.loadBalance(data, 1, partition_method);
 
     if ( grid.numCells())
     {
@@ -590,6 +596,7 @@ BOOST_AUTO_TEST_CASE(distribute)
     decltype(std::get<0>(Dune::CpGrid().loadBalance(nullptr))) test1 = true;
     decltype(std::get<0>(Dune::CpGrid().loadBalance(Dune::EdgeWeightMethod(), nullptr))) test2 = true;
     test2 = test1;
+}
 }
 
 // A test for distributing by a parts array.
@@ -688,7 +695,7 @@ BOOST_AUTO_TEST_CASE(distributeParts)
 // these are check with the globalCell values.
 BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
 {
-
+for (auto partition_method : partition_methods) {
     Dune::CpGrid grid;
     std::array<int, 3> dims={{8, 4, 2}};
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
@@ -696,7 +703,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     typedef Dune::CpGrid::LeafGridView GridView;
     enum{dimWorld = GridView::dimensionworld};
 
-    grid.loadBalance(1, USE_ZOLTAN);
+    grid.loadBalance(1, partition_method);
     auto global_grid = grid;
     global_grid.switchToGlobalView();
 
@@ -717,6 +724,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPI)
     (void) bid_handle;
 #endif
 }
+}
 // A small test that gathers/scatter the global cell indices.
 // On the sending side these are sent and on the receiving side
 // these are check with the globalCell values.
@@ -730,7 +738,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPIWithoutZoltan)
     typedef Dune::CpGrid::LeafGridView GridView;
     enum{dimWorld = GridView::dimensionworld};
 
-    grid.loadBalance(1, false);
+    grid.loadBalance(1, 0);
     auto global_grid = grid;
     global_grid.switchToGlobalView();
 
@@ -754,6 +762,7 @@ BOOST_AUTO_TEST_CASE(cellGatherScatterWithMPIWithoutZoltan)
 
 BOOST_AUTO_TEST_CASE(intersectionOverlap)
 {
+for (auto partition_method : partition_methods) {
     Dune::CpGrid grid;
     std::array<int, 3> dims={{8, 4, 2}};
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
@@ -767,7 +776,7 @@ BOOST_AUTO_TEST_CASE(intersectionOverlap)
     typedef GridView::Codim<0>::Iterator ElementIterator;
     typedef typename GridView::IntersectionIterator IntersectionIterator;
 
-    grid.loadBalance(1, USE_ZOLTAN);
+    grid.loadBalance(1, partition_method);
     ElementIterator endEIt = gridView.end<0>();
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
         IntersectionIterator isEndIt = gridView.iend(eIt);
@@ -782,6 +791,7 @@ BOOST_AUTO_TEST_CASE(intersectionOverlap)
             }
         }
     }
+}
 }
 
 bool
