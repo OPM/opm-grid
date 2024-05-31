@@ -1790,9 +1790,41 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                                   assignRefinedLevel,
                                                   faceInMarkedElemAndRefinedFaces,
                                                   cells_per_dim_vec);
+
+
+    setRefinedLevelGridsGeometries( /* Refined corner arguments */
+                                    refined_corners_vec,
+                                    refined_corner_count_vec,
+                                    /* Refined face arguments */
+                                    refined_faces_vec,
+                                    mutable_refined_face_tags_vec,
+                                    mutable_refined_face_normals_vec,
+                                    refined_face_to_point_vec,
+                                    refined_face_count_vec,
+                                    /* Refined cell argumets */
+                                    refined_cells_vec,
+                                    refined_cell_to_point_vec,
+                                    refined_global_cell_vec,
+                                    refined_cell_count_vec,
+                                    refined_cell_to_face_vec,
+                                    refined_face_to_cell_vec,
+                                    /* Auxiliary arguments */
+                                    refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                    refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                    refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                    elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                    elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                    faceInMarkedElemAndRefinedFaces,
+                                    refined_geometries_vec,
+                                    vanishedRefinedCorner_to_itsLastAppearance,
+                                    markedElem_to_itsLgr,
+                                    markedElemAndEquivRefinedCorn_to_corner,
+                                    cornerInMarkedElemWithEquivRefinedCorner,
+                                    cells_per_dim_vec);
     
-    // --- Refined corners  ---
-    populateRefinedCorners(refined_corners_vec,
+    
+    /*// --- Refined corners  ---
+      populateRefinedCorners(refined_corners_vec,
                            refined_corner_count_vec,
                            markedElem_to_itsLgr,
                            refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
@@ -1824,7 +1856,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                          markedElem_to_itsLgr,
                          markedElemAndEquivRefinedCorn_to_corner,
                          cornerInMarkedElemWithEquivRefinedCorner,
-                         cells_per_dim_vec);
+                         cells_per_dim_vec); */
+    
      for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + startingGridIdx;
         // Store refined grid
@@ -1868,7 +1901,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                          assignRefinedLevel,
                          markedElemAndEquivRefinedCorn_to_corner,
                          cornerInMarkedElemWithEquivRefinedCorner,
-                         cells_per_dim_vec);
+                         cells_per_dim_vec,
+                         startingGridIdx);
     // --- Adapted cells ---
     std::vector<int> adapted_global_cell(cell_count, 0);
     populateAdaptedCells(adapted_cells,
@@ -1887,7 +1921,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                          assignRefinedLevel,
                          markedElemAndEquivRefinedCorn_to_corner,
                          cornerInMarkedElemWithEquivRefinedCorner,
-                         cells_per_dim_vec);
+                         cells_per_dim_vec,
+                         startingGridIdx);
     // Store adapted grid 
     (this-> data_).push_back(adaptedGrid_ptr);
     // Further Adapted  grid Attributes 
@@ -1951,7 +1986,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
     }
     // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
-    if (startIJK_vec.size() > 0 && (*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
+    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) { // !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "LGRs share at least one face.");
         }
@@ -1959,9 +1994,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "LGRs share at least one face.");
         }
     }
-    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) {
-        /** Do not delete commented code below. It's WIP. For now, throw if LGRs share a face */
-        /*  bool notAllowedYet = false;
+    /*  if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) {
+        //Do not delete commented code below. It's WIP. For now, throw if LGRs share a face 
+        bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
                 const auto& sharedFaceTag = (*data_[0]).sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
@@ -1977,17 +2012,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     notAllowedYet = notAllowedYet ||
                         ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));      
                 }
-                if (notAllowedYet){*/
+                if (notAllowedYet){
                     if (comm().rank()==0){
                         OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
                     }
                     else{
                         OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
                     }
-                    //}   
-                    //  } // end-otherLevel-for-loop
-                    //   } // end-level-for-loop
-    }// end-if-patchesShareFace
+                }   
+            } // end-otherLevel-for-loop
+        } // end-level-for-loop
+        }// end-if-patchesShareFace*/
     
     // Check grid is Cartesian
     const std::array<int,3>& coarseGrid_dim =  (*data_[0]).logical_cartesian_size_;
@@ -2490,7 +2525,8 @@ void CpGrid::populateAdaptedFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                                   const std::vector<int>& assignRefinedLevel,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>& cells_per_dim_vec)
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                  int startingGridIdx)
 {
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
@@ -2558,7 +2594,7 @@ void CpGrid::populateAdaptedFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                         lastAppearanceLgrEquivCorner = cornerInMarkedElemWithEquivRefinedCorner[markedCorner].back()[1];
                     }
                     else {
-                        const auto& shiftedLevel = assignRefinedLevel[elemLgr] - static_cast<int>(this->data_.size());
+                        const auto& shiftedLevel = assignRefinedLevel[elemLgr] - startingGridIdx; /** Assigned level > preAdapt maxLevel ! */
                         bool isNewRefinedCornInInteriorLgr = isRefinedCornerInInteriorLgr(cells_per_dim_vec[shiftedLevel], elemLgrCorn);
                         assert(!isNewRefinedCornInInteriorLgr); // and  elemLgrAndElemLgrCorner_to_adaptedCorner.count({elemLgr, elemLgrCorn}) == 0.,
                         // To locate vanished corners, we need a while-loop, since {elemLgr, elemLgrcorner} leads to
@@ -2691,13 +2727,14 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_adaptedFace,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                   Dune::cpgrid::DefaultGeometryPolicy adapted_geometries,
-                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner, 
-                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance, 
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
                                   const std::vector<int>& assignRefinedLevel,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>& cells_per_dim_vec)
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                  int startingGridIdx)
 {
 
     // --- Adapted cells ---
@@ -2717,8 +2754,8 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         // Auxiliary cell_to_face
         std::vector<cpgrid::EntityRep<1>> aux_cell_to_face;
 
-         const auto& allCorners = adapted_geometries.geomVector(std::integral_constant<int,3>());
-         cpgrid::Geometry<3,3> cellGeom;
+        const auto& allCorners = adapted_geometries.geomVector(std::integral_constant<int,3>());
+        cpgrid::Geometry<3,3> cellGeom;
 
         if (elemLgr == -1) { // The value -1 represents the current_view_data_
             // Get the cell geometry.
@@ -2784,7 +2821,7 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
             }
             adapted_cell_to_point[cell][corn] = adaptedCorn;
         } // end-cell_to_point
-        
+
         // Cell to face.
         for (const auto& face : preAdapt_cell_to_face) {
             const auto& preAdaptFace = face.index();
@@ -2792,7 +2829,7 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
             // Face might have vanished - Search its refined lgr-children faces in that case -
             // last lgr where the face appears
             if (elemLgrAndElemLgrFace_to_adaptedFace.count({elemLgr, preAdaptFace}) == 0) {
-                if (elemLgr ==-1) { // Coarse face got replaced by its children - from the last appearance of the marked face. 
+                if (elemLgr ==-1) { // Coarse face got replaced by its children - from the last appearance of the marked face.
                     assert(!faceInMarkedElemAndRefinedFaces[preAdaptFace].empty());
                     const auto& lastAppearanceLgr = faceInMarkedElemAndRefinedFaces[preAdaptFace].back().first;
                     const auto& lastAppearanceLgrFaces = faceInMarkedElemAndRefinedFaces[preAdaptFace].back().second;
@@ -2803,7 +2840,7 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                 }
                 if (elemLgr>-1) { // Refined face vanished and its equivalent refined face from a neighboring lgr got stored.
                     // Get shifted level
-                    const auto& shiftedLevel = assignRefinedLevel[elemLgr] - (this->data_.size());
+                    const auto& shiftedLevel = assignRefinedLevel[elemLgr] - startingGridIdx; /** Assigned level > preAdapt maxLevel !*/
                     // Get the index of the marked face where the refined face was born.
                     const auto& markedFace = getParentFaceWhereNewRefinedFaceLaysOn(cells_per_dim_vec[shiftedLevel], preAdaptFace,
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);
@@ -2826,18 +2863,18 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         // Adapted/Leaf-grid-view cell to face.
         adapted_cell_to_face.appendRow(aux_cell_to_face.begin(), aux_cell_to_face.end());
 
-          // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
-            int* indices_storage_ptr = adapted_cell_to_point[cell].data();
-            adapted_cells[cell] = cpgrid::Geometry<3,3>(cellGeom.center(), cellGeom.volume(),
-                                                                      allCorners,
-                                                                  indices_storage_ptr);
+        // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
+        int* indices_storage_ptr = adapted_cell_to_point[cell].data();
+        adapted_cells[cell] = cpgrid::Geometry<3,3>(cellGeom.center(), cellGeom.volume(),
+                                                    allCorners,
+                                                    indices_storage_ptr);
     } // adapted_cells
 
     // Adapted/Leaf-grid-view face to cell.
     adapted_cell_to_face.makeInverseRelation(adapted_face_to_cell);
 }
 
-   
+
 void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
                                   std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
                                   std::vector<std::vector<int>>& refined_global_cell_vec,
@@ -2973,6 +3010,74 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
     } // end-shiftedLevel-for-loop
 }
 
+void CpGrid::setRefinedLevelGridsGeometries( /* Refined corner arguments */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                                             const std::vector<int>& refined_corner_count_vec,
+                                             /* Refined face arguments */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
+                                             std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
+                                             std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refined_face_normals_vec,
+                                             std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
+                                             const std::vector<int>& refined_face_count_vec,
+                                             /* Refined cell argumets */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
+                                             std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
+                                             std::vector<std::vector<int>>& refined_global_cell_vec,
+                                             std::vector<int>& refined_cell_count_vec,
+                                             std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
+                                             std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
+                                             /* Auxiliary arguments */
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                             std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                             std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                             const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
+                                             std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                             std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                             const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                             const std::vector<std::array<int,3>>&  cells_per_dim_vec)
+{
+    // --- Refined corners  ---
+    populateRefinedCorners(refined_corners_vec,
+                           refined_corner_count_vec,
+                           markedElem_to_itsLgr,
+                           refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
+    // --- Refined faces  ---
+    populateRefinedFaces(refined_faces_vec,
+                         mutable_refined_face_tags_vec,
+                         mutable_refined_face_normals_vec,
+                         refined_face_to_point_vec,
+                         refined_face_count_vec,
+                         refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                         vanishedRefinedCorner_to_itsLastAppearance,
+                         markedElem_to_itsLgr,
+                         cornerInMarkedElemWithEquivRefinedCorner,
+                         markedElemAndEquivRefinedCorn_to_corner);
+    // --- Refined cells  ---
+    populateRefinedCells(refined_cells_vec,
+                         refined_cell_to_point_vec,
+                         refined_global_cell_vec,
+                         refined_cell_count_vec,
+                         refined_cell_to_face_vec,
+                         refined_face_to_cell_vec,
+                         refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                         elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                         faceInMarkedElemAndRefinedFaces,
+                         refined_geometries_vec,
+                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                         vanishedRefinedCorner_to_itsLastAppearance,
+                         markedElem_to_itsLgr,
+                         markedElemAndEquivRefinedCorn_to_corner,
+                         cornerInMarkedElemWithEquivRefinedCorner,
+                         cells_per_dim_vec);
+      
+}
+
+
 
 std::array<int,3>  CpGrid::getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const
 {
@@ -3040,6 +3145,13 @@ std::array<int,3>  CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_
 
 bool CpGrid::isRefinedCornerInInteriorLgr(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const
 {
+    //  assert(cells_per_dim[0]>0);
+    // assert(cells_per_dim[1]>0);
+    // assert(cells_per_dim[2]>0);
+    if ((cells_per_dim[0] == 0) || (cells_per_dim[1] == 0) || (cells_per_dim[2] == 0))
+    {
+    std::cout<< "corn " << cornerIdxInLgr << " cells: " << cells_per_dim[0] << " " << cells_per_dim[1] << " " << cells_per_dim[2] <<std::endl;
+    }
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
     return ((ijk[0]%cells_per_dim[0] > 0) &&  (ijk[1]%cells_per_dim[1]>0) && (ijk[2]%cells_per_dim[2]>0));
 }
@@ -3237,8 +3349,8 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cell
                                                    const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
                                                    int parentCellIdxOnLevel0) const
 {
-    std::cout<< "cells_per_dim: " << cells_per_dim[0] << " " << cells_per_dim[1] << " " << cells_per_dim[2] << std::endl;
-    std::cout<< "face idx: " << faceIdxInLgr << " parentCell: " << parentCellIdxOnLevel0 << std::endl;
+    //std::cout<< "cells_per_dim: " << cells_per_dim[0] << " " << cells_per_dim[1] << " " << cells_per_dim[2] << std::endl;
+    //  std::cout<< "face idx: " << faceIdxInLgr << " parentCell: " << parentCellIdxOnLevel0 << std::endl;
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdxOnLevel0, true)];
@@ -3257,6 +3369,7 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cell
     int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
     int refined_j_faces = cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
+    //  std::cout<< "refined faces i: " << refined_i_faces << " j: " << refined_j_faces << " k: " << refined_k_faces << std::endl;
     assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
 
     for (const auto& face : parentCell_to_face) {

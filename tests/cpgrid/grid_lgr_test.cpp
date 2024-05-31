@@ -619,8 +619,6 @@ BOOST_AUTO_TEST_CASE(pathces_share_faceB)
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
 }
 
-
-
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
 {
 

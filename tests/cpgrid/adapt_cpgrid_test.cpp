@@ -374,7 +374,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     } // end-if-preAdapt
 }
 
-/*BOOST_AUTO_TEST_CASE(doNothing)
+BOOST_AUTO_TEST_CASE(doNothing)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(mark2InteriorConsequtiveCells)
 
     std::vector<int> markedCells = {17,18};
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false);
-}*/
+}
 
 BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
 {
@@ -468,7 +468,7 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
 }
 
 
-/*BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
+BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -478,7 +478,7 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
     std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false);
-}*/
+}
 
 /*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
 {
