@@ -521,12 +521,6 @@ namespace Dune
             GlobalCoordinate corner(int cor) const
             {
                 assert(allcorners_ && cor_idx_);
-                std::cout<< "allcorners size " << (allcorners_ ->size()) << std::endl;
-                /* std::cout<< " *cor_idx_ " << cor_idx_[0] << " " << cor_idx_[1] << " " << cor_idx_[2] << " " << cor_idx_[3] << std::endl;
-                std::cout<< " *cor_idx_ " << cor_idx_[4] << " " << cor_idx_[5] << " " << cor_idx_[6] << " " << cor_idx_[7] << std::endl;*/
-
-                std::cout<<  (allcorners_->data())[cor_idx_[cor]].center()[0] << " " <<  (allcorners_->data())[cor_idx_[cor]].center()[1] << " " <<
-                    (allcorners_->data())[cor_idx_[cor]].center()[2] << std::endl;
                 return (allcorners_->data())[cor_idx_[cor]].center();
             }
 
@@ -666,7 +660,6 @@ namespace Dune
                 const std::array<int,3>& refined_dim = { cells_per_dim[0]*patch_dim[0],
                                                          cells_per_dim[1]*patch_dim[1],
                                                          cells_per_dim[2]*patch_dim[2]};
-                std::cout<< "refined_dim: " << refined_dim[0] << " " << refined_dim[1] << " " << refined_dim[2] << std::endl;
                 refined_corners.resize((refined_dim[0] + 1)*(refined_dim[1] + 1)*(refined_dim[2] + 1));
                 // The nummbering starts at the botton, so k=0 (z-axis), and j=0 (y-axis), i=0 (x-axis).
                 // Then, increasing k ('going up'), followed by increasing i ('going right->'),
