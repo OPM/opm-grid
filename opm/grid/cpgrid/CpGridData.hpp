@@ -342,6 +342,9 @@ public:
     ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
     bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
+    int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches, const std::vector<std::array<int,3>>& endIJK_2Patches) const;
+
+    
     /// @brief Mark entity for refinement or coarsening.
     ///
     /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.

@@ -2069,6 +2069,75 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
     return false;
 }
 
+int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches, const std::vector<std::array<int,3>>& endIJK_2Patches) const
+{
+    assert(startIJK_2Patches.size() == 2);
+    assert(endIJK_2Patches.size() == 2);
+
+    int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
+     
+    if (patchesShareFace(startIJK_2Patches, endIJK_2Patches)) {
+        
+        const auto& detectSharing = [](std::vector<int> faceIdxs, std::vector<int> otherFaceIdxs){
+            bool faceIsShared = false;
+            for (const auto& face : faceIdxs) {
+                for (const auto& otherFace : otherFaceIdxs) {
+                    faceIsShared = faceIsShared || (face == otherFace);
+                    if (faceIsShared) {
+                        return faceIsShared; // should be true here
+                    }
+                }
+            }
+            return faceIsShared; // should be false here
+        };
+     
+        const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_2Patches[0], endIJK_2Patches[0]);
+        const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] = this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
+
+
+        bool isShared = false;
+           
+        if (startIJK_2Patches[1][0] == endIJK_2Patches[0][0]) {
+            isShared = isShared || detectSharing(iTrue, iFalseOther);
+            if (isShared) {
+                faceTag = 0;
+            }   
+        }
+        if (endIJK_2Patches[1][0] == startIJK_2Patches[0][0]) {
+            isShared = isShared || detectSharing(iFalse, iTrueOther);
+            if (isShared) {
+                faceTag = 0;
+            }  
+        }
+        if (startIJK_2Patches[1][1] == endIJK_2Patches[0][1]) {
+            isShared = isShared || detectSharing(jTrue, jFalseOther);
+            if (isShared) {
+                faceTag = 1;
+            }  
+        }
+        if (endIJK_2Patches[1][1] == startIJK_2Patches[1][1]) {
+            isShared = isShared || detectSharing(jFalse, jTrueOther);
+            if (isShared) {
+                faceTag = 1;
+            }  
+        }
+        if (startIJK_2Patches[1][2] == endIJK_2Patches[0][2]) {
+            isShared = isShared || detectSharing(kTrue, kFalseOther);
+            if (isShared) {
+                faceTag = 2;
+            }  
+        }
+        if (endIJK_2Patches[1][2] == startIJK_2Patches[0][2]) {
+            isShared = isShared || detectSharing(kFalse, kTrueOther);
+            if (isShared) {
+                faceTag = 2;
+            }  
+        }
+    }
+    return faceTag; // -1 when no face is shared, otherwise: 0 (shared I_FACE), 1 (shared J_FACE), 2 (shared K_FACE)
+}
+
+
 std::vector<int>
 CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
 {

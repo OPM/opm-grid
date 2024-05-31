@@ -1090,14 +1090,16 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
     if ( intersection.neighbor()) {
         if ((intersection.inside().level() != intersection.outside().level())) {
             // one coarse and one refined neighboring cell
+            /** Now, it could also be two refined cells. In that case, any of them will fit to search for the parent face */
             const auto& cellIn = intersection.inside();
             const auto& cellOut = intersection.outside();
 
             // Identify the coarse and the refined neighboring cell
             const auto coarseCell =  (cellIn.level() == 0) ? cellIn : cellOut;
             const auto refinedCell =  (coarseCell == cellIn) ? cellOut : cellIn;
-            assert(coarseCell.level() == 0);
-            assert(refinedCell.level() > 0);
+            std::cout<< "coarseCell: " << coarseCell.index() << " level: " << coarseCell.level() << std::endl;
+            std::cout<< "refinedCell: "  << refinedCell.index() << " level: " << refinedCell.level() << std::endl;
+            assert(coarseCell.level() != refinedCell.level());
 
             // Get parent cell (on level zero) of the refined cell
             const auto& parentCell = refinedCell.father();
@@ -1950,7 +1952,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
     }
     // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
-    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)){
+    if (startIJK_vec.size() > 0 && (*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "LGRs share at least one face.");
         }
@@ -1958,6 +1960,35 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "LGRs share at least one face.");
         }
     }
+    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) {
+        bool notAllowedYet = false;
+        for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
+            for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
+                const auto& sharedFaceTag = (*data_[0]).sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
+                if (sharedFaceTag == 0 ) { 
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));      
+                }
+                if (sharedFaceTag == 1) { 
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));      
+                }
+                if (sharedFaceTag == 2) { 
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));      
+                }
+                if (notAllowedYet){
+                    if (comm().rank()==0){
+                        OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
+                    }
+                    else{
+                        OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
+                    }
+                }   
+            } // end-otherLevel-for-loop
+        } // end-level-for-loop
+    }// end-if-patchesShareFace
+    
     // Check grid is Cartesian
     const std::array<int,3>& coarseGrid_dim =  (*data_[0]).logical_cartesian_size_;
     long unsigned int coarseGridXYZ = coarseGrid_dim[0]*coarseGrid_dim[1]*coarseGrid_dim[2];
