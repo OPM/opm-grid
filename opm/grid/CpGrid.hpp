@@ -664,6 +664,7 @@ namespace Dune
         void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
                                     const std::vector<int>& refined_corner_count_vec,
                                     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                     const int preAdaptMaxLevel,
                                     std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
 
         void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
@@ -675,6 +676,7 @@ namespace Dune
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                   const int preAdaptMaxLevel,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner);
 
@@ -691,6 +693,7 @@ namespace Dune
                                   std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                   const int preAdaptMaxLevel,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   const std::vector<std::array<int,3>>&  cells_per_dim_vec);
@@ -721,6 +724,7 @@ namespace Dune
                                              const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
                                              std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                              const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                             const int preAdaptMaxLevel,
                                              std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                              const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                              const std::vector<std::array<int,3>>&  cells_per_dim_vec);
@@ -758,7 +762,7 @@ namespace Dune
                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                  const std::vector<int>& assgnRefinedLevel,
+                                  const std::vector<int>& assignRefinedLevel,
                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec,
