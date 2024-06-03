@@ -344,6 +344,39 @@ private:
     std::vector<int>& cont_;
 };
 
+BOOST_AUTO_TEST_CASE(compareSerialZoltanAndMetis)
+{
+//Here, specifically compare serial Zoltan and Metis
+for (auto partition_method : partition_methods) {
+#if HAVE_MPI
+    Dune::CpGrid grid;
+    std::array<int, 3> dims={{10, 10, 10}};
+    std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+    //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+    grid.createCartesian(dims, size);
+    grid.loadBalanceSerial(1, partition_method);
+#ifdef HAVE_DUNE_ISTL
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+#else
+    /// \brief The type of the set of the attributes
+    enum AttributeSet{owner, overlap, copy};
+#endif
+    std::vector<int> cont(grid.size(0), 1);
+    const auto& indexSet = grid.getCellIndexSet();
+    for ( const auto& index: indexSet)
+        if (index.local().attribute() != AttributeSet::owner )
+            cont[index.local()] = -1;
+
+    CopyCellValues handle(cont);
+    grid.communicate(handle, Dune::InteriorBorder_All_Interface,
+                     Dune::ForwardCommunication);
+
+    for ( const auto& index: indexSet)
+        BOOST_REQUIRE(cont[index.local()] == 1);
+#endif
+}
+}
+
 BOOST_AUTO_TEST_CASE(testDistributedComm)
 {
 for (auto partition_method : partition_methods) {
