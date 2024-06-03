@@ -88,6 +88,21 @@ void getNullNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
         *err = ZOLTAN_OK;
 }
 
+int getNumberOfEdgesForSpecificCell(const Dune::CpGrid& grid, int localCellId) {
+    // For the graph there is an edge only if the face has two neighbors.
+    // Therefore we need to check each face
+    int edges = 0;
+    for ( int local_face = 0; local_face < grid.numCellFaces(localCellId); ++local_face )
+    {
+        const int face = grid.cellFace(localCellId, local_face);
+        if ( grid.faceCell(face, 0) != -1 && grid.faceCell(face, 1) != -1 )
+        {
+            ++edges;
+        }
+    }
+    return edges;
+}
+
 void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
@@ -102,21 +117,33 @@ void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
     }
     for( int i = 0; i < numCells;  i++ )
     {
-        // For the graph there is an edge only if the face has two neighbors.
-        // Therefore we need to check each face
-        int edges = 0;
-        int lid   = localID[i];
-        for ( int local_face = 0; local_face < grid.numCellFaces(static_cast<int>(localID[i])); ++local_face )
-        {
-            const int face = grid.cellFace(lid, local_face);
-            if ( grid.faceCell(face, 0) != -1 && grid.faceCell(face, 1) != -1 )
-            {
-                ++edges;
-            }
-        }
-        numEdges[i] = edges;
+        numEdges[i] = getNumberOfEdgesForSpecificCell(grid, localID[i]);
     }
+
     *err = ZOLTAN_OK;
+}
+
+int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph& graph, int localCellId) {
+    const Dune::CpGrid&  grid = graph.getGrid();
+    // Initial set of faces is the ones of the well completions
+    auto edges = graph.getWellsGraph()[localCellId];
+    // For the graph there is an edge only if the face has two neighbors.
+    // Therefore we need to check each face
+    for ( int local_face = 0; local_face < grid.numCellFaces(localCellId); ++local_face )
+    {
+        const int face  = grid.cellFace(localCellId, local_face); //Get the index of the face of the cell with the local index local_face
+        const int face0 = grid.faceCell(face, 0);
+        const int face1 = grid.faceCell(face, 1);
+
+        if ( face0 != -1 && face1 != -1 )
+        {
+            if ( face0 != localCellId )
+                edges.insert(face0);
+            else
+                edges.insert(face1);
+        }
+    }
+    return edges.size();
 }
 
 void getCpGridWellsNumEdgesList(void *graphPointer, int sizeGID, int sizeLID,
@@ -135,26 +162,7 @@ void getCpGridWellsNumEdgesList(void *graphPointer, int sizeGID, int sizeLID,
     }
     for( int i = 0; i < numCells;  i++ )
     {
-        // Initial set of faces is the ones of the well completions
-        auto edges = graph.getWellsGraph()[i];
-        // For the graph there is an edge only if the face has two neighbors.
-        // Therefore we need to check each face
-        int lid   = localID[i];
-        for ( int local_face = 0; local_face < grid.numCellFaces(static_cast<int>(localID[i])); ++local_face )
-        {
-            const int face  = grid.cellFace(lid, local_face);
-            const int face0 = grid.faceCell(face, 0);
-            const int face1 = grid.faceCell(face, 1);
-
-            if ( face0 != -1 && face1 != -1 )
-            {
-                if ( face0 != i )
-                    edges.insert(face0);
-                else
-                    edges.insert(face1);
-            }
-        }
-        numEdges[i] = edges.size();
+        numEdges[i] = getNumberOfEdgesForSpecificCellForGridWithWells(graph, localID[i]);
     }
     *err = ZOLTAN_OK;
 }
@@ -171,6 +179,22 @@ void getNullEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
     *err = ZOLTAN_OK;
 }
 
+template<typename ID>
+void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid& grid, int localCellId, ID globalID, int& neighborCounter, ID& nborGID) {
+    for ( int local_face = 0 ; local_face < grid.numCellFaces(localCellId); ++local_face )
+    {
+        const int face  = grid.cellFace(localCellId, local_face);
+        int otherCell   = grid.faceCell(face, 0);
+        if ( otherCell == localCellId || otherCell == -1 )
+        {
+            otherCell = grid.faceCell(face, 1);
+            if ( otherCell == localCellId || otherCell == -1 )
+                continue;
+        }
+        nborGID[neighborCounter++] = globalID[otherCell];
+    }
+}
+
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
                        int numCells, ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                        int *numEdges,
@@ -185,41 +209,22 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
         return;
     }
 #ifndef NDEBUG
-    int oldidx = 0;
+    int oldNeighborCounter = 0;
 #endif
-    int idx = 0;
+    int neighborCounter = 0;
 
     for( int cell = 0; cell < numCells;  cell++ )
     {
-        const int currentCell = localID[cell];
-        for ( int local_face = 0 ; local_face < grid.numCellFaces(static_cast<int>(localID[cell])); ++local_face )
-        {
-            const int face  = grid.cellFace(currentCell, local_face);
-            int otherCell   = grid.faceCell(face, 0);
-            if ( otherCell == currentCell || otherCell == -1 )
-            {
-                otherCell = grid.faceCell(face, 1);
-                if ( otherCell == currentCell || otherCell == -1 )
-                {
-                    continue;
-                }
-                else
-                {
-                    nborGID[idx++] = globalID[otherCell];
-                    continue;
-                }
-            }
-            nborGID[idx++] = globalID[otherCell];
-        }
+        fillNBORGIDForSpecificCellAndIncrementNeighborCounter(grid, localID[cell], globalID, neighborCounter, nborGID);
 #ifndef NDEBUG
-        assert(numEdges[cell] == idx - oldidx);
-        oldidx = idx;
+        assert(numEdges[cell] == neighborCounter - oldNeighborCounter);
+        oldNeighborCounter = neighborCounter;
 #endif
     }
 
     const int myrank = grid.comm().rank();
 
-    for ( int i = 0; i < idx; ++i )
+    for ( int i = 0; i < neighborCounter; ++i )
     {
         nborProc[i] = myrank;
     }
@@ -238,6 +243,47 @@ void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
         }
     }
 #endif
+}
+template<typename ID, typename weightType>
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts) {
+    const Dune::CpGrid&  grid = graph.getGrid();
+    // First the strong edges of the well completions.
+    auto wellEdges = graph.getWellsGraph()[localCellId];
+    for( auto edge : wellEdges)
+    {
+        nborGID[neighborCounter] = edge;
+        ewgts[neighborCounter++] = std::numeric_limits<weightType>::max();
+    }
+
+    // Now the ones of the grid that are not handled by the well completions
+    for ( int local_face = 0 ; local_face < grid.numCellFaces(localCellId); ++local_face )
+    {
+        const int face  = grid.cellFace(localCellId, local_face);
+        int otherCell   = grid.faceCell(face, 0);
+        if ( otherCell == localCellId || otherCell == -1 )
+        {
+            otherCell = grid.faceCell(face, 1);
+            if ( otherCell == localCellId || otherCell == -1 )
+            {
+                // no real face or already handled by well
+                continue;
+            }
+            else
+            {
+                if ( wellEdges.find(otherCell) == wellEdges.end() )
+                {
+                    nborGID[neighborCounter] = globalID[otherCell];
+                    ewgts[neighborCounter++] = graph.edgeWeight(face);
+                }
+                continue;
+            }
+        }
+        if ( wellEdges.find(otherCell) == wellEdges.end() )
+        {
+            nborGID[neighborCounter] = globalID[otherCell];
+            ewgts[neighborCounter++] = graph.edgeWeight(face);
+        }
+    }
 }
 
 void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
@@ -258,60 +304,22 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
         return;
     }
 #ifndef NDEBUG
-    int oldidx = 0;
+    int oldNeighborCounter = 0;
 #endif
-    int idx = 0;
+    int neighborCounter = 0;
 
     for( int cell = 0; cell < numCells;  cell++ )
     {
-        const int currentCell = localID[cell];
-
-        // First the strong edges of the well completions.
-        auto wellEdges = graph.getWellsGraph()[currentCell];
-        for( auto edge : wellEdges)
-        {
-            nborGID[idx] = edge;
-            ewgts[idx++] = std::numeric_limits<float>::max();
-        }
-
-        // Now the ones of the grid that are not handled by the well completions
-        for ( int local_face = 0 ; local_face < grid.numCellFaces(static_cast<int>(localID[cell])); ++local_face )
-        {
-            const int face  = grid.cellFace(currentCell, local_face);
-            int otherCell   = grid.faceCell(face, 0);
-            if ( otherCell == currentCell || otherCell == -1 )
-            {
-                otherCell = grid.faceCell(face, 1);
-                if ( otherCell == currentCell || otherCell == -1 )
-                {
-                    // no real face or already handled by well
-                    continue;
-                }
-                else
-                {
-                    if ( wellEdges.find(otherCell) == wellEdges.end() )
-                    {
-                        nborGID[idx] = globalID[otherCell];
-                        ewgts[idx++] = graph.edgeWeight(face);
-                    }
-                    continue;
-                }
-            }
-            if ( wellEdges.find(otherCell) == wellEdges.end() )
-            {
-                nborGID[idx] = globalID[otherCell];
-                ewgts[idx++] = graph.edgeWeight(face);
-            }
-        }
+        fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(graph, localID[cell], globalID, neighborCounter, nborGID, ewgts);
 #ifndef NDEBUG
-        assert(idx-oldidx==numEdges[cell]);
-        oldidx = idx;
+        assert(neighborCounter-oldNeighborCounter==numEdges[cell]);
+        oldNeighborCounter = neighborCounter;
 #endif
     }
 
     const int myrank = grid.comm().rank();
 
-    for ( int i = 0; i < idx; ++i )
+    for ( int i = 0; i < neighborCounter; ++i )
     {
         nborProc[i] = myrank;
     }
