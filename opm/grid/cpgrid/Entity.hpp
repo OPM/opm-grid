@@ -433,14 +433,14 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    bool gridIsLeafView = (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()); // Entity's grid is the leaf grid view
-    return gridIsLeafView || (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);
-    /* if (gridIsLeafView && (pgrid_ -> parent_to_children_cells_).empty()){ // LGR cells
+    // bool gridIsLeafView = (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()); // Entity's grid is the leaf grid view
+    // return gridIsLeafView || (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);
+    if (pgrid_ -> parent_to_children_cells_.empty()){ // LGR cells
         return true;
     }
     else {
         return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
-        }*/
+        }
 }
 
 template<int codim>
@@ -635,6 +635,7 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLevelElem() const
         const auto entityLevel = this -> level();
         const int& entityLevelIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
         const auto& level_grid = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
+        std::cout<< "entityLevel: " << level() << " entityLevelIdx: " << entityLevelIdx <<  " idx: " << this->index() << std::endl;
         return Dune::cpgrid::Entity<0>( *level_grid, entityLevelIdx, true);
     }
     else {

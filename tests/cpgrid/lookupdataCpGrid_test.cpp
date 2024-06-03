@@ -86,8 +86,8 @@ void lookup_check(const Dune::CpGrid& grid)
     std::vector<std::vector<int>> fakeLgrFeatures;
     fakeLgrFeatures.resize(data.size()-1);
     // Creating fake field properties for each LGR
-    if (data.size()>1) {
-        for (long unsigned int lgr = 1; lgr < data.size(); ++lgr)
+    if (grid.maxLevel()>0) {
+        for (int lgr = 1; lgr < grid.maxLevel() +1; ++lgr)
         {
             std::vector<int> fake_feature_lgr(data[lgr]->size(0), lgr);
             fakeLgrFeatures[lgr-1] = fake_feature_lgr;

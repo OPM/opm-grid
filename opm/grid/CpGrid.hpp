@@ -589,7 +589,10 @@ namespace Dune
         ///                              parent cell should be refined to.
         bool adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<int>& assignRefinedLevel,
-                   const std::vector<std::string>& lgr_name_vec);
+                   const std::vector<std::string>& lgr_name_vec,
+                   bool isCARFIN = false,
+                   const std::vector<std::array<int,3>>& startIJK_vec = std::vector<std::array<int,3>>{},
+                   const std::vector<std::array<int,3>>& endIJK_vec = std::vector<std::array<int,3>>{});
 
         /// @brief Clean up refinement markers - set every element to the mark 0 which represents 'doing nothing'
         void postAdapt();

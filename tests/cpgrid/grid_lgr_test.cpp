@@ -203,7 +203,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 }
                 BOOST_CHECK( entity.level() == 0);
             }
-
+ 
             // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
@@ -248,7 +248,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                     BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
                 }
             }
-
+ 
             // LeafView
             for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
             {
@@ -497,7 +497,7 @@ BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
-}
+    }
 
 BOOST_AUTO_TEST_CASE(refine_patch)
 {
@@ -649,8 +649,6 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
             ++equiv_point_iter;
         }
         CHECK_COORDINATES(point.center(), equiv_point_iter->center());
-        //  std::cout<< "point: " << point.center()[0] << " " << point.center()[1] << " " << point.center()[2]<<std::endl;
-        //  std::cout<< "equivPoint: "<< equiv_point_iter->center()[0] << " " << equiv_point_iter->center()[1] << " " << equiv_point_iter->center()[2] << std::endl;
         for(const auto& coord: point.center())
             BOOST_TEST(std::isfinite(coord));
 
@@ -662,12 +660,9 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
             ++equiv_cell_iter;
         }
         CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
-        //  std::cout<< "cell: " << cell.center()[0] << " " << cell.center()[1] << " " << cell.center()[2]<<std::endl;
-        // std::cout<< "equicell: "<< equiv_cell_iter->center()[0] << " " << equiv_cell_iter->center()[1] << " " << equiv_cell_iter->center()[2] << std::endl;
         for(const auto& coord: cell.center())
             BOOST_TEST(std::isfinite(coord));
         BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
-        // std::cout<< "vol: " << cell.volume() << " equal to " << equiv_cell_iter->volume() <<std::endl;
     }
 
     /////
@@ -719,7 +714,6 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
                     break;
                 }
             } // end-for-loop-intersection_match
-            std::cout<< "Found? " << matching_intersection_found << " " << element.index() << std::endl;
             BOOST_CHECK(matching_intersection_found);
         }
     }
