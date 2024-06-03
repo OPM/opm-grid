@@ -634,6 +634,18 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
+        /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \warning May only be called once.
+        bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan)
+        {
+            using std::get;
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod ));
+        }
+
+        // loadbalance is not part of the grid interface therefore we skip it.
+
+        /// \brief Distributes this grid over the available nodes in a distributed machine
         ///
         /// This will construct the corresponding graph to the grid and use the transmissibilities
         /// specified as weights associated with its edges. The graph will be passed to the load balancer.
