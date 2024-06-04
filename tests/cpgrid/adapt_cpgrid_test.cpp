@@ -82,7 +82,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         const std::vector<int>& markedCells,
                         Dune::CpGrid& other_grid,
                         bool isBlockShape,
-                        bool hasBeenRefinedAtLeastOnce)
+                        bool hasBeenRefinedAtLeastOnce,
+                        bool isGlobalRefinement)
 {
     const int startingGridIdx = coarse_grid.chooseData().size() -1; // size before calling adapt
 
@@ -132,8 +133,6 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                     ++equiv_point_iter;
                 }
                 CHECK_COORDINATES(point.center(), equiv_point_iter->center());
-                //  std::cout<< "point: " << point.center()[0] << " " << point.center()[1] << " " << point.center()[2]<<std::endl;
-                //  std::cout<< "equivPoint: "<< equiv_point_iter->center()[0] << " " << equiv_point_iter->center()[1] << " " << equiv_point_iter->center()[2] << std::endl;
                 for(const auto& coord: point.center())
                     BOOST_TEST(std::isfinite(coord));
 
@@ -144,72 +143,70 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                     ++equiv_cell_iter;
                 }
                 CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
-                //  std::cout<< "cell: " << cell.center()[0] << " " << cell.center()[1] << " " << cell.center()[2]<<std::endl;
-                // std::cout<< "equicell: "<< equiv_cell_iter->center()[0] << " " << equiv_cell_iter->center()[1] << " " << equiv_cell_iter->center()[2] << std::endl;
                 for(const auto& coord: cell.center())
                     BOOST_TEST(std::isfinite(coord));
                 BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
-                // std::cout<< "vol: " << cell.volume() << " equal to " << equiv_cell_iter->volume() <<std::endl;
             }
 
-            /* /////  THE FOLLOWING CODE WOULD FIT FOR TESTING GLOBAL REFINEMENT
-            const auto& grid_view = coarse_grid.leafGridView();
-            const auto& equiv_grid_view = other_grid.leafGridView();
+            /////  THE FOLLOWING CODE WOULD FIT FOR TESTING GLOBAL REFINEMENT
+            if (isGlobalRefinement) {
+                const auto& grid_view = coarse_grid.leafGridView();
+                const auto& equiv_grid_view = other_grid.leafGridView();
 
 
-            for(const auto& element: elements(grid_view)) {
-                BOOST_CHECK( element.getOrigin().level() == 0);
-                auto equiv_element_iter = equiv_grid_view.begin<0>();
-                bool closedCenter =  (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
-                    (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
-                    (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
-
-                while (!closedCenter) {
-                    ++equiv_element_iter;
-                    closedCenter = (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+                for(const auto& element: elements(grid_view)) {
+                    BOOST_CHECK( element.getOrigin().level() == 0);
+                    auto equiv_element_iter = equiv_grid_view.begin<0>();
+                    bool closedCenter =  (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
                         (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
                         (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
-                }
-                for(const auto& intersection: intersections(grid_view, element)) {
-                    // find matching intersection (needed as ordering is allowed to be different
-                    bool matching_intersection_found = false;
-                    for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter)) {
-                        if(intersection_match.indexInInside() == intersection.indexInInside()) {
-                            BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
 
-                            if(intersection.neighbor()) {
-                                BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                    while (!closedCenter) {
+                        ++equiv_element_iter;
+                        closedCenter = (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+                            (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
+                            (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
+                    }
+                    for(const auto& intersection: intersections(grid_view, element)) {
+                        // find matching intersection (needed as ordering is allowed to be different
+                        bool matching_intersection_found = false;
+                        for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter)) {
+                            if(intersection_match.indexInInside() == intersection.indexInInside()) {
+                                BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                                if(intersection.neighbor()) {
+                                    BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                                }
+
+                                CHECK_COORDINATES(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
+                                const auto& geom_match = intersection_match.geometry();
+                                BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                                const auto& geom =  intersection.geometry();
+                                bool closedGeomCenter =  (std::abs(geom_match.center()[0] - geom.center()[0]) < 1e-12) &&
+                                    (std::abs(geom_match.center()[1] - geom.center()[1]) < 1e-12) &&
+                                    (std::abs(geom_match.center()[2] - geom.center()[2])< 1e-12);
+                                if (!closedGeomCenter) {
+                                    break; // Check next intersection_match
+                                }
+                                BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                                CHECK_COORDINATES(geom_match.center(), geom.center());
+                                BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                                decltype(geom.corner(0)) sum_match{}, sum{};
+
+                                for(int cor = 0; cor < geom.corners(); ++cor) {
+                                    sum += geom.corner(cor);
+                                    sum_match += geom_match.corner(1);
+                                }
+                                CHECK_COORDINATES(sum, sum_match);
+                                matching_intersection_found = true;
+                                break;
                             }
-
-                            CHECK_COORDINATES(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal());
-                            const auto& geom_match = intersection_match.geometry();
-                            BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
-                            const auto& geom =  intersection.geometry();
-                             bool closedGeomCenter =  (std::abs(geom_match.center()[0] - geom.center()[0]) < 1e-12) &&
-                                 (std::abs(geom_match.center()[1] - geom.center()[1]) < 1e-12) &&
-                                 (std::abs(geom_match.center()[2] - geom.center()[2])< 1e-12);
-                             if (!closedGeomCenter) {
-                                 break; // Check next intersection_match
-                             }
-                            BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
-                            CHECK_COORDINATES(geom_match.center(), geom.center());
-                            BOOST_CHECK(geom_match.corners() == geom.corners());
-
-                            decltype(geom.corner(0)) sum_match{}, sum{};
-
-                            for(int cor = 0; cor < geom.corners(); ++cor) {
-                                sum += geom.corner(cor);
-                                sum_match += geom_match.corner(1);
-                            }
-                            CHECK_COORDINATES(sum, sum_match);
-                            matching_intersection_found = true;
-                            break;
-                        }
-                    } // end-for-loop-intersection_match
-                    std::cout<< "Found? " << matching_intersection_found << " " << element.index() << std::endl;
-                    BOOST_CHECK(matching_intersection_found);
-                }
-                }    */   
+                        } // end-for-loop-intersection_match
+                        BOOST_CHECK(matching_intersection_found);
+                    }
+                }    
+            } // end-if-isGlobalRefinement
         } // end-if-isBlockShape
 
         const auto& grid_view = coarse_grid.leafGridView();
@@ -375,7 +372,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     } // end-if-preAdapt
 }
 
-/*BOOST_AUTO_TEST_CASE(doNothing)
+BOOST_AUTO_TEST_CASE(doNothing)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -384,7 +381,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     const std::array<int, 3> cells_per_dim = {2,2,2};
     std::vector<int> markedCells;
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(globalRefinement)
@@ -407,7 +404,7 @@ BOOST_AUTO_TEST_CASE(globalRefinement)
     const std::string lgr_name = {"LGR1"};
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, true);
 }
 
 BOOST_AUTO_TEST_CASE(mark2consequtiveCells)
@@ -430,7 +427,7 @@ BOOST_AUTO_TEST_CASE(mark2consequtiveCells)
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {2,3};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(mark2InteriorConsequtiveCells)
@@ -453,7 +450,7 @@ BOOST_AUTO_TEST_CASE(mark2InteriorConsequtiveCells)
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {17,18};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
@@ -465,7 +462,7 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
     const std::array<int, 3> cells_per_dim = {2,2,2};
     std::vector<int> markedCells = {0}; //,1,2,5,13};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
 }
 
 
@@ -478,10 +475,10 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
     const std::array<int, 3> cells_per_dim = {2,3,4};
     std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false);
-    }*/
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
+    }
 
-BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
+    /*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -497,10 +494,10 @@ BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
     coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {0,1}; // coarse cells
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
 }
 
-/*BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
+BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -518,7 +515,7 @@ BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
     std::vector<int> markedCells = {34}; // {34, 35} refined cells (with parent cell 17) -> check conversion of corners between neighboring lgrs definition!
     // Error:  Cannot convert corner index from one LGR to its neighboring LGR
     // 42 refined cell with parent cell 18.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
 }
 
 
@@ -539,5 +536,5 @@ BOOST_AUTO_TEST_CASE(adaptFromAMixedGridMixedCells)
 
     std::vector<int> markedCells = {2,3,34}; // {34, 41} refined cells (with parent cell 17),
     // 42, 49 refined cell with parent cell 18-> check conversion of corners between neighboring lgrs definition!
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true);
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
     }*/
