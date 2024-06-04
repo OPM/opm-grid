@@ -1971,7 +1971,7 @@ bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_
             valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
         }
         if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
         }
     }
     bool are_disjoint = true;
@@ -2020,7 +2020,7 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
             valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
         }
         if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
         }
     }
 
@@ -2092,7 +2092,8 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
         };
      
         const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_2Patches[0], endIJK_2Patches[0]);
-        const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] = this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
+        const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
+            this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
 
 
         bool isShared = false;

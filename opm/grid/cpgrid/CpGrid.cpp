@@ -1860,6 +1860,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // the x-axis. Then, the "imaginary" logical Cartesian size of the refined level grid would be
         // { (# marked elemnts)x cells_per_dim_vec[level][0], cells_per_dim_vec[level][1], cells_per_dim_vec[level][2]}.
         /** To do: how the definition of refined level grids logical_cartesian_size_ affects LookUpData class (and LookUpCartesianData)*/
+
+        Opm::OpmLog::info(std::to_string( refined_corner_count_vec[level]) + " corners in level " + std::to_string(level) + ".\n");
+        Opm::OpmLog::info(std::to_string(refined_face_count_vec[level]) + " faces in level " + std::to_string(level) + ".\n");
      }
 
      std::vector<int> adapted_global_cell(cell_count, 0);
@@ -1911,10 +1914,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // TO DO: How to modified logical_cartesian_size_
     (*data_[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data_[0]).logical_cartesian_size_;
 
-    // Print total amount of cells on the adapted grid 
+    // Print total amount of cells on the adapted grid
+   
     Opm::OpmLog::info(std::to_string(markedElem_count) + " marked elements have been refined.\n");
     Opm::OpmLog::info(std::to_string(levels)  + " (new) refined level grid(s).\n");
     Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the leaf grid view.\n");
+       Opm::OpmLog::info(std::to_string(corner_count) + " corners.\n");
+        Opm::OpmLog::info(std::to_string(face_count) + " faces.\n");
 
     return preAdapt();
 }
@@ -1956,7 +1962,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
-    // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
+    /* // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
     if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) { // !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "LGRs share at least one face.");
@@ -1964,13 +1970,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         else{
             OPM_THROW_NOLOG(std::logic_error, "LGRs share at least one face.");
         }
-    }
-    /*  if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) {
-        //Do not delete commented code below. It's WIP. For now, throw if LGRs share a face 
+        }*/
+    if (startIJK_vec.size() > 0) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
                 const auto& sharedFaceTag = (*data_[0]).sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
+                if(sharedFaceTag == -1){
+                    break; // Go to the next "other patch"
+                }
                 if (sharedFaceTag == 0 ) { 
                     notAllowedYet = notAllowedYet ||
                         ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));      
@@ -1985,15 +1993,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
                 if (notAllowedYet){
                     if (comm().rank()==0){
-                        OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
+                        OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
                     }
                     else{
-                        OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face deos not coincide. Not suppported yet.");
+                        OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
                     }
                 }   
             } // end-otherLevel-for-loop
         } // end-level-for-loop
-        }// end-if-patchesShareFace*/
+        }// end-if-patchesShareFace
     
     // Check grid is Cartesian
     const std::array<int,3>& coarseGrid_dim =  (*data_[0]).logical_cartesian_size_;
@@ -2302,16 +2310,26 @@ void CpGrid::definePreAdaptRefinedAndAdaptedCornerRelations( std::map<std::array
                     int faceAtMaxLastAppearance = (maxLastAppearance == lastAppearanceMarkedFace1) ? markedFace1 : markedFace2;
 
                     // Save the relationship between the vanished refined corner and its last appearance
+                    const auto& maxLastAppearanceLevel = assignRefinedLevel[maxLastAppearance];
                     bool atLeastOneFaceAppearsTwice = (faceInMarkedElemAndRefinedFaces[markedFace1].size()>1) ||
                         (faceInMarkedElemAndRefinedFaces[markedFace2].size()>1);
-                    if (atLeastOneFaceAppearsTwice && (maxLastAppearance != elemIdx)) {
+                    if ((atLeastOneFaceAppearsTwice && (maxLastAppearance != elemIdx)) || (maxLastAppearanceLevel != level)) {
                         // modify the method below to take into account face!
                         /** To be done: if the neighboring cells sharing the face do not belong to the same refined level, then
                             their cells_per_dim_[ levelA ]  and cells_per_dim_[ levelB ] might differ. Modify the code to take this into account.
-                            Namely, when they differ, store both. */
+                            Namely, when they differ, store both. */ 
                         const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel],
                                                                                                   corner, elemIdx, faceAtMaxLastAppearance);
                         vanishedRefinedCorner_to_itsLastAppearance[{elemIdx, corner}] = {maxLastAppearance, neighboringLgrCornerIdx};
+                           if(maxLastAppearanceLevel != level)
+                            {
+                                std::cout<< "maxapplevel: " << maxLastAppearanceLevel << "level: " << level << " refinedCornCount: " <<
+                                    refined_corner_count_vec[shiftedLevel] << std::endl;
+                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemIdx, corner}] = {level, refined_corner_count_vec[shiftedLevel]};
+                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{level,refined_corner_count_vec[shiftedLevel]}] = {elemIdx, corner};
+                        refined_corner_count_vec[shiftedLevel] +=1;
+                            }
+                          
                         // Notice that, when we use these container to locate vanished corners, we might need a while-loop,
                         // since {elem, corner} leads to {lastMaxAppearance, neighboringLgrCornerIdx}, which can also vanish.
                         // So we need something like:
@@ -2332,6 +2350,12 @@ void CpGrid::definePreAdaptRefinedAndAdaptedCornerRelations( std::map<std::array
                         adaptedCorner_to_elemLgrAndElemLgrCorner[corner_count] = {elemIdx, corner};
                         corner_count += 1;
 
+                        if(maxLastAppearanceLevel != level)
+                            {
+                                std::cout<< "maxapplevel: " << maxLastAppearanceLevel << "level: " << level << " refinedCornCount: " <<
+                                    refined_corner_count_vec[shiftedLevel] << std::endl;
+                                
+                            }
                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemIdx, corner}] = {level, refined_corner_count_vec[shiftedLevel]};
                         refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{level,refined_corner_count_vec[shiftedLevel]}] = {elemIdx, corner};
                         refined_corner_count_vec[shiftedLevel] +=1;
@@ -2364,7 +2388,7 @@ void CpGrid::definePreAdaptRefinedAndAdaptedCornerRelations( std::map<std::array
                         elemLgrAndElemLgrCorner_to_adaptedCorner[{elemIdx, corner}] = corner_count;
                         adaptedCorner_to_elemLgrAndElemLgrCorner[corner_count] = {elemIdx, corner};
                         corner_count += 1;
-
+                    
                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemIdx, corner}] = {level, refined_corner_count_vec[shiftedLevel]};
                         refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{level, refined_corner_count_vec[shiftedLevel]}] = {elemIdx, corner};
                         refined_corner_count_vec[shiftedLevel] +=1;
