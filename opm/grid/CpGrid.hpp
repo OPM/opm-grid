@@ -657,10 +657,15 @@ namespace Dune
                                                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                                             const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
-        void definePreAdaptRefinedAndAdaptedFaceRelations(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+        void definePreAdaptToRefinedGridFaceRelations(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                                           std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
                                                           std::vector<int>& refined_face_count_vec,
-                                                          std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
+                                                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                          const std::vector<int>& assignRefinedLevel,
+                                                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                          const std::vector<std::array<int,3>>& cells_per_dim_vec);
+        
+         void definePreAdaptToLeafGridFaceRelations( std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
                                                           std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
                                                           int& face_count,
                                                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,

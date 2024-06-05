@@ -491,7 +491,7 @@ catch (const std::exception& e) // caught by reference to base
 }
 
 
-/*BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
+BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -610,7 +610,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_face)
       refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
       // BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
     // BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
-}*/
+}
 
 BOOST_AUTO_TEST_CASE(pathces_share_faceB)
 {
@@ -627,7 +627,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_faceB)
     // BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
     //  BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
 }
-/*
+
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
 {
 
@@ -774,5 +774,5 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     fine_grid.createCartesian(fine_grid_dim, fine_cell_sizes);
 
     check_global_refine(coarse_grid, fine_grid);
-}*/
+}
 
