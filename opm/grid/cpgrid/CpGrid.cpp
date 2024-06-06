@@ -1535,46 +1535,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
      
     std::vector<std::vector<int>> refined_global_cell_vec(levels);
     
-    for (int level = 0; level < levels; ++level) {
-#if HAVE_MPI
-         refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>((*(this-> data_[0])).ccobj_, refined_data_vec[level]);
-#else
-         // DUNE 2.7 is missing convertion to NO_COMM
-         refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>(refined_data_vec[level]);
-#endif
-         auto& refined_grid = *refined_grid_ptr_vec[level];
-         Dune::cpgrid::DefaultGeometryPolicy&                         refined_geometries = refined_grid.geometry_;
-         std::vector<std::array<int,8>>&                              refined_cell_to_point = refined_grid.cell_to_point_;
-         cpgrid::OrientedEntityTable<0,1>&                            refined_cell_to_face = refined_grid.cell_to_face_;
-         Opm::SparseTable<int>&                                       refined_face_to_point = refined_grid.face_to_point_;
-         cpgrid::OrientedEntityTable<1,0>&                            refined_face_to_cell = refined_grid.face_to_cell_;
-         cpgrid::EntityVariable<enum face_tag,1>&                     refined_face_tags = refined_grid.face_tag_;
-         cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>& refined_face_normals = refined_grid.face_normals_;
-         // Mutable containers for refined corners, faces, cells, face tags, and face normals.
-         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& refined_corners =
-             *(refined_geometries.geomVector(std::integral_constant<int,3>()));
-         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& refined_faces =
-             *(refined_geometries.geomVector(std::integral_constant<int,1>()));
-         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& refined_cells =
-             *(refined_geometries.geomVector(std::integral_constant<int,0>()));
-         Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_refined_face_tags = refined_face_tags;
-         Dune::cpgrid::EntityVariableBase<PointType>& mutable_refined_face_normals = refined_face_normals;
-
-         refined_geometries_vec[level] = refined_geometries;
-         refined_cell_to_point_vec[level] = refined_cell_to_point;
-         refined_cell_to_face_vec[level] = refined_cell_to_face;
-         refined_face_to_point_vec[level] = refined_face_to_point;
-         refined_face_to_cell_vec[level] = refined_face_to_cell;
-         refined_face_tags_vec[level] = refined_face_tags;
-         refined_face_normals_vec[level] = refined_face_normals;
-     
-         refined_corners_vec[level] = refined_corners;
-         refined_faces_vec[level] = refined_faces;
-         refined_cells_vec[level] = refined_cells;
-         mutable_refined_face_tags_vec[level] = mutable_refined_face_tags;
-         mutable_refined_face_normals_vec[level] = mutable_refined_face_normals;
-     }
-    
 
      // To store adapted grid
      std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& adaptedData = this -> data_;
@@ -1837,11 +1797,44 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     cells_per_dim_vec);
     
    
-     for (int level = 0; level < levels; ++level) {
+    for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
+#if HAVE_MPI
+        refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>((*(this-> data_[0])).ccobj_, refined_data_vec[level]);
+#else
+        // DUNE 2.7 is missing convertion to NO_COMM
+        refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>(refined_data_vec[level]);
+#endif
         // Store refined grid
         (this-> data_).push_back(refined_grid_ptr_vec[level]);
-        (*data_[refinedLevelGridIdx]).cell_to_face_ = refined_cell_to_face_vec[level]; // why was this needed? 
+
+        Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*data_[refinedLevelGridIdx]).geometry_;
+        // Mutable containers for adapted corners, faces, cells, face tags, and face normals.
+        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& level_corners =
+            *(refinedLevel_geometries.geomVector(std::integral_constant<int,3>()));
+        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& level_faces =
+            *(refinedLevel_geometries.geomVector(std::integral_constant<int,1>()));
+        Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& level_cells =
+            *(refinedLevel_geometries.geomVector(std::integral_constant<int,0>()));
+
+        level_corners = refined_corners_vec[level];
+        level_faces = refined_faces_vec[level];
+        level_cells = refined_cells_vec[level];
+            
+        (*data_[refinedLevelGridIdx]).cell_to_point_ = refined_cell_to_point_vec[level];
+        (*data_[refinedLevelGridIdx]).cell_to_face_ = refined_cell_to_face_vec[level];
+         
+        (*data_[refinedLevelGridIdx]).face_to_point_ = refined_face_to_point_vec[level];
+        (*data_[refinedLevelGridIdx]).face_to_cell_ = refined_face_to_cell_vec[level];
+
+        cpgrid::EntityVariable<enum face_tag,1>& level_face_tags =   (*data_[refinedLevelGridIdx]).face_tag_;
+        Dune::cpgrid::EntityVariableBase<enum face_tag>& level_mutable_face_tags = level_face_tags;
+        level_mutable_face_tags = mutable_refined_face_tags_vec[level];
+    
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>&  level_face_normals =   (*data_[refinedLevelGridIdx]).face_normals_;
+        Dune::cpgrid::EntityVariableBase<PointType>& level_mutable_face_normals = level_face_normals;
+        level_mutable_face_normals = mutable_refined_face_normals_vec[level];
+       
         // Further Refined grid Attributes 
         //
         // Populate some attributes of the level LGR
@@ -1931,7 +1924,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Print total amount of cells on the adapted grid
    
-    Opm::OpmLog::info(std::to_string(markedElem_count) + " marked elements have been refined.\n");
+    Opm::OpmLog::info(std::to_string(markedElem_count) + " elements have been marked for either refinement or doing nothing.\n");
     Opm::OpmLog::info(std::to_string(levels)  + " (new) refined level grid(s).\n");
     Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the leaf grid view.\n");
        Opm::OpmLog::info(std::to_string(corner_count) + " corners.\n");

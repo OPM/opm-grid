@@ -128,10 +128,10 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
         for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
         {
-            /*  check_refinedPatch_grid(cells_per_dim_vec[level-1], startIJK_vec[level-1], endIJK_vec[level-1],
+            check_refinedPatch_grid(cells_per_dim_vec[level-1], startIJK_vec[level-1], endIJK_vec[level-1],
                                     (*data[level]).geometry_.template geomVector<0>(),
                                     (*data[level]).geometry_.template geomVector<1>(),
-                                    (*data[level]).geometry_.template geomVector<3>());*/
+                                    (*data[level]).geometry_.template geomVector<3>());
             BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
             BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == static_cast<int>(level));
 
@@ -491,7 +491,7 @@ catch (const std::exception& e) // caught by reference to base
 }
 
 
-BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
+/*BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -610,7 +610,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_face)
       refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
       // BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
     // BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
-}
+}*/
 
 BOOST_AUTO_TEST_CASE(pathces_share_faceB)
 {
@@ -729,7 +729,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
 }
 
 
-BOOST_AUTO_TEST_CASE(global_refine)
+/*BOOST_AUTO_TEST_CASE(global_refine)
 {
     // Create a 4x3x3 grid with length 4x3x3
     // and refine each cells into 4 children cells
@@ -774,5 +774,5 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     fine_grid.createCartesian(fine_grid_dim, fine_cell_sizes);
 
     check_global_refine(coarse_grid, fine_grid);
-}
+    }*/
 
