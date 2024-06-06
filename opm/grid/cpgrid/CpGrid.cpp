@@ -2356,24 +2356,25 @@ void CpGrid::definePreAdaptToLeafGridCornerRelations(      std::map<std::array<i
                     // check how many times marked face appearn
                     // Get the last LGR (marked element) where the marked face appeared.
                     int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+
+                      const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared ];
+                     const auto& lastLgrLevelShifted = lastLgrLevel - static_cast<int>(this->maxLevel()) -1;
+                     
                     // Save the relationship between the vanished refined corner and its last appearance
                     if ((faceInMarkedElemAndRefinedFaces[markedFace].size()>1) && (lastLgrWhereMarkedFaceAppeared != elemIdx)) {
                         /** To be done: if the neighboring cells sharing the face do not belong to the same refined level, then
                             their cells_per_dim_[ levelA ]  and cells_per_dim_[ levelB ] might differ. Modify the code to take this into account.
                             Namely, when they differ, store both. */
-                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel], corner);
+                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel], corner,
+                                                                                                  cells_per_dim_vec[lastLgrLevelShifted]);
                         vanishedRefinedCorner_to_itsLastAppearance[{elemIdx, corner}] = {lastLgrWhereMarkedFaceAppeared, neighboringLgrCornerIdx};
                     }
-                    // const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared];
-                    if (lastLgrWhereMarkedFaceAppeared == elemIdx) { // || (lastLgrLevel != level)) {
+                    
+                    if (lastLgrWhereMarkedFaceAppeared == elemIdx) { 
                         // Store the refined corner in its last appearence - to avoid repetition.
                            elemLgrAndElemLgrCorner_to_adaptedCorner[{elemIdx, corner}] = corner_count;
                         adaptedCorner_to_elemLgrAndElemLgrCorner[corner_count] = {elemIdx, corner};
                         corner_count += 1;
-                    
-                        /* elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemIdx, corner}] = {level, refined_corner_count_vec[shiftedLevel]};
-                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{level, refined_corner_count_vec[shiftedLevel]}] = {elemIdx, corner};
-                        refined_corner_count_vec[shiftedLevel] +=1;*/
                     }
                 }
             } // end-corner-for-loop
@@ -2548,17 +2549,21 @@ void CpGrid::definePreAdaptToRefinedGridCornerRelations( std::map<std::array<int
                     // check how many times marked face appearn
                     // Get the last LGR (marked element) where the marked face appeared.
                     int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
+
+                     const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared ];
+                     const auto& lastLgrLevelShifted = lastLgrLevel - static_cast<int>(this->maxLevel()) -1;
                     // Save the relationship between the vanished refined corner and its last appearance
                     if ((faceInMarkedElemAndRefinedFaces[markedFace].size()>1) && (lastLgrWhereMarkedFaceAppeared != elemIdx)) {
                         /** To be done: if the neighboring cells sharing the face do not belong to the same refined level, then
                             their cells_per_dim_[ levelA ]  and cells_per_dim_[ levelB ] might differ. Modify the code to take this into account.
                             Namely, when they differ, store both. */
-                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel], corner);
+                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel], corner,
+                                                                                                  cells_per_dim_vec[lastLgrLevelShifted]);
                         vanishedRefinedCorner_to_itsLastAppearance[{elemIdx, corner}] = {lastLgrWhereMarkedFaceAppeared, neighboringLgrCornerIdx};
                     }
-                    const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared ];
+                   
                     if ((lastLgrWhereMarkedFaceAppeared == elemIdx) || (lastLgrLevel != level)) {
-                        std::cout<< "last level: " << lastLgrLevel << " level: " << level << std::endl;
+                        // std::cout<< "last level: " << lastLgrLevel << " level: " << level << std::endl;
                         // Store the refined corner in its last appearence - to avoid repetition.
                         // elemLgrAndElemLgrCorner_to_adaptedCorner[{elemIdx, corner}] = corner_count;
                         // adaptedCorner_to_elemLgrAndElemLgrCorner[corner_count] = {elemIdx, corner};
@@ -3734,19 +3739,19 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cell
     OPM_THROW(std::logic_error, "Cannot find parent face index where the new refined face lays on.");
 }
 
-int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1) const
+int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, const std::array<int,3>& cells_per_dim_lgr2) const
 {   
-    const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxLgr1);
+    const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    if (ijk[0] == cells_per_dim[0]) {
-        return   (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + ijk[2];
+    if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
+        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
-    if (ijk[1] == cells_per_dim[1]) {
-        return  (ijk[0]*(cells_per_dim[2]+1)) + ijk[2];
+    if (ijkLgr1[1] == cells_per_dim_lgr1[1]) {
+        return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
-    if (ijk[2] == cells_per_dim[2]) {
-        return  (ijk[1]*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (ijk[0]*(cells_per_dim[2]+1));
+    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) {
+        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
     }
     else {
         OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");

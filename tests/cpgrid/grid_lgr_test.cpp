@@ -499,7 +499,7 @@ catch (const std::exception& e) // caught by reference to base
 }
 
 
-/*BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
+BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -616,7 +616,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_face)
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,1}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
       refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-}*/
+}
 
 BOOST_AUTO_TEST_CASE(pathces_share_faceB)
 {
@@ -733,7 +733,7 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
 }
 
 
-/*BOOST_AUTO_TEST_CASE(global_refine)
+BOOST_AUTO_TEST_CASE(global_refine)
 {
     // Create a 4x3x3 grid with length 4x3x3
     // and refine each cells into 4 children cells
@@ -778,5 +778,5 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     fine_grid.createCartesian(fine_grid_dim, fine_cell_sizes);
 
     check_global_refine(coarse_grid, fine_grid);
-    }*/
+    }
 

@@ -830,10 +830,10 @@ namespace Dune
         int getParentFaceWhereNewRefinedCornerLaysOn(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr,
                                                      int parentCellIdxOnLevel0) const;
         std::array<int,2> getParentFacesAssocWithNewRefinedCornLayingOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const;
-        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1) const;
-        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, const std::array<int,3>& cells_per_dim_lgr2) const;
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
                                                 const std::array<int,3>& cells_per_dim_lgr2) const;
-        int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim, int faceIdx,
+        int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdx,
                                             const std::shared_ptr<cpgrid::CpGridData>& elemLgr1_ptr,
                                             const std::array<int,3>& cells_per_dim_lgr2) const;
         int getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cells_per_dim,
