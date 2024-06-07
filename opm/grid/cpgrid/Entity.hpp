@@ -433,14 +433,12 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    // bool gridIsLeafView = (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()); // Entity's grid is the leaf grid view
-    // return gridIsLeafView || (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);
     if (pgrid_ -> parent_to_children_cells_.empty()){ // LGR cells
         return true;
     }
     else {
         return (std::get<0>((pgrid_ -> parent_to_children_cells_)[this-> index()]) == -1);  // Cells from GLOBAL, not involved in any LGR
-        }
+    }
 }
 
 template<int codim>
@@ -495,91 +493,13 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
-    /** For refinement via adapt method. */
-    if (!(pgrid_ -> cell_to_idxInParentCell_.empty())) { 
-        if (pgrid_ -> cell_to_idxInParentCell_[this->index()] !=-1) {
-            int idxInParentCell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
-            assert(idxInParentCell>-1);
-            const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
-            const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idxInParentCell, cells_per_dim);
-            FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
-                { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
-            auto in_father_reference_elem_corners = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
-            EntityVariableBase<cpgrid::Geometry<0, 3>>& mutable_in_father_reference_elem_corners = *in_father_reference_elem_corners;
-            // Assign the corners. Make use of the fact that pointers behave like iterators.
-            mutable_in_father_reference_elem_corners.assign(corners_in_father_reference_elem_temp,
-                                                            corners_in_father_reference_elem_temp + 8);
-            // Compute the center of the 'local-entity'.
-            Dune::FieldVector<double, 3> center_in_father_reference_elem = {0., 0.,0.};
-            for (int corn = 0; corn < 8; ++corn) {
-                for (int c = 0; c < 3; ++c)
-                {
-                    center_in_father_reference_elem[c] += corners_in_father_reference_elem_temp[corn][c]/8.;
-                }
-            }
-            // Compute the volume of the 'local-entity'.
-            double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-            // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
-            return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
-                                               in_father_reference_elem_corners, in_father_reference_elem_corner_indices_.data());
-        }
-        else {
-             OPM_THROW(std::logic_error, "Entity has no father. Entry should be -1");
-        }
-    }
-    else {    /** For refinement via addLgrsUpdateLeafView method. Code will be refactored and unified. */
-        // Get IJK index of the entity.
-        std::array<int,3> eIJK;
-        // Get the amount of children cell in each direction of the parent cell of the entity (same for all parents of each LGR)
-        std::array<int,3> cells_per_dim;
-        // Get "child0" IJK in the LGR
-        std::array<int,3> child0_IJK;
-        const auto& level0_grid =  (*(pgrid_->level_data_ptr_))[0];
-        const auto& child0_Idx = std::get<1>((*level0_grid).parent_to_children_cells_[this->father().index()])[0];
-        // If pgrid_ is the leafview, go to the LGR where the entity was born to get its IJK index in the LGR and the LGR dimension.
-        if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) // checking if pgrid_ is the LeafView
-        {
-            const auto& lgr_grid = (*(pgrid_->level_data_ptr_))[this -> level()];
-            cells_per_dim = (*lgr_grid).cells_per_dim_;
-
-            const auto& entity_lgrIdx = pgrid_ -> leaf_to_level_cells_[this->index()][1]; // leaf_to_level_cells_[cell] = {level, index}
-            (*lgr_grid).getIJK(entity_lgrIdx, eIJK);
-            (*lgr_grid).getIJK(child0_Idx, child0_IJK);
-        }
-        else // Getting grid dimension and IJK entity index when pgrid_ is an LGR
-        {
-            pgrid_ -> getIJK(this->index(), eIJK);
-            cells_per_dim = pgrid_ -> cells_per_dim_;
-            pgrid_ -> getIJK(child0_Idx, child0_IJK);
-        }
-        // Transform the local coordinates that comes from the refinemnet in such a way that the
-        // reference element of each parent cell is the unit cube. Here, (eIJK[*]-"shift")/cells_per_dim[*]
-        // Get the local coordinates of the entity (in the reference unit cube).
-        FieldVector<double, 3>  corners_in_father_reference_elem_temp[8] = {
-            // corner '0'
-            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
-            // corner '1'
-            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
-            // corner '2'
-            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
-            // corner '3'
-            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2])/cells_per_dim[2] },
-            // corner '4'
-            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
-            // corner '5'
-            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1])/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
-            // corner '6'
-            { double(eIJK[0]-child0_IJK[0])/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] },
-            // corner '7'
-            { double(eIJK[0]-child0_IJK[0]+1)/cells_per_dim[0], double(eIJK[1]-child0_IJK[1]+1)/cells_per_dim[1],
-              double(eIJK[2]-child0_IJK[2]+1)/cells_per_dim[2] }};
+    if (pgrid_ -> cell_to_idxInParentCell_[this->index()] !=-1) {
+        int idxInParentCell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
+        assert(idxInParentCell>-1);
+        const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
+        const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idxInParentCell, cells_per_dim);
+        FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
+            { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
         auto in_father_reference_elem_corners = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
         EntityVariableBase<cpgrid::Geometry<0, 3>>& mutable_in_father_reference_elem_corners = *in_father_reference_elem_corners;
         // Assign the corners. Make use of the fact that pointers behave like iterators.
@@ -599,9 +519,10 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
                                            in_father_reference_elem_corners, in_father_reference_elem_corner_indices_.data());
     }
+    else {
+        OPM_THROW(std::logic_error, "Entity has no father. Entry should be -1");
+    }
 }
-
-
 
 template<int codim>
 Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
