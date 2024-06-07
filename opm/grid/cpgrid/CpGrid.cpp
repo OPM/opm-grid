@@ -2676,10 +2676,6 @@ void  CpGrid::definePreAdaptToLeafGridFaceRelations( std::map<std::array<int,2>,
                     elemLgrAndElemLgrFace_to_adaptedFace[{elem, face}] = face_count;
                     adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {elem, face};
                     face_count += 1;
-
-                    //  elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace[{elem, face}] = {level, refined_face_count_vec[shiftedLevel]};
-                    //  refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace[{level, refined_face_count_vec[shiftedLevel]}] = {elem, face};
-                    // refined_face_count_vec[shiftedLevel] +=1;
                 }
                 // If the refined face lays on the boundary of the LGR, e.i., it was born on one of the faces
                 // of the marked element that got refined, then, we have two cases:
@@ -2696,10 +2692,6 @@ void  CpGrid::definePreAdaptToLeafGridFaceRelations( std::map<std::array<int,2>,
                         elemLgrAndElemLgrFace_to_adaptedFace[{elem, face}] = face_count;
                         adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {elem, face};
                         face_count += 1;
-
-                        //     elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace[{elem, face}] = {level, refined_face_count_vec[shiftedLevel]};
-                        //     refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace[{level, refined_face_count_vec[shiftedLevel]}] = {elem, face};
-                        //     refined_face_count_vec[shiftedLevel] +=1;
                     }
                 }
             } // end-face-for-loop
@@ -3075,10 +3067,22 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
         // Cell to face.
         for (const auto& face : preAdapt_cell_to_face) {
             const auto& preAdaptFace = face.index();
-            int adaptedFace;
+            int adaptedFace = 0; // It will be rewritten.
+            // Face is stored in adapted_faces
+            if ( elemLgrAndElemLgrFace_to_adaptedFace.count({elemLgr, preAdaptFace}) == 1) {
+                adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace[{elemLgr, preAdaptFace}];
+                aux_cell_to_face.push_back({adaptedFace, face.orientation()});
+                if (adaptedFace == 0)
+                    {
+                        std::cout<< "adaptdFace: " << adaptedFace << std::endl;
+                        std::cout<< "elemLgr: " << elemLgr << " preAdaptFace "<< preAdaptFace <<std::endl;
+                        }
+                   
+            }
+        else{
             // Face might have vanished - Search its refined lgr-children faces in that case -
             // last lgr where the face appears
-            if (elemLgrAndElemLgrFace_to_adaptedFace.count({elemLgr, preAdaptFace}) == 0) {
+            assert(elemLgrAndElemLgrFace_to_adaptedFace.count({elemLgr, preAdaptFace}) == 0);
                 if (elemLgr ==-1) { // Coarse face got replaced by its children - from the last appearance of the marked face.
                     assert(!faceInMarkedElemAndRefinedFaces[preAdaptFace].empty());
                     const auto& lastAppearanceLgr = faceInMarkedElemAndRefinedFaces[preAdaptFace].back().first;
@@ -3104,13 +3108,16 @@ void CpGrid::populateAdaptedCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geome
                                                                                              cells_per_dim_vec[lastLgrLevelShifted]);
                     adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace[{lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace}];
                     aux_cell_to_face.push_back({adaptedFace, face.orientation()});
+                     if (adaptedFace == 0)
+                    {
+                        std::cout << "adaptedFace: " << adaptedFace  << " cell: " << cell << std::endl;
+                        std::cout<< "marked face: " << markedFace << std::endl;
+                    std::cout<< "last lgr level: " << lastLgrLevel << " level: " << assignRefinedLevel[elemLgr] << std::endl;
+                    std::cout<< "elemLgr: " << elemLgr << " preAdaptFace: " << preAdaptFace << " lastLgr: " << lastLgrWhereMarkedFaceAppeared << std::endl;
+                    std::cout<< "shifted last level: " << lastLgrLevelShifted << " shifted level" << shiftedLevel << std::endl;
+                    std::cout<< "face idx last lgr: " << lastAppearanceLgrEquivFace << std::endl;
+                    }
                 }
-            }
-            // Face is stored in adapted_faces
-            else {
-                assert( elemLgrAndElemLgrFace_to_adaptedFace.count({elemLgr, preAdaptFace}) == 1);
-                adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace[{elemLgr, preAdaptFace}];
-                aux_cell_to_face.push_back({adaptedFace, face.orientation()});
             }
         } // end-cell_to_face
         // Adapted/Leaf-grid-view cell to face.
@@ -3812,7 +3819,7 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
     //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
     //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
     const int& kFacesLgr2 = cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[2]+1);
-    const int& iFacesLgr2 = kFacesLgr2 + ((cells_per_dim_lgr2[0]+1)*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2]);
+    const int& iFacesLgr2 = ((cells_per_dim_lgr2[0]+1)*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2]);
     
     if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
         assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);

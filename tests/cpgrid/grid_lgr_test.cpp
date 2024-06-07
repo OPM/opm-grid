@@ -176,21 +176,21 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                         }
                     }
                     BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
-                      /** To be checked. Sth must be wrong and affecting HierarcIterators functionality */
+                    /** To be checked. Sth must be wrong and affecting HierarcIterators functionality */
                     /* // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
-                    BOOST_CHECK_EQUAL( it == endIt, false);
-                    for (; it != endIt; ++it)
-                    {
-                    // Do something with the son available through it->
-                    BOOST_CHECK(it ->hasFather() == true);
-                        BOOST_CHECK(it ->level() == lgr);
-                        referenceElemOneParent_volume += it-> geometryInFather().volume();
-                        for (int c = 0; c < 3; ++c)
-                        {
-                            referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
-                        }
-                        // std::cout << it->index() << '\n';
-                        }*/
+                       BOOST_CHECK_EQUAL( it == endIt, false);
+                       for (; it != endIt; ++it)
+                       {
+                       // Do something with the son available through it->
+                       BOOST_CHECK(it ->hasFather() == true);
+                       BOOST_CHECK(it ->level() == lgr);
+                       referenceElemOneParent_volume += it-> geometryInFather().volume();
+                       for (int c = 0; c < 3; ++c)
+                       {
+                       referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
+                       }
+                       // std::cout << it->index() << '\n';
+                       }*/
                     for (int c = 0; c < 3; ++c)
                     {
                         referenceElem_entity_center[c]
@@ -203,7 +203,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 }
                 BOOST_CHECK( entity.level() == 0);
             }
- 
+
             // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
@@ -250,15 +250,16 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
                 Dune::cpgrid::EntityRep<1> faceEntity(face, true);
                 BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
-                /*    if ((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() >2 ) {
+                if ((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() >2 ) {
                     std::cout<< "face idx: " << face << " size: " << (*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() << std::endl;
                     for (const auto& cell:  (*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity])
                     {
                         std::cout<< "cell idx: " << cell.index()  << std::endl;
-                            }
-                            }*/
+                    }
+
+                }
             }
- 
+
             // LeafView
             for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
             {
@@ -491,9 +492,9 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             }
         }
     }
-catch (const std::exception& e) // caught by reference to base
+    catch (const std::exception& e) // caught by reference to base
     {
-          std::cout << " a standard exception was caught, with message: '"
+        std::cout << " a standard exception was caught, with message: '"
                   << e.what() << "'\n";
     }
 }
@@ -512,7 +513,7 @@ BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
-    }
+}
 
 BOOST_AUTO_TEST_CASE(refine_patch)
 {
@@ -615,7 +616,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_face)
     const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {2,0,0}, {3,2,2}};
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,1}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-      refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
 BOOST_AUTO_TEST_CASE(pathces_share_faceB)
@@ -629,7 +630,7 @@ BOOST_AUTO_TEST_CASE(pathces_share_faceB)
     const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,0,0}}; //, {1,1,2}};
     const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,1,1}}; // {{2,2,1}, {3,2,2}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"}; //, "LGR3"};
-      refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
@@ -778,5 +779,4 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     fine_grid.createCartesian(fine_grid_dim, fine_cell_sizes);
 
     check_global_refine(coarse_grid, fine_grid);
-    }
-
+}
