@@ -88,14 +88,13 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     const int startingGridIdx = coarse_grid.chooseData().size() -1; // size before calling adapt
 
     std::vector<int> assignRefinedLevel(coarse_grid.chooseData()[startingGridIdx]->size(0));
-    
+
     for (const auto& elemIdx : markedCells)
     {
         const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[startingGridIdx]), elemIdx, true);
         coarse_grid.mark(1, elem);
         coarse_grid.getMark(elem);
         assignRefinedLevel[elemIdx] = coarse_grid.maxLevel() + 1;
-        std::cout<< assignRefinedLevel[elemIdx] << " assignrefinLevel" << std::endl;
         BOOST_CHECK( coarse_grid.getMark(elem) == 1);
         BOOST_CHECK( elem.mightVanish() == true);
     }
@@ -205,7 +204,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         } // end-for-loop-intersection_match
                         BOOST_CHECK(matching_intersection_found);
                     }
-                }    
+                }
             } // end-if-isGlobalRefinement
         } // end-if-isBlockShape
 
@@ -219,7 +218,6 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> preAdaptMapper(preAdapt_view, Dune::mcmgElementLayout());
         const auto& adapt_idSet = adapted_leaf.local_id_set_;
         const auto& preAdapt_idSet = (*data[startingGridIdx+1]).local_id_set_;
-        std::cout<< "startingGridIdx" << startingGridIdx  << std::endl;
 
         for(const auto& element: elements(grid_view)) {
             // postAdapt() has been called, therefore every element gets marked with 0
@@ -305,8 +303,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( element.getOrigin().level() == startingGridIdx);
                 BOOST_CHECK( element.isNew() == false);
             }
-            auto it = element.hbegin(element.level());// coarse_grid.maxLevel());
-            auto endIt = element.hend(element.level());    //coarse_grid.maxLevel());
+            auto it = element.hbegin(coarse_grid.maxLevel()); // With element.level(), fails
+            auto endIt = element.hend(coarse_grid.maxLevel());
             const auto& [lgr, childrenList] = (*data[startingGridIdx]).parent_to_children_cells_[element.index()];
             if (std::find(markedCells.begin(), markedCells.end(), element.index()) == markedCells.end()){
                 BOOST_CHECK_EQUAL(lgr, -1);
@@ -319,7 +317,12 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             else{
                 BOOST_CHECK(lgr != -1);
                 BOOST_CHECK(static_cast<int>(childrenList.size()) == cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
-                 // Auxiliary int to check amount of children
+                // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
+                BOOST_CHECK_EQUAL( it == endIt, false);
+                BOOST_CHECK( element.mightVanish() == true);
+                BOOST_CHECK( element.isNew() == false);
+                BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
+                // Auxiliary int to check amount of children
                 double referenceElemOneParent_volume = 0.;
                 std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
                 for (const auto& child : childrenList) {
@@ -335,37 +338,32 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         referenceElem_entity_center[c] += (childElem.geometryInFather().center())[c];
                     }
                 }
+                /// Auxiliary int to check amount of children
+                double referenceElemOneParent_volume_it = 0.;
+                std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
+                for (; it != endIt; ++it)
+                {
+                    BOOST_CHECK(it ->hasFather() == true);
+                    BOOST_CHECK(it ->level() == lgr);
+                    referenceElemOneParent_volume_it += it-> geometryInFather().volume();
+                    for (int c = 0; c < 3; ++c)
+                    {
+                        referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
+                    }
+                }
                 for (int c = 0; c < 3; ++c) {
                     referenceElem_entity_center[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
+                    referenceElem_entity_center_it[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
                 }
                 BOOST_CHECK_CLOSE(referenceElemOneParent_volume, 1, 1e-6);
                 BOOST_CHECK_CLOSE(referenceElem_entity_center[0], .5, 1e-6);
                 BOOST_CHECK_CLOSE(referenceElem_entity_center[1], .5, 1e-6);
                 BOOST_CHECK_CLOSE(referenceElem_entity_center[2], .5, 1e-6);
-                BOOST_CHECK( element.mightVanish() == true);
-                BOOST_CHECK( element.isNew() == false);
-                BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
-                /** To be checked. Sth must be wrong and affecting HierarcIterators functionality */
-                /* if (!hasBeenRefinedAtLeastOnce) {
-                // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
-                BOOST_CHECK_EQUAL( it == endIt, false); // FAILS
-                }*/
-              
-                /*  // Auxiliary int to check amount of children
-                    double referenceElemOneParent_volume = 0.;
-                    std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
-                    for (; it != endIt; ++it)
-                    {
-                    // Do something with the son available through it->
-                    std::cout<< "index: " << it ->index() << " level: " << it->level() << " hasFat: " << it->hasFather() << std::endl;
-                    BOOST_CHECK(it ->hasFather() == true);
-                    // BOOST_CHECK(it ->level() == lgr);
-                    //referenceElemOneParent_volume += it-> geometryInFather().volume();
-                    for (int c = 0; c < 3; ++c)
-                    {
-                    //  referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
-                    }
-                    }*/
+
+                BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-6);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-6);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-6);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-6);
             }
             BOOST_CHECK( element.level() == 0);
         } // end-preAdaptElements-for-loop
@@ -476,65 +474,65 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
     std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
-    }
-
-    /*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-
-
-    const std::array<int, 3> startIJK = {1,1,1};
-    const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
-    const std::string lgr_name = {"LGR1"};
-    coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-    std::vector<int> markedCells = {0,1}; // coarse cells
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
 }
 
-BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+/*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
+  {
+  // Create a grid
+  Dune::CpGrid coarse_grid;
+  const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+  const std::array<int, 3> grid_dim = {4,3,3};
+  const std::array<int, 3> cells_per_dim = {2,2,2};
+  coarse_grid.createCartesian(grid_dim, cell_sizes);
 
 
-    const std::array<int, 3> startIJK = {1,1,1};
-    const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
-    const std::string lgr_name = {"LGR1"};
-    coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+  const std::array<int, 3> startIJK = {1,1,1};
+  const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
+  const std::string lgr_name = {"LGR1"};
+  coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-    std::vector<int> markedCells = {34}; // {34, 35} refined cells (with parent cell 17) -> check conversion of corners between neighboring lgrs definition!
-    // Error:  Cannot convert corner index from one LGR to its neighboring LGR
-    // 42 refined cell with parent cell 18.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
-}
+  std::vector<int> markedCells = {0,1}; // coarse cells
+  markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
+  }
 
-
-BOOST_AUTO_TEST_CASE(adaptFromAMixedGridMixedCells)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+  BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
+  {
+  // Create a grid
+  Dune::CpGrid coarse_grid;
+  const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+  const std::array<int, 3> grid_dim = {4,3,3};
+  const std::array<int, 3> cells_per_dim = {2,2,2};
+  coarse_grid.createCartesian(grid_dim, cell_sizes);
 
 
-    const std::array<int, 3> startIJK = {1,1,1};
-    const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
-    const std::string lgr_name = {"LGR1"};
-    coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+  const std::array<int, 3> startIJK = {1,1,1};
+  const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
+  const std::string lgr_name = {"LGR1"};
+  coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-    std::vector<int> markedCells = {2,3,34}; // {34, 41} refined cells (with parent cell 17),
-    // 42, 49 refined cell with parent cell 18-> check conversion of corners between neighboring lgrs definition!
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
-    }*/
+  std::vector<int> markedCells = {34}; // {34, 35} refined cells (with parent cell 17) -> check conversion of corners between neighboring lgrs definition!
+  // Error:  Cannot convert corner index from one LGR to its neighboring LGR
+  // 42 refined cell with parent cell 18.
+  markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
+  }
+
+
+  BOOST_AUTO_TEST_CASE(adaptFromAMixedGridMixedCells)
+  {
+  // Create a grid
+  Dune::CpGrid coarse_grid;
+  const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+  const std::array<int, 3> grid_dim = {4,3,3};
+  const std::array<int, 3> cells_per_dim = {2,2,2};
+  coarse_grid.createCartesian(grid_dim, cell_sizes);
+
+
+  const std::array<int, 3> startIJK = {1,1,1};
+  const std::array<int, 3> endIJK = {3,2,2};  // -> marked elements 17 and 18
+  const std::string lgr_name = {"LGR1"};
+  coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+
+  std::vector<int> markedCells = {2,3,34}; // {34, 41} refined cells (with parent cell 17),
+  // 42, 49 refined cell with parent cell 18-> check conversion of corners between neighboring lgrs definition!
+  markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
+  }*/

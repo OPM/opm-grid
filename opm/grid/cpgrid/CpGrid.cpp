@@ -1973,15 +1973,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
-    /* // Check LGRs are disjoint (sharing corners allowed, sharing faces not allowed)
-    if (startIJK_vec.size() > 0 && (*data_[0]).patchesShareFace(startIJK_vec, endIJK_vec)) { // !(*data_[0]).disjointPatches(startIJK_vec, endIJK_vec)){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "LGRs share at least one face.");
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "LGRs share at least one face.");
-        }
-        }*/
     if (startIJK_vec.size() > 0) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
