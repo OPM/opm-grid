@@ -1660,6 +1660,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             /* Additional parameters */
                                             cells_per_dim_vec);
 
+    // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt. 
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) { 
         (*data_[preAdaptLevel]).parent_to_children_cells_ = parent_to_refinedChildCells_vec[preAdaptLevel];     
         (*data_[preAdaptLevel]).level_to_leaf_cells_ =  preAdaptLevelCells_to_adaptedCells_vec[preAdaptLevel]; 
@@ -1668,13 +1669,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // -- Child-parent relations --
     //
     // ------------------------ Refined grid parameters
-    // Refined child cells and their parents. Entry is {-1,-1} when cell has no father. // {level parent cell, parent cell index}
-    // Each entry represents a refined level. Here, there is only one.
+    // Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
+    // Each entry represents a refined level.
     std::vector<std::vector<std::array<int,2>>> refinedChild_to_parentCell_vec(levels);
-    // Each entry represents a refined level. Here, there is only one.
+    // Each entry represents a refined level. Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather(). 
     std::vector<std::vector<int>> refinedChild_to_idxInParentCell_vec(levels);
     // ------------------------ Adapted grid parameters
-    // Adapted child cells and their parents. Entry is {-1,-1} when cell has no father. // {level parent cell, parent cell index}
+    // Adapted child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
     std::vector<std::array<int,2>> adaptedChild_to_parentCell;
     std::vector<int> adaptedChild_to_idxInParentCell;
     //
@@ -1693,11 +1694,10 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // -- Some extra indices relations between refined-grid, and adapted-grid --
     // ------------------------ Refined grid parameters
     // Relation between the refined grid ("current_view_data_") and leafview cell indices.
-    // std::vector<int> refinedCells_to_adaptedCells; // = data_[level] -> level_to_leaf_cells_;
-    std::vector<std::vector<int>> refinedCells_to_adaptedCells_vec(levels);// = {refinedCells_to_adaptedCells};
+    std::vector<std::vector<int>> refinedCells_to_adaptedCells_vec(levels);
     // ------------------------ Adapted grid parameters
     // Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
-    std::vector<std::array<int,2>> adaptedCell_to_levelAndLevelCell; // data_.back() -> leaf_to_level_cells_
+    std::vector<std::array<int,2>> adaptedCell_to_levelAndLevelCell; 
     //
     defineRefinedAdaptedCellsRelation(  refinedCells_to_adaptedCells_vec,
                                         adaptedCell_to_levelAndLevelCell,
@@ -2161,23 +2161,43 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
 
 void CpGrid::defineChildToParentRelation(std::vector<std::vector<std::array<int,2>>>& refinedChild_to_parentCell_vec,
                                          std::vector<std::vector<int>>& refinedChild_to_idxInParentCell_vec,
-                                         std::vector<std::array<int,2>>& adaptedChild_to_parentCell, // {level parent cell, parent cell index}
-                                         std::vector<int>& adaptedChild_to_idxInParentCell, // {level parent cell, parent cell index}
+                                         std::vector<std::array<int,2>>& adaptedChild_to_parentCell, 
+                                         std::vector<int>& adaptedChild_to_idxInParentCell,
                                          std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                          const std::vector<int>& refined_cell_count_vec,
                                          std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
                                          const int cell_count)
 {
     const int& startingGridIdx = static_cast<int>(this->data_.size()) -1;
-    adaptedChild_to_parentCell.resize(cell_count, std::array<int,2>{-1,-1});
+    adaptedChild_to_parentCell.resize(cell_count, std::array<int,2>{-1,-1}); //  Entry is {-1,-1} when cell has no father, otherwise, {level parent cell, parent cell index}.
     adaptedChild_to_idxInParentCell.resize(cell_count, -1);
     // Rewrite only the entries of adapted cells that have a parent cell
     for (int cell = 0; cell < cell_count; ++cell) {
         const auto& elemLgr = adaptedCell_to_elemLgrAndElemLgrCell[cell][0];
-        // -1 represents current_view_data_ which has level "refinedLevel-1"
+        // -1 means that the adapted cell is equivalent to a cell from the starting grid (current_view_data_)
         if (elemLgr != -1) {
-            adaptedChild_to_parentCell[cell] = {startingGridIdx, elemLgr};
+            // Search for the level where the parent cell was born, and its index in that level grid.
+            // Notice that elemLgr is a cell index in current_view_data_ (the starting grid where elements got marked for (further) refinement).
+            const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemLgr, true); // parent cell index in starting grid is elemLgr.
+            const auto& elemLevel = element.level(); // parent cell level (where the parent cell was born, might not coincide with the starting grid).
+            const auto& elemLevelIdx = (elemLevel == 0) ? element.getOrigin().index() : element.getLevelElem().index(); // parent cell index in the level it was born.
+            adaptedChild_to_parentCell[cell] = {elemLevel, elemLevelIdx};
             adaptedChild_to_idxInParentCell[cell] = adaptedCell_to_elemLgrAndElemLgrCell[cell][1];
+        }
+        else {
+            /** Populate the previous (existing grids before calling adapt) child_to_parent_ relationships. */
+            assert(elemLgr == -1);
+            const auto& elemIdx = adaptedCell_to_elemLgrAndElemLgrCell[cell][1];
+            
+            // Search for the level where the parent cell was born, and its index in that level grid.
+            // Notice that elemLgr is a cell index in current_view_data_ (the starting grid where elements got marked for (further) refinement).
+            const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true); // elemIdx of equivalent cell in the starting grid.
+            if(element.hasFather()) {
+                adaptedChild_to_parentCell[cell] = {element.father().level(), element.father().index()};
+                const auto& elemLevel = element.level(); // parent cell level (where the parent cell was born, might not coincide with the starting grid).
+                const auto& elemLevelIdx = (elemLevel == 0) ? element.getOrigin().index() : element.getLevelElem().index(); // parent cell index in the level it was born.
+                adaptedChild_to_idxInParentCell[cell] = this-> data_[elemLevel]-> cell_to_idxInParentCell_[elemLevelIdx];
+            }
         }
     }
 
@@ -2188,9 +2208,14 @@ void CpGrid::defineChildToParentRelation(std::vector<std::vector<std::array<int,
         // Every refined cell has a parent cell
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
             const auto& elemLgr = refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell[{level, cell}][0];
-            // -1 represents current_view_data_ which has level "refinedLevel-1"
+            // -1 represents current_view_data_ 
             assert(elemLgr != -1);
-            refinedChild_to_parentCell_vec[shiftedLevel][cell] = {startingGridIdx, elemLgr};
+            // Search for the level where the parent cell was born, and its index in that level grid.
+            // Notice that elemLgr is a cell index in current_view_data_ (the starting grid where elements got marked for (further) refinement).
+            const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemLgr, true);
+            const auto& elemLevel = element.level();
+            const auto& elemLevelIdx = (elemLevel == 0) ? element.getOrigin().index() : element.getLevelElem().index();
+            refinedChild_to_parentCell_vec[shiftedLevel][cell] = {elemLevel, elemLevelIdx};
             refinedChild_to_idxInParentCell_vec[shiftedLevel][cell] =  refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell[{level,cell}][1];
         }
     }
