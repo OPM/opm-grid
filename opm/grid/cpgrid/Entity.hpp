@@ -556,7 +556,6 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getLevelElem() const
         const auto entityLevel = this -> level();
         const int& entityLevelIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
         const auto& level_grid = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
-        std::cout<< "entityLevel: " << level() << " entityLevelIdx: " << entityLevelIdx <<  " idx: " << this->index() << std::endl;
         return Dune::cpgrid::Entity<0>( *level_grid, entityLevelIdx, true);
     }
     else {
