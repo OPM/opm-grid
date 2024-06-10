@@ -557,6 +557,7 @@ namespace Dune
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
 
+        /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
         ///
         /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.
@@ -580,13 +581,29 @@ namespace Dune
         int getMark(const cpgrid::Entity<0>& element) const;
 
         /// @brief Set mightVanish flags for elements that will be refined in the next adapt() call
-        ///        Need to be called after elements have been marked for refinement. 
+        ///        Need to be called after elements have been marked for refinement.
         bool preAdapt();
 
         /// @brief Triggers the grid refinement process
+        bool adapt();
+
+        /// @brief Triggers the grid refinement process, allowing to select diffrent refined level grids.
         ///
-        /// @param [in] cells_per_dim    Number of (refined) cells in each direction that each
-        ///                              parent cell should be refined to.
+        /// @param [in] cells_per_dim_vec    For each set of marked elements for refinement, that will belong to a same
+        ///                                  refined level grid, number of (refined) cells in each direction that each
+        ///                                  parent cell should be refined to.
+        /// @param [in] assignRefinedLevel   Vector with size equal to total amount of cells of the starting grid where
+        ///                                  the marked elements belong. In each entry, the refined level grid where the
+        ///                                  refined entities of the (parent) marked element should belong is stored.
+        /// @param [in] lgr_name_vector      Each refined level grid name, e.g. {"LGR1", "LGR2"}.
+        /// @param [in] isCARFIN             Default false. The keyword CARFIN implies that the selected cells to be refined form a block,
+        ///                                  which can be edscribed via startIJK and endIJK Cartesian indices. This bool
+        ///                                  is used to define logical_cartesian_size_ of the refined level grids according
+        ///                                  to this block shape.
+        /// @param [in] startIJK_vec         Default empty vector. When isCARFIN, the starting ijk Cartesian index of each
+        ///                                  block of cells to be refined.
+        /// @param [in] endIJK_vec         Default empty vector. When isCARFIN, the final ijk Cartesian index of each
+        ///                                  block of cells to be refined.
         bool adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<int>& assignRefinedLevel,
                    const std::vector<std::string>& lgr_name_vec,
@@ -596,6 +613,7 @@ namespace Dune
 
         /// @brief Clean up refinement markers - set every element to the mark 0 which represents 'doing nothing'
         void postAdapt();
+        /// --------------- Adaptivity (end) ---------------
 
     private:
 

@@ -120,11 +120,10 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK_EQUAL(adapted_leaf.cell_to_face_.size(), blockRefinement_leaf.cell_to_face_.size());
             BOOST_CHECK_EQUAL(coarse_grid.size(3), other_grid.size(3));
             BOOST_CHECK_EQUAL(coarse_grid.size(0), other_grid.size(0));
-            /** Checking amount of corners and cells in the refined grid fails fails. To be fixed.*/
-            /*if(!hasBeenRefinedAtLeastOnce) {
-              BOOST_CHECK_EQUAL(coarse_grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
-              BOOST_CHECK_EQUAL(coarse_grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
-              }*/
+            if(!hasBeenRefinedAtLeastOnce) {
+                BOOST_CHECK_EQUAL(coarse_grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
+                BOOST_CHECK_EQUAL(coarse_grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
+            }
 
             for(const auto& point: adapted_leaf.geomVector<3>()){
                 auto equiv_point_iter = blockRefinement_leaf.geomVector<3>().begin();
@@ -474,6 +473,32 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
     std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
+}
+
+
+BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    const std::array<int, 3> cells_per_dim = {3,3,3};
+    std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+
+    // Create a grid
+    Dune::CpGrid other_grid;
+    other_grid.createCartesian(grid_dim, cell_sizes);
+    for (const auto& elemIdx : markedCells)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData()[0]), elemIdx, true);
+        other_grid.mark(1, elem);
+    }
+    other_grid.preAdapt();
+    other_grid.adapt();
+    other_grid.postAdapt();
+    
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
 }
 
 /*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)

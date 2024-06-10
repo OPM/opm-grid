@@ -1489,6 +1489,19 @@ bool CpGrid::preAdapt()
     return current_view_data_-> preAdapt();
 }
 
+bool CpGrid::adapt()
+{
+    const std::vector<std::array<int,3>>& cells_per_dim_vec = {{3,3,3}}; // Arbitrary chosen values.
+    std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
+    const auto& preAdaptMaxLevel = this ->maxLevel();
+    for (int elemIdx = 0; elemIdx < static_cast<int>(current_view_data_->size(0)); ++elemIdx) {
+        const auto& element = cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
+        assignRefinedLevel[elemIdx] = (this->getMark(element) == 1) ? (preAdaptMaxLevel +1) : 0;
+    }
+    const std::vector<std::string>& lgr_name_vec = { "LGR" + std::to_string(preAdaptMaxLevel +1) };
+    return this-> adapt(cells_per_dim_vec, assignRefinedLevel,lgr_name_vec);
+}
+
 bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<int>& assignRefinedLevel,
                    const std::vector<std::string>& lgr_name_vec,
