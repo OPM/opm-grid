@@ -619,7 +619,7 @@ namespace Dune
 
         /// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
         
-        /// @brief Refine each marked element and establish relationships between corners, faces, and cells marked for refinement,
+        /// @brief Refine each marked element and stablish relationships between corners, faces, and cells marked for refinement,
         ///        with the refined corners, refined faces, and refined cells.
         ///
         /// --- Marked elements parameters ---
