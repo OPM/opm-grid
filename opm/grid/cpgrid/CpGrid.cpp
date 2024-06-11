@@ -1622,7 +1622,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<int> refined_cell_count_vec(levels, int(0));
     // -- Parent-child relations --
     // Relation between the grids before adapt() and new refined cells (on the refined grid level - not in each individual lgr).
-    std::vector<std::vector<std::tuple<int,std::vector<int>>>> parent_to_refinedChildCells_vec(preAdaptMaxLevel +1);
+    std::vector<std::vector<std::tuple<int,std::vector<int>>>> preAdapt_parent_to_children_cells_vec(preAdaptMaxLevel +1);
     // ------------------------ Adapted cells parameters
     // --- Adapted cells and PreAdapt cells relations ---
     std::map<std::array<int,2>,int>           elemLgrAndElemLgrCell_to_adaptedCell;
@@ -1634,7 +1634,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<std::vector<int>> preAdaptLevelCells_to_adaptedCells_vec(preAdaptMaxLevel +1);
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
         // Resize with the corresponding amount of cells of the preAdapt level. Deafualt {-1, empty vector} when the cell has no children.
-        parent_to_refinedChildCells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
+        preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
         // Resize with the corresponding amount of cell of the preAdapt level. Dafualt -1 when the cell vanished and does not appear on the leaf grid view.
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished. 
         preAdaptLevelCells_to_adaptedCells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), -1);
@@ -1651,7 +1651,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                             refined_cell_count_vec,
                                             assignRefinedLevel,
-                                            parent_to_refinedChildCells_vec,
+                                            preAdapt_parent_to_children_cells_vec,
                                             /* Adapted cells parameters */
                                             elemLgrAndElemLgrCell_to_adaptedCell,
                                             adaptedCell_to_elemLgrAndElemLgrCell,
@@ -1662,7 +1662,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt. 
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) { 
-        (*data_[preAdaptLevel]).parent_to_children_cells_ = parent_to_refinedChildCells_vec[preAdaptLevel];     
+        (*data_[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];     
         (*data_[preAdaptLevel]).level_to_leaf_cells_ =  preAdaptLevelCells_to_adaptedCells_vec[preAdaptLevel]; 
     }
 
@@ -2084,7 +2084,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                                                      std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                      std::vector<int>& refined_cell_count_vec,
                                                      const std::vector<int>& assignRefinedLevel,
-                                                     std::vector<std::vector<std::tuple<int,std::vector<int>>>>& parent_to_refinedChildCells_vec,
+                                                     std::vector<std::vector<std::tuple<int,std::vector<int>>>>& refined_parent_to_children_cells_vec,
                                                      /* Adapted cells parameters */
                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
                                                      std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
@@ -2142,7 +2142,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
-            parent_to_refinedChildCells_vec[elemLevel][elemLevelIdx] = std::make_pair( markedElemLevel, refinedChildrenList);
+            refined_parent_to_children_cells_vec[elemLevel][elemLevelIdx] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
                 markedElemAndEquivRefinedCorn_to_corner[ {elemIdx, lgrEquivCorner}] = markedCorner;

@@ -657,7 +657,7 @@ namespace Dune
         /// @param [in] assignRefinedLevel:                                   Each marked element can be assigned to certain refined level grid. This vector has entries 0 for
         ///                                                                   non marked elements, and the corresponding integer representing a refined level grid for marked
         ///                                                                   elements.
-        /// @param [out] parent_to_refinedChildCells_vec:                     Parent cells and their refined children. Entry is {-1, {}} when cell has no children. Othewise,
+        /// @param [out] preAdapt_parent_to_children_cells_vec:               Parent cells and their refined children. Entry is {-1, {}} when cell has no children. Othewise,
         ///                                                                   {refined grid level where children were born, {child0, child1, ...}}
         ///                                                                   Each vector entry represents an existing level grid before calling adapt.
         /// --- Adapted cells parameters ---
@@ -688,7 +688,7 @@ namespace Dune
                                                     std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                     std::vector<int>& refined_cell_count_vec,
                                                     const std::vector<int>& assignRefinedLevel,
-                                                    std::vector<std::vector<std::tuple<int,std::vector<int>>>>& parent_to_refinedChildCells,
+                                                    std::vector<std::vector<std::tuple<int,std::vector<int>>>>& preAdapt_parent_to_children_cells_vec,
                                                     /* Adapted cells parameters */
                                                     std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
                                                     std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
