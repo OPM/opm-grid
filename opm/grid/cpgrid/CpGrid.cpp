@@ -1473,8 +1473,22 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
-    // chooseData() is equal to 'data_' when the grid has not been distributed,
-    //                          'distributed_data_' otherwise.
+    if (!distributed_data_.empty()){
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Adapt a distributed grid is not supported, yet.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "Adapt a distributed grid is not supported, yet.");
+        }
+    }
+    if(data_.size()>1) {
+        // Get the level where the element was born and its index in that level.
+        const auto& elemLevel =  element.level();
+        const auto& elemInLevel = (elemLevel == 0) ? element.getOrigin() : element.getLevelElem();
+        // Mark element in its level
+        data_[elemLevel] -> mark(refCount, elemInLevel);
+    }
+    // Mark element (also) in current_view_data_
     return current_view_data_-> mark(refCount, element);
 }
 
@@ -1486,7 +1500,11 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 bool CpGrid::preAdapt()
 {
     // Set the flags mighVanish for elements that have been marked for refinement/coarsening.
-    return current_view_data_-> preAdapt();
+    bool isPreAdapted = false;
+    for (const auto& preAdaptGrid : data_) {
+        isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+    }
+    return isPreAdapted; //current_view_data_-> preAdapt();
 }
 
 bool CpGrid::adapt()
