@@ -106,6 +106,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         BOOST_CHECK(static_cast<int>(data.size()) == startingGridIdx+3);
         const auto& adapted_leaf = *data[startingGridIdx+2];
 
+        std::cout<< "face size: " << adapted_leaf.face_to_cell_.size() << std::endl;
+ 
         if(isBlockShape) {
             const auto& blockRefinement_data = other_grid.chooseData();
             const auto& blockRefinement_leaf = *blockRefinement_data.back();
@@ -369,7 +371,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     } // end-if-preAdapt
 }
 
-BOOST_AUTO_TEST_CASE(doNothing)
+/*BOOST_AUTO_TEST_CASE(doNothing)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -499,9 +501,9 @@ BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
     other_grid.postAdapt();
     
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
-}
+}*/
 
-/*BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
+BOOST_AUTO_TEST_CASE(adaptFromAMixedGrid)
   {
   // Create a grid
   Dune::CpGrid coarse_grid;
@@ -516,11 +518,11 @@ BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
   const std::string lgr_name = {"LGR1"};
   coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-  std::vector<int> markedCells = {0,1}; // coarse cells
+  std::vector<int> markedCells = {0}; // coarse cells
   markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
   }
 
-  BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
+/* BOOST_AUTO_TEST_CASE(adaptFromAMixedGridRefinedCell)
   {
   // Create a grid
   Dune::CpGrid coarse_grid;

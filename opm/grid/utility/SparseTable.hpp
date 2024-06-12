@@ -42,7 +42,7 @@
 #include <opm/grid/utility/IteratorRange.hpp>
 
 #include <ostream>
-
+#include <iostream>
 namespace Opm
 {
 
@@ -174,8 +174,8 @@ namespace Opm
 
         /// Returns a mutable row of the table.
         mutable_row_type operator[](int row)
-        {
-            assert(row >= 0 && row < size());
+        {if( row >= size()) {std::cout<< "row: " << row << " size: " << size() <<std::endl;}
+            assert(row >= 0 && row < size()); 
             return mutable_row_type{data_.begin() + row_start_[row],
                                     data_.begin() + row_start_[row + 1]};
         }
