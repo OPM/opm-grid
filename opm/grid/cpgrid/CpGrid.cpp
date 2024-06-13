@@ -1652,7 +1652,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<std::vector<int>> preAdapt_level_to_leaf_cells_vec(preAdaptMaxLevel +1);
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
         // Resize with the corresponding amount of cells of the preAdapt level. Deafualt {-1, empty vector} when the cell has no children.
+        if ( (*data_[preAdaptLevel]).parent_to_children_cells_.empty()){
         preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
+        }
+        else {
+        preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data_[preAdaptLevel]).parent_to_children_cells_;
+        }
         // Resize with the corresponding amount of cell of the preAdapt level. Dafualt -1 when the cell vanished and does not appear on the leaf grid view.
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished. 
         preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), -1);
@@ -1678,10 +1683,10 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             /* Additional parameters */
                                             cells_per_dim_vec);
 
-    // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt. 
-    for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) { 
-        (*data_[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];     
-        (*data_[preAdaptLevel]).level_to_leaf_cells_ =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel]; 
+    // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt.
+    for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
+        (*data_[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];
+        (*data_[preAdaptLevel]).level_to_leaf_cells_ =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel];
     }
 
     // -- Child-parent relations --
@@ -1817,6 +1822,38 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec);
 
+    std::vector<int> adapted_global_cell(cell_count, 0);
+    updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
+                                  adapted_corners,
+                                  corner_count,
+                                  /* Leaf grid View Faces arguments */
+                                  adapted_faces,
+                                  mutable_face_tags,
+                                  mutable_face_normals,
+                                  adapted_face_to_point,
+                                  face_count,
+                                  /* Leaf grid View Cells argumemts  */
+                                  adapted_cells,
+                                  adapted_cell_to_point,
+                                  adapted_global_cell,
+                                  cell_count,
+                                  adapted_cell_to_face,
+                                  adapted_face_to_cell,
+                                  /* Auxiliary arguments */
+                                  adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                  adaptedFace_to_elemLgrAndElemLgrFace,
+                                  adaptedCell_to_elemLgrAndElemLgrCell,
+                                  elemLgrAndElemLgrFace_to_adaptedFace,
+                                  faceInMarkedElemAndRefinedFaces,
+                                  adapted_geometries,
+                                  elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                  vanishedRefinedCorner_to_itsLastAppearance,
+                                  markedElem_to_itsLgr,
+                                  assignRefinedLevel,
+                                  markedElemAndEquivRefinedCorn_to_corner,
+                                  cornerInMarkedElemWithEquivRefinedCorner,
+                                  cells_per_dim_vec,
+                                  preAdaptMaxLevel);
 
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
@@ -1827,7 +1864,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>(refined_data_vec[level]);
 #endif
         // Store refined grid
+        if ((level == 0) && (preAdaptMaxLevel>0)) { // Overwrite the leaf-grid-view with the first new-refined-level-grid
+            data_[preAdaptMaxLevel+1] = refined_grid_ptr_vec[level];
+        }
+        else {
         (this-> data_).push_back(refined_grid_ptr_vec[level]);
+        }
 
         Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*data_[refinedLevelGridIdx]).geometry_;
         // Mutable containers for adapted corners, faces, cells, face tags, and face normals.
@@ -1891,42 +1933,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         /** To do: how the definition of refined level grids logical_cartesian_size_ affects LookUpData class (and LookUpCartesianData)*/
     }
 
-    std::vector<int> adapted_global_cell(cell_count, 0);
-    updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
-                                  adapted_corners,
-                                  corner_count,
-                                  /* Leaf grid View Faces arguments */
-                                  adapted_faces,
-                                  mutable_face_tags,
-                                  mutable_face_normals,
-                                  adapted_face_to_point,
-                                  face_count,
-                                  /* Leaf grid View Cells argumemts  */
-                                  adapted_cells,
-                                  adapted_cell_to_point,
-                                  adapted_global_cell,
-                                  cell_count,
-                                  adapted_cell_to_face,
-                                  adapted_face_to_cell,
-                                  /* Auxiliary arguments */
-                                  adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                  adaptedFace_to_elemLgrAndElemLgrFace,
-                                  adaptedCell_to_elemLgrAndElemLgrCell,
-                                  elemLgrAndElemLgrFace_to_adaptedFace,
-                                  faceInMarkedElemAndRefinedFaces,
-                                  adapted_geometries,
-                                  elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                  vanishedRefinedCorner_to_itsLastAppearance,
-                                  markedElem_to_itsLgr,
-                                  assignRefinedLevel,
-                                  markedElemAndEquivRefinedCorn_to_corner,
-                                  cornerInMarkedElemWithEquivRefinedCorner,
-                                  cells_per_dim_vec,
-                                  preAdaptMaxLevel);
-
-
     // Store adapted grid
     (this-> data_).push_back(adaptedGrid_ptr);
+
     // Further Adapted  grid Attributes
     (*data_[levels + preAdaptMaxLevel +1]).child_to_parent_cells_ = adapted_child_to_parent_cells;
     (*data_[levels + preAdaptMaxLevel +1]).cell_to_idxInParentCell_ = adapted_cell_to_idxInParentCell;
@@ -1940,7 +1949,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Update the leaf grid view
     current_view_data_ = data_.back().get();
-    std::cout<< "current view data faces: " << current_view_data_ -> face_to_cell_.size() << std::endl;
 
     // Print total amount of cells on the adapted grid
     Opm::OpmLog::info(std::to_string(markedElem_count) + " elements have been marked.\n");
@@ -1987,7 +1995,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
-    if (startIJK_vec.size() > 0) {
+    if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
@@ -2092,7 +2100,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                                                      std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                      std::vector<int>& refined_cell_count_vec,
                                                      const std::vector<int>& assignRefinedLevel,
-                                                     std::vector<std::vector<std::tuple<int,std::vector<int>>>>& refined_parent_to_children_cells_vec,
+                                                     std::vector<std::vector<std::tuple<int,std::vector<int>>>>& preAdapt_parent_to_children_cells_vec,
                                                      /* Adapted cells parameters */
                                                      std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
                                                      std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
@@ -2150,7 +2158,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
-            refined_parent_to_children_cells_vec[elemLevel][elemLevelIdx] = std::make_pair( markedElemLevel, refinedChildrenList);
+            preAdapt_parent_to_children_cells_vec[elemLevel][elemLevelIdx] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
                 markedElemAndEquivRefinedCorn_to_corner[ {elemIdx, lgrEquivCorner}] = markedCorner;
@@ -2762,11 +2770,7 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
         const auto& elemLgrFace = adaptedFace_to_elemLgrAndElemLgrFace[face][1];
         const auto& elemLgrFaceEntity =  Dune::cpgrid::EntityRep<1>(elemLgrFace, true);
         Opm::SparseTable<int>::mutable_row_type preAdapt_face_to_point;
-       
-        if(face == 72) {
-            std::cout<<  "elemLgr: " << elemLgr << " elemLGrFace "  << elemLgrFace << " face_count: " << face_count <<std::endl;
-           }
-       
+
 
         if (elemLgr == -1) { // The value -1 represents the current_grid_view_
             // Get the face geometry.
@@ -2779,10 +2783,6 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
             preAdapt_face_to_point = current_view_data_->face_to_point_[elemLgrFace];
             // Add the amount of points to the count num_points.
             num_points += preAdapt_face_to_point.size();
-            aux_face_to_point[face].reserve(preAdapt_face_to_point.size());
-            if(face == 72) {
-                std::cout<<  "numpoints: " << num_points << " size "  << preAdapt_face_to_point.size() <<std::endl;
-           }
         }
         else {
             const auto& elemLgrData = markedElem_to_itsLgr[elemLgr]; // Recall elemLgr == marked elemIdx
@@ -2797,9 +2797,6 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
             // Add the amount of points to the count num_points.
             num_points += preAdapt_face_to_point.size();
             aux_face_to_point[face].reserve(preAdapt_face_to_point.size());
-        }
-            if(face ==72){ // Adapted/Leaf-Grid-View face_to_point.
-    std::cout<< "face: " << face << " num_points: " << num_points << std::endl;
         }
         for (int corn = 0; corn < static_cast<int>(preAdapt_face_to_point.size()); ++corn) {
             int adaptedCorn;
@@ -2846,10 +2843,9 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                 adaptedCorn =   elemLgrAndElemLgrCorner_to_adaptedCorner[{lastAppearanceLgr, lastAppearanceLgrEquivCorner}];
             }
             aux_face_to_point[face].push_back(adaptedCorn);
-        }  
+        }
     } // end-adapted-faces
     // Adapted/Leaf-Grid-View face_to_point.
-    std::cout<< "face_count: " << face_count << " num_points: " << num_points << std::endl;
     adapted_face_to_point.reserve(face_count, num_points);
     for (int face = 0; face < face_count; ++face) {
         adapted_face_to_point.appendRow(aux_face_to_point[face].begin(), aux_face_to_point[face].end());
@@ -3151,7 +3147,11 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
             // Auxiliary cell_to_face
             std::vector<cpgrid::EntityRep<1>> aux_refined_cell_to_face;
 
-            refined_global_cell_vec[shiftedLevel][cell] = cell; // current_view_data_ -> global_cell_[elemLgr]; instead?
+            // To supoort the simulation of a mixed grid (coarse and refined cells), global_cell_ values of refined-level-grids
+            // is a vector of consecutive indices from 0 to total cells on the level-grid. In case we want to modify this, take into
+            // account that LookUpData and LookUpCartesianData will be affected, therefore, code in opm-simulators related to
+            // searching for field features when the grid has LGRs will be affected as well.
+            refined_global_cell_vec[shiftedLevel][cell] = (preAdaptMaxLevel>0) ? current_view_data_ -> global_cell_[elemLgr] : cell;
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             preAdapt_cell_to_point = elemLgrData->cell_to_point_[elemLgrCell];
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
@@ -3653,11 +3653,11 @@ int CpGrid::getParentFaceWhereNewRefinedCornerLaysOn(const std::array<int,3>& ce
 int CpGrid::getParentFaceWhereNewRefinedFaceLaysOn(const std::array<int,3>& cells_per_dim,
                                                    int faceIdxInLgr,
                                                    const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
-                                                   int parentCellIdxOnLevel0) const
+                                                   int elemLgr) const
 {
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-    const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(parentCellIdxOnLevel0, true)];
+    const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
 
     if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
