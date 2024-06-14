@@ -249,8 +249,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      gpart);
         }
 
-        for (int i = 0; i < n; i++)
-            partitionVector.push_back(gpart[i]);
+        partitionVector.assign(gpart, gpart + n);
         
         delete[] gids;
         delete[] lids;
