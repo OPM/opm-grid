@@ -50,6 +50,7 @@
 #endif
 
 #include "../CpGrid.hpp"
+#include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
@@ -334,6 +335,17 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
+            }
+            else if (partitionMethod == Dune::PartitionMethod::metis)
+            {
+#ifdef HAVE_METIS
+                if (!serialPartitioning)
+                    OPM_MESSAGE("Warning: Serial partitioning is set to false and METIS was selected to partition the grid, but METIS is a serial partitioner. Continuing with serial partitioning...");
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams);
+#else
+                OPM_THROW(std::runtime_error, "Parallel runs depend on METIS if useMetis is true. Please install!");
+#endif // HAVE_METIS
+
             }
             else
             {
