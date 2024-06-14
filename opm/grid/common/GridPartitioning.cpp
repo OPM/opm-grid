@@ -594,7 +594,7 @@ namespace cpgrid
               std::vector<std::tuple<int,int,char> >,
               std::vector<std::tuple<int,int,char,int> >,
               WellConnections>
-    createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+    createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells)
     {
@@ -679,8 +679,7 @@ namespace cpgrid
             initialSplit[0]=cc.size()/(initialSplit[1]*initialSplit[2]);
             partition(grid, initialSplit, numParts, parts, false, false);
         }
-        return createZoltanListsFromParts(grid, wells, transmissibilities, parts,
-                                          allowDistributedWells);
+        return createListsFromParts(grid, wells, transmissibilities, parts, allowDistributedWells);
     }
 #endif
 } // namespace cpgrid
