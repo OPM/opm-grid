@@ -666,7 +666,7 @@ namespace Dune
         /// This will construct the corresponding graph to the grid and use the transmissibilities
         /// specified to calculate the  weights associated with its edges. The graph will be passed
         ///  to the load balancer.
-        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
         ///            of the last scheduler step of the eclipse state will be
@@ -732,7 +732,7 @@ namespace Dune
         /// specified to calculate the  weights associated with its edges. The graph will be passed
         ///  to the load balancer.
         /// \param data A data handle describing how to distribute attached data.
-        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param wells The information about all possible wells. If null then
         ///            the wells will be neglected. Otherwise the wells will be
         ///            used to make sure that all the possible completion cells
@@ -745,7 +745,7 @@ namespace Dune
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
-        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param imbalanceTol Set the imbalance tolerance used by the partitioner
         /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
         ///        interior region of multiple processes.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
@@ -760,11 +760,11 @@ namespace Dune
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan,
-                    double zoltanImbalanceTol = 1.1,
+                    double imbalanceTol = 1.1,
                     bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, partitionMethod, zoltanImbalanceTol, allowDistributedWells);
+                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells);
             using std::get;
             if (get<0>(ret))
             {
@@ -801,7 +801,7 @@ namespace Dune
                                    /* serialPartitioning = */ false,
                                    /* transmissibilities = */ {},
                                    addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
-                                   /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                   /* imbalanceTol (ignored) = */ 0.0,
                                    /* allowDistributedWells = */ true, parts);
             using std::get;
             if (get<0>(ret))
@@ -851,7 +851,7 @@ namespace Dune
                                       /* serialPartitioning = */ false,
                                       /* trabsmissibilities = */ {},
                                       addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
-                                      /* zoltanImbalanceTol (ignored) = */ 0.0,
+                                      /* imbalanceTol (ignored) = */ 0.0,
                                       /* allowDistributedWells = */ true, parts));
         }
 
@@ -888,7 +888,7 @@ namespace Dune
          zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
                                        const double* transmissibilities,
                                        const int     numParts,
-                                       const double  zoltanImbalanceTol) const;
+                                       const double  imbalanceTol) const;
 
         /// The new communication interface.
         /// \brief communicate objects for all codims on a given level
@@ -1199,7 +1199,7 @@ namespace Dune
 
     private:
         /// \brief Scatter a global grid to all processors.
-        /// \param method The edge-weighting method to be used on the Zoltan partitioner.
+        /// \param method The edge-weighting method to be used on the graph partitioner.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
         /// \param wells The wells of the eclipse If null wells will be neglected.
         ///            If this is not null then complete well information of
@@ -1209,12 +1209,12 @@ namespace Dune
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights in
-        ///                           the Zoltan partitioner. This is done to improve the numerical
+        ///                           the graph partitioner. This is done to improve the numerical
         ///                           performance of the parallel preconditioner.
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param overlapLayers The number of layers of cells of the overlap region.
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
-        /// \param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
+        /// \param imbalanceTol Set the imbalance tolerance used by the partitioner
         /// \param allowDistributedWells Allow the perforation of a well to be distributed to the
         ///        interior region of multiple processes.
         /// \param cell_part When using an external loadbalancer the partition number for each cell.
@@ -1231,7 +1231,7 @@ namespace Dune
                     bool addCornerCells,
                     int overlapLayers,
                     int partitionMethod = Dune::PartitionMethod::zoltan,
-                    double zoltanImbalanceTol = 1.1,
+                    double imbalanceTol = 1.1,
                     bool allowDistributedWells = true,
                     const std::vector<int>& input_cell_part = {});
 
@@ -1265,7 +1265,7 @@ namespace Dune
 
 
         /**
-         * @brief Zoltan partitioning parameters
+         * @brief Partitioning parameters
          */
         std::map<std::string,std::string> zoltanParams;
 
