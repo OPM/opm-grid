@@ -344,7 +344,7 @@ private:
     std::vector<int>& cont_;
 };
 
-BOOST_AUTO_TEST_CASE(compareSerialZoltanAndMetis)
+BOOST_AUTO_TEST_CASE(serialZoltanAndMetis)
 {
 //Here, specifically compare serial Zoltan and Metis
 for (auto partition_method : partition_methods) {
@@ -354,7 +354,10 @@ for (auto partition_method : partition_methods) {
     std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
     //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     grid.createCartesian(dims, size);
-    grid.loadBalanceSerial(1, partition_method);
+    if (partition_method == 1)
+        grid.loadBalanceSerial(1, partition_method);
+    else if (partition_method == 2) // Use the logTransEdgeWgt method for METIS
+        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt);
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -386,7 +389,10 @@ for (auto partition_method : partition_methods) {
     std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
     //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     grid.createCartesian(dims, size);
-    grid.loadBalance(1, partition_method);
+    if (partition_method == 1)
+        grid.loadBalance(1, partition_method);
+    else if (partition_method == 2)
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -420,7 +426,10 @@ for (auto partition_method : partition_methods) {
     grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
     seqGrid.setUniqueBoundaryIds(true);
     grid.createCartesian(dims, size);
-    grid.loadBalance(1, partition_method);
+    if (partition_method == 1)
+        grid.loadBalance(1, partition_method);
+    else if (partition_method == 2)
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
     seqGrid.createCartesian(dims, size);
 
     auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
@@ -562,8 +571,10 @@ for (auto partition_method : partition_methods) {
     const Dune::CpGrid::GlobalIdSet& unbalanced_gid_set=grid.globalIdSet();
 
     grid.communicate(data, Dune::All_All_Interface, Dune::ForwardCommunication);
-    grid.loadBalance(data, 1, partition_method);
-
+    if (partition_method == 1)
+        grid.loadBalance(data, 1, partition_method);
+    else if (partition_method == 2)
+        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, true, nullptr, false, false, 1, partition_method, 1.1, false);
     if ( grid.numCells())
     {
         std::array<int,3> ijk;
@@ -736,7 +747,10 @@ for (auto partition_method : partition_methods) {
     typedef Dune::CpGrid::LeafGridView GridView;
     enum{dimWorld = GridView::dimensionworld};
 
-    grid.loadBalance(1, partition_method);
+    if (partition_method == 1)
+        grid.loadBalance(1, partition_method);
+    else if (partition_method == 2)
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
     auto global_grid = grid;
     global_grid.switchToGlobalView();
 
@@ -809,7 +823,10 @@ for (auto partition_method : partition_methods) {
     typedef GridView::Codim<0>::Iterator ElementIterator;
     typedef typename GridView::IntersectionIterator IntersectionIterator;
 
-    grid.loadBalance(1, partition_method);
+    if (partition_method == 1)
+        grid.loadBalance(1, partition_method);
+    else if (partition_method == 2)
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
     ElementIterator endEIt = gridView.end<0>();
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
         IntersectionIterator isEndIt = gridView.iend(eIt);
