@@ -21,6 +21,7 @@
 #endif
 
 #if HAVE_MPI // no code in this file without MPI, then skip includes.
+#include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/grid/common/ZoltanGraphFunctions.cpp>
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/utility/OpmWellType.hpp>
@@ -190,6 +191,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // The advice is: Use METIS_PartGraphRecursive if k is small and if k is a power of two
         // (n & (n - 1) == 0) is true if n > 0 and n is a power of two, this is an efficient bitwise check.
         if (nparts < 65 && ((nparts & (nparts - 1)) == 0)) {
+            Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive.");
             rc = METIS_PartGraphRecursive(&n, 
                                           &ncon,
                                           xadj,
@@ -204,6 +206,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                           &objval,
                                           gpart);
         } else {
+            Opm::OpmLog::info("Partitioning grid using METIS_PartGraphKway.");
             rc = METIS_PartGraphKway(&n, 
                                      &ncon,
                                      xadj,
