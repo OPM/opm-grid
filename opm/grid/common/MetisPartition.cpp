@@ -37,6 +37,47 @@ namespace Dune
 namespace cpgrid
 {
 
+void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t* options) {
+    // Initialize all options to default values
+    METIS_SetDefaultOptions(options);
+
+    // A map to translate string keys to METIS option indices
+    // This is the list of options available for METIS Version 5.1.0 - possibly more can be added in the future
+    std::map<std::string, int> metisOptionKeys = {
+        // These options are only valid for the METIS_PartGraphKway method
+        {"METIS_OPTION_OBJTYPE", METIS_OPTION_OBJTYPE},
+        {"METIS_OPTION_MINCONN", METIS_OPTION_MINCONN},
+        {"METIS_OPTION_CONTIG", METIS_OPTION_CONTIG},
+        // The options are vaild for the METIS_PartGraphKway method and the METIS_PartGraphRecursive method
+        {"METIS_OPTION_CTYPE", METIS_OPTION_CTYPE},
+        {"METIS_OPTION_IPTYPE", METIS_OPTION_IPTYPE},
+        {"METIS_OPTION_RTYPE", METIS_OPTION_RTYPE},
+        {"METIS_OPTION_NO2HOP", METIS_OPTION_NO2HOP},
+        {"METIS_OPTION_NCUTS", METIS_OPTION_NCUTS},
+        {"METIS_OPTION_NITER", METIS_OPTION_NITER},
+        {"METIS_OPTION_SEED", METIS_OPTION_SEED},
+        {"METIS_OPTION_UFACTOR", METIS_OPTION_UFACTOR},
+        {"METIS_OPTION_NUMBERING", METIS_OPTION_NUMBERING},
+        {"METIS_OPTION_DBGLVL", METIS_OPTION_DBGLVL}
+    };
+
+
+    // Iterate over the input map and set the options accordingly
+    for (const auto& pair : optionsMap) {
+        const std::string& key = pair.first;
+        const std::string& value = pair.second;
+
+        if (metisOptionKeys.find(key) != metisOptionKeys.end()) {
+            idx_t optionIndex = metisOptionKeys[key];
+            options[optionIndex] = std::stoi(value); // Convert the value to integer and set the option
+            Opm::OpmLog::info("Set metis option" + key + " to " + value + ".");
+        } else {
+            std::cerr << "Unknown METIS option: " << key << std::endl;
+        }
+    }
+}
+
+
 std::tuple<std::vector<int>,
            std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int, int, char>>,
@@ -123,21 +164,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         
         // This is the array of options as described in Section 5.4.
         idx_t* options = new idx_t[METIS_NOPTIONS];
-        METIS_SetDefaultOptions(options);
-        // The following options are valid for METIS PartGraphRecursive:
-        // METIS_OPTION_CTYPE, METIS_OPTION_IPTYPE, METIS_OPTION_RTYPE,
-        // METIS_OPTION_NO2HOP, METIS_OPTION_NCUTS, METIS_OPTION_NITER,
-        // METIS_OPTION_SEED, METIS_OPTION_UFACTOR, METIS_OPTION_NUMBERING,
-        // METIS_OPTION_DBGLVL
-        // The following options are valid for METIS PartGraphKway:
-        // METIS_OPTION_OBJTYPE = this is edgecut by default -> minimize the edges that straddle partitions
-        //                        as opposed to vol -> minimize Total communication volume.
-        // METIS_OPTION_CTYPE, METIS_OPTION_IPTYPE,
-        // METIS_OPTION_RTYPE, METIS_OPTION_NO2HOP, METIS_OPTION_NCUTS,
-        // METIS_OPTION_NITER, METIS_OPTION_UFACTOR, METIS_OPTION_MINCONN,
-        // METIS_OPTION_CONTIG, METIS_OPTION_SEED, METIS_OPTION_NUMBERING,
-        // METIS_OPTION_DBGLVL
-
+        Dune::cpgrid::setMetisOptions(params, options);
 
         //////// Now, we define all variables that *do depend* on whether there are wells or not
 
