@@ -596,7 +596,8 @@ namespace cpgrid
               WellConnections>
     createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
-                               bool allowDistributedWells)
+                               bool allowDistributedWells,
+                               std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells)
     {
         std::vector<int> exportGlobalIds;
         std::vector<int> exportLocalIds;
@@ -634,8 +635,7 @@ namespace cpgrid
             scatterExportInformation(numExport, exportGlobalIds.data(),
                                      exportToPart.data(), 0,
                                      grid.comm());
-        std::unique_ptr<cpgrid::CombinedGridWellGraph> gridAndWells;
-        if (wells)
+        if (wells and !gridAndWells)
         {
             bool partitionIsEmpty = (grid.size(0) == 0);
             EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
