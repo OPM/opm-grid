@@ -10,6 +10,7 @@ set (opm-grid_CONFIG_VAR
   DUNE_COMMON_VERSION_MINOR
   DUNE_COMMON_VERSION_REVISION
   HAVE_DUNE_ISTL
+  HAVE_METIS
   HAVE_MPI
   HAVE_ZOLTAN
   HAVE_OPM_COMMON
@@ -27,6 +28,7 @@ set (opm-grid_DEPS
   "dune-istl"
   "opm-common REQUIRED"
   "ZOLTAN"
+  "METIS"
   )
 
 find_package_deps(opm-grid)
