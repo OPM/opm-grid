@@ -37,7 +37,10 @@ namespace Dune
 namespace cpgrid
 {
 
+// We want to use METIS, but if METIS is installed together with Scotch, then the following options are not available.
+#ifndef HAVE_PTSCOTCH
 void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t* options) {
+
     // Initialize all options to default values
     METIS_SetDefaultOptions(options);
 
@@ -76,6 +79,7 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t
         }
     }
 }
+#endif
 
 
 std::tuple<std::vector<int>,
@@ -91,7 +95,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                     int root,
                                     const real_t imbalanceTol,
                                     bool allowDistributedWells,
-                                    const std::map<std::string,std::string>& params)
+                                    [[maybe_unused]] const std::map<std::string,std::string>& params)
 {
 #if defined(IDXTYPEWIDTH) && IDXTYPEWIDTH != 64
     if (edgeWeightsMethod == Dune::EdgeWeightMethod::defaultTransEdgeWgt )
@@ -159,12 +163,18 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // of the jth’s constraint total weight. The load imbalances must be greater than 1.0.
         // A NULL value can be passed indicating that the load imbalance tolerance for each constraint should
         // be 1.001 (for ncon=1) or 1.01 (for ncon>1).
-        assert(imbalanceTol > 1.0);
+        // NOTE: Scotch and METIS interpret this parameter differently
         real_t ubvec = imbalanceTol;
         
+#ifndef HAVE_PTSCOTCH
         // This is the array of options as described in Section 5.4.
+        // The METIS options are not available if METIS is installed together with Scotch.
         idx_t* options = new idx_t[METIS_NOPTIONS];
         Dune::cpgrid::setMetisOptions(params, options);
+#else
+        idx_t* options = nullptr;
+        Opm::OpmLog::info("Not setting specific METIS Options since you're using the Scotch replacement for METIS.");
+#endif
 
         //////// Now, we define all variables that *do depend* on whether there are wells or not
 

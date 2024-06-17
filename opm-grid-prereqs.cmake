@@ -12,6 +12,7 @@ set (opm-grid_CONFIG_VAR
   HAVE_DUNE_ISTL
   HAVE_METIS
   HAVE_MPI
+  HAVE_PTSCOTCH
   HAVE_ZOLTAN
   HAVE_OPM_COMMON
   HAVE_ECL_INPUT
@@ -28,6 +29,7 @@ set (opm-grid_DEPS
   "dune-istl"
   "opm-common REQUIRED"
   "ZOLTAN"
+  "PTScotch"
   "METIS"
   )
 
