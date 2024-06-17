@@ -357,7 +357,12 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalanceSerial(1, partition_method);
     else if (partition_method == 2) // Use the logTransEdgeWgt method for METIS
-        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt);
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+// Use the proper imbalance tolerance depending on if we use METIS or the Scotch replacement for METIS
+        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 0.1);
+#else
+        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 1.1);
+#endif
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -392,7 +397,11 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+#else
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+#endif
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
@@ -429,7 +438,11 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+#else
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+#endif
     seqGrid.createCartesian(dims, size);
 
     auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
@@ -574,7 +587,12 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalance(data, 1, partition_method);
     else if (partition_method == 2)
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, true, nullptr, false, false, 1, partition_method, 0.1, false);
+#else
         grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, true, nullptr, false, false, 1, partition_method, 1.1, false);
+#endif
+
     if ( grid.numCells())
     {
         std::array<int,3> ijk;
@@ -750,7 +768,11 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+#else
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+#endif
     auto global_grid = grid;
     global_grid.switchToGlobalView();
 
@@ -826,7 +848,11 @@ for (auto partition_method : partition_methods) {
     if (partition_method == 1)
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method);
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+#else
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+#endif
     ElementIterator endEIt = gridView.end<0>();
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {
         IntersectionIterator isEndIt = gridView.iend(eIt);

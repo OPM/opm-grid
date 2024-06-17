@@ -625,10 +625,10 @@ namespace Dune
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan)
+        bool loadBalance(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, false, nullptr, true, overlapLayers, partitionMethod ));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -638,10 +638,10 @@ namespace Dune
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \param edgeWeightMethod The edge-weighting method to be used on the graph partitioner.
         /// \warning May only be called once.
-        bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt)
+        bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod ));
+            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -700,9 +700,10 @@ namespace Dune
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
-                    int partitionMethod = Dune::PartitionMethod::zoltan)
+                    int partitionMethod = Dune::PartitionMethod::zoltan,
+                    double imbalanceTol = 1.1)
         {
-            return scatterGrid(method, ownersFirst, wells, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod);
+            return scatterGrid(method, ownersFirst, wells, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.

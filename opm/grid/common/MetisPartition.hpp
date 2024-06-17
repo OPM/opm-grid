@@ -27,7 +27,19 @@
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
 
-#if defined(HAVE_METIS) && HAVE_MPI 
+// We want to use METIS, but if METIS is installed together with Scotch, then METIS uses some artifacts from Scotch.
+// For this type, we need to include scotch.h.
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+extern "C" {
+  #include <scotch.h>
+}
+// And also, we need to set the version number here manually to 5
+#ifndef SCOTCH_METIS_VERSION
+#define SCOTCH_METIS_VERSION 5
+#endif /* SCOTCH_METIS_VERSION */
+#endif
+
+#if defined(HAVE_METIS) && HAVE_MPI
 extern "C" {
   #include <metis.h>
 }
@@ -46,8 +58,15 @@ namespace cpgrid
 
 #if defined(IDXTYPEWIDTH)
   using idx_t = ::idx_t;
+#elif defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+  using idx_t = SCOTCH_Num;
 #else
   using idx_t = int;
+#endif
+
+#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+  // NOTE: scotchmetis does not define a return type for METIS functions
+  #define METIS_OK 1
 #endif
 
 /// \brief Partition a CpGrid using METIS
@@ -96,5 +115,5 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& grid,
 }
 
 
-#endif // HAVE_METIS && HAVE_MPI
+#endif // defined(HAVE_METIS) && HAVE_MPI
 #endif // header guard
