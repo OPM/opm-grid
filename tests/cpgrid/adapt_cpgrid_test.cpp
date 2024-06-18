@@ -516,6 +516,54 @@ BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
 }
 
+BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+
+    const std::array<int, 3> cells_per_dim = {2,2,2};
+    std::vector<int> markedCells1 = {1,4,6};
+    std::vector<int> markedCells2 = {38, 43}; // Equivalent cells to level 0 cells with indices {17,22};
+    std::vector<int> markedCells3 = {63, 64}; // Equivalent cells to level 0 cells with indices {28, 29};
+
+    std::vector<int> markedCells = {1,4,6,17,22,28,29};
+
+    // Create a grid
+    Dune::CpGrid other_grid;
+    other_grid.createCartesian(grid_dim, cell_sizes);
+    for (const auto& elemIdx : markedCells1)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData()[0]), elemIdx, true);
+        other_grid.mark(1, elem);
+    }
+    other_grid.preAdapt();
+    other_grid.adapt();
+    other_grid.postAdapt();
+
+    for (const auto& elemIdx : markedCells2)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData().back()), elemIdx, true);
+        other_grid.mark(1, elem);
+    }
+    other_grid.preAdapt();
+    other_grid.adapt();
+    other_grid.postAdapt();
+
+    for (const auto& elemIdx : markedCells3)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData().back()), elemIdx, true);
+        other_grid.mark(1, elem);
+    }
+    other_grid.preAdapt();
+    other_grid.adapt();
+    other_grid.postAdapt();
+
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
+}
+
 BOOST_AUTO_TEST_CASE(refineCoarseCells_in_mixedGrid) {
     // Create a grid
     Dune::CpGrid coarse_grid;
