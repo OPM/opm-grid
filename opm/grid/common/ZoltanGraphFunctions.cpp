@@ -410,6 +410,15 @@ void setCpGridZoltanGraphFunctions(Zoltan_Struct *zz,
         Zoltan_Set_Edge_List_Multi_Fn(zz, getCpGridWellsEdgeList, graphPointer);
     }
 }
+// Explicit template instantiation for METIS
+#if HAVE_METIS
+template
+void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid&, int, int*, int&, int*& nborGID);
+template
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*);
+#endif
+
+
 } // end namespace cpgrid
 } // end namespace Dune
 #endif // defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
