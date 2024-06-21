@@ -22,7 +22,7 @@
 
 #if HAVE_MPI // no code in this file without MPI, then skip includes.
 #include <opm/common/OpmLog/OpmLog.hpp>
-#include <opm/grid/common/ZoltanGraphFunctions.cpp>
+#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
