@@ -416,6 +416,12 @@ template
 void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid&, int, int*, int&, int*& nborGID);
 template
 void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph&, const int, int*, int&, int*&, int*);
+
+template
+void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(Dune::CpGrid const&, int, long*, int&, long*&);
+template
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(Dune::cpgrid::CombinedGridWellGraph const&, int, long*, int&, long*&, long*);
+
 #endif
 
 
