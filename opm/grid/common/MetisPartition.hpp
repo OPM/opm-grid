@@ -27,18 +27,6 @@
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
 
-// We want to use METIS, but if METIS is installed together with Scotch, then METIS uses some artifacts from Scotch.
-// For this type, we need to include scotch.h.
-#if HAVE_PTSCOTCH
-extern "C" {
-  #include <scotch.h>
-}
-// And also, we need to set the version number here manually to 5
-#ifndef SCOTCH_METIS_VERSION
-#define SCOTCH_METIS_VERSION 5
-#endif /* SCOTCH_METIS_VERSION */
-#endif
-
 #if defined(HAVE_METIS) && HAVE_MPI
 extern "C" {
   #include <metis.h>

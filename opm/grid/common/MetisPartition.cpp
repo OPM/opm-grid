@@ -38,7 +38,6 @@ namespace cpgrid
 {
 
 // We want to use METIS, but if METIS is installed together with Scotch, then the following options are not available.
-#ifndef HAVE_PTSCOTCH
 void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t* options) {
 
     // Initialize all options to default values
@@ -79,7 +78,6 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t
         }
     }
 }
-#endif
 
 
 std::tuple<std::vector<int>,
@@ -166,15 +164,10 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // NOTE: Scotch and METIS interpret this parameter differently
         real_t ubvec = imbalanceTol;
         
-#ifndef HAVE_PTSCOTCH
         // This is the array of options as described in Section 5.4.
         // The METIS options are not available if METIS is installed together with Scotch.
         idx_t* options = new idx_t[METIS_NOPTIONS];
         Dune::cpgrid::setMetisOptions(params, options);
-#else
-        idx_t* options = nullptr;
-        Opm::OpmLog::info("Not setting specific METIS Options since you're using the Scotch replacement for METIS.");
-#endif
 
         //////// Now, we define all variables that *do depend* on whether there are wells or not
 
