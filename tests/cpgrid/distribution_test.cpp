@@ -853,6 +853,22 @@ init_unit_test_func()
 int main(int argc, char** argv)
 {
     Dune::MPIHelper::instance(argc, argv);
+#if defined(HAVE_ZOLTAN)
+    std::cout << "HAVE_ZOLTAN: " << HAVE_ZOLTAN << std::endl;
+#endif
+#if defined(HAVE_METIS)
+    std::cout << "HAVE_METIS: " << HAVE_METIS << std::endl;
+#endif
+#if defined(IDXTYPEWIDTH)
+    std::cout << "IDXTYPEWIDTH: " << IDXTYPEWIDTH << std::endl;
+#endif
+#if defined(HAVE_PTSCOTCH)
+    std::cout << "HAVE_PTSCOTCH: " << HAVE_PTSCOTCH << std::endl;
+#endif
+
+#if defined(IS_SCOTCH_METIS_HEADER)
+    std::cout << "IS_SCOTCH_METIS_HEADER: " << IS_SCOTCH_METIS_HEADER << std::endl;
+#endif
 
 #if defined(HAVE_MPI) && HAVE_MPI
     MPI_Errhandler errhandler;
