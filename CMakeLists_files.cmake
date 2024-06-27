@@ -38,8 +38,6 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
-  opm/grid/cpgrid/readSintefLegacyFormat.cpp
-  opm/grid/cpgrid/writeSintefLegacyFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
   opm/grid/common/GridPartitioning.cpp
   opm/grid/common/WellConnections.cpp

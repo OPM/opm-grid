@@ -94,8 +94,7 @@ void initGrid(const Dune::ParameterTree &param, GridType& grid)
 {
     std::string fileformat = param.get<std::string>("fileformat");
     if (fileformat == "sintef_legacy") {
-        std::string grid_prefix = param.get<std::string>("grid_prefix");
-        grid.readSintefLegacyFormat(grid_prefix);
+        OPM_THROW(std::runtime_error, "sintef_legacy fileformat no longer supported.");
     }
 #if HAVE_OPM_PARSER
     else if (fileformat == "eclipse") {

@@ -229,15 +229,6 @@ public:
             return 0;
         }
     }
-    /// Read the Sintef legacy grid format ('topogeom').
-    /// \param grid_prefix the grid name, such that topology is
-    /// found in <grid_prefix>-topo.dat etc.
-    void readSintefLegacyFormat(const std::string& grid_prefix);
-
-    /// Write the Sintef legacy grid format ('topogeom').
-    /// \param grid_prefix the grid name, such that topology will be
-    /// found in <grid_prefix>-topo.dat etc.
-    void writeSintefLegacyFormat(const std::string& grid_prefix) const;
 
     /// Read the Eclipse grid format ('grdecl').
     /// \param filename the name of the file to read.
