@@ -52,6 +52,8 @@
 
 #include <sstream>
 #include <iostream>
+#include <cstdlib>
+#include <cmath>
 
 struct Fixture
 {
@@ -113,8 +115,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 {
     auto& data = coarse_grid.data_;
     // Add LGRs and update grid.
-    const bool faceSharing = (*data[0]).patchesShareFace(startIJK_vec, endIJK_vec);
-    if (!faceSharing){
+    try
+    {
         coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
         BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
@@ -155,38 +157,54 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 else{
                     BOOST_CHECK(lgr != -1);
                     BOOST_CHECK(childrenList.size() > 1);
+                    // Auxiliary int to check amount of children
+                    double referenceElemOneParent_volume = 0.;
+                    std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
                     for (const auto& child : childrenList) {
                         BOOST_CHECK( child != -1);
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][0] == 0);
                         BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == cell);
+
+                        const auto& childElem =  Dune::cpgrid::Entity<0>(*data[lgr], child, true);
+                        BOOST_CHECK(childElem.hasFather() == true);
+                        BOOST_CHECK(childElem.level() == lgr);
+                        referenceElemOneParent_volume += childElem.geometryInFather().volume();
+                        for (int c = 0; c < 3; ++c)  {
+                            referenceElem_entity_center[c] += (childElem.geometryInFather().center())[c];
+                        }
                     }
                     BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
+                    // Auxiliary int to check hierarchic iterator functionality
+                    double referenceElemOneParent_volume_it = 0.;
+                    std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
                     // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
-                    BOOST_CHECK_EQUAL( it == endIt, false);
-                    // Auxiliary int to check amount of children
-                    double referenceElemOneParent_volume = 0.;
-                    std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
+                    BOOST_CHECK( it != endIt );
                     for (; it != endIt; ++it)
                     {
                         // Do something with the son available through it->
                         BOOST_CHECK(it ->hasFather() == true);
                         BOOST_CHECK(it ->level() == lgr);
-                        referenceElemOneParent_volume += it-> geometryInFather().volume();
+                        referenceElemOneParent_volume_it += it-> geometryInFather().volume();
                         for (int c = 0; c < 3; ++c)
                         {
-                            referenceElem_entity_center[c] += (it-> geometryInFather().center())[c];
+                            referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
                         }
-                        // std::cout << it->index() << '\n';
                     }
                     for (int c = 0; c < 3; ++c)
                     {
                         referenceElem_entity_center[c]
                             /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
+                        referenceElem_entity_center_it[c]
+                            /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
                     }
-                    BOOST_CHECK_CLOSE(referenceElemOneParent_volume, 1, 1e-6);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[0], .5, 1e-6);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[1], .5, 1e-6);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[2], .5, 1e-6);
+                    BOOST_CHECK_CLOSE(referenceElemOneParent_volume, 1, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center[0], .5, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center[1], .5, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center[2], .5, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
+                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-13);
                 }
                 BOOST_CHECK( entity.level() == 0);
             }
@@ -230,10 +248,12 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             {
                 const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
                 BOOST_CHECK(faceToPoint.size() == 4);
-                for (int i = 0; i < 4; ++i)
-                {
+                for (int i = 0; i < 4; ++i) {
                     BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
                 }
+
+                Dune::cpgrid::EntityRep<1> faceEntity(face, true);
+                BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
             }
 
             // LeafView
@@ -468,6 +488,9 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             }
         }
     }
+    catch (const std::exception& e) {
+        std::cout << e.what() << "'\n";
+    }
 }
 
 
@@ -484,7 +507,6 @@ BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(refine_patch)
@@ -500,7 +522,6 @@ BOOST_AUTO_TEST_CASE(refine_patch)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(refine_patch_one_cell)
@@ -516,7 +537,6 @@ BOOST_AUTO_TEST_CASE(refine_patch_one_cell)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(lgrs_disjointPatches)
@@ -532,7 +552,6 @@ BOOST_AUTO_TEST_CASE(lgrs_disjointPatches)
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(lgrs_disjointPatchesB)
@@ -548,7 +567,6 @@ BOOST_AUTO_TEST_CASE(lgrs_disjointPatchesB)
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
-    std::cout << "Patches do not share faces." << "\n";
 }
 
 BOOST_AUTO_TEST_CASE(patches_share_corner)
@@ -581,7 +599,7 @@ BOOST_AUTO_TEST_CASE(patches_share_edge)
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
 }
 
-BOOST_AUTO_TEST_CASE(pathces_share_face)
+BOOST_AUTO_TEST_CASE(patches_share_face)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -592,27 +610,64 @@ BOOST_AUTO_TEST_CASE(pathces_share_face)
     const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {2,0,0}, {3,2,2}};
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,1}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
-    std::cout << "Patches shared at least one face." << "\n";
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
-BOOST_AUTO_TEST_CASE(pathces_share_faceB)
+BOOST_AUTO_TEST_CASE(patches_share_faceB)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}, {2,2,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,1}, {1,1,2}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1}, {3,2,2}, {4,3,3}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    BOOST_CHECK_THROW(coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), true);
-    std::cout << "Patches shared at least one face." << "\n";
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,2}, {3,2,2}}; 
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,0,0}}; 
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,1,1}}; 
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"}; 
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
+BOOST_AUTO_TEST_CASE(patches_share_Iface_with_diff_cells_per_dim)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}}; 
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,0,0}}; 
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,1,1}}; 
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"}; 
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+}
+
+BOOST_AUTO_TEST_CASE(patches_share_Jface_with_diff_cells_per_dim)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}}; 
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,1,0}}; 
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,2,1}}; 
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"}; 
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+}
+
+BOOST_AUTO_TEST_CASE(patches_share_Kface_with_diff_cells_per_dim)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}}; 
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,1}}; 
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,2}}; 
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"}; 
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+}
 
 
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
@@ -629,48 +684,65 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
     // Check the container sizes
     BOOST_CHECK_EQUAL(refined_leaf.face_to_cell_.size(), equiv_leaf.face_to_cell_.size());
     BOOST_CHECK_EQUAL(refined_leaf.face_to_point_.size(), equiv_leaf.face_to_point_.size());
-    BOOST_CHECK_EQUAL(refined_leaf.cell_to_point_.size(), equiv_leaf.cell_to_point_.size());
     BOOST_CHECK_EQUAL(refined_leaf.face_normals_.size(), equiv_leaf.face_normals_.size());
+    BOOST_CHECK_EQUAL(refined_leaf.face_tag_.size(), equiv_leaf.face_tag_.size());
+    BOOST_CHECK_EQUAL(refined_leaf.cell_to_point_.size(), equiv_leaf.cell_to_point_.size());
+    BOOST_CHECK_EQUAL(refined_leaf.cell_to_face_.size(), equiv_leaf.cell_to_face_.size());
+    BOOST_CHECK_EQUAL(refined_leaf.geomVector<3>().size(), equiv_leaf.geomVector<3>().size());
 
-    // Check that the points (ordering/coordinates) matches
-    auto equiv_point_iter = equiv_leaf.geomVector<3>().begin();
+    BOOST_CHECK_EQUAL(refined_grid.size(3), equiv_fine_grid.size(3));
+    BOOST_CHECK_EQUAL(refined_grid.size(0), equiv_fine_grid.size(0));
+
     for(const auto& point: refined_leaf.geomVector<3>())
     {
+        auto equiv_point_iter = equiv_leaf.geomVector<3>().begin();
+        while ((equiv_point_iter != equiv_leaf.geomVector<3>().end()) && (point.center() != equiv_point_iter->center())) {
+            ++equiv_point_iter;
+        }
         CHECK_COORDINATES(point.center(), equiv_point_iter->center());
         for(const auto& coord: point.center())
             BOOST_TEST(std::isfinite(coord));
-        ++equiv_point_iter;
+
     }
-    auto equiv_cell_iter = equiv_leaf.geomVector<3>().begin();
     for(const auto& cell: refined_leaf.geomVector<3>())
     {
+        auto equiv_cell_iter = equiv_leaf.geomVector<3>().begin();
+        while ((equiv_cell_iter != equiv_leaf.geomVector<3>().end()) && (cell.center() != equiv_cell_iter->center())) {
+            ++equiv_cell_iter;
+        }
         CHECK_COORDINATES(cell.center(), equiv_cell_iter->center());
         for(const auto& coord: cell.center())
             BOOST_TEST(std::isfinite(coord));
         BOOST_CHECK_CLOSE(cell.volume(), equiv_cell_iter->volume(), 1e-6);
-        ++equiv_cell_iter;
     }
 
     /////
     const auto& grid_view = refined_grid.leafGridView();
     const auto& equiv_grid_view = equiv_fine_grid.leafGridView();
 
-    auto equiv_element_iter = equiv_grid_view.begin<0>();
+
     for(const auto& element: elements(grid_view))
     {
         BOOST_CHECK( element.getOrigin().level() == 0);
-        for(const auto& intersection: intersections(grid_view, element))
-        {
+        auto equiv_element_iter = equiv_grid_view.begin<0>();
+        bool closedCenter =  (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+            (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
+            (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
+
+        while ((equiv_element_iter != equiv_grid_view.end<0>()) && (!closedCenter)) {
+            ++equiv_element_iter;
+            closedCenter = (std::abs(element.geometry().center()[0] - equiv_element_iter->geometry().center()[0]) < 1e-12) &&
+                (std::abs(element.geometry().center()[1] - equiv_element_iter->geometry().center()[1]) < 1e-12) &&
+                (std::abs(element.geometry().center()[2] - equiv_element_iter->geometry().center()[2])< 1e-12);
+        }
+        for(const auto& intersection: intersections(grid_view, element)) {
             // find matching intersection (needed as ordering is allowed to be different
             bool matching_intersection_found = false;
-            for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter))
-            {
-                if(intersection_match.indexInInside() == intersection.indexInInside())
-                {
+            for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter)) {
+                if(intersection_match.indexInInside() == intersection.indexInInside()) {
                     BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
 
-                    if(intersection.neighbor())
-                    {
+                    if(intersection.neighbor()) {
                         BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
                     }
 
@@ -678,14 +750,13 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
                     const auto& geom_match = intersection_match.geometry();
                     BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
                     const auto& geom =  intersection.geometry();
-                    BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                    BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-13);
                     CHECK_COORDINATES(geom_match.center(), geom.center());
                     BOOST_CHECK(geom_match.corners() == geom.corners());
 
                     decltype(geom.corner(0)) sum_match{}, sum{};
 
-                    for(int cor = 0; cor < geom.corners(); ++cor)
-                    {
+                    for(int cor = 0; cor < geom.corners(); ++cor) {
                         sum += geom.corner(cor);
                         sum_match += geom_match.corner(1);
                     }
@@ -693,12 +764,10 @@ void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& e
                     matching_intersection_found = true;
                     break;
                 }
-            }
+            } // end-for-loop-intersection_match
             BOOST_CHECK(matching_intersection_found);
         }
-        ++equiv_element_iter;
     }
-    /////
 }
 
 
@@ -740,7 +809,7 @@ BOOST_AUTO_TEST_CASE(global_norefine)
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-    // Create a 8x6x6 grid with length 4x3x3
+    // Create a 4x3x3 grid with length 4x3x3
     Dune::CpGrid fine_grid;
     const std::array<double, 3> fine_cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> fine_grid_dim = {4,3,3};
@@ -748,4 +817,3 @@ BOOST_AUTO_TEST_CASE(global_norefine)
 
     check_global_refine(coarse_grid, fine_grid);
 }
-

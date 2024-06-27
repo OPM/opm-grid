@@ -44,6 +44,7 @@
 
 #include <dune/grid/common/grid.hh>
 #include <opm/grid/cpgrid/CpGridDataTraits.hpp>
+#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h> //  Not really needed it seems, but alas.
@@ -555,50 +556,596 @@ namespace Dune
         //        from certain LGR
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
-        /*  No refinement implemented. GridDefaultImplementation's methods will be used.
 
-        /// \brief Mark entity for refinement
+        /// --------------- Adaptivity (begin) ---------------
+        /// @brief Mark entity for refinement (or coarsening).
         ///
+        /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.
+        /// Nested refinement is not supported yet, so the so-called "host grid" is defined by default
+        /// equal to the GLOBAL Grid (level zero). Therefore, we mark elements (from the GLOBAL grid)
+        /// for refinement.
         /// This only works for entities of codim 0.
-        /// The parameter is currently ignored
         ///
-        /// \return <ul>
-        /// <li> true, if marking was succesfull </li>
-        /// <li> false, if marking was not possible </li>
-        /// </ul>
+        /// @param [in] refCount   To mark the element for
+        ///                        - refinement, refCount == 1
+        ///                        - doing nothing, refCount == 0
+        ///                        - coarsening, refCount == -1 (not applicable yet)
+        /// @param [in] element    Entity<0>. Currently, an element from the GLOBAL grid (level zero).
+        /// @return true, if marking was succesfull.
+        ///         false, if marking was not possible.
+        bool mark(int refCount, const cpgrid::Entity<0>& element);
 
-        bool mark(int refCount, const typename Traits::template Codim<0>::EntityPointer & e)
-        {
-            return hostgrid_->mark(refCount, getHostEntity<0>(*e));
-        }
-
-        /// \brief Return refinement mark for entity
+        /// @brief Return refinement mark for entity.
         ///
-        /// \return refinement mark (1,0,-1)
+        /// @return refinement mark (1,0,-1)  Currently, only 1 (refinement), or 0 (doing nothing).
+        int getMark(const cpgrid::Entity<0>& element) const;
 
-        int getMark(const typename Traits::template Codim<0>::EntityPointer & e) const
-        {
-            return hostgrid_->getMark(getHostEntity<0>(*e));
-        }
+        /// @brief Set mightVanish flags for elements that will be refined in the next adapt() call
+        ///        Need to be called after elements have been marked for refinement.
+        bool preAdapt();
 
-        /// \todo Please doc me !
-        bool preAdapt() {
-            return hostgrid_->preAdapt();
-        }
+        /// @brief Triggers the grid refinement process
+        bool adapt();
+
+        /// @brief Triggers the grid refinement process, allowing to select diffrent refined level grids.
+        ///
+        /// @param [in] cells_per_dim_vec    For each set of marked elements for refinement, that will belong to a same
+        ///                                  refined level grid, number of (refined) cells in each direction that each
+        ///                                  parent cell should be refined to.
+        /// @param [in] assignRefinedLevel   Vector with size equal to total amount of cells of the starting grid where
+        ///                                  the marked elements belong. In each entry, the refined level grid where the
+        ///                                  refined entities of the (parent) marked element should belong is stored.
+        /// @param [in] lgr_name_vector      Each refined level grid name, e.g. {"LGR1", "LGR2"}.
+        /// @param [in] isCARFIN             Default false. The keyword CARFIN implies that the selected cells to be refined form a block,
+        ///                                  which can be edscribed via startIJK and endIJK Cartesian indices. This bool
+        ///                                  is used to define logical_cartesian_size_ of the refined level grids according
+        ///                                  to this block shape.
+        /// @param [in] startIJK_vec         Default empty vector. When isCARFIN, the starting ijk Cartesian index of each
+        ///                                  block of cells to be refined.
+        /// @param [in] endIJK_vec           Default empty vector. When isCARFIN, the final ijk Cartesian index of each
+        ///                                  block of cells to be refined.
+        bool adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                   const std::vector<int>& assignRefinedLevel,
+                   const std::vector<std::string>& lgr_name_vec,
+                   bool isCARFIN = false,
+                   const std::vector<std::array<int,3>>& startIJK_vec = std::vector<std::array<int,3>>{},
+                   const std::vector<std::array<int,3>>& endIJK_vec = std::vector<std::array<int,3>>{});
+
+        /// @brief Clean up refinement markers - set every element to the mark 0 which represents 'doing nothing'
+        void postAdapt();
+        /// --------------- Adaptivity (end) ---------------
+
+    private:
+
+        /// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
+        
+        /// @brief Refine each marked element and establish relationships between corners, faces, and cells marked for refinement,
+        ///        with the refined corners, refined faces, and refined cells.
+        ///
+        /// --- Marked elements parameters ---
+        /// @param [out] markedElem_to_itsLgr:                      Each marked element gets refined and we store this "auxiliary markedElementLGR", to later
+        ///                                                         build each refined level grid containing all the refined entities assigned for that grid.
+        /// @param [out] markedElem_count:                          Total amount of marked elements to be refined. It will be used to print grid info.
+        /// @param [out] cornerInMarkedElemWithEquivRefinedCorner:  For each corner from level zero, we store the marked elements where the corner appears and its equivalent
+        ///                                                         refined corner in  each auxiliary marked-element-lgr. Example: corner with index 5 appears in marked
+        ///                                                         elements 0 and 1, with refined equivalent corner indices 8 and 2 respectively. Then,
+        ///                                                         cornerInMarkedElemWithEquivRefinedCorner[5] = {{0, 8}, {1, 2}}.
+        ///                                                         For corners not appearing in any marked element, empty vector.
+        /// @param [out] markedElemAndEquivRefinedCorner_to_corner: To correctly build the level-refined and adapted-grid topology features, we need to keep track of the
+        ///                                                         corners that got replaced by equivalent refined corners, in each marked element where the corner appeared,
+        ///                                                         not only in its last appearance. The last appearance will be used to avoid repetition when storing.
+        ///                                                         Following the example above,
+        ///                                                         markedElemAndEquivRefinedCorner_to_corner[{0, 8}] = 5;
+        ///                                                         markedElemAndEquivRefinedCorner_to_corner[{1, 2}] = 5;
+        /// @param [out] faceInMarkedElemAndRefinedFaces:           For each face from level zero, we store the marked elements where the face appears (maximum 2 cells)
+        ///                                                         and its new-born refined faces from each auxiliary marked-element-lgr. Example: face with index 9
+        ///                                                         appears in marked elements 0 and 1. Then,
+        ///                                                         faceInMarkedElemAndRefinedFaces[9] = {{0, {refinedFace0_0, ..., refinedFaceN_0}},
+        ///                                                                                               {1, {refinedFace0_1, ..., refinedFaceM_1}}}.
+        ///                                                         For faces not appearing in any marked element, empty vector.
+        /// --- Refined cells parameters ---
+        /// @param [out] elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell:  Each marked element has been refined in its "own elemLgr". Refined entities should be stored in
+        ///                                                                   the corresponding assigned refined level grid. To keep track of the cell index relation,
+        ///                                                                   associate each
+        ///                                                                   { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement } with
+        ///                                                                   { refined level grid assigned for the marked element, refined cell index in refined level grid }.
+        /// @param [out] refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell: Each marked element has been assigned to certain refined level grid. To keep track of the "inverse"
+        ///                                                                   cell index relation, associate each
+        ///                                                                   { refined level grid assigned for the marked element, refined cell index in refined level grid }
+        ///                                                                   with { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [out] refined_cell_count_vec:                              Total amount of refined cells, per level (i.e. in each refined level grid).
+        /// @param [in] assignRefinedLevel:                                   Each marked element can be assigned to certain refined level grid. This vector has entries 0 for
+        ///                                                                   non marked elements, and the corresponding integer representing a refined level grid for marked
+        ///                                                                   elements.
+        /// @param [out] preAdapt_parent_to_children_cells_vec:               Parent cells and their refined children. Entry is {-1, {}} when cell has no children. Othewise,
+        ///                                                                   {refined grid level where children were born, {child0, child1, ...}}
+        ///                                                                   Each vector entry represents an existing level grid before calling adapt.
+        /// --- Adapted cells parameters ---
+        /// @param [out] elemLgrAndElemLgrCell_to_adaptedCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+        ///                                                                   the corresponding leaf grid view (or adapted grid). To keep track of the cell index relation,
+        ///                                                                   associate each
+        ///                                                                   { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement } with
+        ///                                                                   refined cell index inthe leaf grid view (or adapted grid).
+        /// @param [out] adaptedCell_to_elemLgrAndElemLgrCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+        ///                                                                   the corresponding leaf grid view (or adapted grid). To keep track of the "inverse" cell index
+        ///                                                                   relation, associate the refined cell index inthe leaf grid view (or adapted grid) with
+        ///                                                                   { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [out] cell_count:                                          Total amount of cells on the leaf grid view (or adapted grid).
+        /// @param [out] preAdapt_level_to_leaf_cells_vec:                    For each existing grid before calling adapt, we stablish the index relation between preAdapt cells
+        ///                                                                   and cells on the leaf grid view (or adapted cells).-1 means that the cell vanished.
+        /// --- Additional parameters ---
+        /// @param [in] cells_per_dim_vec:                                    For each set of marked elements for refinement, that will belong to a same
+        ///                                                                   refined level grid, number of (refined) cells in each direction that each
+        ///                                                                   parent cell should be refined to.
+        void refineAndProvideMarkedRefinedRelations(/* Marked elements parameters */
+                                                    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                                    int& markedElem_count,
+                                                    std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                                    std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
+                                                    std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                                    /* Refined cells parameters */
+                                                    std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell,
+                                                    std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                    std::vector<int>& refined_cell_count_vec,
+                                                    const std::vector<int>& assignRefinedLevel,
+                                                    std::vector<std::vector<std::tuple<int,std::vector<int>>>>& preAdapt_parent_to_children_cells_vec,
+                                                    /* Adapted cells parameters */
+                                                    std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
+                                                    std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
+                                                    int& cell_count,
+                                                    std::vector<std::vector<int>>& preAdapt_level_to_leaf_cells_vec,
+                                                    /* Additional parameters */
+                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+        /// @brief  Define child-parent relations from the new refined cells of the new refined level grids to its parent cells (belonging to pre-existing grid,
+        ///         before adapting the grid/before updating the leaf grid view). Define the index in parent cell (-1 when cell has no parent).
+        ///
+        /// @param [in] refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell: Each marked element has been assigned to certain refined level grid. To keep track of the "inverse"
+        ///                                                                  cell index relation, associate each
+        ///                                                                  { refined level grid assigned for the marked element, refined cell index in refined level grid }
+        ///                                                                  with { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [in] refined_cell_count_vec:                              Total amount of refined cells, per level (i.e. in each refined level grid).
+        /// @param [in] adaptedCell_to_elemLgrAndElemLgrCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+        ///                                                                  the corresponding leaf grid view (or adapted grid). To keep track of the "inverse" cell index
+        ///                                                                  relation, associate the refined cell index inthe leaf grid view (or adapted grid) with
+        ///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [in] cell_count:                                          Total amount of cells on the leaf grid view (or adapted grid).
+        ///
+        /// @return refined_child_to_parent_cells_vec:   Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise,
+        ///                                              {level parent cell, parent cell index}. Each vector entry represents a refined level grid.
+        ///         refined_cell_to_idxInParentCell_vec: Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather().
+        ///                                              Each vector entry represents a refined level grid.
+        ///         adapted_child_to_parent_cell:        Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise,
+        ///                                              {level parent cell, parent cell index}
+        ///         adapted_cell_to_idxInParentCell:     Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather(). -1 when has no father.
+        std::tuple< std::vector<std::vector<std::array<int,2>>>,
+                    std::vector<std::vector<int>>,
+                    std::vector<std::array<int,2>>,
+                    std::vector<int>> defineChildToParentAndIdxInParentCell( std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                                             const std::vector<int>& refined_cell_count_vec,
+                                                                             std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                                                             const int cell_count);
+
+        /// @brief Define refined level grid cells indices and leaf grid view (or adapted grid) cells indices relations. Namely, level_to_leaf_cells_ for each new
+        ///        refined level grid, and leaf_to_level_cells_ for the updated leaf grid view. 
+        ///
+        /// @param [in] elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell:  Each marked element has been refined in its "own elemLgr". Refined entities should be stored in
+        ///                                                                  the corresponding assigned refined level grid. To keep track of the cell index relation, we 
+        ///                                                                  associate each
+        ///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement } with
+        ///                                                                  { refined level grid assigned for the marked element, refined cell index in refined level grid }.
+        /// @param [in] refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell: Each marked element has been assigned to certain refined level grid. To keep track of the "inverse"
+        ///                                                                  cell index relation, associate each
+        ///                                                                  { refined level grid assigned for the marked element, refined cell index in refined level grid }
+        ///                                                                  with { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [in] refined_cell_count_vec:                              Total amount of refined cells, per level (i.e. in each refined level grid).
+        /// @param [in] elemLgrAndElemLgrCell_to_adaptedCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+        ///                                                                  the corresponding leaf grid view (or adapted grid). To keep track of the cell index relation,
+        ///                                                                  associate each
+        ///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement } with
+        ///                                                                  refined cell index inthe leaf grid view (or adapted grid).
+        /// @param [in] adaptedCell_to_elemLgrAndElemLgrCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+        ///                                                                  the corresponding leaf grid view (or adapted grid). To keep track of the "inverse" cell index
+        ///                                                                  relation, associate the refined cell index inthe leaf grid view (or adapted grid) with
+        ///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+        /// @param [in] cell_count:                                          Total amount of cells on the leaf grid view (or adapted grid).
+        ///
+        /// @return refined_level_to_leaf_cells_vec:                         refined_level_to_leaf_cells_vec[ levelGridIdx ] [ cell idx in that level grid ] = equivalent leaf cell idx
+        ///         leaf_to_level_cells:                                     leaf_to_level_cells[ leaf cell idx ] = {level where cell was born, cell idx on that level}
+        std::pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>
+        defineLevelToLeafAndLeafToLevelCells(std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                             const std::vector<int> refined_cell_count_vec,
+                                             std::map<std::array<int,2>,int> elemLgrAndElemLgrCell_to_adaptedCell,
+                                             std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                             const int cell_count);
+
+        /// @brief Define various corner relations. 1. refined corners from auxiliary single marked element refinement to its corresponding refined level grid, and vice versa.
+        ///                                         2. refined corners from single-cell-refinements that vanish in the "storing only once each entity process". To avoid repetition,
+        ///                                            we store such corners in their "last apperance". We keep track of all the appearances since that is needed for correctly
+        ///                                            define CpGridData attributes such as cell_to_point_ and face_to_point_.
+        ///
+        /// @param [out] elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner: Each marked element has been refined in its "own elemLgr". Refined corners should be stored in
+        ///                                                                       the corresponding assigned refined level grid. To keep track of the corner index relation, we
+        ///                                                                       associate each
+        ///                                                                       { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement } with
+        ///                                                                       { refined level grid assigned for the marked element, refined corner index in refined level grid }.
+        /// @param [out] refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner: Each marked element has been refined in its "own elemLgr". Refined corners should be stored in
+        ///                                                                       the corresponding assigned refined level grid. To keep track of the corner index relation, we
+        ///                                                                       associate each
+        ///                                                                       { refined level grid assigned for the marked element, refined corner index in refined level grid } with
+        ///                                                                       { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement }.
+        /// @param [out] refined_corner_count_vec:                                Total amount of refined corners, per level (each vector entry corresponds to a refined level grid).
+        /// @param [out] vanishedRefinedCorner_to_itsLastAppearance:              A refined corner might appear in several single-cell-refinements, we store it only in its last
+        ///                                                                       appearance, but keep track of the vanishing. Example, a corner appears in total 3
+        ///                                                                       single-cell-refinements, with indices { elemLgr1, elemLgr1Corner }, { elemLgr2, elemLgr2Corner },
+        ///                                                                       and { elemLgr3, elemLgr3Corner }. Then, for X = 1, and X=2, we store
+        ///                                                                       vanishedRefinedCorner_to_itsLastAppearance[{elemLgrX, elemLgrXCorner}] = {elemLgr3, elemLgr3Corner}.
+        /// @param [in] markedElem_to_itsLgr
+        /// @param [in] assignRefinedLevel
+        /// @param [in] cornerInMarkedElemWithEquivRefinedCorner
+        /// @param [in] faceInMarkedElemAndRefinedFaces
+        /// @param [in] cells_per_dim_vec
+        void identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                            std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                            std::vector<int>& refined_corner_count_vec,
+                                            std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                            const std::vector<int>& assignRefinedLevel,
+                                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                            const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+        /// @brief Define relations between single-cell-refinement faces and refined level faces.
+        ///
+        /// @param [out] elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace: Each marked element has been refined in its "own elemLgr". Refined faces should be stored in
+        ///                                                                   the corresponding assigned refined level grid. To keep track of the face index relation, we
+        ///                                                                   associate each
+        ///                                                                   { marked element index ("elemLgr"), refined face index in the auxiliary single-cell-refinement } with
+        ///                                                                   { refined level grid assigned for the marked element, refined face index in refined level grid }.
+        /// @param [out] refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace: Each marked element has been refined in its "own elemLgr". Refined faces should be stored in
+        ///                                                                   the corresponding assigned refined level grid. To keep track of the face index relation, we
+        ///                                                                   associate each
+        ///                                                                   { refined level grid assigned for the marked element, refined face index in refined level grid } with
+        ///                                                                   { marked element index ("elemLgr"), refined face index in the auxiliary single-cell-refinement }.
+        /// @param [out] refined_face_count_vec:                              Total amount of refined corners, per level (each vector entry corresponds to a refined level grid).
+        /// @param [in] markedElem_to_itsLgr
+        /// @param [in] assignRefinedLevel
+        /// @param [in] faceInMarkedElemAndRefinedFaces
+        /// @param [in] cells_per_dim_vec
+        void identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                          std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                          std::vector<int>& refined_face_count_vec,
+                                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                          const std::vector<int>& assignRefinedLevel,
+                                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                          const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+        /// @brief Identify corners that appear on the leaf grid view.
+        ///        Define various corner relations. preAdapt or refined corners from auxiliary single marked element refinement to the leaf grid view (or adapted grid), and vice versa.
+        ///
+        /// @param [out] elemLgrAndElemLgrCorner_to_adaptedCorner: Each marked element has been refined in its "own elemLgr". When the element has not been refined, elemLgr == -1.
+        ///                                                        To keep track of the corner index relation, we associate each
+        ///                                                        { marked element index ("elemLgr"),  corner index in the auxiliary single-cell-refinement }, or
+        ///                                                        { -1 ("elemLgr"),  corner index in the starting grid}, with
+        ///                                                        corner index in the leaf grid view .
+        /// @param [out] adaptedCorner_to_elemLgrAndElemLgrCorner: Each marked element has been refined in its "own elemLgr". Refined corners should be stored in
+        ///                                                        the corresponding assigned refined level grid. To keep track of the cell index relation, we
+        ///                                                        associate each corner index in the leaf grid view (or adapted grid) with
+        ///                                                        { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement }, or
+        ///                                                        { -1 ("elemLgr"),  corner index in the starting grid},
+        /// @param [out] corner_count:                             Total amount of corners on the leaf grid view (or adapted grid).
+        /// @param [in] markedElem_to_itsLgr
+        /// @param [in] assignRefinedLevel
+        /// @param [in] cornerInMarkedElemWithEquivRefinedCorner
+        /// @param [in] vanishedRefinedCorner_to_itsLastAppearance
+        /// @param [in] faceInMarkedElemAndRefinedFaces
+        /// @param [in] cells_per_dim_vec
+        void identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                     std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                     int& corner_count,
+                                     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                     const std::vector<int>& assignRefinedLevel,
+                                     const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                     std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                                     const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                     const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+        /// @brief Identify faces that appear on the leaf grid view.
+        ///        Define various face relations. preAdapt or refined faces from auxiliary single marked element refinement to the leaf grid view (or adapted grid), and vice versa.
+        ///
+        /// @param [out] elemLgrAndElemLgrFace_to_adaptedFace: Each marked element has been refined in its "own elemLgr". When the element has not been refined, elemLgr == -1.
+        ///                                                    To keep track of the face index relation, we associate each
+        ///                                                    { marked element index ("elemLgr"),  face index in the auxiliary single-cell-refinement }, or
+        ///                                                    { -1 ("elemLgr"),  face index in the starting grid }, with
+        ///                                                    face index in the leaf grid view .
+        /// @param [out] adaptedFace_to_elemLgrAndElemLgrFace: Each marked element has been refined in its "own elemLgr". Refined corners should be stored in
+        ///                                                    the corresponding assigned refined level grid. To keep track of the face index relation, we associate each
+        ///                                                    face index in the leaf grid view (or adapted grid) with
+        ///                                                    { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement }. 
+        /// @param [out] face_count:                           Total amount of faces on the leaf grid view (or adapted grid).
+        /// @param [in] markedElem_to_itsLgr
+        /// @param [in] assignRefinedLevel
+        /// @param [in] faceInMarkedElemAndRefinedFaces
+        /// @param [in] cells_per_dim_vec
+        void identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
+                                   std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
+                                   int& face_count,
+                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                   const std::vector<int>& assignRefinedLevel,
+                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                   const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+        /// @brief Define the corners (gemotry) for each refined level grid.
+        void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                                    const std::vector<int>& refined_corner_count_vec,
+                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                    const int preAdaptMaxLevel,
+                                    std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
+
+        /// @brief Define the faces, face tags, face normarls, and face_to_point_, for each refined level grid.
+        void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
+                                  std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
+                                  std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refine_face_normals_vec,
+                                  std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
+                                  const std::vector<int>& refined_face_count_vec,
+                                  std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                  std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  const int preAdaptMaxLevel,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner);
+
+        /// @brief Define the cells, cell_to_point_, global_cell_, cell_to_face_, face_to_cell_, for each refined level grid.
+        void populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
+                                  std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
+                                  std::vector<std::vector<int>>& refined_global_cell_vec,
+                                  const std::vector<int>& refined_cell_count_vec,
+                                  std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
+                                  std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
+                                  std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                  std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                  const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                  const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
+                                  std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  const std::vector<int>& assignRefinedLevel,
+                                  const int preAdaptMaxLevel,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec);
+
+        /// @brief Set geometrical and topological attributes for each refined level grid.
+        void setRefinedLevelGridsGeometries( /* Refined corner arguments */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                                             const std::vector<int>& refined_corner_count_vec,
+                                             /* Refined face arguments */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
+                                             std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
+                                             std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refine_face_normals_vec,
+                                             std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
+                                             const std::vector<int>& refined_face_count_vec,
+                                             /* Refined cell argumets */
+                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
+                                             std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
+                                             std::vector<std::vector<int>>& refined_global_cell_vec,
+                                             std::vector<int>& refined_cell_count_vec,
+                                             std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
+                                             std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
+                                             /* Auxiliary arguments */
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                             std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                             std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                             std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                             const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
+                                             std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                             const std::vector<int>& assignRefinedLevel,
+                                             const int preAdaptMaxLevel,
+                                             std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                             const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                             const std::vector<std::array<int,3>>&  cells_per_dim_vec);
+
+        /// @brief Define the corners (gemotry) for the leaf grid view (or adapted grid).
+        void populateLeafGridCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners,
+                                    const int& corners_count,
+                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                    std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner);
+
+        /// @brief Define the faces, face tags, face normarls, and face_to_point_, for the leaf grid view.
+        void populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& adapted_faces,
+                                  Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
+                                  Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
+                                  Opm::SparseTable<int>& adapted_face_to_point,
+                                  const int& face_count,
+                                  std::unordered_map<int,std::array<int,2>> adaptedFace_to_elemLgrAndElemLgrFace,
+                                  std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                  std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                  const std::vector<int>& assignRefinedLevel,
+                                  std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                  int preAdaptMaxLevel);
+
+        /// @brief Define the cells, cell_to_point_, global_cell_, cell_to_face_, face_to_cell_, for the leaf grid view (or adapted grid).
+        void populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
+                                   std::vector<std::array<int,8>>& adapted_cell_to_point,
+                                   std::vector<int>& adapted_global_cell,
+                                   const int& cell_count,
+                                   cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
+                                   cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
+                                   std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_adaptedFace,
+                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                   Dune::cpgrid::DefaultGeometryPolicy adapted_geometries,
+                                   std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                   std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                   const std::vector<int>& assignRefinedLevel,
+                                   std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                   const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                   int preAdaptMaxLevel);
+
+        /// @brief Define geometrical and topological attributes for the leaf grid view (or adapted grid).
+        void updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
+                                           Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners,
+                                           const int& corner_count,
+                                           /* Leaf grid View Faces arguments */
+                                           Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& adapted_faces,
+                                           Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
+                                           Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
+                                           Opm::SparseTable<int>& adapted_face_to_point,
+                                           const int& face_count,
+                                           /* Leaf grid View Cells argumemts  */
+                                           Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
+                                           std::vector<std::array<int,8>>& adapted_cell_to_point,
+                                           std::vector<int>& adapted_global_cell,
+                                           const int& cell_count,
+                                           cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
+                                           cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
+                                           /* Auxiliary arguments */
+                                           std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                           std::unordered_map<int,std::array<int,2>> adaptedFace_to_elemLgrAndElemLgrFace,
+                                           std::unordered_map<int,std::array<int,2>> adaptedCell_to_elemLgrAndElemLgrCell,
+                                           std::map<std::array<int,2>,int> elemLgrAndElemLgrFace_to_adaptedFace,
+                                           const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                           Dune::cpgrid::DefaultGeometryPolicy adapted_geometries,
+                                           std::map<std::array<int,2>,int> elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                           std::map<std::array<int,2>, std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance,
+                                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                           const std::vector<int>& assignRefinedLevel,
+                                           std::map<std::array<int,2>,int> markedElemAndEquivRefinedCorn_to_corner,
+                                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                           const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                           int preAdaptMaxLevel);
+
+        /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
+        ///
+        /// Given a single-cell, we refine it in {nx, ny, nz} refined children cells (per direction). Then, this single-cell-refinement
+        /// has in total (nx +1)(ny +1)(nz +1) refined corners. Each of this corners has an ijk value associated since they are stored
+        /// (following order defined in Geometry::refine) with the index (j*(nx+1)(nz+1)) + (i(nz+1)) + k, where i=0,...,nx, j=0,...,ny,
+        /// and k=0,...,nz. This method returns the ijk, given the cornerIdxInLgr = 0,...,(nx +1)(ny +1)(nz +1).
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+
+        /// @brief Get the ijk index of a reined face, given its corner index of a single-cell-refinement.
+        ///
+        /// Given a single-cell, we refine it in {nx, ny, nz} refined children cells (per direction). Then, this single-cell-refinement
+        /// has in total ((nx+1)*ny*nz) + (nx*(ny+1)*nz) + (nx*ny*(nz+1)) refined faces. Each of this faces has an ijk value associated since
+        /// they are stored  with the index (following order defined in Geometry::refine):
+        /// K_FACES  (k*nx*ny) + (j*nx) + i
+        /// I_FACES  (nx*ny*(nz+1)) + (i*ny*nz) + (k*ny) + j
+        /// J_FACES   (nx*ny*(nz+1)) + ((nx+1)*ny*nz) + (j*nx*nz) + (i*nz) + k
+        ///  where i=0,...,nx-1, j=0,...,ny-1, and k=0,...,nz-1. This method returns the corresponding ijk
+        /// given a faceIdxInLgr = 0,...,((nx+1)nynz) + (nx*(ny+1)nz) + (nxny*(nz+1))
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] faceIdxInLgr:     Face index in the single-cell-refinement.
+        /// @param [in] elemLgr_ptr:      Pointer to the single-cell-refinement grid.
+        std::array<int,3> getRefinedFaceIJK(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+
+        /// @brief Determine if a refined corner is located in the interior of the single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        bool isRefinedCornerInInteriorLgr(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+
+        /// @brief Determine if a refined face is located in the interior of the single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] faceIdxInLgr:     Face index in the single-cell-refinement.
+        /// @param [in] elemLgr_ptr:      Pointer to the single-cell-refinement grid.
+        bool isRefinedFaceInInteriorLgr(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                        const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+
+        /// @brief Determine if a refined corner is located on the boundary of the single-cell-refinement, and does not coincide with
+        ///        a preAdapt-existing corner.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        bool isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+
+        /// @brief Determine if a new refined corner is located on an edge of the parent cell. In particular, it's on the boundary of
+        ///        the single-cell-refinement, and does not coincide with  a preAdapt-existing corner.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        bool newRefinedCornerLiesOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const;
+
+        /// @brief Determine if a refined face is located on the boundary of the single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] faceIdxInLgr:     Face index in the single-cell-refinement.
+        /// @param [in] elemLgr_ptr:      Pointer to the single-cell-refinement grid.
+        bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                        const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const;
+
+        /// @brief Get the parent face where the new refined corner lays on.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        /// @param [in] elemLgr:          Cell index from starting grid, that has been refined into a single-cell-refinement.
+        int getParentFaceWhereNewRefinedCornerLiesOn(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const;
+
+        /// @brief Get the parent faces that containes the edge where the new refined corner lies on.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] cornerIdxInLgr:   Corner index in the single-cell-refinement.
+        /// @param [in] elemLgr:          Cell index from starting grid, that has been refined into a single-cell-refinement.
+        std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const;
+
+        /// @brief A refined corner appears in two single-cell-refinements. Given the corner index in the first single-cell-refinement, compute the
+        ///         corner index in the neighboring single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim_lgr1:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr1 single-cell-refinement.
+        /// @param [in] cornerIdxInLgr1:       Corner index in the elemLgr1 single-cell-refinement.
+        /// @param [in] cells_per_dim_lgr2:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr2 single-cell-refinement.
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, const std::array<int,3>& cells_per_dim_lgr2) const;
+
+        /// @brief A new refined corner lays on an edge and appears in at least two single-cell-refinements. Given the corner index in one single-cell-refinement, compute the
+        ///        corner index in a neighboring single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim_lgr1:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr1 single-cell-refinement.
+        /// @param [in] cornerIdxInLgr1:       Corner index in the elemLgr1 single-cell-refinement.
+        /// @param [in] parentFaceLastAppearanceIdx: Parent face index where the refined corner appears for last time.
+        /// @param [in] cells_per_dim_lgr2:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr2 single-cell-refinement.
+        int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
+                                                const std::array<int,3>& cells_per_dim_lgr2) const;
+
+        /// @brief A new refined face lays on the boudndary of a single-cell-refinement appears in at most two single-cell-refinements. Given the face index in one
+        ///        single-cell-refinement, compute the face index in a neighboring single-cell-refinement.
+        ///
+        /// @param [in] cells_per_dim_lgr1:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr1 single-cell-refinement.
+        /// @param [in] faceIdxInLgr1:         Face index in the elemLgr1 single-cell-refinement.
+        /// @param [in] elemLgr1_ptr:          Pointer to the elemLgr1 single-cell-refinement grid.
+        /// @param [in] cells_per_dim_lgr2:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr2 single-cell-refinement.
+        int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
+                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr1_ptr,
+                                            const std::array<int,3>& cells_per_dim_lgr2) const;
+
+        /// @brief Get the parent face index where the new refined face lays on.
+        ///
+        /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
+        /// @param [in] faceIdxInLgr:     Face index in the single-cell-refinement.
+        /// @param [in] elemLgr_ptr:      Pointer to the elemLgr single-cell-refinement grid.
+        /// @param [in] elemLgr:         Cell index from starting grid, that has been refined into a single-cell-refinement.
+        int getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
+                                                   const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
+                                                   int elemLgr)  const;
+        /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
+
+    public:
 
 
-        /// Triggers the grid refinement process
-        bool adapt()
-        {
-            return hostgrid_->adapt();
-        }
-
-        /// \brief Clean up refinement markers
-        void postAdapt() {
-            return hostgrid_->postAdapt();
-        }
-
-        end of refinement section */
 
         /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int) const;
@@ -606,7 +1153,7 @@ namespace Dune
 
         /// \brief Size of the ghost cell layer on the leaf level
         unsigned int ghostSize(int) const;
-        
+
         /// \brief Size of the overlap on a given level
         unsigned int overlapSize(int, int) const;
 

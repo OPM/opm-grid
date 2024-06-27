@@ -1687,6 +1687,38 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 #endif
 }
 
+std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const
+{
+    // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
+    std::array<int,3> ijk = {0,0,0};
+    ijk[0] = idxInParentCell % cells_per_dim[0];
+    idxInParentCell -= ijk[0]; // k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0]
+    idxInParentCell /= cells_per_dim[0]; // k*cells_per_dim[1] + j
+    ijk[1] = idxInParentCell % cells_per_dim[1];
+    idxInParentCell -= ijk[1]; // k*cells_per_dim[1]
+    ijk[2] = idxInParentCell /cells_per_dim[1];
+
+    std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
+        {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '1'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '2'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '3'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
+         // corner '4'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '5'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '6'
+         { double(ijk[0])/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] },
+         // corner '7'
+         { double(ijk[0]+1)/cells_per_dim[0], double(ijk[1]+1)/cells_per_dim[1], double(ijk[2]+1)/cells_per_dim[2] }
+        }
+    };
+    return corners_in_parent_reference_elem;
+}
+
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
@@ -1939,7 +1971,7 @@ bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_
             valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
         }
         if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
         }
     }
     bool are_disjoint = true;
@@ -1988,7 +2020,7 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
             valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
         }
         if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid patch.");
+            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
         }
     }
 
@@ -2036,6 +2068,102 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
     } // patch for-loop
     return false;
 }
+
+int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches, const std::vector<std::array<int,3>>& endIJK_2Patches) const
+{
+    assert(startIJK_2Patches.size() == 2);
+    assert(endIJK_2Patches.size() == 2);
+
+    int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
+     
+    if (patchesShareFace(startIJK_2Patches, endIJK_2Patches)) {
+        
+        const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
+            bool faceIsShared = false;
+            for (const auto& face : faceIdxs) {
+                for (const auto& otherFace : otherFaceIdxs) {
+                    faceIsShared = faceIsShared || (face == otherFace);
+                    if (faceIsShared) {
+                        return faceIsShared; // should be true here
+                    }
+                }
+            }
+            return faceIsShared; // should be false here
+        };
+     
+        const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_2Patches[0], endIJK_2Patches[0]);
+        const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
+            this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
+
+
+        bool isShared = false;
+
+        // Check if patch1 lays on the left of patch2, so they might share an I_FACE that
+        // for patch1 is false-oriented (contained in iFalse) and for patch2 is true-oriented (contained in iTrueOther).
+        // patch2 | patch1
+        if (startIJK_2Patches[0][0] == endIJK_2Patches[1][0]) {
+            isShared = isShared || detectSharing(iFalse, iTrueOther);
+            if (isShared) {
+                faceTag = 0;
+            }
+        }
+        // Check if patch1 lays on the right of patch2, so they might share an I_FACE that
+        // for patch1 is true-oriented (contained in iTrue) and for patch2 is false-oriented (contained in iFalseOther).
+        // patch1 | patch2
+        if (endIJK_2Patches[0][0] == startIJK_2Patches[1][0]) {
+            isShared = isShared || detectSharing(iTrue, iFalseOther);
+            if (isShared) {
+                faceTag = 0;
+            }
+        }
+        // Check if patch1 lays in front of patch2, so they might share an J_FACE that
+        // for patch1 is true-oriented (contained in jTrue) and for patch2 is false-oriented (contained in jFalseOther).
+        //      patch2
+        //   -----
+        // patch1
+        if (endIJK_2Patches[0][1] == startIJK_2Patches[1][1]) {
+            isShared = isShared || detectSharing(jTrue, jFalseOther);
+            if (isShared) {
+                faceTag = 1;
+            }
+        }
+        // Check if patch1 lays in back of patch2, so they might share an J_FACE that
+        // for patch1 is false-oriented (contained in jFalse) and for patch2 is true-oriented (contained in jTrueOther).
+        //      patch1
+        //   -----
+        // patch2
+        if (startIJK_2Patches[0][1] == endIJK_2Patches[1][1]) {
+            isShared = isShared || detectSharing(jFalse, jTrueOther);
+            if (isShared) {
+                faceTag = 1;
+            }
+        }
+        // Check if patch1 lays on the bottom of patch2, so they might share an K_FACE that
+        // for patch1 is true-oriented (contained in kTrue) and for patch2 is false-oriented (contained in kFalseOther).
+        // patch2
+        // -----
+        // patch1
+        if (endIJK_2Patches[0][2] == startIJK_2Patches[1][2]) {
+            isShared = isShared || detectSharing(kTrue, kFalseOther);
+            if (isShared) {
+                faceTag = 2;
+            }
+        }
+        // Check if patch1 lays on the top of patch2, so they might share an K_FACE that
+        // for patch1 is false-oriented (contained in kFalse) and for patch2 is true-oriented (contained in kTrueOther).
+        // patch1
+        // -----
+        // patch2
+        if (startIJK_2Patches[0][2] == endIJK_2Patches[1][2]) {
+            isShared = isShared || detectSharing(kFalse, kTrueOther);
+            if (isShared) {
+                faceTag = 2;
+            }
+        }
+    }
+    return faceTag; // -1 when no face is shared, otherwise: 0 (shared I_FACE), 1 (shared J_FACE), 2 (shared K_FACE)
+}
+
 
 std::vector<int>
 CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
@@ -2177,15 +2305,10 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     if (nonRepeated_parentCorners.size() != 8){
         OPM_THROW(std::logic_error, "Cell is not a hexahedron. Cannot be refined (yet).");
     }
-    // Get ijk from parent cell (Cartesian index). Needed to compute width, length, and height of the parent cell.
-    std::array<int,3> ijk;
-    getIJK(parent_idx, ijk);
-    // Get dx,dy,dz for each cell of the patch to be refined
-    const auto& [widthX, lengthY, heightZ] = getWidthsLengthsHeights(ijk, {ijk[0]+1, ijk[1]+1, ijk[2]+1});
     // Refine parent cell
     parent_cell.refineCellifiedPatch(cells_per_dim, refined_geometries, refined_cell_to_point, refined_cell_to_face,
                                      refined_face_to_point, refined_face_to_cell, refined_face_tags, refined_face_normals,
-                                     {1,1,1}, widthX, lengthY, heightZ);
+                                     {1,1,1}, /*widthX, lengthY, heightZ*/ {1.}, {1.}, {1.});
     const std::vector<std::array<int,2>>& parent_to_refined_corners{
         // corIdx (J*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (I*(cells_per_dim[2]+1)) +K
         // replacing parent-cell corner '0' {0,0,0}
@@ -2507,6 +2630,54 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
 
     return {refined_grid_ptr, boundary_old_to_new_corners, boundary_old_to_new_faces, parent_to_children_faces,
             parent_to_children_cells, child_to_parent_faces, child_to_parent_cells};
+}
+
+bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
+{
+    if (refCount == -1) {
+        OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
+    }
+    // Check the cell to be marked for refinement has no NNC (no neighbouring connections). Throw otherwise.
+    if (hasNNCs({element.index()}) && (refCount == 1)) {
+        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported, yet.");
+    }
+    assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
+    if (mark_.empty()) {
+        mark_.resize(this->size(0));
+    }
+    mark_[element.index()] = refCount;
+    return (mark_[element.index()] == refCount);
+}
+
+int CpGridData::getMark(const cpgrid::Entity<0>& element) const
+{
+    return mark_.empty() ? 0 : mark_[element.index()];
+}
+
+bool CpGridData::preAdapt()
+{
+    // [Indirectly] Set mightVanish flags for elements that have been marked for refinement
+    if(mark_.empty()) {
+        return false;
+    }
+    else {
+        for (int elemIdx = 0; elemIdx <  this-> size(0); ++elemIdx) {
+            const auto& element = Dune::cpgrid::Entity<0>(*this, elemIdx, true);
+            if (getMark(element) != 0)  // 1 (to be refined), 0 (do nothing), -1 (to be coarsened - not supported yet)
+                return true;
+        }
+    }
+    return false;
+}
+
+bool CpGridData::adapt()
+{
+    return preAdapt();
+}
+
+void CpGridData::postAdapt()
+{
+    mark_.resize(this->size(0), 0);
 }
 
 std::array<double,3> CpGridData::computeEclCentroid(const int idx) const
