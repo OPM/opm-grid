@@ -152,7 +152,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 ///             with the edges of the graph (uniform, transmissibilities, log thereof)
 /// @param root The process number that holds the global grid.
 /// @param zoltanImbalanceTol Set the imbalance tolerance used by Zoltan
-/// \param allowDistributedWells Allow the perforation of a well to be distributed to the
+/// @param allowDistributedWells Allow the perforation of a well to be distributed to the
 ///        interior region of multiple processes.
 /// @return A tuple consisting of a vector that contains for each local cell of the original grid the
 ///         the number of the process that owns it after repartitioning,

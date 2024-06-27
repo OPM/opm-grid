@@ -58,11 +58,18 @@ void getCpGridVertexList(void* cpGridPointer, int numGlobalIds,
                          ZOLTAN_ID_PTR lids, int wgtDim,
                          float *objWgts, int *err);
 
-/// \brief Get the number of edges the graph of the grid.
+/// \brief Get the number of edges for one vertex of the graph of the grid.
+int getNumberOfEdgesForSpecificCell(const Dune::CpGrid& grid, int localCellId);
+
+/// \brief Get the number of edges of the graph of the grid.
 void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
                            int *numEdges, int *err);
+
+/// \brief Get the list of edges for one cell of a grid witout wells
+template <typename ID>
+void fillNBORGIDForSpecificCellAndIncrementNeighborCounter(const Dune::CpGrid& grid, int localCellId, ID globalID, int& neighborCounter, ID& nborGID);
 
 /// \brief Get the list of edges of the graph of the grid.
 void getCpGridEdgeList(void *cpGridPointer, int sizeGID, int sizeLID,
@@ -230,6 +237,13 @@ private:
     WellConnections well_indices_;
     double log_min_;
 };
+
+/// \brief Get the number of edges of the graph of the grid and the wells for one cell
+int getNumberOfEdgesForSpecificCellForGridWithWells(const CombinedGridWellGraph& graph, int localCellId);
+
+/// \brief Get the list of edges and weights for one cell of a grid with wells
+template<typename ID, typename weightType>
+void fillNBORGIDAndWeightsForSpecificCellAndIncrementNeighborCounterForGridWithWells(const CombinedGridWellGraph& graph, const int localCellId, ID globalID, int& neighborCounter, ID& nborGID, weightType *ewgts);
 
 #ifdef HAVE_ZOLTAN
 /// \brief Sets up the call-back functions for ZOLTAN's graph partitioning.

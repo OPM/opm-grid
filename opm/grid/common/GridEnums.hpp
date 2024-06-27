@@ -24,7 +24,7 @@
 #define OPM_GRID_ENUMS_HPP
 
 namespace Dune {
-    /// \brief enum for choosing Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's graph partitioner.
+    /// \brief enum for choosing Methods for weighting graph-edges correspoding to cell interfaces in Zoltan's or Metis' graph partitioner.
     ////
     /// uniform methods means all edges have weight 1. defaultTrans uses transmissibility as weights.
     /// logTrans uses the logarithm of the transmissibility.
@@ -38,6 +38,16 @@ namespace Dune {
         defaultTransEdgeWgt=1,
         /// \brief Use the log of the transmissibilities as edge weights
         logTransEdgeWgt=2
+    };
+
+    /// \brief enum for choosing methods for partitioning a graph.
+    enum PartitionMethod {
+        /// \brief Use simple approach based on rectangular partitioning the underlying cartesian grid.
+        simple=0,
+        /// \brief Use Zoltan for partitioning
+        zoltan=1,
+        /// \brief Use METIS for partitioning
+        metis=2
     };
 }
 
