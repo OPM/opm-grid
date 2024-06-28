@@ -119,15 +119,6 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     // Default construction.
     Geometry g_default;
 
-    // Construction from point and volume.
-    // This is a dangerous constructor kept for backwards compatibility,
-    // these checks may be removed if constructor removed.
-    // This possibly dangerous constructor is available for the benefit of
-    // CpGrid::readSintefLegacyFormat().
-    Geometry::GlobalCoordinate c(3.0);
-    Geometry::ctype v = 8.0;
-    Geometry g_dangerous(c, v);
-
     // Construction from point, volume, points and pointindices.
     // Construction from
     // 1. center
@@ -136,8 +127,8 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     // 4. corner indices (a pointer to the first element of "global_refined_cell8corners_indices_storage")
     // First a unit cube, i.e. the mapping represented is the identity.
     typedef Geometry::GlobalCoordinate GC;
-    c = GC(0.5);
-    v = 1.0;
+    GC c(0.5);
+    Geometry::ctype v = 1.0;
     GC corners[8];
     GC cor;
     for (int k = 0; k < 2; ++k) {

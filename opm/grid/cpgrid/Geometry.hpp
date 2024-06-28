@@ -415,21 +415,6 @@ namespace Dune
                 assert(allcorners_ && corner_indices);
             }
 
-            /// @brief Construct from centroid and volume (1- and
-            ///        0-moments).  Note that since corners are not
-            ///        given, the geometry provides no mappings, and
-            ///        some calls (corner(), global() etc.) will fail.
-            ///        This possibly dangerous constructor is
-            ///        available for the benefit of
-            ///        CpGrid::readSintefLegacyFormat().
-            /// @param pos the centroid of the entity
-            /// @param vol the volume(area) of the entity
-            Geometry(const GlobalCoordinate& pos,
-                     ctype vol)
-                : pos_(pos), vol_(vol)
-            {
-            }
-
             /// Default constructor, giving a non-valid geometry.
             Geometry()
                 : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)

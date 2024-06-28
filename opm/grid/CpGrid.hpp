@@ -297,20 +297,6 @@ namespace Dune
 
         CpGrid(MPIHelper::MPICommunicator comm);
 
-        /// \name IO routines
-        //@{
-        /// Read the Sintef legacy grid format ('topogeom').
-        /// \param grid_prefix the grid name, such that topology is
-        /// found in <grid_prefix>-topo.dat etc.
-        void readSintefLegacyFormat(const std::string& grid_prefix);
-
-
-        /// Write the Sintef legacy grid format ('topogeom').
-        /// \param grid_prefix the grid name, such that topology will be
-        /// found in <grid_prefix>-topo.dat etc.
-        void writeSintefLegacyFormat(const std::string& grid_prefix) const;
-
-
 #if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
         ///

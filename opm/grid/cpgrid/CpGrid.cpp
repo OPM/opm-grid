@@ -1399,27 +1399,6 @@ const cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices() co
 
 #endif
 
-//
-void CpGrid::readSintefLegacyFormat(const std::string& grid_prefix)
-{
-    if ( current_view_data_->ccobj_.rank() == 0 )
-    {
-        current_view_data_->readSintefLegacyFormat(grid_prefix);
-    }
-    current_view_data_->ccobj_.broadcast(current_view_data_->logical_cartesian_size_.data(),
-                                         current_view_data_->logical_cartesian_size_.size(),
-                                         0);
-}
-void CpGrid::writeSintefLegacyFormat(const std::string& grid_prefix) const
-{
-    // Only rank 0 has the full data. Use that for writing.
-    if ( current_view_data_->ccobj_.rank() == 0 )
-    {
-        data_[0]->writeSintefLegacyFormat(grid_prefix);
-    }
-}
-
-
 #if HAVE_ECL_INPUT
 std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                                                       Opm::EclipseState* ecl_state,
