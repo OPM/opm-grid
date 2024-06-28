@@ -930,9 +930,25 @@ const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
     return *current_view_data_->index_set_;
 }
 
-void CpGrid::globalRefine (int)
+void CpGrid::globalRefine (int refCount)
 {
-    std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
+    assert(refCount>-1);
+    // Throw if the grid has been already partially refined, i.e., there exist coarse cells with more than 6 faces.
+    // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
+    // got refined. Therefore, the coarse face that they share got replaced by refined-faces.
+    // if ((data_.size()>1) && )
+    if (refCount>0) {
+        for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
+            // Mark all the elements of the current leaf grid view for refinement
+            const auto& grid_view = this-> leafGridView();
+            for(const auto& element: elements(grid_view)) {
+                mark(1, element);
+            }
+            preAdapt();
+            adapt();
+            postAdapt();
+        }
+    }
 }
 
 const std::vector< Dune :: GeometryType >& CpGrid::geomTypes( const int codim ) const
