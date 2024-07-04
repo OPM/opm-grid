@@ -40,6 +40,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
   opm/grid/common/GridPartitioning.cpp
+  opm/grid/common/MetisPartition.cpp
   opm/grid/common/WellConnections.cpp
   opm/grid/common/ZoltanGraphFunctions.cpp
   opm/grid/common/ZoltanPartition.cpp
@@ -199,6 +200,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
+  opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
   opm/grid/common/ZoltanPartition.hpp

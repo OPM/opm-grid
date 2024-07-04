@@ -47,6 +47,7 @@
 
 #include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/grid/common/WellConnections.hpp>
+#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 
 namespace Dune
 {
@@ -132,9 +133,9 @@ namespace cpgrid
                std::vector<std::tuple<int,int,char> >,
                std::vector<std::tuple<int,int,char,int> >,
                WellConnections>
-    createZoltanListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+    createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
                                const double* transmissibilities, const std::vector<int>& parts,
-                               bool allowDistributedWells);
+                               bool allowDistributedWells, std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells = nullptr);
 
     /// \brief Creates a vanilla partitioning without a real loadbalancer
     ///

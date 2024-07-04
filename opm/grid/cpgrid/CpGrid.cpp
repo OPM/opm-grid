@@ -50,6 +50,7 @@
 #endif
 
 #include "../CpGrid.hpp"
+#include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
@@ -209,8 +210,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
                     int overlapLayers,
-                    [[maybe_unused]] bool useZoltan,
-                    double zoltanImbalanceTol,
+                    [[maybe_unused]] int partitionMethod,
+                    double imbalanceTol,
                     [[maybe_unused]] bool allowDistributedWells,
                     [[maybe_unused]] const std::vector<int>& input_cell_part)
 {
@@ -219,7 +220,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     static_cast<void>(transmissibilities);
     static_cast<void>(overlapLayers);
     static_cast<void>(method);
-    static_cast<void>(zoltanImbalanceTol);
+    static_cast<void>(imbalanceTol);
 
     if(!distributed_data_.empty())
     {
@@ -319,21 +320,32 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
-                cpgrid::createZoltanListsFromParts(*this, wells, nullptr, input_cell_part,
+                cpgrid::createListsFromParts(*this, wells, nullptr, input_cell_part,
                                                    true);
         }
         else
         {
-            if (useZoltan)
+            if (partitionMethod == Dune::PartitionMethod::zoltan)
             {
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
-                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells, zoltanParams)
-                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, zoltanImbalanceTol, allowDistributedWells, zoltanParams);
+                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams)
+                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
+            }
+            else if (partitionMethod == Dune::PartitionMethod::metis)
+            {
+#ifdef HAVE_METIS
+                if (!serialPartitioning)
+                    OPM_MESSAGE("Warning: Serial partitioning is set to false and METIS was selected to partition the grid, but METIS is a serial partitioner. Continuing with serial partitioning...");
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams);
+#else
+                OPM_THROW(std::runtime_error, "Parallel runs depend on METIS if useMetis is true. Please install!");
+#endif // HAVE_METIS
+
             }
             else
             {
@@ -470,7 +482,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             std::string msg = "At least one process has zero cells. Aborting. \n"
                 " Try decreasing the imbalance tolerance for zoltan with \n"
                 " --zoltan-imbalance-tolerance. The current value is "
-                + std::to_string(zoltanImbalanceTol);
+                + std::to_string(imbalanceTol);
             if (cc.rank()==0)
             {
                 OPM_THROW(std::runtime_error, msg );
