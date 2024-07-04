@@ -2031,18 +2031,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         } // end-level-for-loop
     }// end-if-patchesShareFace
 
-    // Check grid is Cartesian
-    const std::array<int,3>& coarseGrid_dim =  (*data_[0]).logical_cartesian_size_;
-    long unsigned int coarseGridXYZ = coarseGrid_dim[0]*coarseGrid_dim[1]*coarseGrid_dim[2];
-    if ((*data_[0]).global_cell_.size() != coarseGridXYZ){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Grid is not Cartesian. This type of refinement is not supported yet.");
-        }
-        else {
-            // No cells on rank > 0
-            return;
-        }
-    }
     // Check all the cells to be refined have no NNC (no neighbouring connections).
     std::vector<int> markedCells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
     if ((*data_[0]).hasNNCs(markedCells)){
@@ -2055,12 +2043,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     assert(cells_per_dim_vec.size() == endIJK_vec.size());
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
-    // Mark cells for refinement
-    for (const auto& elemIdx : markedCells) {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*data_[0], elemIdx, true);
-        this->mark(1, elem);
+    // Mark cells for refinement, when they are active (global_cell_[ element.index() ] belongs to one of the index-ranges
+    // defined by startIJK_vec and endIJK_vec).
+    for (const auto& element : elements(this->leafGridView())) {
+        if (std::find(markedCells.begin(), markedCells.end(), current_view_data_->global_cell_[element.index()]) != markedCells.end()) {
+            this-> mark(1, element);
+        }
     }
-
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(data_[0]->size(0));
     for (int level = 0; level < levels; ++level){
