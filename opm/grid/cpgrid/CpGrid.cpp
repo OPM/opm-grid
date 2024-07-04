@@ -1999,6 +1999,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
+
+    assert(cells_per_dim_vec.size() == startIJK_vec.size());
+    assert(cells_per_dim_vec.size() == endIJK_vec.size());
+    assert(cells_per_dim_vec.size() == lgr_name_vec.size());
+    
     if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
@@ -2029,33 +2034,29 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             } // end-otherLevel-for-loop
         } // end-level-for-loop
-    }// end-if-patchesShareFace
+    }// end-if-patchesShareFace 
 
-    // Check all the cells to be refined have no NNC (no neighbouring connections).
-    std::vector<int> markedCells = (*data_[0]).getPatchesCells(startIJK_vec, endIJK_vec);
-    if ((*data_[0]).hasNNCs(markedCells)){
-        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
-    }
-    //
-    // Total amount of patches:
-    const int& levels = startIJK_vec.size();
-    assert(cells_per_dim_vec.size() == startIJK_vec.size());
-    assert(cells_per_dim_vec.size() == endIJK_vec.size());
-    assert(cells_per_dim_vec.size() == lgr_name_vec.size());
-
-    // Mark cells for refinement, when they are active (global_cell_[ element.index() ] belongs to one of the index-ranges
-    // defined by startIJK_vec and endIJK_vec).
-    for (const auto& element : elements(this->leafGridView())) {
-        if (std::find(markedCells.begin(), markedCells.end(), current_view_data_->global_cell_[element.index()]) != markedCells.end()) {
-            this-> mark(1, element);
-        }
-    }
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(data_[0]->size(0));
-    for (int level = 0; level < levels; ++level){
-        const auto& patchCells = data_[0]->getPatchCells(startIJK_vec[level], endIJK_vec[level]);
-        for (const auto& cell : patchCells) {
-            assignRefinedLevel[cell] = level+1;
+    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
+    for(const auto& element: elements(this->leafGridView())) {
+        std::array<int,3> ijk;
+        getIJK(element.index(), ijk);
+        for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
+            bool belongsToLevel = true;
+            for (int c = 0; c < 3; ++c) {
+                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
+                if (!belongsToLevel)
+                    break;
+            }
+            if(belongsToLevel) {
+                // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
+                if ((*data_[0]).hasNNCs({{element.index()}})){
+                    OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+                }
+                this-> mark(1, element);
+                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+            }
         }
     }
 
@@ -2063,7 +2064,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
     // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string(levels) + " LGRs applied to global grid.\n");
+    Opm::OpmLog::info(std::to_string( startIJK_vec.size() ) + " LGRs applied to global grid.\n");
     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
 }
 

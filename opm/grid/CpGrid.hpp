@@ -101,6 +101,12 @@ void testCase(const std::string&,
               const std::vector<std::string>&,
               bool);
 
+void testInactiveCellsLgrs(const std::string&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
+
 void disjointPatches_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
                            const std::vector<std::array<int,3>>&);
@@ -258,6 +264,11 @@ namespace Dune
                                const std::vector<std::array<int,3>>&,
                                const std::vector<std::string>&,
                                bool);
+        friend void ::testInactiveCellsLgrs(const std::string&,
+                                            const std::vector<std::array<int,3>>&,
+                                            const std::vector<std::array<int,3>>&,
+                                            const std::vector<std::array<int,3>>&,
+                                            const std::vector<std::string>&);
         friend void ::disjointPatches_check(Dune::CpGrid&,
                                             const std::vector<std::array<int,3>>&,
                                             const std::vector<std::array<int,3>>&);
@@ -514,7 +525,7 @@ namespace Dune
         /// @param [in] endIJK_vec             Vector of Cartesian triplet indices where each patch ends.
         ///                                    Last cell part of each patch(lgr) will be
         ///                                    {endIJK_vec[<patch-number>][0]-1, ..., endIJK_vec[<patch-number>][2]-1}.
-        /// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels
+        /// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels.
         void addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
                                    const std::vector<std::array<int,3>>& endIJK_vec,
