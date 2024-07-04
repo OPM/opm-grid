@@ -28,11 +28,13 @@
 #include <dune/grid/common/mcmgmapper.hh>
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_METIS)
-int partition_methods[] = {1,2};
+const int partition_methods[] = {1,2};
 #elif defined (HAVE_ZOLTAN)
-int partition_methods[] = {1};
+const int partition_methods[] = {1};
 #elif defined (HAVE_METIS)
-int partition_methods[] = {2};
+const int partition_methods[] = {2};
+#else  // !HAVE_ZOLTAN && !HAVE_METIS
+const int partition_methods[] = {0};
 #endif
 
 #if HAVE_MPI
