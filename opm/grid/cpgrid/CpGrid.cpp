@@ -1666,13 +1666,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
         // Resize with the corresponding amount of cells of the preAdapt level. Deafualt {-1, empty vector} when the cell has no children.
         if ( (*data_[preAdaptLevel]).parent_to_children_cells_.empty()){
-        preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
+            preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
         }
         else {
-        preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data_[preAdaptLevel]).parent_to_children_cells_;
+            preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data_[preAdaptLevel]).parent_to_children_cells_;
         }
         // Resize with the corresponding amount of cell of the preAdapt level. Dafualt -1 when the cell vanished and does not appear on the leaf grid view.
-        // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished. 
+        // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished.
         preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data_[preAdaptLevel]->size(0), -1);
     }
     //
@@ -1868,7 +1868,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
             data_[preAdaptMaxLevel+1] = refined_grid_ptr_vec[level];
         }
         else {
-        (this-> data_).push_back(refined_grid_ptr_vec[level]);
+            (this-> data_).push_back(refined_grid_ptr_vec[level]);
         }
 
         Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*data_[refinedLevelGridIdx]).geometry_;
