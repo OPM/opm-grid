@@ -942,9 +942,38 @@ const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
     return *current_view_data_->index_set_;
 }
 
-void CpGrid::globalRefine (int)
+void CpGrid::globalRefine (int refCount)
 {
-    std::cout << "Warning: Global refinement not implemented, yet." << std::endl;
+    if (refCount < 0) {
+        OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
+    }
+    // Throw if the grid has been already partially refined, i.e., there exist coarse cells with more than 6 faces.
+    // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
+    // got refined. Therefore, the coarse face that they share got replaced by refined-faces. In this case, we do not
+    // support yet global refinement.
+    if(data_.size() >1) {
+        bool isOnlyGlobalRefined = true;
+        for (int level = 0; level < static_cast<int>(data_.size()); ++level) {
+            // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
+            // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
+            isOnlyGlobalRefined = isOnlyGlobalRefined && ( ((data_[level+1]->size(0)) / (data_[level]->size(0))) == 8 );
+        }
+        if (!isOnlyGlobalRefined) {
+            OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
+        }
+    }
+    if (refCount>0) {
+        for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
+            // Mark all the elements of the current leaf grid view for refinement
+            const auto& grid_view = this-> leafGridView();
+            for(const auto& element: elements(grid_view)) {
+                mark(1, element);
+            }
+            preAdapt();
+            adapt();
+            postAdapt();
+        }
+    }
 }
 
 const std::vector< Dune :: GeometryType >& CpGrid::geomTypes( const int codim ) const
