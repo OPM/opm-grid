@@ -588,7 +588,6 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getEquivLevelElem() const
     }
 }
 
-
 template<int codim>
 int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {

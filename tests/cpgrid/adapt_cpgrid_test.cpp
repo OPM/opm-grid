@@ -208,8 +208,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         const auto& grid_view = coarse_grid.leafGridView();
 
         Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> adaptMapper(grid_view, Dune::mcmgElementLayout());
-        const auto& adapt_idSet = adapted_leaf.local_id_set_;
-
+        const auto& leaf_localIdSet = data.back()->local_id_set_;
+  
         for(const auto& element: elements(grid_view)) {
             // postAdapt() has been called, therefore every element gets marked with 0
             BOOST_CHECK( coarse_grid.getMark(element) == 0);
@@ -258,15 +258,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 }
                 BOOST_CHECK( (element.level() > 0) || (element.level() < coarse_grid.maxLevel() +1));
                 BOOST_CHECK( level_cellIdx[0] == element.level());
-                //
-                const auto& id = (*adapt_idSet).id(element);
-                BOOST_CHECK(element.index() == id);
                 BOOST_CHECK(element.index() == adaptMapper.index(element));
-                //
-                const auto& parent_id = (*(data[element.father().level()]->local_id_set_)).id(element.father());
-                BOOST_CHECK(element.index() == id);
                 BOOST_CHECK(element.index() == adaptMapper.index(element));
-                BOOST_CHECK(element.father().index() == parent_id);
                 /** Not ideal to define this for each element. Remove?*/
                 const auto& preAdapt_view = coarse_grid.levelGridView(element.father().level());
                 Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> preAdaptMapper(preAdapt_view, Dune::mcmgElementLayout());
@@ -379,6 +372,78 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( element.level() == 0);
             } // end-preAdaptElements-for-loop
         } // end-startingGridIdx==0
+
+
+
+        const auto& global_id_set_ptr = coarse_grid.globalIdSet(); //.global_id_set_ptr_;
+        const auto& leaf_globalIdSet = data.back()->global_id_set_;
+
+        std::set<int> allIds_set;
+        std::vector<int> allIds_vec;
+        allIds_vec.reserve(data.back()->size(0) + data.back()->size(3));
+        for (const auto& element: elements(grid_view)){
+            const auto& localId = (*leaf_localIdSet).id(element);
+            const auto& globalId = (*leaf_globalIdSet).id(element);
+            // In serial run, local and global id coincide:
+            BOOST_CHECK_EQUAL(localId, globalId);
+            allIds_set.insert(localId);
+            allIds_vec.push_back(localId);
+            // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
+            BOOST_CHECK_EQUAL( global_id_set_ptr.id(element), (*data[element.level()]).local_id_set_ -> id(element.getEquivLevelElem()));
+        }
+        // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
+        BOOST_CHECK( allIds_set.size() == allIds_vec.size());
+
+        for (const auto& point: vertices(grid_view)){
+            const auto& localId = (*leaf_localIdSet).id(point);
+            const auto& globalId = (*leaf_globalIdSet).id(point);
+            BOOST_CHECK_EQUAL(localId, globalId);
+            allIds_set.insert(localId);
+            allIds_vec.push_back(localId);
+        }
+        // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding point ids.
+        BOOST_CHECK( allIds_set.size() == allIds_vec.size());
+
+        // Local/Global id sets for level grids (level 0, 1, ..., maxLevel)
+        for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
+        {
+            std::set<int> levelIds_set;
+            std::vector<int> levelIds_vec;
+            levelIds_vec.reserve(data[level]->size(0) + data[level]->size(3));
+            const auto& level_view = coarse_grid.levelGridView(level);
+            const auto& level_localIdSet = (*data[level]).local_id_set_;
+            const auto& level_globalIdSet = (*data[level]).global_id_set_;
+            const auto& level_indexSet = (*data[level]).index_set_;
+
+            for (const auto& element: elements(level_view)){
+                const auto& localId = (*level_localIdSet).id(element);
+                const auto& globalId = (*level_globalIdSet).id(element);
+                // In serial run, local and global id coincide:
+                BOOST_CHECK_EQUAL(localId, globalId);
+                levelIds_set.insert(localId);
+                levelIds_vec.push_back(localId);
+                if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
+                    BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());
+                }
+                else { // Check that the id of a cell that vanished during refinement does not appear on the IdSet of the leaf grid view.
+                    BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) == allIds_set.end());
+                }
+                const auto& idx = (*level_indexSet).index(element);
+                // In serial run, local and global id coincide:
+                BOOST_CHECK_EQUAL(idx, element.index());
+            }
+
+            for (const auto& point : vertices(level_view)) {
+                const auto& localId = (*level_localIdSet).id(point);
+                const auto& globalId = (*level_globalIdSet).id(point);
+                BOOST_CHECK_EQUAL(localId, globalId);
+                levelIds_set.insert(localId);
+                levelIds_vec.push_back(localId);
+            }
+            // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_)
+            BOOST_CHECK( levelIds_set.size() == levelIds_vec.size());
+        }
+
     } // end-if-preAdapt
 }
 

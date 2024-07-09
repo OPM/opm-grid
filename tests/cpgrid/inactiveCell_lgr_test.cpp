@@ -294,6 +294,75 @@ void testInactiveCellsLgrs(const std::string& deckString,
             BOOST_CHECK_EQUAL(element.level(), l);
         }
     }
+
+    const auto& global_id_set_ptr = grid.global_id_set_ptr_;
+
+    std::set<int> allIds_set;
+    std::vector<int> allIds_vec;
+    allIds_vec.reserve(data.back()->size(0) + data.back()->size(3));
+    const auto& leaf_view = grid.leafGridView();
+    for (const auto& element: elements(leaf_view)){
+        const auto& localId = data.back()->local_id_set_->id(element);
+        const auto& globalId = data.back()->global_id_set_->id(element);
+        // In serial run, local and global id coincide:
+        BOOST_CHECK_EQUAL(localId, globalId);
+        allIds_set.insert(localId);
+        allIds_vec.push_back(localId);
+        // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
+        BOOST_CHECK_EQUAL( global_id_set_ptr->id(element), (*data[element.level()]).local_id_set_ -> id(element.getEquivLevelElem()));
+    }
+    // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
+    BOOST_CHECK( allIds_set.size() == allIds_vec.size());
+
+    for (const auto& point: vertices(leaf_view)){
+        const auto& localId = data.back()->local_id_set_->id(point);
+        const auto& globalId = data.back()->global_id_set_->id(point);
+        BOOST_CHECK_EQUAL(localId, globalId);
+        allIds_set.insert(localId);
+        allIds_vec.push_back(localId);
+    }
+    // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding point ids.
+    BOOST_CHECK( allIds_set.size() == allIds_vec.size());
+
+    // Local/Global id sets for level grids (level 0, 1, ..., maxLevel)
+    for (int level = 0; level < grid.maxLevel() +1; ++level)
+    {
+        std::set<int> levelIds_set;
+        std::vector<int> levelIds_vec;
+        levelIds_vec.reserve(data[level]->size(0) + data[level]->size(3));
+        const auto& level_view = grid.levelGridView(level);
+        const auto& level_localIdSet = (*data[level]).local_id_set_;
+        const auto& level_globalIdSet = (*data[level]).global_id_set_;
+        const auto& level_indexSet = (*data[level]).index_set_;
+
+        for (const auto& element: elements(level_view)){
+            const auto& localId = (*level_localIdSet).id(element);
+            const auto& globalId = (*level_globalIdSet).id(element);
+            // In serial run, local and global id coincide:
+            BOOST_CHECK_EQUAL(localId, globalId);
+            levelIds_set.insert(localId);
+            levelIds_vec.push_back(localId);
+            if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
+                BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());
+            }
+            else { // Check that the id of a cell that vanished during refinement does not appear on the IdSet of the leaf grid view.
+                BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) == allIds_set.end());
+            }
+            const auto& idx = (*level_indexSet).index(element);
+            // In serial run, local and global id coincide:
+            BOOST_CHECK_EQUAL(idx, element.index());
+        }
+
+        for (const auto& point : vertices(level_view)) {
+            const auto& localId = (*level_localIdSet).id(point);
+            const auto& globalId = (*level_globalIdSet).id(point);
+            BOOST_CHECK_EQUAL(localId, globalId);
+            levelIds_set.insert(localId);
+            levelIds_vec.push_back(localId);
+        }
+        // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_)
+        BOOST_CHECK( levelIds_set.size() == levelIds_vec.size());
+    }
 }
 
 BOOST_GLOBAL_FIXTURE(Fixture);
