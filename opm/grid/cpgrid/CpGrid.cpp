@@ -2000,7 +2000,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
     }
     if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
-        OPM_THROW(std::invalid_argument, "Invalid size. Provide for each cell-block: subdivisions per cell and LGR name.");
+        OPM_THROW(std::invalid_argument, "Sizes of provided vectors with start and end IJK and LGR names need to match.");
     }
 
     if (startIJK_vec.size() > 1) {
