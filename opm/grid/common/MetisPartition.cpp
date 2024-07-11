@@ -167,7 +167,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         
 #if IS_SCOTCH_METIS_HEADER
         idx_t* options = nullptr;
-        Opm::OpmLog::info("Not setting specific METIS Options since you're using the Scotch replacement for METIS.\nAlso note that the imbalanceTol parameter is interpeted differently by the Scotch replacement for METIS than just by METIS!!!\nNow, imbalanceTol = " + std::to_string(imbalanceTol) + ".");
+        Opm::OpmLog::info("Not setting specific METIS Options since you're using Scotch-METIS.\nAlso note that the imbalanceTol parameter is interpeted differently by the Scotch-METIS than just by METIS!!!\nNow, imbalanceTol = " + std::to_string(imbalanceTol) + ".");
 #else
         // NOTE: scotchmetis interprets the imbalanceTol parameter differently
         assert(imbalanceTol >= 1.0);

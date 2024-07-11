@@ -1162,8 +1162,7 @@ namespace Dune
         /// \brief returns the number of boundary segments within the macro grid
         unsigned int numBoundarySegments() const;
 
-        void setZoltanParams(const std::map<std::string,std::string>& params); 
-      
+        void setPartitioningParams(const std::map<std::string,std::string>& params);
 
         // loadbalance is not part of the grid interface therefore we skip it.
 
@@ -1827,7 +1826,7 @@ namespace Dune
         /**
          * @brief Partitioning parameters
          */
-        std::map<std::string,std::string> zoltanParams;
+        std::map<std::string,std::string> partitioningParams;
 
     }; // end Class CpGrid
 
