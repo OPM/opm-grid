@@ -1999,11 +1999,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
         }
     }
+    if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
+        OPM_THROW(std::invalid_argument, "Invalid size. Provide for each cell-block: subdivisions per cell and LGR name.");
+    }
 
-    assert(cells_per_dim_vec.size() == startIJK_vec.size());
-    assert(cells_per_dim_vec.size() == endIJK_vec.size());
-    assert(cells_per_dim_vec.size() == lgr_name_vec.size());
-    
     if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
