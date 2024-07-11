@@ -2211,13 +2211,13 @@ void CpGridData::validStartEndIJKs(const std::vector<std::array<int,3>>& startIJ
                 // valid startIJK and endIJK for each patch
                 validPatch = validPatch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
                 if (!validPatch) {
-                    OPM_THROW(std::invalid_argument, "Invalid ijk-indices, e.g. end-i smaller than start-i.");
+                    OPM_THROW(std::invalid_argument, "Invalid IJK-indices in LGR"+std::to_string(patch +1)+", end I/J/K need to be larger than start I/J/K.\n");
                 }
             }
         }
     }
     else {
-        OPM_THROW(std::invalid_argument, "Invalid size. Provide for each start-ijk an end-ijk.");
+        OPM_THROW(std::invalid_argument, "Sizes of provided vectors with start and end IJK need to match.\n");
     }
 }
 
