@@ -2033,8 +2033,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             } // end-otherLevel-for-loop
         } // end-level-for-loop
-    }// end-if-patchesShareFace 
-
+    }// end-if-patchesShareFace
+    
+    std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(data_[0]->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
@@ -2043,6 +2044,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         getIJK(element.index(), ijk);
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             bool belongsToLevel = true;
+            int marked_elem_level_count = 0;
             for (int c = 0; c < 3; ++c) {
                 belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
                 if (!belongsToLevel)
@@ -2055,7 +2057,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+                ++marked_elem_level_count;
+                lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
             }
+        }
+    }
+
+    int non_empty_lgrs = 0;
+    for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
+        if (lgrs_with_at_least_one_active_cell[level] == 0) {
+            OPM_THROW(std::logic_error, "LGR" + std::to_string(level+1) + " contains only inactive cells, remove it or extend the corresponding region.\n");
+        }
+        else {
+            ++non_empty_lgrs;
         }
     }
 
@@ -2063,7 +2077,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
     // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string( startIJK_vec.size() ) + " LGRs applied to global grid.\n");
+    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s).\n");
     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
 }
 
