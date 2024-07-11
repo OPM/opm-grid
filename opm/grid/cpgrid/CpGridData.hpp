@@ -126,6 +126,12 @@ void lookup_check(const Dune::CpGrid&);
 
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
 
+void testInactiveCellsLgrs(const std::string&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
+
 namespace Dune
 {
 namespace cpgrid
@@ -179,6 +185,12 @@ class CpGridData
     void ::lookup_check(const Dune::CpGrid&);
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
+    friend
+    void ::testInactiveCellsLgrs(const std::string&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
 
 private:
     CpGridData(const CpGridData& g);
