@@ -29,7 +29,7 @@
 
 // We want to use METIS, but if METIS is installed together with Scotch, then METIS uses some artifacts from Scotch.
 // For this type, we need to include scotch.h.
-#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+#if IS_SCOTCH_METIS_HEADER
 extern "C" {
   #include <scotch.h>
 }
@@ -58,13 +58,13 @@ namespace cpgrid
 
 #if defined(IDXTYPEWIDTH)
   using idx_t = ::idx_t;
-#elif defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+#elif IS_SCOTCH_METIS_HEADER
   using idx_t = SCOTCH_Num;
 #else
   using idx_t = int;
 #endif
 
-#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+#if IS_SCOTCH_METIS_HEADER
   // NOTE: scotchmetis does not define a return type for METIS functions
   #define METIS_OK 1
 #endif

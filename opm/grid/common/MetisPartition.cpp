@@ -38,7 +38,7 @@ namespace cpgrid
 {
 
 // We want to use METIS, but if METIS is installed as part of the ScotchMetis package, then the following options are not available.
-#if !(defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER)
+#if !IS_SCOTCH_METIS_HEADER
 void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t* options) {
 
     // Initialize all options to default values
@@ -165,7 +165,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // be 1.001 (for ncon=1) or 1.01 (for ncon>1).
         real_t ubvec = imbalanceTol;
         
-#if defined(IS_SCOTCH_METIS_HEADER) && IS_SCOTCH_METIS_HEADER
+#if IS_SCOTCH_METIS_HEADER
         idx_t* options = nullptr;
         Opm::OpmLog::info("Not setting specific METIS Options since you're using the Scotch replacement for METIS.\nAlso note that the imbalanceTol parameter is interpeted differently by the Scotch replacement for METIS than just by METIS!!!\nNow, imbalanceTol = " + std::to_string(imbalanceTol) + ".");
 #else
