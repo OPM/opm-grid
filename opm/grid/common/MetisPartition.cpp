@@ -39,14 +39,13 @@ namespace cpgrid
 
 // We want to use METIS, but if METIS is installed as part of the ScotchMetis package, then the following options are not available.
 #if !IS_SCOTCH_METIS_HEADER
-void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t* options) {
-
+void setMetisOptions(const std::map<std::string, std::string>& optionsMap, int& manuallySelectedMethod, idx_t* options) {
     // Initialize all options to default values
     METIS_SetDefaultOptions(options);
 
-    // A map to translate string keys to METIS option indices
+    // A map containing the METIS option keys
     // This is the list of options available for METIS Version 5.1.0 - possibly more can be added in the future
-    std::map<std::string, int> metisOptionKeys = {
+    std::unordered_map<std::string, int> metisOptionKeys = {
         // These options are only valid for the METIS_PartGraphKway method
         {"METIS_OPTION_OBJTYPE", METIS_OPTION_OBJTYPE},
         {"METIS_OPTION_MINCONN", METIS_OPTION_MINCONN},
@@ -63,19 +62,63 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, idx_t
         {"METIS_OPTION_NUMBERING", METIS_OPTION_NUMBERING},
         {"METIS_OPTION_DBGLVL", METIS_OPTION_DBGLVL}
     };
+    // A map containing the METIS option values
+    std::unordered_map<std::string, int> metisOptionValues = {
+        {"METIS_PTYPE_RB", METIS_PTYPE_RB}, 
+        {"METIS_PTYPE_KWAY", METIS_PTYPE_KWAY},
+        {"METIS_OBJTYPE_CUT", METIS_OBJTYPE_CUT},
+        {"METIS_OBJTYPE_VOL", METIS_OBJTYPE_VOL},
+        {"METIS_CTYPE_RM", METIS_CTYPE_RM},
+        {"METIS_CTYPE_SHEM", METIS_CTYPE_SHEM},
+        {"METIS_IPTYPE_GROW", METIS_IPTYPE_GROW}, 
+        {"METIS_IPTYPE_RANDOM", METIS_IPTYPE_RANDOM}, 
+        {"METIS_IPTYPE_EDGE", METIS_IPTYPE_EDGE}, 
+        {"METIS_IPTYPE_NODE", METIS_IPTYPE_NODE},
+        {"METIS_RTYPE_FM", METIS_RTYPE_FM}, 
+        {"METIS_RTYPE_GREEDY", METIS_RTYPE_GREEDY}, 
+        {"METIS_RTYPE_SEP2SIDED", METIS_RTYPE_SEP2SIDED}, 
+        {"METIS_RTYPE_SEP1SIDED", METIS_RTYPE_SEP1SIDED},
+        {"METIS_DBG_INFO", METIS_DBG_INFO},
+        {"METIS_DBG_TIME", METIS_DBG_TIME}, 
+        {"METIS_DBG_COARSEN", METIS_DBG_COARSEN}, 
+        {"METIS_DBG_REFINE", METIS_DBG_REFINE}, 
+        {"METIS_DBG_IPART", METIS_DBG_IPART}, 
+        {"METIS_DBG_MOVEINFO", METIS_DBG_MOVEINFO}, 
+        {"METIS_DBG_SEPINFO", METIS_DBG_SEPINFO}, 
+        {"METIS_DBG_CONNINFO", METIS_DBG_CONNINFO}, 
+        {"METIS_DBG_CONTIGINFO", METIS_DBG_CONTIGINFO}
+    };
 
 
+    std::unordered_set<std::string> metisOptionKeysForOtherMethods = {"METIS_OPTION_NSEPS","METIS_OPTION_COMPRESS","METIS_OPTION_CCORDER","METIS_OPTION_PFACTOR","METIS_OPTION_UFACTOR"};
     // Iterate over the input map and set the options accordingly
-    for (const auto& pair : optionsMap) {
-        const std::string& key = pair.first;
-        const std::string& value = pair.second;
-
-        if (metisOptionKeys.find(key) != metisOptionKeys.end()) {
-            idx_t optionIndex = metisOptionKeys[key];
-            options[optionIndex] = std::stoi(value); // Convert the value to integer and set the option
-            Opm::OpmLog::info("Set metis option" + key + " to " + value + ".");
+    for (const auto& [key,value] : optionsMap) {
+        auto keyIt = metisOptionKeys.find(key);
+        if (keyIt != metisOptionKeys.end()) {
+            idx_t optionIndex = keyIt->second;
+            auto optionIt = metisOptionValues.find(value);
+            if (optionIt != metisOptionValues.end()) {
+                options[optionIndex] = optionIt->second;
+                Opm::OpmLog::info("Set metis option " + key + " to " + value + ".");
+            } else {
+                try {
+                    options[optionIndex] = std::stoi(value);
+                    Opm::OpmLog::info("Set metis option " + key + " to " + value + ".");
+                } catch (...) {
+                    OPM_THROW(std::logic_error, "The value " + value + " for key " + key + " is not a valid METIS option.");
+                }
+            }
+        } else if (std::any_of(metisOptionKeysForOtherMethods.begin(), metisOptionKeysForOtherMethods.end(), [&key](const std::string& otherKey) { return otherKey == key; })) {
+            OPM_THROW(std::logic_error, "The METIS key " + key + " is not valid for METIS_PartGraphRecursive or METIS_PartGraphKway. Please choose only options for these graph partitioning functions.");
+        } else if (key == "METIS_OPTION_PTYPE") {
+            manuallySelectedMethod = (value == "METIS_PTYPE_RB") ? 1 : 
+                                     (value == "METIS_PTYPE_KWAY") ? 2 :
+                                     3;
+            if (manuallySelectedMethod == 3) {
+                OPM_THROW(std::logic_error, "Unknown value '" + value + "' for METIS option " + key);
+            }
         } else {
-            std::cerr << "Unknown METIS option: " << key << std::endl;
+            OPM_THROW(std::logic_error, "Unknown METIS key: " + key);
         }
     }
 }
@@ -93,7 +136,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                     const Communication<MPI_Comm>& cc,
                                     EdgeWeightMethod edgeWeightsMethod,
                                     int root,
-                                    const real_t imbalanceTol,
+                                    real_t imbalanceTol,
                                     bool allowDistributedWells,
                                     [[maybe_unused]] const std::map<std::string,std::string>& params)
 {
@@ -165,16 +208,21 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // be 1.001 (for ncon=1) or 1.01 (for ncon>1).
         real_t ubvec = imbalanceTol;
         
+        int manuallySelectedMethod = 0; // 0: choose according to number of partitions, 1: recursive, 2: kway
 #if IS_SCOTCH_METIS_HEADER
+        Opm::OpmLog::info("Not setting specific METIS Options since you're using Scotch-METIS.");
         idx_t* options = nullptr;
-        Opm::OpmLog::info("Not setting specific METIS Options since you're using Scotch-METIS.\nAlso note that the imbalanceTol parameter is interpeted differently by the Scotch-METIS than just by METIS!!!\nNow, imbalanceTol = " + std::to_string(imbalanceTol) + ".");
+        if (imbalanceTol >= 1.0) {
+            imbalanceTol -= 1.0;
+            Opm::OpmLog::info("Note that the imbalanceTol parameter is interpeted differently by Scotch-METIS than just by METIS! The imbalanceTol >= 1.0, we subtract 1.0, so now the imbalanceTol = " + std::to_string(imbalanceTol) + ".");
+        }
 #else
         // NOTE: scotchmetis interprets the imbalanceTol parameter differently
         assert(imbalanceTol >= 1.0);
         // This is the array of options as described in Section 5.4.
         // The METIS options are not available if METIS is installed together with Scotch.
         idx_t* options = new idx_t[METIS_NOPTIONS];
-        Dune::cpgrid::setMetisOptions(params, options);
+        Dune::cpgrid::setMetisOptions(params, manuallySelectedMethod, options);
 #endif
 
         //////// Now, we define all variables that *do depend* on whether there are wells or not
@@ -228,8 +276,11 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // METIS_PartGraphKway uses multilevel k-way partition.
         // The advice is: Use METIS_PartGraphRecursive if k is small and if k is a power of two
         // (n & (n - 1) == 0) is true if n > 0 and n is a power of two, this is an efficient bitwise check.
-        if (nparts < 65 && ((nparts & (nparts - 1)) == 0)) {
-            Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive.");
+        if (manuallySelectedMethod == 1 || (manuallySelectedMethod == 0 && nparts < 65 && ((nparts & (nparts - 1)) == 0))) {
+            if (manuallySelectedMethod == 1)
+                Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive.");
+            else if (nparts < 65 && ((nparts & (nparts - 1)) == 0))
+                Opm::OpmLog::info("Partitioning grid using METIS_PartGraphRecursive, since the number of partitions is small (<65) and a power of 2. If you want to use METIS_PartGraphKway instead, set the METIS Parameter METIS_OPTION_PTYPE = METIS_PTYPE_KWAY.");
             rc = METIS_PartGraphRecursive(&n, 
                                           &ncon,
                                           xadj,

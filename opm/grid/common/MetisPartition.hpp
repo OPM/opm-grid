@@ -108,7 +108,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                     const Communication<MPI_Comm>& cc,
                                     EdgeWeightMethod edgeWeightsMethod,
                                     int root,
-                                    const real_t imbalanceTol,
+                                    real_t imbalanceTol,
                                     bool allowDistributedWells,
                                     const std::map<std::string,std::string>& params);
 }
