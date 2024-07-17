@@ -111,8 +111,6 @@ void lookup_check(const Dune::CpGrid& grid)
     const auto& level0_view = grid.levelGridView(0);
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> leafMapper(leaf_view, Dune::mcmgElementLayout());
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> level0Mapper(level0_view, Dune::mcmgElementLayout());
-
-    // const auto& leaf_idSet = (*data.back()).localIdSet();
     const auto& level0_idSet = (*data[0]).localIdSet();
 
     for (const auto& elem : elements(leaf_view)) {

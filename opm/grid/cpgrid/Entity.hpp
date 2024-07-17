@@ -44,6 +44,12 @@
 #include "PartitionTypeIndicator.hpp"
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 
+// To be able to test local and global ids of vertices
+void refinePatch_and_check(Dune::CpGrid&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::array<int,3>>&,
+                           const std::vector<std::string>&);
 
 namespace Dune
 {
@@ -67,6 +73,11 @@ class Entity : public EntityRep<codim>
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class CpGridData;
+    friend void ::refinePatch_and_check(Dune::CpGrid&,
+                                        const std::vector<std::array<int,3>>&,
+                                        const std::vector<std::array<int,3>>&,
+                                        const std::vector<std::array<int,3>>&,
+                                        const std::vector<std::string>&);
 
 public:
     /// @brief

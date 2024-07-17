@@ -206,10 +206,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         } // end-if-isBlockShape
 
         const auto& grid_view = coarse_grid.leafGridView();
-
         Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> adaptMapper(grid_view, Dune::mcmgElementLayout());
-        const auto& leaf_localIdSet = data.back()->local_id_set_;
-  
+
         for(const auto& element: elements(grid_view)) {
             // postAdapt() has been called, therefore every element gets marked with 0
             BOOST_CHECK( coarse_grid.getMark(element) == 0);
@@ -373,30 +371,25 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             } // end-preAdaptElements-for-loop
         } // end-startingGridIdx==0
 
-
-
-        const auto& global_id_set_ptr = coarse_grid.globalIdSet(); //.global_id_set_ptr_;
-        const auto& leaf_globalIdSet = data.back()->global_id_set_;
-
         std::set<int> allIds_set;
         std::vector<int> allIds_vec;
         allIds_vec.reserve(data.back()->size(0) + data.back()->size(3));
         for (const auto& element: elements(grid_view)){
-            const auto& localId = (*leaf_localIdSet).id(element);
-            const auto& globalId = (*leaf_globalIdSet).id(element);
+            const auto& localId = data.back()->localIdSet().id(element);
+            const auto& globalId = data.back()->globalIdSet().id(element);
             // In serial run, local and global id coincide:
             BOOST_CHECK_EQUAL(localId, globalId);
             allIds_set.insert(localId);
             allIds_vec.push_back(localId);
             // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-            BOOST_CHECK_EQUAL( global_id_set_ptr.id(element), (*data[element.level()]).local_id_set_ -> id(element.getEquivLevelElem()));
+            BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->localIdSet().id(element.getEquivLevelElem()));
         }
         // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
         BOOST_CHECK( allIds_set.size() == allIds_vec.size());
 
         for (const auto& point: vertices(grid_view)){
-            const auto& localId = (*leaf_localIdSet).id(point);
-            const auto& globalId = (*leaf_globalIdSet).id(point);
+            const auto& localId = data.back()->localIdSet().id(point);
+            const auto& globalId = data.back()->globalIdSet().id(point);
             BOOST_CHECK_EQUAL(localId, globalId);
             allIds_set.insert(localId);
             allIds_vec.push_back(localId);
@@ -410,35 +403,47 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             std::set<int> levelIds_set;
             std::vector<int> levelIds_vec;
             levelIds_vec.reserve(data[level]->size(0) + data[level]->size(3));
-            const auto& level_view = coarse_grid.levelGridView(level);
-            const auto& level_localIdSet = (*data[level]).local_id_set_;
-            const auto& level_globalIdSet = (*data[level]).global_id_set_;
-            const auto& level_indexSet = (*data[level]).index_set_;
 
-            for (const auto& element: elements(level_view)){
-                const auto& localId = (*level_localIdSet).id(element);
-                const auto& globalId = (*level_globalIdSet).id(element);
+            for (const auto& element: elements(coarse_grid.levelGridView(level))){
+                const auto& localId = data[level]->localIdSet().id(element);
+                const auto& globalId = data[level]->globalIdSet().id(element);
                 // In serial run, local and global id coincide:
                 BOOST_CHECK_EQUAL(localId, globalId);
                 levelIds_set.insert(localId);
                 levelIds_vec.push_back(localId);
+                /* // Search in the leaf grid view elements for the element with the same id, if it exists.
+                   if (auto itIsLeaf = std::find_if( elements(coarse_grid.leafGridView()).begin(),
+                   elements(coarse_grid.leafGridView()).end(),
+                   [localId, data](const Dune::cpgrid::Entity<0>& leafElem)
+                   { return (localId == data.back()->localIdSet().id(leafElem)); });
+                   itIsLeaf != elements(coarse_grid.leafGridView()).end()) {
+                   BOOST_CHECK( itIsLeaf->getEquivLevelElem() == element);
+                   }*/
                 if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
                     BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());
                 }
                 else { // Check that the id of a cell that vanished during refinement does not appear on the IdSet of the leaf grid view.
                     BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) == allIds_set.end());
                 }
-                const auto& idx = (*level_indexSet).index(element);
+                const auto& idx = data[level]->indexSet().index(element);
                 // In serial run, local and global id coincide:
                 BOOST_CHECK_EQUAL(idx, element.index());
             }
 
-            for (const auto& point : vertices(level_view)) {
-                const auto& localId = (*level_localIdSet).id(point);
-                const auto& globalId = (*level_globalIdSet).id(point);
+            for (const auto& point : vertices(coarse_grid.levelGridView(level))) {
+                const auto& localId = data[level]->localIdSet().id(point);
+                const auto& globalId = data[level]->globalIdSet().id(point);
                 BOOST_CHECK_EQUAL(localId, globalId);
                 levelIds_set.insert(localId);
                 levelIds_vec.push_back(localId);
+                // Search in the leaf grid view elements for the element with the same id, if it exists.
+                /*   if (auto itIsLeaf = std::find_if( vertices(coarse_grid.leafGridView()).begin(),
+                                                  vertices(coarse_grid.leafGridView()).end(),
+                                                  [localId, data](const Dune::cpgrid::Entity<3>& leafPoint)
+                                                  { return (localId == data.back()->localIdSet().id(leafPoint)); });
+                    itIsLeaf != vertices(coarse_grid.leafGridView()).end()) {
+                    BOOST_CHECK( (*itIsLeaf).geometry().center() == point.geometry().center() );
+                }*/
             }
             // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_)
             BOOST_CHECK( levelIds_set.size() == levelIds_vec.size());

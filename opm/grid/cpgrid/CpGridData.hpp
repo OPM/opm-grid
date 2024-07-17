@@ -600,6 +600,12 @@ public:
         return *local_id_set_;
     }
 
+    /// Get the global index set.
+    const cpgrid::LevelGlobalIdSet& globalIdSet() const
+    {
+        return *global_id_set_;
+    }
+
     /// The logical cartesian size of the grid.
     /// This function is not part of the Dune grid interface,
     /// and should be used with caution.
