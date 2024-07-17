@@ -149,7 +149,6 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 const auto& grid_view = coarse_grid.leafGridView();
                 const auto& equiv_grid_view = other_grid.leafGridView();
 
-
                 for(const auto& element: elements(grid_view)) {
                     BOOST_CHECK( element.getOrigin().level() == 0);
                     auto equiv_element_iter = equiv_grid_view.begin<0>();
@@ -396,6 +395,10 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         }
         // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding point ids.
         BOOST_CHECK( allIds_set.size() == allIds_vec.size());
+        // CpGrid supports only elements (cells) and vertices (corners). Total amount of ids for the leaf grid view should coincide
+        // with the total amount of cells and corners on the leaf grid view.
+        BOOST_CHECK( static_cast<int>(allIds_set.size()) == (data.back()->size(0) + data.back()->size(3)));
+        
 
         // Local/Global id sets for level grids (level 0, 1, ..., maxLevel)
         for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
@@ -451,6 +454,9 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             }
             // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_)
             BOOST_CHECK( levelIds_set.size() == levelIds_vec.size());
+            // CpGrid supports only elements (cells) and vertices (corners). Total amount of ids for each level grid should coincide
+            // with the total amount of cells and corners on that level grid.
+            BOOST_CHECK( static_cast<int>(levelIds_set.size()) == (data[level]->size(0) + data[level]->size(3)));
         }
     } // end-if-preAdapt
 }
@@ -536,7 +542,6 @@ BOOST_AUTO_TEST_CASE(globalRefinement_calling_globalRefine)
     // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
     markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, true);
 }
-
 
 BOOST_AUTO_TEST_CASE(calling_globalRefine_with_2)
 {
