@@ -411,14 +411,16 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL(localId, globalId);
                 levelIds_set.insert(localId);
                 levelIds_vec.push_back(localId);
-                /* // Search in the leaf grid view elements for the element with the same id, if it exists.
-                   if (auto itIsLeaf = std::find_if( elements(coarse_grid.leafGridView()).begin(),
-                   elements(coarse_grid.leafGridView()).end(),
-                   [localId, data](const Dune::cpgrid::Entity<0>& leafElem)
-                   { return (localId == data.back()->localIdSet().id(leafElem)); });
-                   itIsLeaf != elements(coarse_grid.leafGridView()).end()) {
-                   BOOST_CHECK( itIsLeaf->getEquivLevelElem() == element);
-                   }*/
+                // The following check is commented even though all the test cases pass it. However, runnning this file
+                // with it (uncommented) takes ~2.5 minutes.
+                // Search in the leaf grid view elements for the element with the same id, if it exists.
+                /*if (auto itIsLeaf = std::find_if( elements(coarse_grid.leafGridView()).begin(),
+                  elements(coarse_grid.leafGridView()).end(),
+                  [localId, data](const Dune::cpgrid::Entity<0>& leafElem)
+                  { return (localId == data.back()->localIdSet().id(leafElem)); });
+                  itIsLeaf != elements(coarse_grid.leafGridView()).end()) {
+                  BOOST_CHECK( itIsLeaf->getEquivLevelElem() == element);
+                  }*/
                 if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
                     BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());
                 }
@@ -436,19 +438,20 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL(localId, globalId);
                 levelIds_set.insert(localId);
                 levelIds_vec.push_back(localId);
-                // Search in the leaf grid view elements for the element with the same id, if it exists.
-                /*   if (auto itIsLeaf = std::find_if( vertices(coarse_grid.leafGridView()).begin(),
-                                                  vertices(coarse_grid.leafGridView()).end(),
-                                                  [localId, data](const Dune::cpgrid::Entity<3>& leafPoint)
-                                                  { return (localId == data.back()->localIdSet().id(leafPoint)); });
-                    itIsLeaf != vertices(coarse_grid.leafGridView()).end()) {
-                    BOOST_CHECK( (*itIsLeaf).geometry().center() == point.geometry().center() );
-                }*/
+                // The following check is commented even though all the test cases pass it. However, runnning this file
+                // with it (uncommented) takes ~2.5 minutes.
+                /* // Search in the leaf grid view elements for the element with the same id, if it exists.
+                   if (auto itIsLeaf = std::find_if( vertices(coarse_grid.leafGridView()).begin(),
+                   vertices(coarse_grid.leafGridView()).end(),
+                   [localId, data](const Dune::cpgrid::Entity<3>& leafPoint)
+                   { return (localId == data.back()->localIdSet().id(leafPoint)); });
+                   itIsLeaf != vertices(coarse_grid.leafGridView()).end()) {
+                   BOOST_CHECK( (*itIsLeaf).geometry().center() == point.geometry().center() );
+                   }*/
             }
             // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_)
             BOOST_CHECK( levelIds_set.size() == levelIds_vec.size());
         }
-
     } // end-if-preAdapt
 }
 
@@ -461,7 +464,8 @@ BOOST_AUTO_TEST_CASE(doNothing)
     const std::array<int, 3> cells_per_dim = {2,2,2};
     std::vector<int> markedCells;
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/true, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, false, true);
 }
 
 BOOST_AUTO_TEST_CASE(globalRefinement)
@@ -485,7 +489,8 @@ BOOST_AUTO_TEST_CASE(globalRefinement)
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, true);
 }
 
 
@@ -505,7 +510,8 @@ BOOST_AUTO_TEST_CASE(doNothing_calling_globalRefine)
     other_grid.globalRefine(0);
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/true, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, true);
 }
 
 BOOST_AUTO_TEST_CASE(globalRefinement_calling_globalRefine)
@@ -527,7 +533,8 @@ BOOST_AUTO_TEST_CASE(globalRefinement_calling_globalRefine)
     const std::array<int, 3> cells_per_dim = {2,2,2};
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, true);
 }
 
 
@@ -552,7 +559,8 @@ BOOST_AUTO_TEST_CASE(calling_globalRefine_with_2)
     const std::array<int, 3> cells_per_dim = {2,2,2};
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    markAndAdapt_check(equiv_fine_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(equiv_fine_grid, cells_per_dim, markedCells, other_grid, false, false, true);
 }
 
 BOOST_AUTO_TEST_CASE(calling_globalRefine_with_3)
@@ -576,7 +584,8 @@ BOOST_AUTO_TEST_CASE(calling_globalRefine_with_3)
     const std::array<int, 3> cells_per_dim = {2,2,2};
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    markAndAdapt_check(equiv_fine_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/true);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(equiv_fine_grid, cells_per_dim, markedCells, other_grid, false, false, true);
 }
 
 BOOST_AUTO_TEST_CASE(throw_globalRefine_with_negative_int)
@@ -627,7 +636,8 @@ BOOST_AUTO_TEST_CASE(mark2consequtiveCells)
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {2,3};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/true, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(mark2InteriorConsequtiveCells)
@@ -650,7 +660,8 @@ BOOST_AUTO_TEST_CASE(mark2InteriorConsequtiveCells)
     other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {17,18};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/true, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
@@ -662,7 +673,8 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells)
     const std::array<int, 3> cells_per_dim = {2,2,2};
     std::vector<int> markedCells = {0}; //,1,2,5,13};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
@@ -674,7 +686,8 @@ BOOST_AUTO_TEST_CASE(markNonBlockShapeCells_II)
     const std::array<int, 3> cells_per_dim = {2,3,4};
     std::vector<int> markedCells = {1,4,6,9,17,22,28,32,33};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
@@ -699,7 +712,8 @@ BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
     other_grid.adapt();
     other_grid.postAdapt();
 
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
@@ -747,7 +761,8 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
     other_grid.adapt();
     other_grid.postAdapt();
 
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/false, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, false);
 }
 
 BOOST_AUTO_TEST_CASE(refineCoarseCells_in_mixedGrid) {
@@ -765,7 +780,8 @@ BOOST_AUTO_TEST_CASE(refineCoarseCells_in_mixedGrid) {
     coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
     std::vector<int> markedCells = {0,1,11,15}; // coarse cells (in level 0 grid, this cell has index 8)
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/true, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
 }
 
 BOOST_AUTO_TEST_CASE(refineInteriorRefinedCells_in_mixedGrid) {
@@ -786,7 +802,8 @@ BOOST_AUTO_TEST_CASE(refineInteriorRefinedCells_in_mixedGrid) {
     // Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
     // Therefore, cell_to_face_ for all of them has size 6. (Their faces have all 2 refined neigboring cells - (not one coarse cell, and one refined)).
     std::vector<int> markedCells = {30,31, 56,57};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/true, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
 }
 
 
@@ -810,9 +827,9 @@ BOOST_AUTO_TEST_CASE(refineMixedCells_in_mixedGrid) {
     // - Cells 0,1,2,12, and 15 are coarse cells, not touching the boundary of the LGR1 (cells 12 and 15 do share corners with LGR1 but do not share
     // any face. Therefore, the faces of cells 0,1,2,12,and 15 have all 1 or 2 neighboring coarse cells).
     std::vector<int> markedCells = {0,1,2,12,15,30,31,56,57};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/true, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
 }
-
 
 
 BOOST_AUTO_TEST_CASE(refineMixedCells_in_multiLevelGrid) {
@@ -835,7 +852,8 @@ BOOST_AUTO_TEST_CASE(refineMixedCells_in_multiLevelGrid) {
     // - Cells 0,1,2,12, and 15 are coarse cells, not touching the boundary of the LGR1 (cells 12 and 15 do share corners with LGR1 but do not share
     // any face. Therefore, the faces of cells 0,1,2,12,and 15 have all 1 or 2 neighboring coarse cells).
     std::vector<int> markedCells = {0,1,2,12,15,30,31,56,57};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/false, /*hasBeenRefinedAtLeastOnce*/true, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, false, true, false);
 }
 
 
@@ -861,7 +879,8 @@ BOOST_AUTO_TEST_CASE(refineMixedCells_in_mixedGrid_II)
     // - Cells 50,59,68 are refined cells, children of {level 0, cell index 18}, forming a collum.
     // Cells 25 and 50, 34 and 59, 43 and 68, share a face (the collums are next to each other).
     std::vector<int> markedCells = {25,34,43,50,59,68, 72, 84};
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, /*isBlockShape*/true, /*hasBeenRefinedAtLeastOnce*/true, /*isGlobalRefinement*/false);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false);
 }
 
 BOOST_AUTO_TEST_CASE(cellTouchesLgrBoundary_throw)
@@ -883,8 +902,6 @@ BOOST_AUTO_TEST_CASE(cellTouchesLgrBoundary_throw)
     // - Coarse cells touching the LGR1 on its boundary.
     // Cell 5, 14, 16, 71, 73, and 82, touching the bottom, front, left, right, back, and the top of LGR1, respectively.
     std::vector<int> markedCells = {5,14,16,71,73,82};
-    BOOST_CHECK_THROW(markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid,
-                                         /*isBlockShape*/true,
-                                         /*hasBeenRefinedAtLeastOnce*/true,
-                                         /*isGlobalRefinement*/false), std::logic_error);
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    BOOST_CHECK_THROW(markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false), std::logic_error);
 }
