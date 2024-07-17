@@ -330,8 +330,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
-                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams)
-                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams);
+                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams)
+                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
@@ -341,7 +341,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_METIS
                 if (!serialPartitioning)
                     OPM_MESSAGE("Warning: Serial partitioning is set to false and METIS was selected to partition the grid, but METIS is a serial partitioner. Continuing with serial partitioning...");
-                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, zoltanParams);
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on METIS if useMetis is true. Please install!");
 #endif // HAVE_METIS
@@ -1034,9 +1034,9 @@ unsigned int CpGrid::numBoundarySegments() const
     }
 }
 
-void CpGrid::setZoltanParams(const std::map<std::string,std::string>& params)
+void CpGrid::setPartitioningParams(const std::map<std::string,std::string>& params)
 {
-    zoltanParams = params;
+    partitioningParams = params;
 }
 
 const typename CpGridTraits::Communication& Dune::CpGrid::comm () const
