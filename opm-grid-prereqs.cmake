@@ -31,6 +31,7 @@ set (opm-grid_DEPS
   "opm-common REQUIRED"
   "ZOLTAN"
   "PTScotch"
+  "Scotch"
   "METIS"
   )
 
