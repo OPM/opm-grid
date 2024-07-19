@@ -3331,8 +3331,6 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
                                        const int& corner_count,
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
                                        const int& preAdaptMaxLevel)
-//std::vector<std::vector<std::array<int,2>>>& levels_corner_history,
-// std::vector<std::array<int,2>>& leaf_corner_history)
 {
     for (int level = preAdaptMaxLevel+1; level < (this->maxLevel()+1); ++level) {
         data_[level]->corner_history_.resize( data_[level] ->size(3), std::array<int,2>({-1,-1}));
