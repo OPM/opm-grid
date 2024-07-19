@@ -200,13 +200,6 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         // An array of size n+1 that specifies the adjacency structure of the graph. The adjacency list of vertex i is stored in adjncy[xadj[i]] to adjncy[xadj[i+1]-1].
         idx_t* xadj = new idx_t[n+1];
         xadj[0] = 0;
-
-        // This is an array of size ncon (in our case, of size 1) that specifies the allowed load imbalance tolerance for each constraint.
-        // For the ith partition and jth constraint the allowed weight is the ubvec[j]*tpwgts[i*ncon+j] fraction
-        // of the jth’s constraint total weight. The load imbalances must be greater than 1.0.
-        // A NULL value can be passed indicating that the load imbalance tolerance for each constraint should
-        // be 1.001 (for ncon=1) or 1.01 (for ncon>1).
-        real_t ubvec = imbalanceTol;
         
         int manuallySelectedMethod = 0; // 0: choose according to number of partitions, 1: recursive, 2: kway
 #if IS_SCOTCH_METIS_HEADER
@@ -214,7 +207,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         idx_t* options = nullptr;
         if (imbalanceTol >= 1.0) {
             imbalanceTol -= 1.0;
-            Opm::OpmLog::info("Note that the imbalanceTol parameter is interpeted differently by Scotch-METIS than just by METIS! The imbalanceTol >= 1.0, we subtract 1.0, so now the imbalanceTol = " + std::to_string(imbalanceTol) + ".");
+            Opm::OpmLog::info("Note that the imbalanceTol parameter is interpeted differently by Scotch-METIS than just by METIS! Currently, imbalanceTol >= 1.0, we subtract 1.0, such that imbalanceTol = " + std::to_string(imbalanceTol) + ".");
         }
 #else
         // NOTE: scotchmetis interprets the imbalanceTol parameter differently
@@ -224,6 +217,13 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         idx_t* options = new idx_t[METIS_NOPTIONS];
         Dune::cpgrid::setMetisOptions(params, manuallySelectedMethod, options);
 #endif
+
+        // This is an array of size ncon (in our case, of size 1) that specifies the allowed load imbalance tolerance for each constraint.
+        // For the ith partition and jth constraint the allowed weight is the ubvec[j]*tpwgts[i*ncon+j] fraction
+        // of the jth’s constraint total weight. The load imbalances must be greater than 1.0.
+        // A NULL value can be passed indicating that the load imbalance tolerance for each constraint should
+        // be 1.001 (for ncon=1) or 1.01 (for ncon>1).
+        real_t ubvec = imbalanceTol;
 
         //////// Now, we define all variables that *do depend* on whether there are wells or not
 
