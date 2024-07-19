@@ -3326,8 +3326,8 @@ void CpGrid::updateLeafGridViewGeometries( /* Leaf grid View Corners arguments *
 }
 
 void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                       std::map<std::array<int,2>,std::array<int,2>> elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                       std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                       const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                       const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                                        const int& corner_count,
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
                                        const int& preAdaptMaxLevel)
@@ -3340,16 +3340,16 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
     // corner_history_[ corner equivalent to a corner in a previous level ] = { level where the corner was born, its index in that level grid}.
     for (int corner = 0; corner < static_cast<int>(cornerInMarkedElemWithEquivRefinedCorner.size()); ++corner) {
         if (!cornerInMarkedElemWithEquivRefinedCorner[corner].empty()) {
-            const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[cornerInMarkedElemWithEquivRefinedCorner[corner].back()];
+            const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at(cornerInMarkedElemWithEquivRefinedCorner[corner].back());
             data_[refinedLevel]->corner_history_[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, corner}} :  preAdaptGrid_corner_history[corner];
         }
     }
     // corner_history_ leaf grid view
     for ( int leafCorner = 0; leafCorner < corner_count; ++leafCorner){
         data_.back()->corner_history_.resize(corner_count);
-        const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner[leafCorner];
+        const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner.at(leafCorner);
         if (elemLgr != -1) {
-            const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemLgr, elemLgrCorner}];
+            const auto& [refinedLevel, refinedCorner] = elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.at({elemLgr, elemLgrCorner});
             data_.back()->corner_history_[leafCorner] = { refinedLevel, refinedCorner};
         }
         else {
