@@ -1024,6 +1024,13 @@ namespace Dune
                                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                            int preAdaptMaxLevel);
 
+        void updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                       const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                       const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                       const int& corner_count,
+                                       const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
+                                       const int& preAdaptMaxLevel);
+
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///
         /// Given a single-cell, we refine it in {nx, ny, nz} refined children cells (per direction). Then, this single-cell-refinement

@@ -46,14 +46,11 @@ namespace Dune
 {
     namespace cpgrid
     {
-    // forward declaration
-    //class CpGridData;
         /// @brief
         /// @todo Doc me!
         /// @tparam
         class IndexSet
         {
-            //friend class Dune::cpgrid::CpGridData;
         public:
             /// @brief
             /// @todo Doc me!
@@ -198,6 +195,8 @@ namespace Dune
         class IdSet
         {
             friend class ReversePointGlobalIdSet;
+            friend class Dune::cpgrid::CpGridData;
+            //friend class Dune::cpgrid::LevelGlobalIdSet; Not needed due to repeated code in LevelGlobalIdSet (computeId_cell and computeId_point)
         public:
             typedef int IdType;
 
@@ -206,10 +205,14 @@ namespace Dune
             {
             }
 
-            template<int cc>
-            IdType id(const cpgrid::Entity<cc>& e) const
+            IdType id(const cpgrid::Entity<0>& e) const
             {
-                return computeId(e);
+                return computeId_cell(e);
+            }
+
+            IdType id(const cpgrid::Entity<3>& e) const
+            {
+                return computeId_point(e);
             }
 
             template<class EntityType>
@@ -231,7 +234,9 @@ namespace Dune
             }
 
             IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
+
         private:
+
             template<class EntityType>
             IdType computeId(const EntityType& e) const
             {
@@ -240,11 +245,107 @@ namespace Dune
                     myId += grid_.indexSet().size( c );
                 return  myId + e.index();
             }
+
             const CpGridData& grid_;
+
+            IdType computeId_cell(const cpgrid::Entity<0>& e) const
+            {
+                IdType myId = 0;
+                // Case: Leaf grid view is a mixed of coarse and fined cells.
+                if (grid_.levelData().size() > 1) {
+                    const auto& gridIdx = grid_.getGridIdx();
+                    // Level zero grid
+                    if ( gridIdx == 0 ) {
+                        return  myId + e.index();
+                    }
+                    // Level 1, 2, ...., maxLevel refined grids
+                    if ( (gridIdx>0) && (gridIdx < static_cast<int>(grid_.levelData().size() -1)) ) {
+                        if ((e.level() != gridIdx)) { // cells equiv to pre-existing cells
+                            return  grid_.levelData()[e.level()]->localIdSet().id(e.getEquivLevelElem());
+                        }
+                        else {
+                            // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)
+                            // from all the "previous" level grids.
+                            for (int lowerLevel = 0; lowerLevel< gridIdx; ++lowerLevel) {
+                                for( int c=0; c<4; ++c ) {
+                                    myId += grid_.levelData()[lowerLevel]->indexSet().size( c );
+                                }
+                            }
+                            return  myId + e.index();
+                        }
+                    }
+                    else { // Leaf grid view (grid view with mixed coarse and refined cells).
+                        assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
+                        // In this case, we search for the ids defined in previous levels
+                        // (since each entities must keep its id along the entire hiearchy)
+                        std::array<int,2> level_levelIdx = {0,0};
+                        level_levelIdx = grid_.leaf_to_level_cells_[e.index()];
+                        const auto& levelEntity =  cpgrid::Entity<0>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                        return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
+                    }
+                } // end-if-data_.size()>1
+                else { // Case: No LGRs / No refined level grids. Only level 0 grid (GLOBAL grid).
+                    return  myId + e.index();
+                }
+            }
+
+            IdType computeId_point(const cpgrid::Entity<3>& e) const
+            {
+                IdType myId = 0;
+                // Case: Leaf grid view is a mixed of coarse and fined cells.
+                if (grid_.levelData().size() > 1) {
+                    const auto& gridIdx = grid_.getGridIdx();
+                    // Level zero grid
+                    if ( gridIdx == 0 ) {
+                        // Count all the entities of (all the levels) level 0 of all codimensions lower than 3 (for CpGrid, only codim = 0 cells).
+                        for( int c=0; c<3; ++c ) {
+                            myId += grid_.indexSet().size( c );
+                        }
+                        return  myId + e.index();
+                    }
+                    // Level 1, 2, ...., maxLevel refined grids.
+                    if ( (gridIdx>0) && (gridIdx < static_cast<int>(grid_.levelData().size() -1)) ) {
+                        const auto& level_levelIdx = grid_.corner_history_[e.index()];
+                        if(level_levelIdx[0] != -1) { // corner equiv to a pre-exisiting level corner
+                            const auto& levelEntity =  cpgrid::Entity<3>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                            return  grid_.levelData()[level_levelIdx[0]]->localIdSet().id(levelEntity);
+                        }
+                        else {
+                            // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)
+                            // from all the "previous" level grids.
+                            for (int lowerLevel = 0; lowerLevel< gridIdx; ++lowerLevel) {
+                                for( int c=0; c<4; ++c ) {
+                                    myId += grid_.levelData()[lowerLevel]->indexSet().size( c );
+                                }
+                            }
+                            // Count (and add to myId) all the entities of the refined level grid of codim < 3.
+                            for( int c=0; c<3; ++c ) {
+                                myId += grid_.indexSet().size( c );
+                            }
+                            return  myId + e.index();
+                        }
+                    }
+                    else { // Leaf grid view (grid view with mixed coarse and refined cells).
+                        assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
+                        // In this case, we search for the ids defined in previous levels
+                        // (since each entities must keep its id along the entire hiearchy)
+                        std::array<int,2> level_levelIdx = {0,0};
+                        level_levelIdx = grid_.corner_history_[e.index()];
+                        const auto& levelEntity =  cpgrid::Entity<3>(*(grid_.levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                        return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
+                    }
+                } // end-if-data_.size()>1
+                else { // Case: No LGRs / No refined level grids. Only level 0 grid (GLOBAL grid).
+                    for( int c=0; c<3; ++c ) {
+                        myId += grid_.indexSet().size( c );
+                    }
+                    return  myId + e.index();
+                }
+            }
         };
 
 
-        class LevelGlobalIdSet : public GlobalIdMapping
+    class LevelGlobalIdSet : public GlobalIdMapping
         {
             friend class CpGridData;
             friend class ReversePointGlobalIdSet;
@@ -260,7 +361,7 @@ namespace Dune
                                       faceMapping,
                                       pointMapping);
             }
-            LevelGlobalIdSet(std::shared_ptr<const IdSet> ids, const CpGridData* view)  
+            LevelGlobalIdSet(std::shared_ptr<const IdSet> ids, const CpGridData* view)
                 : idSet_(ids), view_(view)
             {}
             LevelGlobalIdSet()
@@ -272,6 +373,17 @@ namespace Dune
                 assert(view_ == e.pgrid_);
                 return id(static_cast<const EntityRep<codim>&>(e));
             }
+
+            IdType id(const Dune::cpgrid::Entity<0>& e) const
+            {// For avoiding repeating code, the following line could be idSet_->id(e), but it breaks the distribution_test in parallel
+                return computeId_cell(e);
+            }
+
+            IdType id(const Dune::cpgrid::Entity<3>& e) const
+            {// For avoiding repeating code, the following line could be idSet_->id(e), but it breaks the distribution_test in parallel
+                return computeId_point(e);
+            }
+
             template<int codim>
             IdType id(const EntityRep<codim>& e) const
             {
@@ -292,9 +404,105 @@ namespace Dune
         private:
             std::shared_ptr<const IdSet> idSet_;
             const CpGridData* view_;
-        };
 
-    /*!
+            // To be removed (?) "Repeated code (see private data members in IdSet)", when removed, distribution_test run in parallel fails.
+            IdType computeId_cell(const cpgrid::Entity<0>& e) const
+            {
+                IdType myId = 0;
+                // Case: Leaf grid view is a mixed of coarse and fined cells.
+                if (view_-> levelData().size() > 1) {
+                    const auto& gridIdx = view_->getGridIdx();
+                    // Level zero grid
+                    if ( gridIdx == 0 ) {
+                        return  myId + e.index();
+                    }
+                    // Level 1, 2, ...., maxLevel refined grids
+                    if ( (gridIdx>0) && (gridIdx < static_cast<int>(view_->levelData().size() -1)) ) {
+                        if ((e.level() != gridIdx)) { // cells equiv to pre-existing cells
+                            return  view_->levelData()[e.level()]->localIdSet().id(e.getEquivLevelElem());
+                        }
+                        else {
+                            // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)
+                            // from all the "previous" level grids.
+                            for (int lowerLevel = 0; lowerLevel< gridIdx; ++lowerLevel) {
+                                for( int c=0; c<4; ++c ) {
+                                    myId += view_->levelData()[lowerLevel]->indexSet().size( c );
+                                }
+                            }
+                            return  myId + e.index();
+                        }
+                    }
+                    else { // Leaf grid view (grid view with mixed coarse and refined cells).
+                        assert( view_->getGridIdx() == (static_cast<int>(view_->levelData().size()) -1) );
+                        // In this case, we search for the ids defined in previous levels
+                        // (since each entities must keep its id along the entire hiearchy)
+                        std::array<int,2> level_levelIdx = {0,0};
+                        level_levelIdx = view_->leaf_to_level_cells_[e.index()];
+                        const auto& levelEntity =  cpgrid::Entity<0>(*(view_->levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                        return  view_->levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
+                    }
+                } // end-if-data_.size()>1
+                else { // Case: No LGRs / No refined level grids. Only level 0 grid (GLOBAL grid).
+                    return  myId + e.index();
+                }
+            }
+            // To be removed (?) "Repeated code (see private data members in IdSet)", when removed, distribution_test run in parallel fails.
+            IdType computeId_point(const cpgrid::Entity<3>& e) const
+            {
+                IdType myId = 0;
+                // Case: Leaf grid view is a mixed of coarse and fined cells.
+                if (view_-> levelData().size() > 1) {
+                    const auto& gridIdx = view_->getGridIdx();
+                    // Level zero grid
+                    if ( gridIdx == 0 ) {
+                        // Count all the entities of (all the levels) level 0 of all codimensions lower than 3 (for CpGrid, only codim = 0 cells).
+                        for( int c=0; c<3; ++c ) {
+                            myId += view_ ->indexSet().size( c );
+                        }
+                        return  myId + e.index();
+                    }
+                    // Level 1, 2, ...., maxLevel refined grids.
+                    if ( (gridIdx>0) && (gridIdx < static_cast<int>(view_->levelData().size() -1)) ) {
+                        const auto& level_levelIdx = view_->corner_history_[e.index()];
+                        if(level_levelIdx[0] != -1) { // corner equiv to a pre-exisiting level corner
+                            const auto& levelEntity =  cpgrid::Entity<3>(*(view_->levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                            return  view_->levelData()[level_levelIdx[0]]->localIdSet().id(levelEntity);
+                        }
+                        else {
+                            // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)
+                            // from all the "previous" level grids.
+                            for (int lowerLevel = 0; lowerLevel< gridIdx; ++lowerLevel) {
+                                for( int c=0; c<4; ++c ) {
+                                    myId += view_->levelData()[lowerLevel]->indexSet().size( c );
+                                }
+                            }
+                            // Count (and add to myId) all the entities of the refined level grid of codim < 3.
+                            for( int c=0; c<3; ++c ) {
+                                myId += view_->indexSet().size( c );
+                            }
+                            return  myId + e.index();
+                        }
+                    }
+                    else { // Leaf grid view (grid view with mixed coarse and refined cells).
+                        assert( view_->getGridIdx() == (static_cast<int>(view_->levelData().size()) -1) );
+                        // In this case, we search for the ids defined in previous levels
+                        // (since each entities must keep its id along the entire hiearchy)
+                        std::array<int,2> level_levelIdx = {0,0};
+                        level_levelIdx = view_-> corner_history_[e.index()];
+                        const auto& levelEntity =  cpgrid::Entity<3>(*(view_->levelData()[level_levelIdx[0]]), level_levelIdx[1], true);
+                        return  view_->levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntity);
+                    }
+                } // end-if-data_.size()>1
+                else { // Case: No LGRs / No refined level grids. Only level 0 grid (GLOBAL grid).
+                    for( int c=0; c<3; ++c ) {
+                        myId += view_->indexSet().size( c );
+                    }
+                    return  myId + e.index();
+                }
+            }
+    };
+
+     /*!
      * \brief The global id set for Dune.
      *
      * You can pass it any entity of either the loadbalanced

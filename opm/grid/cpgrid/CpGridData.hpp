@@ -151,6 +151,8 @@ class CpGridData
     friend class GlobalIdSet;
     friend class HierarchicIterator;
     friend class Dune::cpgrid::IndexSet;
+    friend class Dune::cpgrid::IdSet;
+    friend class Dune::cpgrid::LevelGlobalIdSet;
 
     friend
     void ::markAndAdapt_check(Dune::CpGrid&,
@@ -469,6 +471,27 @@ private:
     std::array<double,3> getAverageArr(const std::vector<std::array<double,3>>& vec) const;
 
 public:
+    /// Add doc/or remove method and replace it with better approach
+    int getGridIdx() const {
+        // Not the nicest way of checking if "this" points at the leaf grid view of a mixed grid (with coarse and refined cells).
+        // 1. When the grid has been refined at least onece, level_data_ptr_ ->size() >1. Therefore, there is a chance of "this" pointing at the leaf grid view.
+        // 2. Unfortunately, level_ is default initialized by 0. This implies, in particular, that if someone wants to check the value of
+        //    "this->level_" when "this" points at the leaf grid view of a grid that has been refined, this value is - unfortunately - equal to 0.
+        // 3. Due to 2. we need an extra bool value to distinguish between the actual level 0 grid and such a leaf grid view (with incorrect level_ == 0). For this
+        //    reason we check if child_to_parent_cells_.empty() [true for actual level 0 grid, false for the leaf grid view].
+        // --- TO BE IMPROVED ---
+        if ((level_data_ptr_ ->size() >1) && (level_ == 0) && (!child_to_parent_cells_.empty())) {
+            return level_data_ptr_->size() -1;
+        }
+        return level_;
+    }
+    /// Add doc/or remove method and replace it with better approach
+    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> levelData() const
+    {
+        return *level_data_ptr_;
+    }
+
+
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the
@@ -575,6 +598,12 @@ public:
     const cpgrid::IdSet& localIdSet() const
     {
         return *local_id_set_;
+    }
+
+    /// Get the global index set.
+    const cpgrid::LevelGlobalIdSet& globalIdSet() const
+    {
+        return *global_id_set_;
     }
 
     /// The logical cartesian size of the grid.
@@ -814,6 +843,8 @@ private:
     // SUITABLE ONLY FOR LEAFVIEW
     /** Relation between leafview and (possible different) level(s) cell indices. */ // {level, cell index in that level}
     std::vector<std::array<int,2>> leaf_to_level_cells_;
+    /** Corner history. corner_history_[ corner index ] = {level where the corner was born, its index there }, {-1,-1} otherwise. */
+    std::vector<std::array<int,2>> corner_history_;
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
     std::vector<std::array<int,2>> child_to_parent_cells_;
