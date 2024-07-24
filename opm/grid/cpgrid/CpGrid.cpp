@@ -186,6 +186,7 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
 
 std::vector<int>
 CpGrid::zoltanPartitionWithoutScatter([[maybe_unused]] const std::vector<cpgrid::OpmWellType>* wells,
+                                      [[maybe_unused]] const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                       [[maybe_unused]] const double* transmissibilities,
                                       [[maybe_unused]] const int numParts,
                                       [[maybe_unused]] const double zoltanImbalanceTol) const
@@ -193,7 +194,7 @@ CpGrid::zoltanPartitionWithoutScatter([[maybe_unused]] const std::vector<cpgrid:
 #if HAVE_MPI && HAVE_ZOLTAN
     const auto met = EdgeWeightMethod(1);
 
-    return cpgrid::zoltanGraphPartitionGridForJac(*this, wells, transmissibilities,
+    return cpgrid::zoltanGraphPartitionGridForJac(*this, wells, possibleFutureConnections, transmissibilities,
                                                   this->data_[0]->ccobj_, met,
                                                   0, numParts, zoltanImbalanceTol);
 #else
@@ -206,6 +207,7 @@ std::pair<bool, std::vector<std::pair<std::string,bool> > >
 CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     [[maybe_unused]] bool serialPartitioning,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
@@ -320,7 +322,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
-                cpgrid::createListsFromParts(*this, wells, nullptr, input_cell_part,
+                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, nullptr, input_cell_part,
                                                    true);
         }
         else
@@ -330,8 +332,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
-                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams)
-                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
+                    ? cpgrid::zoltanSerialGraphPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams)
+                    : cpgrid::zoltanGraphPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
@@ -341,7 +343,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_METIS
                 if (!serialPartitioning)
                     OPM_MESSAGE("Warning: Serial partitioning is set to false and METIS was selected to partition the grid, but METIS is a serial partitioner. Continuing with serial partitioning...");
-                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) = cpgrid::metisSerialGraphPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on METIS if useMetis is true. Please install!");
 #endif // HAVE_METIS
@@ -350,7 +352,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             else
             {
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
-                    cpgrid::vanillaPartitionGridOnRoot(*this, wells, transmissibilities, allowDistributedWells);
+                    cpgrid::vanillaPartitionGridOnRoot(*this, wells, possibleFutureConnections, transmissibilities, allowDistributedWells);
             }
         }
         comm().barrier();

@@ -61,27 +61,39 @@ public:
 
     /// \brief Constructor
     /// \param wells The eclipse information about the wells
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param cartesianSize The logical cartesian size of the grid.
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
     WellConnections(const std::vector<OpmWellType>& wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
     /// \brief Constructor
     /// \param wells The eclipse information about the wells
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param cpGrid The corner point grid
     WellConnections(const std::vector<OpmWellType>& wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     const Dune::CpGrid& cpGrid);
 
     /// \brief Initialze the data of the container
-    /// \param schedule The eclipse information
+    /// \param wells The eclipse information about the wells
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param cartesianSize The logical cartesian size of the grid.
     /// \param cartesian_to_compressed Mapping of cartesian index
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
     void init(const std::vector<OpmWellType>& wells,
+              const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
               const std::array<int, 3>& cartesianSize,
               const std::vector<int>& cartesian_to_compressed);
 
@@ -126,13 +138,17 @@ private:
 /// Note that a well might perforate local cells of multiple processes
 ///
 /// \param parts The partition number for each cell
-/// \param well The eclipse information about the wells.
+/// \param wells The eclipse information about the wells.
+/// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// \param cpGrid The unbalanced grid we compute on.
 /// \return On the rank that has the global grid a vector with the well
 ///         indices for process i at index i.
 std::vector<std::vector<int> >
 perforatingWellIndicesOnProc(const std::vector<int>& parts,
                   const std::vector<Dune::cpgrid::OpmWellType>& wells,
+                  const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                   const CpGrid& cpgrid);
 
 /// \brief Computes wells assigned to processes.

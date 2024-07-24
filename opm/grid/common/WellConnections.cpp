@@ -71,13 +71,15 @@ namespace Dune
 namespace cpgrid
 {
 WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
+                                 const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                  const std::array<int, 3>& cartesianSize,
                                  const std::vector<int>& cartesian_to_compressed)
 {
-    init(wells, cartesianSize, cartesian_to_compressed);
+    init(wells, possibleFutureConnections, cartesianSize, cartesian_to_compressed);
 }
 
 WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
+                                 const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                  const Dune::CpGrid& cpGrid)
 {
     const auto& cpgdim = cpGrid.logicalCartesianSize();
@@ -88,10 +90,11 @@ WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
     {
         cartesian_to_compressed[cpGrid.globalCell()[i]] = i;
     }
-    init(wells, cpgdim, cartesian_to_compressed);
+    init(wells, possibleFutureConnections, cpgdim, cartesian_to_compressed);
 }
 
 void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& wells,
+                           [[maybe_unused]] const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                            [[maybe_unused]] const std::array<int, 3>& cartesianSize,
                            [[maybe_unused]] const std::vector<int>& cartesian_to_compressed)
 {
@@ -115,6 +118,22 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
                 well_indices.insert(compressed_idx);
             }
         }
+        if (possibleFutureConnections) {
+            const auto possibleFutureConnectionSetIt = possibleFutureConnections->find(well.name());
+            if (possibleFutureConnectionSetIt != possibleFutureConnections->end()) {
+                for (auto& ijk : possibleFutureConnectionSetIt->second) {
+                    int i = ijk[0];
+                    int j = ijk[1];
+                    int k = ijk[2];
+                    int cart_grid_idx = i + cartesianSize[0]*(j + cartesianSize[1]*k);
+                    int compressed_idx = cartesian_to_compressed[cart_grid_idx];
+                    if ( compressed_idx >= 0 ) // Ignore connections in inactive cells.
+                    {
+                        well_indices.insert(compressed_idx);
+                    }
+                }
+            }
+        }
         ++index;
     }
 #endif
@@ -124,6 +143,7 @@ void WellConnections::init([[maybe_unused]] const std::vector<OpmWellType>& well
 std::vector<std::vector<int> >
 perforatingWellIndicesOnProc(const std::vector<int>& parts,
                              const std::vector<Dune::cpgrid::OpmWellType>& wells,
+                             const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                              const CpGrid& cpGrid)
 {
     auto numProcs = cpGrid.comm().size();
@@ -132,7 +152,7 @@ perforatingWellIndicesOnProc(const std::vector<int>& parts,
     if (cpGrid.numCells())
     {
         // root process that has global cells
-        WellConnections wellConnections(wells, cpGrid);
+        WellConnections wellConnections(wells, possibleFutureConnections, cpGrid);
         if (!wellConnections.size())
         {
             return wellIndices;

@@ -76,6 +76,9 @@ namespace cpgrid
 
 /// @param grid The grid to partition
 /// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// @param transmissibilities The transmissibilities associated with the
 ///             faces
 /// @paramm cc  The MPI communicator to use for the partitioning.
@@ -104,6 +107,7 @@ std::tuple<std::vector<int>,
            WellConnections>
 metisSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                     const std::vector<OpmWellType> * wells,
+                                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                     const double* transmissibilities,
                                     const Communication<MPI_Comm>& cc,
                                     EdgeWeightMethod edgeWeightsMethod,

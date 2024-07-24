@@ -42,6 +42,9 @@ namespace cpgrid
 /// \param cc  The MPI communicator used for the partitioning.
 /// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
 ///              nullptr is possible
+/// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// \param gridAndWells Graph representing grid and wells (must match the other parameters!)
 /// \param root The rank that has the whole grid before loadbalancing.
 /// \param numExport The number of exported cells (created e.g. by Zoltan)
@@ -69,6 +72,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Dune::Communication<MPI_Comm>& cc,
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                         const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                          const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
                          int root,
                          int numExport,
@@ -101,6 +105,9 @@ namespace cpgrid
 /// to partition it as Zoltan cannot identify this situation.
 /// @param grid The grid to partition
 /// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// @param transmissibilities The transmissibilities associated with the
 ///             faces
 /// @paramm cc  The MPI communicator to use for the partitioning.
@@ -128,6 +135,7 @@ std::tuple<std::vector<int>,std::vector<std::pair<std::string,bool>>,
            WellConnections>
 zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities,
                                const Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
@@ -144,6 +152,9 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& grid,
 /// to partition it as Zoltan cannot identify this situation.
 /// @param grid The grid to partition
 /// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// @param transmissibilities The transmissibilities associated with the
 ///             faces
 /// @paramm cc  The MPI communicator to use for the partitioning.
@@ -171,6 +182,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            WellConnections>
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities,
                                      const Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
@@ -188,6 +200,9 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
 /// 
 /// @param grid The grid to partition
 /// @param wells The wells of the eclipse If null wells will be neglected.
+/// @param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+///                                  The grid will then be partitioned such that these connections are on the same
+///                                  partition. If NULL, they will be neglected.
 /// @param transmissibilities The transmissibilities associated with the
 ///             faces
 /// @paramm cc  The MPI communicator to use for the partitioning.
@@ -200,6 +215,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& grid,
 std::vector<int>
 zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
 			       const double* transmissibilities,
                                const Communication<MPI_Comm>& cc,
 			       EdgeWeightMethod edgeWeightsMethod, int root,

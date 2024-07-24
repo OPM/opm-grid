@@ -595,6 +595,7 @@ namespace cpgrid
               std::vector<std::tuple<int,int,char,int> >,
               WellConnections>
     createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells,
                                std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells)
@@ -641,12 +642,14 @@ namespace cpgrid
             EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
             gridAndWells.reset(new cpgrid::CombinedGridWellGraph(grid,
                                                                  wells,
+                                                                 possibleFutureConnections,
                                                                  transmissibilities,
                                                                  partitionIsEmpty,
                                                                  method));
         }
         return makeImportAndExportLists(grid, grid.comm(),
                                         wells,
+                                        possibleFutureConnections,
                                         gridAndWells.get(),
                                         root,
                                         numExport,
@@ -663,6 +666,7 @@ namespace cpgrid
                std::vector<std::tuple<int,int,char,int> >,
                WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities, bool allowDistributedWells = false)
     {
         int root = 0;
@@ -679,7 +683,7 @@ namespace cpgrid
             initialSplit[0]=cc.size()/(initialSplit[1]*initialSplit[2]);
             partition(grid, initialSplit, numParts, parts, false, false);
         }
-        return createListsFromParts(grid, wells, transmissibilities, parts, allowDistributedWells);
+        return createListsFromParts(grid, wells, possibleFutureConnections, transmissibilities, parts, allowDistributedWells);
     }
 #endif
 } // namespace cpgrid
