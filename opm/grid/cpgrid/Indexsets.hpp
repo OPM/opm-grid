@@ -373,7 +373,7 @@ namespace Dune
                 assert(view_ == e.pgrid_);
                 return id(static_cast<const EntityRep<codim>&>(e));
             }
-
+            /*
             IdType id(const Dune::cpgrid::Entity<0>& e) const
             {// For avoiding repeating code, the following line could be idSet_->id(e), but it breaks the distribution_test in parallel
                 return computeId_cell(e);
@@ -383,7 +383,7 @@ namespace Dune
             {// For avoiding repeating code, the following line could be idSet_->id(e), but it breaks the distribution_test in parallel
                 return computeId_point(e);
             }
-
+            */
             template<int codim>
             IdType id(const EntityRep<codim>& e) const
             {
