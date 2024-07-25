@@ -88,9 +88,15 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, int& 
         {"METIS_DBG_CONNINFO", METIS_DBG_CONNINFO}, 
         {"METIS_DBG_CONTIGINFO", METIS_DBG_CONTIGINFO}
     };
+    // Option keys not valid for the METIS_PartGraphRecursive or METIS_PartGraphKway functions.
+    std::unordered_set<std::string> metisOptionKeysForOtherMethods = {
+        "METIS_OPTION_NSEPS",
+        "METIS_OPTION_COMPRESS",
+        "METIS_OPTION_CCORDER",
+        "METIS_OPTION_PFACTOR",
+        "METIS_OPTION_UFACTOR"
+    };
 
-
-    std::unordered_set<std::string> metisOptionKeysForOtherMethods = {"METIS_OPTION_NSEPS","METIS_OPTION_COMPRESS","METIS_OPTION_CCORDER","METIS_OPTION_PFACTOR","METIS_OPTION_UFACTOR"};
     // Iterate over the input map and set the options accordingly
     for (const auto& [key,value] : optionsMap) {
         auto keyIt = metisOptionKeys.find(key);
@@ -108,10 +114,11 @@ void setMetisOptions(const std::map<std::string, std::string>& optionsMap, int& 
                     OPM_THROW(std::logic_error, "The value " + value + " for key " + key + " is not a valid METIS option.");
                 }
             }
-        } else if (std::any_of(metisOptionKeysForOtherMethods.begin(), metisOptionKeysForOtherMethods.end(), [&key](const std::string& otherKey) { return otherKey == key; })) {
-            OPM_THROW(std::logic_error, "The METIS key " + key + " is not valid for METIS_PartGraphRecursive or METIS_PartGraphKway. Please choose only options for these graph partitioning functions.");
+        } else if (metisOptionKeysForOtherMethods.count(key) != 0) {
+            OPM_THROW(std::logic_error, "The METIS key " + key + " is not valid for METIS_PartGraphRecursive or METIS_PartGraphKway. "
+                      "Please choose only options for these graph partitioning functions.");
         } else if (key == "METIS_OPTION_PTYPE") {
-            manuallySelectedMethod = (value == "METIS_PTYPE_RB") ? 1 : 
+            manuallySelectedMethod = (value == "METIS_PTYPE_RB") ? 1 :
                                      (value == "METIS_PTYPE_KWAY") ? 2 :
                                      3;
             if (manuallySelectedMethod == 3) {
