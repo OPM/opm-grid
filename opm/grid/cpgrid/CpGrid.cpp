@@ -1916,7 +1916,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         (*data_[refinedLevelGridIdx]).global_cell_.swap(refined_global_cell_vec[level]);
         (*data_[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(data_[refinedLevelGridIdx]->size(0),
                                                                                       data_[refinedLevelGridIdx]->size(3));
-        (*data_[refinedLevelGridIdx]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[refinedLevelGridIdx]);
         // Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
         (*data_[refinedLevelGridIdx]).cells_per_dim_ = cells_per_dim_vec[level];
         // TO DO: This new code for refinement do not assume Cartesian Shape. How does logical_cartesian_size_ should be defined then?
@@ -1949,7 +1948,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data_[levels + preAdaptMaxLevel +1]).global_cell_.swap(adapted_global_cell);
     (*data_[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data_[levels + preAdaptMaxLevel +1]->size(0),
                                                                                            data_[levels + preAdaptMaxLevel +1]->size(3));
-    (*data_[levels + preAdaptMaxLevel +1]).local_id_set_ = std::make_shared<const cpgrid::IdSet>(*data_[levels + preAdaptMaxLevel +1]);
     (*data_[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data_[0]).logical_cartesian_size_;
 
     // Update the leaf grid view
