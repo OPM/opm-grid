@@ -142,11 +142,15 @@ public:
     /// \brief Create a graph representing a grid together with the wells.
     /// \param grid The grid.
     /// \param wells The wells used or null.
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param transmissibilities The transmissibilities associated with the faces. May be null
     /// \param pretendEmptyGrid True if we should pretend the grid and wells are empty.
     /// \param edgeWeightsMethod The method used to calculated the edge weights.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
                           const std::vector<OpmWellType> * wells,
+                          const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                           const double* transmissibilities,
                           bool pretendEmptyGrid,
                           EdgeWeightMethod edgeWeightsMethod);

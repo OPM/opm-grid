@@ -139,6 +139,7 @@ std::tuple<std::vector<int>,
            WellConnections>
 metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                     const std::vector<OpmWellType> * wells,
+                                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                     const double* transmissibilities,
                                     const Communication<MPI_Comm>& cc,
                                     EdgeWeightMethod edgeWeightsMethod,
@@ -159,6 +160,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     {
         gridAndWells.reset(new CombinedGridWellGraph(cpgrid,
                                                        wells,
+                                                       possibleFutureConnections,
                                                        transmissibilities,
                                                        false,
                                                        edgeWeightsMethod));
@@ -343,7 +345,7 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         OPM_THROW(std::runtime_error, "Some other type of general error!");
     }
     
-    return cpgrid::createListsFromParts(cpgrid, wells, transmissibilities, partitionVector, allowDistributedWells, gridAndWells);
+    return cpgrid::createListsFromParts(cpgrid, wells, possibleFutureConnections, transmissibilities, partitionVector, allowDistributedWells, gridAndWells);
 }
 
 } // namespace cpgrid

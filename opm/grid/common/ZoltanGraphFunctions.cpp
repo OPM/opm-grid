@@ -342,6 +342,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const std::vector<OpmWellType> * wells,
+                                             const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid,
                                              EdgeWeightMethod edgeWeightsMethod)
@@ -361,7 +362,7 @@ CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
     {
         cartesian_to_compressed[grid.globalCell()[i]] = i;
     }
-    well_indices_.init(*wells, cpgdim, cartesian_to_compressed);
+    well_indices_.init(*wells, possibleFutureConnections, cpgdim, cartesian_to_compressed);
     std::vector<int>().swap(cartesian_to_compressed); // free memory.
     addCompletionSetToGraph();
 

@@ -1180,7 +1180,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, nullptr, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1193,7 +1193,7 @@ namespace Dune
         bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1209,6 +1209,13 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
         /// \param transmissibilities The transmissibilities used as the edge weights.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
@@ -1218,10 +1225,11 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltan)
         {
-            return scatterGrid(defaultTransEdgeWgt, false, wells, false, transmissibilities, false, overlapLayers, partitionMethod);
+            return scatterGrid(defaultTransEdgeWgt, false, wells, possibleFutureConnections, false, transmissibilities, false, overlapLayers, partitionMethod);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1239,6 +1247,13 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
         /// \param addCornerCells Add corner cells to the overlap layer.
@@ -1250,12 +1265,13 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
                     int partitionMethod = Dune::PartitionMethod::zoltan,
                     double imbalanceTol = 1.1)
         {
-            return scatterGrid(method, ownersFirst, wells, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
+            return scatterGrid(method, ownersFirst, wells, possibleFutureConnections, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -1267,6 +1283,13 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
@@ -1280,10 +1303,11 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod = 1)
         {
-            auto ret = loadBalance(wells, transmissibilities, overlapLayers, partitionMethod);
+            auto ret = loadBalance(wells, possibleFutureConnections, transmissibilities, overlapLayers, partitionMethod);
             using std::get;
             if (get<0>(ret))
             {
@@ -1305,6 +1329,13 @@ namespace Dune
         ///            of each well are stored on one process. This is done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
         /// \param serialPartitioning If true, the partitioning will be done on a single process.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights.
         /// \param ownersFirst Order owner cells before copy/overlap cells.
@@ -1323,13 +1354,14 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, EdgeWeightMethod method,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan,
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = false)
         {
-            auto ret = scatterGrid(method, ownersFirst, wells, serialPartitioning, transmissibilities,
+            auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
                                    addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells);
             using std::get;
             if (get<0>(ret))
@@ -1359,11 +1391,13 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, const std::vector<int>& parts,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
         {
             using std::get;
             auto ret = scatterGrid(defaultTransEdgeWgt,  ownersFirst, wells,
+                                   possibleFutureConnections,
                                    /* serialPartitioning = */ false,
                                    /* transmissibilities = */ {},
                                    addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
@@ -1414,6 +1448,7 @@ namespace Dune
         {
             using std::get;
             return get<0>(scatterGrid(defaultTransEdgeWgt,  ownersFirst, /* wells = */ {},
+                                      {},
                                       /* serialPartitioning = */ false,
                                       /* trabsmissibilities = */ {},
                                       addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
@@ -1445,13 +1480,21 @@ namespace Dune
             return ret;
         }
 
-         /// \brief Partitions the grid using Zoltan without decomposing and distributing it among processes.
-         /// \param wells The wells of the eclipse.
+        /// \brief Partitions the grid using Zoltan without decomposing and distributing it among processes.
+        /// \param wells The wells of the eclipse.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
          /// \param transmissibilities The transmissibilities used to calculate the edge weights.
          /// \param numParts Number of parts in the partition.
          /// \return An array with the domain index for each cell.
          std::vector<int>
          zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
+                                       const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                        const double* transmissibilities,
                                        const int     numParts,
                                        const double  imbalanceTol) const;
@@ -1774,6 +1817,13 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
+        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        ///            containing possible future connections that might be opened during an ACTIONX.
+        ///            The fist entry is the name of the well and the second entry is a set containing
+        ///            the cartesian coordinates of the grid cells that get perforated of a possible
+        ///            future connection. The possible future connections are handed over to the grid
+        ///            partitioner to make sure these will be no the same partition when partitioning
+        ///            the grid.
         /// \param transmissibilities The transmissibilities used to calculate the edge weights in
         ///                           the graph partitioner. This is done to improve the numerical
         ///                           performance of the parallel preconditioner.
@@ -1792,6 +1842,7 @@ namespace Dune
         scatterGrid(EdgeWeightMethod method,
                     bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
+                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities,
                     bool addCornerCells,

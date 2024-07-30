@@ -116,6 +116,9 @@ namespace cpgrid
     /// \param grid The grid
     /// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
     ///              nullptr is possible
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param transmissibilities C-array with transmissibilities or nullptr.
     /// \param parts The partitioning information. Contains for each cells the partition number (zero-based,
     ///              consecutive
@@ -134,6 +137,7 @@ namespace cpgrid
                std::vector<std::tuple<int,int,char,int> >,
                WellConnections>
     createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells, std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells = nullptr);
 
@@ -143,6 +147,9 @@ namespace cpgrid
     /// \param grid The grid
     /// \param wells Pointer to vector with all possible wells (all perforations) of the problem.
     ///              nullptr is possible
+    /// \param possibleFutureConnections Possible future connections of wells that might get added through an ACTIONX.
+    ///                                  The grid will then be partitioned such that these connections are on the same
+    ///                                  partition. If NULL, they will be neglected.
     /// \param transmissibilities C-array with transmissibilities or nullptr.
     /// \return  A tuple consisting of a vector that contains for each local cell of the original grid the
     ///         the number of the process that owns it after repartitioning,
@@ -160,6 +167,7 @@ namespace cpgrid
                WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<cpgrid::OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities,
                                bool allowDistributedWells);
 #endif

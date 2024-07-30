@@ -400,9 +400,9 @@ for (auto partition_method : partition_methods) {
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
 #if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
 #else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
 #endif
 #ifdef HAVE_DUNE_ISTL
     using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
@@ -441,9 +441,9 @@ for (auto partition_method : partition_methods) {
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
 #if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
 #else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
 #endif
     seqGrid.createCartesian(dims, size);
 
@@ -590,9 +590,9 @@ for (auto partition_method : partition_methods) {
         grid.loadBalance(data, 1, partition_method);
     else if (partition_method == 2)
 #if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, true, nullptr, false, false, 1, partition_method, 0.1, false);
+        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, true, nullptr, false, false, 1, partition_method, 0.1, false);
 #else
-        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, true, nullptr, false, false, 1, partition_method, 1.1, false);
+        grid.loadBalance(data, Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, true, nullptr, false, false, 1, partition_method, 1.1, false);
 #endif
 
     if ( grid.numCells())
@@ -771,9 +771,9 @@ for (auto partition_method : partition_methods) {
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
 #if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
 #else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
 #endif
     auto global_grid = grid;
     global_grid.switchToGlobalView();
@@ -851,9 +851,9 @@ for (auto partition_method : partition_methods) {
         grid.loadBalance(1, partition_method);
     else if (partition_method == 2)
 #if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
 #else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
 #endif
     ElementIterator endEIt = gridView.end<0>();
     for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt) {

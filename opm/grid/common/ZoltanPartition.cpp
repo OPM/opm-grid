@@ -43,6 +43,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Dune::Communication<MPI_Comm>& cc,
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
+                         const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                          const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
                          int root,
                          int numExport,
@@ -98,7 +99,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
     {
         if (allowDistributedWells)
         {
-            wellsOnProc = perforatingWellIndicesOnProc(parts, *wells, cpgrid);
+            wellsOnProc = perforatingWellIndicesOnProc(parts, *wells, possibleFutureConnections, cpgrid);
         }
         else
         {
@@ -241,6 +242,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 makeImportAndExportLists(const Dune::CpGrid&,
                          const Communication<MPI_Comm>&,
                          const std::vector<Dune::cpgrid::OpmWellType>*,
+                         const std::unordered_map<std::string, std::set<std::array<int,3>>>*,
                          const Dune::cpgrid::CombinedGridWellGraph*,
                          int,
                          int,
@@ -289,6 +291,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            WellConnections>
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities,
                                const Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod,
@@ -327,6 +330,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
         Zoltan_Set_Param(zz,"EDGE_WEIGHT_DIM","1");
         gridAndWells.reset(new CombinedGridWellGraph(cpgrid,
                                                        wells,
+                                                       possibleFutureConnections,
                                                        transmissibilities,
                                                        partitionIsEmpty,
                                                        edgeWeightsMethod));
@@ -356,6 +360,7 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     auto importExportLists = makeImportAndExportLists(cpgrid,
                                      cc,
                                      wells,
+                                     possibleFutureConnections,
                                      gridAndWells.get(),
                                      root,
                                      numExport,
@@ -381,6 +386,7 @@ public:
 
     ZoltanSerialPartitioner(const CpGrid& _cpgrid,
                             const std::vector<OpmWellType>* _wells,
+                            const std::unordered_map<std::string, std::set<std::array<int,3>>>* _possibleFutureConnections,
                             const double* _transmissibilities,
                             const CommunicationType& _cc,
                             EdgeWeightMethod _edgeWeightsMethod,
@@ -391,6 +397,7 @@ public:
                             const std::map<std::string,std::string>& param)
         : cpgrid(_cpgrid)
         , wells(_wells)
+        , possibleFutureConnections(_possibleFutureConnections)
         , transmissibilities(_transmissibilities)
         , cc(_cc)
         , edgeWeightsMethod(_edgeWeightsMethod)
@@ -403,7 +410,7 @@ public:
         if (wells) {
             const bool partitionIsEmpty = cc.rank() != root;
             gridAndWells.reset(
-                new CombinedGridWellGraph(cpgrid, wells, transmissibilities, partitionIsEmpty, edgeWeightsMethod));
+                new CombinedGridWellGraph(cpgrid, wells, possibleFutureConnections, transmissibilities, partitionIsEmpty, edgeWeightsMethod));
         }
     }
 
@@ -451,6 +458,7 @@ public:
         return makeImportAndExportLists(cpgrid,
                                         cc,
                                         wells,
+                                        possibleFutureConnections,
                                         gridAndWells.get(),
                                         root,
                                         numExport,
@@ -537,6 +545,7 @@ private:
     // Data members
     const CpGrid& cpgrid;
     const std::vector<OpmWellType>* wells;
+    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections;
     const double* transmissibilities;
     const CommunicationType& cc;
     EdgeWeightMethod edgeWeightsMethod;
@@ -571,6 +580,7 @@ std::tuple<std::vector<int>,
            WellConnections>
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const std::vector<OpmWellType>* wells,
+                                     const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                      const double* transmissibilities,
                                      const Dune::Communication<MPI_Comm>& cc,
                                      EdgeWeightMethod edgeWeightsMethod,
@@ -579,7 +589,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      bool allowDistributedWells,
                                      const std::map<std::string,std::string>& params)
 {
-    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
+    ZoltanSerialPartitioner partitioner(cpgrid, wells, possibleFutureConnections, transmissibilities, cc, edgeWeightsMethod,
                                         root, zoltanImbalanceTol, allowDistributedWells, 0, params);
     return partitioner.partition();
 }
@@ -587,6 +597,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 std::vector<int>
 zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
+                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                                const double* transmissibilities,
                                const Dune::Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,
@@ -597,7 +608,7 @@ zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
     // partitionForInfo() further down.
     std::map<std::string,std::string> params;
 
-    ZoltanSerialPartitioner partitioner(cpgrid, wells, transmissibilities, cc, edgeWeightsMethod,
+    ZoltanSerialPartitioner partitioner(cpgrid, wells, possibleFutureConnections, transmissibilities, cc, edgeWeightsMethod,
                                         root, zoltanImbalanceTol, false, numParts, params);
     return partitioner.partitionForInfo();
 }
