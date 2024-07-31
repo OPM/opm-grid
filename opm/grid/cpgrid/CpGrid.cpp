@@ -2066,7 +2066,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
             if(belongsToLevel) {
                 // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
-                if ((*data_[0]).hasNNCs({{element.index()}})){
+                if ((*data_[0]).hasNNCs({element.index()})){
                     OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
                 }
                 this-> mark(1, element);
