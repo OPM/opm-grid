@@ -346,184 +346,184 @@ private:
     std::vector<int>& cont_;
 };
 
+#if HAVE_MPI
 BOOST_AUTO_TEST_CASE(serialZoltanAndMetis)
 {
-//Here, specifically compare serial Zoltan and Metis
-for (auto partition_method : partition_methods) {
-#if HAVE_MPI
-    Dune::CpGrid grid;
-    std::array<int, 3> dims={{10, 10, 10}};
-    std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
-    //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
-    grid.createCartesian(dims, size);
-    if (partition_method == 1)
-        grid.loadBalanceSerial(1, partition_method);
-    else if (partition_method == 2) // Use the logTransEdgeWgt method for METIS
+// Here, specifically compare serial Zoltan and Metis
+    for (auto partition_method : partition_methods) {
+        Dune::CpGrid grid;
+        std::array<int, 3> dims={{10, 10, 10}};
+        std::array<double, 3> size={{ 1.0, 1.0, 1.0}};
+        //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+        grid.createCartesian(dims, size);
+        if (partition_method == 1)
+            grid.loadBalanceSerial(1, partition_method);
+        else if (partition_method == 2) // Use the logTransEdgeWgt method for METIS
 #if IS_SCOTCH_METIS_HEADER
 // Use the proper imbalance tolerance depending on if we use METIS or the Scotch replacement for METIS
-        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 0.1);
+            grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 0.1);
 #else
-        grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 1.1);
+            grid.loadBalanceSerial(1, partition_method, Dune::EdgeWeightMethod::logTransEdgeWgt, /*imbalanceTol*/ 1.1);
 #endif
 #ifdef HAVE_DUNE_ISTL
-    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
 #else
-    /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap, copy};
+        /// \brief The type of the set of the attributes
+        enum AttributeSet{owner, overlap, copy};
 #endif
-    std::vector<int> cont(grid.size(0), 1);
-    const auto& indexSet = grid.getCellIndexSet();
-    for ( const auto& index: indexSet)
-        if (index.local().attribute() != AttributeSet::owner )
-            cont[index.local()] = -1;
+        std::vector<int> cont(grid.size(0), 1);
+        const auto& indexSet = grid.getCellIndexSet();
+        for ( const auto& index: indexSet)
+            if (index.local().attribute() != AttributeSet::owner )
+                cont[index.local()] = -1;
 
-    CopyCellValues handle(cont);
-    grid.communicate(handle, Dune::InteriorBorder_All_Interface,
-                     Dune::ForwardCommunication);
+        CopyCellValues handle(cont);
+        grid.communicate(handle, Dune::InteriorBorder_All_Interface,
+                         Dune::ForwardCommunication);
 
-    for ( const auto& index: indexSet)
-        BOOST_REQUIRE(cont[index.local()] == 1);
+        for ( const auto& index: indexSet)
+            BOOST_REQUIRE(cont[index.local()] == 1);
+    }
+}
 #endif
-}
-}
 
+#if HAVE_MPI
 BOOST_AUTO_TEST_CASE(testDistributedComm)
 {
-for (auto partition_method : partition_methods) {
+    for (auto partition_method : partition_methods) {
+        Dune::CpGrid grid;
+        std::array<int, 3> dims={{8, 4, 2}};
+        std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+        //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+        grid.createCartesian(dims, size);
+        if (partition_method == 1)
+            grid.loadBalance(1, partition_method);
+        else if (partition_method == 2)
+    #if IS_SCOTCH_METIS_HEADER
+            grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+    #else
+            grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+    #endif
+    #ifdef HAVE_DUNE_ISTL
+        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+    #else
+        /// \brief The type of the set of the attributes
+        enum AttributeSet{owner, overlap, copy};
+    #endif
+        std::vector<int> cont(grid.size(0), 1);
+        const auto& indexSet = grid.getCellIndexSet();
+        for ( const auto& index: indexSet)
+            if (index.local().attribute() != AttributeSet::owner )
+                cont[index.local()] = -1;
+
+        CopyCellValues handle(cont);
+        grid.communicate(handle, Dune::InteriorBorder_All_Interface,
+                         Dune::ForwardCommunication);
+
+        for ( const auto& index: indexSet)
+            BOOST_REQUIRE(cont[index.local()] == 1);
+    }
+}
+#endif
+
 #if HAVE_MPI
-    Dune::CpGrid grid;
-    std::array<int, 3> dims={{8, 4, 2}};
-    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
-    //grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
-    grid.createCartesian(dims, size);
-    if (partition_method == 1)
-        grid.loadBalance(1, partition_method);
-    else if (partition_method == 2)
-#if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
-#else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
-#endif
-#ifdef HAVE_DUNE_ISTL
-    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
-#else
-    /// \brief The type of the set of the attributes
-    enum AttributeSet{owner, overlap, copy};
-#endif
-    std::vector<int> cont(grid.size(0), 1);
-    const auto& indexSet = grid.getCellIndexSet();
-    for ( const auto& index: indexSet)
-        if (index.local().attribute() != AttributeSet::owner )
-            cont[index.local()] = -1;
-
-    CopyCellValues handle(cont);
-    grid.communicate(handle, Dune::InteriorBorder_All_Interface,
-                     Dune::ForwardCommunication);
-
-    for ( const auto& index: indexSet)
-        BOOST_REQUIRE(cont[index.local()] == 1);
-#endif
-}
-}
-
 BOOST_AUTO_TEST_CASE(compareWithSequential)
 {
-for (auto partition_method : partition_methods) {
-#if HAVE_MPI
-    Dune::CpGrid grid;
-    Dune::CpGrid seqGrid(MPI_COMM_SELF);
-    std::array<int, 3> dims={{8, 4, 2}};
-    std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
-    grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
-    seqGrid.setUniqueBoundaryIds(true);
-    grid.createCartesian(dims, size);
-    if (partition_method == 1)
-        grid.loadBalance(1, partition_method);
-    else if (partition_method == 2)
-#if IS_SCOTCH_METIS_HEADER
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
-#else
-        grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
-#endif
-    seqGrid.createCartesian(dims, size);
+    for (auto partition_method : partition_methods) {
+        Dune::CpGrid grid;
+        Dune::CpGrid seqGrid(MPI_COMM_SELF);
+        std::array<int, 3> dims={{8, 4, 2}};
+        std::array<double, 3> size={{ 8.0, 4.0, 2.0}};
+        grid.setUniqueBoundaryIds(true); // set and compute unique boundary ids.
+        seqGrid.setUniqueBoundaryIds(true);
+        grid.createCartesian(dims, size);
+        if (partition_method == 1)
+            grid.loadBalance(1, partition_method);
+        else if (partition_method == 2)
+    #if IS_SCOTCH_METIS_HEADER
+            grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 0.1);
+    #else
+            grid.loadBalance(Dune::EdgeWeightMethod::logTransEdgeWgt, nullptr, nullptr, nullptr, false, false, 1, partition_method, /*imbalanceTol*/ 1.1);
+    #endif
+        seqGrid.createCartesian(dims, size);
 
-    auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
+        auto idSet = grid.globalIdSet(), seqIdSet = seqGrid.globalIdSet();
 
-    using GridView = Dune::CpGrid::LeafGridView;
-    using ElementIterator = GridView::Codim<0>::Iterator;
-    GridView gridView(grid.leafGridView());
-    GridView seqGridView(seqGrid.leafGridView());
+        using GridView = Dune::CpGrid::LeafGridView;
+        using ElementIterator = GridView::Codim<0>::Iterator;
+        GridView gridView(grid.leafGridView());
+        GridView seqGridView(seqGrid.leafGridView());
 
-    ElementIterator endEIt = gridView.end<0>();
-    ElementIterator seqEndEIt = seqGridView.end<0>();
-    ElementIterator seqEIt = seqGridView.begin<0>();
-    const auto& gc = grid.globalCell();
-    const auto& seqGc = seqGrid.globalCell();
-    int i{};
-    BOOST_REQUIRE(gc.size() == std::size_t(grid.size(0)));
+        ElementIterator endEIt = gridView.end<0>();
+        ElementIterator seqEndEIt = seqGridView.end<0>();
+        ElementIterator seqEIt = seqGridView.begin<0>();
+        const auto& gc = grid.globalCell();
+        const auto& seqGc = seqGrid.globalCell();
+        int i{};
+        BOOST_REQUIRE(gc.size() == std::size_t(grid.size(0)));
 
-    for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
-        // find corresponding cell in global grid
-        auto id = idSet.id(*eIt);
-        while (seqIdSet.id(*seqEIt) < id && seqEIt != seqEndEIt)
-        {
-            ++seqEIt;
-        }
-        BOOST_REQUIRE(id == seqIdSet.id(seqEIt));
-        BOOST_REQUIRE(gc[eIt->index()] == seqGc[seqEIt->index()]);
-        const auto& geom = eIt->geometry();
-        const auto& seqGeom = seqEIt-> geometry();
-        BOOST_REQUIRE(geom.center() == seqGeom.center());
-        BOOST_REQUIRE(geom.volume() == seqGeom.volume());
-
-        int ii{};
-
-        for (auto iit=gridView.ibegin(*eIt), siit = seqGridView.ibegin(*seqEIt),
-                 endiit = gridView.iend(*eIt); iit!=endiit; ++iit, ++siit, ++ii)
+        for (ElementIterator eIt = gridView.begin<0>(); eIt != endEIt; ++eIt, ++i) {
+            // find corresponding cell in global grid
+            auto id = idSet.id(*eIt);
+            while (seqIdSet.id(*seqEIt) < id && seqEIt != seqEndEIt)
             {
-                if (iit.boundary())
-                {
-                    BOOST_REQUIRE(iit.boundarySegmentIndex() == siit.boundarySegmentIndex());
-                    BOOST_REQUIRE(iit.boundaryId() == siit.boundaryId());
-                }
-                BOOST_REQUIRE(iit->geometry().center() == siit->geometry().center());
-                BOOST_REQUIRE(iit->geometry().volume() == siit->geometry().volume());
-                BOOST_REQUIRE(iit.boundary() == siit.boundary());
-                BOOST_REQUIRE(iit.outerNormal({0, 0}) == siit.outerNormal({0, 0}));
-                BOOST_REQUIRE(idSet.id(iit.inside()) == seqIdSet.id(siit.inside()));
-                if (iit->neighbor())
-                {
-                    assert(siit->neighbor());
-                    BOOST_REQUIRE(idSet.id(iit.outside()) == seqIdSet.id(siit.outside()));
-                }
+                ++seqEIt;
             }
+            BOOST_REQUIRE(id == seqIdSet.id(seqEIt));
+            BOOST_REQUIRE(gc[eIt->index()] == seqGc[seqEIt->index()]);
+            const auto& geom = eIt->geometry();
+            const auto& seqGeom = seqEIt-> geometry();
+            BOOST_REQUIRE(geom.center() == seqGeom.center());
+            BOOST_REQUIRE(geom.volume() == seqGeom.volume());
 
-        // to reach all points we need to loop over subentities
-        int faces = grid.numCellFaces(eIt->index());
-        BOOST_REQUIRE(faces == seqGrid.numCellFaces(seqEIt.index()));
-        for (int f = 0; f < faces; ++f)
-        {
-            using namespace Dune::cpgrid;
-            auto face = grid.cellFace(eIt->index(), f);
-            auto seqFace = seqGrid.cellFace(seqEIt->index(), f);
-            BOOST_REQUIRE(idSet.id(Dune::createEntity<1>(grid, face, true)) ==
-                          seqIdSet.id(Dune::createEntity<1>(seqGrid, seqFace, true)));
-            int vertices = grid.numFaceVertices(face);
-            BOOST_REQUIRE(vertices == seqGrid.numFaceVertices(seqFace));
-            for (int v = 0; v < vertices; ++v)
+            int ii{};
+
+            for (auto iit=gridView.ibegin(*eIt), siit = seqGridView.ibegin(*seqEIt),
+                     endiit = gridView.iend(*eIt); iit!=endiit; ++iit, ++siit, ++ii)
+                {
+                    if (iit.boundary())
+                    {
+                        BOOST_REQUIRE(iit.boundarySegmentIndex() == siit.boundarySegmentIndex());
+                        BOOST_REQUIRE(iit.boundaryId() == siit.boundaryId());
+                    }
+                    BOOST_REQUIRE(iit->geometry().center() == siit->geometry().center());
+                    BOOST_REQUIRE(iit->geometry().volume() == siit->geometry().volume());
+                    BOOST_REQUIRE(iit.boundary() == siit.boundary());
+                    BOOST_REQUIRE(iit.outerNormal({0, 0}) == siit.outerNormal({0, 0}));
+                    BOOST_REQUIRE(idSet.id(iit.inside()) == seqIdSet.id(siit.inside()));
+                    if (iit->neighbor())
+                    {
+                        assert(siit->neighbor());
+                        BOOST_REQUIRE(idSet.id(iit.outside()) == seqIdSet.id(siit.outside()));
+                    }
+                }
+
+            // to reach all points we need to loop over subentities
+            int faces = grid.numCellFaces(eIt->index());
+            BOOST_REQUIRE(faces == seqGrid.numCellFaces(seqEIt.index()));
+            for (int f = 0; f < faces; ++f)
             {
-                auto vertex = grid.faceVertex(face, v);
-                auto seqVertex = seqGrid.faceVertex(seqFace, v);
-                BOOST_REQUIRE(idSet.id(Dune::createEntity<3>(grid, vertex, true)) ==
-                              seqIdSet.id(Dune::createEntity<3>(seqGrid, seqVertex, true)));
-                BOOST_REQUIRE(grid.vertexPosition(vertex) ==
-                              seqGrid.vertexPosition(seqVertex));
+                using namespace Dune::cpgrid;
+                auto face = grid.cellFace(eIt->index(), f);
+                auto seqFace = seqGrid.cellFace(seqEIt->index(), f);
+                BOOST_REQUIRE(idSet.id(Dune::createEntity<1>(grid, face, true)) ==
+                              seqIdSet.id(Dune::createEntity<1>(seqGrid, seqFace, true)));
+                int vertices = grid.numFaceVertices(face);
+                BOOST_REQUIRE(vertices == seqGrid.numFaceVertices(seqFace));
+                for (int v = 0; v < vertices; ++v)
+                {
+                    auto vertex = grid.faceVertex(face, v);
+                    auto seqVertex = seqGrid.faceVertex(seqFace, v);
+                    BOOST_REQUIRE(idSet.id(Dune::createEntity<3>(grid, vertex, true)) ==
+                                  seqIdSet.id(Dune::createEntity<3>(seqGrid, seqVertex, true)));
+                    BOOST_REQUIRE(grid.vertexPosition(vertex) ==
+                                  seqGrid.vertexPosition(seqVertex));
+                }
             }
         }
     }
+}
 #endif
-}
-}
 
 BOOST_AUTO_TEST_CASE(distribute)
 {
