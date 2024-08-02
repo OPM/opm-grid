@@ -10,5 +10,5 @@ Label: 2024.10-pre
 Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
-Depends: dune-common (>= 2.7) dune-geometry (>= 2.7) dune-grid (>= 2.7) opm-common
-Suggests: dune-istl (>= 2.7)
+Depends: dune-common (>= 2.9) dune-geometry (>= 2.9) dune-grid (>= 2.9) opm-common
+Suggests: dune-istl (>= 2.9)

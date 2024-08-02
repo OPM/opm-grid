@@ -64,31 +64,28 @@ public:
         : fromGrid_(fromGrid), toGrid_(toGrid), data_(data)
     {}
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 8)
     bool fixedSize()
     {
         return data_.fixedSize(3, codim);
     }
-#else
-    bool fixedsize()
-    {
-        return data_.fixedSize(3, codim);
-    }
-#endif
+
     std::size_t size(std::size_t i)
     {
         return data_.size(Entity<codim>(fromGrid_, i, true));
     }
+
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
         data_.gather(buffer, Entity<codim>(fromGrid_, i, true));
     }
+
     template<class B>
     void scatter(B& buffer, std::size_t i, std::size_t s)
     {
         data_.scatter(buffer, Entity<codim>(toGrid_, i, true), s);
     }
+
 private:
     const CpGridData& fromGrid_;
     const CpGridData& toGrid_;
