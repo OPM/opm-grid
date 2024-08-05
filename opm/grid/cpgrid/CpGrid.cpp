@@ -1494,19 +1494,13 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
-    if (!distributed_data_.empty()){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Refining a distributed grid is not supported, yet.");
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "Refining a distributed grid is not supported, yet.");
-        }
-    }
+    // For serial run, mark elements also in the level they were born.
     if(data_.size()>1) {
         // Mark element in its level
         data_[element.level()] -> mark(refCount, element.getEquivLevelElem());
     }
-    // Mark element (also) in current_view_data_
+    // Mark element (also in the serial run case) in current_view_data_. Note that if scatterGrid has been invoked, then
+    // current_view_data_ == distributed_data_[0].
     return current_view_data_-> mark(refCount, element);
 }
 
@@ -1518,11 +1512,22 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 bool CpGrid::preAdapt()
 {
     // Set the flags mighVanish for elements that have been marked for refinement/coarsening.
-    bool isPreAdapted = false;
-    for (const auto& preAdaptGrid : data_) {
-        isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+
+    // Code below could be shortened.
+
+    // For serial run, we check if elements in pre-adapt existing grids have been marked for refinment. 
+    if(distributed_data_.empty())
+    {
+        bool isPreAdapted = false;
+        for (const auto& preAdaptGrid : data_) {
+            isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+        }
+        return isPreAdapted;
     }
-    return isPreAdapted;
+    else { // For parallel run, check if elements have been marked on distributed_data_[0] (level 0 grid).
+        // Equivalently, if CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0]
+        return distributed_data_[0] ->preAdapt();
+    }
 }
 
 bool CpGrid::adapt()
@@ -1546,14 +1551,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<std::array<int,3>>& endIJK_vec)
 {
     // To do: support coarsening.
-    if (!distributed_data_.empty()){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-    }
 
     assert(static_cast<int>(assignRefinedLevel.size()) == current_view_data_->size(0));
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
@@ -1995,24 +1992,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec)
 {
-    if (!distributed_data_.empty()){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-    }
+    // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0].
+    // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
+
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
-    (*data_[0]).validStartEndIJKs(startIJK_vec, endIJK_vec);
-    if (!distributed_data_.empty()){
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "Adding LGRs to a distributed grid is not supported, yet.");
-        }
-    }
+    current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
+
     if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
@@ -2021,7 +2006,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
-                const auto& sharedFaceTag = (*data_[0]).sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
+                const auto& sharedFaceTag = current_view_data_->sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
                 if(sharedFaceTag == -1){
                     break; // Go to the next "other patch"
                 }
@@ -2051,7 +2036,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     
     std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
-    std::vector<int> assignRefinedLevel(data_[0]->size(0));
+    std::vector<int> assignRefinedLevel(current_view_data_->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
     for(const auto& element: elements(this->leafGridView())) {
         std::array<int,3> ijk;
@@ -2066,8 +2051,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
             if(belongsToLevel) {
                 // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
-                if ((*data_[0]).hasNNCs({element.index()})){
+                if (current_view_data_->hasNNCs({element.index()})){
                     OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+                }
+                // Check that the cell to be marked for refinement is interior (only when the grid has been distributed).
+                if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
+                    OPM_THROW(std::logic_error, "Refinement of non-interior cells is not supported yet.");
                 }
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
