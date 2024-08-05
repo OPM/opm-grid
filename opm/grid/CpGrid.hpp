@@ -396,7 +396,10 @@ namespace Dune
         const std::vector<int>& globalCell() const;
 
         /// @brief Returns either data_ or distributed_data_(if non empty).
-        const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& chooseData() const;
+        const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData() const;
+
+        /// @brief Returns either data_ or distributed_data_(if non empty).
+        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData();
 
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.
@@ -451,7 +454,7 @@ namespace Dune
         /// one past the end of the sequence of leaf entities
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const;
-        
+
         /// Iterator to first leaf entity of given codim and PartitionIteratorType
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const;
@@ -1029,7 +1032,8 @@ namespace Dune
                                        const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                                        const int& corner_count,
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
-                                       const int& preAdaptMaxLevel);
+                                       const int& preAdaptMaxLevel,
+                                       const int& newLevels);
 
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///

@@ -85,20 +85,20 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         bool hasBeenRefinedAtLeastOnce,
                         bool isGlobalRefinement)
 {
-    const int startingGridIdx = coarse_grid.chooseData().size() -1; // size before calling adapt
+    const int startingGridIdx = coarse_grid.currentData().size() -1; // size before calling adapt
 
-    std::vector<int> assignRefinedLevel(coarse_grid.chooseData()[startingGridIdx]->size(0));
+    std::vector<int> assignRefinedLevel(coarse_grid.currentData()[startingGridIdx]->size(0));
 
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.chooseData()[startingGridIdx]), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.currentData()[startingGridIdx]), elemIdx, true);
         coarse_grid.mark(1, elem);
         assignRefinedLevel[elemIdx] = coarse_grid.maxLevel() + 1;
         BOOST_CHECK( coarse_grid.getMark(elem) == 1);
         BOOST_CHECK( elem.mightVanish() == true);
     }
     bool preAdapt = coarse_grid.preAdapt();
-    const auto& data = coarse_grid.chooseData();
+    const auto& data = coarse_grid.currentData();
     if(preAdapt) {
         coarse_grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(coarse_grid.maxLevel() +1)});
         coarse_grid.postAdapt();
@@ -106,7 +106,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         const auto& leafGridIdx = coarse_grid.maxLevel() +1;
         const auto& adapted_leaf = *data[leafGridIdx];
         if(isBlockShape) { // For a mixed grid that gets refined a second time, isBlockShape == false, even though the marked elements form a block.
-            const auto& blockRefinement_data = other_grid.chooseData();
+            const auto& blockRefinement_data = other_grid.currentData();
             const auto& blockRefinement_leaf = *blockRefinement_data.back();
 
             // Check the container sizes
@@ -710,7 +710,7 @@ BOOST_AUTO_TEST_CASE(markNonBlockCells_compareAdapt)
     other_grid.createCartesian(grid_dim, cell_sizes);
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData()[0]), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.currentData()[0]), elemIdx, true);
         other_grid.mark(1, elem);
     }
     other_grid.preAdapt();
@@ -741,7 +741,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
     other_grid.createCartesian(grid_dim, cell_sizes);
     for (const auto& elemIdx : markedCells1)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData()[0]), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.currentData()[0]), elemIdx, true);
         other_grid.mark(1, elem);
     }
     other_grid.preAdapt();
@@ -750,7 +750,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
 
     for (const auto& elemIdx : markedCells2)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData().back()), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.currentData().back()), elemIdx, true);
         other_grid.mark(1, elem);
     }
     other_grid.preAdapt();
@@ -759,7 +759,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimes)
 
     for (const auto& elemIdx : markedCells3)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.chooseData().back()), elemIdx, true);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(other_grid.currentData().back()), elemIdx, true);
         other_grid.mark(1, elem);
     }
     other_grid.preAdapt();
