@@ -1225,7 +1225,7 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections = nullptr,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltan)
         {
@@ -1265,7 +1265,7 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections = nullptr,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
                     int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1303,7 +1303,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod = 1)
         {
@@ -1354,7 +1354,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, EdgeWeightMethod method,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1391,7 +1391,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, const std::vector<int>& parts,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
                     bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
         {
@@ -1494,7 +1494,7 @@ namespace Dune
          /// \return An array with the domain index for each cell.
          std::vector<int>
          zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
-                                       const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                                       const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
                                        const double* transmissibilities,
                                        const int     numParts,
                                        const double  imbalanceTol) const;
@@ -1842,7 +1842,7 @@ namespace Dune
         scatterGrid(EdgeWeightMethod method,
                     bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities,
                     bool addCornerCells,
