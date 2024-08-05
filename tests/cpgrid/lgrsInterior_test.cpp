@@ -605,4 +605,3 @@ BOOST_AUTO_TEST_CASE(singleCell_Interior)
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
 }
-

@@ -1998,6 +1998,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
 
+    /*if (!distributed_data_.empty())
+    {
+        auto& cc = data_[0]->ccobj;
+        for (int i = 0; i < cc.size(); ++i) {
+            
+        }
+        }*/
+    
+
     if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
@@ -2038,7 +2047,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(current_view_data_->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
-    for(const auto& element: elements(this->leafGridView())) {
+    for(const auto& element: elements(this->levelGridView(0))) {
         std::array<int,3> ijk;
         getIJK(element.index(), ijk);
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
