@@ -207,7 +207,7 @@ std::pair<bool, std::vector<std::pair<std::string,bool> > >
 CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    [[maybe_unused]] const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
                     [[maybe_unused]] bool serialPartitioning,
                     const double* transmissibilities,
                     [[maybe_unused]] bool addCornerCells,
