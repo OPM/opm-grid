@@ -231,7 +231,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
-    /* if (data_.size() > 1)
+    if (data_.size() > 1)
     {
         if (comm().rank() == 0)
         {
@@ -241,7 +241,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         {
             OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
         }
-        }*/
+    }
 
 #if HAVE_MPI
     auto& cc = data_[0]->ccobj_;
@@ -1531,21 +1531,13 @@ bool CpGrid::preAdapt()
 {
     // Set the flags mighVanish for elements that have been marked for refinement/coarsening.
 
-    // Code below could be shortened.
-
-    // For serial run, we check if elements in pre-adapt existing grids have been marked for refinment. 
-    // if(distributed_data_.empty())
-    // {
-        bool isPreAdapted = false;
-        for (const auto& preAdaptGrid : getData()) {
-            isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
-        }
-        return isPreAdapted;
-        //    }
-        //   else { // For parallel run, check if elements have been marked on distributed_data_[0] (level 0 grid).
-        // Equivalently, if CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0]
-        //   return distributed_data_[0] ->preAdapt();
-        //  }
+    // Check if elements in pre-adapt existing grids have been marked for refinment.
+    // Serial run: getData() = data_. Parallel run: getData() = distributed_data_.
+    bool isPreAdapted = false;
+    for (const auto& preAdaptGrid : getData()) {
+        isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+    }
+    return isPreAdapted;
 }
 
 bool CpGrid::adapt()
@@ -2021,9 +2013,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 {
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0].
     // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
-    // Note: getData() returns data_ (if grid is not distributed) or distributed_data_ otherwise. 
+    // Note: getData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
     
-
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
 
@@ -2031,7 +2022,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
 
-    if (startIJK_vec.size() > 1) {
+    // For serial run, check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
+    // active/inactive cells, instead, relies on "ijk-computations". TO DO: improve/remove.
+    if ((startIJK_vec.size() > 1) && distributed_data_.empty()) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
@@ -2067,7 +2060,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     
     std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
-    std::vector<int> assignRefinedLevel(/*chooseData().back()*/ current_view_data_->size(0));
+    std::vector<int> assignRefinedLevel(current_view_data_->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
     for(const auto& element: elements(this->leafGridView())) {
         std::array<int,3> ijk;
@@ -2086,7 +2079,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
                 }
                 // Check that the cell to be marked for refinement is interior (only when the grid has been distributed).
-                // if((!distributed_data_.empty()) && (element.partitionType() == OverlapEntity)) {
+                // if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
                 //   OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
                 //  }
                 this-> mark(1, element);
@@ -2099,6 +2092,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
     int non_empty_lgrs = 0;
     for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
+        // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
         if ((lgrs_with_at_least_one_active_cell[level] == 0) && distributed_data_.empty()) {
             OPM_THROW(std::logic_error, "LGR" + std::to_string(level+1) + " contains only inactive cells, remove it or extend the corresponding region.\n");
         }
