@@ -394,7 +394,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 }*/
 }
 
-/*BOOST_AUTO_TEST_CASE(lgrsInterior)
+BOOST_AUTO_TEST_CASE(threeLgrs)
   {
   // Create a grid
   Dune::CpGrid coarse_grid;
@@ -412,11 +412,11 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
   // LGR3 element indices = 35 
 
   coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-  //coarse_grid.loadBalance();
+ 
     
-  //  refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-  //BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
-  }*/
+  refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+ 
+  }
 
 BOOST_AUTO_TEST_CASE(singleCell)
 {
@@ -460,3 +460,4 @@ BOOST_AUTO_TEST_CASE(twoLgrs)
     
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
+
