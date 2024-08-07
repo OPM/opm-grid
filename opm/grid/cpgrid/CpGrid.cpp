@@ -948,7 +948,12 @@ const CpGridFamily::Traits::LevelIndexSet& CpGrid::levelIndexSet(int level) cons
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    return *chooseData()[level] -> index_set_; /** Do we need here getData instead?*/
+    if (!distributed_data_.empty()) {
+        return  *(distributed_data_[level]->index_set_);
+    }
+    else {
+        return *(data_[level] -> index_set_);
+    }
 }
 
 const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
