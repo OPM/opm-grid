@@ -90,11 +90,11 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_cpgrid.cpp
   tests/test_communication_utils.cpp
   tests/test_column_extract.cpp
+  tests/cpgrid/addLgrsOnDistributedGrid_test.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/lgrsInterior_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp

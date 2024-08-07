@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: lgrInterior_test.cpp
+// File: addLgrsOnDistributedGrid_test.cpp
 //
 // Created: Monday 5 August 2024 14:44
 //
@@ -31,7 +31,7 @@
 */
 #include "config.h"
 
-#define BOOST_TEST_MODULE LGRInteriorTest
+#define BOOST_TEST_MODULE LGRsOnDistributedGridTest
 #include <boost/test/unit_test.hpp>
 #include <boost/version.hpp>
 #if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
@@ -451,4 +451,3 @@ BOOST_AUTO_TEST_CASE(twoLgrs)
 
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
-
