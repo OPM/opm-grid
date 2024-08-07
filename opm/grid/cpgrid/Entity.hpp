@@ -441,18 +441,16 @@ int Entity<codim>::level() const
     // Serial and LGRs:
     // If the grid is not distributed and there LGRs have been added, level_data_ptr_ points at data_ which
     // has size > 1.
-    // 
-    if ((*(pgrid_ -> level_data_ptr_)).size() == 1){ // Case no LGRs -> level 0;
-        return 0; // when there is no refinenment, level_ is not automatically instantiated
+    //
+    bool isLeafGrid = ( pgrid_ == (*(pgrid_->level_data_ptr_)).back().get() );
+    bool areThereLgrs = ( (*(pgrid_ -> level_data_ptr_)).size() > 1 );
+    if (areThereLgrs) {
+        return (isLeafGrid ? pgrid_->leaf_to_level_cells_[this-> index()][0] : pgrid_ -> level_);
     }
-    if (pgrid_ == (*(pgrid_->level_data_ptr_)).back().get()) { // Case entity on the leafview -> get the level where it was born:
-        return pgrid_ -> leaf_to_level_cells_[this-> index()][0]; // leaf_to_level_cells_ leafIdx -> {level/LGR, cell index in LGR}
-    }
-    else { // Case any other level grid of a grid that has been refined (at least once).
-        return pgrid_-> level_;
+    else {
+        return 0;
     }
 }
-
 
 // isLeaf()
 // - if distributed_data_ is empty: an element is a leaf <-> hbegin and hend return the same iterator. Then,
