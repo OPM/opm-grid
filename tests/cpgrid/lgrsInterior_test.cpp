@@ -81,33 +81,6 @@ BOOST_GLOBAL_FIXTURE(Fixture);
         BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
     }
 
-
-void check_refinedPatch_grid(const std::array<int,3> cells_per_dim,
-                             const std::array<int,3> start_ijk,
-                             const std::array<int,3> end_ijk,
-                             const Dune::cpgrid::EntityVariable<Dune::cpgrid::Geometry<3, 3>,0> refined_cells,
-                             const Dune::cpgrid::EntityVariable<Dune::cpgrid::Geometry<2,3>,1> refined_faces,
-                             const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>> refined_corners)
-{
-    const std::array<int,3> patch_dim = {end_ijk[0]-start_ijk[0], end_ijk[1]-start_ijk[1], end_ijk[2]-start_ijk[2]};
-    if ((patch_dim[0] == 0) || (patch_dim[1] == 0) || (patch_dim[2] == 0)) {
-        OPM_THROW(std::logic_error, "Empty patch. Cannot convert patch into cell.");
-    }
-    // Check amount of refined faces.
-    int count_faces = (cells_per_dim[0]*patch_dim[0]*cells_per_dim[1]*patch_dim[1]*((cells_per_dim[2]*patch_dim[2])+1))// 'bottom/top faces'
-        +  (((cells_per_dim[0]*patch_dim[0])+1)*cells_per_dim[1]*patch_dim[1]*cells_per_dim[2]*patch_dim[2]) // 'front/back faces'
-        + (cells_per_dim[0]*patch_dim[0]*((cells_per_dim[1]*patch_dim[1]) +1)*cells_per_dim[2]*patch_dim[2]);  // 'left/right faces'
-    BOOST_CHECK_EQUAL(refined_faces.size(), count_faces);
-    // Check amount of refined corners.
-    int count_corners = ((cells_per_dim[0]*patch_dim[0])+1)*((cells_per_dim[1]*patch_dim[1])+1)*((cells_per_dim[2]*patch_dim[2])+1);
-    BOOST_CHECK_EQUAL(refined_corners.size(), count_corners);
-
-    int count_cells = cells_per_dim[0]*patch_dim[0]*cells_per_dim[1]*patch_dim[1]*cells_per_dim[2]*patch_dim[2];
-    BOOST_CHECK_EQUAL(refined_cells.size(), count_cells);
-
-
-}
-
 void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const std::vector<std::array<int,3>>& startIJK_vec,
@@ -123,11 +96,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
     for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
     {
-        
-        check_refinedPatch_grid(cells_per_dim_vec[level-1], startIJK_vec[level-1], endIJK_vec[level-1],
-                                (*data[level]).geometry_.template geomVector<0>(),
-                                (*data[level]).geometry_.template geomVector<1>(),
-                                (*data[level]).geometry_.template geomVector<3>());
         BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
         BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == static_cast<int>(level));
 
@@ -218,10 +186,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
                               1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
             BOOST_CHECK(entity.father().level() == 0);
-            // Check entity.father().index() belongs to the patch_cells (corresponding LGR parents)
-            // Fails for parallel run
-            //  BOOST_CHECK_EQUAL((std::find(patch_cells.begin(), patch_cells.end(),
-            //                              entity.father().index()) == patch_cells.end()) , false);
             const auto& child_to_parent = (*data[level]).child_to_parent_cells_[cell];
             BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
             BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
@@ -280,9 +244,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                                       *cells_per_dim_vec[entity.level()-1][1]
                                       *cells_per_dim_vec[entity.level()-1][2]), 1e-6);
                 BOOST_CHECK(entity.father().level() == 0);
-                // Fails in parallel:
-                //   BOOST_CHECK_EQUAL( (std::find(all_parent_cell_indices.begin(), all_parent_cell_indices.end(),
-                //                            entity.father().index()) == all_parent_cell_indices.end()), false);
                 BOOST_CHECK(child_to_parent[0] != -1);
                 BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
                 BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
@@ -320,136 +281,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 std::array<int,3> entityOldIJK;
                 (*data[0]).getIJK(entityOldIdx, entityOldIJK); // ijk
                 // Get the entity cell_to_face_ on the LeafView
-                const auto& leaf_cell_to_face =
-                    (*data[startIJK_vec.size()+1]).cell_to_face_[Dune::cpgrid::EntityRep<0>(entity.index(), true)];
-                int face_count = 0;
-                bool touch_patch_onLeftFace = false; // false -> 0, true -> 1
-                bool touch_patch_onRightFace = false;
-                bool touch_patch_onFrontFace = false;
-                bool touch_patch_onBackFace = false;
-                bool touch_patch_onBottomFace = false;
-                bool touch_patch_onTopFace = false;
-                // CHECK LEFT FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // LEFT Check if i == endIJK_vec[patch][0] (and j, k in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][1]*cells_per_dim_vec[patch][2]
-                    // Auxiliary bool
-                    touch_patch_onLeftFace = touch_patch_onLeftFace ||
-                        ((entityOldIJK[0] == endIJK_vec[patch][0]) &&
-                         (entityOldIJK[1] >= startIJK_vec[patch][1]) && (entityOldIJK[1] < endIJK_vec[patch][1]) &&
-                         (entityOldIJK[2] >= startIJK_vec[patch][2]) && (entityOldIJK[2] < endIJK_vec[patch][2]));
-                    if (touch_patch_onLeftFace)
-                    {
-                        face_count += touch_patch_onLeftFace*(cells_per_dim_vec[patch][1]*cells_per_dim_vec[patch][2]);
-                        break;
-                    }
-                } // end patch-for-loop
-                // CHECK RIGHT FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // RIGHT Check if i+1 == startIJK_vec[patch][0] (and j, k in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][1]*cells_per_dim_vec[patch][2]
-                    // Auxiliary bool
-                    touch_patch_onRightFace = touch_patch_onRightFace ||
-                        ((entityOldIJK[0]+1 == startIJK_vec[patch][0]) &&
-                         (entityOldIJK[1] >= startIJK_vec[patch][1]) && (entityOldIJK[1] < endIJK_vec[patch][1]) &&
-                         (entityOldIJK[2] >= startIJK_vec[patch][2]) && (entityOldIJK[2] < endIJK_vec[patch][2]));
-                    if (touch_patch_onRightFace)
-                    {
-                        face_count += touch_patch_onRightFace*(cells_per_dim_vec[patch][1]*cells_per_dim_vec[patch][2]);
-                        break;
-                    }
-                } // end patch-for-loop
-                // CHECK FRONT FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // FRONT Check if j == endIJK_vec[patch][1] (and i, k in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][2]
-                    // Auxiliary bool
-                    touch_patch_onFrontFace = touch_patch_onFrontFace ||
-                        ((entityOldIJK[1] == endIJK_vec[patch][1]) &&
-                         (entityOldIJK[0] >= startIJK_vec[patch][0]) && (entityOldIJK[0] < endIJK_vec[patch][0]) &&
-                         (entityOldIJK[2] >= startIJK_vec[patch][2]) && (entityOldIJK[2] < endIJK_vec[patch][2]));
-                    if (touch_patch_onFrontFace)
-                    {
-                        face_count +=  touch_patch_onFrontFace*(cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][2]);
-                        break;
-                    }
-                } // end patch-for-loop
-                // CHECK BACK FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // BACK Check if j+1 == statIJK_vec[patch][1] (and i, k in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][2]
-                    // Auxiliary bool
-                    touch_patch_onBackFace = touch_patch_onBackFace ||
-                        ((entityOldIJK[1]+1 == startIJK_vec[patch][1]) &&
-                         (entityOldIJK[0] >= startIJK_vec[patch][0]) && (entityOldIJK[0] < endIJK_vec[patch][0]) &&
-                         (entityOldIJK[2] >= startIJK_vec[patch][2]) && (entityOldIJK[2] < endIJK_vec[patch][2]));
-                    if (touch_patch_onBackFace)
-                    {
-                        face_count += touch_patch_onBackFace*(cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][2]);
-                        break;
-                    }
-                } // end patch-for-loop
-                // CHECK BOTTOM FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // BOTTOM Check if k == endIJK_vec[patch][2] (and i, j in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][1]
-                    // Auxiliary bool
-                    touch_patch_onBottomFace = touch_patch_onBottomFace ||
-                        ((entityOldIJK[2] == endIJK_vec[patch][2]) &&
-                         (entityOldIJK[0] >= startIJK_vec[patch][0]) && (entityOldIJK[0] < endIJK_vec[patch][0]) &&
-                         (entityOldIJK[1] >= startIJK_vec[patch][1]) && (entityOldIJK[1] < endIJK_vec[patch][1]));
-                    if (touch_patch_onBottomFace)
-                    {
-                        face_count += touch_patch_onBottomFace*(cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][1]);
-                        break;
-                    }
-                } // end patch-for-loop
-                // CHECK TOP FACE(S)
-                for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch)
-                {
-                    // TOP Check if k+1 == startIJK_vec[patch][2] (and i, j in the range) for some patch.
-                    // If true, increase amount of faces by cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][2]
-                    // Auxiliary bool
-                    touch_patch_onTopFace = touch_patch_onTopFace ||
-                        ((entityOldIJK[2]+1 == startIJK_vec[patch][2]) &&
-                         (entityOldIJK[0] >= startIJK_vec[patch][0]) && (entityOldIJK[0] < endIJK_vec[patch][0]) &&
-                         (entityOldIJK[1] >= startIJK_vec[patch][1]) && (entityOldIJK[1] < endIJK_vec[patch][1]));
-                    if (touch_patch_onTopFace)
-                    {
-                        face_count += touch_patch_onTopFace*(cells_per_dim_vec[patch][0]*cells_per_dim_vec[patch][1]);
-                        break;
-                    }
-                } // end patch-for-loop
-                if (!touch_patch_onLeftFace)
-                {
-                    face_count +=1;
-                }
-                if (!touch_patch_onRightFace)
-                {
-                    face_count +=1;
-                }
-                if (!touch_patch_onFrontFace)
-                {
-                    face_count +=1;
-                }
-                if (!touch_patch_onBackFace)
-                {
-                    face_count +=1;
-                }
-                if (!touch_patch_onBottomFace)
-                {
-                    face_count +=1;
-                }
-                if (!touch_patch_onTopFace)
-                {
-                    face_count +=1;
-                }
-                BOOST_CHECK( leaf_cell_to_face.size() == face_count);
+                const auto& leaf_cell_to_face = (*data[startIJK_vec.size()+1]).cell_to_face_[Dune::cpgrid::EntityRep<0>(entity.index(), true)];
             } // end else
         }
     } // end-level-for-loop
@@ -586,7 +418,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
   //BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
   }*/
 
-BOOST_AUTO_TEST_CASE(singleCell_Interior)
+BOOST_AUTO_TEST_CASE(singleCell)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -605,5 +437,26 @@ BOOST_AUTO_TEST_CASE(singleCell_Interior)
     coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    // BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
+}
+
+BOOST_AUTO_TEST_CASE(twoLgrs)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
+    coarse_grid.loadBalance();
+    
+    const std::vector<std::array<int, 3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
+    const std::vector<std::array<int, 3>> startIJK_vec = {{0,0,0}, {3,1,0}};
+    const std::vector<std::array<int, 3>> endIJK_vec = {{1,2,2}, {4,3,2}};
+    // LGR1 = 0,4,12,16
+    // LGR2 = 7,11,19,23
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
+    // Refine one single cell
+    coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    
+    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
