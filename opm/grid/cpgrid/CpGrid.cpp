@@ -1561,7 +1561,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Each marked element has its assigned level where its refined entities belong.
     const int levels = static_cast<int>(cells_per_dim_vec.size());
-    const int preAdaptMaxLevel = this->maxLevel();
+    const int preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
 
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
@@ -2130,7 +2130,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                                                      int& cell_count,
                                                      std::vector<std::vector<int>>& preAdapt_level_to_leaf_cells_vec,
                                                      /* Additional parameters */
-                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const
+                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const 
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
     
@@ -2138,7 +2138,11 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
     // as "coarse" cells in the leaf-grid-view (adapted-grid).
-    const int& preAdaptMaxLevel = this->maxLevel();
+    
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
         // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
@@ -2239,10 +2243,13 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
         }
     }
 
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
     for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(refined_cell_count_vec.size()); ++shiftedLevel) {
         refined_child_to_parent_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_cell_to_idxInParentCell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
-        const auto& level =  shiftedLevel + (this->maxLevel()) +1;
+        const auto& level =  shiftedLevel + preAdaptMaxLevel +1;
         // Every refined cell has a parent cell
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
             const auto& [elemLgr, elemLgrCell] = refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell.at({level, cell});
@@ -2281,7 +2288,10 @@ CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,st
     std::vector<std::array<int,2>> leaf_to_level_cells;
     leaf_to_level_cells.resize(cell_count);
 
-    const int& preAdaptMaxLevel = this->maxLevel();
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+
     // -- Adapted to {level, cell index in that level}  --
     for (int cell = 0; cell < cell_count; ++cell) {
         const auto& [elemLgr, elemLgrCell] = adaptedCell_to_elemLgrAndElemLgrCell.at(cell);
@@ -2318,6 +2328,10 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
     
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    
     // Step 1. Replace the corners from the preAdapt grid involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the preAdapt corner
     //         in the LGRs.
@@ -2333,7 +2347,7 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
             const auto& lastAppearanceLgrLevel = assignRefinedLevel[lastAppearanceLgr];
             assert(lastAppearanceLgrLevel>0);
             // To access containers with refined level grid information
-            const auto& shiftedLevel = lastAppearanceLgrLevel - static_cast<int>(this->maxLevel())-1;
+            const auto& shiftedLevel = lastAppearanceLgrLevel - preAdaptMaxLevel -1;
 
             elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{lastAppearanceLgr, lastAppearanceLgrCorner}] =
                 {lastAppearanceLgrLevel, refined_corner_count_vec[shiftedLevel]};
@@ -2345,7 +2359,7 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
                 for (const auto& [elemLgr, elemLgrCorner] : cornerInMarkedElemWithEquivRefinedCorner[corner]) {
                     const auto& elemLgrLevel = assignRefinedLevel[elemLgr];
                     if (elemLgrLevel != lastAppearanceLgrLevel) {
-                        const auto& shiftedElemLgrLevel = elemLgrLevel - static_cast<int>(this->maxLevel())-1;
+                        const auto& shiftedElemLgrLevel = elemLgrLevel - preAdaptMaxLevel -1;
                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemLgr, elemLgrCorner}] = {elemLgrLevel, refined_corner_count_vec[shiftedElemLgrLevel]};
                         refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{elemLgrLevel, refined_corner_count_vec[shiftedElemLgrLevel]}] = {elemLgr, elemLgrCorner};
                         refined_corner_count_vec[shiftedElemLgrLevel] +=1;
@@ -2360,7 +2374,7 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
             const auto& level = assignRefinedLevel[elemIdx];
             assert(level>0);
             // To access containers with refined level grid information
-            const auto& shiftedLevel = level - static_cast<int>(this->maxLevel()) -1;
+            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
             for (int corner = 0; corner < markedElem_to_itsLgr.at(elemIdx) ->size(3); ++corner) {
                 // Discard marked corners. Store (new born) refined corners
 
@@ -2398,7 +2412,7 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
 
                     // Save the relationship between the vanished refined corner and its last appearance
                     const auto& maxLastAppearanceLevel = assignRefinedLevel[maxLastAppearance];
-                    const auto& maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - static_cast<int>(this->maxLevel()) -1;
+                    const auto& maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - preAdaptMaxLevel -1;
 
                     bool atLeastOneFaceAppearsTwice = (faceInMarkedElemAndRefinedFaces[markedFace1].size()>1) ||
                         (faceInMarkedElemAndRefinedFaces[markedFace2].size()>1);
@@ -2444,7 +2458,7 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
                     int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
 
                     const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared ];
-                    const auto& lastLgrLevelShifted = lastLgrLevel - static_cast<int>(this->maxLevel()) -1;
+                    const auto& lastLgrLevelShifted = lastLgrLevel - preAdaptMaxLevel -1;
                     // Save the relationship between the vanished refined corner and its last appearance
                     if ((faceInMarkedElemAndRefinedFaces[markedFace].size()>1) && (lastLgrWhereMarkedFaceAppeared != elemIdx)) {
                         const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel], corner,
@@ -2473,6 +2487,10 @@ void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<
                                           const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
+
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
     
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
@@ -2480,7 +2498,7 @@ void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<
             const auto& level = assignRefinedLevel[elem];
             assert(level>0);
             // To access containers with refined level grid information
-            const auto& shiftedLevel = level - static_cast<int>(this->maxLevel()) -1;
+            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
             for (int face = 0; face < markedElem_to_itsLgr[elem] ->face_to_cell_.size(); ++face) {
                 // Discard marked faces. Store (new born) refined faces
                 bool isNewRefinedFaceOnLgrBoundary = isRefinedFaceOnLgrBoundary(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem]);
@@ -2511,7 +2529,7 @@ void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<
                         const auto& firstMarkedElem = faceInMarkedElemAndRefinedFaces[markedFace][0].first;
                         const auto& firstMarkedElemLevel = assignRefinedLevel[firstMarkedElem];
                         if (firstMarkedElemLevel != level) {
-                            const auto& shiftedFirstMarkedElemLevel = firstMarkedElemLevel - static_cast<int>(this->maxLevel()) -1;
+                            const auto& shiftedFirstMarkedElemLevel = firstMarkedElemLevel - preAdaptMaxLevel -1;
                             elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace[{firstMarkedElem, face}] = {firstMarkedElemLevel, refined_face_count_vec[shiftedFirstMarkedElemLevel]};
                             refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace[{firstMarkedElemLevel, refined_face_count_vec[shiftedFirstMarkedElemLevel]}] = {firstMarkedElem, face};
                             refined_face_count_vec[shiftedFirstMarkedElemLevel] +=1;
@@ -2561,12 +2579,16 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
         }
     } // end corner-forloop
 
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         if (markedElem_to_itsLgr[elemIdx]!= nullptr) {
             const auto& level = assignRefinedLevel[elemIdx];
             assert(level>0);
             // To access containers with refined level grid information
-            const auto& shiftedLevel = level - static_cast<int>(this->maxLevel()) -1;
+            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
             for (int corner = 0; corner < markedElem_to_itsLgr[elemIdx] ->size(3); ++corner) {
                 // Discard marked corners. Store (new born) refined corners
 
@@ -2603,7 +2625,7 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                     int faceAtMaxLastAppearance = (maxLastAppearance == lastAppearanceMarkedFace1) ? markedFace1 : markedFace2;
 
                     int maxLastAppearanceLevel = assignRefinedLevel[maxLastAppearance];
-                    int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - static_cast<int>(this->maxLevel()) -1;
+                    int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - preAdaptMaxLevel -1;
 
 
                     // Save the relationship between the vanished refined corner and its last appearance
@@ -2652,7 +2674,7 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                     int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
 
                     const auto& lastLgrLevel = assignRefinedLevel[lastLgrWhereMarkedFaceAppeared ];
-                    const auto& lastLgrLevelShifted = lastLgrLevel - static_cast<int>(this->maxLevel()) -1;
+                    const auto& lastLgrLevelShifted = lastLgrLevel - preAdaptMaxLevel -1;
 
                     // Save the relationship between the vanished refined corner and its last appearance
                     if ((faceInMarkedElemAndRefinedFaces[markedFace].size()>1) && (lastLgrWhereMarkedFaceAppeared != elemIdx)) {
@@ -2682,6 +2704,10 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
                                    const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
+
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
     
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
@@ -2689,7 +2715,7 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
             const auto& level = assignRefinedLevel[elem];
             assert(level>0);
             // To access containers with refined level grid information
-            const auto& shiftedLevel = level - static_cast<int>(this->maxLevel()) -1;
+            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
             for (int face = 0; face < markedElem_to_itsLgr[elem] ->face_to_cell_.size(); ++face) {
                 // Discard marked faces. Store (new born) refined faces
                 bool isNewRefinedFaceOnLgrBoundary = isRefinedFaceOnLgrBoundary(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem]);
@@ -2732,7 +2758,6 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
             elemLgrAndElemLgrFace_to_adaptedFace[{-1, face}] = face_count;
             adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {-1, face};
             face_count +=1;
-
         }
     } // end face-forloop
 }

@@ -2,7 +2,7 @@
 //
 // File: lgrInterior_test.cpp
 //
-// Created: Monday 5 August 14:44 
+// Created: Monday 5 August 2024 14:44 
 //
 // Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
 //
@@ -12,7 +12,7 @@
 //
 //===========================================================================
 /*
-  Copyright 2022-2023 Equinor ASA.
+  Copyright 2024 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -602,6 +602,7 @@ BOOST_AUTO_TEST_CASE(singleCell_Interior)
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
     coarse_grid.loadBalance();
     
     const std::array<int, 3> cells_per_dim = {2,2,2};
@@ -609,9 +610,9 @@ BOOST_AUTO_TEST_CASE(singleCell_Interior)
     const std::array<int, 3> endIJK = {2,2,2};
     // Single cell with element index 17
     const std::string lgr_name = {"LGR1"};
-
+    // Refine one single cell
     coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    //coarse_grid.loadBalance();
-    //  refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+    
+    //refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     // BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
 }
