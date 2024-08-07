@@ -446,8 +446,51 @@ BOOST_AUTO_TEST_CASE(twoLgrs)
     // LGR1 = 0,4,12,16
     // LGR2 = 7,11,19,23
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    // Refine one single cell
     coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
+
+BOOST_AUTO_TEST_CASE(globalRefine)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
+    coarse_grid.loadBalance();
+
+    coarse_grid.globalRefine(1);
+}
+
+//Calling globalRefine with >1 (or equivalent calling it multiple times) is not supported yet.
+BOOST_AUTO_TEST_CASE(globalRefine2)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
+    coarse_grid.loadBalance();
+
+    BOOST_CHECK_THROW(coarse_grid.globalRefine(2), std::logic_error);
+}
+
+//Calling globalRefine with >1 (or calling it multiple times) is not supported yet.
+BOOST_AUTO_TEST_CASE(globalRefine_callingTwice)
+{
+    // Create a grid
+    Dune::CpGrid coarse_grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
+    coarse_grid.loadBalance();
+
+    coarse_grid.globalRefine(1);
+    // Calling globalRefine a second time with argument equal to 1 should throw (for now).
+    BOOST_CHECK_THROW(coarse_grid.globalRefine(1), std::logic_error);
+}
+

@@ -975,11 +975,14 @@ void CpGrid::globalRefine (int refCount)
         for (int level = 0; level < static_cast<int>(data_.size()); ++level) {
             // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
             // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
-            isOnlyGlobalRefined = isOnlyGlobalRefined && ( ((data_[level+1]->size(0)) / (data_[level]->size(0))) == 8 );
+            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (data_[level+1]->size(0)) / (data_[level]->size(0)) == 8 );
         }
         if (!isOnlyGlobalRefined) {
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
+    }
+    if ( (!distributed_data_.empty() && refCount > 1) || (distributed_data_.size()>1) ) {
+        OPM_THROW(std::logic_error, "Multiple global refinement of a distributed grid is not supported yet.");
     }
     if (refCount>0) {
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
@@ -1543,7 +1546,7 @@ bool CpGrid::preAdapt()
 bool CpGrid::adapt()
 {
     const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
-    std::vector<int> assignRefinedLevel(current_view_data_-> size(0)); /** Use chooseData back instead */
+    std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
     const auto& preAdaptMaxLevel = this ->maxLevel();
     for (int elemIdx = 0; elemIdx < static_cast<int>(current_view_data_->size(0)); ++elemIdx) {
         const auto& element = cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
