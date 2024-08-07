@@ -454,46 +454,13 @@ namespace Dune
         /// one past the end of the sequence of leaf entities
         template<int codim>
         typename Traits::template Codim<codim>::LeafIterator leafend() const;
-        
+
         /// Iterator to first leaf entity of given codim and PartitionIteratorType
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafbegin() const;
         /// one past the end of the sequence of leaf entities
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LeafIterator leafend() const;
-
-        /*
-        template<PartitionIteratorType PiType >
-        Traits:Partition<PiType>::LevelGridView levelGridView ( int level ) const
-        {
-            typedef typename Partition< pitype >::LevelGridView View;
-            typedef typename View::GridViewImp ViewImp;
-            return View( ViewImp( *this ) );
-        }
-
-    
-        template< PartitionIteratorType pitype >
-        typename Partition< pitype >::LeafGridView leafGridView () const
-        {
-            typedef typename Traits::template Partition< pitype >::LeafGridView View;
-            typedef typename View::GridViewImp ViewImp;
-            return View( ViewImp( *this ) );
-        }
-
-   
-        LevelGridView levelGridView ( int level ) const
-        {
-            typedef typename LevelGridView::GridViewImp ViewImp;
-            return LevelGridView( ViewImp( *this ) );
-        }
-
-     
-        LeafGridView leafGridView () const
-        {
-            typedef typename LeafGridView::GridViewImp ViewImp;
-            return LeafGridView( ViewImp( *this ) );
-        }*/
-
 
         /// \brief Number of grid entities per level and codim
         int size (int level, int codim) const;
