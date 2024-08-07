@@ -1032,7 +1032,8 @@ namespace Dune
                                        const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                                        const int& corner_count,
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
-                                       const int& preAdaptMaxLevel);
+                                       const int& preAdaptMaxLevel,
+                                       const int& newLevels);
 
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///

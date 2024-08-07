@@ -1560,8 +1560,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
     // Each marked element has its assigned level where its refined entities belong.
-    const int levels = static_cast<int>(cells_per_dim_vec.size());
-    const int preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    const int& levels = static_cast<int>(cells_per_dim_vec.size());
+    // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
+
+    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
+    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
+    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
 
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
@@ -1966,7 +1970,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                               adaptedCorner_to_elemLgrAndElemLgrCorner,
                               corner_count,
                               preAdaptGrid_corner_history,
-                              preAdaptMaxLevel);
+                              preAdaptMaxLevel,
+                              levels);
   
     this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     for (int level = 0; level < levels; ++level) {
@@ -3376,9 +3381,10 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
                                        const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                                        const int& corner_count,
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
-                                       const int& preAdaptMaxLevel)
+                                       const int& preAdaptMaxLevel,
+                                       const int& newLevels)
 {
-    for (int level = preAdaptMaxLevel+1; level < (this->maxLevel()+1); ++level) {
+    for (int level = preAdaptMaxLevel+1; level < preAdaptMaxLevel + newLevels+1; ++level) {
         getData()[level]->corner_history_.resize( getData()[level] ->size(3), std::array<int,2>({-1,-1}));
     }
     // corner_history_ for levels 0, level 1, ..., preAdapt-maxLevel (maximum level before calling (again) adapt) should be already populated
