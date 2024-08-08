@@ -139,7 +139,7 @@ std::tuple<std::vector<int>,
            WellConnections>
 metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                     const std::vector<OpmWellType> * wells,
-                                    const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
+                                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                     const double* transmissibilities,
                                     const Communication<MPI_Comm>& cc,
                                     EdgeWeightMethod edgeWeightsMethod,

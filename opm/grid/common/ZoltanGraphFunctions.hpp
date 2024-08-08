@@ -150,7 +150,7 @@ public:
     /// \param edgeWeightsMethod The method used to calculated the edge weights.
     CombinedGridWellGraph(const Dune::CpGrid& grid,
                           const std::vector<OpmWellType> * wells,
-                          const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
+                          const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                           const double* transmissibilities,
                           bool pretendEmptyGrid,
                           EdgeWeightMethod edgeWeightsMethod);

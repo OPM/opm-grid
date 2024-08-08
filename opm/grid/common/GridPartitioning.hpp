@@ -137,7 +137,7 @@ namespace cpgrid
                std::vector<std::tuple<int,int,char,int> >,
                WellConnections>
     createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
+                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                const double* transmissibilities, const std::vector<int>& parts,
                                bool allowDistributedWells, std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells = nullptr);
 
@@ -167,7 +167,7 @@ namespace cpgrid
                WellConnections>
     vanillaPartitionGridOnRoot(const CpGrid& grid,
                                const std::vector<cpgrid::OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<int>>* possibleFutureConnections,
+                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                const double* transmissibilities,
                                bool allowDistributedWells);
 #endif
