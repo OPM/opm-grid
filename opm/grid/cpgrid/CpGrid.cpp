@@ -1559,16 +1559,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // Each marked element has its assigned level where its refined entities belong.
     const int& levels = static_cast<int>(cells_per_dim_vec.size());
     // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
-
-    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
-
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-
+    const int& preAdaptMaxLevel = this->maxLevel();
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
 
+    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
+      
     // To store/build refined level grids.
     std::vector<std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>> refined_data_vec(levels, data);
     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> refined_grid_ptr_vec(levels);
