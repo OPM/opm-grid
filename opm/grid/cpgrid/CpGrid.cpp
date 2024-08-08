@@ -1960,7 +1960,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Update the leaf grid view
     current_view_data_ = data.back().get();
-    
+    // Update current_data_ (Is this needed? updataCornerHistoryLevels(/* args */) invokes currentData).
+    current_data_ = &data;
+
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                               adaptedCorner_to_elemLgrAndElemLgrCorner,
@@ -1968,7 +1970,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                               preAdaptGrid_corner_history,
                               preAdaptMaxLevel,
                               levels);
-  
+
     this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
