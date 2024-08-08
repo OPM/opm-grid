@@ -661,7 +661,6 @@ int CpGrid::maxLevel() const
     }
     else {  // There are multiple LGRs
         return this -> currentData().size() - 2; // last entry is leafView, and it starts in level 0 = GLOBAL grid.
-        /**Why is it double?? */
     }
 }
 
@@ -1955,13 +1954,11 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
     (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(adapted_global_cell);
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
-                                                                                               data[levels + preAdaptMaxLevel +1]->size(3));
+                                                                                          data[levels + preAdaptMaxLevel +1]->size(3));
     (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
 
     // Update the leaf grid view
     current_view_data_ = data.back().get();
-    // Update current_data_ (Is this needed? updataCornerHistoryLevels(/* args */) invokes currentData).
-    current_data_ = &data;
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
