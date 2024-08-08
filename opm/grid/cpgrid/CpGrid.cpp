@@ -627,7 +627,7 @@ const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentDat
 std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData()
 {
     return !distributed_data_.empty() ? distributed_data_ : data_;
-        //  current_view_data_ == this-> data_.back().get() ? data_ : distributed_data_;
+        // current_view_data_ == this-> data_.back().get() ? data_ : distributed_data_;
 }
 
 const std::vector<int>& CpGrid::globalCell() const

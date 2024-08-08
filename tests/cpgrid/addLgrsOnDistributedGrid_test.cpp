@@ -388,109 +388,123 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 BOOST_AUTO_TEST_CASE(threeLgrs)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-    coarse_grid.loadBalance();
+    grid.createCartesian(grid_dim, cell_sizes);
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
 
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    // LGR1 element indices = 0,1,12,13
-    // LGR2 element indices = 24
-    // LGR3 element indices = 35
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
+        // LGR1 element indices = 0,1,12,13
+        // LGR2 element indices = 24
+        // LGR3 element indices = 35
 
-    coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
 
-    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(singleCell)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(grid_dim, cell_sizes);
     // Distribute the grid
-    coarse_grid.loadBalance();
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
 
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    const std::array<int, 3> startIJK = {1,1,1};
-    const std::array<int, 3> endIJK = {2,2,2};
-    // Single cell with element index 17
-    const std::string lgr_name = {"LGR1"};
-    // Refine one single cell
-    coarse_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+        const std::array<int, 3> cells_per_dim = {2,2,2};
+        const std::array<int, 3> startIJK = {1,1,1};
+        const std::array<int, 3> endIJK = {2,2,2};
+        // Single cell with element index 17
+        const std::string lgr_name = {"LGR1"};
+        // Refine one single cell
+        grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
-    refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+        refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
+    }
 }
 
 BOOST_AUTO_TEST_CASE(twoLgrs)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(grid_dim, cell_sizes);
     // Distribute the grid
-    coarse_grid.loadBalance();
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
 
-    const std::vector<std::array<int, 3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
-    const std::vector<std::array<int, 3>> startIJK_vec = {{0,0,0}, {3,1,0}};
-    const std::vector<std::array<int, 3>> endIJK_vec = {{1,2,2}, {4,3,2}};
-    // LGR1 = 0,4,12,16
-    // LGR2 = 7,11,19,23
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    coarse_grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        const std::vector<std::array<int, 3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
+        const std::vector<std::array<int, 3>> startIJK_vec = {{0,0,0}, {3,1,0}};
+        const std::vector<std::array<int, 3>> endIJK_vec = {{1,2,2}, {4,3,2}};
+        // LGR1 = 0,4,12,16
+        // LGR2 = 7,11,19,23
+        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
-    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
 }
 
 BOOST_AUTO_TEST_CASE(globalRefine)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(grid_dim, cell_sizes);
     // Distribute the grid
-    coarse_grid.loadBalance();
+    grid.loadBalance();
 
-    coarse_grid.globalRefine(1);
+    grid.globalRefine(1);
 }
 
 //Calling globalRefine with >1 (or equivalent calling it multiple times) is not supported yet.
 BOOST_AUTO_TEST_CASE(globalRefine2)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(grid_dim, cell_sizes);
     // Distribute the grid
-    coarse_grid.loadBalance();
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
 
-    BOOST_CHECK_THROW(coarse_grid.globalRefine(2), std::logic_error);
+        BOOST_CHECK_THROW(grid.globalRefine(2), std::logic_error);
+    }
 }
 
 //Calling globalRefine with >1 (or calling it multiple times) is not supported yet.
 BOOST_AUTO_TEST_CASE(globalRefine_callingTwice)
 {
     // Create a grid
-    Dune::CpGrid coarse_grid;
+    Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(grid_dim, cell_sizes);
     // Distribute the grid
-    coarse_grid.loadBalance();
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
 
-    coarse_grid.globalRefine(1);
-    // Calling globalRefine a second time with argument equal to 1 should throw (for now).
-    BOOST_CHECK_THROW(coarse_grid.globalRefine(1), std::logic_error);
+        grid.globalRefine(1);
+        // Calling globalRefine a second time with argument equal to 1 should throw (for now).
+        BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
+    }
 }
 

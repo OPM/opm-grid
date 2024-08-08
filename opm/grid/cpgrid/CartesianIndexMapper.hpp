@@ -53,7 +53,7 @@ namespace Dune
         int compressedLevelZeroSize() const
         {
             
-            return (*grid_.chooseData()[0]).size(0);
+            return (*grid_.currentData()[0]).size(0);
         }
 
         int cartesianIndex( const int compressedElementIndex ) const
@@ -72,7 +72,7 @@ namespace Dune
             if ((level < 0) || (level > grid_.maxLevel())) {
                 throw std::invalid_argument("Invalid level.\n");
             }
-            (*grid_.chooseData()[level]).getIJK( compressedElementIndexOnLevel, coordsOnLevel);
+            (*grid_.currentData()[level]).getIJK( compressedElementIndexOnLevel, coordsOnLevel);
         }
     };
 
