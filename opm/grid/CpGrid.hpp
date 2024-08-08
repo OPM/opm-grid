@@ -1865,6 +1865,8 @@ namespace Dune
         cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
+        /** @brief A pointer to the current data used. */
+        std::vector<std::shared_ptr<cpgrid::CpGridData>>* current_data_;
         /** @brief To get the level given the lgr-name. Default, {"GLOBAL", 0}. */
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         /**

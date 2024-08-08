@@ -167,6 +167,7 @@ CpGrid::CpGrid()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(data_));
     current_view_data_ = data_[0].get();
+    current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     
 }
@@ -179,7 +180,8 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
       global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(comm, data_));
-    current_view_data_= data_[0].get();
+    current_view_data_ = data_[0].get();
+    current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     
 }
@@ -527,6 +529,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
         current_view_data_ = distributed_data_[0].get();
+        current_data_ = &distributed_data_;
         return std::make_pair(true, wells_on_proc);
     }
     else
@@ -616,18 +619,12 @@ const std::array<int, 3>& CpGrid::logicalCartesianSize() const
 
 const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData() const
 {
-    if (current_view_data_ == this-> data_.back().get()){
-        return data_;
-    }
-    else{
-        return distributed_data_;
-    }
+    return *current_data_;
 }
 
 std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData()
 {
-    return !distributed_data_.empty() ? distributed_data_ : data_;
-        // current_view_data_ == this-> data_.back().get() ? data_ : distributed_data_;
+    return *current_data_;
 }
 
 const std::vector<int>& CpGrid::globalCell() const
@@ -1424,14 +1421,16 @@ const CpGrid::InterfaceMap& CpGrid::pointScatterGatherInterface() const
 
 void CpGrid::switchToGlobalView()
 {
-    current_view_data_=data_[0].get();
+    current_view_data_ = data_.back().get();
+    current_data_ = &data_;
 }
 
 void CpGrid::switchToDistributedView()
 {
     if (distributed_data_.empty())
         OPM_THROW(std::logic_error, "No distributed view available in grid");
-    current_view_data_=distributed_data_[0].get();
+    current_view_data_ = distributed_data_.back().get();
+    current_data_ = &distributed_data_;
 }
 
 #if HAVE_MPI
