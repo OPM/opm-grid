@@ -2142,11 +2142,10 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
     // as "coarse" cells in the leaf-grid-view (adapted-grid).
-    
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
         // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
@@ -2239,17 +2238,16 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
         }
         else {// "cell" is either a coarse cell or a refined cell that was born in a preAdapt-refined-level-grid
             // Only populate the entries of refined cells that were born in preAdapt-refined-level-grids.
-            if(preAdapt_parent_or_elem.hasFather()) {
+            if (preAdapt_parent_or_elem.hasFather()) {
                 adapted_child_to_parent_cells[cell] =  {preAdapt_parent_or_elem.father().level(), preAdapt_parent_or_elem.father().index() };
-                adapted_cell_to_idxInParentCell[cell] = (!distributed_data_.empty() ? distributed_data_ : data_)[preAdapt_parent_or_elem.level()]->
+                adapted_cell_to_idxInParentCell[cell] = currentData()[preAdapt_parent_or_elem.level()]->
                     cell_to_idxInParentCell_[preAdapt_parent_or_elem.getEquivLevelElem().index()];
             }
         }
     }
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
     for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(refined_cell_count_vec.size()); ++shiftedLevel) {
         refined_child_to_parent_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_cell_to_idxInParentCell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
@@ -2292,9 +2290,8 @@ CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,st
     std::vector<std::array<int,2>> leaf_to_level_cells;
     leaf_to_level_cells.resize(cell_count);
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
 
     // -- Adapted to {level, cell index in that level}  --
     for (int cell = 0; cell < cell_count; ++cell) {
@@ -2331,11 +2328,10 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Replace the corners from the preAdapt grid involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the preAdapt corner
     //         in the LGRs.
@@ -2492,10 +2488,9 @@ void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
         if (markedElem_to_itsLgr[elem]!=nullptr)  {
@@ -2583,10 +2578,9 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
         }
     } // end corner-forloop
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         if (markedElem_to_itsLgr[elemIdx]!= nullptr) {
             const auto& level = assignRefinedLevel[elemIdx];
@@ -2709,9 +2703,8 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel(); 
     
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
