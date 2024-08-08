@@ -962,9 +962,6 @@ namespace Dune
     }
 
   public:
-#if DUNE_VERSION_LT_REV(DUNE_GRID, 2, 7, 1)
-    using Base::getRealImplementation;
-#endif
     typedef typename Traits :: ExtraData ExtraData;
     ExtraData extraData () const  { return this; }
 
