@@ -2070,10 +2070,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 if (current_view_data_->hasNNCs({element.index()})){
                     OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
                 }
+                /** Decide if we leave the check commentedfor now. */
                 // Check that the cell to be marked for refinement is interior (only when the grid has been distributed).
                 // if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
                 //   OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
-                //  }
+                // }
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                 ++marked_elem_level_count;
