@@ -660,7 +660,7 @@ int CpGrid::maxLevel() const
         return 0; // "GLOBAL" grid is the unique one
     }
     else {  // There are multiple LGRs
-        return double(this -> currentData().size() - 2); // last entry is leafView, and it starts in level 0 = GLOBAL grid.
+        return this -> currentData().size() - 2; // last entry is leafView, and it starts in level 0 = GLOBAL grid.
         /**Why is it double?? */
     }
 }
