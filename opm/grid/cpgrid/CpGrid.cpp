@@ -957,17 +957,18 @@ void CpGrid::globalRefine (int refCount)
     // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
     // got refined. Therefore, the coarse face that they share got replaced by refined-faces. In this case, we do not
     // support yet global refinement.
-    if(data_.size() >1) {
+    if(currentData().size() >1) {
         bool isOnlyGlobalRefined = true;
-        for (int level = 0; level < static_cast<int>(data_.size()); ++level) {
+        for (int level = 0; level < static_cast<int>(currentData().size()); ++level) {
             // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
             // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
-            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (data_[level+1]->size(0)) / (data_[level]->size(0)) == 8 );
+            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (currentData()[level+1]->size(0)) / (currentData()[level]->size(0)) == 8 );
         }
         if (!isOnlyGlobalRefined) {
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
     }
+    // Prevent multiple calls of globalRefine on a distributed grid. Only one call with refCount equal to 1 is supported (for now).
     if ( (!distributed_data_.empty() && refCount > 1) || (distributed_data_.size()>1) ) {
         OPM_THROW(std::logic_error, "Multiple global refinement of a distributed grid is not supported yet.");
     }
