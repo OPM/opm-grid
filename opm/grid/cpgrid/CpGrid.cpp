@@ -167,6 +167,7 @@ CpGrid::CpGrid()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(data_));
     current_view_data_ = data_[0].get();
+    current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     
 }
@@ -179,7 +180,8 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
       global_id_set_ptr_()
 {
     data_.push_back(std::make_shared<cpgrid::CpGridData>(comm, data_));
-    current_view_data_= data_[0].get();
+    current_view_data_ = data_[0].get();
+    current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     
 }
@@ -497,12 +499,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
         // distributed_data should be empty at this point.
-        distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_)); 
+        distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
         distributed_data_[0]->setUniqueBoundaryIds(data_[0]->uniqueBoundaryIds());
-       
+
         // Just to be sure we assume that only master knows
         cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
-        
 
 
         // Create indexset
@@ -527,6 +528,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
         current_view_data_ = distributed_data_[0].get();
+        current_data_ = &distributed_data_;
         return std::make_pair(true, wells_on_proc);
     }
     else
@@ -616,18 +618,12 @@ const std::array<int, 3>& CpGrid::logicalCartesianSize() const
 
 const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData() const
 {
-    if (current_view_data_ == this-> data_.back().get()){
-        return data_;
-    }
-    else{
-        return distributed_data_;
-    }
+    return *current_data_;
 }
 
 std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& CpGrid::currentData()
 {
-    return !distributed_data_.empty() ? distributed_data_ : data_;
-        // current_view_data_ == this-> data_.back().get() ? data_ : distributed_data_;
+    return *current_data_;
 }
 
 const std::vector<int>& CpGrid::globalCell() const
@@ -659,29 +655,20 @@ std::string CpGrid::name() const
 
 int CpGrid::maxLevel() const
 {
-    if (!distributed_data_.empty()){
-        return (distributed_data_.size()>1 ? distributed_data_.size()-2 : 0);
-    }
-    if (data_.size() == 1){
+    if (currentData().size() == 1){
         return 0; // "GLOBAL" grid is the unique one
     }
     else {  // There are multiple LGRs
-        return double(this -> data_.size() - 2); // last entry is leafView, and it starts in level 0 = GLOBAL grid.
+        return this -> currentData().size() - 2; // last entry is leafView, and it starts in level 0 = GLOBAL grid.
     }
 }
 
 template<int codim>
-typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lbegin (int level) const{
+typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lbegin (int level) const
+{
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (!distributed_data_.empty()){
-        bool areThereLgrs =  (distributed_data_.size() > 1);
-        return (areThereLgrs ? cpgrid::Iterator<codim, All_Partition>( *distributed_data_[level], 0, true) :
-                cpgrid::Iterator<codim, All_Partition>( *current_view_data_, 0, true));
-    }
-    else{
-        return cpgrid::Iterator<codim, All_Partition>(*data_[level], 0, true);
-    }
+    return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], 0, true);
 }
 template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lbegin<0>(int) const;
 template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lbegin<1>(int) const;
@@ -692,14 +679,7 @@ typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lend (int le
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (!distributed_data_.empty()){
-        bool areThereLgrs =  (distributed_data_.size() > 1);
-        return (areThereLgrs ? cpgrid::Iterator<codim, All_Partition>( *distributed_data_[level], size(level, codim), true) :
-                cpgrid::Iterator<codim, All_Partition>( *current_view_data_, size(codim), true));
-    }
-    else{
-        return cpgrid::Iterator<codim,All_Partition>(*data_[level], size(level, codim), true );
-    }
+    return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], size(level, codim), true);
 }
 template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lend<0>(int) const;
 template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lend<1>(int) const;
@@ -729,14 +709,7 @@ typename CpGridTraits::template Codim<codim>::template Partition<PiType>::LevelI
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (!distributed_data_.empty()){
-        bool areThereLgrs =  (distributed_data_.size() > 1);
-        return (areThereLgrs ? cpgrid::Iterator<codim, PiType>( *distributed_data_[level], 0, true) :
-                cpgrid::Iterator<codim, PiType>( *current_view_data_, 0, true));
-    }
-    else{
-        return cpgrid::Iterator<codim,PiType>(*data_[level], 0, true);
-    }
+    return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], 0, true);
 }
 template typename CpGridTraits::template Codim<0>::template Partition<Dune::Interior_Partition>::LevelIterator
 CpGrid::lbegin<0,Dune::Interior_Partition>(int) const;
@@ -780,15 +753,7 @@ typename CpGridTraits::template Codim<codim>::template Partition<PiType>::LevelI
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (!distributed_data_.empty()){
-        bool areThereLgrs =  (distributed_data_.size() > 1);
-        return (areThereLgrs ? cpgrid::Iterator<codim, PiType>( *distributed_data_[level], size(level, codim), true) :
-                cpgrid::Iterator<codim, PiType>( *current_view_data_, size(codim), true));
-    }
-    else{
-        return cpgrid::Iterator<codim,PiType>(*data_[level], size(level, codim), true);
-    }
-
+    return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], size(level, codim), true);
 }
 template typename CpGridTraits::template Codim<0>::template Partition<Dune::Interior_Partition>::LevelIterator
 CpGrid::lend<0,Dune::Interior_Partition>(int) const;
@@ -915,7 +880,7 @@ int CpGrid::size (int level, int codim) const
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    return (distributed_data_.empty() ? data_[level]-> size(codim) : distributed_data_[level]->size(codim));
+    return currentData()[level]->size(codim);
 }
 
 int CpGrid::size (int codim) const
@@ -927,7 +892,7 @@ int CpGrid::size (int level, GeometryType type) const
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    return (distributed_data_.empty() ? data_[level]-> size(type) : distributed_data_[level]->size(type));
+    return currentData()[level]->size(type);
 }
 
 int CpGrid::size (GeometryType type) const
@@ -949,12 +914,7 @@ const CpGridFamily::Traits::LevelIndexSet& CpGrid::levelIndexSet(int level) cons
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    if (!distributed_data_.empty()) {
-        return  *(distributed_data_[level]->index_set_);
-    }
-    else {
-        return *(data_[level] -> index_set_);
-    }
+    return *currentData()[level]->index_set_;
 }
 
 const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
@@ -971,19 +931,20 @@ void CpGrid::globalRefine (int refCount)
     // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
     // got refined. Therefore, the coarse face that they share got replaced by refined-faces. In this case, we do not
     // support yet global refinement.
-    if(data_.size() >1) {
+    if(currentData().size() >1) {
         bool isOnlyGlobalRefined = true;
-        for (int level = 0; level < static_cast<int>(data_.size()); ++level) {
+        for (int level = 0; level < static_cast<int>(currentData().size()); ++level) {
             // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
             // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
-            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (data_[level+1]->size(0)) / (data_[level]->size(0)) == 8 );
+            isOnlyGlobalRefined = isOnlyGlobalRefined && ( (currentData()[level+1]->size(0)) / (currentData()[level]->size(0)) == 8 );
         }
         if (!isOnlyGlobalRefined) {
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
     }
-    if ( (!distributed_data_.empty() && refCount > 1) || (distributed_data_.size()>1) ) {
-        OPM_THROW(std::logic_error, "Multiple global refinement of a distributed grid is not supported yet.");
+    // Preventcalls of globalRefine on a distributed grid.
+    if ( !distributed_data_.empty() ) {
+        OPM_THROW(std::logic_error, "Global refinement of a distributed grid is not supported yet.");
     }
     if (refCount>0) {
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
@@ -1424,14 +1385,16 @@ const CpGrid::InterfaceMap& CpGrid::pointScatterGatherInterface() const
 
 void CpGrid::switchToGlobalView()
 {
-    current_view_data_=data_[0].get();
+    current_view_data_ = data_.back().get();
+    current_data_ = &data_;
 }
 
 void CpGrid::switchToDistributedView()
 {
     if (distributed_data_.empty())
         OPM_THROW(std::logic_error, "No distributed view available in grid");
-    current_view_data_=distributed_data_[0].get();
+    current_view_data_ = distributed_data_.back().get();
+    current_data_ = &distributed_data_;
 }
 
 #if HAVE_MPI
@@ -1571,16 +1534,14 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // Each marked element has its assigned level where its refined entities belong.
     const int& levels = static_cast<int>(cells_per_dim_vec.size());
     // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
-
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-
+    const int& preAdaptMaxLevel = this->maxLevel();
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
 
+    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
+      
     // To store/build refined level grids.
-    std::vector<std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>> refined_data_vec(levels,this -> currentData());
+    std::vector<std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>> refined_data_vec(levels, data);
     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> refined_grid_ptr_vec(levels);
 
     std::vector<Dune::cpgrid::DefaultGeometryPolicy> refined_geometries_vec(levels);
@@ -1603,10 +1564,10 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
 
     // To store adapted grid
-    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& adaptedData = this-> currentData();
+    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& adaptedData = data;
 #if HAVE_MPI
     auto adaptedGrid_ptr =
-        std::make_shared<Dune::cpgrid::CpGridData>((*(this-> currentData()[0])).ccobj_, adaptedData);
+        std::make_shared<Dune::cpgrid::CpGridData>((*(data[0])).ccobj_, adaptedData);
 #else
     // DUNE 2.7 is missing convertion to NO_COMM
     auto adaptedGrid_ptr = std::make_shared<Dune::cpgrid::CpGridData>(adaptedData);
@@ -1687,15 +1648,15 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<std::vector<int>> preAdapt_level_to_leaf_cells_vec(preAdaptMaxLevel +1);
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
         // Resize with the corresponding amount of cells of the preAdapt level. Deafualt {-1, empty vector} when the cell has no children.
-        if ( (*currentData()[preAdaptLevel]).parent_to_children_cells_.empty()){
-            preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(currentData()[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
+        if ( (*data[preAdaptLevel]).parent_to_children_cells_.empty()){
+            preAdapt_parent_to_children_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), std::make_pair(-1, std::vector<int>{}));
         }
         else {
-            preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*currentData()[preAdaptLevel]).parent_to_children_cells_;
+            preAdapt_parent_to_children_cells_vec[preAdaptLevel] =  (*data[preAdaptLevel]).parent_to_children_cells_;
         }
         // Resize with the corresponding amount of cell of the preAdapt level. Dafualt -1 when the cell vanished and does not appear on the leaf grid view.
         // In entry 'level cell index', we store 'leafview cell index', or -1 when the cell vanished.
-        preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(currentData()[preAdaptLevel]->size(0), -1);
+        preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), -1);
     }
     //
     refineAndProvideMarkedRefinedRelations( /* Marked elements parameters */
@@ -1717,13 +1678,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             preAdapt_level_to_leaf_cells_vec,
                                             /* Additional parameters */
                                             cells_per_dim_vec);
-    
+
     // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt.
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
-        (*currentData()[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];
-        (*currentData()[preAdaptLevel]).level_to_leaf_cells_ =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel];
+        (*data[preAdaptLevel]).parent_to_children_cells_ = preAdapt_parent_to_children_cells_vec[preAdaptLevel];
+        (*data[preAdaptLevel]).level_to_leaf_cells_ =  preAdapt_level_to_leaf_cells_vec[preAdaptLevel];
     }
-    
+
     // -- Child-parent relations --
     // refined_child_to_parent_cells_vec:   Refined child cells and their parents. Entry is {-1,-1} when cell has no father.
     //                                      Otherwise, {level parent cell, parent cell index}. Each entry represents a refined level.
@@ -1731,14 +1692,14 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     //                                      Each entry represents a refined level.
     // adapted_child_to_parent_cells:       Adapted child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
     // adapted_cell_to_idxInParentCell:     Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather().
-    //                                      When the cell has not been refined, -1. 
+    //                                      When the cell has not been refined, -1.
     const auto& [refined_child_to_parent_cells_vec,
                  refined_cell_to_idxInParentCell_vec,
                  adapted_child_to_parent_cells,
                  adapted_cell_to_idxInParentCell] = defineChildToParentAndIdxInParentCell(refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                                                           refined_cell_count_vec,adaptedCell_to_elemLgrAndElemLgrCell,
                                                                                           cell_count);
-    
+
     // -- Refined to Adapted cells and Adapted-cells to {level where the cell was born, cell index on that level} --
     // refined_level_to_leaf_cells_vec:  Relation between the refined grid and leafview cell indices.
     // leaf_to_level_cells:              Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
@@ -1749,7 +1710,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                                                              elemLgrAndElemLgrCell_to_adaptedCell,
                                                                              adaptedCell_to_elemLgrAndElemLgrCell,
                                                                              cell_count);
-    
+
     // CORNERS
     // Stablish relationships between PreAdapt corners and refined or adapted ones ---
     //
@@ -1770,7 +1731,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    cornerInMarkedElemWithEquivRefinedCorner,
                                    faceInMarkedElemAndRefinedFaces,
                                    cells_per_dim_vec);
-   
+
     // --- Adapted corners and PreAdapt corners relations ---
     std::map<std::array<int,2>,int>           elemLgrAndElemLgrCorner_to_adaptedCorner;
     std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner;
@@ -1787,7 +1748,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                             vanishedRefinedCorner_to_itsLastAppearance,
                             faceInMarkedElemAndRefinedFaces,
                             cells_per_dim_vec);
-     
+
     // FACES
     // Stablish relationships between PreAdapt faces and refined or adapted ones ---
     // --- Refined faces and PreAdapt faces relations ---
@@ -1802,7 +1763,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                   assignRefinedLevel,
                                   faceInMarkedElemAndRefinedFaces,
                                   cells_per_dim_vec);
-    
+
     // --- Adapted faces and PreAdapt faces relations ---
     std::map< std::array<int,2>, int >           elemLgrAndElemLgrFace_to_adaptedFace;
     std::unordered_map< int, std::array<int,2> > adaptedFace_to_elemLgrAndElemLgrFace;
@@ -1815,7 +1776,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                           assignRefinedLevel,
                           faceInMarkedElemAndRefinedFaces,
                           cells_per_dim_vec);
-    
+
     setRefinedLevelGridsGeometries( /* Refined corner arguments */
                                     refined_corners_vec,
                                     refined_corner_count_vec,
@@ -1847,7 +1808,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     markedElemAndEquivRefinedCorn_to_corner,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec);
-    
+
     std::vector<int> adapted_global_cell(cell_count, 0);
     updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
                                   adapted_corners,
@@ -1881,24 +1842,24 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                   cells_per_dim_vec,
                                   preAdaptMaxLevel);
 
-     
+
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
 #if HAVE_MPI
-        refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>((*(this-> currentData()[0])).ccobj_, refined_data_vec[level]);
+        refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>((*(data[0])).ccobj_, refined_data_vec[level]);
 #else
         // DUNE 2.7 is missing convertion to NO_COMM
         refined_grid_ptr_vec[level] = std::make_shared<Dune::cpgrid::CpGridData>(refined_data_vec[level]);
 #endif
         // Store refined grid
         if ((level == 0) && (preAdaptMaxLevel>0)) { // Overwrite the leaf-grid-view with the first new-refined-level-grid
-            currentData()[preAdaptMaxLevel+1] = refined_grid_ptr_vec[level];
+            data[preAdaptMaxLevel+1] = refined_grid_ptr_vec[level];
         }
         else {
-            (this->currentData()).push_back(refined_grid_ptr_vec[level]);
+            data.push_back(refined_grid_ptr_vec[level]);
         }
 
-        Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*currentData()[refinedLevelGridIdx]).geometry_;
+        Dune::cpgrid::DefaultGeometryPolicy&  refinedLevel_geometries = (*data[refinedLevelGridIdx]).geometry_;
         // Mutable containers for adapted corners, faces, cells, face tags, and face normals.
         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& level_corners =
             *(refinedLevel_geometries.geomVector(std::integral_constant<int,3>()));
@@ -1906,51 +1867,51 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
             *(refinedLevel_geometries.geomVector(std::integral_constant<int,1>()));
         Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& level_cells =
             *(refinedLevel_geometries.geomVector(std::integral_constant<int,0>()));
-        
+
         level_corners.swap(refined_corners_vec[level]);
         level_faces.swap(refined_faces_vec[level]);
         level_cells.swap(refined_cells_vec[level]);
 
-        (*currentData()[refinedLevelGridIdx]).cell_to_point_.swap(refined_cell_to_point_vec[level]);
-        (*currentData()[refinedLevelGridIdx]).cell_to_face_.swap(refined_cell_to_face_vec[level]);
+        (*data[refinedLevelGridIdx]).cell_to_point_.swap(refined_cell_to_point_vec[level]);
+        (*data[refinedLevelGridIdx]).cell_to_face_.swap(refined_cell_to_face_vec[level]);
 
-        (*currentData()[refinedLevelGridIdx]).face_to_point_.swap(refined_face_to_point_vec[level]);
-        (*currentData()[refinedLevelGridIdx]).face_to_cell_.swap(refined_face_to_cell_vec[level]);
+        (*data[refinedLevelGridIdx]).face_to_point_.swap(refined_face_to_point_vec[level]);
+        (*data[refinedLevelGridIdx]).face_to_cell_.swap(refined_face_to_cell_vec[level]);
 
-        cpgrid::EntityVariable<enum face_tag,1>& level_face_tags =   (*currentData()[refinedLevelGridIdx]).face_tag_;
+        cpgrid::EntityVariable<enum face_tag,1>& level_face_tags =   (*data[refinedLevelGridIdx]).face_tag_;
         Dune::cpgrid::EntityVariableBase<enum face_tag>& level_mutable_face_tags = level_face_tags;
         level_mutable_face_tags.swap(mutable_refined_face_tags_vec[level]);
 
-        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>&  level_face_normals =   (*currentData()[refinedLevelGridIdx]).face_normals_;
+        cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>&  level_face_normals =   (*data[refinedLevelGridIdx]).face_normals_;
         Dune::cpgrid::EntityVariableBase<PointType>& level_mutable_face_normals = level_face_normals;
         level_mutable_face_normals.swap(mutable_refined_face_normals_vec[level]);
-        
+
         // Further Refined grid Attributes
         //
         // Populate some attributes of the level LGR
-        (*currentData()[refinedLevelGridIdx]).level_data_ptr_ = &(this -> currentData());
-        (*currentData()[refinedLevelGridIdx]).level_ = refinedLevelGridIdx;
+        (*data[refinedLevelGridIdx]).level_data_ptr_ = &(this -> currentData());
+        (*data[refinedLevelGridIdx]).level_ = refinedLevelGridIdx;
         this -> lgr_names_[lgr_name_vec[level]] = refinedLevelGridIdx; // {"name_lgr", level}
-        (*currentData()[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
-        (*currentData()[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
-        (*currentData()[refinedLevelGridIdx]).level_to_leaf_cells_ =  refined_level_to_leaf_cells_vec[level];
-        (*currentData()[refinedLevelGridIdx]).global_cell_.swap(refined_global_cell_vec[level]);
-        (*currentData()[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(currentData()[refinedLevelGridIdx]->size(0),
-                                                                                          currentData()[refinedLevelGridIdx]->size(3));
+        (*data[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
+        (*data[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
+        (*data[refinedLevelGridIdx]).level_to_leaf_cells_ =  refined_level_to_leaf_cells_vec[level];
+        (*data[refinedLevelGridIdx]).global_cell_.swap(refined_global_cell_vec[level]);
+        (*data[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[refinedLevelGridIdx]->size(0),
+                                                                                     data[refinedLevelGridIdx]->size(3));
         // Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
-        (*currentData()[refinedLevelGridIdx]).cells_per_dim_ = cells_per_dim_vec[level];
+        (*data[refinedLevelGridIdx]).cells_per_dim_ = cells_per_dim_vec[level];
         // TO DO: This new code for refinement do not assume Cartesian Shape. How does logical_cartesian_size_ should be defined then?
         // When the refined level grid has been originated from a block of cells, then its logical Cartesian size
         // corresponds to the inner product between cells_per_dim_vec[level] and the dimension of the block (amount of cells in each direction).
         // In the case of a block of cells, e.g., when CARFIN keyword is used, we need the following:
         if (isCARFIN) {
-            const auto& blockDim = (*currentData()[0]).getPatchDim(startIJK_vec[level], endIJK_vec[level]);
-            (*currentData()[refinedLevelGridIdx]).logical_cartesian_size_ = { cells_per_dim_vec[level][0]*blockDim[0],
-                                                                          cells_per_dim_vec[level][1]*blockDim[1],
-                                                                          cells_per_dim_vec[level][2]*blockDim[2] };
+            const auto& blockDim = (*data[0]).getPatchDim(startIJK_vec[level], endIJK_vec[level]);
+            (*data[refinedLevelGridIdx]).logical_cartesian_size_ = { cells_per_dim_vec[level][0]*blockDim[0],
+                                                                     cells_per_dim_vec[level][1]*blockDim[1],
+                                                                     cells_per_dim_vec[level][2]*blockDim[2] };
         }
         else {
-            (*currentData()[refinedLevelGridIdx]).logical_cartesian_size_ = (*currentData()[0]).logical_cartesian_size_;
+            (*data[refinedLevelGridIdx]).logical_cartesian_size_ = (*data[0]).logical_cartesian_size_;
         }
         // One alternative definition for logical_cartesian_size_ in the case where the marked elements for refinement do not form a block of cells,
         // therefore, are not associated with the keyword CARFIN, is to imagine that we put all the marked elements one next to the other, along
@@ -1958,22 +1919,22 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // { (# marked elemnts)x cells_per_dim_vec[level][0], cells_per_dim_vec[level][1], cells_per_dim_vec[level][2]}.
         /** To do: how the definition of refined level grids logical_cartesian_size_ affects LookUpData class (and LookUpCartesianData)*/
     }
-    
+
     // Store adapted grid
-    (this-> currentData()).push_back(adaptedGrid_ptr);
+    data.push_back(adaptedGrid_ptr);
 
     // Further Adapted  grid Attributes
-    (*currentData()[levels + preAdaptMaxLevel +1]).child_to_parent_cells_ = adapted_child_to_parent_cells;
-    (*currentData()[levels + preAdaptMaxLevel +1]).cell_to_idxInParentCell_ = adapted_cell_to_idxInParentCell;
-    (*currentData()[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
-    (*currentData()[levels + preAdaptMaxLevel +1]).global_cell_.swap(adapted_global_cell);
-    (*currentData()[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(currentData()[levels + preAdaptMaxLevel +1]->size(0),
-                                                                                               currentData()[levels + preAdaptMaxLevel +1]->size(3));
-    (*currentData()[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*currentData()[0]).logical_cartesian_size_;
+    (*data[levels + preAdaptMaxLevel +1]).child_to_parent_cells_ = adapted_child_to_parent_cells;
+    (*data[levels + preAdaptMaxLevel +1]).cell_to_idxInParentCell_ = adapted_cell_to_idxInParentCell;
+    (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
+    (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(adapted_global_cell);
+    (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
+                                                                                          data[levels + preAdaptMaxLevel +1]->size(3));
+    (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
 
     // Update the leaf grid view
-    current_view_data_ = currentData().back().get();
-    
+    current_view_data_ = data.back().get();
+
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                               adaptedCorner_to_elemLgrAndElemLgrCorner,
@@ -1981,17 +1942,17 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                               preAdaptGrid_corner_history,
                               preAdaptMaxLevel,
                               levels);
-  
+
     this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
-        this->global_id_set_ptr_->insertIdSet(*currentData()[refinedLevelGridIdx]);
+        this->global_id_set_ptr_->insertIdSet(*data[refinedLevelGridIdx]);
     }
 
     // Print total amount of cells on the adapted grid
-    Opm::OpmLog::info(std::to_string(markedElem_count) + " elements have been marked.\n");
-    Opm::OpmLog::info(std::to_string(levels)  + " (new) refined level grid(s).\n");
-    Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the leaf grid view.\n");
+    Opm::OpmLog::info(std::to_string(markedElem_count) + " elements have been marked (in " + std::to_string(comm().rank()) + " rank).\n");
+    Opm::OpmLog::info(std::to_string(levels)  + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
+    Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 
     return preAdapt();
 }
@@ -2018,17 +1979,27 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0].
     // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
     // Note: currentData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
-    
+
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
 
+    // Sizes of provided vectors (number of subivisions per cells and lgrs name) should coincide.
+    bool matchingSizeHasFailed = false;
     if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
+        matchingSizeHasFailed = true;
+    }
+    matchingSizeHasFailed = comm().max(matchingSizeHasFailed);
+    if (matchingSizeHasFailed) {
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
 
-    // For serial run, check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
-    // active/inactive cells, instead, relies on "ijk-computations". TO DO: improve/remove.
-    if ((startIJK_vec.size() > 1) && distributed_data_.empty()) {
+    // Compatibility of number of subdivisions of neighboring LGRs: Check shared faces on boundaries of LGRs.
+    //                                                              Not optimal since the code below does not take into account
+    //                                                              active/inactive cells, instead, relies on "ijk-computations".
+    //                                                              TO DO: improve/remove.
+    // To check "Compatibility of numbers of subdivisions of neighboring LGRs".
+    bool compatibleSubdivisionsHasFailed = false;
+    if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
@@ -2050,18 +2021,31 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
                 }
                 if (notAllowedYet){
-                    if (comm().rank()==0){
-                        OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
-                    }
-                    else{
-                        OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
-                    }
+                    compatibleSubdivisionsHasFailed = true;
+                    break;
                 }
             } // end-otherLevel-for-loop
         } // end-level-for-loop
     }// end-if-patchesShareFace
+    compatibleSubdivisionsHasFailed = comm().max(compatibleSubdivisionsHasFailed);
+    if(compatibleSubdivisionsHasFailed) {
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+        }
+    }
 
-    
+    // LGRs Fully Interior: Currently, adding LGRs on a distributed grid is supported only in the case where each LGR is fully contained
+    //                      in the interior of a process, i.e., each cell that is marked for refinement and has a neighboring cell, this
+    //                      neighboring cell has to be also interior for the process. In other words, marked element for refinement cannot
+    //                      have overlap neighboring cells.
+    // To check "LGRs fully interior" for all processes.
+    bool lgrsFullyInteriorHasFailed = false;
+    // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
+    // To check "Non-NNCs (non neighboring connections)" for all processes.
+    bool nonNNCsHasFailed = false;
     std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(current_view_data_->size(0));
@@ -2080,37 +2064,306 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             if(belongsToLevel) {
                 // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
                 if (current_view_data_->hasNNCs({element.index()})){
-                    OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+                    nonNNCsHasFailed = true;
+                    break;
                 }
-                // Check that the cell to be marked for refinement is interior (only when the grid has been distributed).
-                // if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
-                //   OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
-                //  }
-                this-> mark(1, element);
-                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
-                ++marked_elem_level_count;
-                lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
-            }
-        }
+                // For parallel runs, mark a cell only in one process, the one where the cell is InteriorEntity.
+                if (element.partitionType() == InteriorEntity) { // Serial run, all cells are interior.
+                    // Currently, we only support marking elements for refinements that are InteriorEntity and do not
+                    // have any neighboring overlap cell.
+                    for (const auto& intersection : intersections(levelGridView(0), element)) {
+                        if (intersection.neighbor() && ( (intersection.outside().partitionType() == OverlapEntity) )) {
+                            lgrsFullyInteriorHasFailed = true;
+                            break;
+                        }
+                    }
+                    this-> mark(1, element);
+                    assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+                    ++marked_elem_level_count;
+                    lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
+                }
+            } // end-if-belongsToLevel
+        } // end-level-for-loop
+    } // end-element-for-loop
+    lgrsFullyInteriorHasFailed = comm().max(lgrsFullyInteriorHasFailed);
+    if(lgrsFullyInteriorHasFailed) {
+        OPM_THROW(std::logic_error, "At least one LGR cell is not in the interior of the process, not supported yet.");
     }
+    nonNNCsHasFailed = comm().max(nonNNCsHasFailed);
+    if(nonNNCsHasFailed) {
+        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+    }
+
+
 
     int non_empty_lgrs = 0;
     for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
         // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
-        if ((lgrs_with_at_least_one_active_cell[level] == 0) && distributed_data_.empty()) {
-            OPM_THROW(std::logic_error, "LGR" + std::to_string(level+1) + " contains only inactive cells, remove it or extend the corresponding region.\n");
+        if (lgrs_with_at_least_one_active_cell[level] == 0) {
+            Opm::OpmLog::warning("LGR" + std::to_string(level+1) + " contains only inactive cells (in " + std::to_string(comm().rank()) + " rank).\n");
         }
         else {
             ++non_empty_lgrs;
         }
     }
-    
+
+    // Notice that in a parallel run, non_empty_lgrs represents the local active lgrs, i.e. the lgrs containing active cells which also belong
+    // to the current process.
+    auto globalActiveLgrs = comm().sum(non_empty_lgrs);
+    if(globalActiveLgrs == 0) {
+        Opm::OpmLog::warning("All the LGRs contain only inactive cells.\n");
+    }
+
     preAdapt();
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
+
+    // Only for parallel runs
+    // - Define global ids for refined level grids (level 1, 2, ..., maxLevel)
+    // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
+    // - Define ParallelIndex for overlap cells and their neighbors
+    if(comm().size()>1) {
+
+        // Compute local owned/overlap cells per level (level 0, and new levels).
+        std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
+
+        // Compute local owned/overlap cells per level (level 0, and new levels).
+        std::vector<int> local_owned_points_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> local_overlap_points_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> global_points_per_level(cells_per_dim_vec.size() +1);
+
+        for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            for(const auto& element : elements(levelGridView(level))) {
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                    ++local_owned_cells_per_level[level];
+                }
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity) {
+                    ++local_overlap_cells_per_level[level];
+                }
+            }
+            global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
+            if (level)
+            {
+                for (const auto& point : vertices(levelGridView(level))) {
+                    if (point.partitionType() == InteriorEntity) {
+                        const auto& bornLevel =  (*current_data_)[level]->corner_history_[point.index()][0];
+                        if(bornLevel == -1) { // It means that the corner is a new born one, i.e. does not
+                            // coincide with any corner from level zero.
+                            ++local_owned_points_per_level[level];
+                        }
+                    }
+                    if (point.partitionType() == OverlapEntity) {
+                        ++local_overlap_points_per_level[level];
+                    }
+                }
+                global_points_per_level[level] = comm().sum(local_owned_points_per_level[level]
+                                                            + local_overlap_points_per_level[level]);
+            }
+        }
+        auto global_refined_cell_count = std::accumulate(global_cells_per_level.begin()+1, global_cells_per_level.end(), 0);
+        // Comment on "almost" global refined point count: notice that points that belong to refined level grids but at the same time
+        // coincide with a point from level zero (with a parent cell corner) must not create a new global id. Therefore,
+        // "almost_global_refined_point_count" represents (not the total amount of points f all refined grids) the global amount of
+        // new born points that need to get a new global id.
+        auto almost_global_refined_point_count = std::accumulate(global_points_per_level.begin()+1, global_points_per_level.end(), 0);
+
+        // Next value takes into account only cells and points, faces are ignored.
+        auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
+        global_points_per_level[0] = max_globalId_levelZero +1 - global_cells_per_level[0];
+
+        // -- Global variables used to define new ids for cells and points respectively. --
+        // The first new global id for cells is the maximum global id from level 0 plus 1.
+        auto globalIdCell = max_globalId_levelZero+1;
+        // The values max_globalId_levelZero +1, max_globalId_levelZero +2, ..., max_globalId_levelZero + global_refined_cell_count
+        // will be used for defining global ids for CELLS in the refined level grids (level 1, ..., level maxLevel).
+        // Notice that  global_refined_cell_count represents the global and total amount of new refined cells.
+
+        // (Most of) The values max_globalId_levelZero+global_refined_cell_count +1, max_globalId_levelZero+global_refined_cell_count+2, ...,
+        // max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count
+        // will be used for defining global ids for POINTS in the refined level grids (level 1, ..., level maxLevel).
+        // Notice that almost_global_refined_point_count does not represent exactly the global amount of NEW points, since there are a few
+        // that coincide with corners from parent cells. For those, the global id must be tracked from level 0. Therefore, "almost" appears
+        // in the variable name.
+        auto globalIdPoint = max_globalId_levelZero + global_refined_cell_count +1;
+
+
+        // Only for level 1,2,.., maxLevel grids.
+        // For each level, define the local-to-global maps for cells and points (for faces: empty).
+        // The "owned_cells/points" is to emphasize that we are under the assumption that each lgr is fully contained
+        // in one process, i.e., surrounding by other interior cells. Therefore all the new refined cells and points
+        // are/should be also interior.
+        // TO DO: For the general case, how to handle overlap of refined cells.
+        std::vector<std::vector<int>> localToGlobal_owned_cells_per_level(cells_per_dim_vec.size());
+        std::vector<std::vector<int>> localToGlobal_owned_points_per_level(cells_per_dim_vec.size());
+        // Ignore faces - empty vectors.
+        std::vector<std::vector<int>> localToGlobal_owned_faces_per_level(cells_per_dim_vec.size());
+
+        
+        for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            localToGlobal_owned_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
+            localToGlobal_owned_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
+            // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells.
+            // This is only true under the assumption of each lgr completly contained in a process.
+            // Therefore, all new refined cells for one LGR belong to a process and are interior,
+            // with parent cells in level zero who are surrounding by other interior cells of the
+            // same process.
+
+            // Recall that, thanks to the few computations regarding global amount of cells and points for each level,
+            // assignment of global ids is done by shifting the maximum global id from level zero in a suitable way
+            // (described in more detail above). However, an extra check is needed: if a process contains more than one lgr,
+            // i.e. more than one non empty level grid, then globalIdCell and globalIdPoint do not need to be shifted, since
+            // "they reached these shifted values" by being increment (++globalIdCell/Point). Therefore, through the variable
+            // "expectedGlobalIdCell", it can be detected when a lower level lgr was contained in the same process that the current
+            // lgr we are computing global ids for.
+            // Notice that it is enough to check either expetedGlobalIdCell or expectedGlobalIdPoint (which is not defined here).
+            if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
+                int expectedGlobalIdCell = max_globalId_levelZero+1;
+                for (int lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
+                    expectedGlobalIdCell += global_cells_per_level[lowerLevel];
+                }
+                if(globalIdCell < expectedGlobalIdCell) {
+                    for (int lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
+                        globalIdCell += global_cells_per_level[lowerLevel];
+                        globalIdPoint += global_points_per_level[lowerLevel];
+                    }
+                }
+            }
+            for(const auto& element : elements(levelGridView(level))) {
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                    localToGlobal_owned_cells_per_level[level-1][element.index()] = globalIdCell;
+                    ++globalIdCell;
+                }
+            }
+            for (const auto& point : vertices(levelGridView(level))) {
+                // Checking if the point is interior, under the assumption of fully interior lgrs, is not needed.
+                if (point.partitionType() == InteriorEntity) {
+                    if ( !(*current_data_)[level]->corner_history_.empty() ) {
+                        const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
+                        if (bornLevel_bornIdx[0] != -1)  {
+                            const auto& equivPoint =  cpgrid::Entity<3>(*( (*current_data_)[ bornLevel_bornIdx[0]]),  bornLevel_bornIdx[1], true);
+                            localToGlobal_owned_points_per_level[level-1][point.index()] =  current_data_->front()->global_id_set_->id(equivPoint);
+                            // Notice that
+                            // 1. current_data_->front()->global_id_set_->id(equivPoint) == (*current_data_)[ bornLevel_bornIdx[0]]->global_id_set_->id(equivPoint)
+                            // 2. (*current_data_)[level]->global_id_set_->id(point) does not coincide with the previous values
+                            //    considered in 1. The reason why they differ is due to the "default instantiation" of a CpGridData where local and
+                            //    global id sets coincide (default for a serial run, grid without lgrs).
+                        }
+                        else {
+                            localToGlobal_owned_points_per_level[level-1][point.index()] = globalIdPoint;
+                            ++globalIdPoint;
+                        }
+                    }
+                }
+            }
+            localToGlobal_owned_cells_per_level[level-1].shrink_to_fit(); // Not needed in this special case without overlap refined cells
+            localToGlobal_owned_points_per_level[level-1].shrink_to_fit(); // Not needed in this special case without overlap refined points
+
+            // Currently, only fully interior LGRs are supported. Therefore, global_id_set_
+            // is defined only in the process that owns at least one LGR.
+            if(lgrs_with_at_least_one_active_cell[level-1]>0) {
+                (*current_data_)[level]->global_id_set_->swap(localToGlobal_owned_cells_per_level[level-1],
+                                                              localToGlobal_owned_faces_per_level[level-1],
+                                                              localToGlobal_owned_points_per_level[level-1]);
+            }
+        } // end-for-loop-level
+        assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
+        assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
+        
+
+        ////////////////////////////////
+
+        // Global id for the cells in leaf grid view
+        std::vector<int> leafCellIds(current_data_->back()->size(0));
+        for(const auto& element: elements(leafGridView())){
+            // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
+            // under the assumption of each lgr being fully contained in the interior of a process.
+            // Therefore, it is not needed here to distingish between owned and overlap cells.
+            auto equivElem = element.getEquivLevelElem();
+            leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
+        }
+        leafCellIds.shrink_to_fit();
+
+        // Global id for the faces in leaf grid view. Empty vector (Entity<1> not supported for CpGrid).
+        std::vector<int> leafFaceIds{};
+
+        // Global id for the points in leaf grid view
+        std::vector<int> leafPointIds(current_data_->back()->size(3));
+        for(const auto& point : vertices(leafGridView())){
+            const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
+            assert(level_pointLevelIdx[0] != -1);
+            assert(level_pointLevelIdx[1] != -1);
+            const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
+            leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
+        }
+        leafPointIds.shrink_to_fit();
+
+        current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
+
+
+        this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
+        for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
+        }
+
+#if HAVE_MPI
+        auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+        // Compute the partition type for cell
+        (*current_data_).back()->computeCellPartitionType();
+
+        leaf_index_set.beginResize();
+
+        // The folowing count (fully interior cell count) can be removed. 
+        int fully_interior_cell_count = 0;
+        for(const auto& element : elements(leafGridView())) {
+            const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+            if ( elemPartitionType == InteriorEntity) {
+                // Check if it has an overlap neighbor
+                bool isFullyInterior = true;
+                for (const auto& intersection : intersections(leafGridView(), element)) {
+                    if ( intersection.neighbor() ) {
+                        const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+                        // To help detection of fully interior cells, i.e., without overlap neighbors
+                        if (neighborPartitionType == OverlapEntity )  {
+                            isFullyInterior = false;
+                            leaf_index_set.add(globalIdSet().id(element),
+                                               ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                            // Store it only once
+                            break;
+                        }
+                    }
+                }
+                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
+                    ++fully_interior_cell_count;
+                    leaf_index_set.add(globalIdSet().id(element),
+                                       ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
+                }
+            }
+            else { // overlap cell
+                assert(elemPartitionType == OverlapEntity);
+                leaf_index_set.add(globalIdSet().id(element),
+                                   ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+            }
+        }
+        leaf_index_set.endResize();
+
+        (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
+
+        // Compute the partition type for point
+        (*current_data_).back()->computePointPartitionType();
+
+        // Now we can compute the communication interface.
+        current_data_->back()->computeCommunicationInterfaces(current_data_->back()->size(3));
+        assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
+        // Alternatively, in case fully interior cells should't be added in leaf_index_set, the next assert can be used:
+        //assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0) - /* fully interior cells */) );
+#endif
+    } // end-if-comm().size()>1
+
     // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in this process, in case of parallel run).\n");
-    Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
+    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
+    Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 }
 
 
@@ -2154,11 +2407,10 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
     // as "coarse" cells in the leaf-grid-view (adapted-grid).
-    
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
         // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
@@ -2168,6 +2420,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
             cell_count +=1;
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getEquivLevelElem().index()] = cell_count;
         }
+        
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
         if (getMark(element) ==  1) {
@@ -2201,6 +2454,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
+            
             preAdapt_parent_to_children_cells_vec[element.level()][element.getEquivLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
@@ -2251,17 +2505,16 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
         }
         else {// "cell" is either a coarse cell or a refined cell that was born in a preAdapt-refined-level-grid
             // Only populate the entries of refined cells that were born in preAdapt-refined-level-grids.
-            if(preAdapt_parent_or_elem.hasFather()) {
+            if (preAdapt_parent_or_elem.hasFather()) {
                 adapted_child_to_parent_cells[cell] =  {preAdapt_parent_or_elem.father().level(), preAdapt_parent_or_elem.father().index() };
-                adapted_cell_to_idxInParentCell[cell] = (!distributed_data_.empty() ? distributed_data_ : data_)[preAdapt_parent_or_elem.level()]->
+                adapted_cell_to_idxInParentCell[cell] = currentData()[preAdapt_parent_or_elem.level()]->
                     cell_to_idxInParentCell_[preAdapt_parent_or_elem.getEquivLevelElem().index()];
             }
         }
     }
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
     for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(refined_cell_count_vec.size()); ++shiftedLevel) {
         refined_child_to_parent_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_cell_to_idxInParentCell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
@@ -2304,9 +2557,8 @@ CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,st
     std::vector<std::array<int,2>> leaf_to_level_cells;
     leaf_to_level_cells.resize(cell_count);
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs.
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
 
     // -- Adapted to {level, cell index in that level}  --
     for (int cell = 0; cell < cell_count; ++cell) {
@@ -2343,11 +2595,10 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Replace the corners from the preAdapt grid involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the preAdapt corner
     //         in the LGRs.
@@ -2504,10 +2755,9 @@ void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
         if (markedElem_to_itsLgr[elem]!=nullptr)  {
@@ -2595,10 +2845,9 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
         }
     } // end corner-forloop
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
-    
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         if (markedElem_to_itsLgr[elemIdx]!= nullptr) {
             const auto& level = assignRefinedLevel[elemIdx];
@@ -2721,9 +2970,8 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
-    // For parallel runs, we do not support adaptivity/refinement of a mixed grid (a grid that has been refined at least once).
-    // Therefore, preAdaptMaxLevel must be equal to 0 in parallel runs. 
-    const int& preAdaptMaxLevel = (distributed_data_.empty() ? this->maxLevel() : 0);
+    // Max level before calling adapt.
+    const int& preAdaptMaxLevel = this->maxLevel(); 
     
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {

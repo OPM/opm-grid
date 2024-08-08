@@ -398,12 +398,30 @@ namespace Dune
             }
 
             IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
+
+            template<int codim>
+            IdType getMaxCodimGlobalId()
+            {
+                auto max_elem_codim = std::max_element(this->template getMapping<codim>().begin(),
+                                                       this->template getMapping<codim>().end());
+                return *max_elem_codim;
+            }
+
+            IdType getMaxGlobalId()
+            {
+                /*// Ignore faces
+                auto max_globalId = std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<1>());
+                max_globalId = std::max(max_globalId, getMaxCodimGlobalId<3>());
+                return max_globalId;*/
+                return std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<3>());
+            }
+
         private:
             std::shared_ptr<const IdSet> idSet_;
             const CpGridData* view_;
     };
 
-     /*!
+    /*!
      * \brief The global id set for Dune.
      *
      * You can pass it any entity of either the loadbalanced

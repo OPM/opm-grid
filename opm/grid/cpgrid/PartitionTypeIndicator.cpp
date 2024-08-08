@@ -16,6 +16,19 @@ PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<0>& cell_
     return InteriorEntity;
 }
 
+PartitionType PartitionTypeIndicator::getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const
+{
+    if(cell_indicator_.size())
+        return PartitionType(cell_indicator_[cell_entity.index()]);
+    // Assuming grid has been distributed and some LGRs have been added afterwards.
+    // For level 0, it's defined. For other levels, the refined cell inherits its father
+    // attribute.
+    if((grid_data_->level_data_ptr_->size()>1) && lgrsOnDistributedGrid) {
+        return PartitionType(grid_data_->level_data_ptr_->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin()));
+    }
+    return InteriorEntity;
+}
+
 PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<1>& face_entity) const
 {
     return getFacePartitionType(face_entity.index());

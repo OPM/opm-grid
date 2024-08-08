@@ -121,6 +121,7 @@ if(MPI_FOUND)
   endif()
 	add_test(addLgrsOnDistributedGrid_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/addLgrsOnDistributedGrid_test)
   add_test(distribution_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/distribution_test)
+	add_test(inactiveCell_lgr_test_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/inactiveCell_lgr_test)
   add_test(test_communication_utils_parallel ${MPIEXEC_EXECUTABLE} ${MPIEXEC_NUMPROC_FLAG} 4 bin/test_communication_utils)
 endif()
 
