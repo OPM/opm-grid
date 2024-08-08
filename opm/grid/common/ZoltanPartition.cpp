@@ -43,7 +43,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 makeImportAndExportLists(const Dune::CpGrid& cpgrid,
                          const Dune::Communication<MPI_Comm>& cc,
                          const std::vector<Dune::cpgrid::OpmWellType> * wells,
-                         const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                         const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                          const Dune::cpgrid::CombinedGridWellGraph* gridAndWells,
                          int root,
                          int numExport,
@@ -242,7 +242,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
 makeImportAndExportLists(const Dune::CpGrid&,
                          const Communication<MPI_Comm>&,
                          const std::vector<Dune::cpgrid::OpmWellType>*,
-                         const std::unordered_map<std::string, std::set<std::array<int,3>>>*,
+                         const std::unordered_map<std::string, std::set<int>>&,
                          const Dune::cpgrid::CombinedGridWellGraph*,
                          int,
                          int,
@@ -291,7 +291,7 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
            WellConnections>
 zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                const double* transmissibilities,
                                const Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod,
@@ -386,7 +386,7 @@ public:
 
     ZoltanSerialPartitioner(const CpGrid& _cpgrid,
                             const std::vector<OpmWellType>* _wells,
-                            const std::unordered_map<std::string, std::set<std::array<int,3>>>* _possibleFutureConnections,
+                            const std::unordered_map<std::string, std::set<int>>& _possibleFutureConnections,
                             const double* _transmissibilities,
                             const CommunicationType& _cc,
                             EdgeWeightMethod _edgeWeightsMethod,
@@ -545,7 +545,7 @@ private:
     // Data members
     const CpGrid& cpgrid;
     const std::vector<OpmWellType>* wells;
-    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections;
+    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections;
     const double* transmissibilities;
     const CommunicationType& cc;
     EdgeWeightMethod edgeWeightsMethod;
@@ -580,7 +580,7 @@ std::tuple<std::vector<int>,
            WellConnections>
 zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                      const std::vector<OpmWellType>* wells,
-                                     const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                      const double* transmissibilities,
                                      const Dune::Communication<MPI_Comm>& cc,
                                      EdgeWeightMethod edgeWeightsMethod,
@@ -597,7 +597,7 @@ zoltanSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
 std::vector<int>
 zoltanGraphPartitionGridForJac(const CpGrid& cpgrid,
                                const std::vector<OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                const double* transmissibilities,
                                const Dune::Communication<MPI_Comm>& cc,
                                EdgeWeightMethod edgeWeightsMethod, int root,

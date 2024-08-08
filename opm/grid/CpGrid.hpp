@@ -1180,7 +1180,7 @@ namespace Dune
         bool loadBalance(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, nullptr, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, {}, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1193,7 +1193,7 @@ namespace Dune
         bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt, double imbalanceTol = 1.1)
         {
             using std::get;
-            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, nullptr, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1209,7 +1209,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1225,7 +1225,7 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltan)
         {
@@ -1247,7 +1247,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1265,7 +1265,7 @@ namespace Dune
         ///         perforated cells local to the process, for all wells (sorted by name)
         std::pair<bool,std::vector<std::pair<std::string,bool>>>
         loadBalance(EdgeWeightMethod method, const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections = nullptr,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
                     int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1283,7 +1283,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1303,7 +1303,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
                     int overlapLayers=1, int partitionMethod = 1)
         {
@@ -1329,7 +1329,7 @@ namespace Dune
         ///            of each well are stored on one process. This is done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1354,7 +1354,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, EdgeWeightMethod method,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1391,7 +1391,7 @@ namespace Dune
         std::pair<bool, std::vector<std::pair<std::string,bool> > >
         loadBalance(DataHandle& data, const std::vector<int>& parts,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1)
         {
@@ -1482,7 +1482,7 @@ namespace Dune
 
         /// \brief Partitions the grid using Zoltan without decomposing and distributing it among processes.
         /// \param wells The wells of the eclipse.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1494,7 +1494,7 @@ namespace Dune
          /// \return An array with the domain index for each cell.
          std::vector<int>
          zoltanPartitionWithoutScatter(const std::vector<cpgrid::OpmWellType>* wells,
-                                       const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                                       const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                        const double* transmissibilities,
                                        const int     numParts,
                                        const double  imbalanceTol) const;
@@ -1817,7 +1817,7 @@ namespace Dune
         ///            of each well are stored on one process. This done by
         ///            adding an edge with a very high edge weight for all
         ///            possible pairs of cells in the completion set of a well.
-        /// \param possibleFutureConnections Pointer to an unordered_map<string, set<array<int,3>>>
+        /// \param possibleFutureConnections An optional unordered_map<string, set<array<int,3>>>
         ///            containing possible future connections that might be opened during an ACTIONX.
         ///            The fist entry is the name of the well and the second entry is a set containing
         ///            the cartesian coordinates of the grid cells that get perforated of a possible
@@ -1842,7 +1842,7 @@ namespace Dune
         scatterGrid(EdgeWeightMethod method,
                     bool ownersFirst,
                     const std::vector<cpgrid::OpmWellType> * wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities,
                     bool addCornerCells,

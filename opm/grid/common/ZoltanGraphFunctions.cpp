@@ -342,7 +342,7 @@ void getCpGridWellsEdgeList(void *graphPointer, int sizeGID, int sizeLID,
 
 CombinedGridWellGraph::CombinedGridWellGraph(const CpGrid& grid,
                                              const std::vector<OpmWellType> * wells,
-                                             const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                                             const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                              const double* transmissibilities,
                                              bool pretendEmptyGrid,
                                              EdgeWeightMethod edgeWeightsMethod)

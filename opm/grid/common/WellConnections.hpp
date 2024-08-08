@@ -69,7 +69,7 @@ public:
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
     WellConnections(const std::vector<OpmWellType>& wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                     const std::array<int, 3>& cartesianSize,
                     const std::vector<int>& cartesian_to_compressed);
 
@@ -80,7 +80,7 @@ public:
     ///                                  partition. If NULL, they will be neglected.
     /// \param cpGrid The corner point grid
     WellConnections(const std::vector<OpmWellType>& wells,
-                    const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                    const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                     const Dune::CpGrid& cpGrid);
 
     /// \brief Initialze the data of the container
@@ -93,7 +93,7 @@ public:
     ///        compressed cell index. The compressed index is used
     ///        to represent the well conditions.
     void init(const std::vector<OpmWellType>& wells,
-              const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+              const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
               const std::array<int, 3>& cartesianSize,
               const std::vector<int>& cartesian_to_compressed);
 
@@ -148,7 +148,7 @@ private:
 std::vector<std::vector<int> >
 perforatingWellIndicesOnProc(const std::vector<int>& parts,
                   const std::vector<Dune::cpgrid::OpmWellType>& wells,
-                  const std::unordered_map<std::string, std::set<std::array<int,3>>>* possibleFutureConnections,
+                  const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                   const CpGrid& cpgrid);
 
 /// \brief Computes wells assigned to processes.
