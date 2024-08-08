@@ -396,10 +396,10 @@ namespace Dune
         const std::vector<int>& globalCell() const;
 
         /// @brief Returns either data_ or distributed_data_(if non empty).
-        const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& chooseData() const;
+        const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData() const;
 
         /// @brief Returns either data_ or distributed_data_(if non empty).
-        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& getData();
+        std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData();
 
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.

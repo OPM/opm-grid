@@ -87,7 +87,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                            const std::vector<std::array<int,3>>& endIJK_vec,
                            const std::vector<std::string>& lgr_name_vec)
 {
-    auto& data = coarse_grid.getData(); // data_ or distributed_data_
+    auto& data = coarse_grid.currentData(); // what data current_view_data_ is pointing at (data_ or distributed_data_)
 
     BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
     BOOST_CHECK( data[0]->child_to_parent_cells_.empty());
