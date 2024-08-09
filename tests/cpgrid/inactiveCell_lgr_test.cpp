@@ -696,4 +696,89 @@ BOOST_AUTO_TEST_CASE(inactiveLgrs)
     testInactiveCellsLgrs(deckString, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
+BOOST_AUTO_TEST_CASE(distribute_inactiveLgrs)
+{
 
+    const std::string deckString =
+        R"( RUNSPEC
+        DIMENS
+        1  1  20 /
+        GRID
+        COORD
+        0 0 0
+        0 0 1
+        1 0 0
+        1 0 1
+        0 1 0
+        0 1 1
+        1 1 0
+        1 1 1
+        /
+        ZCORN
+        4*0
+        8*1
+        8*2
+        8*3
+        8*4
+        4*5
+        4*6
+        8*7
+        8*8
+        8*9
+        8*10
+        4*11
+        4*12
+        8*13
+        8*14
+        8*15
+        8*16
+        4*17
+        8*18
+        16*19
+        8*20
+        8*21
+        /
+        ACTNUM
+        0
+        0
+        1
+        1
+        0
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        1
+        /
+        PORO
+        20*0.15
+        /)";
+
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+    Opm::EclipseState es(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
+    if (grid.comm().size()>1)
+    {
+        grid.loadBalance();
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,4}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{1,1,2}, {1,1,5}};
+        // LGR1 cell indices = {0,1}, LGR2 cell indices = {4}.
+        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
