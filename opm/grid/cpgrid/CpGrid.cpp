@@ -669,13 +669,7 @@ typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lbegin (int 
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    bool areThereLgrs =  (currentData().size() > 1);
-    if(areThereLgrs) {
-        return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], 0, true);
-    }
-    else {
-        return cpgrid::Iterator<codim, All_Partition>(*current_view_data_, 0, true);
-    }
+    return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], 0, true);
 }
 template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lbegin<0>(int) const;
 template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lbegin<1>(int) const;
@@ -686,13 +680,7 @@ typename CpGridTraits::template Codim<codim>::LevelIterator CpGrid::lend (int le
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    bool areThereLgrs =  (currentData().size() > 1);
-    if(areThereLgrs) {
-        return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], size(level, codim), true);
-    }
-    else {
-        return cpgrid::Iterator<codim, All_Partition>(*current_view_data_, size(codim), true);
-    }
+    return  cpgrid::Iterator<codim, All_Partition>( *(*current_data_)[level], size(level, codim), true);
 }
 template typename CpGridTraits::template Codim<0>::LevelIterator CpGrid::lend<0>(int) const;
 template typename CpGridTraits::template Codim<1>::LevelIterator CpGrid::lend<1>(int) const;
@@ -722,13 +710,7 @@ typename CpGridTraits::template Codim<codim>::template Partition<PiType>::LevelI
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    bool areThereLgrs =  (currentData().size() > 1);
-    if(areThereLgrs) {
-        return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], 0, true);
-    }
-    else {
-        return cpgrid::Iterator<codim,PiType>(*current_view_data_, 0, true);
-    }
+    return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], 0, true);
 }
 template typename CpGridTraits::template Codim<0>::template Partition<Dune::Interior_Partition>::LevelIterator
 CpGrid::lbegin<0,Dune::Interior_Partition>(int) const;
@@ -772,13 +754,7 @@ typename CpGridTraits::template Codim<codim>::template Partition<PiType>::LevelI
 {
     if (level<0 || level>maxLevel())
         DUNE_THROW(GridError, "levelIndexSet of nonexisting level " << level << " requested!");
-    bool areThereLgrs =  (currentData().size() > 1);
-    if(areThereLgrs) {
-        return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], size(level, codim), true);
-    }
-    else {
-        return cpgrid::Iterator<codim,PiType>(*current_view_data_, size(codim), true);
-    }
+    return  cpgrid::Iterator<codim, PiType>( *(*current_data_)[level], size(level, codim), true);
 }
 template typename CpGridTraits::template Codim<0>::template Partition<Dune::Interior_Partition>::LevelIterator
 CpGrid::lend<0,Dune::Interior_Partition>(int) const;
