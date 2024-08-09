@@ -2068,6 +2068,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
     }
 
+    // Notice that in a parallel run, non_empty_lgrs represents the local active lgrs, i.e. the lgrs containing active cells which also belong
+    // to the current process.
+    auto globalActiveLgrs = comm().sum(non_empty_lgrs);
+    if(globalActiveLgrs == 0) {
+        Opm::OpmLog::info("All the LGRs contain only inactive cells.\n");
+    }
+
     preAdapt();
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
