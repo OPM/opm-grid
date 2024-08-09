@@ -83,7 +83,7 @@ void createEclGridCpGrid_and_checkCuboidShape(const std::string& deckString)
 
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
 
-    const auto& leafGridView = grid.chooseData()[0]; // Leaf Grid coincides with level 0, in this case. 
+    const auto& leafGridView = grid.currentData()[0]; // Leaf Grid coincides with level 0, in this case. 
     BOOST_CHECK_THROW(leafGridView->checkCuboidShape({0}), std::logic_error);
 }
 
