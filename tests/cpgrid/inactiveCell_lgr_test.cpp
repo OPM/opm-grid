@@ -651,4 +651,49 @@ BOOST_AUTO_TEST_CASE(warning_allInactiveCells_in_lgr)
     testInactiveCellsLgrs(deckString, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
+BOOST_AUTO_TEST_CASE(inactiveLgrs)
+{
+
+    const std::string deckString =
+        R"( RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0
+        0 0 1
+        1 0 0
+        1 0 1
+        0 1 0
+        0 1 1
+        1 1 0
+        1 1 1
+        /
+        ZCORN
+        4*0
+        8*1
+        8*2
+        8*3
+        8*4
+        4*5
+        /
+        ACTNUM
+        0
+        0
+        1
+        1
+        0
+        /
+        PORO
+        5*0.15
+        /)";
+
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,4}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,2}, {1,1,5}};
+    // LGR1 cell indices = {0,1}, LGR2 cell indices = {4}.
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
+    testInactiveCellsLgrs(deckString, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+}
+
 
