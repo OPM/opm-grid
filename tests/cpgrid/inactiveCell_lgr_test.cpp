@@ -606,7 +606,7 @@ BOOST_AUTO_TEST_CASE(inactiveCells_only_outside_lgrs)
 }
 
 
-BOOST_AUTO_TEST_CASE(throw_allInactiveCells_in_lgr)
+BOOST_AUTO_TEST_CASE(warning_allInactiveCells_in_lgr)
 {
 
     const std::string deckString =
@@ -648,7 +648,7 @@ BOOST_AUTO_TEST_CASE(throw_allInactiveCells_in_lgr)
     const std::vector<std::array<int,3>> endIJK_vec = {{1,1,2}, {1,1,5}};
     // LGR1 cell indices = {0,1}, LGR2 cell indices = {4}.
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    BOOST_CHECK_THROW(testInactiveCellsLgrs(deckString, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
+    testInactiveCellsLgrs(deckString, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
 

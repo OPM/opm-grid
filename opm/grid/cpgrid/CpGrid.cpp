@@ -2060,8 +2060,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     int non_empty_lgrs = 0;
     for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
         // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
-        if ((lgrs_with_at_least_one_active_cell[level] == 0) && distributed_data_.empty()) {
-            OPM_THROW(std::logic_error, "LGR" + std::to_string(level+1) + " contains only inactive cells, remove it or extend the corresponding region.\n");
+        if (lgrs_with_at_least_one_active_cell[level] == 0) {
+            Opm::OpmLog::info("LGR" + std::to_string(level+1) + " contains only inactive cells (in current process for parallel runs).\n");
         }
         else {
             ++non_empty_lgrs;
@@ -2072,7 +2072,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
     // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in this process, in case of parallel run).\n");
+    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in current process for parallel runs).\n");
     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
 }
 
