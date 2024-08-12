@@ -499,12 +499,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
 
         // distributed_data should be empty at this point.
-        distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_)); 
+        distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
         distributed_data_[0]->setUniqueBoundaryIds(data_[0]->uniqueBoundaryIds());
-       
+
         // Just to be sure we assume that only master knows
         cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
-        
 
 
         // Create indexset
@@ -2073,14 +2072,50 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     auto globalActiveLgrs = comm().sum(non_empty_lgrs);
     if(globalActiveLgrs == 0) {
         Opm::OpmLog::info("All the LGRs contain only inactive cells.\n");
-    }
+    } 
 
     preAdapt();
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
-    // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in current process for parallel runs).\n");
-    Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
+
+
+    // WIP cellIndexSet()
+    //     
+     auto numCells = comm().sum(current_view_data_->size(0));
+     auto numFaces = comm().sum(current_view_data_->face_to_cell_.size());
+     auto numPoints = comm().sum(current_view_data_->size(3));
+     std::cout<< "numCells: " << numCells << " numFaces: " << numFaces << " numPoints: " << numPoints << std::endl;
+     
+     for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()); ++newLevel)
+     {
+         (*current_data_)[newLevel]->cellIndexSet().beginResize();
+         for(const auto& element : elements(levelGridView(newLevel)))
+         {
+             auto globalIdx = 0; // how to get the global index....
+             (*current_data_)[newLevel]->cellIndexSet()
+                 .add(element.index(), // global index, element.index() is not necessary global index   (std::get<0>(entry)),
+                      ParallelIndexSet::LocalIndex(element.index(), // local index                      (std::get<3>(entry)),
+                                                   AttributeSet(element.partitionType()), // Owner (==Interior)? Gohst? Interior? (std::get<2>(entry))
+                                                   true));
+         }
+         (*current_data_)[newLevel]->cellIndexSet().endResize();
+     }
+     
+     current_data_->back()->cellIndexSet().beginResize();
+     for(const auto& element : elements(leafGridView())){
+         auto globalIdx = 0; // how to get the global index....
+         current_data_->back()->cellIndexSet()
+             .add(element.index(), // global index, element.index() is not necessary global index   (std::get<0>(entry)),
+                  ParallelIndexSet::LocalIndex(element.index(), // local index                      (std::get<3>(entry)),
+                                               AttributeSet(element.partitionType()), // Owner (==Interior)? Gohst? Interior? (std::get<2>(entry))
+                                               true));
+     }
+     current_data_->back()->cellIndexSet().endResize();
+     
+     
+     // Print total refined level grids and total cells on the leaf grid view
+     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in current process for parallel runs).\n");
+     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view.\n");
 }
 
 
@@ -2137,6 +2172,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
             cell_count +=1;
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getEquivLevelElem().index()] = cell_count;
         }
+        
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
         if (getMark(element) ==  1) {
@@ -2170,6 +2206,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
+            
             preAdapt_parent_to_children_cells_vec[element.level()][element.getEquivLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
