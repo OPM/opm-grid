@@ -181,9 +181,13 @@ public:
         return true;
     }
 
-    /// @brief For now, the grid is serial and the only partitionType() is InteriorEntity.
+     /// @brief TO BE UPDATED For now, the grid is serial and the only partitionType() is InteriorEntity.
     ///        Only needed when distributed_data_ is not empty.
     PartitionType partitionType() const;
+    
+    /// @brief TO BE UPDATED For now, the grid is serial and the only partitionType() is InteriorEntity.
+    ///        Only needed when distributed_data_ is not empty.
+    PartitionType partitionTypeWhenLgrs(bool) const;
 
     /// @brief Return marker object (GeometryType object) representing the reference element of the entity.
     ///        Currently, cube type for all entities (cells and vertices).
@@ -359,6 +363,12 @@ template <int codim>
 PartitionType Entity<codim>::partitionType() const
 {
     return pgrid_->partition_type_indicator_->getPartitionType(*this);
+}
+
+template <int codim>
+PartitionType Entity<codim>::partitionTypeWhenLgrs(bool lgrsOnDistributedGrid) const
+{
+    return pgrid_->partition_type_indicator_->getPartitionTypeWhenLgrs(*this, lgrsOnDistributedGrid);
 }
 } // namespace cpgrid
 } // namespace Dune

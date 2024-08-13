@@ -16,6 +16,29 @@ PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<0>& cell_
     return InteriorEntity;
 }
 
+// Need Entity methods like level(), father(), etc, when LGRs have been added on a distributed grid.
+PartitionType PartitionTypeIndicator::getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const
+{
+    if(cell_indicator_.size())
+        return PartitionType(cell_indicator_[cell_entity.index()]);
+    // Assuming grid has been distributed and some LGRs have been added afterwards.
+    // For level 0, it's defined. For other levels, the refined cell inherits its father
+    // attribute.
+    if(grid_data_->level_data_ptr_->size()>1) {
+        assert(lgrsOnDistributedGrid);
+        return cell_entity.getOrigin().partitionTypeWhenLgrs(lgrsOnDistributedGrid);
+    }
+    return InteriorEntity;
+}
+/*PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<1>& face_entity, bool lgrsOnDistributedGrid) const
+{
+    return getFacePartitionType(face_entity.index());
+}
+PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<3>& point_entity, bool lgrsOnDistributedGrid) const
+{
+    return getPointPartitionType(point_entity.index());
+    }*/
+
 PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<1>& face_entity) const
 {
     return getFacePartitionType(face_entity.index());
