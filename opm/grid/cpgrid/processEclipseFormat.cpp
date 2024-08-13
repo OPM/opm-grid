@@ -63,7 +63,7 @@
 namespace Dune
 {
 
-    using NNCMap = std::set<std::pair<int, int>>;
+    using NNCMap = std::set<std::pair<std::size_t, std::size_t>>;
     using NNCMaps = std::array<NNCMap, 2>;
     enum NNCMapsIndex { PinchNNC = 0,
                         ExplicitNNC = 1 };

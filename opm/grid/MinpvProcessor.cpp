@@ -25,7 +25,7 @@
 
 namespace Opm {
 
-void MinpvProcessor::Result::add_nnc(int cell1, int cell2)
+void MinpvProcessor::Result::add_nnc(std::size_t cell1, std::size_t cell2)
 {
     auto key = std::min(cell1, cell2);
     auto value = std::max(cell1,cell2);

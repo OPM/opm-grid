@@ -37,9 +37,9 @@ namespace Opm
 
         struct Result {
             std::vector<std::size_t> removed_cells;
-            std::map<int,int> nnc;
+            std::map<std::size_t,std::size_t> nnc;
 
-            void add_nnc(int cell1, int cell2);
+            void add_nnc(std::size_t cell1, std::size_t cell2);
         };
 
 
