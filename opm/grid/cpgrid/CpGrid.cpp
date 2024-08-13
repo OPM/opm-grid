@@ -2048,6 +2048,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 // if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
                 //   OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
                 // }
+                if (element.partitionType() == InteriorEntity)
+                {
+                    std::cout<< "Interior elem index: " << element.index() <<std::endl;
+                }
+                 if (element.partitionType() == OverlapEntity)
+                {
+                    std::cout<< "overlap elem index: " << element.index() <<std::endl;
+                }
+                
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                 ++marked_elem_level_count;
@@ -2078,16 +2087,123 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
 
+    // ParallelLocalIndex for rank zero
+    // cell_indicator_ needed
+  
+    // Compute local owned cells per level (level 0, and new levels).
+    std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
+    std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
 
+    // Maps local-to-global and global-to-local
+    std::unordered_map<std::array<int,2>,int> localToGlobal; // local {level, local index in that level, in that process (if any)}
+    std::unordered_map<int, std::array<int,2>> globalToLocal;
+    
+    for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) 
+    {
+        for(const auto& element : elements(levelGridView(level)))
+        {
+            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
+            {
+                ++local_owned_cells_per_level[level];
+            }
+        }
+        std::cout<< "level: " << level << " local cells: " << local_owned_cells_per_level[level] <<std::endl;
+        global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
+        std::cout<< "level: " << level << " global per level: " << global_owned_cells_per_level[level] << std::endl;
+    }
+   
+    
+        //   }
+    
+        
+        /* for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()); ++newLevel)
+        {
+            (*current_data_)[newLevel]->cellIndexSet().beginResize();
+            for(const auto& element : elements(levelGridView(newLevel)))
+            {
+                std::cout<< "hola from loop resize cellIndSet " << element.index() << std::endl;
+                (*current_data_)[newLevel]->cellIndexSet()
+                    .add(element.index(), // global index, element.index() is not necessary global index   (std::get<0>(entry)),
+                         ParallelIndexSet::LocalIndex(element.index(), // local index                      (std::get<3>(entry)),
+                                                      AttributeSet(element.partitionType()), // Owner (==Interior)? Gohst? Interior? (std::get<2>(entry))
+                                                      true));
+            }
+            (*current_data_)[newLevel]->cellIndexSet().endResize();
+
+        */
+        //     }
+        //  }
+    //auto global_cells_level_0 = comm().sum(owned_cells_level_0);
+    //std::cout<< "global cell level 0 " << global_cells_level_0 << std::endl;
     // WIP cellIndexSet()
     //     
-     auto numCells = comm().sum(current_view_data_->size(0));
-     auto numFaces = comm().sum(current_view_data_->face_to_cell_.size());
-     auto numPoints = comm().sum(current_view_data_->size(3));
-     std::cout<< "numCells: " << numCells << " numFaces: " << numFaces << " numPoints: " << numPoints << std::endl;
+    // auto globalNumCells = comm().sum(current_view_data_->size(0));
+    //  auto globalNumFaces = comm().sum(current_view_data_->face_to_cell_.size());
+    //  auto globalNumPoints = comm().sum(current_view_data_->size(3));
+    // std::cout<< "numCells: " << globalNumCells << " numFaces: " << globalNumFaces << " numPoints: " << globalNumPoints << std::endl;
+
+    
+    
+    /* std::vector<int> globalNumCells_per_level(cells_per_dim_vec.size()+1); // total cells in level 0, sum for all processes
+    std::vector<int> globalNumFaces_per_level(cells_per_dim_vec.size()+1);
+    std::vector<int> globalNumPoints_per_level(cells_per_dim_vec.size()+1);
+
+    std::vector<std::vector<char>> globalCellIndicator_per_level(cells_per_dim_vec.size()+1);
+    for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()) +1; ++newLevel)
+    {
+        // Compute the partition type for cell
+        (*current_data_)[newLevel]->partition_type_indicator_->getCellIndicator().resize(  (*current_data_)[newLevel]->cellIndexSet().size());
+    for(const auto& i: (*current_data_)[newLevel]->cellIndexSet())
+    {
+        (*current_data_)[newLevel]->partition_type_indicator_->getCellIndicator()[i.local()]=
+            i.local().attribute()==AttributeSet::owner?
+            InteriorEntity:OverlapEntity;
+        if ( i.local().attribute()==AttributeSet::owner )
+        {
+             globalNumCells_per_level[newLevel] = comm().sum(1);
+             if(newLevel == 1)
+             {
+                 std::cout<< "why it does not summmmm " << globalNumCells_per_level[newLevel] << std::endl;
+             }
+             
+        }
+        
+    }
+    }*/
+    
+    //  
      
-     for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()); ++newLevel)
-     {
+    // for (int newLevel = 1; newLevel < static_cast<int>(cells_per_dim_vec.size()) +1; ++newLevel)
+    //  {
+        //globalNumCells_per_level[newLevel] = comm().sum((*current_data_)[newLevel]->size(0));
+        // globalNumFaces_per_level[newLevel] = comm().sum((*current_data_)[newLevel]->face_to_cell_.size());
+        // globalNumPoints_per_level[newLevel] = comm().sum( (*current_data_)[newLevel]->size(3));
+    //  (*current_data_)[0]->partition_type_indicator_->getCellIndicator().resize((*current_data_)[newLevel]->size(0));
+    // std::cout<< "ok?" <<std::endl;
+    //  for(const auto& element : elements(levelGridView(0)))
+    // {
+    //     if (element.partitionType() == InteriorEntity)
+    //    {
+                 //  (*current_data_)[newLevel]->partition_type_indicator_->getCellIndicator()[element.index()] = InteriorEntity;
+    //       globalNumCells_per_level[0] = comm().sum(1);
+                 
+    //    }
+             /* else {
+                 (*current_data_)[newLevel]->partition_type_indicator_->getCellIndicator()[element.index()] = element.getOrigin().partitionType();
+                 }*/
+    //  }
+         // }
+    // for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()) +1; ++newLevel)
+    //  {
+    //     std::cout<< "level: " << newLevel << " numCells: " << globalNumCells_per_level[newLevel] <<std::endl;
+         //    << " numFaces: " << globalNumFaces_per_level[newLevel] << " numPoints: " << globalNumPoints_per_level[newLevel] << std::endl;
+         // globalNumCells = comm().sum(globalNumCells_per_level[newLevel]);
+    //  }
+   //  std::cout<< "global num cells: " << globalNumCells << std::endl;
+   
+
+     /*for (int newLevel = 0; newLevel < static_cast<int>(cells_per_dim_vec.size()); ++newLevel)
+    {
          (*current_data_)[newLevel]->cellIndexSet().beginResize();
          for(const auto& element : elements(levelGridView(newLevel)))
          {
@@ -2110,7 +2226,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                AttributeSet(element.partitionType()), // Owner (==Interior)? Gohst? Interior? (std::get<2>(entry))
                                                true));
      }
-     current_data_->back()->cellIndexSet().endResize();
+     current_data_->back()->cellIndexSet().endResize();*/
      
      
      // Print total refined level grids and total cells on the leaf grid view
