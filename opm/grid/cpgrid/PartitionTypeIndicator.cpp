@@ -24,9 +24,8 @@ PartitionType PartitionTypeIndicator::getPartitionTypeWhenLgrs(const Entity<0>& 
     // Assuming grid has been distributed and some LGRs have been added afterwards.
     // For level 0, it's defined. For other levels, the refined cell inherits its father
     // attribute.
-    if(grid_data_->level_data_ptr_->size()>1) {
-        assert(lgrsOnDistributedGrid);
-        return cell_entity.getOrigin().partitionTypeWhenLgrs(lgrsOnDistributedGrid);
+    if((grid_data_->level_data_ptr_->size()>1) && lgrsOnDistributedGrid) {
+        return PartitionType(grid_data_->level_data_ptr_->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin())); 
     }
     return InteriorEntity;
 }

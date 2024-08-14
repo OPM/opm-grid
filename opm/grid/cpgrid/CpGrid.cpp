@@ -2046,9 +2046,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 /** Decide if we leave the check commentedfor now. */
                 // Check that the cell to be marked for refinement is interior (only when the grid has been distributed).
                 // if((!distributed_data_.empty()) && (element.partitionType() != InteriorEntity)) {
-                //   OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
+                //  OPM_THROW(std::logic_error, "Cell " + std::to_string(element.index()) + " is not interior. Refinement of non-interior cells is not supported yet.");
                 // }
-                if (element.partitionType() == InteriorEntity)
+                if (element.partitionType() == InteriorEntity) // Serial run, all cells are interior
                 {
                     std::cout<< "Interior elem index: " << element.index() <<std::endl;
                 }
@@ -2056,11 +2056,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 {
                     std::cout<< "overlap elem index: " << element.index() <<std::endl;
                 }
-                
+                 if (element.partitionType() == InteriorEntity) { // Serial run, all cells are interior
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                 ++marked_elem_level_count;
                 lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
+                 }
+                 else {
+                     Opm::OpmLog::info("Cell might have been marked in another process.\n");
+                 }
             }
         }
     }
@@ -2089,14 +2093,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
     // ParallelLocalIndex for rank zero
     // cell_indicator_ needed
-  
-    // Compute local owned cells per level (level 0, and new levels).
-    std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
-    std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
 
-    // Maps local-to-global and global-to-local
-    std::unordered_map<std::array<int,2>,int> localToGlobal; // local {level, local index in that level, in that process (if any)}
-    std::unordered_map<int, std::array<int,2>> globalToLocal;
+    if(comm().size()>1)
+    {
+    // Compute local owned/overlap cells per level (level 0, and new levels).
+    std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
+    std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
+    std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
     
     for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) 
     {
@@ -2106,12 +2109,85 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             {
                 ++local_owned_cells_per_level[level];
             }
+            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity)
+            {
+                ++local_overlap_cells_per_level[level];
+            }
         }
-        std::cout<< "level: " << level << " local cells: " << local_owned_cells_per_level[level] <<std::endl;
+        std::cout<< "level: " << level << " local owned cells: " << local_owned_cells_per_level[level] <<std::endl;
+          std::cout<< "level: " << level << " local overlap cells: " << local_overlap_cells_per_level[level] <<std::endl;
         global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
-        std::cout<< "level: " << level << " global per level: " << global_owned_cells_per_level[level] << std::endl;
+        //  std::cout<< "level: " << level << " global per level: " << global_cells_per_level[level] << std::endl;
     }
-   
+
+    int local_leaf_cells = 0;
+    int global_leaf_cells = 0;
+     for(const auto& element : elements(leafGridView()))
+        {
+            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
+            {
+                ++local_leaf_cells;
+            }
+        }
+     std::cout<< "local leaf cells: " << local_leaf_cells << std::endl;
+     global_leaf_cells = comm().sum(local_leaf_cells);
+     std::cout<< "global leaf cells: " << global_leaf_cells << std::endl;
+    } // end-if-comm().size()>1
+    
+
+     /* for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) 
+     {
+         (*current_data_)[level]->cellIndexSet().beginResize();
+         for(const auto& element : elements(levelGridView(level)))
+         {
+             
+             (*current_data_)[level]->cellIndexSet().add( (*current_data_)[level]->global_id_set_->id(element),
+                                                            ParallelIndexSet::LocalIndex(element.index(),
+                                                                                         AttributeSet(element.partitionTypeWhenLgrs(globalActiveLgrs)),
+                                                                                         true));
+             //    std::cout<< "level: " << level << " globalId: " << (*current_data_)[level]->global_id_set_->id(element)
+             //          << "local index: " << element.index() << " is interior? " <<  (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)<< std::endl;
+         }
+       
+         (*current_data_)[level]->cellIndexSet().endResize();
+         }*/
+
+     /*  current_data_->back()->cellIndexSet().beginResize();
+     for(const auto& element : elements(leafGridView()))
+     {
+         current_data_->back()->cellIndexSet().add( current_data_->back()->global_id_set_->id(element),
+                                                   ParallelIndexSet::LocalIndex(element.index(), 
+                                                                                AttributeSet(element.partitionTypeWhenLgrs(globalActiveLgrs)),
+                                                                                true));
+     }
+     current_data_->back()->cellIndexSet().endResize();*/
+
+     // Compute local (owned and overlap) cells per level (level 0, and new levels).
+     // std::vector<int> local_cells_per_level(cells_per_dim_vec.size() +1);
+     //std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
+
+    // Maps local-to-global and global-to-local
+    //std::vector<std::unordered_map<int,int>> localToGlobal_per_level(cells_per_dim_vec.size() +1); // local {level, local index in that level, in that process (if any)}
+     // std::vector<std::unordered_map<int,int>> globalToLocal_per_level(cells_per_dim_vec.size() +1);
+     /*  for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) 
+    {
+        localToGlobal_per_level.resize((*current_data_)[newLevel]->size(0));
+        globalToLocal_per_level.resize((*current_data_)[newLevel]->size());
+        
+         (*current_data_)[newLevel]->cellIndexSet().beginResize();
+        for(const auto& element : elements(levelGridView(level)))
+        {
+            localToGlobal_per_level[level][element.index()] = 
+    (*current_data_)[newLevel]->cellIndexSet()
+                    .add(element.index(), // global index, element.index() is not necessary global index   (std::get<0>(entry)),
+                         ParallelIndexSet::LocalIndex(element.index(), // local index                      (std::get<3>(entry)),
+                                                      AttributeSet(element.partitionTypeWhenLgrs(globalActiveLgrs)),
+                                                      // Owner (==Interior)? Gohst? Interior? (std::get<2>(entry))
+                                                      true));
+        }
+          (*current_data_)[newLevel]->cellIndexSet().endResize();
+          }*/
+     
     
         //   }
     
