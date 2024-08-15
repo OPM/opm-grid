@@ -2029,8 +2029,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
     for(const auto& element: elements(this->leafGridView())) {
         std::array<int,3> ijk;
-        getIJK(element.index() /* (*current_data_)[0]->global_id_set_->id(element)*/, ijk);
-        // std::cout<< "ijk: " << ijk[0] << " " << ijk[1] << " " << ijk[2] << std::endl;
+        getIJK(element.index(), ijk);
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             bool belongsToLevel = true;
             int marked_elem_level_count = 0;
@@ -2050,7 +2049,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     // have any neighboring overlap cell.
                     for (const auto& intersection : intersections(levelGridView(0), element)) {
                         if (intersection.neighbor() && ( (intersection.outside().partitionType() == OverlapEntity) )) {
-                            OPM_THROW(std::logic_error, "LGR cell " + std::to_string( (*current_data_)[0]->global_id_set_->id(element)) + " is not in the interior of the process, not supported yet.");    
+                            OPM_THROW(std::logic_error, "LGR cell " + std::to_string( (*current_data_)[0]->global_id_set_->id(element)) + " is not in the interior of the process, not supported yet.");
                         }
                     }
                     this-> mark(1, element);
@@ -2080,150 +2079,62 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     auto globalActiveLgrs = comm().sum(non_empty_lgrs);
     if(globalActiveLgrs == 0) {
         Opm::OpmLog::info("All the LGRs contain only inactive cells.\n");
-    } 
+    }
 
     preAdapt();
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
     postAdapt();
 
-    // ParallelLocalIndex for rank zero
-    // cell_indicator_ needed
+    // Only for parallel runs
+    // - Define global ids for refined level grids (level 1, 2, ..., maxLevel)
+    // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
+    // - Define ParallelIndex for overlap cells and their neighbors
+    if(comm().size()>1) {
 
-    if(comm().size()>1)
-    {
-    // Compute local owned/overlap cells per level (level 0, and new levels).
-    std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
-    std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
-    std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
-    
-    for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) 
-    {
-        for(const auto& element : elements(levelGridView(level)))
-        {
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
-            {
-                if (level == 0){
-                    std::cout<< "level " << level << " interior: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
+        // Compute local owned/overlap cells per level (level 0, and new levels).
+        std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
+
+        for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            for(const auto& element : elements(levelGridView(level))) {
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                    ++local_owned_cells_per_level[level];
                 }
-                ++local_owned_cells_per_level[level];
-            }
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity)
-            {
-                if (level == 0)
-                {
-                    std::cout<< "level " << level << " overlap: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
-                }
-                
-                ++local_overlap_cells_per_level[level];
-            }
-        }
-        std::cout<< "level: " << level << " local owned cells: " << local_owned_cells_per_level[level] <<std::endl;
-        std::cout<< "level: " << level << " local overlap cells: " << local_overlap_cells_per_level[level] <<std::endl;
-        global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
-        std::cout<< "level: " << level << " global per level: " << global_cells_per_level[level] << std::endl;
-    }
-
-    // For level grids 1,2,.., maxLevel
-     std::vector<std::vector<int>> localToGlobal_owned_cells_per_level(cells_per_dim_vec.size());
-     int sumPreviousLevels =   global_cells_per_level[0]-1;
-     std::cout<< "sumprevious levels" << sumPreviousLevels << std::endl;
-    for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel) 
-    {
-        // Actual level == "shiftedLevel" + 1
-        localToGlobal_owned_cells_per_level[shiftedLevel].resize( (*current_data_)[shiftedLevel] ->size(0)); //local_owned_cells_per_level[level]); 
-        // Sum up previoues levels total local owned cells.
-        for(const auto& element : elements(levelGridView(shiftedLevel)))
-        {
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
-            {
-                // std::cout<< "level " << level << " interior: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
-                 ++sumPreviousLevels; 
-                localToGlobal_owned_cells_per_level[shiftedLevel][element.index()] = sumPreviousLevels;
-                 std::cout<< "sumprevious levels" << sumPreviousLevels << std::endl;
-                // ++sumPreviousLevels;
-            }
-            // if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity)
-            // {
-                // std::cout<< "level " << level << " overlap: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
-                //++local_overlap_cells_per_level[level];
-                // TO DO
-            // }
-        }
-    }
-    std::cout<< "sumprevious levels" << sumPreviousLevels << std::endl;
-    }
-    
-
-    // to be reoved
-    /*
-    for(const auto& element : elements(levelGridView(0)))
-        {
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
-            {
-                std::cout<<" interior: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
-               
-            }
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity)
-            {
-                 std::cout<<" overlap: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
-            }
-        }
-    */
-    /*   int local_leaf_cells = 0;
-    int global_leaf_cells = 0;
-     for(const auto& element : elements(leafGridView()))
-        {
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
-            {
-                ++local_leaf_cells;
-            }
-        }
-     // std::cout<< "local leaf cells: " << local_leaf_cells << std::endl;
-     global_leaf_cells = comm().sum(local_leaf_cells);
-     // std::cout<< "global leaf cells: " << global_leaf_cells << std::endl;
-    } // end-if-comm().size()>1
-    */
-
-    //
-    /* int overlap_cells_per_rank = 0;
-    int overlap_plus_neighbors_per_rank = 0;
-    (*current_data_)[0]->cellIndexSet().beginResize();
-    for(const auto& element : elements(levelGridView(0))) {
-        bool isOverlap = (element.partitionType() == OverlapEntity);
-        if (isOverlap) { // Also take the neighbors into account
-            (*current_data_)[0]->cellIndexSet().add( (*current_data_)[0]->global_id_set_->id(element),
-                                                     ParallelIndexSet::LocalIndex(element.index(),
-                                                                                  AttributeSet(element.partitionType()),
-                                                                                  true));
-            ++overlap_cells_per_rank;
-            // std::cout<< "globalId: " << (*current_data_)[0]->global_id_set_->id(element)
-            //<< "local index: " << element.index() << " is interior (false expected)? " <<  (element.partitionType() == InteriorEntity)<< std::endl;
-        }
-        else { // is interior
-             for (const auto& intersection : intersections(levelGridView(0), element)) {
-                 if (intersection.neighbor() && ( (intersection.outside().partitionType() == OverlapEntity) )) {
-                     (*current_data_)[0]->cellIndexSet().add( (*current_data_)[0]->global_id_set_->id(element),
-                                                             ParallelIndexSet::LocalIndex(element.index(),
-                                                                                          AttributeSet(element.partitionType()),
-                                                                                          true));
-                    ++ overlap_plus_neighbors_per_rank;
-                    // Count only once
-                    break;
-                    //   std::cout<< " globalId: " << (*current_data_)[0]->global_id_set_->id(intersection.outside())
-                    //         << "local index: " << intersection.outside().index() << " is interior? " <<
-                    //  (intersection.outside().partitionType() == InteriorEntity)<< std::endl;
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity) {
+                    ++local_overlap_cells_per_level[level];
                 }
             }
+            global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
+        }
+        // Integer used just to check that the global ids created are below this max-value (see below global ids definition).
+        int cellMaxGlobalId = std::accumulate(global_cells_per_level.begin(), global_cells_per_level.end(), 0);
+        // To compute global ids for cells for refined level grids (excluding level 0, since its global ids are
+        // already defined), we use the values from global_cells_per_level[level] with level>0.
+
+        // Add "if comm().rank() == 0" if we do not need this globla ids visible in all the ranks.
+        int cellGlobalId = global_cells_per_level[0];
+        // Only for level 1,2,.., maxLevel grids
+        std::vector<std::vector<int>> localToGlobal_owned_cells_per_level(cells_per_dim_vec.size());
+        for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel)
+        {
+            // Actual level == "shiftedLevel" + 1
+            localToGlobal_owned_cells_per_level[shiftedLevel].resize(global_cells_per_level[shiftedLevel+1]);
+            // Currently, local_OVERLAP_cells_per_level[level] == 0 for all level>0, which makes it easier to
+            // define global ids for the refined level grids.
+            for (int elemIdx = 0; elemIdx < global_cells_per_level[shiftedLevel+1]; ++elemIdx)
+            {
+                localToGlobal_owned_cells_per_level[shiftedLevel][elemIdx] = cellGlobalId;
+                std::cout<< "rank " << comm().rank() << " global id from elemIdx loop : " << cellGlobalId << std::endl;
+                ++cellGlobalId;
             }
+        }
+        assert(cellGlobalId <= cellMaxGlobalId); // Notice that cellGlobalId is incremented after the very last definition.
     }
-    (*current_data_)[0]->cellIndexSet().endResize();
-    auto over_plus_neigh = overlap_cells_per_rank + overlap_plus_neighbors_per_rank;
-    std::cout<< " overlap cells " << overlap_cells_per_rank << " in rank " << comm().rank() << std::endl;
-    std::cout<< " overlap plus neighbors: " <<  over_plus_neigh<< " in rank " << comm().rank() << std::endl;*/
-     
-     // Print total refined level grids and total cells on the leaf grid view
-     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
-     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
+
+    // Print total refined level grids and total cells on the leaf grid view
+    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
+    Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 }
 
 
