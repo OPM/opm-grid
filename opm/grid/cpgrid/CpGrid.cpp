@@ -2225,6 +2225,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         assert(faceGlobalId <= faceMaxGlobalId); // Notice that faceGlobalId is incremented after the very last definition.
 
+      
+
+        /*for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            //  std::cout<< "global id null? " <<  ((*current_data_)[level]->global_id_set_ != nullptr) <<std::endl;
+            // std::cout<< "local id null? " <<  ((*current_data_)[level]-> local_id_set_ != nullptr) <<std::endl;
+            // std::cout<< "index set id null? " <<  ((*current_data_)[level]->index_set_ != nullptr) <<std::endl;
+            
+               (*current_data_)[level]->global_id_set_->swap(localToGlobal_owned_cells_per_level[level],
+                                                           localToGlobal_owned_faces_per_level[level],
+                                                          localToGlobal_owned_points_per_level[level]);
+                                                          }*/
     }
 
 
