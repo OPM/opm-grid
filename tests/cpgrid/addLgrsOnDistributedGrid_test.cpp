@@ -411,7 +411,34 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     }
 }*/
 
-BOOST_AUTO_TEST_CASE(singleCell)
+BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
+{
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}, {2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,1,0}, {0,0,2}, {3,2,0}, {3,0,2}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{1,3,1}, {1,1,3}, {4,3,1}, {4,2,3}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
+        // LGR1 element indices = 4,8 in rank 0
+        // LGR2 element indices = 24 in rank 1
+        // LGR3 element indices = 11 in rank 2
+        // LGR4 element indices = 27, 31 in rank 3
+
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+    }
+
+/*BOOST_AUTO_TEST_CASE(singleCell)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -433,7 +460,7 @@ BOOST_AUTO_TEST_CASE(singleCell)
 
         refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     }
-}
+    }*/
 
 /*BOOST_AUTO_TEST_CASE(singleCell_in_larger_gris)
 {

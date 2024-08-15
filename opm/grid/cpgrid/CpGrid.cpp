@@ -2029,7 +2029,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
     for(const auto& element: elements(this->leafGridView())) {
         std::array<int,3> ijk;
-        getIJK(element.index(), ijk);
+        getIJK(element.index() /* (*current_data_)[0]->global_id_set_->id(element)*/, ijk);
+        // std::cout<< "ijk: " << ijk[0] << " " << ijk[1] << " " << ijk[2] << std::endl;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             bool belongsToLevel = true;
             int marked_elem_level_count = 0;
@@ -2049,10 +2050,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     // have any neighboring overlap cell.
                     for (const auto& intersection : intersections(levelGridView(0), element)) {
                         if (intersection.neighbor() && ( (intersection.outside().partitionType() == OverlapEntity) )) {
-                            OPM_THROW(std::logic_error, "LGR cell is not in the interior of the process, not supported yet.");    
+                            OPM_THROW(std::logic_error, "LGR cell " + std::to_string( (*current_data_)[0]->global_id_set_->id(element)) + " is not in the interior of the process, not supported yet.");    
                         }
                     }
                     this-> mark(1, element);
+                    std::cout<< "Elem with index: " << element.index() << " and globalId " <<  (*current_data_)[0]->global_id_set_->id(element)
+                             << " has been marked in " << comm().rank() << " rank " << std::endl;
                     assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                     ++marked_elem_level_count;
                     lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
@@ -2099,19 +2102,25 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         {
             if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity)
             {
-                // std::cout<< "level " << level << " interior: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
+                if (level == 0){
+                    std::cout<< "level " << level << " interior: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
+                }
                 ++local_owned_cells_per_level[level];
             }
             if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity)
             {
-                // std::cout<< "level " << level << " overlap: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
+                if (level == 0)
+                {
+                    std::cout<< "level " << level << " overlap: " << (*current_data_)[0]->global_id_set_->id(element) << " rank " << comm().rank() <<std::endl;
+                }
+                
                 ++local_overlap_cells_per_level[level];
             }
         }
-        //   std::cout<< "level: " << level << " local owned cells: " << local_owned_cells_per_level[level] <<std::endl;
-        //    std::cout<< "level: " << level << " local overlap cells: " << local_overlap_cells_per_level[level] <<std::endl;
+        std::cout<< "level: " << level << " local owned cells: " << local_owned_cells_per_level[level] <<std::endl;
+        std::cout<< "level: " << level << " local overlap cells: " << local_overlap_cells_per_level[level] <<std::endl;
         global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
-        //std::cout<< "level: " << level << " global per level: " << global_cells_per_level[level] << std::endl;
+        std::cout<< "level: " << level << " global per level: " << global_cells_per_level[level] << std::endl;
     }
 
     // For level grids 1,2,.., maxLevel
