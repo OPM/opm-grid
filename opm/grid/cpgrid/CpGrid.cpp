@@ -2112,7 +2112,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // To compute global ids for cells for refined level grids (excluding level 0, since its global ids are
         // already defined), we use the values from global_cells_per_level[level] with level>0.
 
-        // Add "if comm().rank() == 0" if we do not need this globla ids visible in all the ranks.
+        // Add "if comm().rank() == 0" if we do not need this globlal ids visible in all the ranks.
         int cellGlobalId = global_cells_per_level[0];
         // Only for level 1,2,.., maxLevel grids
         std::vector<std::vector<int>> localToGlobal_owned_cells_per_level(cells_per_dim_vec.size());
@@ -2125,12 +2125,88 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             for (int elemIdx = 0; elemIdx < global_cells_per_level[shiftedLevel+1]; ++elemIdx)
             {
                 localToGlobal_owned_cells_per_level[shiftedLevel][elemIdx] = cellGlobalId;
-                std::cout<< "rank " << comm().rank() << " global id from elemIdx loop : " << cellGlobalId << std::endl;
+                //std::cout<< "rank " << comm().rank() << " global id from elemIdx loop : " << cellGlobalId << std::endl;
                 ++cellGlobalId;
             }
         }
         assert(cellGlobalId <= cellMaxGlobalId); // Notice that cellGlobalId is incremented after the very last definition.
+
+        // When trying to do a similar approach for points, it seems that the sum of "interior" points
+        // does not coincide with the original total points of the entire level zero grid before distribution.
+        // Therefore, the maximum value of "the sum of points" in level zero will be computed also taken into
+        // account overlap points. This means, in particular, that this maximum value does not represent the
+        // total amount of points from level zero. This sum will be stored in
+        // global_points_per_level[0],
+        // and computed summing up current_data_->front()->size(3) for all processes. Unfortunately, not representing
+        // the total amount of points without repetition since overlap points are also included.
+        // Ids for points in level 1,2,..., maxLevel will be computed increasing this value by one, per new point.
+        // WARNING: This approach works in the current situation where cells to be refined are completly contained
+        // in the interior of a process, namely, each marked cell is surronding by other interior cells.
+
+        // Compute local "owned" points (corners of cells owned by the process) per level (level 0, and new levels).
+        std::vector<int> local_owned_points_per_level(cells_per_dim_vec.size() +1);
+        std::vector<int> local_overlap_points_per_level(cells_per_dim_vec.size() +1);
+        // Currently, only lgrs in the interior of a process are supproted, meaning that all the points belong to
+        // the interior of the process, i.e., there are "non overlap points" (points coming from overlap cells, or neighbors
+        // of overlap cells).
+        std::vector<int> global_points_per_level(cells_per_dim_vec.size() +1);
+        global_points_per_level[0] = comm().sum(current_data_->front()->size(3));
+
+        for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            for(const auto& point : vertices(levelGridView(level))) {
+                if (point.partitionType() == InteriorEntity) {
+                    ++local_owned_points_per_level[level];
+                }
+                if (point.partitionType() == OverlapEntity) {
+                    ++local_overlap_points_per_level[level];
+                    }
+            }
+            //   std::cout<< "global points per level before comm: " <<  global_points_per_level[level] <<std::endl;
+            global_points_per_level[level] = comm().sum(local_owned_points_per_level[level]
+                                                        + local_overlap_points_per_level[level]);
+            //std::cout<< "level " << level <<  " global points per level: " <<  global_points_per_level[level] <<std::endl;
+        }
+        // Integer used just to check that the global ids created are below this max-value (see below global ids definition).
+        int pointMaxGlobalId = std::accumulate(global_points_per_level.begin(), global_points_per_level.end(), 0);
+        std::cout<< "max poitn id: " << pointMaxGlobalId << std::endl;
+        // To compute global ids for cells for refined level grids (excluding level 0, since its global ids are
+        // already defined), we use the values from global_cells_per_level[level] with level>0.
+
+        // Add "if comm().rank() == 0" if we do not need this globlal ids visible in all the ranks.
+        int pointGlobalId = global_points_per_level[0]; // It does not represent the total amount of points in level 0!!!
+        // Only for level 1,2,.., maxLevel grids
+        std::vector<std::vector<int>> localToGlobal_owned_points_per_level(cells_per_dim_vec.size());
+        for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel)
+        {
+            // Actual level == "shiftedLevel" + 1
+            localToGlobal_owned_points_per_level[shiftedLevel].resize(global_points_per_level[shiftedLevel+1]);
+            // Currently, local_OVERLAP_cells_per_level[level] == 0 for all level>0, which makes it easier to
+            // define global ids for the refined level grids.
+            for (int pointIdx = 0; pointIdx < global_points_per_level[shiftedLevel+1]; ++pointIdx)
+            {
+                localToGlobal_owned_points_per_level[shiftedLevel][pointIdx] = pointGlobalId;
+                std::cout<< "rank " << comm().rank() << " global id from pointIdx loop : " << pointGlobalId << std::endl;
+                ++pointGlobalId;
+            }
+        }
+        assert(pointGlobalId <= pointMaxGlobalId); // Notice that pointGlobalId is incremented after the very last definition.
+
+
+
+
+
+
+        
+
+        // Compute local "owned" faces (faces of cells owned by the process) per level (level 0, and new levels).
+        std::vector<int> local_owned_faces_per_level(cells_per_dim_vec.size() +1);
+         std::vector<int> local_overlap_faces_per_level(cells_per_dim_vec.size() +1);
+        // Currently, only lgrs in the interior of a process are supproted, meaning that all the refined faces belong to
+        // the interior of the process, i.e., there are "non overlap faces" (faces coming from overlap cells, or neighbors
+        // of overlap cells).
+        std::vector<int> global_faces_per_level(cells_per_dim_vec.size() +1);
     }
+    
 
     // Print total refined level grids and total cells on the leaf grid view
     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
