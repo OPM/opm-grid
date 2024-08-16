@@ -2117,6 +2117,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel)
         {
             // Actual level == "shiftedLevel" + 1
+            // auto& level_index_set =   (*current_data_)[shiftedLevel+1]->cellIndexSet();
+            // level_index_set.beginResize();
+            //level_index_set.add(cellGlobalIdx, ParallelIndexSet::LocalIndex(elemIdx, AttributeSet(owner), true));
+            // level_index_set.endResize();
             localToGlobal_owned_cells_per_level[shiftedLevel].resize(global_cells_per_level[shiftedLevel+1]);
             // Currently, local_OVERLAP_cells_per_level[level] == 0 for all level>0, which makes it easier to
             // define global ids for the refined level grids.
@@ -2225,19 +2229,16 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         assert(faceGlobalId <= faceMaxGlobalId); // Notice that faceGlobalId is incremented after the very last definition.
 
-      
-
-        /*for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
-            //  std::cout<< "global id null? " <<  ((*current_data_)[level]->global_id_set_ != nullptr) <<std::endl;
-            // std::cout<< "local id null? " <<  ((*current_data_)[level]-> local_id_set_ != nullptr) <<std::endl;
-            // std::cout<< "index set id null? " <<  ((*current_data_)[level]->index_set_ != nullptr) <<std::endl;
-            
-               (*current_data_)[level]->global_id_set_->swap(localToGlobal_owned_cells_per_level[level],
-                                                           localToGlobal_owned_faces_per_level[level],
-                                                          localToGlobal_owned_points_per_level[level]);
-                                                          }*/
+        for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            // Currently, only fully interior LGRs are supported. Therefore, global_id_set_
+            // is defined only in the process that owns it.
+            if(lgrs_with_at_least_one_active_cell[level-1]>0) {
+                (*current_data_)[level]->global_id_set_->swap(localToGlobal_owned_cells_per_level[level-1],
+                                                              localToGlobal_owned_faces_per_level[level-1],
+                                                              localToGlobal_owned_points_per_level[level-1]);
+            }
+        }
     }
-
 
     // Print total refined level grids and total cells on the leaf grid view
     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
