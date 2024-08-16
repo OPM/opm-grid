@@ -2254,7 +2254,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     if ( intersection.neighbor() &&
                          ( intersection.outside().partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity ) ) {
                         leaf_index_set.add(globalIdSet().id(element),
-                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::overlap), true));
+                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::copy), true));
                         // Store it only once
                         break;
                     }
@@ -2264,13 +2264,48 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 assert(element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity);
                 leaf_index_set.add(globalIdSet().id(element),
                                    ParallelIndexSet::LocalIndex(element.index(),
-                                                                AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::overlap), true));
+                                                                AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::copy), true));
             }
         }
         leaf_index_set.endResize();
 
-        // Now we can compute the communication interface. TO BE DONE
-        //(*current_data_).back()->computeCommunicationInterfaces();
+        // Now we can compute the communication interface. TO BE MOVED INTO A NEW FUNCTION
+        // CpGridData::computeCommunicationInterfaces()
+
+          // Code below in progress
+        /*  
+        // Compute the interface information for cells
+        std::get<InteriorBorder_All_Interface>(current_data_->back()->cell_interfaces_)
+            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::owner>(),
+                   AllSet<AttributeSet>());
+        std::get<Overlap_OverlapFront_Interface>(current_data_->back()->cell_interfaces_)
+            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
+                   EnumItem<AttributeSet, AttributeSet::copy>());
+        std::get<Overlap_All_Interface>(current_data_->back()->cell_interfaces_)
+            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
+                   AllSet<AttributeSet>());
+        std::get<All_All_Interface>(current_data_->back()->cell_interfaces_)
+            .build(current_data_->back()->cellRemoteIndices(), AllSet<AttributeSet>(), AllSet<AttributeSet>());
+
+        // Now we use the all_all communication of the cells to compute which faces and points
+        // are also present on other processes and with what attribute.
+        const auto& all_all_cell_interface = std::get<All_All_Interface>(current_data_->back()->cell_interfaces_);
+
+       Communicator comm(all_all_cell_interface.communicator(),
+                          all_all_cell_interface.interfaces());
+        
+        std::vector<std::map<int,char> > point_attributes(noExistingPoints);
+        AttributeDataHandle<std::vector<std::array<int,8> > >
+            point_handle(current_data_->back()->ccobj_.rank(), *(current_data_->back()->partition_type_indicator_),
+                         point_attributes, current_data_->back()->cell_to_point_, *(current_data_->back()));
+        if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(current_data_->back()->cell_interfaces_))
+            .interfaces().size() )
+        {
+            comm.forward(point_handle);
+        }
+        createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
+                         point_interfaces_);
+        */
         //    assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
         (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
     }
