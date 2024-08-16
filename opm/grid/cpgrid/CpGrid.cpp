@@ -2117,10 +2117,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel)
         {
             // Actual level == "shiftedLevel" + 1
-            // auto& level_index_set =   (*current_data_)[shiftedLevel+1]->cellIndexSet();
-            // level_index_set.beginResize();
-            //level_index_set.add(cellGlobalIdx, ParallelIndexSet::LocalIndex(elemIdx, AttributeSet(owner), true));
-            // level_index_set.endResize();
             localToGlobal_owned_cells_per_level[shiftedLevel].resize(global_cells_per_level[shiftedLevel+1]);
             // Currently, local_OVERLAP_cells_per_level[level] == 0 for all level>0, which makes it easier to
             // define global ids for the refined level grids.
@@ -2248,23 +2244,31 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         leaf_index_set.beginResize();
 
         for(const auto& element : elements(leafGridView())) {
-            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+            const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+            if ( elemPartitionType == InteriorEntity) {
                 // Check if it has an overlap neighbor
                 for (const auto& intersection : intersections(leafGridView(), element)) {
-                    if ( intersection.neighbor() &&
-                         ( intersection.outside().partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity ) ) {
-                        leaf_index_set.add(globalIdSet().id(element),
-                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::copy), true));
-                        // Store it only once
-                        break;
+                    if ( intersection.neighbor() ) {
+                        const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+                        if (neighborPartitionType == OverlapEntity )  {
+                            leaf_index_set.add(globalIdSet().id(element),
+                                               ParallelIndexSet::LocalIndex(element.index(),
+                                                                            AttributeSet((elemPartitionType ==InteriorEntity)?
+                                                                                         AttributeSet::owner : AttributeSet::copy),
+                                                                            true));
+                            // Store it only once
+                            break;
+                        }
                     }
                 }
             }
             else { // overlap cell
-                assert(element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity);
+                assert(elemPartitionType == OverlapEntity);
                 leaf_index_set.add(globalIdSet().id(element),
                                    ParallelIndexSet::LocalIndex(element.index(),
-                                                                AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::copy), true));
+                                                                AttributeSet((elemPartitionType==InteriorEntity)?
+                                                                             AttributeSet::owner : AttributeSet::copy),
+                                                                true));
             }
         }
         leaf_index_set.endResize();
