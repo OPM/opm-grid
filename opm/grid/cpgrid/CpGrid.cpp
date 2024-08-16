@@ -2235,6 +2235,30 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
 
+        // Global id for the cells in leaf grid view
+        std::vector<int> leafCellIds(cellMaxGlobalId);
+        for(const auto& element: elements(leafGridView())){
+            auto equivElem = element.getEquivLevelElem();
+            leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
+        }
+
+        // Global id for the faces in leaf grid view
+        std::vector<int> leafFaceIds(faceMaxGlobalId);
+        /* for(const auto& face: leaf faces)){
+            auto equivLevelFace = face.getEquivLevelElem(); TO BE DONE - NOT EXISTING METHOD FOR FACES
+            leafFaceIds[face.index()] = (*current_data_)[face.level()]->global_id_set_->id(equivLevelFace);
+            }*/
+
+        // Global id for the points in leaf grid view
+        std::vector<int> leafPointIds(pointMaxGlobalId);
+        for(const auto& point : vertices(leafGridView())){
+            const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
+            const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
+            leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
+        }
+        // current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
+
+        
         this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
         for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
