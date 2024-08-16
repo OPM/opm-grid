@@ -2243,6 +2243,36 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
         }
+
+        auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+        leaf_index_set.beginResize();
+
+        for(const auto& element : elements(leafGridView())) {
+            if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                // Check if it has an overlap neighbor
+                for (const auto& intersection : intersections(leafGridView(), element)) {
+                    if ( intersection.neighbor() &&
+                         ( intersection.outside().partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity ) ) {
+                        leaf_index_set.add(globalIdSet().id(element),
+                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::overlap), true));
+                        // Store it only once
+                        break;
+                    }
+                }
+            }
+            else { // overlap cell
+                assert(element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity);
+                leaf_index_set.add(globalIdSet().id(element),
+                                   ParallelIndexSet::LocalIndex(element.index(),
+                                                                AttributeSet((element.partitionTypeWhenLgrs(globalActiveLgrs)==InteriorEntity)? AttributeSet::owner : AttributeSet::overlap), true));
+            }
+        }
+        leaf_index_set.endResize();
+
+        // Now we can compute the communication interface. TO BE DONE
+        //(*current_data_).back()->computeCommunicationInterfaces();
+        //    assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
+        (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
     }
 
     // Print total refined level grids and total cells on the leaf grid view
