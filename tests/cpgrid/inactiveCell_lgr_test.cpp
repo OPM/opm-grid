@@ -331,8 +331,9 @@ void testInactiveCellsLgrs(const std::string& deckString,
         for (const auto& element: elements(grid.levelGridView(level))){
             const auto& localId = data[level]->localIdSet().id(element);
             const auto& globalId = data[level]->globalIdSet().id(element);
-            // In serial run, local and global id coincide:
-            BOOST_CHECK_EQUAL(localId, globalId);
+            if(grid.comm().size()<1) { // In serial run, local id == global id. In parallel, might differ.
+                BOOST_CHECK_EQUAL(localId, globalId);
+            }
             levelIds_set.insert(localId);
             levelIds_vec.push_back(localId);
             // Search in the leaf grid view elements for the element with the same id, if it exists.
@@ -357,7 +358,9 @@ void testInactiveCellsLgrs(const std::string& deckString,
         for (const auto& point : vertices(grid.levelGridView(level))) {
             const auto& localId = data[level]->localIdSet().id(point);
             const auto& globalId = data[level]->globalIdSet().id(point);
-            BOOST_CHECK_EQUAL(localId, globalId);
+            if(grid.comm().size()<1) { // In serial run, local id == global id. In parallel, might differ.
+                BOOST_CHECK_EQUAL(localId, globalId);
+            }
             levelIds_set.insert(localId);
             levelIds_vec.push_back(localId);
             // Search in the leaf grid view elements for the element with the same id, if it exists.
