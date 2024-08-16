@@ -2238,6 +2238,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                               localToGlobal_owned_points_per_level[level-1]);
             }
         }
+
+        this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
+        for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
+            this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
+        }
     }
 
     // Print total refined level grids and total cells on the leaf grid view
