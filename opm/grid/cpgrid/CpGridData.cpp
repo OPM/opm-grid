@@ -1655,7 +1655,7 @@ void CpGridData::computePointPartitionType()
     // we set the type of the point to the one of the face as long as the type of the point is
     // not border.
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
-                                                       OverlapEntity);
+                                                       InteriorEntity);
     for(int i=0; i<face_to_point_.size(); ++i)
     {
         for(auto p=face_to_point_[i].begin(),
