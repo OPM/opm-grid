@@ -1564,6 +1564,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid. 
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
+    // Copy face history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid. 
+    const auto& preAdaptGrid_face_history = (preAdaptMaxLevel>0) ? current_view_data_->face_history_ : std::vector<std::array<int,2>>();
 
     // To store/build refined level grids.
     std::vector<std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>> refined_data_vec(levels,this -> data_);
@@ -1961,6 +1963,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                               corner_count,
                               preAdaptGrid_corner_history,
                               preAdaptMaxLevel);
+
+    updateFaceHistory(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                      adaptedFace_to_elemLgrAndElemLgrFace,
+                      face_count,
+                      preAdaptGrid_face_history,
+                      preAdaptMaxLevel);
+
 
     this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
     for (int level = 0; level < levels; ++level) {
@@ -3357,6 +3366,31 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
     }
 }
 
+void CpGrid::updateFaceHistory(const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                               const std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
+                               const int& face_count,
+                               const std::vector<std::array<int,2>>& preAdaptGrid_face_history,
+                               const int& preAdaptMaxLevel)
+{
+    // face_history_ for levels 0, level 1, ..., preAdapt-maxLevel (maximum level before calling (again) adapt) should be already populated
+    // face_history_[ new face ] = {-1,-1}. Notice that for each new refined level grid, all the refined faces are new born.
+    for (int level = preAdaptMaxLevel+1; level < (this->maxLevel()+1); ++level) {
+        data_[level]->face_history_.resize( data_[level] ->face_to_cell_.size(), std::array<int,2>({-1,-1}));
+    }
+    // face_history_ leaf grid view
+    // face_history_[ leaf face index ] = { level where the face was born, its index in that level grid}.
+    for ( int leafFace = 0; leafFace < face_count; ++leafFace){
+        data_.back()->face_history_.resize(face_count);
+        const auto& [elemLgr, elemLgrFace] = adaptedFace_to_elemLgrAndElemLgrFace.at(leafFace);
+        if (elemLgr != -1) {
+            const auto& [refinedLevel, refinedFace] = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.at({elemLgr, elemLgrFace});
+            data_.back()->face_history_[leafFace] = { refinedLevel, refinedFace};
+        }
+        else {
+            data_.back()->face_history_[leafFace] =  preAdaptGrid_face_history.empty() ? std::array<int,2>{{0, elemLgrFace}} : preAdaptGrid_face_history[elemLgrFace];
+        }
+    }
+}
 
 std::array<int,3>  CpGrid::getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const
 {

@@ -845,6 +845,8 @@ private:
     std::vector<std::array<int,2>> leaf_to_level_cells_;
     /** Corner history. corner_history_[ corner index ] = {level where the corner was born, its index there }, {-1,-1} otherwise. */
     std::vector<std::array<int,2>> corner_history_;
+    /** Face history. face_history_[ face index ] = {level where the face was born, its index there }, {-1,-1} otherwise. */
+    std::vector<std::array<int,2>> face_history_;
     // SUITABLE FOR ALL LEVELS INCLUDING LEAFVIEW
     /** Child cells and their parents. Entry is {-1,-1} when cell has no father. */ // {level parent cell, parent cell index}
     std::vector<std::array<int,2>> child_to_parent_cells_;
