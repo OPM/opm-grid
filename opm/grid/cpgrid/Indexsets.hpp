@@ -342,7 +342,7 @@ namespace Dune
                 }
             }
 
-            IdType computeId_face(const cpgrid::Intersection& intersection) const
+            IdType computeId_face(const Dune::cpgrid::Intersection& intersection) const
             {
                 IdType myId = 0;
                 // Case: Leaf grid view is a mixed of coarse and fined cells.
@@ -381,6 +381,8 @@ namespace Dune
                         // (since each entities must keep its id along the entire hiearchy)
                         std::array<int,2> level_levelIdx = {0,0};
                         level_levelIdx = grid_.face_history_[intersection.id()];
+                        // Here I need the intersection of the level
+                        // Alternatively, refactor the method that takes EntityRep<1> as an argument
                         const auto& levelEntityRep =  cpgrid::EntityRep<1>(level_levelIdx[1], true);
                         return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntityRep);
                     }
@@ -435,6 +437,12 @@ namespace Dune
                     return idSet_->id(e);
                 else
                     return this->template getMapping<codim>()[e.index()];
+            }
+
+            /// return id of intersection (here face number)
+            IdType id( const cpgrid::Intersection& intersection ) const
+            {
+                return idSet_->id(intersection);
             }
 
             template<int cc>
