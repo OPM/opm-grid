@@ -629,6 +629,8 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+    void computeCommunicationInterfaces(int noexistingPoints);
+
     /// \brief The type of the mpi communicator.
     using MPICommunicator = CpGridDataTraits::MPICommunicator ;
     /// \brief The type of the collective communication.

@@ -1634,18 +1634,27 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         }
     }
 
+    computeCommunicationInterfaces(noExistingPoints);   
+#else // #if HAVE_MPI
+    static_cast<void>(grid);
+    static_cast<void>(view_data);
+#endif
+}
+
+void CpGridData::computeCommunicationInterfaces(int noExistingPoints)
+{
     // Compute the interface information for cells
     std::get<InteriorBorder_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::owner>(),
+        .build(cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::owner>(),
                AllSet<AttributeSet>());
     std::get<Overlap_OverlapFront_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::copy>(),
+        .build(cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
                EnumItem<AttributeSet, AttributeSet::copy>());
     std::get<Overlap_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, EnumItem<AttributeSet, AttributeSet::copy>(),
+        .build(cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
                AllSet<AttributeSet>());
     std::get<All_All_Interface>(cell_interfaces_)
-        .build(cell_remote_indices, AllSet<AttributeSet>(), AllSet<AttributeSet>());
+        .build(cellRemoteIndices(), AllSet<AttributeSet>(), AllSet<AttributeSet>());
 
     // Now we use the all_all communication of the cells to compute which faces and points
     // are also present on other processes and with what attribute.
@@ -1681,10 +1690,6 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
-#else // #if HAVE_MPI
-    static_cast<void>(grid);
-    static_cast<void>(view_data);
-#endif
 }
 
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const

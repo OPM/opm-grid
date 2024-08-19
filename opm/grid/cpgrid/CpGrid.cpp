@@ -2147,7 +2147,14 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // the interior of the process, i.e., there are "non overlap points" (points coming from overlap cells, or neighbors
         // of overlap cells).
         std::vector<int> global_points_per_level(cells_per_dim_vec.size() +1);
-        global_points_per_level[0] = comm().sum(current_data_->front()->size(3));
+
+        // Global id for the points in level zero grid 
+        std::set<int> levelZeroPointIds;
+        for(const auto& point : vertices(levelGridView(0))){
+            levelZeroPointIds.insert( current_data_->front()->global_id_set_->id(point));
+        }
+        global_points_per_level[0] = comm().sum(levelZeroPointIds.size());
+        
 
         for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
             for(const auto& point : vertices(levelGridView(level))) {
@@ -2163,13 +2170,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         // Integer used just to check that the global ids created are below this max-value (see below global ids definition).
         int pointMaxGlobalId = std::accumulate(global_points_per_level.begin(), global_points_per_level.end(), 0);
-        // Since ids are unique for all entities considering cells and points, we add cellmaxGlobalId:
-        pointMaxGlobalId += cellMaxGlobalId;
         // To compute global ids for cells for refined level grids (excluding level 0, since its global ids are
         // already defined), we use the values from global_cells_per_level[level] with level>0.
 
         // Add "if comm().rank() == 0" if we do not need this globlal ids visible in all the ranks.
-        int pointGlobalId = global_points_per_level[0]; // It does not represent the total amount of points in level 0!!!
+        int pointGlobalId = global_points_per_level[0];
+        // Since ids are unique for all entities considering cells and points, we add cellmaxGlobalId:
+        pointGlobalId += cellMaxGlobalId;
         // Only for level 1,2,.., maxLevel grids
         std::vector<std::vector<int>> localToGlobal_owned_points_per_level(cells_per_dim_vec.size());
         for (int shiftedLevel = 0; shiftedLevel < static_cast<int>(cells_per_dim_vec.size()); ++shiftedLevel)
@@ -2183,10 +2190,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 localToGlobal_owned_points_per_level[shiftedLevel][pointIdx] = pointGlobalId;
                 ++pointGlobalId;
             }
+            localToGlobal_owned_points_per_level[shiftedLevel].shrink_to_fit();
         }
-        assert(pointGlobalId <= pointMaxGlobalId); // Notice that pointGlobalId is incremented after the very last definition.
+        assert(pointGlobalId <= pointMaxGlobalId + cellMaxGlobalId); // Notice that pointGlobalId is incremented after the very last definition.
 
-       // Only for level 1,2,.., maxLevel grids. Empty vectors (Entity<1> not supported for CpGrid).
+        // Only for level 1,2,.., maxLevel grids. Empty vectors (Entity<1> not supported for CpGrid).
         std::vector<std::vector<int>> localToGlobal_owned_faces_per_level(cells_per_dim_vec.size());
 
         for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
@@ -2205,8 +2213,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             auto equivElem = element.getEquivLevelElem();
             leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
         }
+        ;
+        leafCellIds.shrink_to_fit();
 
-        // Global id for the faces in leaf grid view. Empty vector (Entity<1> not supported for CpGrid). 
+        // Global id for the faces in leaf grid view. Empty vector (Entity<1> not supported for CpGrid).
         std::vector<int> leafFaceIds{};
 
         // Global id for the points in leaf grid view
@@ -2216,6 +2226,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
             leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
         }
+        leafPointIds.shrink_to_fit();
+
         current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
 
         
@@ -2257,45 +2269,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         leaf_index_set.endResize();
 
-        // Now we can compute the communication interface. TO BE MOVED INTO A NEW FUNCTION
-        // CpGridData::computeCommunicationInterfaces()
-
-          // Code below in progress
-        /*  
-        // Compute the interface information for cells
-        std::get<InteriorBorder_All_Interface>(current_data_->back()->cell_interfaces_)
-            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::owner>(),
-                   AllSet<AttributeSet>());
-        std::get<Overlap_OverlapFront_Interface>(current_data_->back()->cell_interfaces_)
-            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
-                   EnumItem<AttributeSet, AttributeSet::copy>());
-        std::get<Overlap_All_Interface>(current_data_->back()->cell_interfaces_)
-            .build(current_data_->back()->cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::copy>(),
-                   AllSet<AttributeSet>());
-        std::get<All_All_Interface>(current_data_->back()->cell_interfaces_)
-            .build(current_data_->back()->cellRemoteIndices(), AllSet<AttributeSet>(), AllSet<AttributeSet>());
-
-        // Now we use the all_all communication of the cells to compute which faces and points
-        // are also present on other processes and with what attribute.
-        const auto& all_all_cell_interface = std::get<All_All_Interface>(current_data_->back()->cell_interfaces_);
-
-       Communicator comm(all_all_cell_interface.communicator(),
-                          all_all_cell_interface.interfaces());
-        
-        std::vector<std::map<int,char> > point_attributes(noExistingPoints);
-        AttributeDataHandle<std::vector<std::array<int,8> > >
-            point_handle(current_data_->back()->ccobj_.rank(), *(current_data_->back()->partition_type_indicator_),
-                         point_attributes, current_data_->back()->cell_to_point_, *(current_data_->back()));
-        if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(current_data_->back()->cell_interfaces_))
-            .interfaces().size() )
-        {
-            comm.forward(point_handle);
-        }
-        createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
-                         point_interfaces_);
-        */
-        //    assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
         (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
+        // Now we can compute the communication interface.
+        current_data_->back()->computeCommunicationInterfaces(leafPointIds.size());
+        assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
+       
     }
 
     // Print total refined level grids and total cells on the leaf grid view
