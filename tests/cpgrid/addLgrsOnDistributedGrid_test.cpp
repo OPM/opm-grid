@@ -317,12 +317,14 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     for (const auto& element: elements(coarse_grid.leafGridView())){
         const auto& localId = data.back()->localIdSet().id(element);
         const auto& globalId = data.back()->globalIdSet().id(element);
-        // In serial run, local and global id coincide:
-        BOOST_CHECK_EQUAL(localId, globalId);
+        if (coarse_grid.comm().size()==0) {
+            // In serial run, local and global id coincide:
+            BOOST_CHECK_EQUAL(localId, globalId);
+        }
         allIds_set.insert(localId);
         allIds_vec.push_back(localId);
         // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-        BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->localIdSet().id(element.getEquivLevelElem()));
+        BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->globalIdSet().id(element.getEquivLevelElem()));
     }
     // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
     BOOST_CHECK( allIds_set.size() == allIds_vec.size());
@@ -330,7 +332,10 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     for (const auto& point : vertices(coarse_grid.leafGridView())){
         const auto& localId = data.back()->localIdSet().id(point);
         const auto& globalId = data.back()->globalIdSet().id(point);
-        BOOST_CHECK_EQUAL(localId, globalId);
+        if (coarse_grid.comm().size()==0) {
+            // In serial run, local and global id coincide:
+            BOOST_CHECK_EQUAL(localId, globalId);
+        }
         allIds_set.insert(localId);
         allIds_vec.push_back(localId);
     }
