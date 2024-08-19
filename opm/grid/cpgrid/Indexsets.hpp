@@ -223,7 +223,7 @@ namespace Dune
             /// return id of intersection (here face number)
             IdType id( const cpgrid::Intersection& intersection ) const
             {
-                return intersection.id();
+                return computeId_face(intersection);
             }
 
             template<int cc>
@@ -339,6 +339,54 @@ namespace Dune
                         myId += grid_.indexSet().size( c );
                     }
                     return  myId + e.index();
+                }
+            }
+
+            IdType computeId_face(const cpgrid::Intersection& intersection) const
+            {
+                IdType myId = 0;
+                // Case: Leaf grid view is a mixed of coarse and fined cells.
+                if (grid_.levelData().size() > 1) {
+                    const auto& gridIdx = grid_.getGridIdx();
+                    // Level zero grid
+                    if ( gridIdx == 0 ) {
+                        // IndexSet only takes into account cells and points.
+                        // Add all the cells in level 0
+                        myId += grid_.indexSet().size( 0 );
+                        // Add all the points in level 0
+                        myId += grid_.indexSet().size( 3 );
+                        return  myId + intersection.id();
+                    }
+                    // Level 1, 2, ...., maxLevel refined grids.
+                    if ( (gridIdx>0) && (gridIdx < static_cast<int>(grid_.levelData().size() -1)) ) {
+                        // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)
+                        // from all the "previous" level grids.
+                        for (int lowerLevel = 0; lowerLevel< gridIdx; ++lowerLevel) {
+                            // IndexSet only takes into account cells and points.
+                            // Add all the cells in the lower level grid
+                            myId += grid_.levelData()[lowerLevel]->indexSet().size( 0 );
+                            // Add all the points in the lower level grid
+                            myId += grid_.levelData()[lowerLevel]->indexSet().size( 3 );
+                            // Add faces of lower level grids.
+                            myId += grid_.levelData()[lowerLevel]->face_to_cell_.size();
+                        }
+                        // Add all the entities of the refined level grid of codim 0 and 3.
+                        myId += grid_.indexSet().size( 0 ); // cells
+                        myId += grid_.indexSet().size( 3 ); // points
+                        return  myId + intersection.id();
+                    }
+                    else { // Leaf grid view (grid view with mixed coarse and refined cells).
+                        assert( grid_.getGridIdx() == (static_cast<int>(grid_.levelData().size()) -1) );
+                        // In this case, we search for the ids defined in previous levels
+                        // (since each entities must keep its id along the entire hiearchy)
+                        std::array<int,2> level_levelIdx = {0,0};
+                        level_levelIdx = grid_.face_history_[intersection.id()];
+                        const auto& levelEntityRep =  cpgrid::EntityRep<1>(level_levelIdx[1], true);
+                        return  grid_.levelData()[level_levelIdx[0]]->local_id_set_ ->id(levelEntityRep);
+                    }
+                } // end-if-data_.size()>1
+                else { // Case: No LGRs / No refined level grids. Only level 0 grid (GLOBAL grid).
+                    return intersection.id();
                 }
             }
         };
