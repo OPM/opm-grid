@@ -2278,8 +2278,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         (*current_data_).back()->computePointPartitionType();
 
         // Now we can compute the communication interface.
-        //current_data_->back()->computeCommunicationInterfaces(leafPointIds.size());
-        //  assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
+        current_data_->back()->computeCommunicationInterfaces(current_data_->back()->size(3));
+        //assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
 
     }
 
