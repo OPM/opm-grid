@@ -1957,12 +1957,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // Update the leaf grid view
     current_view_data_ = data_.back().get();
 
-    updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
-                              elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                              adaptedCorner_to_elemLgrAndElemLgrCorner,
-                              corner_count,
-                              preAdaptGrid_corner_history,
-                              preAdaptMaxLevel);
+    updateCornerHistory(cornerInMarkedElemWithEquivRefinedCorner,
+                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                        adaptedCorner_to_elemLgrAndElemLgrCorner,
+                        corner_count,
+                        preAdaptGrid_corner_history,
+                        preAdaptMaxLevel);
 
     updateFaceHistory(elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                       adaptedFace_to_elemLgrAndElemLgrFace,
@@ -3333,12 +3333,12 @@ void CpGrid::updateLeafGridViewGeometries( /* Leaf grid View Corners arguments *
                           preAdaptMaxLevel);
 }
 
-void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                       const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                       const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                       const int& corner_count,
-                                       const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
-                                       const int& preAdaptMaxLevel)
+void CpGrid::updateCornerHistory(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                 const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                 const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                 const int& corner_count,
+                                 const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
+                                 const int& preAdaptMaxLevel)
 {
     for (int level = preAdaptMaxLevel+1; level < (this->maxLevel()+1); ++level) {
         data_[level]->corner_history_.resize( data_[level] ->size(3), std::array<int,2>({-1,-1}));

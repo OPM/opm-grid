@@ -1024,12 +1024,18 @@ namespace Dune
                                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                            const int& preAdaptMaxLevel) const;
 
-        void updateCornerHistoryLevels(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                       const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                       const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                       const int& corner_count,
-                                       const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
-                                       const int& preAdaptMaxLevel);
+        void updateCornerHistory(const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                 const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                 const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                                 const int& corner_count,
+                                 const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
+                                 const int& preAdaptMaxLevel);
+
+        void updateFaceHistory(const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                               const std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
+                               const int& face_count,
+                               const std::vector<std::array<int,2>>& preAdaptGrid_face_history,
+                               const int& preAdaptMaxLevel);
 
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///
