@@ -2237,6 +2237,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
 
         auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+        // Compute the partition type for cell
+        (*current_data_).back()->computeCellPartitionType();
+
         leaf_index_set.beginResize();
 
         for(const auto& element : elements(leafGridView())) {
@@ -2271,21 +2274,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
 
-        // Compute the partition type for cell
-        // (*current_data_).back() -> computeCellPartitionType();
-        
-        /* // Compute partition type for points
-        // We initialize all points with interior. Then we loop over the faces. If a face is of
-        // type border, then the type of the point is overwritten with border. In the other cases
-        // we set the type of the point to the one of the face as long as the type of the point is
-        // not border.
-        partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
-        OverlapEntity);*/
-        
+        // Compute the partition type for point
+        (*current_data_).back()->computePointPartitionType();
+
         // Now we can compute the communication interface.
-        // current_data_->back()->computeCommunicationInterfaces(leafPointIds.size());
+        //current_data_->back()->computeCommunicationInterfaces(leafPointIds.size());
         //  assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(this->size(0)));
-       
+
     }
 
     // Print total refined level grids and total cells on the leaf grid view
