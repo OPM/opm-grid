@@ -1600,13 +1600,14 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     }
 
     // Compute the partition type for cell
-    partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
+    computeCellPartitionType();
+    /* partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
     for(const auto& i: cell_indexset)
     {
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
-    }
+            }*/
 
     // Compute partition type for points
     // We initialize all points with interior. Then we loop over the faces. If a face is of
@@ -1639,6 +1640,18 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
     static_cast<void>(grid);
     static_cast<void>(view_data);
 #endif
+}
+
+void CpGridData::computeCellPartitionType()
+{
+    // Compute the partition type for cell
+    partition_type_indicator_->cell_indicator_.resize(cellIndexSet().size());
+    for(const auto& i: cellIndexSet())
+    {
+        partition_type_indicator_->cell_indicator_[i.local()]=
+            i.local().attribute()==AttributeSet::owner?
+            InteriorEntity:OverlapEntity;
+    }
 }
 
 void CpGridData::computeCommunicationInterfaces(int noExistingPoints)

@@ -629,6 +629,8 @@ public:
     template<class DataHandle>
     void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
 
+    void computeCellPartitionType();
+
     void computeCommunicationInterfaces(int noexistingPoints);
 
     /// \brief The type of the mpi communicator.
