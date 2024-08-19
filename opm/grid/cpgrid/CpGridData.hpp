@@ -631,6 +631,8 @@ public:
 
     void computeCellPartitionType();
 
+    void computePointPartitionType();
+
     void computeCommunicationInterfaces(int noexistingPoints);
 
     /// \brief The type of the mpi communicator.

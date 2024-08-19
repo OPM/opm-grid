@@ -1601,16 +1601,10 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute the partition type for cell
     computeCellPartitionType();
-    /* partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
-    for(const auto& i: cell_indexset)
-    {
-        partition_type_indicator_->cell_indicator_[i.local()]=
-            i.local().attribute()==AttributeSet::owner?
-            InteriorEntity:OverlapEntity;
-            }*/
 
     // Compute partition type for points
-    // We initialize all points with interior. Then we loop over the faces. If a face is of
+    computePointPartitionType();
+    /* // We initialize all points with interior. Then we loop over the faces. If a face is of
     // type border, then the type of the point is overwritten with border. In the other cases
     // we set the type of the point to the one of the face as long as the type of the point is
     // not border.
@@ -1634,7 +1628,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
                 partition_type_indicator_->point_indicator_[*p]=new_type;
         }
     }
-
+    */
     computeCommunicationInterfaces(noExistingPoints);   
 #else // #if HAVE_MPI
     static_cast<void>(grid);
@@ -1651,6 +1645,34 @@ void CpGridData::computeCellPartitionType()
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
+    }
+}
+
+void CpGridData::computePointPartitionType()
+{
+    // We initialize all points with interior. Then we loop over the faces. If a face is of
+    // type border, then the type of the point is overwritten with border. In the other cases
+    // we set the type of the point to the one of the face as long as the type of the point is
+    // not border.
+    partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
+                                                       OverlapEntity);
+    for(int i=0; i<face_to_point_.size(); ++i)
+    {
+        for(auto p=face_to_point_[i].begin(),
+                pend=face_to_point_[i].end(); p!=pend; ++p)
+        {
+            PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
+            PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
+            if(old_type==InteriorEntity)
+            {
+                if(new_type!=OverlapEntity)
+                    partition_type_indicator_->point_indicator_[*p]=new_type;
+            }
+            if(old_type==OverlapEntity)
+                partition_type_indicator_->point_indicator_[*p]=new_type;
+            if(old_type==FrontEntity && new_type==BorderEntity)
+                partition_type_indicator_->point_indicator_[*p]=new_type;
+        }
     }
 }
 
