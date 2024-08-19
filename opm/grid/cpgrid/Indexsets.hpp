@@ -196,7 +196,6 @@ namespace Dune
         {
             friend class ReversePointGlobalIdSet;
             friend class Dune::cpgrid::CpGridData;
-            //friend class Dune::cpgrid::LevelGlobalIdSet; Not needed due to repeated code in LevelGlobalIdSet (computeId_cell and computeId_point)
         public:
             typedef int IdType;
 
