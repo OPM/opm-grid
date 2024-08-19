@@ -301,12 +301,13 @@ void testInactiveCellsLgrs(const std::string& deckString,
     for (const auto& element: elements(grid.leafGridView())){
         const auto& localId = data.back()->localIdSet().id(element);
         const auto& globalId = data.back()->globalIdSet().id(element);
-        // In serial run, local and global id coincide:
-        BOOST_CHECK_EQUAL(localId, globalId);
+        if (grid.comm().size() == 0) { // In serial runs, local and global ids coincide.
+            BOOST_CHECK_EQUAL(localId, globalId);
+        }
         allIds_set.insert(localId);
         allIds_vec.push_back(localId);
         // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-        BOOST_CHECK_EQUAL( grid.globalIdSet().id(element), (*data[element.level()]).localIdSet().id(element.getEquivLevelElem()));
+        BOOST_CHECK_EQUAL( grid.globalIdSet().id(element), (*data[element.level()]).globalIdSet().id(element.getEquivLevelElem()));
     }
     // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
     BOOST_CHECK( allIds_set.size() == allIds_vec.size());
@@ -314,7 +315,9 @@ void testInactiveCellsLgrs(const std::string& deckString,
     for (const auto& point: vertices(grid.leafGridView())){
         const auto& localId = data.back()->localIdSet().id(point);
         const auto& globalId = data.back()->globalIdSet().id(point);
-        BOOST_CHECK_EQUAL(localId, globalId);
+        if (grid.comm().size() == 0) { // In serial runs, local and global ids coincide.
+            BOOST_CHECK_EQUAL(localId, globalId);
+        }
         allIds_set.insert(localId);
         allIds_vec.push_back(localId);
     }
