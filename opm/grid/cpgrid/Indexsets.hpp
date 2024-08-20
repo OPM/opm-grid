@@ -409,9 +409,11 @@ namespace Dune
 
             IdType getMaxGlobalId()
             {
+                /*// Ignore faces
                 auto max_globalId = std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<1>());
                 max_globalId = std::max(max_globalId, getMaxCodimGlobalId<3>());
-                return max_globalId;
+                return max_globalId;*/
+                return std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<3>());
             }
 
         private:
