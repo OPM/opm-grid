@@ -2246,7 +2246,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
         }
         leafPointIds.shrink_to_fit();
-        std::cout<< "leafCells size " << leafCellIds.size() << " point: " << leafPointIds.size() << std::endl;
 
         current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
 
@@ -2262,14 +2261,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         leaf_index_set.beginResize();
 
+        // The folowing count (fully interior cell count) can be removed. 
+        int fully_interior_cell_count = 0;
         for(const auto& element : elements(leafGridView())) {
             const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
             if ( elemPartitionType == InteriorEntity) {
                 // Check if it has an overlap neighbor
+                bool isFullyInterior = true;
                 for (const auto& intersection : intersections(leafGridView(), element)) {
                     if ( intersection.neighbor() ) {
                         const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+                        // To help detection of fully interior cells, i.e., without overlap neighbors
                         if (neighborPartitionType == OverlapEntity )  {
+                            isFullyInterior = false;
                             leaf_index_set.add(globalIdSet().id(element),
                                                ParallelIndexSet::LocalIndex(element.index(),
                                                                             AttributeSet((elemPartitionType ==InteriorEntity)?
@@ -2279,6 +2283,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                             break;
                         }
                     }
+                }
+                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
+                    ++fully_interior_cell_count;
+                    leaf_index_set.add(globalIdSet().id(element)); // Should it be here just element.index()?
                 }
             }
             else { // overlap cell
@@ -2299,13 +2307,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         // Now we can compute the communication interface.
         current_data_->back()->computeCommunicationInterfaces(current_data_->back()->size(3));
-        // The next assert fails since in the resize of the cellIndexSet on the leaf grid view, only
-        // - interior cells with at least one neighboring cell that is overlap, or
-        // - overlap cells
-        // are taken into account. 
-        // assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
-        // Therefore, the assert that does not fail is:
-        // assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0) - /* fully interior cells */) );
+        assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
+        // Alternatively, in case fully interior cells should't be added in leaf_index_set, the next assert can be used:
+        //assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0) - /* fully interior cells */) );
 
     } // end-if-comm().size()>1
 
