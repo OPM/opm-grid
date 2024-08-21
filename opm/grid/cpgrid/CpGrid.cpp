@@ -2172,6 +2172,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // with parent cells in level zero who are surrounding by other interior cells of the
             // same process.
 
+            std::cout<< "There are " << non_empty_lgrs << " in rank  " << comm().rank() << std::endl;
+
             if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
                 // For level 2, .., maxLevel, the first new global id for ce
                 for (int lowerLevel = 1; lowerLevel < level; ++lowerLevel) {

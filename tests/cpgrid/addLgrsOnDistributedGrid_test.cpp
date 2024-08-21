@@ -390,12 +390,12 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 }
 
 
-/*BOOST_AUTO_TEST_CASE(threeLgrs)
+BOOST_AUTO_TEST_CASE(threeLgrs)
 {
     // Create a grid
     Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
+    const std::array<int, 3> grid_dim = {10,8,8};
     grid.createCartesian(grid_dim, cell_sizes);
     if(grid.comm().size()>1)
     {
@@ -414,9 +414,9 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-}*/
+}
 
-BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
+/*BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -441,7 +441,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-    }
+    }*/
 
 /*BOOST_AUTO_TEST_CASE(singleCell)
 {
