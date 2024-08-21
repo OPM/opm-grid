@@ -2246,6 +2246,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
         }
         leafPointIds.shrink_to_fit();
+        std::cout<< "leafCells size " << leafCellIds.size() << " point: " << leafPointIds.size() << std::endl;
 
         current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
 
@@ -2298,7 +2299,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         // Now we can compute the communication interface.
         current_data_->back()->computeCommunicationInterfaces(current_data_->back()->size(3));
+        // The next assert fails since in the resize of the cellIndexSet on the leaf grid view, only
+        // - interior cells with at least one neighboring cell that is overlap, or
+        // - overlap cells
+        // are taken into account. 
         // assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
+        // Therefore, the assert that does not fail is:
+        // assert(static_cast<std::size_t>(leaf_index_set.size()) == static_cast<std::size_t>(current_data_->back()->size(0) - /* fully interior cells */) );
 
     } // end-if-comm().size()>1
 
