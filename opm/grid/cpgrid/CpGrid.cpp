@@ -2129,6 +2129,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
         auto global_refined_cell_count = std::accumulate(global_cells_per_level.begin()+1, global_cells_per_level.end(), 0);
+        // Comment on "almost" global refined point count: notice that points that belong to refined level grids but at the same time
+        // coincide with a point from level zero (with a parent cell corner) must not create a new global id. Therefore,
+        // "almost_global_refined_point_count" represents (not the total amount of points f all refined grids) the global amount of
+        // new born points that need to get a new global id.
         auto almost_global_refined_point_count = std::accumulate(global_points_per_level.begin()+1, global_points_per_level.end(), 0);
 
         // Next value takes into account only cells and points, faces are ignored.
@@ -2162,7 +2166,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Ignore faces - empty vectors.
         std::vector<std::vector<int>> localToGlobal_owned_faces_per_level(cells_per_dim_vec.size());
 
-
+        
         for (int level = 1; level < static_cast<int>(cells_per_dim_vec.size())+1; ++level) {
             localToGlobal_owned_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
             localToGlobal_owned_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
@@ -2172,13 +2176,24 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // with parent cells in level zero who are surrounding by other interior cells of the
             // same process.
 
-            std::cout<< "There are " << non_empty_lgrs << " in rank  " << comm().rank() << std::endl;
-
+            // Recall that, thanks to the few computations regarding global amount of cells and points for each level,
+            // assignment of global ids is done by shifting the maximum global id from level zero in a suitable way
+            // (described in more detail above). However, an extra check is needed: if a process contains more than one lgr,
+            // i.e. more than one non empty level grid, then globalIdCell and globalIdPoint do not need to be shifted, since
+            // "they reached these shifted values" by being increment (++globalIdCell/Point). Therefore, through the variable
+            // "expectedGlobalIdCell", it can be detected when a lower level lgr was contained in the same process that the current
+            // lgr we are computing global ids for.
+            // Notice that it is enough to check either expetedGlobalIdCell or expectedGlobalIdPoint (which is not defined here).
             if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
-                // For level 2, .., maxLevel, the first new global id for ce
+                int expectedGlobalIdCell = max_globalId_levelZero+1;
                 for (int lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
-                    globalIdCell += global_cells_per_level[lowerLevel];
-                    globalIdPoint += global_points_per_level[lowerLevel];
+                    expectedGlobalIdCell += global_cells_per_level[lowerLevel];
+                }
+                if(globalIdCell < expectedGlobalIdCell) {
+                    for (int lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
+                        globalIdCell += global_cells_per_level[lowerLevel];
+                        globalIdPoint += global_points_per_level[lowerLevel];
+                    }
                 }
             }
             for(const auto& element : elements(levelGridView(level))) {
@@ -2221,6 +2236,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         } // end-for-loop-level
         assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
         assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
+        
 
         ////////////////////////////////
 
