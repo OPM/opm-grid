@@ -1988,9 +1988,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
 
-    // For serial run, check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
+    // Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
     // active/inactive cells, instead, relies on "ijk-computations". TO DO: improve/remove.
-    if ((startIJK_vec.size() > 1) && distributed_data_.empty()) {
+    if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
             for (int otherLevel = level+1; otherLevel < static_cast<int>(startIJK_vec.size()); ++otherLevel) {
@@ -2022,7 +2022,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             } // end-otherLevel-for-loop
         } // end-level-for-loop
     }// end-if-patchesShareFace
-
+  
 
     std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
@@ -4023,6 +4023,8 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
                                              const std::array<int,3>& cells_per_dim_lgr2) const
 {
     const auto& ijkLgr1 = getRefinedFaceIJK(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr);
+    std::cout<< "ijk: " << ijkLgr1[0] << " " << ijkLgr1[1] << " " << ijkLgr1[2] << std::endl;
+    std::cout<< "faceIdxInLrg1: " << faceIdxInLgr1 << " cells_per_Dim_lgr1[0]: " << cells_per_dim_lgr1[0]  << " lgr2[0] " << cells_per_dim_lgr2[0] <<std::endl;
     // lgr1 represents an element index < lgr2 (neighboring cells sharing a face with lgr1-element)
     // Order defined in Geometry::refine
     // K_FACES (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i

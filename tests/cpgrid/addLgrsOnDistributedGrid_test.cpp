@@ -105,9 +105,9 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         for (int cell = 0; cell <  data[0]-> size(0); ++cell)
         {
             Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
-            // BOOST_CHECK( entity.hasFather() == false);
-            //  BOOST_CHECK_THROW(entity.father(), std::logic_error);
-            //  BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+            BOOST_CHECK( entity.hasFather() == false);
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
             BOOST_CHECK( entity.getOrigin() ==  entity);
             BOOST_CHECK( entity.getOrigin().level() == 0);
             auto it = entity.hbegin(coarse_grid.maxLevel());
@@ -265,8 +265,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( level_cellIdx[0] == entity.level());
             }
             else{
-                // BOOST_CHECK_THROW(entity.father(), std::logic_error);
-                // BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+                BOOST_CHECK_THROW(entity.father(), std::logic_error);
+                BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
                 BOOST_CHECK_EQUAL(child_to_parent[0], -1);
                 BOOST_CHECK_EQUAL(child_to_parent[1], -1);
                 BOOST_CHECK( level_cellIdx[0] == 0);
@@ -402,19 +402,19 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         grid.loadBalance();
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
-        const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}, {3,2,2}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{2,1,2}, {1,1,4}, {4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-        // LGR1 element indices = 0,1,12,13
-        // LGR2 element indices = 24
-        // LGR3 element indices = 35
+        // LGR1 element indices = 0,1,80,81 -> 4x(2x2x2) = 32 refined cells
+        // LGR2 element indices = 240  -> refined into 3x3x3 = 27 cells
+        // LGR3 element indices = 183 -> refined into 4x4x4 = 64 cells
 
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-}
+    }
 
 /*BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
 {
@@ -465,9 +465,9 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
 
         refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     }
-    }*/
+    }
 
-/*BOOST_AUTO_TEST_CASE(singleCell_in_larger_gris)
+BOOST_AUTO_TEST_CASE(singleCell_in_larger_gris)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -490,9 +490,9 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
     }
 }
-*/
 
-/*BOOST_AUTO_TEST_CASE(twoLgrs)
+
+BOOST_AUTO_TEST_CASE(twoLgrs)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -563,5 +563,5 @@ BOOST_AUTO_TEST_CASE(globalRefine_callingTwice)
         // Calling globalRefine a second time with argument equal to 1 should throw (for now).
         BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
     }
-}
-*/
+}*/
+
