@@ -401,6 +401,13 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
     {
         grid.loadBalance();
 
+        // The following variables were selected carefully, in such a way that each lgr is fully interior
+        // in one process.
+        // In general, when at least one cell of an lgr:
+        // (A) is not interior, or
+        // (B) is interior, but it has at least one neighboring cell that it is overlap,
+        // then the refinement will not take place and will throw an error message.
+
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}, {2,2,2}};
         const std::vector<std::array<int,3>> startIJK_vec = {{0,1,0}, {0,0,2}, {3,2,0}, {3,0,2}};
         const std::vector<std::array<int,3>> endIJK_vec = {{1,3,1}, {1,1,3}, {4,3,1}, {4,2,3}};
