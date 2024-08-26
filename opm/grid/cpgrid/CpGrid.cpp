@@ -1988,8 +1988,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
 
-    // Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
-    // active/inactive cells, instead, relies on "ijk-computations". TO DO: improve/remove.
+    // Compatibility of number of subdivisions of neighboring LGRs: Check shared faces on boundaries of LGRs.
+    //                                                              Not optimal since the code below does not take into account
+    //                                                              active/inactive cells, instead, relies on "ijk-computations".
+    //                                                              TO DO: improve/remove.
+    // To check "Compatibility of numbers of subdivisions of neighboring LGRs".
+    bool compatibleSubdivisionsHasFailed = false;
     if (startIJK_vec.size() > 1) {
         bool notAllowedYet = false;
         for (int level = 0; level < static_cast<int>(startIJK_vec.size()); ++level) {
@@ -2012,26 +2016,30 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
                 }
                 if (notAllowedYet){
-                    if (comm().rank()==0){
-                        OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
-                    }
-                    else{
-                        OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
-                    }
+                    compatibleSubdivisionsHasFailed = true;
+                    break;
                 }
             } // end-otherLevel-for-loop
         } // end-level-for-loop
     }// end-if-patchesShareFace
-  
+    compatibleSubdivisionsHasFailed = comm().max(compatibleSubdivisionsHasFailed);
+    if(compatibleSubdivisionsHasFailed) {
+        if (comm().rank()==0){
+            OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+        }
+    }
 
     // LGRs Fully Interior: Currently, adding LGRs on a distributed grid is supported only in the case where each LGR is fully contained
     //                      in the interior of a process, i.e., each cell that is marked for refinement and has a neighboring cell, this
     //                      neighboring cell has to be also interior for the process. In other words, marked element for refinement cannot
     //                      have overlap neighboring cells.
-    // Bool to check "LGRs fully interior" for all processes.
+    // To check "LGRs fully interior" for all processes.
     bool lgrsFullyInteriorHasFailed = false;
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    // Bool to check "Non-NNCs (non neighboring connections)" for all processes.
+    // To check "Non-NNCs (non neighboring connections)" for all processes.
     bool nonNNCsHasFailed = false;
     std::vector<int> lgrs_with_at_least_one_active_cell(static_cast<int>(startIJK_vec.size()));
     // Determine the assigned level for the refinement of each marked cell
