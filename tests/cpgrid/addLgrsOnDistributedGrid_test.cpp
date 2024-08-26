@@ -405,7 +405,7 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
             {
                 const auto& elemIdx = (k*80) + (j*10) + i;
                 if (i<5) {
-                    if(j<4) { 
+                    if(j<4) {
                         parts[elemIdx] = 0;
                     }
                     else {
@@ -453,7 +453,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
     std::vector<int> parts(36);
     std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
                                                      {12,13,17,24,25,28,29,32,33},
-                                                     {2,3,6,7,10,11,18,22,23}, 
+                                                     {2,3,6,7,10,11,18,22,23},
                                                      {14,15,19,26,27,30,31,34,35} };
     for (int rank = 0; rank < 4; ++rank) {
         for (const auto& elemIdx : cells_per_rank[rank]) {
@@ -492,7 +492,7 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
     std::vector<int> parts(36);
     std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
                                                      {12,13,17,24,25,28,29,32,33},
-                                                     {2,3,6,7,10,11,18,22,23}, 
+                                                     {2,3,6,7,10,11,18,22,23},
                                                      {14,15,19,26,27,30,31,34,35} };
     for (int rank = 0; rank < 4; ++rank) {
         for (const auto& elemIdx : cells_per_rank[rank]) {
@@ -517,55 +517,3 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
         BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
     }
 }
-
-
-
-/*BOOST_AUTO_TEST_CASE(globalRefine)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
-    grid.loadBalance();
-
-    grid.globalRefine(1);
-}
-
-//Calling globalRefine with >1 (or equivalent calling it multiple times) is not supported yet.
-BOOST_AUTO_TEST_CASE(globalRefine2)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
-    if(grid.comm().size()>1)
-    {
-        grid.loadBalance();
-
-        BOOST_CHECK_THROW(grid.globalRefine(2), std::logic_error);
-    }
-}
-
-//Calling globalRefine with >1 (or calling it multiple times) is not supported yet.
-BOOST_AUTO_TEST_CASE(globalRefine_callingTwice)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
-    if(grid.comm().size()>1)
-    {
-        grid.loadBalance();
-
-        grid.globalRefine(1);
-        // Calling globalRefine a second time with argument equal to 1 should throw (for now).
-        BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
-    }
-}*/
-
