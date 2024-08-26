@@ -414,9 +414,9 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-    }
+}
 
-/*BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
+BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -436,12 +436,13 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         // LGR3 element indices = 11 in rank 2. Total 64 refined cells, 125 points (125-8 = 117 with new global id).
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
-        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
+        //grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
 
-        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-    }*/
+}
 
 /*BOOST_AUTO_TEST_CASE(singleCell)
 {
