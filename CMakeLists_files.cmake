@@ -91,8 +91,6 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_communication_utils.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/addLgrsOnDistributedGrid_test.cpp
-	tests/cpgrid/addLgrsOnDistributedGrid_test_1.cpp
-	tests/cpgrid/addLgrsOnDistributedGrid_test_2.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
