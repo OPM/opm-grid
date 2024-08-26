@@ -181,11 +181,13 @@ public:
         return true;
     }
 
-     /// @brief TO BE UPDATED For now, the grid is serial and the only partitionType() is InteriorEntity.
+    /// @brief In serial run, the only partitionType() is InteriorEntity.
     ///        Only needed when distributed_data_ is not empty.
     PartitionType partitionType() const;
-    
-    /// @brief TO BE UPDATED For now, the grid is serial and the only partitionType() is InteriorEntity.
+
+    /// @brief For parallel run, the entity - for now - does not see the CpGrid therefore we pass a bool to make
+    ///        the entity aware of the fact the the grid has been distributed.
+    ///        Each cell inherits the partition type of its origin (either parent cell or equivalent cell in level 0).
     ///        Only needed when distributed_data_ is not empty.
     PartitionType partitionTypeWhenLgrs(bool) const;
 
