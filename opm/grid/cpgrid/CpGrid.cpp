@@ -943,9 +943,9 @@ void CpGrid::globalRefine (int refCount)
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
     }
-    // Prevent multiple calls of globalRefine on a distributed grid. Only one call with refCount equal to 1 is supported (for now).
-    if ( (!distributed_data_.empty() && refCount > 1) || (distributed_data_.size()>1) ) {
-        OPM_THROW(std::logic_error, "Multiple global refinement of a distributed grid is not supported yet.");
+    // Preventcalls of globalRefine on a distributed grid.
+    if ( !distributed_data_.empty() ) {
+        OPM_THROW(std::logic_error, "Global refinement of a distributed grid is not supported yet.");
     }
     if (refCount>0) {
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
