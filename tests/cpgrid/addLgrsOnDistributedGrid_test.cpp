@@ -408,15 +408,15 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
                     if(j<4) { 
                         parts[elemIdx] = 0;
                     }
-                    if (j>3) {
+                    else {
                         parts[elemIdx] = 1;
                     }
                 }
-                if (i>4){
+                else {
                     if (j<4) {
                         parts[elemIdx] = 2;
                     }
-                    if (j>3){
+                    else {
                         parts[elemIdx] = 3;
                     }
                 }
