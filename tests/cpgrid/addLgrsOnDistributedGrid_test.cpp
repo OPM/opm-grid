@@ -512,8 +512,24 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
         // LGR3 element indices = 7 in rank 2. This cell is interior but it has a neighboring cell sharing its top face, cell 19 belonging to rank 3.
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
-
         // Throw due to LGR3 not verifying being fully interior on a process.
         BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
+    }
+}
+
+//Calling globalRefine on a distributed grid is not supported yet.
+BOOST_AUTO_TEST_CASE(globalRefine2)
+{
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+    // Distribute the grid
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
+
+        BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
     }
 }
