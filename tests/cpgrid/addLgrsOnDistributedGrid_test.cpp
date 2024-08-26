@@ -397,9 +397,35 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {10,8,8};
     grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(640);
+    for (int k = 0; k < 8; ++k) {
+        for (int j = 0; j < 8; ++j) {
+            for (int i = 0; i < 10; ++i)
+            {
+                const auto& elemIdx = (k*80) + (j*10) + i;
+                if (i<5) {
+                    if(j<4) { 
+                        parts[elemIdx] = 0;
+                    }
+                    if (j>3) {
+                        parts[elemIdx] = 1;
+                    }
+                }
+                if (i>4){
+                    if (j<4) {
+                        parts[elemIdx] = 2;
+                    }
+                    if (j>3){
+                        parts[elemIdx] = 3;
+                    }
+                }
+            }
+        }
+    }
     if(grid.comm().size()>1)
     {
-        grid.loadBalance();
+        grid.loadBalance(parts);
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
         const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}, {3,2,2}};
@@ -423,9 +449,20 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23}, 
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
     if(grid.comm().size()>1)
     {
-        grid.loadBalance();
+        grid.loadBalance(parts);
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}, {2,2,2}};
         const std::vector<std::array<int,3>> startIJK_vec = {{0,1,0}, {0,0,2}, {3,2,0}, {3,0,2}};
@@ -436,86 +473,52 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
         // LGR3 element indices = 11 in rank 2. Total 64 refined cells, 125 points (125-8 = 117 with new global id).
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
-        BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
-        //grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        // BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
 
-        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
 
-/*BOOST_AUTO_TEST_CASE(singleCell)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim =  {4,3,3}; //{10,8,8};// {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
-    if(grid.comm().size()>1)
-    {
-        grid.loadBalance();
-
-        const std::array<int, 3> cells_per_dim = {2,2,2};
-        const std::array<int, 3> startIJK = {0,1,0};
-        const std::array<int, 3> endIJK = {1,2,1};
-        // Single cell with element index 4 
-        const std::string lgr_name = {"LGR1"};
-        // Refine one single cell
-        grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-        refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    }
-    }
-
-BOOST_AUTO_TEST_CASE(singleCell_in_larger_gris)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {20, 20, 5};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
-    if(grid.comm().size()>1)
-    {
-        grid.loadBalance();
-
-        const std::array<int, 3> cells_per_dim = {2,2,2};
-        const std::array<int, 3> startIJK = {1,1,1};
-        const std::array<int, 3> endIJK = {2,2,2};
-        // Single cell with element index 17
-        const std::string lgr_name = {"LGR1"};
-        // Refine one single cell
-        grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-        refinePatch_and_check(grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    }
-}
-
-
-BOOST_AUTO_TEST_CASE(twoLgrs)
+BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
 {
     // Create a grid
     Dune::CpGrid grid;
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
-    // Distribute the grid
+
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23}, 
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
     if(grid.comm().size()>1)
     {
-        grid.loadBalance();
+        grid.loadBalance(parts);
 
-        const std::vector<std::array<int, 3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
-        const std::vector<std::array<int, 3>> startIJK_vec = {{0,0,0}, {3,1,0}};
-        const std::vector<std::array<int, 3>> endIJK_vec = {{1,2,2}, {4,3,2}};
-        // LGR1 = 0,4,12,16
-        // LGR2 = 7,11,19,23
-        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}, {2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,1,0}, {0,0,2}, {3,1,0}, {3,0,2}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{1,3,1}, {1,1,3}, {4,2,1}, {4,2,3}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
+        // LGR1 element indices = 4,8 in rank 0. Total 16 refined cells, 45 points (45-12 = 33 with new global id).
+        // LGR2 element indices = 24 in rank 1. Total 27 refined cells, 64 points (64-8 = 56 with new global id).
+        // LGR3 element indices = 7 in rank 2. This cell is interior but it has a neighboring cell sharing its top face, cell 19 belonging to rank 3.
+        // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
-        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+        // Throw due to LGR3 not verifying being fully interior on a process.
+        BOOST_CHECK_THROW( grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec) , std::logic_error);
     }
-    }*/
+}
+
+
 
 /*BOOST_AUTO_TEST_CASE(globalRefine)
 {
