@@ -1980,11 +1980,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0].
     // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
     // Note: currentData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
-    
+
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
 
+    // Sizes of provided vectors (number of subivisions per cells and lgrs name) should coincide.
+    bool matchingSizeHasFailed = false;
     if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
+        matchingSizeHasFailed = true;
+    }
+    matchingSizeHasFailed = comm().max(matchingSizeHasFailed);
+    if (matchingSizeHasFailed) {
         OPM_THROW(std::invalid_argument, "Sizes of provided vectors with subdivisions per cell and LGR names need to match.");
     }
 
