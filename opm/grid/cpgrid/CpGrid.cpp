@@ -2099,13 +2099,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
         }
     }
-
-    // LGRs Fully Interior: Currently, adding LGRs on a distributed grid is supported only in the case where each LGR is fully contained
-    //                      in the interior of a process, i.e., each cell that is marked for refinement and has a neighboring cell, this
-    //                      neighboring cell has to be also interior for the process. In other words, marked element for refinement cannot
-    //                      have overlap neighboring cells.
-    // To check "LGRs fully interior" for all processes.
-    bool lgrsFullyInteriorHasFailed = false;
+    
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
     // To check "Non-NNCs (non neighboring connections)" for all processes.
     bool nonNNCsHasFailed = false;
@@ -2130,34 +2124,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     nonNNCsHasFailed = true;
                     break;
                 }
-                // For parallel runs, mark a cell only in one process, the one where the cell is InteriorEntity.
-                if (element.partitionType() == InteriorEntity) { // Serial run, all cells are interior.
-                    // Currently, we only support marking elements for refinements that are InteriorEntity and do not
-                    // have any neighboring overlap cell.
-                    for (const auto& intersection : intersections(levelGridView(0), element)) {
-                        if (intersection.neighbor() && ( (intersection.outside().partitionType() == OverlapEntity) )) {
-                            lgrsFullyInteriorHasFailed = true;
-                            break;
-                        }
-                    }
-                    this-> mark(1, element);
-                    assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
-                    ++marked_elem_level_count;
-                    lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
-                }
+                this-> mark(1, element);
+                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+                ++marked_elem_level_count;
+                lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
             } // end-if-belongsToLevel
         } // end-level-for-loop
     } // end-element-for-loop
-    lgrsFullyInteriorHasFailed = comm().max(lgrsFullyInteriorHasFailed);
-    if(lgrsFullyInteriorHasFailed) {
-        OPM_THROW(std::logic_error, "At least one LGR cell is not in the interior of the process, not supported yet.");
-    }
     nonNNCsHasFailed = comm().max(nonNNCsHasFailed);
     if(nonNNCsHasFailed) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
-
-
 
     int non_empty_lgrs = 0;
     for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
