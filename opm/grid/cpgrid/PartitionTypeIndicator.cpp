@@ -9,18 +9,18 @@ namespace Dune
 {
 namespace cpgrid
 {
-PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<0>& cell_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const Entity<0>& cell_entity) const
 {
     if(cell_indicator_.size())
         return PartitionType(cell_indicator_[cell_entity.index()]);
     return InteriorEntity;
 }
 
-PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<1>& face_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const Entity<1>& face_entity) const
 {
     return getFacePartitionType(face_entity.index());
 }
-PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<3>& point_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const Entity<3>& point_entity) const
 {
     return getPointPartitionType(point_entity.index());
 }

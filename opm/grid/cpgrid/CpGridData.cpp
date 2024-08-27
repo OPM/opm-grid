@@ -217,9 +217,9 @@ struct GetRowType<std::vector<E,A> >
 };
 
 PartitionType getPartitionType(const PartitionTypeIndicator& p, const EntityRep<1>& f,
-                               const CpGridData&)
+                               const CpGridData& grid)
 {
-    return p.getPartitionType(f);
+    return p.getPartitionType(Entity<3>(grid, f.index(), f.orientation()));
 }
 
 PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
