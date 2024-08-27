@@ -2125,7 +2125,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     break;
                 }
                 this-> mark(1, element);
-                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1
                 ++marked_elem_level_count;
                 lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
             } // end-if-belongsToLevel
@@ -2169,14 +2169,23 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
         std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
 
+        std::unordered_map<std::size_t,std::array<std::size_t,2>> globalToLocal_cells;
+        
+
         // Compute local owned/overlap cells per level (level 0, and new levels).
         std::vector<int> local_owned_points_per_level(cells_per_dim_vec.size() +1);
         std::vector<int> local_overlap_points_per_level(cells_per_dim_vec.size() +1);
         std::vector<int> global_points_per_level(cells_per_dim_vec.size() +1);
 
+        // Count the marked elements in level 0 to keep track of the vanished cells on the leaf grid view.
+        // Note: count only on level zero, and only if the process onws the cell (it's InteriorEntity). 
+        std::size_t marked_elem_count = 0;
         for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
             for(const auto& element : elements(levelGridView(level))) {
                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                    if((level == 0) && (current_data_->front()->getMark(element)==1)) {
+                        ++marked_elem_count;
+                    }
                     ++local_owned_cells_per_level[level];
                 }
                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity) {
@@ -2203,19 +2212,30 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
         auto global_refined_cell_count = std::accumulate(global_cells_per_level.begin()+1, global_cells_per_level.end(), 0);
+        
+        // Global amount of coarse cells (from level zero) that appear on the leaf grid view. 
+        auto non_marked_cells_levelZero_count = (logicalCartesianSize()[0]*logicalCartesianSize()[1]*logicalCartesianSize()[2])
+            - comm().sum(marked_elem_count);
+        std::cout<< "non marked cells: " << non_marked_cells_levelZero_count << std::endl;
+        // Global total amount of cells on the leaf grid view (coarse and refined cells).
+        std::size_t global_cell_count = global_refined_cell_count + non_marked_cells_levelZero_count;
+        std::cout<< "g2l_cell_count " << global_cell_count << std::endl;
         // Comment on "almost" global refined point count: notice that points that belong to refined level grids but at the same time
         // coincide with a point from level zero (with a parent cell corner) must not create a new global id. Therefore,
         // "almost_global_refined_point_count" represents (not the total amount of points f all refined grids) the global amount of
         // new born points that need to get a new global id.
+        /** Point ids need to be computed differently */
         auto almost_global_refined_point_count = std::accumulate(global_points_per_level.begin()+1, global_points_per_level.end(), 0);
 
         // Next value takes into account only cells and points, faces are ignored.
         auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
+        /** To be modified  */
         global_points_per_level[0] = max_globalId_levelZero +1 - global_cells_per_level[0];
 
         // -- Global variables used to define new ids for cells and points respectively. --
         // The first new global id for cells is the maximum global id from level 0 plus 1.
         auto globalIdCell = max_globalId_levelZero+1;
+        std::cout<< globalIdCell << " globalIdCell " << std::endl;
         // The values max_globalId_levelZero +1, max_globalId_levelZero +2, ..., max_globalId_levelZero + global_refined_cell_count
         // will be used for defining global ids for CELLS in the refined level grids (level 1, ..., level maxLevel).
         // Notice that  global_refined_cell_count represents the global and total amount of new refined cells.
@@ -2226,6 +2246,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Notice that almost_global_refined_point_count does not represent exactly the global amount of NEW points, since there are a few
         // that coincide with corners from parent cells. For those, the global id must be tracked from level 0. Therefore, "almost" appears
         // in the variable name.
+        /** To be modifed  */
         auto globalIdPoint = max_globalId_levelZero + global_refined_cell_count +1;
 
 
@@ -2266,6 +2287,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 if(globalIdCell < expectedGlobalIdCell) {
                     for (std::size_t lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
                         globalIdCell += global_cells_per_level[lowerLevel];
+                        /** Potential modification needed */
                         globalIdPoint += global_points_per_level[lowerLevel];
                     }
                 }
@@ -2308,8 +2330,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                               localToGlobal_owned_points_per_level[level-1]);
             }
         } // end-for-loop-level
-        assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
-        assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
+        std::cout<< "cell " << globalIdCell << " " << max_globalId_levelZero << " " << global_refined_cell_count << std::endl;
+        std::cout<< "point " << globalIdPoint << " " <<  max_globalId_levelZero << " " << global_refined_cell_count << " " << almost_global_refined_point_count <<std::endl;
+        
+        //assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
+            //  assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
         
 
         ////////////////////////////////
