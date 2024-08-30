@@ -78,6 +78,7 @@
 namespace Opm
 {
 class EclipseState;
+class PinchedCellInformation;
 }
 namespace Dune
 {
@@ -270,9 +271,11 @@ public:
     /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param pichActive Whether PINCH keyword was specified
-    std::vector<std::size_t> processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state,
-                                                  bool periodic_extension, bool turn_normals = false, bool clip_z = false,
-                                                  bool pinchActive = true);
+    /// \return A vector of removed cells and created NNCs with transmissibilities die to PINCH item 4 all.
+    std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+    processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state,
+                         bool periodic_extension, bool turn_normals = false, bool clip_z = false,
+                         bool pinchActive = true);
 #endif
 
     /// Read the Eclipse grid format ('grdecl').

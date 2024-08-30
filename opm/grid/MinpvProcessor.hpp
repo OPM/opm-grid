@@ -26,6 +26,7 @@
 #include <map>
 #include <numeric>
 #include <vector>
+#include <opm/grid/cpgrid/PinchedCellInformation.hpp>
 
 namespace Opm
 {

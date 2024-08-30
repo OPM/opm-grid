@@ -25,6 +25,7 @@
 
 namespace Opm {
 
+
 void MinpvProcessor::Result::add_nnc(int cell1, int cell2)
 {
     auto key = std::min(cell1, cell2);
@@ -114,11 +115,11 @@ MinpvProcessor::process(const std::vector<double>& thickness,
     for (int jj = 0; jj < dims_[1]; ++jj) {
         for (int ii = 0; ii < dims_[0]; ++ii) {
             for (int kk = 0; kk < dims_[2]; ++kk) {
-                // We only support a corner case for option ALL
-                // (where one of cells in-between has 0 transmissibility)
-                // This bool is to keep track whether this is such
-                // a case
-                bool option4ALLSupported = false;
+                std::vector<PinchedCellInformation> pinchedCellInfos;
+                // For a corner case for option ALL
+                // where one of the cells in-between has 0 transmissibility
+                // we will omit the nnc
+                bool option4ALLZero = false;
                 const int c = ii + dims_[0] * (jj + dims_[1] * kk);
                 bool c_active = actnum.empty() || actnum[c];
                 bool c_thin = (thickness[c] <= z_tolerance);
@@ -156,7 +157,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
 
                     if (pinchOption4ALL)
                     {
-                        option4ALLSupported = option4ALLSupported || permz[c] == 0 || multz(c) == 0;
+                        option4ALLZero = option4ALLZero || (!permz.empty() && permz[c] == 0) || multz(c) == 0;
                     }
 
                     // Find the next cell below
@@ -209,7 +210,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                             (!pinchOption4ALL || (permz[c_below] != 0.0 && multz(c_below) != 0.0));
 
                         if (pinchOption4ALL) {
-                            option4ALLSupported = option4ALLSupported || permz[c_below] == 0 || multz(c_below) == 0;
+                            option4ALLZero = option4ALLZero || (!permz.empty() && permz[c_below] == 0) || multz(c_below) == 0;
                         }
 
                         // move to next lower cell
@@ -278,7 +279,7 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                                     (!pinchOption4ALL || (permz[c_above] != 0.0 && multz(c_above) != 0.0) );
 
                                 if (pinchOption4ALL) {
-                                    option4ALLSupported =  option4ALLSupported || permz[c_above] == 0.0 || multz(c_above) == 0.0;
+                                    option4ALLZero =  option4ALLZero || (!permz.empty() && permz[c_above] == 0.0) || multz(c_above) == 0.0;
                                 }
                             }
                         }
@@ -287,20 +288,14 @@ MinpvProcessor::process(const std::vector<double>& thickness,
                         // and sum of gaps is below threshold
                         const std::array<double, 8> cz_below = getCellZcorn(ii, jj, kk_iter, zcorn);
                         const std::array<double, 8> cz_above = getCellZcorn(ii, jj, k_above, zcorn);
-                        nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap);
+                        // top cell might not have been inspected for option 4 ALL before
+                        option4ALLZero = option4ALLZero || (!permz.empty() && permz[c_above] == 0.0) || multz(c_above) == 0.0;
+                        nnc_allowed = nnc_allowed && (computeGap(cz_above, cz_below) < max_gap) && (!pinchOption4ALL || !option4ALLZero) ;
 
                         if ( nnc_allowed &&
                              (actnum.empty() || (actnum[c_above] && actnum[c_below])) &&
                              pv[c_above] > minpvv[c_above] && pv[c_below] > minpvv[c_below]) {
                             result.add_nnc(c_above, c_below);
-                            if (pinchOption4ALL && !option4ALLSupported)
-                            {
-                                // Transmissiblities would be calculated wrong in the simulator in this case.
-                                // They would be deduced from top and bottom cells while they should be calculated as
-                                // the harmonic average of the pinched out cells.
-                                OPM_THROW(std::runtime_error, "Support for ALL as option 4 of PINCH is only supported in OPM flow "
-                                          "if one of the pinched out cells has 0 MULTZ or PERMZ.");
-                            }
                         }
                         kk = kk_iter;
                     }

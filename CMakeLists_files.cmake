@@ -194,6 +194,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
   opm/grid/cpgrid/Iterators.hpp
+	opm/grid/cpgrid/PinchedCellInformation.hpp
   opm/grid/LookUpCellCentroid.hh
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/OrientedEntityTable.hpp

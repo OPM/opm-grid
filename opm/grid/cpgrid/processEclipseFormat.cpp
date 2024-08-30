@@ -120,12 +120,15 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    std::vector<std::size_t> CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
-                                                              Opm::EclipseState* ecl_state,
-                                                              bool periodic_extension, bool turn_normals, bool clip_z,
-                                                              bool pinchActive)
+    std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+    CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
+                                     Opm::EclipseState* ecl_state,
+                                     bool periodic_extension, bool turn_normals, bool clip_z,
+                                     bool pinchActive)
     {
         std::vector<std::size_t> removed_cells;
+        std::vector<Opm::NNCdata> pinchedNNCs;
+
         if (ccobj_.rank() != 0 ) {
             if (ecl_state) {
                 // Handle potential exception during MINPV processing
@@ -138,7 +141,7 @@ namespace cpgrid
                 }
             }
             // Store global grid only on rank 0
-            return removed_cells;
+            return {removed_cells, pinchedNNCs};
         }
 
         const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
@@ -160,12 +163,24 @@ namespace cpgrid
         Opm::MinpvProcessor::Result minpv_result;
 
         double tolerance_unique_points = 0;
+        bool pinchOptionALL = false;
+        NNCMaps nnc_cells;
+
         // Possibly process MINPV and PINCH
         // This even needs to be done if neither of them is specified.
         if (ecl_state ) {
+            const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
+            const auto& fp = ecl_state->fieldProps();
+            const auto& permZ = [&fp, cartGridSize](){
+                if(fp.has_double("PERMZ")) return fp.get_global_double("PERMZ");
+                if(fp.has_double("PERMY")) return fp.get_global_double("PERMY");
+                if(fp.has_double("PERMY")) return fp.get_global_double("PERMX");
+                // Make this part run without PERM* for some tests
+                return std::vector<double>(cartGridSize, 1);
+            }();
+
             try {
                 Opm::MinpvProcessor mp(g.dims[0], g.dims[1], g.dims[2]);
-                const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
                 std::vector<double> thickness(cartGridSize);
                 for (size_t i = 0; i < cartGridSize; ++i) {
                     thickness[i] = ecl_grid.getCellThickness(i);
@@ -173,12 +188,7 @@ namespace cpgrid
                 const double z_tolerance = ecl_grid.isPinchActive() ?  ecl_grid.getPinchThresholdThickness() : 0.0;
                 const bool nogap = !pinchActive || ecl_grid.getPinchGapMode() ==  Opm::PinchMode::NOGAP;
                 const auto& poreVolume = ecl_state->fieldProps().porv(true);
-                const auto& fp = ecl_state->fieldProps();
-                const auto& permZ = fp.has_double("PERMX") ? (fp.has_double("PERMZ") ?
-                                                              fp.get_global_double("PERMZ") :
-                                                              fp.get_global_double("PERMX"))
-                    : std::vector<double>();
-                const bool pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
+                pinchOptionALL = ecl_grid.getPinchOption() == Opm::PinchMode::ALL;
                 const auto& transMult = ecl_state->getTransMult();
                 auto multZ =[ &transMult] (int cartindex) {
                     return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
@@ -200,16 +210,105 @@ namespace cpgrid
             int success = 1;
             // communicate success to others
             ccobj_.broadcast(&success, 1, 0);
-        }
 
-        NNCMaps nnc_cells;
-        // Add PINCH NNCs.
-        for (const auto& [cell1, cell2] : minpv_result.nnc)
-            nnc_cells[PinchNNC].insert({cell1, cell2});
+            // Add PINCH NNCs.
+            for (const auto& [cell1, cell2] : minpv_result.nnc) {
+                nnc_cells[PinchNNC].insert({cell1, cell2});
 
-        // Add explicit NNCs.
-        if (ecl_state) {
-            const auto& nncs = ecl_state->getInputNNC();
+                if (pinchOptionALL) {
+                    auto topIJK = ecl_grid.getIJK(cell1);
+                    auto bottomIJK = ecl_grid.getIJK(cell2);
+                    std::vector<double> trans_between(bottomIJK[2]-topIJK[2]);
+                    std::vector<std::size_t> cells_between;
+                    cells_between.reserve(trans_between.size());
+
+                    // first we need to calculate transmissibilities from permeability and geometry
+                    auto trans = trans_between.begin();
+                    auto bottom_cell_info = ecl_grid.getCellAndBottomCenterNormal(cell1);
+
+                    for (std::size_t cell_top = cell1, cell_bottom = cell_top
+                             + ecl_grid.getNX() * ecl_grid.getNY();
+                         cell_top < static_cast<std::size_t>(cell2);
+                         cell_top = cell_bottom, cell_bottom = cell_top
+                             + ecl_grid.getNX() * ecl_grid.getNY()) {
+
+                        const auto top_cell_info = bottom_cell_info;
+                        bottom_cell_info = ecl_grid.getCellAndBottomCenterNormal(cell_bottom);
+                        const auto& [ cell_center_top, face_center, area_normal ] = top_cell_info;
+                        const auto& cell_center_bottom = std::get<0>(bottom_cell_info);
+                        cells_between.push_back(cell_top);
+
+                        auto compute_half_trans =
+                            [&face_center, &area_normal](const std::array<double,3>& cell_center,
+                                                         double perm)
+                            {
+                                auto half_trans = perm;
+                                std::array<double, 3> distance;
+                                std::transform(cell_center.begin(), cell_center.end(), face_center.begin(),
+                                               distance.begin(), std::minus<double>());
+                                half_trans *= std::abs(std::inner_product(area_normal.begin(), area_normal.end(), distance.begin(), 0.));
+                                half_trans /= std::inner_product(distance.begin(), distance.end(), distance.begin(), 0.);
+                                return half_trans;
+                            };
+
+                        auto half_trans_top = compute_half_trans(cell_center_top,
+                                                                 permZ[cell_top]);
+                        auto half_trans_bottom = compute_half_trans(cell_center_bottom,
+                                                                    permZ[cell_bottom]);
+
+                        if (std::abs(half_trans_top) < 1e-30 || std::abs(half_trans_bottom) < 1e-30)
+                            *trans = 0.0;
+                        else
+                            *trans = 1.0 / (1.0/half_trans_top + 1.0/half_trans_bottom);
+
+                        ++trans;
+                    }
+
+                    // Possibly overwrite with specified TRANZ values.
+                    if (fp.tran_active("TRANZ"))
+                    {
+                        fp.apply_tranz_global(cells_between, trans_between);
+                    }
+
+                    // Apply Multipliers
+
+                    // \todo FIXME We assume here that MULTZ does not change in the SCHEDULE or such changes have
+                    //       no effect here. This might be wrong and need fixing. Which basically means we need to store
+                    //       all the intermediate transmissibilities for the harmonic average and later apply additional
+                    //       multipliers
+                    const auto& transMult = ecl_state->getTransMult();
+                    trans = trans_between.begin();
+
+                    for (std::size_t cell_top = cell1, cell_bottom = cell_top + ecl_grid.getNX() * ecl_grid.getNY();
+                         cell_top < static_cast<std::size_t>(cell2);
+                         cell_top = cell_bottom, cell_bottom +=  ecl_grid.getNX() * ecl_grid.getNY(), ++trans) {
+
+                        *trans *= transMult.getMultiplier(cell_top, ::Opm::FaceDir::ZPlus) *
+                            transMult.getMultiplier(cell_bottom, ::Opm::FaceDir::ZMinus);
+                    }
+
+                    //Compute harmonic average over pinched out cells.
+                    double average{};
+                    bool isZero = false;
+                    for(const auto& trans: trans_between)
+                        if (std::abs(trans) >= 1e-30)
+                            average += 1.0 / trans;
+                        else
+                            isZero = true;
+
+                    if (isZero)
+                        average = 0;
+                    else
+                        average = 1.0 / average;
+
+                    // Set nnc and transmissibility, last param indicates that this from pinch
+                    // It is needed to overwrite transmissibilties instead of adding to existing ones.
+                    pinchedNNCs.emplace_back(cell1, cell2, average, true);
+                }
+            }
+
+            // Add explicit NNCs.
+            auto nncs = ecl_state->getInputNNC();
             for (const auto single_nnc : nncs.input()) {
                 // Repeated NNCs will only exist in the map once (repeated
                 // insertions have no effect). The code that computes the
@@ -217,6 +316,13 @@ namespace cpgrid
                 // transmissibilities are added.
                 nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
             }
+            if (! pinchedNNCs.empty())
+            {
+                // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
+                nncs.merge(pinchedNNCs);
+                ecl_state->setInputNNC(nncs);
+            }
+            ecl_state->prune_global_for_schedule_run();
         }
 
         // this variable is only required because getCellZvals() needs
@@ -276,7 +382,7 @@ namespace cpgrid
             processEclipseFormat(g, ecl_state, nnc_cells, false, turn_normals, pinchActive, tolerance_unique_points);
         }
 
-        return minpv_result.removed_cells;
+        return { minpv_result.removed_cells, pinchedNNCs};
     }
 #endif // #if HAVE_ECL_INPUT
 
