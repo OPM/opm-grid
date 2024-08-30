@@ -376,7 +376,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     // Compute expected amount of global ids for points via cells_per_dim_vec, startIJK_vec, endIJK_vec
     // Notice that checking point.partitionType() == InteriorEntity is not enough, it considers fewer points.
     auto point_count = (coarse_grid.logicalCartesianSize()[0]+1)*(coarse_grid.logicalCartesianSize()[1]+1)*(coarse_grid.logicalCartesianSize()[2]+1);
-    for (int level = 0; level < static_cast<int>(cells_per_dim_vec.size()); ++level) {
+    for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level) {
         const std::array<int,3>& patch_dim = {endIJK_vec[level][0]-startIJK_vec[level][0], endIJK_vec[level][1]-startIJK_vec[level][1], endIJK_vec[level][2]-startIJK_vec[level][2]};
         // Subtract corners of parent cells
         point_count -= (patch_dim[0] +1)*(patch_dim[1] +1)*(patch_dim[2] +1);
