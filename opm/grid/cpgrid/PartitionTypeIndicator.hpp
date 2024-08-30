@@ -58,6 +58,11 @@ public:
     /// \param cell_entity The entity describing the cell
     /// \return The partition type of the cell.
     PartitionType getPartitionType(const EntityRep<0>& cell_entity) const;
+    /// Get the partition type of a cell on a grid that has been distributed, and refined afterwards.
+    /// \param cell_entity The entity describing the cell (Entity::getOrigin() invoked, therefore EntityRep<0> not enough)
+    /// \param lgrsOnDistributedGrid
+    /// \return The partition type of the cell.
+    PartitionType getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const;
     /// Get the partition type of a face.
     /// \param face_entity The entity describing the face
     /// \return The partition type of the face.
@@ -72,7 +77,6 @@ private:
     /// \param i The index of the face.
     /// \return The partition type of the face associated with this index.
     PartitionType getFacePartitionType(int i) const;
-
 
     /// Get the partition type of a face by its index
     /// \param i The index of the face.

@@ -579,7 +579,7 @@ BOOST_AUTO_TEST_CASE(refine_patch_different_cell_sizes)
     const std::string lgr_name = {"LGR1"};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
 }
 
 BOOST_AUTO_TEST_CASE(refine_patch)
@@ -594,7 +594,7 @@ BOOST_AUTO_TEST_CASE(refine_patch)
     const std::string lgr_name = {"LGR1"};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
 }
 
 BOOST_AUTO_TEST_CASE(refine_patch_one_cell)
@@ -609,7 +609,7 @@ BOOST_AUTO_TEST_CASE(refine_patch_one_cell)
     const std::string lgr_name = {"LGR1"};
     coarse_grid.createCartesian(grid_dim, cell_sizes);
     refinePatch_and_check(coarse_grid, {cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace({startIJK}, {endIJK}), false);
 }
 
 BOOST_AUTO_TEST_CASE(lgrs_disjointPatches)
@@ -624,7 +624,7 @@ BOOST_AUTO_TEST_CASE(lgrs_disjointPatches)
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
 }
 
 BOOST_AUTO_TEST_CASE(lgrs_disjointPatchesB)
@@ -639,7 +639,7 @@ BOOST_AUTO_TEST_CASE(lgrs_disjointPatchesB)
     const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
 }
 
 BOOST_AUTO_TEST_CASE(patches_share_corner)
@@ -654,7 +654,7 @@ BOOST_AUTO_TEST_CASE(patches_share_corner)
     const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,2,2}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
 }
 
 BOOST_AUTO_TEST_CASE(patches_share_edge)
@@ -669,7 +669,7 @@ BOOST_AUTO_TEST_CASE(patches_share_edge)
     const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {3,1,2}, {4,3,3}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    BOOST_CHECK_EQUAL(coarse_grid.chooseData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
+    BOOST_CHECK_EQUAL(coarse_grid.currentData()[0]->patchesShareFace(startIJK_vec, endIJK_vec), false);
 }
 
 BOOST_AUTO_TEST_CASE(patches_share_face)
