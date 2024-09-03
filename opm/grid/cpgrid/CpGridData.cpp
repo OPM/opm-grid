@@ -1614,7 +1614,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
 void CpGridData::computeCellPartitionType()
 {
-    #if HAVE_MPI
+#if HAVE_MPI
     // Compute the partition type for cell
     auto& cell_indexset = cellIndexSet();
     partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
@@ -1624,12 +1624,12 @@ void CpGridData::computeCellPartitionType()
             i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
     }
-    #endif
+#endif
 }
 
 void CpGridData::computePointPartitionType()
 {
-    #if HAVE_MPI
+#if HAVE_MPI
     // We initialize all points with interior. Then we loop over the faces. If a face is of
     // type border, then the type of the point is overwritten with border. In the other cases
     // we set the type of the point to the one of the face as long as the type of the point is
@@ -1654,12 +1654,12 @@ void CpGridData::computePointPartitionType()
                 partition_type_indicator_->point_indicator_[*p]=new_type;
         }
     }
-    #endif
+#endif
 }
 
-void CpGridData::computeCommunicationInterfaces(int noExistingPoints)
+void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingPoints)
 {
-    #if HAVE_MPI
+#if HAVE_MPI
     // Compute the interface information for cells
     std::get<InteriorBorder_All_Interface>(cell_interfaces_)
         .build(cellRemoteIndices(), EnumItem<AttributeSet, AttributeSet::owner>(),
@@ -1707,7 +1707,7 @@ void CpGridData::computeCommunicationInterfaces(int noExistingPoints)
     }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
-    #endif
+#endif
 }
 
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const
