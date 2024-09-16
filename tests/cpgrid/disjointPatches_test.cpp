@@ -69,7 +69,7 @@ void disjointPatches_check(Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& startIJK_vec,
                            const std::vector<std::array<int,3>>& endIJK_vec)
 {
-    const auto& data = grid.data_;
+    const auto& data = grid.currentData();
     try
     {
         std::cout << std::boolalpha;

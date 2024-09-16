@@ -122,8 +122,6 @@ void refinePatch_and_check(Dune::CpGrid&,
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
 
-void lookup_check(const Dune::CpGrid&);
-
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
 
 void testInactiveCellsLgrs(const std::string&,
@@ -182,17 +180,14 @@ class CpGridData
     friend
     void ::check_global_refine(const Dune::CpGrid&,
                                const Dune::CpGrid&);
-
-    friend
-    void ::lookup_check(const Dune::CpGrid&);
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
     friend
     void ::testInactiveCellsLgrs(const std::string&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::string>&);
 
 private:
     CpGridData(const CpGridData& g);

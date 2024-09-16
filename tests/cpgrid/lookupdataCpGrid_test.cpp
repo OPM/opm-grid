@@ -75,7 +75,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 void lookup_check(const Dune::CpGrid& grid)
 {
-    const auto& data = grid.data_;
+    const auto& data = grid.currentData();
 
     std::vector<int> fake_feature(data[0]->size(0), 0);
     std::iota(fake_feature.begin(), fake_feature.end(), 3);
@@ -166,7 +166,7 @@ void lookup_check(const Dune::CpGrid& grid)
             // Checks for CartesianCoordinateLevel
             const auto idxOnLevel = elem.getLevelElem().index(); // getLevelElemt throws when entity does not belong to the leafGridView
             std::array<int,3> ijkLevelGrid;
-            (*grid.data_[elem.level()]).getIJK(idxOnLevel, ijkLevelGrid);
+            (*data[elem.level()]).getIJK(idxOnLevel, ijkLevelGrid);
             std::array<int,3> ijkLevel;
             cartMapper.cartesianCoordinateLevel(idxOnLevel, ijkLevel, elem.level());
             BOOST_CHECK( ijkLevelGrid == ijkLevel);

@@ -421,7 +421,7 @@ typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int>
 Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const int& elemIdx) const
 {
     static_assert(std::is_same_v<Grid,GridType>);
-    const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
+    const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elemIdx, true);
     if (isFieldPropInLgr_ && elem.level()) { // level > 0 == true ; level == 0 == false
         // In case some LGRs do not have refined field properties, the next line need to be modified.
         return elem.getLevelElem().index();
@@ -552,7 +552,7 @@ typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>,int>
 Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const int& elemIdx) const
 {
     static_assert(std::is_same_v<Grid,GridType>);
-    const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().current_view_data_), elemIdx, true);
+    const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elemIdx, true);
     return this -> getFieldPropCartesianIdx<Dune::cpgrid::Entity<0>,Dune::CpGrid>(elem);
 }
 
