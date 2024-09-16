@@ -124,12 +124,6 @@ void check_global_refine(const Dune::CpGrid&,
 
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
 
-void testInactiveCellsLgrs(const std::string&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
-
 namespace Dune
 {
 namespace cpgrid
@@ -182,12 +176,6 @@ class CpGridData
                                const Dune::CpGrid&);
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string);
-    friend
-    void ::testInactiveCellsLgrs(const std::string&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::string>&);
 
 private:
     CpGridData(const CpGridData& g);
@@ -308,6 +296,21 @@ public:
         ijk[1] = gc % logical_cartesian_size_[1];
         ijk[2] = gc / logical_cartesian_size_[1];
     }
+
+    /// Total amount of faces on the grid.
+    int numFaces() const;
+
+    /// Given a face index, total amount of its corners/points/vertices.
+    int numFaceVertices(int face_idx) const;
+
+    /// Given a face index and the local index of a vertex (0,..., numFaceVertices() -1), returns the vertex index (on the grid).
+    int faceVertex(int face_idx, int local_vertex_index) const;
+
+    /// Given a face index, total amount of its cells (1 or 2 maximum).
+    int numFaceCells(Dune::cpgrid::EntityRep<1> face) const;
+
+    /// Given a face index and the local index of a cell (0,1 maximum), returns the cell index (on the grid).
+    int faceCell(Dune::cpgrid::EntityRep<1> face, int local_cell_index) const;
 
     /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
     ///
