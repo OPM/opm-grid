@@ -113,10 +113,6 @@ void disjointPatches_check(Dune::CpGrid&,
 
 void lookup_check(const Dune::CpGrid&);
 
-void refinePatch_and_check(const std::array<int,3>&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&);
-
 void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
 namespace Dune
@@ -265,13 +261,9 @@ namespace Dune
         friend void ::lookup_check(const Dune::CpGrid&);
 
         friend
-        void ::refinePatch_and_check(const std::array<int,3>&,
-                                     const std::array<int,3>&,
-                                     const std::array<int,3>&);
-        friend
         void ::check_global_refine(const Dune::CpGrid&,
                                    const Dune::CpGrid&);
-        
+
     public:
 
         // --- Typedefs ---

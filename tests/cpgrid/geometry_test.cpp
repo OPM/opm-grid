@@ -587,7 +587,7 @@ void refinePatch_and_check(const std::array<int,3>&,
     std::array<int, 3> end_ijk = {3,2,3};  // then patch_dim = {3-1,2-0,3-1} ={2,2,2}
     coarse_grid.createCartesian(coarse_grid_dim, cell_sizes_new);
     // Call refinePatch()
-    coarse_grid.current_view_data_->refinePatch(cells_per_dim_patch, start_ijk, end_ijk);
+    coarse_grid.currentData().front()->refinePatch(cells_per_dim_patch, start_ijk, end_ijk);
 
 }
 BOOST_AUTO_TEST_CASE(refine_patch)
