@@ -186,8 +186,8 @@ class CpGridData
     void ::testInactiveCellsLgrs(const std::string&,
                                  const std::vector<std::array<int,3>>&,
                                  const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
+                                 const std::vector<std::array<int,3>>&,
+                                 const std::vector<std::string>&);
 
 private:
     CpGridData(const CpGridData& g);
