@@ -60,9 +60,6 @@ namespace Opm
 {
 class EclipseGrid;
 class EclipseState;
-template<typename Grid, typename GridView> class LookUpData;
-template<typename Grid, typename GridView> class LookUpCartesianData;
-class NNC;
 }
 
 namespace Dune
@@ -83,35 +80,9 @@ namespace Dune
     class IntersectionIterator;
     class IndexSet;
     class IdSet;
-    
+
     }
 }
-
-void noNNC_check(Dune::CpGrid&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::array<int,3>>&,
-                 const std::vector<std::string>&);
-
-void testCase(const std::string&,
-              const Opm::NNC&,
-              const std::vector<std::array<int,3>>&,
-              const std::vector<std::array<int,3>>&,
-              const std::vector<std::array<int,3>>&,
-              const std::vector<std::string>&,
-              bool);
-
-void testInactiveCellsLgrs(const std::string&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
-
-void disjointPatches_check(Dune::CpGrid&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&);
-
-void lookup_check(const Dune::CpGrid&);
 
 namespace Dune
 {
@@ -232,31 +203,8 @@ namespace Dune
         friend class cpgrid::Entity<1>;
         friend class cpgrid::Entity<2>;
         friend class cpgrid::Entity<3>;
-        template<typename Grid, typename GridView> friend class Opm::LookUpData;
-        template<typename Grid, typename GridView> friend class Opm::LookUpCartesianData;
         template<int dim>
         friend cpgrid::Entity<dim> createEntity(const CpGrid&,int,bool);
-        friend void ::noNNC_check(Dune::CpGrid&,
-                                  const std::vector<std::array<int,3>>&,
-                                  const std::vector<std::array<int,3>>&,
-                                  const std::vector<std::array<int,3>>&,
-                                  const std::vector<std::string>&);
-        friend void ::testCase(const std::string&,
-                               const Opm::NNC&,
-                               const std::vector<std::array<int,3>>&,
-                               const std::vector<std::array<int,3>>&,
-                               const std::vector<std::array<int,3>>&,
-                               const std::vector<std::string>&,
-                               bool);
-        friend void ::testInactiveCellsLgrs(const std::string&,
-                                            const std::vector<std::array<int,3>>&,
-                                            const std::vector<std::array<int,3>>&,
-                                            const std::vector<std::array<int,3>>&,
-                                            const std::vector<std::string>&);
-        friend void ::disjointPatches_check(Dune::CpGrid&,
-                                            const std::vector<std::array<int,3>>&,
-                                            const std::vector<std::array<int,3>>&);
-        friend void ::lookup_check(const Dune::CpGrid&);
 
     public:
 
