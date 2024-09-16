@@ -746,8 +746,8 @@ BOOST_AUTO_TEST_CASE(patches_share_Kface_with_diff_cells_per_dim)
 void check_global_refine(const Dune::CpGrid& refined_grid, const Dune::CpGrid& equiv_fine_grid)
 {
 
-    const auto& refined_data = refined_grid.data_;
-    const auto& equiv_data = equiv_fine_grid.data_;
+    const auto& refined_data = refined_grid.currentData();
+    const auto& equiv_data = equiv_fine_grid.currentData();
 
     BOOST_CHECK(refined_data.size()==3);
 
