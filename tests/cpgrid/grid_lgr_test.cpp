@@ -113,7 +113,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                            const std::vector<std::array<int,3>>& endIJK_vec,
                            const std::vector<std::string>& lgr_name_vec)
 {
-    auto& data = coarse_grid.data_;
+    auto& data = coarse_grid.currentData();
     // Add LGRs and update grid.
     try
     {
@@ -121,7 +121,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
         BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
         BOOST_CHECK( (*data[0]).child_to_parent_cells_.empty());
-        BOOST_CHECK(coarse_grid.lgr_names_["GLOBAL"] == 0);
+        BOOST_CHECK(coarse_grid.getLgrNameToLevel().at("GLOBAL") == 0);
         const auto& all_parent_cell_indices = (*data[0]).getPatchesCells(startIJK_vec, endIJK_vec);
 
         for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
@@ -131,14 +131,14 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                                     (*data[level]).geometry_.template geomVector<1>(),
                                     (*data[level]).geometry_.template geomVector<3>());
             BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
-            BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == static_cast<int>(level));
+            BOOST_CHECK(coarse_grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
             const auto& patch_cells = (*data[0]).getPatchCells(startIJK_vec[level-1], endIJK_vec[level-1]);
 
             // GLOBAL grid
             for (int cell = 0; cell <  data[0]-> size(0); ++cell)
             {
-                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[0]), cell, true);
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
                 BOOST_CHECK( entity.hasFather() == false);
                 BOOST_CHECK_THROW(entity.father(), std::logic_error);
                 BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
@@ -146,7 +146,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( entity.getOrigin().level() == 0);
                 auto it = entity.hbegin(coarse_grid.maxLevel());
                 auto endIt = entity.hend(coarse_grid.maxLevel());
-                const auto& [lgr, childrenList] = (*coarse_grid.data_[0]).parent_to_children_cells_[cell];
+                const auto& [lgr, childrenList] = (*data[0]).parent_to_children_cells_[cell];
                 if (std::find(all_parent_cell_indices.begin(), all_parent_cell_indices.end(), cell) == all_parent_cell_indices.end()){
                     BOOST_CHECK_EQUAL(lgr, -1);
                     BOOST_CHECK(childrenList.empty());
@@ -212,7 +212,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
-                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[level]), cell, true);
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[level], cell, true);
                 BOOST_CHECK( entity.hasFather() == true);
                 BOOST_CHECK( entity.getOrigin() ==  entity.father());
                 BOOST_CHECK( entity.index() == (data[level] -> global_cell_[entity.index()])); // global_cell_ = {0,1,..., total cells -1}
@@ -264,7 +264,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 {
                     BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell][i] != -1);
                 }
-                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>((*coarse_grid.data_[startIJK_vec.size()+1]), cell, true);
+                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[startIJK_vec.size()+1], cell, true);
                 for (int i = 0; i < data[startIJK_vec.size()+1] -> cell_to_face_[entity].size(); ++i)
                 {
                     BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_face_[entity][i].index() != -1);

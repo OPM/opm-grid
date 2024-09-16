@@ -92,13 +92,13 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
 
     BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
     BOOST_CHECK( data[0]->child_to_parent_cells_.empty());
-    BOOST_CHECK(coarse_grid.lgr_names_["GLOBAL"] == 0);
+    BOOST_CHECK(coarse_grid.getLgrNameToLevel().at("GLOBAL") == 0);
     const auto& all_parent_cell_indices = data[0]->getPatchesCells(startIJK_vec, endIJK_vec);
 
     for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
     {
         BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
-        BOOST_CHECK(coarse_grid.lgr_names_[lgr_name_vec[level-1]] == static_cast<int>(level));
+        BOOST_CHECK(coarse_grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
         const auto& patch_cells = data[0]->getPatchCells(startIJK_vec[level-1], endIJK_vec[level-1]);
 

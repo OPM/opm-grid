@@ -113,12 +113,6 @@ void disjointPatches_check(Dune::CpGrid&,
 
 void lookup_check(const Dune::CpGrid&);
 
-void refinePatch_and_check(Dune::CpGrid&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
-
 void refinePatch_and_check(const std::array<int,3>&,
                            const std::array<int,3>&,
                            const std::array<int,3>&);
@@ -270,12 +264,6 @@ namespace Dune
                                             const std::vector<std::array<int,3>>&);
         friend void ::lookup_check(const Dune::CpGrid&);
 
-        friend
-        void ::refinePatch_and_check(Dune::CpGrid&,
-                                     const std::vector<std::array<int,3>>&,
-                                     const std::vector<std::array<int,3>>&,
-                                     const std::vector<std::array<int,3>>&,
-                                     const std::vector<std::string>&);
         friend
         void ::refinePatch_and_check(const std::array<int,3>&,
                                      const std::array<int,3>&,
