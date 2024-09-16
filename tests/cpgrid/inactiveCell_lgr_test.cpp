@@ -89,73 +89,71 @@ void testInactiveCellsLgrs(const std::string& deckString,
 
         BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
         BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
-        const auto& all_parent_cell_indices = (*data[0]).getPatchesCells(startIJK_vec, endIJK_vec);
 
-        for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
+        // GLOBAL grid
+        for (int cell = 0; cell <  data[0]-> size(0); ++cell)
+        {
+            Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
+            BOOST_CHECK( entity.hasFather() == false);
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+            BOOST_CHECK( entity.getOrigin() ==  entity);
+            BOOST_CHECK( entity.getOrigin().level() == 0);
+            auto it = entity.hbegin(grid.maxLevel());
+            auto endIt = entity.hend(grid.maxLevel());
+            if (data[0]->getMark(entity) == 0){
+                BOOST_CHECK( entity.isLeaf() == true);
+                // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
+                BOOST_CHECK( it == endIt);
+            }
+            else{
+                BOOST_CHECK(data[0]->getMark(entity) == 1);
+                BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
+                // Auxiliary int to check hierarchic iterator functionality
+                double referenceElemOneParent_volume_it = 0.;
+                std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
+                // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
+                BOOST_CHECK( it != endIt );
+                // Auxiliary integer to get refined level grid where the entity got refined
+                int lgr = 0;
+                for (; it != endIt; ++it)
+                {
+                    // Do something with the son available through it->
+                    BOOST_CHECK(it ->hasFather() == true);
+                    BOOST_CHECK(it -> father() == entity);
+                    BOOST_CHECK(it -> father().level() == 0);
+                    BOOST_CHECK(it ->father().index() == entity.index());
+                    BOOST_CHECK(it ->level() > 0); // When adhere to DUNE's Grid interface, it should be it->level() == it->father().level() +1.
+                    lgr = it->level(); // All children in the same refined grid.
+                    referenceElemOneParent_volume_it += it-> geometryInFather().volume();
+                    for (int c = 0; c < 3; ++c)
+                    {
+                        referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
+                    }
+                }
+                for (int c = 0; c < 3; ++c)
+                {
+                    referenceElem_entity_center_it[c]
+                        /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
+                }
+                BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
+                BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-13);
+            }
+            BOOST_CHECK( entity.level() == 0);
+        }
+
+        // LGRs
+        for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level)
         {
             BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
-            // GLOBAL grid
-            for (int cell = 0; cell <  data[0]-> size(0); ++cell)
-            {
-                Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
-                BOOST_CHECK( entity.hasFather() == false);
-                BOOST_CHECK_THROW(entity.father(), std::logic_error);
-                BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
-                BOOST_CHECK( entity.getOrigin() ==  entity);
-                BOOST_CHECK( entity.getOrigin().level() == 0);
-                auto it = entity.hbegin(grid.maxLevel());
-                auto endIt = entity.hend(grid.maxLevel());
-                if (data[0]->getMark(entity) == 0){
-                    BOOST_CHECK( entity.isLeaf() == true);
-                    // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
-                    BOOST_CHECK( it == endIt);
-                }
-                else{
-                    BOOST_CHECK(data[0]->getMark(entity) == 1);
-                    BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
-                    // Auxiliary int to check hierarchic iterator functionality
-                    double referenceElemOneParent_volume_it = 0.;
-                    std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
-                    // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
-                    BOOST_CHECK( it != endIt );
-                    // Auxiliary integer to get refined level grid where the entity got refined
-                    int lgr = 0;
-                    for (; it != endIt; ++it)
-                    {
-                        // Do something with the son available through it->
-                        BOOST_CHECK(it ->hasFather() == true);
-                        BOOST_CHECK(it -> father() == entity);
-                        BOOST_CHECK(it -> father().level() == 0);
-                        BOOST_CHECK(it ->father().index() == entity.index());
-                        BOOST_CHECK(it ->level() > 0); // When adhere to DUNE's Grid interface, it should be it->level() == it->father().level() +1.
-                        lgr = it->level(); // All children in the same refined grid.
-                        referenceElemOneParent_volume_it += it-> geometryInFather().volume();
-                        for (int c = 0; c < 3; ++c)
-                        {
-                            referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
-                        }
-                    }
-                    for (int c = 0; c < 3; ++c)
-                    {
-                        referenceElem_entity_center_it[c]
-                            /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
-                    }
-                    BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-13);
-                }
-                BOOST_CHECK( entity.level() == 0);
-            }
-
-            // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
                 Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[level], cell, true);
                 BOOST_CHECK( entity.hasFather() == true);
                 BOOST_CHECK( entity.getOrigin() ==  entity.father());
-                //BOOST_CHECK( entity.index() == (data[level] -> global_cell_[entity.index()])); // global_cell_ = {0,1,..., total cells -1}
                 BOOST_CHECK( entity.getOrigin().level() == 0);
                 BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
                                   1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
@@ -209,8 +207,6 @@ void testInactiveCellsLgrs(const std::string& deckString,
                     BOOST_CHECK_EQUAL( data[0]->getMark(entity.father()), 1);
                     BOOST_CHECK_EQUAL( entity.getOrigin().index(), entity.father().index());
                     BOOST_CHECK( entity.father() == entity.getOrigin());
-                    // BOOST_CHECK(  (data[startIJK_vec.size() +1] -> global_cell_[entity.index()]) ==
-                    //          (data[0] -> global_cell_[entity.getOrigin().index()]) );
                     BOOST_CHECK( entity.getOrigin().level() == 0);
                     BOOST_CHECK( entity.father().isLeaf() == false);
                     BOOST_CHECK( (entity.level() > 0) || (entity.level() < static_cast<int>(startIJK_vec.size()) +1));
