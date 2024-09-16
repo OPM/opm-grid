@@ -394,7 +394,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
 {
     using cpgrid::DefaultGeometryPolicy;
     CpGrid refined_grid;
-    auto& child_view_data = *refined_grid.current_view_data_;
+    auto& child_view_data = *(refined_grid.currentData().back());
     cpgrid::OrientedEntityTable<0, 1>& cell_to_face = child_view_data.cell_to_face_;
     Opm::SparseTable<int>& face_to_point = child_view_data.face_to_point_;
     DefaultGeometryPolicy& geometries = child_view_data.geometry_;
@@ -431,7 +431,7 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
         BOOST_CHECK(equivalent_refined_grid.size(3) == refined_grid.size(3));
 
         // Check that the points (ordering/coordinates) matches
-        auto equiv_point_iter = equivalent_refined_grid.current_view_data_
+        auto equiv_point_iter = equivalent_refined_grid.currentData().back()
             ->geometry_.geomVector<3>().begin();
         for(const auto& point: geometries.geomVector<3>())
         {
@@ -440,11 +440,11 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
         }
 
         // Check that cell to point matches (Implicitly checks for correct cell ordering)
-        BOOST_CHECK(refined_grid.current_view_data_->cell_to_point_ ==
-                    equivalent_refined_grid.current_view_data_->cell_to_point_);
+        BOOST_CHECK(refined_grid.currentData().back()->cell_to_point_ ==
+                    equivalent_refined_grid.currentData().back()->cell_to_point_);
 
         // Check that the cell centers and volume match
-        auto equiv_cell_iter = equivalent_refined_grid.current_view_data_
+        auto equiv_cell_iter = equivalent_refined_grid.currentData().back()
             ->geometry_.geomVector<0>().begin();
         for(const auto& cell: geometries.geomVector<0>())
         {
