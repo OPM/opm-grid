@@ -529,11 +529,10 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
-    if (pgrid_ -> cell_to_idxInParentCell_[this->index()] !=-1) {
-        int idxInParentCell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
-        assert(idxInParentCell>-1);
+    const int& idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
+    if (idx_in_parent_cell !=-1) {
         const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
-        const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idxInParentCell, cells_per_dim);
+        const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idx_in_parent_cell, cells_per_dim);
         FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
             { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
         auto in_father_reference_elem_corners = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
@@ -614,10 +613,9 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getEquivLevelElem() const
 template<int codim>
 int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {
-    const auto entityLevel = this -> level();
-    const auto level = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
-    const auto& elemInLevel = this->getLevelElem(); // throws when the entity does not belong to the leaf grid view.
-    return level -> global_cell_[elemInLevel.index()];
+    const auto& level_data = (*(pgrid_ -> level_data_ptr_))[level()].get();
+    // getLevelElem() throws when the entity does not belong to the leaf grid view.
+    return level_data -> global_cell_[getLevelElem().index()];
 }
 
 } // namespace cpgrid

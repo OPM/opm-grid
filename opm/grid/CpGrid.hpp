@@ -889,10 +889,9 @@ namespace Dune
                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const int& preAdaptMaxLevel) const;
 
-        /// @brief Define the cells, cell_to_point_, global_cell_, cell_to_face_, face_to_cell_, for the leaf grid view (or adapted grid).
+        /// @brief Define the cells, cell_to_point_, cell_to_face_, face_to_cell_, for the leaf grid view (or adapted grid).
         void populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
                                    std::vector<std::array<int,8>>& adapted_cell_to_point,
-                                   std::vector<int>& adapted_global_cell,
                                    const int& cell_count,
                                    cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
                                    cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
@@ -922,7 +921,6 @@ namespace Dune
                                            /* Leaf grid View Cells argumemts  */
                                            Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
                                            std::vector<std::array<int,8>>& adapted_cell_to_point,
-                                           std::vector<int>& adapted_global_cell,
                                            const int& cell_count,
                                            cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
                                            cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
@@ -949,6 +947,26 @@ namespace Dune
                                        const std::vector<std::array<int,2>>& preAdaptGrid_corner_history,
                                        const int& preAdaptMaxLevel,
                                        const int& newLevels);
+
+
+        /// @brief For refined level grids created based on startIJK and endIJK values, compute the "local ijk/Cartesian index" within the LGR.
+        ///
+        /// It's confusing that this "localIJK" is stored in CpGridData member global_cell_. Potential explanation: level zero grid is also called
+        /// "GLOBAL" grid.
+        /// Example: a level zero grid with dimension 4x3x3, an LGR with startIJK = {1,2,2}, endIJK = {3,3,3}, and cells_per_dim = {2,2,2}.
+        /// Then the dimension of the LGR is (3-1)*2 x (3-2)*2 x (3-2)* 2 = 4x2x2 = 16. Therefore the global_cell_lgr minimim value should be 0,
+        /// the maximum should be 15.
+        /// To invoke this method, each refined level grid must have 1. logical_cartesian_size_, 2. cell_to_idxInParentCell_, and 3. cells_per_dim_
+        /// already populated.
+        ///
+        /// @param [in] level    Grid index where LGR is stored
+        /// @param [out] global_cell_lgr
+        void computeGlobalCellLgr(const int& level, const std::array<int,3>& startIJK, std::vector<int>& global_cell_lgr);
+
+        /// @brief For a leaf grid with with LGRs, we assign the global_cell_ values of either the parent cell or the equivalent cell from
+        ///        level zero.
+        ///        For nested refinement, we lookup the oldest ancestor, from level zero.
+        void computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf);
 
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///

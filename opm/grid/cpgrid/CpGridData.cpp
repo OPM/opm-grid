@@ -1710,16 +1710,17 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 #endif
 }
 
-std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const
+std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(const int& idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
     std::array<int,3> ijk = {0,0,0};
-    ijk[0] = idxInParentCell % cells_per_dim[0];
-    idxInParentCell -= ijk[0]; // k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0]
-    idxInParentCell /= cells_per_dim[0]; // k*cells_per_dim[1] + j
-    ijk[1] = idxInParentCell % cells_per_dim[1];
-    idxInParentCell -= ijk[1]; // k*cells_per_dim[1]
-    ijk[2] = idxInParentCell /cells_per_dim[1];
+    int idx_copy = idx_in_parent_cell;
+    ijk[0] = idx_copy % cells_per_dim[0];
+    idx_copy -= ijk[0]; // k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0]
+    idx_copy /= cells_per_dim[0]; // k*cells_per_dim[1] + j
+    ijk[1] = idx_copy % cells_per_dim[1];
+    idx_copy -= ijk[1]; // k*cells_per_dim[1]
+    ijk[2] = idx_copy /cells_per_dim[1];
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
