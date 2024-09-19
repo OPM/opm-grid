@@ -381,7 +381,7 @@ public:
     void postAdapt();
 
 private:
-    std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const;
+    std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(const int& idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///

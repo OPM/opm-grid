@@ -195,6 +195,7 @@ BOOST_AUTO_TEST_CASE(one_lgr_grid)
     const std::array<int, 3> cells_per_dim = {2,2,2};
     const std::array<int, 3> startIJK = {1,0,1};
     const std::array<int, 3> endIJK = {3,2,3};  // patch_dim = {3-1, 2-0, 3-1} ={2,2,2}
+    // Cells to be refined {13,14,17,18, 25,26,29,30}
     const std::string lgr_name = {"LGR1"};
     grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
 
@@ -353,7 +354,7 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
 
 
 BOOST_AUTO_TEST_CASE(fieldProp) {
-  const std::string deckString =
+    const std::string deckString =
         R"( RUNSPEC
         DIMENS
         1  1  5 /
@@ -405,7 +406,7 @@ BOOST_AUTO_TEST_CASE(fieldProp) {
 
 
 BOOST_AUTO_TEST_CASE(fieldPropLgr) {
-  const std::string deckString = R"( RUNSPEC
+    const std::string deckString = R"( RUNSPEC
 DIMENS
 1 1 5
 /
