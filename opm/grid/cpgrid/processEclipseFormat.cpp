@@ -212,6 +212,8 @@ namespace cpgrid
             ccobj_.broadcast(&success, 1, 0);
 
             // Add PINCH NNCs.
+            std::vector<Opm::NNCdata> pinchedNNCs;
+
             for (const auto& [cell1, cell2] : minpv_result.nnc) {
                 nnc_cells[PinchNNC].insert({cell1, cell2});
 
@@ -303,12 +305,12 @@ namespace cpgrid
 
                     // Set nnc and transmissibility, last param indicates that this from pinch
                     // It is needed to overwrite transmissibilties instead of adding to existing ones.
-                    pinchedNNCs.emplace_back(cell1, cell2, average, true);
+                    pinchedNNCs.emplace_back(cell1, cell2, average);
                 }
             }
 
             // Add explicit NNCs.
-            auto nncs = ecl_state->getInputNNC();
+            const auto& nncs = ecl_state->getInputNNC();
             for (const auto single_nnc : nncs.input()) {
                 // Repeated NNCs will only exist in the map once (repeated
                 // insertions have no effect). The code that computes the
@@ -316,12 +318,8 @@ namespace cpgrid
                 // transmissibilities are added.
                 nnc_cells[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
             }
-            if (! pinchedNNCs.empty())
-            {
-                // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
-                nncs.merge(pinchedNNCs);
-                ecl_state->setInputNNC(nncs);
-            }
+            // Add the pinch NNCs with transmissibilties due to PINCH option 4 all
+            ecl_state->setPinchNNC(std::move(pinchedNNCs));
             ecl_state->prune_global_for_schedule_run();
         }
 
