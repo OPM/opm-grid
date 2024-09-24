@@ -120,14 +120,13 @@ namespace cpgrid
 {
 
 #if HAVE_ECL_INPUT
-    std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+    std::vector<std::size_t>
     CpGridData::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                                      Opm::EclipseState* ecl_state,
                                      bool periodic_extension, bool turn_normals, bool clip_z,
                                      bool pinchActive)
     {
         std::vector<std::size_t> removed_cells;
-        std::vector<Opm::NNCdata> pinchedNNCs;
 
         if (ccobj_.rank() != 0 ) {
             if (ecl_state) {
@@ -141,7 +140,7 @@ namespace cpgrid
                 }
             }
             // Store global grid only on rank 0
-            return {removed_cells, pinchedNNCs};
+            return removed_cells;
         }
 
         const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
@@ -380,7 +379,7 @@ namespace cpgrid
             processEclipseFormat(g, ecl_state, nnc_cells, false, turn_normals, pinchActive, tolerance_unique_points);
         }
 
-        return { minpv_result.removed_cells, pinchedNNCs};
+        return minpv_result.removed_cells;
     }
 #endif // #if HAVE_ECL_INPUT
 

@@ -1427,7 +1427,7 @@ const cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices() co
 #endif
 
 #if HAVE_ECL_INPUT
-std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+std::vector<std::size_t>
 CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
                              bool periodic_extension,
@@ -1442,7 +1442,7 @@ CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
     return removed_cells;
 }
 
-std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+std::vector<std::size_t>
 CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
                              Opm::EclipseState* ecl_state,
                              bool periodic_extension, bool turn_normals, bool clip_z)

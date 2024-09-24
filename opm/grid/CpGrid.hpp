@@ -244,7 +244,7 @@ namespace Dune
         /// \param pinchActive Force specific pinch behaviour. If true a face will connect two vertical cells, that are
         ///           topological connected, even if there are cells with zero volume between them. If false these
         ///           cells will not be connected despite their faces coinciding.
-        std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+        std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
                              bool periodic_extension, bool turn_normals, bool clip_z,
@@ -269,7 +269,7 @@ namespace Dune
         ///        side. That is, i- faces will match i+ faces etc.
         /// \param turn_normals if true, all normals will be turned. This is intended for handling inputs with wrong orientations.
         /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
-        std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+        std::vector<std::size_t>
         processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
                              Opm::EclipseState* ecl_state,
                              bool periodic_extension, bool turn_normals = false, bool clip_z = false);

@@ -272,7 +272,7 @@ public:
     /// \param clip_z if true, the grid will be clipped so that the top and bottom will be planar.
     /// \param pichActive Whether PINCH keyword was specified
     /// \return A vector of removed cells and created NNCs with transmissibilities die to PINCH item 4 all.
-    std::pair<std::vector<std::size_t>,std::vector<Opm::NNCdata>>
+    std::vector<std::size_t>
     processEclipseFormat(const Opm::EclipseGrid* ecl_grid, Opm::EclipseState* ecl_state,
                          bool periodic_extension, bool turn_normals = false, bool clip_z = false,
                          bool pinchActive = true);
