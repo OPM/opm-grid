@@ -290,9 +290,9 @@ namespace cpgrid
                     //Compute harmonic average over pinched out cells.
                     double average{};
                     bool isZero = false;
-                    for(const auto& trans: trans_between)
-                        if (std::abs(trans) >= 1e-30)
-                            average += 1.0 / trans;
+                    for(const auto& trans1: trans_between)
+                        if (std::abs(trans1) >= 1e-30)
+                            average += 1.0 / trans1;
                         else
                             isZero = true;
 
