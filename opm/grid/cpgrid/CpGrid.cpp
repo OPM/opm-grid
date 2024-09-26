@@ -679,6 +679,14 @@ void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell
     }
 }
 
+void CpGrid::mapGlobalCellLevelToLeafIndexSet()
+{
+    for (const auto& element : elements(leafGridView())) {
+        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        (*currentData()[element.level()]).globalCellLevel_to_leafIdx_[global_cell_level] = element.index();
+    }
+}
+
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
 {
     current_view_data_->getIJK(c, ijk);
@@ -1995,6 +2003,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<int> global_cell_leaf( data[levels + preAdaptMaxLevel +1]->size(0));
     computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
     (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(global_cell_leaf);
+
+    mapGlobalCellLevelToLeafIndexSet();
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,

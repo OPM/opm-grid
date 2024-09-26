@@ -50,11 +50,6 @@ namespace Dune
             return grid_.globalCell().size();
         }
 
-        int compressedLevelZeroSize() const
-        {
-            return (*grid_.currentData()[0]).size(0);
-        }
-
         int cartesianIndex( const int compressedElementIndex ) const
         {
             assert(  compressedElementIndex >= 0 && compressedElementIndex < compressedSize() );
@@ -66,13 +61,29 @@ namespace Dune
             grid_.getIJK( compressedElementIndex, coords );
         }
 
+        /// Additional methods realted to LGRs
+        int compressedLevelZeroSize() const
+        {
+            return (*grid_.currentData()[0]).size(0);
+        }
+
+        int cartesianIndexLevel( const int compressedElementIndex, const int level) const
+        {
+            if ((level < 0) || (level > grid_.maxLevel())) {
+                throw std::invalid_argument("Invalid level.\n");
+            }
+            assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_.currentData()[level]->size(0) );
+            return grid_.currentData()[level]->globalCell()[compressedElementIndex];
+        }
+
         void cartesianCoordinateLevel(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
         {
             if ((level < 0) || (level > grid_.maxLevel())) {
                 throw std::invalid_argument("Invalid level.\n");
             }
-            (*grid_.currentData()[level]).getIJK( compressedElementIndexOnLevel, coordsOnLevel);
+            grid_.currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
         }
+        /// Additional methods realted to LGRs. END
     };
 
 } // end namespace Opm

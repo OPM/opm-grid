@@ -306,8 +306,13 @@ public:
         ijk = getIJK(global_cell_[c], logical_cartesian_size_);
     }
 
+    const std::vector<int>& globalCell() const
+    {
+        return  global_cell_;
+    }
+
     /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
-    ///        where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
+    ///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
     ///
     /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
     /// @param [in] cells_per_dim
@@ -625,6 +630,16 @@ public:
     const std::array<int, 3>& logicalCartesianSize() const
     {
         return logical_cartesian_size_;
+    }
+
+    /// Get map from global_cell_ to leaf index set
+    ///
+    /// Only relevant for CpGrid with LGRs. The maps of
+    /// all refined level grids is defined in CpGrid::adapt(/*..*/),
+    /// via CpGrid::mapGlobalCellLevelToLeafIndexSet().
+    const std::unordered_map<int,int>& getGlobalCellLevelToLeafIndexSet() const
+    {
+        return globalCellLevel_to_leafIdx_;
     }
 
     /// \brief Redistribute a global grid.

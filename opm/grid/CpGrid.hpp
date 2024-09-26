@@ -968,6 +968,11 @@ namespace Dune
         ///        For nested refinement, we lookup the oldest ancestor, from level zero.
         void computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf);
 
+        /// @brief Compute for each level grid, a map from the global_cell_[ cell index in level grid ] to the leaf index of the equivalent cell
+        ///        on the leaf grid view.
+        ///        Notice that cells that vanished and do not appear on the leaf grid view will not be considered.
+        void mapGlobalCellLevelToLeafIndexSet();
+
         /// @brief Get the ijk index of a refined corner, given its corner index of a single-cell-refinement.
         ///
         /// Given a single-cell, we refine it in {nx, ny, nz} refined children cells (per direction). Then, this single-cell-refinement
