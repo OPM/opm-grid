@@ -309,6 +309,11 @@ public:
         ijk[2] = gc / logical_cartesian_size_[1];
     }
 
+    const std::vector<int>& globalCell() const
+    {
+        return  global_cell_;
+    }
+
     /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
