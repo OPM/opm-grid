@@ -679,6 +679,26 @@ void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell
     }
 }
 
+std::vector<std::unordered_map<std::size_t, std::size_t>> CpGrid::mapLocalCartesianIndexSetsToLeafIndexSet() const
+{
+    std::vector<std::unordered_map<std::size_t, std::size_t>> localCartesianIdxSets_to_leafIdx(maxLevel()+1); // Plus level 0
+    for (const auto& element : elements(leafGridView())) {
+        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        localCartesianIdxSets_to_leafIdx[element.level()][global_cell_level] = element.index();
+    }
+    return localCartesianIdxSets_to_leafIdx;
+}
+
+std::vector<std::array<int,2>> CpGrid::mapLeafIndexSetToLocalCartesianIndexSets() const
+{
+    std::vector<std::array<int,2>> leafIdx_to_localCartesianIdxSets(currentData().back()->size(0));
+    for (const auto& element : elements(leafGridView())) {
+        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        leafIdx_to_localCartesianIdxSets[element.index()] = {element.level(), global_cell_level};
+    }
+    return leafIdx_to_localCartesianIdxSets;
+}
+
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
 {
     current_view_data_->getIJK(c, ijk);

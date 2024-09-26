@@ -122,6 +122,7 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
 	  tests/cpgrid/inactiveCell_lgr_test.cpp
+	  tests/cpgrid/lgr_cartesian_idx_test.cpp
 	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
@@ -190,6 +191,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Geometry.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
+  opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/CpGrid.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
@@ -202,6 +204,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
+  opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
@@ -217,6 +220,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/grid.hh
   opm/grid/polyhedralgrid/gridview.hh
+  opm/grid/polyhedralgrid/levelcartesianindexmapper.hh
   opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/idset.hh
   opm/grid/polyhedralgrid/indexset.hh

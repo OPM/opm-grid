@@ -308,8 +308,19 @@ public:
         ijk = getIJK(global_cell_[c], logical_cartesian_size_);
     }
 
+    /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
+    /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
+    ///
+    /// Note: CpGrid::globalCell() returns current_view_data_-> global_cell_ (current_view_data_ points at
+    /// data_.back() or distributed_data_.back(), in general. If the grid has been refined, current_view_data_
+    /// points at the "leaf grid view").
+    const std::vector<int>& globalCell() const
+    {
+        return  global_cell_;
+    }
+
     /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
-    ///        where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
+    ///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
     ///
     /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
     /// @param [in] cells_per_dim
