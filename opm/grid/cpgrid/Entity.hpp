@@ -294,6 +294,9 @@ public:
     /// \brief Get equivalent element on the level grid where the entity was born, if grid = leaf-grid-view. Otherwise, return itself.
     Entity<0> getEquivLevelElem() const;
 
+    /// \brief Get equivalent element on the leaf grid. If grid = leaf-grid-view, return itself. Requirement: isLeaf().
+    Entity<0> getEquivLeafElem() const;
+
     /// \brief Get Cartesian Index in the level grid view where the Entity was born.
     int getLevelCartesianIdx() const;
 
@@ -470,7 +473,7 @@ int Entity<codim>::level() const
 template<int codim>
 bool Entity<codim>::isLeaf() const
 {
-    if (pgrid_ -> parent_to_children_cells_.empty()){ // LGR cells
+    if (pgrid_ -> parent_to_children_cells_.empty()){ // Then pgrid_ must be the leaf grid view, therefore entity is leaf.
         return true;
     }
     else {
@@ -612,12 +615,25 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getEquivLevelElem() const
 }
 
 template<int codim>
+Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getEquivLeafElem() const
+{
+    // Check if the element belongs to the leaf grid view or the level zero grid.
+    if (isLeaf()) {
+        const int& entityLeafIdx = pgrid_-> level_to_leaf_cells_[this->index()];
+        // leaf_to_level_cells_ [leaf idx] = {level where the entity was born, equivalent cell idx in that level}
+        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_)).back()).get(), entityLeafIdx, true);
+    }
+    else {
+        return *this;
+    }
+}
+
+template<int codim>
 int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {
-    const auto entityLevel = this -> level();
-    const auto level = (*(pgrid_ -> level_data_ptr_))[entityLevel].get();
-    const auto& elemInLevel = this->getLevelElem(); // throws when the entity does not belong to the leaf grid view.
-    return level -> global_cell_[elemInLevel.index()];
+    const auto level_data = (*(pgrid_ -> level_data_ptr_))[this->level()].get();
+    // getLevelElem() throws when the entity does not belong to the leaf grid view.
+    return level_data -> global_cell_[this->getLevelElem().index()];
 }
 
 } // namespace cpgrid

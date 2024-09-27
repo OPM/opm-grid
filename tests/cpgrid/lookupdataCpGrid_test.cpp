@@ -332,13 +332,13 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::st
             // Remark: not optimal, repeted computation for children with the same parent cell.
             const auto& parentIdx = elem.father().index();
             const auto& parentPorv = porv[parentIdx];
-            // Remark: children_list indices are the indices on the LGR - Not on the leaf grid View.
-            const auto& [lgr, children_list] = (*grid.currentData()[0]).parent_to_children_cells_[parentIdx];
             // Get child indices on the leaf grid view, get their porv value, sum them up, and compare
             // the sum with the pore volume of their parent.
             double sumChildrenPorv = 0.;
-            for (const auto& child : children_list) {
-                const auto& childIdxOnLeaf = (*grid.currentData()[lgr]).level_to_leaf_cells_[child];
+            auto it = elem.father().hbegin(grid.maxLevel());
+            auto endIt = elem.father().hend(grid.maxLevel());
+            for (; it != endIt; ++it){
+                const auto& childIdxOnLeaf = it->getEquivLeafElem().index();
                 sumChildrenPorv += porvOnLeaf[childIdxOnLeaf];
             }
             BOOST_CHECK_CLOSE(parentPorv, sumChildrenPorv, 1e-6);

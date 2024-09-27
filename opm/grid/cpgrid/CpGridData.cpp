@@ -1710,6 +1710,31 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 #endif
 }
 
+int CpGridData::numFaces() const
+{
+    return face_to_cell_.size();
+}
+
+int CpGridData::numFaceVertices(int face_idx) const
+{
+    return face_to_point_[face_idx].size();
+}
+
+int CpGridData::faceVertex(int face_idx, int local_vertex_index) const
+{
+    return face_to_point_[face_idx][local_vertex_index];
+}
+
+int CpGridData::numFaceCells(Dune::cpgrid::EntityRep<1> face) const
+{
+    return face_to_cell_[face].size();
+}
+
+int CpGridData::faceCell(Dune::cpgrid::EntityRep<1> face, int local_cell_index) const
+{
+    return face_to_cell_[face][local_cell_index].index();
+}
+
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
