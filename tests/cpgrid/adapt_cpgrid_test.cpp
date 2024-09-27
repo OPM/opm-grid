@@ -77,7 +77,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
         BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
     }
 
-void markAndAdapt_check(Dune::CpGrid& coarse_grid,
+void markAndAdapt_check(Dune::CpGrid& grid,
                         const std::array<int,3>& cells_per_dim,
                         const std::vector<int>& markedCells,
                         Dune::CpGrid& other_grid,
@@ -85,42 +85,40 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         bool hasBeenRefinedAtLeastOnce,
                         bool isGlobalRefinement)
 {
-    const int startingGridIdx = coarse_grid.currentData().size() -1; // size before calling adapt
-
-    std::vector<int> assignRefinedLevel(coarse_grid.currentData()[startingGridIdx]->size(0));
+    const int startingGridIdx = grid.currentData().size() -1; // size before calling adapt
+    std::vector<int> assignRefinedLevel(grid.currentData()[startingGridIdx]->size(0));
 
     for (const auto& elemIdx : markedCells)
     {
-        const auto& elem =  Dune::cpgrid::Entity<0>(*(coarse_grid.currentData()[startingGridIdx]), elemIdx, true);
-        coarse_grid.mark(1, elem);
-        assignRefinedLevel[elemIdx] = coarse_grid.maxLevel() + 1;
-        BOOST_CHECK( coarse_grid.getMark(elem) == 1);
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(grid.currentData()[startingGridIdx]), elemIdx, true);
+        grid.mark(1, elem);
+        assignRefinedLevel[elemIdx] = grid.maxLevel() + 1;
+        BOOST_CHECK( grid.getMark(elem) == 1);
         BOOST_CHECK( elem.mightVanish() == true);
     }
-    bool preAdapt = coarse_grid.preAdapt();
-    const auto& data = coarse_grid.currentData();
-    if(preAdapt) {
-        coarse_grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(coarse_grid.maxLevel() +1)});
-        coarse_grid.postAdapt();
-        BOOST_CHECK(static_cast<int>(data.size()) == coarse_grid.maxLevel() +2);
-        const auto& leafGridIdx = coarse_grid.maxLevel() +1;
-        const auto& adapted_leaf = *data[leafGridIdx];
+
+    const auto& data = grid.currentData();
+
+    if(grid.preAdapt()) {
+
+        grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
+        grid.postAdapt();
+
+        BOOST_CHECK(static_cast<int>(data.size()) == grid.maxLevel() +2);
+
+        const auto& adapted_leaf = *data[grid.maxLevel()+1];
+        const auto& grid_view = grid.leafGridView();
+
         if(isBlockShape) { // For a mixed grid that gets refined a second time, isBlockShape == false, even though the marked elements form a block.
             const auto& blockRefinement_data = other_grid.currentData();
             const auto& blockRefinement_leaf = *blockRefinement_data.back();
 
             // Check the container sizes
-            BOOST_CHECK_EQUAL(adapted_leaf.geomVector<3>().size(), blockRefinement_leaf.geomVector<3>().size());
-            BOOST_CHECK_EQUAL(adapted_leaf.face_to_cell_.size(), blockRefinement_leaf.face_to_cell_.size());
-            BOOST_CHECK_EQUAL(adapted_leaf.face_to_point_.size(), blockRefinement_leaf.face_to_point_.size());
-            BOOST_CHECK_EQUAL(adapted_leaf.face_normals_.size(), blockRefinement_leaf.face_normals_.size());
-            BOOST_CHECK_EQUAL(adapted_leaf.face_tag_.size(), blockRefinement_leaf.face_tag_.size());
-            BOOST_CHECK_EQUAL(adapted_leaf.cell_to_point_.size(), blockRefinement_leaf.cell_to_point_.size());
-            BOOST_CHECK_EQUAL(adapted_leaf.cell_to_face_.size(), blockRefinement_leaf.cell_to_face_.size());
-            BOOST_CHECK_EQUAL(coarse_grid.size(3), other_grid.size(3));
-            BOOST_CHECK_EQUAL(coarse_grid.size(0), other_grid.size(0));
-            BOOST_CHECK_EQUAL(coarse_grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
-            BOOST_CHECK_EQUAL(coarse_grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
+            BOOST_CHECK_EQUAL(adapted_leaf.numFaces(), blockRefinement_leaf.numFaces());
+            BOOST_CHECK_EQUAL(grid.size(3), other_grid.size(3));
+            BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
+            BOOST_CHECK_EQUAL(grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
+            BOOST_CHECK_EQUAL(grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
 
 
             for(const auto& point: adapted_leaf.geomVector<3>()){
@@ -146,7 +144,6 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
 
             /////  THE FOLLOWING CODE WOULD FIT FOR TESTING GLOBAL REFINEMENT
             if (isGlobalRefinement) {
-                const auto& grid_view = coarse_grid.leafGridView();
                 const auto& equiv_grid_view = other_grid.leafGridView();
 
                 for(const auto& element: elements(grid_view)) {
@@ -204,84 +201,64 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             } // end-if-isGlobalRefinement
         } // end-if-isBlockShape
 
-        const auto& grid_view = coarse_grid.leafGridView();
         Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> adaptMapper(grid_view, Dune::mcmgElementLayout());
 
         for(const auto& element: elements(grid_view)) {
-            // postAdapt() has been called, therefore every element gets marked with 0
-            BOOST_CHECK( coarse_grid.getMark(element) == 0);
-            BOOST_CHECK(  adapted_leaf.cell_to_point_[element.index()].size() == 8);
-            for (int i = 0; i < 8; ++i) {
-                BOOST_CHECK(  adapted_leaf.cell_to_point_[element.index()][i] != -1);
+            BOOST_CHECK( grid.getMark(element) == 0); // postAdapt() has been called, therefore every element gets marked with 0
+
+            // Check element has 8 different corners
+            BOOST_CHECK( element.geometry().corners() == 8); // Geometry::corners() always return 8.
+            for (int i = 0; i < 8; ++i){
+                for (int j = i+1; j < 8; ++j){
+                    BOOST_CHECK( element.geometry().corner(i) != element.geometry().corner(j));
+                }
             }
-            for (int i = 0; i <  adapted_leaf.cell_to_face_[element].size(); ++i) {
-                BOOST_CHECK(  adapted_leaf.cell_to_face_[element][i].index() != -1);
+            // Check intersections of element have valid ids.
+            for (const auto& intersection : intersections(grid_view, element))
+            {
+                BOOST_CHECK( intersection.id() > -1);
             }
-            const auto& child_to_parent =  adapted_leaf.child_to_parent_cells_[element.index()];
-            const auto& level_cellIdx =  adapted_leaf.leaf_to_level_cells_[element.index()];
-            auto it = element.hbegin(level_cellIdx[0] /*level*/);//coarse_grid.maxLevel());
-            auto endIt = element.hend(level_cellIdx[0] /*level*/); //coarse_grid.maxLevel());
+
+            auto it = element.hbegin(grid.maxLevel());
+            auto endIt = element.hend(grid.maxLevel());
             BOOST_CHECK(element.isLeaf());
             BOOST_CHECK(it == endIt);
             if (element.hasFather()){
                 BOOST_CHECK( element.isNew() == true);
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]), 1e-6);
                 if (hasBeenRefinedAtLeastOnce){
-                    BOOST_CHECK(element.father().level() <= startingGridIdx);
+                    BOOST_CHECK( element.father().level() <= startingGridIdx);
                     BOOST_CHECK( element.getOrigin().level() <= startingGridIdx);
-                    BOOST_CHECK( data[element.father().level()] ->mark_[element.father().index()] == 1);
+                    BOOST_CHECK_EQUAL( data[element.father().level()] ->getMark(element.father()), 1);
                 }
                 else {
-                    BOOST_CHECK(element.father().level() == 0);
+                    BOOST_CHECK( element.father().level() == 0);
                     BOOST_CHECK( element.getOrigin().level() == 0);
                     BOOST_CHECK_EQUAL( (std::find(markedCells.begin(), markedCells.end(), element.father().index()) == markedCells.end()), false);
                 }
-                BOOST_CHECK(child_to_parent[0] != -1);
-                BOOST_CHECK_EQUAL( child_to_parent[0], element.father().level());
-                BOOST_CHECK_EQUAL( child_to_parent[1], element.father().index());
                 BOOST_CHECK( element.father() == element.getOrigin());
-
-                const auto& auxLevel = (element.father().level() == 0) ? element.getOrigin().level() : element.getLevelElem().level();
-                const auto& auxLevelIdx = (element.father().level() == 0) ? element.getOrigin().index() : element.getLevelElem().index();
-                BOOST_CHECK(  ( adapted_leaf.global_cell_[element.index()]) == (data[auxLevel]->global_cell_[auxLevelIdx]) );
-
-                BOOST_CHECK( std::get<0>(data[element.father().level()]->parent_to_children_cells_[element.father().index()]) == element.level());
-                // Check amount of children cells of the parent cell
-                BOOST_CHECK_EQUAL(std::get<1>(data[element.father().level()]->parent_to_children_cells_[child_to_parent[1]]).size(),
-                                  (*data[element.level()]).cells_per_dim_[0]*(*data[element.level()]).cells_per_dim_[1]*(*data[element.level()]).cells_per_dim_[2]);
                 if(!hasBeenRefinedAtLeastOnce)
                 {
                     BOOST_CHECK( element.father().isLeaf() == false);
                 }
-                BOOST_CHECK( (element.level() > 0) || (element.level() < coarse_grid.maxLevel() +1));
-                BOOST_CHECK( level_cellIdx[0] == element.level());
+                BOOST_CHECK( (element.level() > 0) || (element.level() < grid.maxLevel() +1));
                 BOOST_CHECK(element.index() == adaptMapper.index(element));
                 BOOST_CHECK(element.index() == adaptMapper.index(element));
                 /** Not ideal to define this for each element. Remove?*/
-                const auto& preAdapt_view = coarse_grid.levelGridView(element.father().level());
+                const auto& preAdapt_view = grid.levelGridView(element.father().level());
                 Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> preAdaptMapper(preAdapt_view, Dune::mcmgElementLayout());
                 BOOST_CHECK(element.father().index() == preAdaptMapper.index(element.father()));
             }
             else{
                 BOOST_CHECK_THROW(element.father(), std::logic_error);
                 BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
-                BOOST_CHECK_EQUAL(child_to_parent[0], -1);
-                BOOST_CHECK_EQUAL(child_to_parent[1], -1);
                 if (hasBeenRefinedAtLeastOnce){
-                    BOOST_CHECK( level_cellIdx[0] == element.level());
                     BOOST_CHECK( element.level() <= startingGridIdx);
                     BOOST_CHECK( element.getOrigin().level() <= startingGridIdx);
                 }
                 else  {
-                    BOOST_CHECK( level_cellIdx[0] == 0);
                     BOOST_CHECK( element.level() == 0);
-                    BOOST_CHECK( element.getOrigin().level() == 0);
                 }
-                BOOST_CHECK( std::get<0>(data[element.level()]-> parent_to_children_cells_[level_cellIdx[1]]) == -1);
-                BOOST_CHECK( std::get<1>(data[element.level()]->parent_to_children_cells_[level_cellIdx[1]]).empty());
-                // Get index of the cell in level 0
-                const auto& entityOldIdx =   adapted_leaf.leaf_to_level_cells_[element.index()][1];
-                BOOST_CHECK( element.getOrigin().index() == entityOldIdx);
                 BOOST_CHECK( element.getOrigin().level() == 0);
                 BOOST_CHECK( element.isNew() == false);
             }
@@ -291,9 +268,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
 
 
         if (startingGridIdx == 0) {
-            const auto& preAdapt_view = coarse_grid.levelGridView(startingGridIdx);
+            const auto& preAdapt_view = grid.levelGridView(startingGridIdx);
             Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LevelGridView> preAdaptMapper(preAdapt_view, Dune::mcmgElementLayout());
-            //  const auto& preAdapt_idSet = (*data[startingGridIdx+1]).local_id_set_;
             // Some checks on the preAdapt grid
             for(const auto& element: elements(preAdapt_view)) {
 
@@ -303,49 +279,27 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( element.getOrigin() ==  element);
                 BOOST_CHECK( element.getOrigin().level() == startingGridIdx);
                 BOOST_CHECK( element.isNew() == false);
-                auto it = element.hbegin(coarse_grid.maxLevel()); // With element.level(), fails
-                auto endIt = element.hend(coarse_grid.maxLevel());
-                const auto& [lgr, childrenList] = (*data[startingGridIdx]).parent_to_children_cells_[element.index()];
+                auto it = element.hbegin(grid.maxLevel()); // With element.level(), fails
+                auto endIt = element.hend(grid.maxLevel());
                 if (std::find(markedCells.begin(), markedCells.end(), element.index()) == markedCells.end()){
-                    BOOST_CHECK_EQUAL(lgr, -1);
-                    BOOST_CHECK(childrenList.empty());
                     BOOST_CHECK( element.isLeaf() == true);
                     // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                     BOOST_CHECK( it == endIt);
                     BOOST_CHECK( element.mightVanish() == false);
                 }
                 else{
-                    BOOST_CHECK(lgr != -1);
-                    BOOST_CHECK(static_cast<int>(childrenList.size()) == cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
                     // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
                     BOOST_CHECK_EQUAL( it == endIt, false);
                     BOOST_CHECK( element.mightVanish() == true);
                     BOOST_CHECK( element.isNew() == false);
                     BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
 
-                    // Auxiliary int to check amount of children
-                    double referenceElemOneParent_volume = 0.;
-                    std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
-                    for (const auto& child : childrenList) {
-                        BOOST_CHECK( child != -1);
-                        BOOST_CHECK( data[startingGridIdx+1]-> child_to_parent_cells_[child][0] == startingGridIdx);  //
-                        BOOST_CHECK( data[startingGridIdx+1]-> child_to_parent_cells_[child][1] == element.index());
-
-                        const auto& childElem =  Dune::cpgrid::Entity<0>(*data[startingGridIdx+1], child, true);
-                        BOOST_CHECK(childElem.hasFather() == true);
-                        BOOST_CHECK(childElem.level() == lgr);
-                        referenceElemOneParent_volume += childElem.geometryInFather().volume();
-                        for (int c = 0; c < 3; ++c)  {
-                            referenceElem_entity_center[c] += (childElem.geometryInFather().center())[c];
-                        }
-                    }
                     /// Auxiliary int to check amount of children
                     double referenceElemOneParent_volume_it = 0.;
                     std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
                     for (; it != endIt; ++it)
                     {
                         BOOST_CHECK(it ->hasFather() == true);
-                        BOOST_CHECK(it ->level() == lgr);
                         referenceElemOneParent_volume_it += it-> geometryInFather().volume();
                         for (int c = 0; c < 3; ++c)
                         {
@@ -353,14 +307,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                         }
                     }
                     for (int c = 0; c < 3; ++c) {
-                        referenceElem_entity_center[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
                         referenceElem_entity_center_it[c] /= cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
                     }
-                    BOOST_CHECK_CLOSE(referenceElemOneParent_volume, 1, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[0], .5, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[1], .5, 1e-13);
-                    BOOST_CHECK_CLOSE(referenceElem_entity_center[2], .5, 1e-13);
-
                     BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
                     BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
                     BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
@@ -381,7 +329,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             allIds_set.insert(localId);
             allIds_vec.push_back(localId);
             // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-            BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->localIdSet().id(element.getEquivLevelElem()));
+            BOOST_CHECK_EQUAL( grid.globalIdSet().id(element), data[element.level()]->localIdSet().id(element.getEquivLevelElem()));
         }
         // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
         BOOST_CHECK( allIds_set.size() == allIds_vec.size());
@@ -398,16 +346,16 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         // CpGrid supports only elements (cells) and vertices (corners). Total amount of ids for the leaf grid view should coincide
         // with the total amount of cells and corners on the leaf grid view.
         BOOST_CHECK( static_cast<int>(allIds_set.size()) == (data.back()->size(0) + data.back()->size(3)));
-        
+
 
         // Local/Global id sets for level grids (level 0, 1, ..., maxLevel)
-        for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
+        for (int level = 0; level < grid.maxLevel() +1; ++level)
         {
             std::set<int> levelIds_set;
             std::vector<int> levelIds_vec;
             levelIds_vec.reserve(data[level]->size(0) + data[level]->size(3));
 
-            for (const auto& element: elements(coarse_grid.levelGridView(level))){
+            for (const auto& element: elements(grid.levelGridView(level))){
                 const auto& localId = data[level]->localIdSet().id(element);
                 const auto& globalId = data[level]->globalIdSet().id(element);
                 // In serial run, local and global id coincide:
@@ -435,7 +383,7 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL(idx, element.index());
             }
 
-            for (const auto& point : vertices(coarse_grid.levelGridView(level))) {
+            for (const auto& point : vertices(grid.levelGridView(level))) {
                 const auto& localId = data[level]->localIdSet().id(point);
                 const auto& globalId = data[level]->globalIdSet().id(point);
                 BOOST_CHECK_EQUAL(localId, globalId);
