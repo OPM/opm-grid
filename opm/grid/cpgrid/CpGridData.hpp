@@ -802,7 +802,7 @@ private:
      * in each pillar. Note that of these some may have no volume
      * and this be inactive.
      */
-    std::array<int, 3>                logical_cartesian_size_;
+    std::array<int, 3>                logical_cartesian_size_{};
     /** @brief vector with the gobal cell index for each cell.
      *
      * Note the size of this container is determined by the
