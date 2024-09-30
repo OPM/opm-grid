@@ -648,16 +648,10 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
         //
         // Refined cell (here 'element') has "index in parent cell": k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
         // and it's stored in  cell_to_idxInParentCell_.
-        auto idx_in_parent_cell =  currentData()[level]-> cell_to_idxInParentCell_[element.index()]; // deep copy
+        auto idx_in_parent_cell =  currentData()[level]-> cell_to_idxInParentCell_[element.index()];
         // Find ijk.
         std::array<int,3> childIJK = {0,0,0};
-
-        childIJK[0] = idx_in_parent_cell % cells_per_dim[0];
-        idx_in_parent_cell -= childIJK[0]; // k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0]
-        idx_in_parent_cell /= cells_per_dim[0]; // k*cells_per_dim[1] + j
-        childIJK[1] = idx_in_parent_cell % cells_per_dim[1];
-        idx_in_parent_cell -= childIJK[1]; // k*cells_per_dim[1]
-        childIJK[2] = idx_in_parent_cell /cells_per_dim[1];
+        currentData()[level]-> getInParentCellIJK(idx_in_parent_cell, childIJK);
         // The corresponding lgrIJK can be computed as follows:
         const std::array<int,3>& lgrIJK = { ( (parentIJK[0] - startIJK[0])*cells_per_dim[0] ) + childIJK[0],  // Shift parent index according to the startIJK of the LGR.
                                             ( (parentIJK[1] - startIJK[1])*cells_per_dim[1] ) + childIJK[1],
