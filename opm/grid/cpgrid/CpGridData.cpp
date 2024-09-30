@@ -1713,8 +1713,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = {0,0,0};
-    getInParentCellIJK(idx_in_parent_cell, cells_per_dim, ijk);
+    std::array<int,3> ijk = getIJK(idx_in_parent_cell, cells_per_dim);
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },

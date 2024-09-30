@@ -303,35 +303,28 @@ public:
     /// @param [out] ijk  Cartesian index triplet
     void getIJK(int c, std::array<int,3>& ijk) const
     {
-        int gc = global_cell_[c];
-        ijk[0] = gc % logical_cartesian_size_[0];  gc /= logical_cartesian_size_[0];
-        ijk[1] = gc % logical_cartesian_size_[1];
-        ijk[2] = gc / logical_cartesian_size_[1];
+        ijk = getIJK(global_cell_[c], logical_cartesian_size_);
     }
 
-    /// @brief Extract in-parent-cell Cartesian index triplet (i,j,k) of a refined cell.
+    /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
+    ///        where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
     ///
-    /// - If refinement has been done via LGRs, there amount of children of each parent cell in each
-    /// direction (x,y,and z) is given by std::array<int,3> cells_per_dim. In this case, CpGrid::adapt(/* with args */)
-    /// has been called.
-    /// - If refinement has been done via adapt() (without arguments) the default amount of children of each parent
-    /// cell in each direction is cells_per_dim = {2,2,2}.
-    ///
-    /// @param [in] idx_in_parent_cell      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
-    ///                                     (total amount of children of a parent cell minus one since starting index is zero).
+    /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
     /// @param [in] cells_per_dim
-    /// @param [out] ijk                    In-parent-cell Cartesian index triplet
-    void getInParentCellIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim,  std::array<int,3>& ijk) const
+    /// @return Cartesian index triplet.
+    std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
     {
-        // idx_in_parent_cell = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
+        // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
         // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
         assert(cells_per_dim[0]);
         assert(cells_per_dim[1]);
         assert(cells_per_dim[2]);
 
+        std::array<int,3> ijk = {0,0,0};
         ijk[0] = idx_in_parent_cell % cells_per_dim[0]; idx_in_parent_cell /= cells_per_dim[0];
         ijk[1] = idx_in_parent_cell % cells_per_dim[1];
         ijk[2] = idx_in_parent_cell /cells_per_dim[1];
+        return ijk;
     }
 
     /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
