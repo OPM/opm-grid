@@ -173,13 +173,21 @@ void testInactiveCellsLgrs(const std::string& deckString,
                 BOOST_CHECK( entity.level() == 0);
             }
 
+            if (!(data[level] -> global_cell_.empty()))
+            {
+                auto itMin = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
+                auto itMax = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
+                BOOST_CHECK( *itMin >= 0);
+                const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
+                BOOST_CHECK( *itMax < maxCartesianIdxLevel);
+            }
+
             // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
             {
                 Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[level], cell, true);
                 BOOST_CHECK( entity.hasFather() == true);
                 BOOST_CHECK( entity.getOrigin() ==  entity.father());
-                BOOST_CHECK( entity.index() == (data[level] -> global_cell_[entity.index()])); // global_cell_ = {0,1,..., total cells -1}
                 BOOST_CHECK( entity.getOrigin().level() == 0);
                 BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
                                   1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
@@ -284,6 +292,12 @@ void testInactiveCellsLgrs(const std::string& deckString,
                 }
             }
         } // end-level-for-loop
+
+        auto itMin = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
+        auto itMax = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
+        BOOST_CHECK( *itMin >= 0);
+        const auto& maxCartesianIdx = grid.logicalCartesianSize()[0]*grid.logicalCartesianSize()[1]*grid.logicalCartesianSize()[2];
+        BOOST_CHECK( *itMax < maxCartesianIdx);
 
         BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == grid.maxLevel());
         BOOST_CHECK( (*data[data.size()-1]).parent_to_children_cells_.empty());

@@ -181,7 +181,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             auto itMin = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             auto itMax = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             BOOST_CHECK_EQUAL( *itMin, 0);
-            BOOST_CHECK_EQUAL( *itMax, data[level]-> size(0) -1);
+            const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
+            BOOST_CHECK( *itMax < maxCartesianIdxLevel);
         }
 
 
@@ -227,6 +228,12 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             Dune::cpgrid::EntityRep<1> faceEntity(face, true);
             BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
         }
+
+        auto itMin = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
+        auto itMax = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
+        BOOST_CHECK( *itMin >= 0);
+        const auto& maxCartesianIdx = coarse_grid.logicalCartesianSize()[0]*coarse_grid.logicalCartesianSize()[1]*coarse_grid.logicalCartesianSize()[2];
+        BOOST_CHECK( *itMax < maxCartesianIdx);
 
         // LeafView
         for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
