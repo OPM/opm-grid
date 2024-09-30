@@ -1091,8 +1091,9 @@ namespace Dune
         /// @brief Compute for each level grid, a map from the global_cell_[ cell index in level grid ] to the leaf index of the equivalent cell
         ///        on the leaf grid view.
         ///        Notice that cells that vanished and do not appear on the leaf grid view will not be considered.
-        std::vector<std::unordered_map<std::size_t, std::size_t>> mapGlobalCellLevelToLeafIndexSet();
-
+        std::vector<std::unordered_map<std::size_t, std::size_t>> mapGlobalCellLevelToLeafIndexSet() const;
+        
+        std::vector<std::array<std::size_t,2>> mapLeafIndexSetToGlobalCellLevel() const;
 
         /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int) const;
