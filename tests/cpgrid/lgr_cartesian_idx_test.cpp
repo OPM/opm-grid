@@ -114,15 +114,19 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
             BOOST_CHECK_EQUAL( global_ijk[2], local_ijk[2]);
         }
     }
+
+    const auto& localCartesianIdxSets_to_leafIdx = grid.mapLocalCartesianIndexSetsToLeafIndexSet();
+    const auto& leafIdx_to_localCartesianIdxSets = grid.mapLeafIndexSetToLocalCartesianIndexSets();
     
     for (int level = 0; level < grid.maxLevel(); ++level)
     {
-        const auto& localCartesianIdxSets_to_leafIdx = grid.mapLocalCartesianIndexSetsToLeafIndexSet();
         for (const auto& element : elements(grid.levelGridView(level)))
         {
             if(element.isLeaf()) {
                 const auto& global_cell_level = grid.currentData()[element.level()]->globalCell()[element.index()];
-                localCartesianIdxSets_to_leafIdx[element.level()].at(global_cell_level);
+                const auto& leaf_idx = localCartesianIdxSets_to_leafIdx[element.level()].at(global_cell_level);
+                BOOST_CHECK_EQUAL( leafIdx_to_localCartesianIdxSets[leaf_idx][0], element.level());
+                BOOST_CHECK_EQUAL( leafIdx_to_localCartesianIdxSets[leaf_idx][1], global_cell_level);
             }
             else {
                 BOOST_CHECK_THROW( localCartesianIdxSets_to_leafIdx[element.level()].at(element.index()), std::out_of_range);
