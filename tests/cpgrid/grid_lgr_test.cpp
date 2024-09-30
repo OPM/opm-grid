@@ -214,7 +214,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             auto itMin = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             auto itMax = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             BOOST_CHECK_EQUAL( *itMin, 0);
-            BOOST_CHECK_EQUAL( *itMax, data[level]-> size(0) -1);
+            const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2] -1;
+            BOOST_CHECK_EQUAL( *itMax, maxCartesianIdxLevel);
 
             // LGRs
             for (int cell = 0; cell <  data[level]-> size(0); ++cell)
@@ -461,7 +462,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         auto itMin = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
         auto itMax = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
         BOOST_CHECK_EQUAL( *itMin, 0);
-        BOOST_CHECK_EQUAL( *itMax, data.front()-> size(0) -1);
+        const auto& maxCartesianIdx = coarse_grid.logicalCartesianSize()[0]*coarse_grid.logicalCartesianSize()[1]*coarse_grid.logicalCartesianSize()[2] -1;
+        BOOST_CHECK_EQUAL( *itMax, maxCartesianIdx);
 
         for (long unsigned int l = 0; l < startIJK_vec.size() +1; ++l) // level 0,1,2,... , last patch
         {

@@ -211,7 +211,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
         auto itMin = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
         auto itMax = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
         BOOST_CHECK_EQUAL( *itMin, 0);
-        BOOST_CHECK_EQUAL( *itMax, data.front()-> size(0) -1);
+        const auto& maxCartesianIdx = coarse_grid.logicalCartesianSize()[0]*coarse_grid.logicalCartesianSize()[1]*coarse_grid.logicalCartesianSize()[2] -1;
+        BOOST_CHECK_EQUAL( *itMax, maxCartesianIdx);
 
         for(const auto& element: elements(grid_view)) {
             // postAdapt() has been called, therefore every element gets marked with 0
@@ -377,7 +378,8 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
             auto itMinLevel = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             auto itMaxLevel = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             BOOST_CHECK_EQUAL( *itMinLevel, 0);
-            BOOST_CHECK_EQUAL( *itMaxLevel, data[level]-> size(0) -1);
+            const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2] -1;
+            BOOST_CHECK_EQUAL( *itMaxLevel, maxCartesianIdxLevel);
         }
 
         std::set<int> allIds_set;
