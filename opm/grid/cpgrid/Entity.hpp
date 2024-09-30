@@ -529,7 +529,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
-    const int& idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
+    auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
     if (idx_in_parent_cell !=-1) {
         const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
         const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idx_in_parent_cell, cells_per_dim);
