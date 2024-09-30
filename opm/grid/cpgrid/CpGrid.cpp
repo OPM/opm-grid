@@ -679,26 +679,25 @@ void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell
     }
 }
 
-std::vector<std::unordered_map<std::size_t, std::size_t>> CpGrid::mapGlobalCellLevelToLeafIndexSet() const
+std::vector<std::unordered_map<std::size_t, std::size_t>> CpGrid::mapLocalCartesianIndexSetsToLeafIndexSet() const
 {
-    std::vector<std::unordered_map<std::size_t, std::size_t>> globalCellLevels_to_leafIdx(maxLevel()+1); // Plus level 0
+    std::vector<std::unordered_map<std::size_t, std::size_t>> localCartesianIdxSets_to_leafIdx(maxLevel()+1); // Plus level 0
     for (const auto& element : elements(leafGridView())) {
         const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
-        globalCellLevels_to_leafIdx[element.level()][global_cell_level] = element.index();
+        localCartesianIdxSets_to_leafIdx[element.level()][global_cell_level] = element.index();
     }
-    return globalCellLevels_to_leafIdx;
+    return localCartesianIdxSets_to_leafIdx;
 }
 
-std::vector<std::array<std::size_t,2>> CpGrid::mapLeafIndexSetToGlobalCellLevel() const 
+std::vector<std::array<int,2>> CpGrid::mapLeafIndexSetToLocalCartesianIndexSets() const
 {
-    std::vector<std::array<std::size_t,2>> leafIdx_to_globalCellLevel(currentData().back()->size(0));
+    std::vector<std::array<int,2>> leafIdx_to_localCartesianIdxSets(currentData().back()->size(0));
     for (const auto& element : elements(leafGridView())) {
         const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
-        leafIdx_to_globalCellLevel[element.index()] = {element.level(), global_cell_level};
+        leafIdx_to_localCartesianIdxSets[element.index()] = {element.level(), global_cell_level};
     }
-    return leafIdx_to_globalCellLevel;
+    return leafIdx_to_localCartesianIdxSets;
 }
-
 
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
 {
@@ -2017,7 +2016,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
     (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(global_cell_leaf);
 
-    mapGlobalCellLevelToLeafIndexSet();
+    mapLocalCartesianIndexSetsToLeafIndexSet();
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
