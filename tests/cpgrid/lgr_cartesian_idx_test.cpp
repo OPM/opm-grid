@@ -117,15 +117,15 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
     
     for (int level = 0; level < grid.maxLevel(); ++level)
     {
-        const auto& globalCellLevel_to_leafIdx = grid.currentData()[level]->getGlobalCellLevelToLeafIndexSet();
+        const auto& globalCellLevel_to_leafIdx = grid.mapGlobalCellLevelToLeafIndexSet();
         for (const auto& element : elements(grid.levelGridView(level)))
         {
             if(element.isLeaf()) {
                 const auto& global_cell_level = grid.currentData()[element.level()]->globalCell()[element.index()];
-                globalCellLevel_to_leafIdx.at(global_cell_level);
+                globalCellLevel_to_leafIdx[element.level()].at(global_cell_level);
             }
             else {
-                BOOST_CHECK_THROW( globalCellLevel_to_leafIdx.at(element.index()), std::out_of_range);
+                BOOST_CHECK_THROW( globalCellLevel_to_leafIdx[element.level()].at(element.index()), std::out_of_range);
             }
         }
     }
