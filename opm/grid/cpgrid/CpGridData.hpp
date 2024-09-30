@@ -632,16 +632,6 @@ public:
         return logical_cartesian_size_;
     }
 
-    /// Get map from global_cell_ to leaf index set
-    ///
-    /// Only relevant for CpGrid with LGRs. The maps of
-    /// all refined level grids is defined in CpGrid::adapt(/*..*/),
-    /// via CpGrid::mapGlobalCellLevelToLeafIndexSet().
-    const std::unordered_map<int,int>& getGlobalCellLevelToLeafIndexSet() const
-    {
-        return globalCellLevel_to_leafIdx_;
-    }
-
     /// \brief Redistribute a global grid.
     ///
     /// The whole grid must be available on all processors.
