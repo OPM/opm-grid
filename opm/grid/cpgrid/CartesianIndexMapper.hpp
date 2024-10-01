@@ -61,7 +61,7 @@ namespace Dune
             grid_.getIJK( compressedElementIndex, coords );
         }
 
-        /// Additional methods realted to LGRs
+        /// Additional methods related to LGRs
         int compressedLevelZeroSize() const
         {
             return (*grid_.currentData()[0]).size(0);
@@ -83,7 +83,7 @@ namespace Dune
             }
             grid_.currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
         }
-        /// Additional methods realted to LGRs. END
+        /// Additional methods related to LGRs. END
     };
 
 } // end namespace Opm
