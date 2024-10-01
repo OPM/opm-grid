@@ -220,6 +220,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/polyhedralgrid/gridhelpers.hh
   opm/grid/polyhedralgrid/grid.hh
   opm/grid/polyhedralgrid/gridview.hh
+  opm/grid/polyhedralgrid/LevelsCartesianIndexMapper.hpp
   opm/grid/polyhedralgrid.hh
   opm/grid/polyhedralgrid/idset.hh
   opm/grid/polyhedralgrid/indexset.hh
