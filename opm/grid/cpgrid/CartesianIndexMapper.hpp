@@ -52,7 +52,6 @@ namespace Dune
 
         int compressedLevelZeroSize() const
         {
-            
             return (*grid_.currentData()[0]).size(0);
         }
 

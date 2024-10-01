@@ -303,10 +303,28 @@ public:
     /// @param [out] ijk  Cartesian index triplet
     void getIJK(int c, std::array<int,3>& ijk) const
     {
-        int gc = global_cell_[c];
-        ijk[0] = gc % logical_cartesian_size_[0];  gc /= logical_cartesian_size_[0];
-        ijk[1] = gc % logical_cartesian_size_[1];
-        ijk[2] = gc / logical_cartesian_size_[1];
+        ijk = getIJK(global_cell_[c], logical_cartesian_size_);
+    }
+
+    /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
+    ///        where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
+    ///
+    /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
+    /// @param [in] cells_per_dim
+    /// @return Cartesian index triplet.
+    std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
+    {
+        // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
+        // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
+        assert(cells_per_dim[0]);
+        assert(cells_per_dim[1]);
+        assert(cells_per_dim[2]);
+
+        std::array<int,3> ijk = {0,0,0};
+        ijk[0] = idx_in_parent_cell % cells_per_dim[0]; idx_in_parent_cell /= cells_per_dim[0];
+        ijk[1] = idx_in_parent_cell % cells_per_dim[1];
+        ijk[2] = idx_in_parent_cell /cells_per_dim[1];
+        return ijk;
     }
 
     /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
@@ -381,7 +399,7 @@ public:
     void postAdapt();
 
 private:
-    std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idxInParentCell, const std::array<int,3>& cells_per_dim) const;
+    std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
     ///

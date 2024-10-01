@@ -633,6 +633,52 @@ const std::vector<int>& CpGrid::globalCell() const
     return currentData().back() -> global_cell_;
 }
 
+void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& startIJK, std::vector<int>& global_cell_lgr)
+{
+    assert(level);
+    for (const auto& element : elements(levelGridView(level))) {
+        // Element belogns to an LGR, therefore has a father. Get IJK of the father in the level grid the father was born.
+        // For CARFIN, parent cells belong to level 0.
+        std::array<int,3> parentIJK = {0,0,0};
+        currentData()[element.father().level()]->getIJK(element.father().index(), parentIJK);
+        // Each parent cell has been refined in cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2] child cells.
+        // element has certain 'position' inside its parent cell that can be described with 'IJK' indices, let's denote them by ijk,
+        // where 0<= i < cells_per_dim[0], 0<= j < cells_per_dim[1], 0<= k < cells_per_dim[2].
+        const auto& cells_per_dim = currentData()[level]->cells_per_dim_;
+        //
+        // Refined cell (here 'element') has "index in parent cell": k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
+        // and it's stored in  cell_to_idxInParentCell_.
+        auto idx_in_parent_cell =  currentData()[level]-> cell_to_idxInParentCell_[element.index()];
+        // Find ijk.
+        std::array<int,3> childIJK = currentData()[level]-> getIJK(idx_in_parent_cell, cells_per_dim);
+        // The corresponding lgrIJK can be computed as follows:
+        const std::array<int,3>& lgrIJK = { ( (parentIJK[0] - startIJK[0])*cells_per_dim[0] ) + childIJK[0],  // Shift parent index according to the startIJK of the LGR.
+                                            ( (parentIJK[1] - startIJK[1])*cells_per_dim[1] ) + childIJK[1],
+                                            ( (parentIJK[2] - startIJK[2])*cells_per_dim[2] ) + childIJK[2] };
+        // Dimensions of the "patch of cells" formed when providing startIJK and endIJK for an LGR
+        const auto& lgr_logical_cartesian_size = currentData()[level]->logical_cartesian_size_;
+        global_cell_lgr[element.index()] = (lgrIJK[2]*lgr_logical_cartesian_size[0]*lgr_logical_cartesian_size[1]) + (lgrIJK[1]*lgr_logical_cartesian_size[0]) + lgrIJK[0];
+    }
+}
+
+void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf)
+{
+    for (const auto& element: elements(leafGridView()))
+    {
+        // When refine via CpGrid::addLgrsUpdateGridView(/*...*/), level-grid to lookup global_cell_ is equal to level-zero-grid
+        // In the context of allowed nested refinement, we lookup for the oldest ancestor, also belonging to level-zero-grid.
+        auto ancestor = element.getOrigin();
+        int origin_in_level_zero = ancestor.index();
+        while (ancestor.level()>0){
+            ancestor = ancestor.getOrigin();
+            origin_in_level_zero = ancestor.getOrigin().index();
+        }
+        assert(ancestor.level()==0);
+        assert(origin_in_level_zero < currentData().front()->size(0));
+        global_cell_leaf[element.index()] = currentData().front()-> global_cell_[origin_in_level_zero];
+    }
+}
+
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
 {
     current_view_data_->getIJK(c, ijk);
@@ -1809,7 +1855,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     cornerInMarkedElemWithEquivRefinedCorner,
                                     cells_per_dim_vec);
 
-    std::vector<int> adapted_global_cell(cell_count, 0);
     updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
                                   adapted_corners,
                                   corner_count,
@@ -1822,7 +1867,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                   /* Leaf grid View Cells argumemts  */
                                   adapted_cells,
                                   adapted_cell_to_point,
-                                  adapted_global_cell,
                                   cell_count,
                                   adapted_cell_to_face,
                                   adapted_face_to_cell,
@@ -1895,7 +1939,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         (*data[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
         (*data[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
         (*data[refinedLevelGridIdx]).level_to_leaf_cells_ =  refined_level_to_leaf_cells_vec[level];
-        (*data[refinedLevelGridIdx]).global_cell_.swap(refined_global_cell_vec[level]);
         (*data[refinedLevelGridIdx]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[refinedLevelGridIdx]->size(0),
                                                                                      data[refinedLevelGridIdx]->size(3));
         // Determine the amount of cells per direction, per parent cell, of the corresponding LGR.
@@ -1912,6 +1955,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         }
         else {
             (*data[refinedLevelGridIdx]).logical_cartesian_size_ = (*data[0]).logical_cartesian_size_;
+            (*data[refinedLevelGridIdx]).global_cell_.swap(refined_global_cell_vec[level]);
         }
         // One alternative definition for logical_cartesian_size_ in the case where the marked elements for refinement do not form a block of cells,
         // therefore, are not associated with the keyword CARFIN, is to imagine that we put all the marked elements one next to the other, along
@@ -1927,13 +1971,30 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data[levels + preAdaptMaxLevel +1]).child_to_parent_cells_ = adapted_child_to_parent_cells;
     (*data[levels + preAdaptMaxLevel +1]).cell_to_idxInParentCell_ = adapted_cell_to_idxInParentCell;
     (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
-    (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(adapted_global_cell);
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
     (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
 
     // Update the leaf grid view
     current_view_data_ = data.back().get();
+
+    // When the refinement is determined by startIJK and endIJK values, the LGR has a (local) Cartesian size.
+    // Therefore, each refined cell belonging to the LGR can be associated with a (local) IJK and its (local) Cartesian index.
+    // If the LGR has NXxNYxNZ dimension, then the Cartesian indices take values
+    // k*NN*NY + j*NX + i, where i<NX, j<Ny, k<NZ.
+    // This index is stored in <refined-level-grid>.global_cell_[ refined cell index (~element.index()) ] =  k*NN*NY + j*NX + i.
+    if (isCARFIN) {
+        for (int level = 0; level < levels; ++level) {
+            const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
+            std::vector<int> global_cell_lgr(data[refinedLevelGridIdx]->size(0));
+            computeGlobalCellLgr(refinedLevelGridIdx, startIJK_vec[level], global_cell_lgr);
+            (*data[refinedLevelGridIdx]).global_cell_.swap(global_cell_lgr);
+        }
+    }
+
+    std::vector<int> global_cell_leaf( data[levels + preAdaptMaxLevel +1]->size(0));
+    computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
+    (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(global_cell_leaf);
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
@@ -2549,7 +2610,7 @@ CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,st
                                              const int& cell_count) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // -- Refined to Adapted cells and Adapted-cells to {level where the cell was born, cell index on that level} --
     // Relation between the refined grid and leafview cell indices.
     std::vector<std::vector<int>> refined_level_to_leaf_cells_vec(refined_cell_count_vec.size());
@@ -3237,7 +3298,6 @@ void CpGrid::populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<c
 
 void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
                                    std::vector<std::array<int,8>>& adapted_cell_to_point,
-                                   std::vector<int>& adapted_global_cell,
                                    const int& cell_count,
                                    cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
                                    cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
@@ -3264,8 +3324,6 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
 
         const auto& [elemLgr, elemLgrCell] = adaptedCell_to_elemLgrAndElemLgrCell.at(cell);
         const auto& elemLgrCellEntity =  Dune::cpgrid::EntityRep<0>(elemLgrCell, true);
-
-        adapted_global_cell[cell] = current_view_data_->global_cell_[(elemLgr == -1) ? elemLgrCell : elemLgr];
 
         // Auxiliary cell_to_face
         std::vector<cpgrid::EntityRep<1>> aux_cell_to_face;
@@ -3574,7 +3632,6 @@ void CpGrid::updateLeafGridViewGeometries( /* Leaf grid View Corners arguments *
                                            /* Leaf grid View Cells argumemts  */
                                            Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>& adapted_cells,
                                            std::vector<std::array<int,8>>& adapted_cell_to_point,
-                                           std::vector<int>& adapted_global_cell,
                                            const int& cell_count,
                                            cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
                                            cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
@@ -3617,7 +3674,6 @@ void CpGrid::updateLeafGridViewGeometries( /* Leaf grid View Corners arguments *
     // --- Adapted cells ---
     populateLeafGridCells(adapted_cells,
                           adapted_cell_to_point,
-                          adapted_global_cell,
                           cell_count,
                           adapted_cell_to_face,
                           adapted_face_to_cell,
