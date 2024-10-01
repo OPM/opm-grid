@@ -45,6 +45,7 @@
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
+#include <opm/grid/cpgrid/LevelsCartesianIndexMapper.hpp>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/common/version.hh>
@@ -84,6 +85,8 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
 {
     const Dune::CartesianIndexMapper<Dune::CpGrid> mapper{grid};
 
+    const Opm::LevelsCartesianIndexMapper<Dune::CpGrid> levelsCartMapp(grid);
+
     for (const auto& element : elements(grid.leafGridView()))
     {
         // How to get the Cartesian Index of a cell on the leaf grid view.
@@ -103,12 +106,12 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
         // How to get the Level Cartesian Index of a cell on the leaf grid view.
         // Each LGR can be seen as a Cartesian Grid itself, with its own (local) logical_cartesian_size and its own (local) Cartesian indices.
         // Given a leaf cell, via the CartesianIndexMapper and its method cartesianIndexLevel(...), we get the local-Cartesian-index.
-        const auto& cartesian_idx_from_level_elem =  mapper.cartesianIndexLevel( element.getEquivLevelElem().index(), element.level() );
+        const auto& cartesian_idx_from_level_elem =  levelsCartMapp.cartesianIndexLevel( element.getEquivLevelElem().index(), element.level() );
         const auto& global_cell_idx_level = grid.currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
         BOOST_CHECK_EQUAL(cartesian_idx_from_level_elem, global_cell_idx_level);
         // local_ijk represents the ijk values of the equivalent cell on the level its was born.
         std::array<int,3> local_ijk = {0,0,0};
-        mapper.cartesianCoordinateLevel( element.getEquivLevelElem().index(), local_ijk, element.level() );
+        levelsCartMapp.cartesianCoordinateLevel( element.getEquivLevelElem().index(), local_ijk, element.level() );
 
         // For leaf cells that were not involved in any refinement, global_ijk and local_ijk must coincide.
         if(element.level()==0)
