@@ -36,7 +36,7 @@
 
 #include <dune/grid/common/mcmgmapper.hh>
 
-#include <opm/grid/common/LevelsCartesianIndexMapper.hpp>
+#include <opm/grid/common/LevelsCartesianIndexMapper.hh>
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 
@@ -56,12 +56,12 @@ class LevelsCartesianIndexMapper<Dune::CpGrid>
 public:
     static const int dimension = 3 ;
 
-    explicit LevelsCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{std::make_unique<Grid>(grid)}
+    explicit LevelsCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{std::make_unique<Dune::CpGrid>(grid)}
     {}
 
     const std::array<int,3>& levelCartesianDimensions(int level) const
     {
-        return grid_.currentData()[level]->logicalCartesianSize(); // add logicalCartesianSize in CpGridData.hpp/cpp
+        return grid_->currentData()[level]->logicalCartesianSize(); // add logicalCartesianSize in CpGridData.hpp/cpp
     }
 
     int levelCartesianSize(int level) const
@@ -71,57 +71,57 @@ public:
 
     int compressedSize() const
     {
-        return grid_.globalCell().size();
+        return grid_->globalCell().size();
     }
 
 
     int levelCompressedSize(int level) const
     {
         validLevel(level);
-        return grid_.currentData()[level]->size(0);
+        return grid_->currentData()[level]->size(0);
     }
 
     int levelCartesianIndex( const int compressedElementIndex, const int level) const
     {
         validLevel(level);
-        assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_.currentData()[level]->size(0) );
-        return grid_.currentData()[level]->globalCell()[compressedElementIndex];
+        assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_->currentData()[level]->size(0) );
+        return grid_->currentData()[level]->globalCell()[compressedElementIndex];
     }
 
     void levelCartesianCoordinate(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
     {
         validLevel(level);
-        grid_.currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
+        grid_->currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
     }
 
     /** To be deleted */
     /// Additional methods related to LGRs
     int compressedLevelZeroSize() const
     {
-        return (*grid_.currentData()[0]).size(0);
+        return (*grid_->currentData()[0]).size(0);
     }
 
     int cartesianIndexLevel( const int compressedElementIndex, const int level) const
     {
-        if ((level < 0) || (level > grid_.maxLevel())) {
+        if ((level < 0) || (level > grid_->maxLevel())) {
             throw std::invalid_argument("Invalid level.\n");
         }
-        assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_.currentData()[level]->size(0) );
-        return grid_.currentData()[level]->globalCell()[compressedElementIndex];
+        assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_->currentData()[level]->size(0) );
+        return grid_->currentData()[level]->globalCell()[compressedElementIndex];
     }
 
     void cartesianCoordinateLevel(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
     {
-        if ((level < 0) || (level > grid_.maxLevel())) {
+        if ((level < 0) || (level > grid_->maxLevel())) {
             throw std::invalid_argument("Invalid level.\n");
         }
-        grid_.currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
+        grid_->currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
     }
     /// Additional methods related to LGRs. END
     /** end */
 
 private:
-    std::unique_ptr<Grid> grid_;
+    std::unique_ptr<Dune::CpGrid> grid_;
 
     int computeLevelCartesianSize(int level) const
     {
@@ -133,7 +133,7 @@ private:
 
     void validLevel(int level) const
     {
-        if ((level < 0) || (level > grid_.maxLevel())) {
+        if ((level < 0) || (level > grid_->maxLevel())) {
             throw std::invalid_argument("Invalid level.\n");
         }
     }
