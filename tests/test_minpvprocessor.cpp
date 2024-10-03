@@ -113,13 +113,13 @@ BOOST_AUTO_TEST_CASE(Pinch4ALL)
     bool pinch_no_gap = false;
     bool option4all = true;
 
-    // THis is suported because one of the permz entries is zero.
+    // Test PINCH option 4 being ALL
     auto minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
 				    fill_removed_cells, z1.data(), pinch_no_gap,
 				    option4all, permz, multz);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
 
-    permz = {2, 2, 1, 2.5}; // Not supported
+    permz = {2, 2, 1, 2.5}; // Should create an NNC
     minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
                                fill_removed_cells, z1.data(), pinch_no_gap,
                                option4all, permz, multz);
