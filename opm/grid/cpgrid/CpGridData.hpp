@@ -78,7 +78,6 @@
 namespace Opm
 {
 class EclipseState;
-class PinchedCellInformation;
 }
 namespace Dune
 {

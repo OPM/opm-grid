@@ -46,7 +46,6 @@
 #include <opm/grid/cpgrid/CpGridDataTraits.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
-#include <opm/grid/cpgrid/PinchedCellInformation.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h> //  Not really needed it seems, but alas.
 #include "common/GridEnums.hpp"   
