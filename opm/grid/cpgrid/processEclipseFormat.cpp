@@ -237,7 +237,7 @@ namespace cpgrid
                              + ecl_grid.getNX() * ecl_grid.getNY();
                          cell_top < static_cast<std::size_t>(cell2);
                          cell_top = cell_bottom, cell_bottom = cell_top
-                             + ecl_grid.getNX() * ecl_grid.getNY()) {
+                             + ecl_grid.getNX() * ecl_grid.getNY(), ++trans) {
 
                         const auto top_cell_info = bottom_cell_info;
                         bottom_cell_info = ecl_grid.getCellAndBottomCenterNormal(cell_bottom);
@@ -267,8 +267,6 @@ namespace cpgrid
                             *trans = 0.0;
                         else
                             *trans = 1.0 / (1.0/half_trans_top + 1.0/half_trans_bottom);
-
-                        ++trans;
                     }
 
                     // Possibly overwrite with specified TRANZ values.
