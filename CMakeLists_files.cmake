@@ -126,6 +126,7 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
+    tests/test_graphofgrid.cpp
   )
 endif()
 
