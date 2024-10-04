@@ -227,11 +227,11 @@ namespace cpgrid
                     auto trans = trans_between.begin();
                     auto bottom_cell_info = ecl_grid.getCellAndBottomCenterNormal(cell1);
 
-                    // Wecalculate the transmissibilty tran for each intersection between the
+                    // We calculate the transmissibilty tran for each intersection between the
                     // two active cells. For each intersection we need geometry information
                     // (distance from cell center to face center, face area and normal) of the
                     // the top (cell_top) and the bottom cell (cell_bottom).
-                    // we start at the top (top cell is actived) and iterate until the bottom
+                    // we start at the top (top cell is active) and iterate until the bottom
                     // (bottom cell is active).
                     for (std::size_t cell_top = cell1, cell_bottom = cell_top
                              + ecl_grid.getNX() * ecl_grid.getNY();
@@ -307,7 +307,7 @@ namespace cpgrid
                         average = 1.0 / average;
 
                     // Set nnc and transmissibility, last param indicates that this from pinch
-                    // It is needed to overwrite transmissibilties instead of adding to existing ones.
+                    // It is needed to overwrite transmissibilities instead of adding to existing ones.
                     pinchedNNCs.emplace_back(cell1, cell2, average);
                 }
             }
