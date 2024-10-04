@@ -1473,11 +1473,12 @@ const cpgrid::CpGridDataTraits::RemoteIndices& CpGrid::getCellRemoteIndices() co
 #endif
 
 #if HAVE_ECL_INPUT
-std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
-                                                      Opm::EclipseState* ecl_state,
-                                                      bool periodic_extension,
-                                                      bool turn_normals, bool clip_z,
-                                                      bool pinchActive)
+std::vector<std::size_t>
+CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid,
+                             Opm::EclipseState* ecl_state,
+                             bool periodic_extension,
+                             bool turn_normals, bool clip_z,
+                             bool pinchActive)
 {
     auto removed_cells = current_view_data_->processEclipseFormat(ecl_grid, ecl_state, periodic_extension,
                                                                   turn_normals, clip_z, pinchActive);
@@ -1487,9 +1488,10 @@ std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ec
     return removed_cells;
 }
 
-std::vector<std::size_t> CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
-                                                      Opm::EclipseState* ecl_state,
-                                                      bool periodic_extension, bool turn_normals, bool clip_z)
+std::vector<std::size_t>
+CpGrid::processEclipseFormat(const Opm::EclipseGrid* ecl_grid_ptr,
+                             Opm::EclipseState* ecl_state,
+                             bool periodic_extension, bool turn_normals, bool clip_z)
 {
     return processEclipseFormat(ecl_grid_ptr, ecl_state, periodic_extension, turn_normals, clip_z,
                                 !ecl_grid_ptr || ecl_grid_ptr->isPinchActive());

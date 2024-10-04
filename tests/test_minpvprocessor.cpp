@@ -113,21 +113,29 @@ BOOST_AUTO_TEST_CASE(Pinch4ALL)
     bool pinch_no_gap = false;
     bool option4all = true;
 
-    // THis is suported because one of the permz entries is zero.
+    // Test PINCH option 4 being ALL
     auto minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
 				    fill_removed_cells, z1.data(), pinch_no_gap,
 				    option4all, permz, multz);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
 
-    permz = {2, 2, 1, 2.5}; // Not supported
-    BOOST_CHECK_THROW(mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
-				  fill_removed_cells, z1.data(), pinch_no_gap,
-				  option4all, permz, multz), std::runtime_error);
+    permz = {2, 2, 1, 2.5}; // Should create an NNC
+    minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+                               fill_removed_cells, z1.data(), pinch_no_gap,
+                               option4all, permz, multz);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 1);
     auto multz2 = [](int i){ if (i==2) return 0.0; else return 1.0;};
     
     minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
 			       fill_removed_cells, z1.data(), pinch_no_gap,
 			       option4all, permz, multz2);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
+
+    auto multz3 = [](int i){ if (i==0) return 0.0; else return 1.0;};
+    minpv_result = mp1.process(thickness, z_threshold, 1e20, pv, minpvv, actnum,
+			       fill_removed_cells, z1.data(), pinch_no_gap,
+			       option4all, permz, multz3);
+    BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
 }
 BOOST_AUTO_TEST_CASE(Pinch)
 {
