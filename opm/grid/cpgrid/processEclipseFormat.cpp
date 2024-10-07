@@ -46,12 +46,14 @@
 
 #include <opm/grid/common/GeometryHelpers.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
-#include  <opm/grid/cpgrid/Indexsets.hpp>
+#include <opm/grid/cpgrid/Indexsets.hpp>
 
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/MinpvProcessor.hpp>
 #include <opm/grid/RepairZCORN.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
+
+#include <fmt/format.h>
 
 #include <cstddef>
 #include <fstream>
@@ -311,6 +313,10 @@ namespace cpgrid
                     pinchedNNCs.emplace_back(cell1, cell2, average);
                 }
             }
+
+            Opm::OpmLog::info(fmt::format("{} pinch-out connection{} generated",
+                                          nnc_cells[PinchNNC].size(),
+                                          (nnc_cells[PinchNNC].size() != 1)? "s" : ""));
 
             // Add explicit NNCs.
             const auto& nncs = ecl_state->getInputNNC();
