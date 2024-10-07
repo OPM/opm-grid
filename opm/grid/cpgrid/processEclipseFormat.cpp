@@ -58,6 +58,7 @@
 #include <iostream>
 #include <initializer_list>
 #include <set>
+#include <string>
 #include <utility>
 
 namespace Dune
