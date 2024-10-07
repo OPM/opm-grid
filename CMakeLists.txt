@@ -86,7 +86,7 @@ macro (config_hook)
 		set(HAVE_DUNE_GRID_CHECKS 1)
 	else(_HAVE_DUNE_GRID_CHECK)
 		set(HAVE_DUNE_GRID_CHECKS 0)
-  endif(_HAVE_DUNE_GRID_CHECKS)
+	endif(_HAVE_DUNE_GRID_CHECKS)
 	list (APPEND ${project}_CONFIG_IMPL_VARS
 		HAVE_DUNE_GRID_CHECKS
 		)
@@ -94,6 +94,9 @@ macro (config_hook)
 		message(SEND_ERROR "opm-grid with MPI support requires the package ZOLTAN."
 			"Please install it (e.g. from http://www.cs.sandia.gov/zoltan/.)")
 	endif(NOT ZOLTAN_FOUND AND MPI_C_FOUND AND REQUIRE_ZOLTAN)
+	if(NOT fmt_FOUND)
+		include(DownloadFmt)
+	endif()
 endmacro (config_hook)
 
 macro (prereqs_hook)
