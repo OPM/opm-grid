@@ -53,13 +53,12 @@
 #include <opm/grid/RepairZCORN.hpp>
 #include <opm/grid/utility/StopWatch.hpp>
 
-#include <fmt/format.h>
-
 #include <cstddef>
 #include <fstream>
 #include <iostream>
 #include <initializer_list>
 #include <set>
+#include <string>
 #include <utility>
 
 namespace Dune
@@ -314,9 +313,8 @@ namespace cpgrid
                 }
             }
 
-            Opm::OpmLog::info(fmt::format("{} pinch-out connection{} generated",
-                                          nnc_cells[PinchNNC].size(),
-                                          (nnc_cells[PinchNNC].size() != 1)? "s" : ""));
+            auto suffix = std::string{(nnc_cells[PinchNNC].size() != 1)? "s" : ""};
+            Opm::OpmLog::info(std::to_string(nnc_cells.size()) + " pinch-out connection" + suffix + " generated");
 
             // Add explicit NNCs.
             const auto& nncs = ecl_state->getInputNNC();
