@@ -69,7 +69,7 @@ public:
     int cartesianSize(int level) const
     {
         throwIfLevelPositive(level);
-        return computeLevelCartesianSize(0);
+        return computeCartesianSize(0);
     }
 
     int compressedSize(int level) const
@@ -81,7 +81,7 @@ public:
     int cartesianIndex( const int compressedElementIndex, const int level) const
     {
         throwIfLevelPositive(level);
-        assert( compressedElementIndex >= 0 && compressedElementIndex < levelCompressedSize(0) );
+        assert( compressedElementIndex >= 0 && compressedElementIndex < compressedSize(0) );
         return grid_->globalCell()[ compressedElementIndex ];
     }
 

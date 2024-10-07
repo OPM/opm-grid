@@ -47,7 +47,7 @@
 #include <dune/grid/io/file/vtk/vtkwriter.hh>
 #include <opm/grid/cpgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
-#include <opm/grid/polyhedralgrid/LevelsCartesianIndexMapper.hpp>
+#include <opm/grid/polyhedralgrid/levelcartesianindexmapper.hh>
 #include <dune/grid/common/mcmgmapper.hh>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
@@ -92,7 +92,7 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
     std::vector<double> fake_feature_double(grid.size(0), 0.);
     std::iota(fake_feature_double.begin(), fake_feature_double.end(), .5);
 
-    const Opm::LevelsCartesianIndexMapper< Dune::PolyhedralGrid<3,3> > levelsCartMapp(grid);
+    const Opm::LevelCartesianIndexMapper< Dune::PolyhedralGrid<3,3> > levelCartMapp(grid);
     
     const auto leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(grid.leafGridView())>::type>;
@@ -137,12 +137,12 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         std::array<int,3> ijk;
         cartMapper.cartesianCoordinate(idx, ijk);
         std::array<int,3> ijkLevel;
-        levelsCartMapp.cartesianCoordinateLevel(idx, ijkLevel, 0);
+        levelCartMapp.cartesianCoordinate(idx, ijkLevel, 0);
         BOOST_CHECK(ijk == ijkLevel);
         // Throw for level > 0 (Local grid refinement not supported for Polyhedral Grid)
         std::array<int,3> ijkThrow;
-        BOOST_CHECK_THROW(levelsCartMapp.cartesianCoordinateLevel(idx, ijkThrow, 4), std::invalid_argument);
-        BOOST_CHECK_THROW(levelsCartMapp.cartesianCoordinateLevel(idx, ijkThrow, -3), std::invalid_argument);
+        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(idx, ijkThrow, 4), std::invalid_argument);
+        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(idx, ijkThrow, -3), std::invalid_argument);
     }
 }
 

@@ -40,7 +40,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/LevelsCartesianIndexMapper.hpp>
+#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hh>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/grid/common/mcmgmapper.hh>
@@ -95,7 +95,7 @@ void lookup_check(const Dune::CpGrid& grid)
         }
     }
 
-    const Opm::LevelsCartesianIndexMapper<Dune::CpGrid> levelsCartMapp(grid);
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
 
     // LookUpData
     const auto& leaf_view = grid.leafGridView();
@@ -148,12 +148,12 @@ void lookup_check(const Dune::CpGrid& grid)
         std::array<int,3> ijk;
         cartMapper.cartesianCoordinate(elem.index(), ijk); // this ijk corresponds to the parent/equivalent cell in level 0.
         std::array<int,3> ijkLevel0;
-        levelsCartMapp.cartesianCoordinateLevel(elem.getOrigin().index(), ijkLevel0, 0);
+        levelCartMapp.cartesianCoordinate(elem.getOrigin().index(), ijkLevel0, 0);
         BOOST_CHECK(ijk == ijkLevel0);
         // Throw for level < 0 or level > maxLevel()
         std::array<int,3> ijkThrow;
-        BOOST_CHECK_THROW(levelsCartMapp.cartesianCoordinateLevel(elem.index(), ijkThrow, -3), std::invalid_argument);
-        BOOST_CHECK_THROW(levelsCartMapp.cartesianCoordinateLevel(elem.index(), ijkThrow, grid.maxLevel() + 1), std::invalid_argument);
+        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(elem.index(), ijkThrow, -3), std::invalid_argument);
+        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(elem.index(), ijkThrow, grid.maxLevel() + 1), std::invalid_argument);
         // Checks related to LGR field properties
         if (elem.level())
         {
@@ -170,7 +170,7 @@ void lookup_check(const Dune::CpGrid& grid)
             std::array<int,3> ijkLevelGrid;
             (*data[elem.level()]).getIJK(idxOnLevel, ijkLevelGrid);
             std::array<int,3> ijkLevel;
-            levelsCartMapp.cartesianCoordinateLevel(idxOnLevel, ijkLevel, elem.level());
+            levelCartMapp.cartesianCoordinate(idxOnLevel, ijkLevel, elem.level());
             BOOST_CHECK( ijkLevelGrid == ijkLevel);
         }
         // Extra checks related to ElemMapper

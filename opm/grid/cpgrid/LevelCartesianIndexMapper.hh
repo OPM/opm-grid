@@ -49,7 +49,7 @@ namespace Opm
 {
 
 template<>
-class LevelsCartesianIndexMapper<Dune::CpGrid>
+class LevelCartesianIndexMapper<Dune::CpGrid>
 {
 public:
     static const int dimension = 3 ;
