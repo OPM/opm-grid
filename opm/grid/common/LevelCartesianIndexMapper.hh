@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: LevelsCartesianIndexMapper.hh
+// File: LevelCartesianIndexMapper.hh
 //
 // Created: Tue October 01  11:44:00 2024
 //
@@ -32,64 +32,50 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPM_LEVELSCARTESIANINDEXMAPPER_HEADER
-#define OPM_LEVELSCARTESIANINDEXMAPPER_HEADER
+#ifndef OPM_LEVELCARTESIANINDEXMAPPER_HEADER
+#define OPM_LEVELCARTESIANINDEXMAPPER_HEADER
 
 #include <array>
 
 namespace Opm
 {
 template< class Grid >
-class LevelsCartesianIndexMapper
+class LevelCartesianIndexMapper
 {
 public:
 
     static const int dimension = Grid :: dimension ;
 
 
-    explicit LevelsCartesianIndexMapper( const Grid& )
+    explicit LevelCartesianIndexMapper( const Grid& )
     {}
 
-    const std::array<int, dimension>& levelCartesianDimensions(int level) const
+    const std::array<int, dimension>& cartesianDimensions(int level) const
     {
         static std::array<int, dimension> a;
         return a;
     }
 
-    int levelCartesianSize(int level) const
+    int cartesianSize(int level) const
     {
         return 0;
     }
 
-    int levelCompressedSize(int level) const
+    int compressedSize(int level) const
     {
         return 0;
     }
 
-    void levelCartesianCoordinate(const int /* compressedElementIndexOnLevel */,
-                                  std::array<int,dimension>& /* coordsOnLevel */,
-                                  int /*level*/) const
+    void cartesianCoordinate(const int /* compressedElementIndexOnLevel */,
+                             std::array<int,dimension>& /* coordsOnLevel */,
+                             int /*level*/) const
     {
-    }
-    int levelCartesianIndex( const int /* compressedElementIndex */ , const int level) const
-    {
-        return 0;
     }
 
-    /** to be deleted */
-    int compressedLevelZeroSize() const
+    int cartesianIndex( const int /* compressedElementIndex */ , const int level) const
     {
         return 0;
     }
-    void cartesianCoordinateLevel(const int /* compressedElementIndexOnLevel */,
-                                  std::array<int,dimension>& /* coordsOnLevel */, int /*level*/) const
-    {
-    }
-    int cartesianIndexLevel( const int /* compressedElementIndex */ , const int level) const
-    {
-        return 0;
-    }
-    /** to be deleted - END */
 };
 
 } // end namespace Opm
