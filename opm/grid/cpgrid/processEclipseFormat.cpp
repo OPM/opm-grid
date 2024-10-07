@@ -316,7 +316,7 @@ namespace cpgrid
 
             Opm::OpmLog::info(fmt::format("{} pinch-out connection{} generated",
                                           nnc_cells[PinchNNC].size(),
-                                          nnc_cells[PinchNNC].size()>1?"s":""));
+                                          (nnc_cells[PinchNNC].size() != 1)? "s" : ""));
 
             // Add explicit NNCs.
             const auto& nncs = ecl_state->getInputNNC();
