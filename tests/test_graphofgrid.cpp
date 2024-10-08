@@ -18,7 +18,29 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
 	Opm::GraphOfGrid gog(grid);
 	BOOST_REQUIRE(gog.size()==8); // number of graph vertices
 	BOOST_REQUIRE(gog.numEdges(0)==3); // each vertex has 3 neighbors
-	// vertex 1 and vertex 2 are neighbors
+	auto edgeL = gog.edgeList(2);
+	BOOST_REQUIRE(edgeL.size()==3); // neighbors of vertex 2 are: 0, 3, 6
+	BOOST_REQUIRE(edgeL[0]==1.);
+	BOOST_REQUIRE(edgeL[3]==1.);
+	BOOST_REQUIRE(edgeL[6]==1.);
+
+	gog.contractVertices(0,1);
+	BOOST_REQUIRE(gog.size()==7);
+	edgeL = gog.edgeList(0);
+	BOOST_REQUIRE(edgeL.size()==4);
+	BOOST_REQUIRE(edgeL[2]==1);
+	BOOST_REQUIRE(edgeL[3]==1);
+	
+	gog.contractVertices(0,2);
+	BOOST_REQUIRE(gog.size()==6);
+	BOOST_REQUIRE(gog.getVertex(0).weight==3.);
+	edgeL = gog.edgeList(0);
+	BOOST_REQUIRE(edgeL.size()==4);
+	BOOST_REQUIRE(edgeL[3]==2);
+	BOOST_REQUIRE(gog.edgeList(3)[0]==2);
+	BOOST_REQUIRE_MESSAGE(gog.getVertex(1).weight==0.,"Implementation detail: \
+		Looking up vertex not present in GraphofGrid gives dummy with weight 0.");
+
 }
 
 BOOST_AUTO_TEST_CASE(GrapWithWell)
