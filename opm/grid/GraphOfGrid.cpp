@@ -40,11 +40,13 @@ namespace Opm {
 template<typename Grid>
 class GraphOfGrid{
   using WeightType = float;
+  using EdgeList = std::map<int,WeightType>;
 
   struct VertexProperties
   {
-    WeightType weight = 1;
-    std::map<int,WeightType> edges; // neighbor's global ID and edge's weight
+    int nproc = 0; // number of processor
+    WeightType weight = 1; // vertex weight
+    EdgeList edges;
   };
 
 public:
@@ -60,6 +62,19 @@ public:
     return graph.size();
   }
 
+  /// \brief Return properties of vertex of given ID.
+  /// If no such vertex exists, returns vertex with
+  /// process -1, weight 0, and empty edgeList.
+  VertexProperties getVertex (int gID) const
+  {
+    auto pgID = graph.find(gID);
+    if (pgID == graph.end())
+    {
+      return VertexProperties{-1,0,{}};
+    }
+    return pgID->second;
+  }
+
   /// \brief Number of vertices for given vertex
   // returns -1 if vertex with such global ID is not in the graph
   int numEdges (int gID) const
@@ -70,6 +85,51 @@ public:
     else
       return pgID->second.edges.size();
   }
+
+  /// \brief List of neighbors for given vertex
+  EdgeList edgeList (int gID) const
+  {
+    auto pgID = graph.find(gID);
+    if (pgID == graph.end())
+    {
+      EdgeList empty{};
+      return empty;
+    }
+    else
+      return pgID->second.edges;
+  }
+  // template<typename ZOLTAN_ID_PTR>
+  using ZOLTAN_ID_PTR = int*;
+  void edgeListMulti (int num_obj,
+                      ZOLTAN_ID_PTR global_ids,
+                      int *num_edges,
+                      ZOLTAN_ID_PTR nbor_global_id,
+                      int *nbor_procs,
+                      float *ewgts,
+                      int *ierr) const
+  {
+    int j=0;
+    for (int i=0; i<num_obj; ++i)
+    {
+      auto pgID = graph.find(global_ids[i]);
+      if (pgID==graph.end())
+        throw "GraphOfGrid::edgeListMulti - vertex ID not found";
+      assert(pgID->size()==num_edges[i]);
+      for (const auto& neighbor : *pgID)
+      {
+        nbor_global_id[j] = neighbor.first;
+        nbor_procs[j] = 0;
+        ewgts[j] = neighbor.second;
+        ++j;
+      }
+    }
+  }
+
+  /// \brief Contract two vertices
+  /// Resulting vertex has the smaller global ID of the two, and all
+  /// edges of original vertices. Vertex weights are added, and edge
+  /// weights for common neighbors are added too.
+  void contractVertices (int gID1, int gID2);
 
 private:
   /// \brief Create a graph representation of the grid
@@ -82,24 +142,24 @@ private:
   template<typename Grid>
   void GraphOfGrid<Grid>::createGraph ()
   {
-    // load vertices (grid cell IDs) into graph
+    // load vertices (grid cells) into graph
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
     {
       VertexProperties vertex;
       // get vertex's global ID
-      int gID = grid.globalIdSet().id(*it); //it->something;
+      int gID = grid.globalIdSet().id(*it);
 
       // iterate over vertex's faces and store neighbors' IDs
       for (int face_lID=0; face_lID<grid.numCellFaces(gID); ++face_lID)
       {
         const int face  = grid.cellFace(gID, face_lID);
         int otherCell   = grid.faceCell(face, 0);
-        if ( otherCell == gID || otherCell == -1 ) // -1 means no cell, face is at boundary
-        {
-            otherCell = grid.faceCell(face, 1);
-            if ( otherCell == gID || otherCell == -1 )
-                continue;
-        }
+        if (otherCell == -1) // -1 means no cell, face is at boundary
+          continue;
+        if (otherCell == gID)
+          otherCell = grid.faceCell(face, 1);
+        if (otherCell == -1)
+          continue;
         WeightType weight = 1;
         vertex.edges.try_emplace(otherCell,weight);
       }
@@ -108,4 +168,51 @@ private:
     }
 
   }
+
+  template<typename Grid>
+  void GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
+  {
+    // ensure gID1<gID2
+    if (gID1>gID2)
+    {
+      contractVertices(gID2,gID1);
+      return;
+    }
+    if (gID1==gID2)
+      return;
+
+    auto pgID1 = graph.find(gID1);
+    auto pgID2 = graph.find(gID2);
+    if (pgID1==graph.end() || pgID2==graph.end())
+      return;
+
+    // add up vertex weights
+    graph[gID1].weight += graph[gID2].weight;
+
+    // Merge the list of neighbors,
+    // for common neighbors add up edge weights.
+    // Remove the edge between gID1, gID2.
+    auto& v1e = graph[gID1].edges;
+    v1e.erase(gID2);
+    for (auto edge : graph[gID2].edges)
+    {
+      if (v1e.find(edge.first)==v1e.end())
+      {
+        if (edge.first != gID1)
+        {
+          v1e.insert(edge);
+          graph[edge.first].edges.erase(gID2);
+          graph[edge.first].edges.emplace(gID1,edge.second);
+        }
+      }
+      else
+      {
+        v1e[edge.first] += edge.second;
+        graph[edge.first].edges.erase(gID2);
+        graph[edge.first].edges[gID1] += edge.second;
+      }
+    }
+    graph.erase(pgID2);
+  }
+
 } // namespace Opm
