@@ -299,11 +299,6 @@ public:
 
 protected:
     const CpGridData* pgrid_;
-private:
-    // static    to not need any extra storage per Enitity. One object used for all instances
-    // constexpr to allow for in-class instantiation
-    /// \brief Indices of corners in entity's geometry in father reference element, for the Geometry returned by geometryInFather
-    static constexpr std::array<int,8> in_father_reference_elem_corner_indices_ = {0,1,2,3,4,5,6,7};
 };
 
 } // namespace cpgrid
@@ -529,6 +524,11 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
+    // static    to not need any extra storage per Enitity. One object used for all instances
+    // constexpr to allow for in-class instantiation
+    /// \brief Indices of corners in entity's geometry in father reference element, for the Geometry returned by geometryInFather
+    static constexpr std::array<int,8> in_father_reference_elem_corner_indices_ = {0,1,2,3,4,5,6,7};
+    
     auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
     if (idx_in_parent_cell !=-1) {
         const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
