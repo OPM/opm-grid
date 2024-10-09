@@ -2205,6 +2205,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     }
                     if (point.partitionType() == OverlapEntity) {
                         ++local_overlap_points_per_level[level];
+                        std::cout<< "overlap point: " << local_overlap_points_per_level[level] << " in level " << std::endl;
                     }
                 }
                 global_points_per_level[level] = comm().sum(local_owned_points_per_level[level]
@@ -2235,10 +2236,24 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // -- Global variables used to define new ids for cells and points respectively. --
         // The first new global id for cells is the maximum global id from level 0 plus 1.
         auto globalIdCell = max_globalId_levelZero+1;
-        std::cout<< globalIdCell << " globalIdCell " << std::endl;
+        
         // The values max_globalId_levelZero +1, max_globalId_levelZero +2, ..., max_globalId_levelZero + global_refined_cell_count
         // will be used for defining global ids for CELLS in the refined level grids (level 1, ..., level maxLevel).
         // Notice that  global_refined_cell_count represents the global and total amount of new refined cells.
+        std::vector<int> min_globalId_cell_per_level(cells_per_dim_vec.size()); 
+        // min_globalId_cell_per_level[0] = max_globalId_levelZero + 1; // For level 1. 
+        for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level)
+        {
+            min_globalId_cell_per_level[level] =
+                std::accumulate(global_cells_per_level.begin()+1, global_cells_per_level.begin()+level+1, max_globalId_levelZero + 1);
+        }
+        for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level)
+        {
+            std::cout<< min_globalId_cell_per_level[level] << " in level " << level << std::endl;
+        }
+        
+
+        
 
         // (Most of) The values max_globalId_levelZero+global_refined_cell_count +1, max_globalId_levelZero+global_refined_cell_count+2, ...,
         // max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count
@@ -2279,7 +2294,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // "expectedGlobalIdCell", it can be detected when a lower level lgr was contained in the same process that the current
             // lgr we are computing global ids for.
             // Notice that it is enough to check either expetedGlobalIdCell or expectedGlobalIdPoint (which is not defined here).
-            if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
+            /* if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
                 int expectedGlobalIdCell = max_globalId_levelZero+1;
                 for (std::size_t lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
                     expectedGlobalIdCell += global_cells_per_level[lowerLevel];
@@ -2287,15 +2302,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 if(globalIdCell < expectedGlobalIdCell) {
                     for (std::size_t lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
                         globalIdCell += global_cells_per_level[lowerLevel];
-                        /** Potential modification needed */
+                        /// Potential modification needed 
                         globalIdPoint += global_points_per_level[lowerLevel];
                     }
                 }
-            }
+            }*/
             for(const auto& element : elements(levelGridView(level))) {
                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
-                    localToGlobal_owned_cells_per_level[level-1][element.index()] = globalIdCell;
-                    ++globalIdCell;
+                    localToGlobal_owned_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level];
+                    ++min_globalId_cell_per_level[level];
                 }
             }
             for (const auto& point : vertices(levelGridView(level))) {
@@ -2330,8 +2345,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                               localToGlobal_owned_points_per_level[level-1]);
             }
         } // end-for-loop-level
-        std::cout<< "cell " << globalIdCell << " " << max_globalId_levelZero << " " << global_refined_cell_count << std::endl;
-        std::cout<< "point " << globalIdPoint << " " <<  max_globalId_levelZero << " " << global_refined_cell_count << " " << almost_global_refined_point_count <<std::endl;
+        //std::cout<< "cell " << globalIdCell << " " << max_globalId_levelZero << " " << global_refined_cell_count << std::endl;
+        // std::cout<< "point " << globalIdPoint << " " <<  max_globalId_levelZero << " " << global_refined_cell_count << " " << almost_global_refined_point_count <<std::endl;
         
         //assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
             //  assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
@@ -2372,7 +2387,76 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
         }
 
-#if HAVE_MPI
+
+ #if HAVE_MPI    
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+            if ((*current_data_)[level]->size(0)) // non-empty refined level grid (in current process)
+            {
+                auto& levelLocalIdSet =  (*current_data_)[level]->localIdSet(); //cellIndexSet();
+               // Compute the partition type for cell
+               // (*current_data_)[level]->computeCellPartitionType();
+                
+                //     level_index_set.beginResize();
+                
+            const auto& level_global_id_set = (*current_data_)[level]->globalIdSet();
+            
+           // Currently, only fully interior LGRs are supported. Therefore, global_id_set_
+            // is defined only in the process that owns at least one LGR.
+               
+
+                
+
+            /*    // The folowing count (fully interior cell count) can be removed. 
+                int level_fully_interior_cell_count = 0;
+                for(const auto& element : elements(levelGridView(level))) {
+                    const auto& elemPartitionType = element.partitionTypeWhenLgrs(globalActiveLgrs);
+                    if ( elemPartitionType == InteriorEntity) {
+                        // Check if it has an overlap neighbor
+                        bool isFullyInterior = true;
+                        for (const auto& intersection : intersections(levelGridView(level), element)) {
+                            if ( intersection.neighbor() ) {
+                                const auto& neighborPartitionType = intersection.outside().partitionTypeWhenLgrs(globalActiveLgrs);
+                                // To help detection of fully interior cells, i.e., without overlap neighbors
+                                if (neighborPartitionType == OverlapEntity )  {
+                                    isFullyInterior = false;
+                                    level_index_set.add(level_global_id_set.id(element),
+                                                       ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                                    // Store it only once
+                                    break;
+                                }
+                            }
+                        }
+                        if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
+                            ++level_fully_interior_cell_count;
+                            level_index_set.add(level_global_id_set.id(element),
+                                               ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
+                        }
+                    }
+                    else { // overlap cell
+                        assert(elemPartitionType == OverlapEntity);
+                        level_index_set.add(level_global_id_set.id(element),
+                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+                    }
+                }
+                level_index_set.endResize();
+
+                (*current_data_)[level]->cellRemoteIndices().template rebuild<false>();
+
+                // Compute the partition type for point
+                (*current_data_)[level]->computePointPartitionType();
+
+                // Now we can compute the communication interface.
+                (*current_data_)[level]->computeCommunicationInterfaces((*current_data_)[level]->size(3));
+                assert(static_cast<std::size_t>(level_index_set.size()) == static_cast<std::size_t>((*current_data_)[level]->size(0)) );*/
+            }
+        }
+#endif
+
+
+
+
+
+ #if HAVE_MPI       
         auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
         // Compute the partition type for cell
         (*current_data_).back()->computeCellPartitionType();
