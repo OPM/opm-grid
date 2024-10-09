@@ -21,19 +21,20 @@
   copyright holders.
 */
 
-#include <config.h>
+#ifndef OPM_GRAPH_OF_GRID_HEADER
+#define OPM_GRAPH_OF_GRID_HEADER
 
+#include <config.h>
 #include <opm/grid/CpGrid.hpp>
 
 namespace Opm {
-
 
 /// \brief A class storing a graph representation of the grid
 ///
 /// Stores the list of all cell global IDs and for each cell
 /// a list of global IDs of its neighbors.
 /// In addition, weights of graph vertices and edges are stored.
-/// 
+///
 /// Features edge contractions, which adds weights of merged vertices
 /// and of edges to every shared neighbor. Intended use is for loadbalancing
 /// to ensure that no well is split between processes.
@@ -60,6 +61,15 @@ public:
   int size () const
   {
     return graph.size();
+  }
+
+  auto begin() const
+  {
+    return graph.begin();
+  }
+  auto end() const
+  {
+    return graph.end();
   }
 
   /// \brief Return properties of vertex of given ID.
@@ -97,32 +107,6 @@ public:
     }
     else
       return pgID->second.edges;
-  }
-  // template<typename ZOLTAN_ID_PTR>
-  using ZOLTAN_ID_PTR = int*;
-  void edgeListMulti (int num_obj,
-                      ZOLTAN_ID_PTR global_ids,
-                      int *num_edges,
-                      ZOLTAN_ID_PTR nbor_global_id,
-                      int *nbor_procs,
-                      float *ewgts,
-                      int *ierr) const
-  {
-    int j=0;
-    for (int i=0; i<num_obj; ++i)
-    {
-      auto pgID = graph.find(global_ids[i]);
-      if (pgID==graph.end())
-        throw "GraphOfGrid::edgeListMulti - vertex ID not found";
-      assert(pgID->size()==num_edges[i]);
-      for (const auto& neighbor : *pgID)
-      {
-        nbor_global_id[j] = neighbor.first;
-        nbor_procs[j] = 0;
-        ewgts[j] = neighbor.second;
-        ++j;
-      }
-    }
   }
 
   /// \brief Contract two vertices
@@ -216,3 +200,5 @@ private:
   }
 
 } // namespace Opm
+
+#endif // OPM_GRAPH_OF_GRID_HEADER
