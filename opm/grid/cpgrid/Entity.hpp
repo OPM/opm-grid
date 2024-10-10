@@ -524,11 +524,12 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     if (!(this->hasFather())){
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
-    // static    to not need any extra storage per Enitity. One object used for all instances
-    // constexpr to allow for in-class instantiation
-    /// \brief Indices of corners in entity's geometry in father reference element, for the Geometry returned by geometryInFather
-    static constexpr std::array<int,8> in_father_reference_elem_corner_indices_ = {0,1,2,3,4,5,6,7};
-    
+
+    // Indices of corners in entity's geometry in father reference element.
+    static constexpr std::array<int,8> in_father_reference_elem_corner_indices = {0,1,2,3,4,5,6,7};
+    // 'static': The returned object Geometry<3,3> stores a pointer to in_father_reference_elem_corner_indices. Therefore,
+    // this variable is declated static to prolongate its lifetime beyond this function (static storage duration).
+
     auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
     if (idx_in_parent_cell !=-1) {
         const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
@@ -552,7 +553,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
         // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
         return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
-                                           in_father_reference_elem_corners, in_father_reference_elem_corner_indices_.data());
+                                           in_father_reference_elem_corners, in_father_reference_elem_corner_indices.data());
     }
     else {
         OPM_THROW(std::logic_error, "Entity has no father.");
