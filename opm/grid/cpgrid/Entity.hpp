@@ -528,7 +528,7 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
     // Indices of corners in entity's geometry in father reference element.
     static constexpr std::array<int,8> in_father_reference_elem_corner_indices = {0,1,2,3,4,5,6,7};
     // 'static': The returned object Geometry<3,3> stores a pointer to in_father_reference_elem_corner_indices. Therefore,
-    // this variable is declated static to prolongate its lifetime beyond this function (static storage duration).
+    // this variable is declared static to prolongate its lifetime beyond this function (static storage duration).
 
     auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
     if (idx_in_parent_cell !=-1) {
