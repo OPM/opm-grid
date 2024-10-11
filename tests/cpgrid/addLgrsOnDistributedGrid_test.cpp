@@ -676,6 +676,7 @@ BOOST_AUTO_TEST_CASE(not_fully_interior_lgr)
         // LGR1 element indices = 4,8 in rank 0. Total 16 refined cells, 45 points (45-12 = 33 with new global id).
         // LGR2 element indices = 24 in rank 1. Total 27 refined cells, 64 points (64-8 = 56 with new global id).
         // LGR3 element indices = 7 in rank 2. This cell is interior but it has a neighboring cell sharing its top face, cell 19 belonging to rank 3.
+        //                                     125 points (125-8 = 117 with new global id).
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
         // LGR1 dim 1x2x1 (16 refined cells)
