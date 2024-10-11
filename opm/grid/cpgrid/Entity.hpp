@@ -288,6 +288,8 @@ public:
     ///                    its "origin".
     Entity<0> getOrigin() const;
 
+    Entity<3> getOriginPoint() const;
+
     /// \brief To be invoked only for leaf-grid-view entities. Get equivalent element on the level grid the leaf-entity was born.
     Entity<0> getLevelElem() const;
 
@@ -563,18 +565,36 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
 template<int codim>
 Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
 {
-    if (hasFather())
-    {
+    assert(codim == 0);
+    if (hasFather()) {
         return this->father();
     }
-    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
-    {  // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
+    if (!(pgrid_ -> leaf_to_level_cells_.empty())) { // entity on the LeafGridView
+        // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
         const int& levelElem = pgrid_->leaf_to_level_cells_[this->index()][0];
         const int& levelElemIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
         return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_))[levelElem].get()), levelElemIdx, true);
     }
-    else
-    {
+    else {
+        return *this;
+    }
+}
+
+template<int codim>
+Dune::cpgrid::Entity<3> Dune::cpgrid::Entity<codim>::getOriginPoint() const
+{
+    assert(codim == 3);
+    if (! pgrid_->corner_history_.empty()) {
+        const auto& level_originIdx =  pgrid_->corner_history_[this->index()];
+        if(level_originIdx[0] != -1) { // It means that the corner coincides with a corner from level zero.
+            // ToDo: Add comment regarding nested refinement.
+            return  Dune::cpgrid::Entity<3>( *((*(pgrid_ -> level_data_ptr_))[level_originIdx[0]].get()), level_originIdx[1], true);
+        }
+        else {
+            return *this;
+        }
+    }
+    else {
         return *this;
     }
 }
