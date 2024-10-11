@@ -60,9 +60,14 @@ public:
     PartitionType getPartitionType(const EntityRep<0>& cell_entity) const;
     /// Get the partition type of a cell on a grid that has been distributed, and refined afterwards.
     /// \param cell_entity The entity describing the cell (Entity::getOrigin() invoked, therefore EntityRep<0> not enough)
-    /// \param lgrsOnDistributedGrid
+    /// \param lgrsOnDistributedGrid Bool, true when the grid has at least one refined level grid. 
     /// \return The partition type of the cell.
     PartitionType getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const;
+    /// Get the partition type of a point on a grid that has been distributed, and refined afterwards.
+    /// \param point_entity The entity describing the point/vertex (Entity::getOriginPoint() invoked, therefore EntityRep<3> not enough)
+    /// \param lgrsOnDistributedGrid  Bool, true when the grid has at least one refined level grid.
+    /// \return The partition type of the point.
+    PartitionType getPartitionTypeWhenLgrs(const Entity<3>& point_entity, bool lgrsOnDistributedGrid) const;
     /// Get the partition type of a face.
     /// \param face_entity The entity describing the face
     /// \return The partition type of the face.
