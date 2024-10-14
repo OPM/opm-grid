@@ -403,6 +403,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         // Add level refined corners
         point_count += ((patch_dim[0]*cells_per_dim_vec[level][0]) +1)*((patch_dim[1]*cells_per_dim_vec[level][1]) +1)*((patch_dim[2]*cells_per_dim_vec[level][2]) +1);
     }
+    std::cout<< point_count << " point_count vs " << allGlobalIds_points_set.size() << std::endl;
+    
     BOOST_CHECK( point_count == static_cast<int>(allGlobalIds_points_set.size()) );
     // ---------------------------------------------------------------
 
@@ -675,18 +677,20 @@ BOOST_AUTO_TEST_CASE(not_fully_interior_lgr)
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3", "LGR4"};
         // LGR1 element indices = 4,8 in rank 0. Total 16 refined cells, 45 points (45-12 = 33 with new global id).
         // LGR2 element indices = 24 in rank 1. Total 27 refined cells, 64 points (64-8 = 56 with new global id).
-        // LGR3 element indices = 7 in rank 2. This cell is interior but it has a neighboring cell sharing its top face, cell 19 belonging to rank 3.
+        // LGR3 element indices = 7 in rank 2. This cell is interior but it has a neighboring cell sharing its top face,
+        //                                     cell 19 belonging to rank 3.
         //                                     125 points (125-8 = 117 with new global id).
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
 
         // LGR1 dim 1x2x1 (16 refined cells)
         // LGR2 dim 1x1x1 (27 refined cells)
         // LGR3 dim 1x1x1 (64 refined cells)
-        // LGR4 dim 1x2x1 (16 refined cells) 
+        // LGR4 dim 1x2x1 (16 refined cells) 3x5x3
 
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
         // Global leaf grid view  36-(6 marked cells) + 16 + 27 + 64 + 16 = 153
+        // Expected maximum global id 478 (o 477?)
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
