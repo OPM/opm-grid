@@ -58,7 +58,7 @@
 
 namespace Opm
 {
-class NNCdata;
+struct NNCdata;
 class EclipseGrid;
 class EclipseState;
 }

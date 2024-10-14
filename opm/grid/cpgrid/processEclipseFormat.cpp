@@ -242,26 +242,36 @@ namespace cpgrid
 
                         const auto top_cell_info = bottom_cell_info;
                         bottom_cell_info = ecl_grid.getCellAndBottomCenterNormal(cell_bottom);
-                        const auto& [ cell_center_top, face_center, area_normal ] = top_cell_info;
                         const auto& cell_center_bottom = std::get<0>(bottom_cell_info);
                         cells_between.push_back(cell_top);
 
                         auto compute_half_trans =
-                            [&face_center, &area_normal](const std::array<double,3>& cell_center,
-                                                         double perm)
+                            [](const auto& cell_center,
+                               const auto& face_center,
+                               const auto& area_normal,
+                               double perm)
                             {
                                 auto half_trans = perm;
                                 std::array<double, 3> distance;
-                                std::transform(cell_center.begin(), cell_center.end(), face_center.begin(),
+                                std::transform(cell_center.begin(), cell_center.end(),
+                                               face_center.begin(),
                                                distance.begin(), std::minus<double>());
-                                half_trans *= std::abs(std::inner_product(area_normal.begin(), area_normal.end(), distance.begin(), 0.));
-                                half_trans /= std::inner_product(distance.begin(), distance.end(), distance.begin(), 0.);
+                                half_trans *= std::abs(std::inner_product(area_normal.begin(),
+                                                                          area_normal.end(),
+                                                                          distance.begin(), 0.));
+                                half_trans /= std::inner_product(distance.begin(),
+                                                                 distance.end(),
+                                                                 distance.begin(), 0.);
                                 return half_trans;
                             };
 
-                        auto half_trans_top = compute_half_trans(cell_center_top,
+                        auto half_trans_top = compute_half_trans(std::get<0>(top_cell_info),
+                                                                 std::get<1>(top_cell_info),
+                                                                 std::get<2>(top_cell_info),
                                                                  permZ[cell_top]);
                         auto half_trans_bottom = compute_half_trans(cell_center_bottom,
+                                                                    std::get<1>(top_cell_info),
+                                                                    std::get<2>(top_cell_info),
                                                                     permZ[cell_bottom]);
 
                         if (std::abs(half_trans_top) < 1e-30 || std::abs(half_trans_bottom) < 1e-30)
