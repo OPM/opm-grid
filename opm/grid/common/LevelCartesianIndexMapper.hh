@@ -39,42 +39,48 @@
 
 namespace Opm
 {
+// Interface class to access the local Cartesian grid of each level grid (when refinement).
 template< class Grid >
 class LevelCartesianIndexMapper
 {
 public:
-
+    // Dimension of the grid.
     static const int dimension = Grid :: dimension ;
 
-
+    // Constructor taking a grid.
     explicit LevelCartesianIndexMapper( const Grid& )
     {}
 
+    // Return the number of cells in each direction (Cartesian dimensions) of a local Cartesian grid with level "level"
     const std::array<int, dimension>& cartesianDimensions(int level) const
     {
         static std::array<int, dimension> a;
         return a;
     }
 
+    // Return total number of cells in a local Cartesian grid with level "level".
     int cartesianSize(int level) const
     {
         return 0;
     }
 
+    // Return number of cells in the active local Cartesian grid with level "level".
     int compressedSize(int level) const
     {
         return 0;
     }
 
+    // Return index of a cell in the local Cartesian grid with level "level".
+    int cartesianIndex( const int /* compressedElementIndex */ , const int level) const
+    {
+        return 0;
+    }
+
+    // Compute Cartesian coordinate, i.e. IJK, for a given cell, on a given local Cartesian grid with level "level".
     void cartesianCoordinate(const int /* compressedElementIndexOnLevel */,
                              std::array<int,dimension>& /* coordsOnLevel */,
                              int /*level*/) const
     {
-    }
-
-    int cartesianIndex( const int /* compressedElementIndex */ , const int level) const
-    {
-        return 0;
     }
 };
 

@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: levelcartesianindexMmpper.hh
+// File: levelcartesianindexmapper.hh
 //
 // Created: Tue October 01  09:44:00 2024
 //
@@ -49,7 +49,10 @@ class PolyhedralGrid;
 
 namespace Opm
 {
-
+// Interface class to access the local Cartesian grid of each level grid (when refinement).
+// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hh
+//
+// Specialization for PolyhedralGrid
 template<int dim, int dimworld, typename coord_t>
 class LevelCartesianIndexMapper<Dune::PolyhedralGrid< dim, dimworld, coord_t >>
 {

@@ -47,7 +47,10 @@ class CpGrid;
 
 namespace Opm
 {
-
+// Interface class to access the local Cartesian grid of each level grid (when refinement).
+// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hh
+//
+// Specialization for CpGrid
 template<>
 class LevelCartesianIndexMapper<Dune::CpGrid>
 {
