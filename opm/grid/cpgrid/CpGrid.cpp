@@ -2163,34 +2163,35 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
     // - Define ParallelIndex for overlap cells and their neighbors
     if(comm().size()>1) {
-        
-        // Next value takes into account only cells and points, faces are ignored.
-        // Maximum global id from level zero. (Then, new entities get global id values greater than that value).
+
+        // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
+        // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
         auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
-        
+
         // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can anticipate
         // the maximum global id.
         // Advantage: no communication needed
         // Distadvantage: it does not distinguish between activa and inactive cells.
         // (Alternatively, loop over elements/vertices in each level grid)
-        // TO DO: go back to old approach! 
+        /**TO DO: go back to old approach (loop over elemts/vertxs)! Benefit: inactive cells taken into consideration */
         std::vector<std::size_t> prediction_lgr_cells_needing_new_globalId(cells_per_dim_vec.size());
-        // all of the refined cells need new globalIds - no nested refinement in this context.
+        // All of the refined cells need new globalIds - no nested refinement in this context.
         std::vector<std::size_t> prediction_lgr_points_needing_new_globalId(cells_per_dim_vec.size());
         for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level)
         {
-            // Dimesion of the block of cells to be refined
-            const auto& block_dim = currentData().front()->getPatchDim(startIJK_vec[level], endIJK_vec[level]); 
+            // Dimesion of the block of parent cells to be refined.
+            const auto& block_dim = currentData().front()->getPatchDim(startIJK_vec[level], endIJK_vec[level]);
+            // Dimension of the refined level grid (LGR). 
             const std::array<int,3>& lgr_dim = { block_dim[0]*cells_per_dim_vec[level][0],
                                                  block_dim[1]*cells_per_dim_vec[level][1],
                                                  block_dim[2]*cells_per_dim_vec[level][2] };
-            
-            prediction_lgr_cells_needing_new_globalId[level] = lgr_dim[0]*lgr_dim[1]*lgr_dim[2];   
-            // New refined corners that do not coincide with any corner from level zero
-            prediction_lgr_points_needing_new_globalId[level] =
-                ((lgr_dim[0]+1)*(lgr_dim[1]+1)*(lgr_dim[2]+1)) - ((block_dim[0]+1)*(block_dim[1]+1)*(block_dim[2]+1));
+            // All refined cells are new entities (and there is no nested refinement in this context).
+            prediction_lgr_cells_needing_new_globalId[level] = lgr_dim[0]*lgr_dim[1]*lgr_dim[2];
+            // New refined corners that do not coincide with any corner from level zero.
+            prediction_lgr_points_needing_new_globalId[level] = ((lgr_dim[0]+1)*(lgr_dim[1]+1)*(lgr_dim[2]+1)) // all lgr corners
+                - ((block_dim[0]+1)*(block_dim[1]+1)*(block_dim[2]+1)); // minus corners that coincide with parent cell corners from level 0.
         }
-        
+
         auto expected_max_globalId_cell = comm().max( std::accumulate(prediction_lgr_cells_needing_new_globalId.begin(),
                                                                       prediction_lgr_cells_needing_new_globalId.end(),
                                                                       max_globalId_levelZero + 1) );
@@ -2204,8 +2205,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             min_globalId_point_per_level[level] = std::accumulate(prediction_lgr_points_needing_new_globalId.begin(),
                                                                   prediction_lgr_points_needing_new_globalId.begin()+level,
                                                                   expected_max_globalId_cell);
-            std::cout<< "level " << level << " minGCell "
-                     <<  min_globalId_cell_per_level[level] << " maxGPoint " <<  min_globalId_point_per_level[level] << std::endl;
         }
 
         // Only for level 1,2,.., maxLevel grids.
@@ -2253,14 +2252,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             }
 
-            // Communicate global ids
+            // Communicate global ids - TODO: HOW?
             //  DefaultContainerHandle<std::vector<std::vector<int>> > localToGlobalCellHandle( localToGlobal_cells_per_level,  );
             //  gatherData(localToGlobalCellHandle);
             //  scatterData();
-           
 
-            // Currently, only fully interior LGRs are supported. Therefore, global_id_set_
-            // is defined only in the process that owns at least one LGR.
+            // Global id set for each (refined) level grid. 
             if(lgrs_with_at_least_one_active_cell[level-1]>0) {
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
                                                               localToGlobal_faces_per_level[level-1],
@@ -2270,18 +2267,16 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         auto refined_cell_count = std::accumulate(prediction_lgr_cells_needing_new_globalId.begin(),
                                                   prediction_lgr_cells_needing_new_globalId.end(),
                                                   0);
-        
+
         assert(min_globalId_cell_per_level.back() <= max_globalId_levelZero +1 + refined_cell_count);
         assert(min_globalId_point_per_level.back() <= comm().max(min_globalId_point_per_level.back()));
-        //  std::cout<< "min_glId point " << min_globalId_point_per_level.back() <<
-        //      " expected " << comm().max(min_globalId_point_per_level.back()) <<std::endl;
 
 
- #if HAVE_MPI    
+ #if HAVE_MPI
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             if ((*current_data_)[level]->size(0)) // non-empty refined level grid (in current process)
             {
-                auto& level_index_set =  (*current_data_)[level]->cellIndexSet(); //cellIndexSet();
+                auto& level_index_set =  (*current_data_)[level]->cellIndexSet(); 
                // Compute the partition type for cell
                (*current_data_)[level]->computeCellPartitionType();
                 
@@ -2343,10 +2338,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Global id for the cells in leaf grid view
         std::vector<int> leafCellIds(current_data_->back()->size(0));
         for(const auto& element: elements(leafGridView())){
-            // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
-            // under the assumption of each lgr being fully contained in the interior of a process.
-            // Therefore, it is not needed here to distingish between owned and overlap cells.
-            auto equivElem = element.getEquivLevelElem();
+            // The global id of a leaf cell is identical to the global id of the equivalent cell belonging
+            // to the level grid it was born. 
+            auto equivElem = element.getEquivLevelElem(); // Equivalent cell on level grid.
             leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
         }
         leafCellIds.shrink_to_fit();
@@ -2357,9 +2351,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Global id for the points in leaf grid view
         std::vector<int> leafPointIds(current_data_->back()->size(3));
         for(const auto& point : vertices(leafGridView())){
+            // The global id of a leaf point is identical to the global id of the equivalent point in the lowest
+            // level grid it appears. The history of a "corner" stores {lowest level where the corner appears, its index in that level}. 
             const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
-            assert(level_pointLevelIdx[0] != -1);
-            assert(level_pointLevelIdx[1] != -1);
+            assert(level_pointLevelIdx[0] != -1); // {-1, -1} denotes that the corner is born in "the current view" (here the leaf).  
+            assert(level_pointLevelIdx[1] != -1); // Therefore, for ALL leaf corners level_pointLevelIdx[i] != -1 for i=0,1.
+            // Get equivalent level point Entity.
             const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
             leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
         }
@@ -2367,7 +2364,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
 
-
+        // Global id set pointer of the CpGrid
         this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
         for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
