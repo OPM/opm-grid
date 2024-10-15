@@ -128,8 +128,8 @@ namespace Opm {
       if ((int)eList.size()!=numEdges[i])
       {
         std::cerr << "getGraphOfGridEdgeList error: Edge number disagreement"
-                  << " between Zoltan and Graph for vertex with ID " << gIDs[i]
-                  << std::endl;
+                  << " between Zoltan (" << numEdges[i] << ") and Graph ("
+                  << eList.size() << ") for vertex with ID " << gIDs[i] << std::endl;
         *err = ZOLTAN_FATAL;
         return;
       }
@@ -147,20 +147,11 @@ namespace Opm {
   // Wells:
   /// \brief Adds well to the GraphOfGrid
   /// Adding the well contracts vertices of the well into one vertex.
-  void addFutureConnectionWell (GraphOfGrid<Dune::CpGrid>& gog, const std::unordered_map<std::string, std::set<int>>& wells)
+  void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
+     const std::unordered_map<std::string, std::set<int>>& wells)
   {
     for (const auto& w : wells)
-    {
-      if (w.second.size()>0)
-      {
-        int minID = *(w.second.begin());
-        for (const auto& e : w.second)
-        {
-          gog.contractVertices(minID,e);
-          minID = std::min(minID,e);
-        }
-      }
-    }
+      gog.addWell(w.second);
   }
 
 } // end namespace Opm
