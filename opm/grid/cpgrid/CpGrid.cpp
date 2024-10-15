@@ -2018,6 +2018,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
     (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(global_cell_leaf);
 
+    // Compute for each level grid, a map from the global_cell_[ cell index in level grid ] to the leaf index of the equivalent cell
+    // on the leaf grid view. The value global_cell_[ cell index in level grid ] coincides with the local Cartesian index of the
+    // level grid. Potentially needed for well location and output files.
     mapLocalCartesianIndexSetsToLeafIndexSet();
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
