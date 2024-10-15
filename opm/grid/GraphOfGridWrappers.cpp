@@ -21,6 +21,7 @@
   copyright holders.
 */
 
+#include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/grid/GraphOfGrid.cpp>
 
 namespace Opm {
@@ -90,8 +91,9 @@ namespace Opm {
       int nE = gog.numEdges(gIDs[i]);
       if (nE== -1)
       {
-        std::cerr << "getGraphOfGridNumEdges error: Vertex with ID "
-                  << gIDs[i] << " is not in graph." << std::endl;
+        std::ostringstream ostr;
+        ostr << "getGraphOfGridNumEdges error: Vertex with ID " << gIDs[i] << " is not in graph.";
+        OpmLog::error(ostr.str());
         *err = ZOLTAN_FATAL;
         return;
       }
@@ -127,9 +129,11 @@ namespace Opm {
       auto eList = gog.edgeList(gIDs[i]);
       if ((int)eList.size()!=numEdges[i])
       {
-        std::cerr << "getGraphOfGridEdgeList error: Edge number disagreement"
-                  << " between Zoltan (" << numEdges[i] << ") and Graph ("
-                  << eList.size() << ") for vertex with ID " << gIDs[i] << std::endl;
+        std::ostringstream ostr;
+        ostr << "getGraphOfGridEdgeList error: Edge number disagreement"
+             << " between Zoltan (" << numEdges[i] << ") and Graph ("
+             << eList.size() << ") for vertex with ID " << gIDs[i] << std::endl;
+        OpmLog::error(ostr.str());
         *err = ZOLTAN_FATAL;
         return;
       }
