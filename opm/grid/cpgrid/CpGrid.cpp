@@ -2023,6 +2023,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // level grid. Potentially needed for well location and output files.
     mapLocalCartesianIndexSetsToLeafIndexSet();
 
+    // Compute the reserve map (from leaf cell index to local Cartesian Index Sets). Potentially needed for well location and output files.
+    mapLeafIndexSetToLocalCartesianIndexSets();
+
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,
                               elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                               adaptedCorner_to_elemLgrAndElemLgrCorner,
