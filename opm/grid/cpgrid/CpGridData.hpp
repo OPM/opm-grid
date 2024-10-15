@@ -642,7 +642,7 @@ public:
     /// \param iftype The interface to use for the communication.
     /// \param dir The direction of the communication along the interface (forward or backward).
     template<class DataHandle>
-    void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
+    void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir); // InteriorBorde_ALL_... 
 
     void computeCellPartitionType();
 

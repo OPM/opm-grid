@@ -2223,7 +2223,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
 
             // Global ids for cells (for owned cells)
-            for(const auto& element : elements(levelGridView(level))) {
+            for(const auto& element : elements(levelGridView(level))) { /** Move the Interior here!!!*/
                 // A refined cell inherits the partition type of its parent cell.
                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
                     localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
@@ -2231,6 +2231,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             }
 
+            /** Populated partition_type_indicator_ */
             // Global ids for points (for non-overlap points)
             for (const auto& point : vertices(levelGridView(level))) {
                 // If point coincides with an existing corner from level zero, then it does not need a new global id.
@@ -2243,7 +2244,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     }
                     else {
                         // Assign new global id only to non-overlap points that do not coincide with
-                        // any corners from level zero. 
+                        // any corners from level zero.
+                         /** PartitionType of point. Requires partition_type_indicator_ for cells and faces,and points populated  */
                         if (point.partitionTypeWhenLgrs(globalActiveLgrs) != OverlapEntity) {
                             localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_per_level[level-1];
                             ++min_globalId_point_per_level[level-1];
