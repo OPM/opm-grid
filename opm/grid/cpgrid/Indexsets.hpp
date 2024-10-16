@@ -42,6 +42,8 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "Intersection.hpp"
 
 #include <unordered_map>
+#include <utility>
+
 namespace Dune
 {
     namespace cpgrid
@@ -362,7 +364,7 @@ namespace Dune
                                       pointMapping);
             }
             LevelGlobalIdSet(std::shared_ptr<const IdSet> ids, const CpGridData* view)
-                : idSet_(ids), view_(view)
+                : idSet_(std::move(ids)), view_(view)
             {}
             LevelGlobalIdSet()
                 : idSet_(), view_()

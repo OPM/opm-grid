@@ -4,6 +4,7 @@
 #include <map>
 #include <set>
 #include <vector>
+#include <utility>
 #include"CpGridData.hpp"
 #include"DataHandleWrappers.hpp"
 #include"Intersection.hpp"
@@ -502,7 +503,7 @@ struct CellGeometryHandle
                        const std::vector< std::array<int,8> >& cell2Points)
         : gatherCont_(gatherCont), scatterCont_(scatterCont),
           gatherAquiferCells_(gatherAquiferCells),scatterAquiferCells_(scatterAquiferCells),
-          pointGeom_(pointGeom), cell2Points_(cell2Points)
+          pointGeom_(std::move(pointGeom)), cell2Points_(cell2Points)
     {}
 
     ~CellGeometryHandle()
