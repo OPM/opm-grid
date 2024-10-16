@@ -1212,7 +1212,7 @@ namespace cpgrid
         {
             std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_;
             MakeGeometry(std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners)
-                : allcorners_(allcorners)
+                : allcorners_(std::move(allcorners))
             {
             }
             cpgrid::Geometry<3, 3> operator()(const FieldVector<double, 3>& pos,
