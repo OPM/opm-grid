@@ -2377,8 +2377,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         leaf_index_set.beginResize();
 
-        // The folowing count (fully interior cell count) can be removed. 
-        int fully_interior_cell_count = 0;
         for(const auto& element : elements(leafGridView())) {
             const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
             if ( elemPartitionType == InteriorEntity) {
@@ -2398,7 +2396,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     }
                 }
                 if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
-                    ++fully_interior_cell_count;
                     leaf_index_set.add(globalIdSet().id(element),
                                        ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
                 }
