@@ -90,14 +90,11 @@ void testInactiveCellsLgrs(const std::string& deckString,
         BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
         BOOST_CHECK( (*data[0]).child_to_parent_cells_.empty());
         BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
-        const auto& all_parent_cell_indices = (*data[0]).getPatchesCells(startIJK_vec, endIJK_vec);
 
         for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
         {
             BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
             BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
-
-            const auto& patch_cells = (*data[0]).getPatchCells(startIJK_vec[level-1], endIJK_vec[level-1]);
 
             // GLOBAL grid
             for (int cell = 0; cell <  data[0]-> size(0); ++cell)
