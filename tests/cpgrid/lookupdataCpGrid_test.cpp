@@ -282,7 +282,7 @@ BOOST_AUTO_TEST_CASE(no_lgrs_grid)
 }
 
 
-void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, std::string deck_string)
+void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string)
 {
     Opm::Deck deck = Opm::Parser{}.parseString(deck_string);
     Opm::FieldPropsManager fpm(deck, Opm::Phases{true, true, true}, eclGrid, Opm::TableManager());
