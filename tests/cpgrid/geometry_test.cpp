@@ -63,7 +63,7 @@ BOOST_AUTO_TEST_CASE(vertexgeom)
 {
     typedef cpgrid::Geometry<0, 3> Geometry;
     // Default construction.
-    Geometry g_default;
+    [[maybe_unused]] Geometry g_default; // [[maybe_unused]] silences unused warning
 
     // Construction from point.
     Geometry::GlobalCoordinate c(3.0);
@@ -89,7 +89,7 @@ BOOST_AUTO_TEST_CASE(intersectiongeom)
 {
     typedef cpgrid::Geometry<2, 3> Geometry;
     // Default construction.
-    Geometry g_default;
+    [[maybe_unused]] Geometry g_default; // [[maybe_unused]] silences unused warning
 
     // Construction from point and volume.
     Geometry::GlobalCoordinate c(3.0);
