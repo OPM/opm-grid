@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: LevelCartesianIndexMapper.hh
+// File: LevelCartesianIndexMapper.hpp
 //
 // Created: Tue October 01  11:44:00 2024
 //

@@ -34,10 +34,8 @@
 #ifndef OPM_POLYHEDRALGRIDLEVELCARTESIANINDEXMAPPER_HH
 #define OPM_POLYHEDRALGRIDLEVELCARTESIANINDEXMAPPER_HH
 
-#include <opm/grid/common/LevelCartesianIndexMapper.hh>
+#include <opm/grid/common/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/polyhedralgrid.hh>
-
-#include <memory>
 
 
 namespace Dune
@@ -50,7 +48,7 @@ class PolyhedralGrid;
 namespace Opm
 {
 // Interface class to access the local Cartesian grid of each level grid (when refinement).
-// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hh
+// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hpp
 //
 // Specialization for PolyhedralGrid
 template<int dim, int dimworld, typename coord_t>
@@ -60,7 +58,7 @@ class LevelCartesianIndexMapper<Dune::PolyhedralGrid< dim, dimworld, coord_t >>
 public:
     static const int dimension = 3 ;
 
-    explicit LevelCartesianIndexMapper(const Grid& grid) : grid_{ &grid }// std::make_unique<Grid>(grid)}
+    explicit LevelCartesianIndexMapper(const Grid& grid) : grid_{ &grid }
     {}
 
     const std::array<int,3>& cartesianDimensions(int level) const
@@ -109,7 +107,7 @@ public:
     }
 
 private:
-    const Grid* grid_; // Why cann't use unique_ptr for PolyhedralGrid?
+    const Grid* grid_;
 
     int computeCartesianSize(int level) const
     {

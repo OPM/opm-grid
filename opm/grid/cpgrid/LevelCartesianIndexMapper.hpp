@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: LevelCartesianIndexMapper.hh
+// File: LevelCartesianIndexMapper.hpp
 //
 // Created: Tue October 01  09:44:00 2024
 //
@@ -34,11 +34,8 @@
 #ifndef OPM_CPGRIDLEVELCARTESIANINDEXMAPPER_HH
 #define OPM_CPGRIDLEVELCARTESIANINDEXMAPPER_HH
 
-#include <opm/grid/common/LevelCartesianIndexMapper.hh>
+#include <opm/grid/common/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/Entity.hpp>
-
-#include <memory>
 
 namespace Dune
 {
@@ -48,7 +45,7 @@ class CpGrid;
 namespace Opm
 {
 // Interface class to access the local Cartesian grid of each level grid (when refinement).
-// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hh
+// Further documentation in opm/grid/common/LevelCartesianIndexMapper.hpp
 //
 // Specialization for CpGrid
 template<>
@@ -57,7 +54,7 @@ class LevelCartesianIndexMapper<Dune::CpGrid>
 public:
     static const int dimension = 3 ;
 
-    explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{std::make_unique<Dune::CpGrid>(grid)}
+    explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{ &grid }
     {}
 
     const std::array<int,3>& cartesianDimensions(int level) const
@@ -90,7 +87,7 @@ public:
     }
 
 private:
-    std::unique_ptr<Dune::CpGrid> grid_;
+    const Dune::CpGrid* grid_;
 
     int computeCartesianSize(int level) const
     {

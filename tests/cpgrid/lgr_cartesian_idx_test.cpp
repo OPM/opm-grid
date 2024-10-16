@@ -45,7 +45,7 @@
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hh>
+#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/common/version.hh>

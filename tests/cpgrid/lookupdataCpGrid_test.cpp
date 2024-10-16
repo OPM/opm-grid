@@ -40,7 +40,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hh>
+#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/grid/common/mcmgmapper.hh>

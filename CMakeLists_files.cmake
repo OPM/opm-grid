@@ -191,7 +191,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Geometry.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
-  opm/grid/cpgrid/LevelCartesianIndexMapper.hh
+  opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/CpGrid.hpp
   opm/grid/cpgrid/Indexsets.hpp
   opm/grid/cpgrid/Intersection.hpp
@@ -204,7 +204,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
-  opm/grid/common/LevelCartesianIndexMapper.hh
+  opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp
   opm/grid/common/ZoltanGraphFunctions.hpp
