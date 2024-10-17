@@ -21,8 +21,11 @@
   copyright holders.
 */
 
+#ifndef GRAPH_OF_GRID_WRAPPERS_HEADER
+#define GRAPH_OF_GRID_WRAPPERS_HEADER
+
 #include <opm/common/OpmLog/OpmLog.hpp>
-#include <opm/grid/GraphOfGrid.cpp>
+#include <opm/grid/GraphOfGrid.hpp>
 
 namespace Opm {
 /*
@@ -159,3 +162,5 @@ namespace Opm {
   }
 
 } // end namespace Opm
+
+#endif // GRAPH_OF_GRID_WRAPPERS_HEADER

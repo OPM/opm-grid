@@ -7,7 +7,7 @@
 #include <boost/test/unit_test.hpp>
 #include <opm/grid/CpGrid.hpp>
 
-#include <opm/grid/GraphOfGrid.cpp>
+#include <opm/grid/GraphOfGrid.hpp>
 
 // basic test to check if the graph was constructed correctly
 BOOST_AUTO_TEST_CASE(SimpleGraph)
@@ -67,7 +67,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
 
 }
 
-#include <opm/grid/GraphOfGridWrappers.cpp>
+#include <opm/grid/GraphOfGridWrappers.hpp>
 
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 {
