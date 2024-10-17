@@ -50,11 +50,6 @@ namespace Dune
             return grid_.globalCell().size();
         }
 
-        int compressedLevelZeroSize() const
-        {
-            return (*grid_.currentData()[0]).size(0);
-        }
-
         int cartesianIndex( const int compressedElementIndex ) const
         {
             assert(  compressedElementIndex >= 0 && compressedElementIndex < compressedSize() );
@@ -64,14 +59,6 @@ namespace Dune
         void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords) const
         {
             grid_.getIJK( compressedElementIndex, coords );
-        }
-
-        void cartesianCoordinateLevel(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
-        {
-            if ((level < 0) || (level > grid_.maxLevel())) {
-                throw std::invalid_argument("Invalid level.\n");
-            }
-            (*grid_.currentData()[level]).getIJK( compressedElementIndexOnLevel, coordsOnLevel);
         }
     };
 

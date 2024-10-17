@@ -43,12 +43,6 @@ namespace Dune
             return 0;
         }
 
-        /** \brief return number of cells in the active level zero grid. Only relevant for CpGrid specialization. */
-        int compressedLevelZeroSize() const
-        {
-            return 0;
-        }
-
         /** \brief return index of the cells in the logical Cartesian grid */
         int cartesianIndex( const int /* compressedElementIndex */) const
         {
@@ -57,12 +51,6 @@ namespace Dune
 
         /** \brief return Cartesian coordinate, i.e. IJK, for a given cell */
         void cartesianCoordinate(const int /* compressedElementIndex */, std::array<int,dimension>& /* coords */) const
-        {
-        }
-
-        /** \brief return Cartesian coordinate, i.e. IJK, for a given cell. Only relevant for CpGrid specialization.*/
-        void cartesianCoordinateLevel(const int /* compressedElementIndexOnLevel */,
-                                      std::array<int,dimension>& /* coordsOnLevel */, int /*level*/) const
         {
         }
     };
