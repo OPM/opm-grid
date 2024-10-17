@@ -276,13 +276,15 @@ private:
 };
 
 /// \brief Handle for local-to-global-id for cells.
-template<class C>
-struct LocalToGlobalIdCellHandle
+//template<class std::vector<>>
+struct ParentToChlidrenCellGlobalIdHandle
 {
-    using DataType = typename C::value_type;
+    // using DataType = typename std::vector<int>::value_type;
 
-    /*  LocalToGlobalIdCellHandle(const C& gatherCont, C& scatterCont)
-        : gatherCont_(gatherCont), scatterCont_(scatterCont)
+    ParentToChlidrenCellGlobalIdHandle(const std::vector<int>& gatherChildrenCellGlobalIds,
+                                       std::vector<int>& scatterChildrenCellGlobalIds)
+        : gatherChildrenCellGlobalIds_(gatherChildrenCellGlobalIds),
+          scatterChildrenCellGlobalIds_(scatterChildrenCellGlobalIds)
     {}
       bool fixedSize(std::size_t, std::size_t)
     {
@@ -300,20 +302,20 @@ struct LocalToGlobalIdCellHandle
 
     // Gather global ids of children cells of a coarse interior cell
     template<class B, class T>
-    void gather(B& buffer, const T& t)
+    void gather(B& buffer, const /*Entity<0>*/T& element)
     {
-        buffer.write(gatherCont_[t.index()]);
+        buffer.write(gatherChildrenCellGlobalIds_[element.index()]);
     }
 
     // Scatter global ids of children cells of a coarse overlap cell
     template<class B, class T>
-    void scatter(B& buffer, const T& t, std::size_t)
+    void scatter(B& buffer, /*const Entity<0>&*/ const T& element, std::size_t)
     {
-        buffer.read(scatterCont_[t.index()]);
-    }*/
+        buffer.read(scatterChildrenCellGlobalIds_[element.index()]);
+    }
 private:
-    const std::vector<int>& gatherChildrenGlobalIds_;
-    C& scatterChildrenGlobalIds_;
+    const std::vector<int>& gatherChildrenCellGlobalIds_;
+    std::vector<int>& scatterChildrenCellGlobalIds_;
     };
 
 /// \brief Handle for face tag, normal and boundary id
@@ -1664,6 +1666,11 @@ void CpGridData::computeCellPartitionType()
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
+        if(partition_type_indicator_->cell_indicator_[i.local()] == OverlapEntity)
+         {
+             if ((i.global() == 1)) //|| (i.global() == 2))
+        std::cout << "i.local() " << i.local() << " " << i.global() << std::endl;
+         }
     }
 #endif
 }

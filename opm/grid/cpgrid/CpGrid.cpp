@@ -2224,15 +2224,29 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Compute the partition type for cell
             (*current_data_)[level]->computeCellPartitionType();
 
+         
+            /*// Compute the partition type for cell
+            auto& cell_indexset = (*current_data_)[level]->cellIndexSet();
+            (*current_data_)[level]->partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
+            for(const auto& i: cell_indexset)
+            {
+                partition_type_indicator_->cell_indicator_[i.local()]=
+                    i.father().local().attribute()==AttributeSet::owner?
+                    InteriorEntity:OverlapEntity;
+            }
+            */
+
             // Global ids for cells (for owned cells)
-            for(const auto& element : elements(levelGridView(level), Dune::Partitions::interior)) {
-                // A refined cell inherits the partition type of its parent cell.
-                localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
-                ++min_globalId_cell_per_level[level-1];
+            for(const auto& element : elements(levelGridView(level))){  //, Dune::Partitions::interior)) 
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity ){
+                    // A refined cell inherits the partition type of its parent cell.
+                    localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
+                    ++min_globalId_cell_per_level[level-1];
+                }
             }
             
             // Compute the partition type for point
-            (*current_data_)[level]->computePointPartitionType();
+            (*current_data_)[level]->computePointPartitionType(); // DOES THIS NEED PARTITION TYPE FOR CELLS?
             
             // Global ids for points (for non-overlap points)
             for (const auto& point : vertices(levelGridView(level))) {
@@ -2271,7 +2285,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     }
                 }
             }
-        
+
+            
+            for(const auto& element : elements(levelGridView(level))) { //, Dune::Partitions::ghost)) {
+                // A refined cell inherits the partition type of its parent cell.
+                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity ){
+                     // parent_to_globalIdChildren_cells[element.index()] = scatter()
+                 }
+            }
+            
             // Communicate global ids - TODO: HOW?
             //  DefaultContainerHandle<std::vector<std::vector<int>> > localToGlobalCellHandle( localToGlobal_cells_per_level,  );
             //  gatherData(localToGlobalCellHandle);
