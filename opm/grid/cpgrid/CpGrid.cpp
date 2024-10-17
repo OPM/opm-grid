@@ -2221,17 +2221,20 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
             localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
             // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
-
+#if HAVE_MPI
+            // Compute the partition type for cell
+            (*current_data_)[level]->computeCellPartitionType();
+               
             // Global ids for cells (for owned cells)
-            for(const auto& element : elements(levelGridView(level))) { /** Move the Interior here!!!*/
+            for(const auto& element : elements(levelGridView(level), Dune::Partitions::interior)) {
                 // A refined cell inherits the partition type of its parent cell.
-                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
-                    localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
-                    ++min_globalId_cell_per_level[level-1];
-                }
+                localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
+                ++min_globalId_cell_per_level[level-1];
             }
-
-            /** Populated partition_type_indicator_ */
+            
+            // Compute the partition type for point
+            (*current_data_)[level]->computePointPartitionType();
+            
             // Global ids for points (for non-overlap points)
             for (const auto& point : vertices(levelGridView(level))) {
                 // If point coincides with an existing corner from level zero, then it does not need a new global id.
@@ -2245,8 +2248,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     else {
                         // Assign new global id only to non-overlap points that do not coincide with
                         // any corners from level zero.
-                         /** PartitionType of point. Requires partition_type_indicator_ for cells and faces,and points populated  */
-                        if (point.partitionTypeWhenLgrs(globalActiveLgrs) != OverlapEntity) {
+                        if (point.partitionType() != OverlapEntity) {
                             localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_per_level[level-1];
                             ++min_globalId_point_per_level[level-1];
                         }
@@ -2265,6 +2267,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                               localToGlobal_faces_per_level[level-1],
                                                               localToGlobal_points_per_level[level-1]);
             }
+            #endif
         } // end-for-loop-level
         auto refined_cell_count = std::accumulate(prediction_lgr_cells_needing_new_globalId.begin(),
                                                   prediction_lgr_cells_needing_new_globalId.end(),
@@ -2278,13 +2281,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             if ((*current_data_)[level]->size(0)) // non-empty refined level grid (in current process)
             {
-                auto& level_index_set =  (*current_data_)[level]->cellIndexSet(); 
-               // Compute the partition type for cell
-               (*current_data_)[level]->computeCellPartitionType();
+                auto& level_index_set =  (*current_data_)[level]->cellIndexSet();
                 
                 level_index_set.beginResize();
                 
-               const auto& level_global_id_set = (*current_data_)[level]->globalIdSet();
+                // const auto& level_global_id_set = (*current_data_)[level]->globalIdSet();
 
                // For the following code, 
            
