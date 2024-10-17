@@ -233,6 +233,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/CellQuadrature.hpp
   opm/grid/ColumnExtract.hpp
   opm/grid/FaceQuadrature.hpp
+  opm/grid/GraphOfGrid.hpp
+  opm/grid/GraphOfGridWrappers.hpp
   opm/grid/GridHelpers.hpp
   opm/grid/GridManager.hpp
   opm/grid/GridUtilities.hpp
