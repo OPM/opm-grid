@@ -275,6 +275,47 @@ private:
     C& scatterCont_;
 };
 
+/// \brief Handle for local-to-global-id for cells.
+template<class C>
+struct LocalToGlobalIdCellHandle
+{
+    using DataType = typename C::value_type;
+
+    /*  LocalToGlobalIdCellHandle(const C& gatherCont, C& scatterCont)
+        : gatherCont_(gatherCont), scatterCont_(scatterCont)
+    {}
+      bool fixedSize(std::size_t, std::size_t)
+    {
+        return true;
+    }
+    bool contains(std::size_t, std::size_t codim)
+    {
+        return codim == 0;
+    }
+    template<class T>
+    std::size_t size(const T&)
+    {
+        return 1;
+    }
+
+    // Gather global ids of children cells of a coarse interior cell
+    template<class B, class T>
+    void gather(B& buffer, const T& t)
+    {
+        buffer.write(gatherCont_[t.index()]);
+    }
+
+    // Scatter global ids of children cells of a coarse overlap cell
+    template<class B, class T>
+    void scatter(B& buffer, const T& t, std::size_t)
+    {
+        buffer.read(scatterCont_[t.index()]);
+    }*/
+private:
+    const std::vector<int>& gatherChildrenGlobalIds_;
+    C& scatterChildrenGlobalIds_;
+    };
+
 /// \brief Handle for face tag, normal and boundary id
 struct FaceTagNormalBIdHandle
 {

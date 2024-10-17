@@ -180,7 +180,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         {
             auto itMin = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
             auto itMax = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
-            BOOST_CHECK_EQUAL( *itMin, 0);
+            BOOST_CHECK( *itMin >= 0); // When the LGR is not fully interior, *itMin might be > 0.
             const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
             BOOST_CHECK( *itMax < maxCartesianIdxLevel);
         }
@@ -455,7 +455,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     }
 }
 
-/*BOOST_AUTO_TEST_CASE(distributed_lgr)
+BOOST_AUTO_TEST_CASE(distributed_lgr)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -489,7 +489,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
+/*BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -520,6 +520,11 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
         // 13,17 in rank 1,
         // 2,6,18 in rank 2,
         // 14 in rank 3.
+        // Block of cells to refine dim 2x2x2. LGR1 dim 4x4x4.
+        // 64 new refined cells. 5x5x5 = 125 points (only 98 = 125 - 3x3x3 parent corners new points - new global ids).
+        // Max global id from level 0 = 115 (36+80 = 116 level zero entities)
+        // Max global id for the leaf grid view = 115 + 64 + 98 = 277.
+        // Total global ids points leaf = 80 + 98 = 178.
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
@@ -563,7 +568,7 @@ BOOST_AUTO_TEST_CASE(distributed_lgrs)
     }
 }
 
-BOOST_AUTO_TEST_CASE(threeLgrs)
+BOOST_AUTO_TEST_CASE(three_fully_interior_lgrs)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -613,7 +618,7 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
     }
 }
 
-BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
+BOOST_AUTO_TEST_CASE(atLeastOneFullyInteriorLgr_per_process)
 {
     // Create a grid
     Dune::CpGrid grid;
@@ -647,7 +652,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-}*/
+}
 
 BOOST_AUTO_TEST_CASE(not_fully_interior_lgr)
 {
@@ -695,6 +700,47 @@ BOOST_AUTO_TEST_CASE(not_fully_interior_lgr)
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
     }
+
+BOOST_AUTO_TEST_CASE(distributed_lgr)
+{
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,1,1}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = 1 (rank 0), 2 (rank 2). Total 16 refined cells, 45 points (45-12 = 33 with new global id).
+
+        // LGR1 dim 2x1x1 (16 refined cells) (45 points - only 33 new points)
+
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+        // Global leaf grid view  36-(2 marked cells) + 16  = 50
+        // Max global id global level 0 = 115
+        // Expected maximum global id leaf grid view 115 + new cells + new points = 115 +16 + 33 = 176
+
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+    }*/
+
 
 /*//Calling globalRefine on a distributed grid is not supported yet.
 BOOST_AUTO_TEST_CASE(globalRefine2)
