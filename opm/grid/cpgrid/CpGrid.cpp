@@ -2104,6 +2104,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // To check "Non-NNCs (non neighboring connections)" for all processes.
     bool nonNNCsHasFailed = false;
     std::vector<int> lgrs_with_at_least_one_active_cell(startIJK_vec.size());
+    /**To count marked cells per rank, per LGR. Potential improvement: remove/combine with "lgrs_with_at_least_one_active_cell"*/
+    std::vector<std::vector<int>> lgrs_active_cells_per_rank(startIJK_vec.size());
+    for (unsigned int l = 0; l < startIJK_vec.size(); ++l )
+    {
+        lgrs_active_cells_per_rank[l].resize(comm().size());
+    }
+    
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(current_view_data_->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
@@ -2125,9 +2132,18 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     break;
                 }
                 this-> mark(1, element);
-                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1
+                assignRefinedLevel[element.index()]
+                    = level + 1; // shifted since starting grid is level 0, and refined grids levels are >= 1
                 ++marked_elem_level_count;
                 lgrs_with_at_least_one_active_cell[level] = marked_elem_level_count;
+                // Needed for assignment of glboal ids of refined cells (One LGR can be distributed in many processes).
+                if (element.partitionType() == InteriorEntity) {
+                    for (int r = 0; r < comm().size(); ++r) {
+                        if (comm().rank() == r) {
+                            lgrs_active_cells_per_rank[level][r] += 1;
+                        }
+                    }
+                }
             } // end-if-belongsToLevel
         } // end-level-for-loop
     } // end-element-for-loop
@@ -2222,32 +2238,36 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
 #if HAVE_MPI
             // Compute the partition type for cell
-            (*current_data_)[level]->computeCellPartitionType();
-
-         
-            /*// Compute the partition type for cell
-            auto& cell_indexset = (*current_data_)[level]->cellIndexSet();
-            (*current_data_)[level]->partition_type_indicator_->cell_indicator_.resize(cell_indexset.size());
-            for(const auto& i: cell_indexset)
-            {
-                partition_type_indicator_->cell_indicator_[i.local()]=
-                    i.father().local().attribute()==AttributeSet::owner?
-                    InteriorEntity:OverlapEntity;
-            }
-            */
+            //  (*current_data_)[level]->computeCellPartitionType(); REQUIRE CELL INDEX SET!!!!!!!!!!!!! TO BE DONE LATER
 
             // Global ids for cells (for owned cells)
-            for(const auto& element : elements(levelGridView(level))){  //, Dune::Partitions::interior)) 
-                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity ){
-                    // A refined cell inherits the partition type of its parent cell.
-                    localToGlobal_cells_per_level[level-1][element.index()] = min_globalId_cell_per_level[level-1];
-                    ++min_globalId_cell_per_level[level-1];
+            for (const auto& element : elements(levelGridView(level))) { //, Dune::Partitions::interior))
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                    // Only compute the shift when it's interior
+                    if (comm().rank() == 0) {
+                        // A refined cell inherits the partition type of its parent cell.
+                        localToGlobal_cells_per_level[level - 1][element.index()]
+                            = min_globalId_cell_per_level[level - 1];
+                        ++min_globalId_cell_per_level[level - 1];
+                    } else {
+                        auto used_globalIds_in_smaller_ranks
+                            = std::accumulate(lgrs_active_cells_per_rank[level - 1].begin(),
+                                              lgrs_active_cells_per_rank[level - 1].begin() + 1 + comm().rank(),
+                                              0);
+                        used_globalIds_in_smaller_ranks *= cells_per_dim_vec[level - 1][0]
+                            * (cells_per_dim_vec[level - 1][1]) * (cells_per_dim_vec[level - 1][2]);
+
+                        // A refined cell inherits the partition type of its parent cell.
+                        localToGlobal_cells_per_level[level - 1][element.index()]
+                            = used_globalIds_in_smaller_ranks + min_globalId_cell_per_level[level - 1];
+                        ++min_globalId_cell_per_level[level - 1];
+                    }
                 }
             }
-            
+
             // Compute the partition type for point
             (*current_data_)[level]->computePointPartitionType(); // DOES THIS NEED PARTITION TYPE FOR CELLS?
-            
+
             // Global ids for points (for non-overlap points)
             for (const auto& point : vertices(levelGridView(level))) {
                 // If point coincides with an existing corner from level zero, then it does not need a new global id.
@@ -2269,31 +2289,37 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             }
 
-            
+
             // Prepare gather/scatter containers global ids of children cells per parent, to gather
-            std::vector<std::vector<int>> parent_to_globalIdChildren_cells(current_data_->front()->size(0));
+            std::unordered_map<int, std::vector<int>> parent_to_children_cells_globalIds; 
             const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
-            if(!parent_to_children.empty()) {
-                for(const auto& element : elements(levelGridView(0))) {
+            if (!parent_to_children.empty()) {
+                for (const auto& element : elements(levelGridView(0), Dune::Partitions::interior)) {
                     const auto& [lgr, children_list] = parent_to_children[element.index()];
-                    if(children_list.size()>1) {
-                        const auto& children_list_size = (currentData()[lgr]->cells_per_dim_[0])*( currentData()[lgr]->cells_per_dim_[1])*(currentData()[lgr]->cells_per_dim_[2]);
-                        parent_to_globalIdChildren_cells[element.index()].reserve(children_list_size);
+                    if (children_list.size() > 1) {
+                        const auto& parent_globalId = current_data_->front()->global_id_set_->id(element);
+                        const auto& children_list_size = (currentData()[lgr]->cells_per_dim_[0])
+                            * (currentData()[lgr]->cells_per_dim_[1]) * (currentData()[lgr]->cells_per_dim_[2]);
+                        std::vector<int> children_globalIds {};
+                        children_globalIds.reserve(children_list_size);
                         for (const auto& child : children_list) {
-                            parent_to_globalIdChildren_cells[element.index()].push_back(localToGlobal_cells_per_level[lgr-1][child]);
+                            children_globalIds.push_back(localToGlobal_cells_per_level[lgr - 1][child]);
+                            std::cout << "child glId: " << localToGlobal_cells_per_level[lgr - 1][child]
+                                      << " globId parent " << parent_globalId << std::endl;
                         }
+                        parent_to_children_cells_globalIds[parent_globalId] = children_list;
                     }
                 }
             }
 
-            
-            for(const auto& element : elements(levelGridView(level))) { //, Dune::Partitions::ghost)) {
+
+            for (const auto& element : elements(levelGridView(level))) { //, Dune::Partitions::ghost)) {
                 // A refined cell inherits the partition type of its parent cell.
-                 if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity ){
-                     // parent_to_globalIdChildren_cells[element.index()] = scatter()
-                 }
+                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity) {
+                    // parent_to_globalIdChildren_cells[element.index()] = scatter()
+                }
             }
-            
+
             // Communicate global ids - TODO: HOW?
             //  DefaultContainerHandle<std::vector<std::vector<int>> > localToGlobalCellHandle( localToGlobal_cells_per_level,  );
             //  gatherData(localToGlobalCellHandle);
