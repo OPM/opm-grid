@@ -183,13 +183,10 @@ public:
 
     /// @brief In serial run, the only partitionType() is InteriorEntity.
     ///        Only needed when distributed_data_ is not empty.
-    PartitionType partitionType() const;
-
-    /// @brief For parallel run, the entity - for now - does not see the CpGrid therefore we pass a bool to make
-    ///        the entity aware of the fact the the grid has been distributed.
-    ///        Each cell inherits the partition type of its origin (either parent cell or equivalent cell in level 0).
+    ///        In parallel run, the entity each cell inherits the partition type of its origin
+    ///        (either parent cell or equivalent cell in level 0).
     ///        Only needed when distributed_data_ is not empty.
-    PartitionType partitionTypeWhenLgrs(bool) const;
+    PartitionType partitionType() const;
 
     /// @brief Return marker object (GeometryType object) representing the reference element of the entity.
     ///        Currently, cube type for all entities (cells and vertices).
@@ -362,11 +359,6 @@ PartitionType Entity<codim>::partitionType() const
     return pgrid_->partition_type_indicator_->getPartitionType(*this);
 }
 
-template <int codim>
-PartitionType Entity<codim>::partitionTypeWhenLgrs(bool lgrsOnDistributedGrid) const
-{
-    return pgrid_->partition_type_indicator_->getPartitionTypeWhenLgrs(*this, lgrsOnDistributedGrid);
-}
 } // namespace cpgrid
 } // namespace Dune
 

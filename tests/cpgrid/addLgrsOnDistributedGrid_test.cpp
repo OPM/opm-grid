@@ -366,7 +366,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     localInteriorCellIds_vec.reserve(data.back()->size(0)); // more than actually needed since only care about interior cells
     int local_interior_cells_count = 0;
     for (const auto& element: elements(coarse_grid.leafGridView())) {
-         const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(true);
+         const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
          if ( elemPartitionType == Dune::InteriorEntity) {
             localInteriorCellIds_vec.push_back(data.back()->globalIdSet().id(element));
             ++local_interior_cells_count;

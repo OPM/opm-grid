@@ -9,21 +9,13 @@ namespace Dune
 {
 namespace cpgrid
 {
-PartitionType PartitionTypeIndicator::getPartitionType(const EntityRep<0>& cell_entity) const
+PartitionType PartitionTypeIndicator::getPartitionType(const Entity<0>& cell_entity) const
 {
     if(cell_indicator_.size())
         return PartitionType(cell_indicator_[cell_entity.index()]);
-    return InteriorEntity;
-}
-
-PartitionType PartitionTypeIndicator::getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const
-{
-    if(cell_indicator_.size())
-        return PartitionType(cell_indicator_[cell_entity.index()]);
-    // Assuming grid has been distributed and some LGRs have been added afterwards.
-    // For level 0, it's defined. For other levels, the refined cell inherits its father
-    // attribute.
-    if((grid_data_->level_data_ptr_->size()>1) && lgrsOnDistributedGrid) {
+    // When level zero grid has been distributed and some LGRs have been added afterwards, refined cells
+    // inherit its parent cell attribute.
+    if (grid_data_->level_ >0) { // level_ > 0 only for refined level grids.
         return PartitionType(grid_data_->level_data_ptr_->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin()));
     }
     return InteriorEntity;
@@ -52,7 +44,7 @@ PartitionType getProcessorBoundaryPartitionType(PartitionType)
 
 PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
 {
-    if(cell_indicator_.size())
+    if((cell_indicator_.size()) || (grid_data_->level_ > 0))
     {
         // We determine the partition type by the type of the
         // connected cells:
@@ -65,7 +57,8 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
         if(cells_of_face.size()==1)
         {
             int cell_index = cells_of_face[0].index();
-            PartitionType cell_part = PartitionType(cell_indicator_[cell_index]);
+            Entity<0> cell0(*grid_data_, cell_index, true);
+            PartitionType cell_part = getPartitionType(cell0);
             if(cell_part!=OverlapEntity)
                 return cell_part;
             else
@@ -73,13 +66,12 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
                 // If the cell is in the overlap and the face is on the boundary,
                 // then the partition type has to Front! Here we check whether
                 // we are at the boundary.
-                Entity<0> cell(*grid_data_, cell_index, true);
-                OrientedEntityTable<0,1>::row_type cell_to_face=grid_data_->cell_to_face_[cell];
-                Entity<0>::LeafIntersectionIterator intersection=cell.ilevelbegin();
+                OrientedEntityTable<0,1>::row_type cell_to_face=grid_data_->cell_to_face_[cell0];
+                Entity<0>::LeafIntersectionIterator intersection=cell0.ilevelbegin();
                 for(int subindex=0; subindex<cell_to_face.size(); ++subindex, ++intersection)
                     if(cell_to_face[subindex].index()==i)
                         break;
-                assert(intersection!=cell.ilevelend());
+                assert(intersection!=cell0.ilevelend());
                 if(intersection.boundary())
                     return FrontEntity;
                 else
@@ -88,22 +80,22 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
         }
         else
         {
+            Entity<0> cell0(*grid_data_, cells_of_face[0].index(), true);
+            Entity<0> cell1(*grid_data_, cells_of_face[1].index(), true);
             if(cells_of_face[0].index()==std::numeric_limits<int>::max())
             {
                 assert(cells_of_face[1].index()!=std::numeric_limits<int>::max());
                 // At the boder of the processor's but not the global domain
-                return getProcessorBoundaryPartitionType(PartitionType(cell_indicator_[cells_of_face[1].index()]));
+                return getProcessorBoundaryPartitionType(getPartitionType(cell1));
             }
             if(cells_of_face[1].index()==std::numeric_limits<int>::max())
             {
                 assert(cells_of_face[0].index()!=std::numeric_limits<int>::max());
                 // At the boder of the processor's but not the global domain
-                return getProcessorBoundaryPartitionType(PartitionType(cell_indicator_[cells_of_face[0].index()]));
+                return getProcessorBoundaryPartitionType(getPartitionType(cell0));
             }
-
-            if(cell_indicator_[cells_of_face[0].index()]==
-               cell_indicator_[cells_of_face[1].index()])
-                return PartitionType(cell_indicator_[cells_of_face[0].index()]);
+            if(getPartitionType(cell0) == getPartitionType(cell1))
+                return getPartitionType(cell0);
             else
                 return BorderEntity;
         }
