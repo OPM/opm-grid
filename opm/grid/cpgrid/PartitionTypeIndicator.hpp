@@ -55,14 +55,11 @@ public:
     : grid_data_(&data)
     {}
     /// Get the partition type of a cell.
+    /// Distributed level zero grid, added LGRs afterwards: When the cell belongs to a refined level grid, partition type
+    /// is inherited from its parent cell from level zero.
     /// \param cell_entity The entity describing the cell
     /// \return The partition type of the cell.
-    PartitionType getPartitionType(const EntityRep<0>& cell_entity) const;
-    /// Get the partition type of a cell on a grid that has been distributed, and refined afterwards.
-    /// \param cell_entity The entity describing the cell (Entity::getOrigin() invoked, therefore EntityRep<0> not enough)
-    /// \param lgrsOnDistributedGrid
-    /// \return The partition type of the cell.
-    PartitionType getPartitionTypeWhenLgrs(const Entity<0>& cell_entity, bool lgrsOnDistributedGrid) const;
+    PartitionType getPartitionType(const Entity<0>& cell_entity) const;
     /// Get the partition type of a face.
     /// \param face_entity The entity describing the face
     /// \return The partition type of the face.

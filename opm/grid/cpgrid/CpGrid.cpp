@@ -2199,10 +2199,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
             for(const auto& element : elements(levelGridView(level))) {
-                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                if (element.partitionType() == InteriorEntity) {
                     ++local_owned_cells_per_level[level];
                 }
-                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == OverlapEntity) {
+                if (element.partitionType() == OverlapEntity) {
                     ++local_overlap_cells_per_level[level];
                 }
             }
@@ -2294,7 +2294,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             }
             for(const auto& element : elements(levelGridView(level))) {
-                if (element.partitionTypeWhenLgrs(globalActiveLgrs) == InteriorEntity) {
+                if (element.partitionType() == InteriorEntity) {
                     localToGlobal_owned_cells_per_level[level-1][element.index()] = globalIdCell;
                     ++globalIdCell;
                 }
@@ -2378,13 +2378,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         leaf_index_set.beginResize();
 
         for(const auto& element : elements(leafGridView())) {
-            const auto& elemPartitionType = element.getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+            const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
             if ( elemPartitionType == InteriorEntity) {
                 // Check if it has an overlap neighbor
                 bool isFullyInterior = true;
                 for (const auto& intersection : intersections(leafGridView(), element)) {
                     if ( intersection.neighbor() ) {
-                        const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionTypeWhenLgrs(globalActiveLgrs);
+                        const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionType();
                         // To help detection of fully interior cells, i.e., without overlap neighbors
                         if (neighborPartitionType == OverlapEntity )  {
                             isFullyInterior = false;
