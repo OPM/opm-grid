@@ -1091,7 +1091,14 @@ namespace Dune
 
     public:
 
+        /// @brief Compute for each level grid, a map from the global_cell_[ cell index in level grid ] to the leaf index of the equivalent cell
+        ///        on the leaf grid view.
+        ///        Notice that cells that vanished and do not appear on the leaf grid view will not be considered.
+        ///        global_cell_[ cell index in level grid ] coincide with (local) Cartesian Index.
+        std::vector<std::unordered_map<std::size_t, std::size_t>> mapLocalCartesianIndexSetsToLeafIndexSet() const;
 
+        /// @brief Reverse map: from leaf index cell to { level, local/level Cartesian index of the cell }
+        std::vector<std::array<int,2>> mapLeafIndexSetToLocalCartesianIndexSets() const;
 
         /// \brief Size of the overlap on the leaf level
         unsigned int overlapSize(int) const;
