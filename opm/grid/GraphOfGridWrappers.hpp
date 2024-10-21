@@ -161,6 +161,55 @@ namespace Opm {
       gog.addWell(w.second);
   }
 
+  /// \brief Add well cells' global IDs to the list
+  /// Output of the partitioning is missing vertices that were contracted.
+  /// This function fills in omitted gIDs and gives them the properties
+  /// (like process number and ownership) of their representative cell (well ID).
+  template<typename TheTuple>
+  void extendImportExportList (const GraphOfGrid<Dune::CpGrid>& gog,
+                 std::vector<TheTuple>& cellList)
+  {
+    // using TheTuple = std::tuple<int,int,char>; or std::tuple<int,int,char,int>
+    using CellList = std::vector<TheTuple>;
+    // make a list of wells for easy identification. Contains ID, begin, end
+    using iter = std::set<int>::const_iterator;
+    std::list<std::tuple<int,iter,iter>> wellList;
+    for (const auto& well : gog.getWells())
+      wellList.push_front(std::make_tuple(*well.begin(),well.begin(),well.end()));
+
+    CellList addToList;
+    // iterate once through the original cellList
+    for (const auto& cell : cellList)
+    {
+      // if a cell is in any well, add cells of the well to cellList
+      // and remove the well from the wellList to quicken the search
+      for (auto wID=wellList.begin(); wID!=wellList.end(); )
+      {
+        if (std::get<0>(*wID) == std::get<0>(cell))
+        {
+          for (auto pgID = std::get<1>(*wID); pgID!=std::get<2>(*wID); ++pgID)
+          {
+            // cells in one well have the same attributes (except ID)
+            if (*pgID!=std::get<0>(cell))
+            {
+              TheTuple wellCell = cell;
+              std::get<0>(wellCell) = *pgID;
+              addToList.push_back(wellCell);
+            }
+          }
+          wID = wellList.erase(wID);
+        }
+        else
+          ++wID;
+      }
+      if (wellList.empty())
+        break;
+    }
+    int totsize = cellList.size()+addToList.size();
+    cellList.reserve(totsize);
+    cellList.insert(cellList.end(),addToList.begin(),addToList.end());
+  }
+
 } // end namespace Opm
 
 #endif // GRAPH_OF_GRID_WRAPPERS_HEADER

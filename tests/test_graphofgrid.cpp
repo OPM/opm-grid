@@ -134,6 +134,7 @@ BOOST_AUTO_TEST_CASE(GraphWithWell)
     	{"lying 8 on the right face", {20,1,41,22,3,43,24} },
     	{"disconnected vertices", {58,12} } };
     addFutureConnectionWells(gog,wells);
+    BOOST_REQUIRE(gog.getWells().size()==3);
     int err;
     int nVer = getGraphOfGridNumVertices(&gog,&err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
@@ -170,6 +171,7 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
 			            //                         {2,8} and {2,38}
 	for (const auto& w : wells)
 		gog.addWell(w,false);
+    BOOST_REQUIRE(gog.getWells().size()==3);
 
     int err;
     int nVer = getGraphOfGridNumVertices(&gog,&err);
@@ -177,6 +179,7 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     BOOST_REQUIRE(nVer == 52);
 
 	gog.addWell(std::set<int>{37,38,39,34}); // intersects with previous
+    BOOST_REQUIRE(gog.getWells().size()==3);
     nVer = getGraphOfGridNumVertices(&gog,&err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 49);
@@ -186,7 +189,8 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 48);
 
-    gog.addWell(std::set<int>{2,38});
+    gog.addWell(std::set<int>{2,38}); // joins two wells
+    BOOST_REQUIRE(gog.getWells().size()==2);
     nVer = getGraphOfGridNumVertices(&gog,&err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 47);
@@ -274,6 +278,71 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     	}
     }
     BOOST_REQUIRE(checked==3);
+
+    const auto& wellList = gog.getWells();
+    BOOST_REQUIRE(wellList.size()==2);
+    std::set<int> well1{12,32,52};
+    std::set<int> well2{0,1,2,3,4,8,34,37,38,39,48,59};
+    if (wellList.begin()->size()==3)
+    {
+		BOOST_REQUIRE( *wellList.begin()==well1 );
+		BOOST_REQUIRE( *wellList.rbegin()==well2 );
+    }
+    else
+    {
+		BOOST_REQUIRE( *wellList.begin()==well2 );
+		BOOST_REQUIRE( *wellList.rbegin()==well1 );
+    }
+}
+
+// After partitioning, importList and exportList are not complete,
+// other cells from wells need to be added.
+BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
+{
+	// create a grid with wells
+	Dune::CpGrid grid;
+	std::array<int,3> dims{2,3,2};
+	std::array<double,3> size{1.,1.,1.};
+	grid.createCartesian(dims,size);
+	Opm::GraphOfGrid gog(grid);
+    gog.addWell(std::set<int>{0,1,2});
+    gog.addWell(std::set<int>{5,8,11});
+    const auto& wells = gog.getWells();
+    BOOST_REQUIRE(wells.size()==2);
+
+    // mock import and export lists
+    using importTuple = std::tuple<int,int,char,int>;
+    using exportTuple = std::tuple<int,int,char>;
+	using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+
+    std::vector<importTuple> imp(3);
+    imp[0] = std::make_tuple(0,1,AttributeSet::owner,1);
+    imp[1] = std::make_tuple(3,4,AttributeSet::copy,2);
+    imp[2] = std::make_tuple(5,0,AttributeSet::copy,3);
+    extendImportExportList(gog,imp);
+    BOOST_REQUIRE(imp.size()==7);
+    std::sort(imp.begin(),imp.end(),[](const auto& a, const auto& b){return std::get<0>(a) < std::get<0>(b);} );
+    BOOST_CHECK(std::get<0>(imp[5])==8);
+    BOOST_CHECK(std::get<1>(imp[5])==0);
+    BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
+    BOOST_CHECK(std::get<3>(imp[5])==3);
+    BOOST_CHECK(std::get<0>(imp[5])==8);
+    BOOST_CHECK(std::get<1>(imp[1])==1);
+    BOOST_CHECK(std::get<2>(imp[1])==AttributeSet::owner);
+    BOOST_CHECK(std::get<3>(imp[1])==1);
+
+    std::vector<exportTuple> exp(3);
+    exp[0] = std::make_tuple(0,1,AttributeSet::owner);
+    exp[1] = std::make_tuple(3,4,AttributeSet::copy);
+    exp[2] = std::make_tuple(5,0,AttributeSet::copy);
+    extendImportExportList(gog,exp);
+    std::sort(exp.begin(),exp.end(),[](const auto& a, const auto& b){return std::get<0>(a) < std::get<0>(b);} );
+    BOOST_CHECK(std::get<0>(imp[5])==8);
+    BOOST_CHECK(std::get<1>(imp[5])==0);
+    BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
+    BOOST_CHECK(std::get<0>(imp[5])==8);
+    BOOST_CHECK(std::get<1>(imp[1])==1);
+    BOOST_CHECK(std::get<2>(imp[1])==AttributeSet::owner);
 }
 
 bool

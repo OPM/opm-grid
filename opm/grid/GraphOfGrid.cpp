@@ -137,6 +137,8 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
     for (int gID : well)
     {
       // check if the cell is already in some well
+      if (newWell.find(gID)!=newWell.end())
+        continue;
       for (auto w=wells.begin(); w!=wells.end(); ++w)
       {
         if (w->find(gID)!=w->end())
@@ -151,6 +153,7 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
         }
       }
       wID = contractVertices(wID,gID);
+      assert(wID!=-1 && "Added well vertex was not found in the grid (or its wells).");
     }
     newWell.insert(well.begin(),well.end());
     wells.push_front(newWell);

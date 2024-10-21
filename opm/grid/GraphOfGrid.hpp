@@ -143,6 +143,12 @@ public:
   /// in another well(s) and merges them together.
   void addWell (const std::set<int>& well, bool checkIntersection=true);
 
+  /// \brief Return the list of wells
+  const auto& getWells () const
+  {
+    return wells;
+  }
+
 private:
   /// \brief Create a graph representation of the grid
   void createGraph (); // edge weight=1
