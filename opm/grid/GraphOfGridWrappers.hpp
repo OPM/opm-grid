@@ -39,7 +39,9 @@ namespace Opm {
   namespace {
     using ZOLTAN_ID_PTR = int*;
   }
-  /// \brief callback ftion for ZOLTAN_NUM_OBJ_FN
+
+  /// \brief callback function for ZOLTAN_NUM_OBJ_FN
+  ///
   /// returns the number of vertices in the graph
   int getGraphOfGridNumVertices(void* pGraph, int *err)
   {
@@ -50,10 +52,11 @@ namespace Opm {
   }
 
   /// \brief callback ftion for ZOLTAN_OBJ_LIST_FN
+  ///
   /// fills the vector gIDs with vertex global IDs
   ///  and the vector objWeights with their weights
   void getGraphOfGridVerticesList(void* pGraph,
-                                  int dimGlobalID,
+                                  [[maybe_unused]] int dimGlobalID,
                                   [[maybe_unused]] int dimLocalID,
                                   ZOLTAN_ID_PTR gIDs,
                                   [[maybe_unused]] ZOLTAN_ID_PTR lIDs,
@@ -76,10 +79,11 @@ namespace Opm {
   }
 
   /// \brief callback ftion for ZOLTAN_NUM_EDGES_MULTI_FN
+  ///
   /// takes the list of global IDs (gIDs) and fills (consecutively)
   /// vector numEdges with the number of their edges
   void getGraphOfGridNumEdges(void *pGraph,
-                              int dimGlobalID,
+                              [[maybe_unused]] int dimGlobalID,
                               [[maybe_unused]] int dimLocalID,
                               int numCells,
                               ZOLTAN_ID_PTR gIDs,
@@ -106,12 +110,14 @@ namespace Opm {
   }
 
   /// \brief callback ftion for ZOLTAN_EDGE_LIST_MULTI_FN
+  ///
   /// takes the list of global IDs (gIDs) and fills (consecutively):
   /// vector nborGIDs with the list of neighbors (all into 1 vector),
   /// vector nborProc with neighbors' process numbers,
   /// vector edgeWeights with edge weights.
   /// The vector numEdges provides the number of edges for each gID
-  void getGraphOfGridEdgeList(void *pGraph, int dimGlobalID,
+  void getGraphOfGridEdgeList(void *pGraph,
+                              [[maybe_unused]] int dimGlobalID,
                               [[maybe_unused]] int dimLocalID,
                               int numCells,
                               ZOLTAN_ID_PTR gIDs,
@@ -151,8 +157,8 @@ namespace Opm {
     *err = ZOLTAN_OK;
   }
 
-  // Wells:
   /// \brief Adds well to the GraphOfGrid
+  ///
   /// Adding the well contracts vertices of the well into one vertex.
   void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
      const std::unordered_map<std::string, std::set<int>>& wells)
@@ -162,6 +168,7 @@ namespace Opm {
   }
 
   /// \brief Add well cells' global IDs to the list
+  ///
   /// Output of the partitioning is missing vertices that were contracted.
   /// This function fills in omitted gIDs and gives them the properties
   /// (like process number and ownership) of their representative cell (well ID).

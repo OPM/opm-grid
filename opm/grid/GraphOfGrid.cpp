@@ -58,12 +58,6 @@ void GraphOfGrid<Grid>::createGraph ()
 template<typename Grid>
 int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
 {
-  // ensure gID1<gID2
-  if (gID1==gID2)
-      return gID1;
-  if (gID2<gID1)
-    std::swap(gID1,gID2);
-
   // check if the gIDs are in the graph or a well
   // do nothing if the vertex is not there
   auto pgID1 = find(gID1);

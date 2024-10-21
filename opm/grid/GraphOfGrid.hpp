@@ -94,6 +94,7 @@ public:
   }
 
   /// \brief Return properties of vertex of given ID.
+  ///
   /// If no such vertex exists, returns vertex with
   /// process -1, weight 0, and empty edgeList.
   /// If the vertex is in a well, return the well's vertex.
@@ -108,6 +109,7 @@ public:
   }
 
   /// \brief Number of vertices for given vertex
+  ///
   // returns -1 if vertex with such global ID is not in the graph (or wells)
   int numEdges (int gID) const
   {
@@ -132,6 +134,7 @@ public:
   }
 
   /// \brief Contract two vertices
+  ///
   /// Vertex weights are added, and edges are merged. Edge weights
   /// for their common neighbors are added up.
   /// Returns global ID of the resulting vertex, which is smaller ID.
@@ -139,6 +142,7 @@ public:
   int contractVertices (int gID1, int gID2);
 
   /// \brief Register the well to the list of wells
+  ///
   /// If checkIntersection==true, it checks if any of well's cells is
   /// in another well(s) and merges them together.
   void addWell (const std::set<int>& well, bool checkIntersection=true);
@@ -154,6 +158,7 @@ private:
   void createGraph (); // edge weight=1
 
   /// \brief Identify the well containing the cell with this global ID
+  ///
   /// returns the smallest cell-ID in the well or
   /// returns -1 if no well contains given gID
   int wellID (int gID) const;
