@@ -1666,11 +1666,6 @@ void CpGridData::computeCellPartitionType()
         partition_type_indicator_->cell_indicator_[i.local()]=
             i.local().attribute()==AttributeSet::owner?
             InteriorEntity:OverlapEntity;
-        if(partition_type_indicator_->cell_indicator_[i.local()] == OverlapEntity)
-         {
-             if ((i.global() == 1)) //|| (i.global() == 2))
-        std::cout << "i.local() " << i.local() << " " << i.global() << std::endl;
-         }
     }
 #endif
 }

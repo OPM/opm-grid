@@ -2190,11 +2190,54 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Distadvantage: it does not distinguish between activa and inactive cells.
         // (Alternatively, loop over elements/vertices in each level grid)
         /**TO DO: go back to old approach (loop over elemts/vertxs)! Benefit: inactive cells taken into consideration */
-        std::vector<std::size_t> prediction_lgr_cells_needing_new_globalId(cells_per_dim_vec.size(), 0);
+        std::vector<std::size_t> lgr_cells_needing_new_globalId(cells_per_dim_vec.size(), 0);
         // All of the refined cells need new globalIds - no nested refinement in this context.
-        std::vector<std::size_t> prediction_lgr_points_needing_new_globalId(cells_per_dim_vec.size(), 0);
+        std::vector<std::size_t> lgr_points_needing_new_globalId(cells_per_dim_vec.size(), 0);
         for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level)
         {
+            // Note: coarse grid represents "Level zero grid". Refined grids are associated with levels 1,.., maxLevel. 
+            // To predict amount of new global ids needed for refined cells owned by processes, we count the owned cells
+            // in each process, and "communicate the sum".
+            for (const auto& element : elements(levelGridView(level+1))) {
+                // By this point, partition_type_indicator_ for level grids is not defined since it requires
+                // cell_index_set_ definition. Therefore, we count refined owned cells by inheriting if the
+                // partition type of its parent cell in level zero grid.
+                // For the same reason, we cannot used (now) Dune's lookup "elements(levelGridView(level+1), Dune::Partitions::interior)".
+                if (element.partitionTypeWhenLgrs(globalActiveCells) == InteriorEntity) {
+                     // All refined cells are new entities (and there is no nested refinement in this context). Therefore,
+                    // a new global id per owned cell is needed.
+                    lgr_cells_needing_new_globalId[level] += 1;
+                }
+            }
+            // To predict the amount of new global ids needed for vertices in refined level grids, we count the vertices that
+            // do not coincide with vertices from level zero, and their partition type is not OverlapEntity.
+
+            // Compute the partition type for point
+            (*current_data_)[level+1]->computePointPartitionType(); // DOES THIS NEED PARTITION TYPE FOR CELLS?
+
+            // Global ids for points (for non-overlap points)
+            for (const auto& point : vertices(levelGridView(level))) {
+                // If point coincides with an existing corner from level zero, then it does not need a new global id.
+                if ( !(*current_data_)[level]->corner_history_.empty() ) {
+                    const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
+                    if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                        // Therefore, search and assign the global id of the previous existing equivalent corner.
+                        localToGlobal_points_per_level[level-1][point.index()] =
+                            current_data_->front()->global_id_set_->id( point.getOriginPoint() );
+                    }
+                    else {
+                        // Assign new global id only to non-overlap points that do not coincide with
+                        // any corners from level zero.
+                        if (point.partitionType() != OverlapEntity) {
+                            localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_per_level[level-1];
+                            ++min_globalId_point_per_level[level-1];
+                        }
+                    }
+                }
+            }
+                
+             }
+            
             // Dimesion of the block of parent cells to be refined.
             const auto& block_dim = currentData().front()->getPatchDim(startIJK_vec[level], endIJK_vec[level]);
             // Dimension of the refined level grid (LGR). 
@@ -2202,24 +2245,24 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                                  block_dim[1]*cells_per_dim_vec[level][1],
                                                  block_dim[2]*cells_per_dim_vec[level][2] };
             // All refined cells are new entities (and there is no nested refinement in this context).
-            prediction_lgr_cells_needing_new_globalId[level] = lgr_dim[0]*lgr_dim[1]*lgr_dim[2];
+            lgr_cells_needing_new_globalId[level] = lgr_dim[0]*lgr_dim[1]*lgr_dim[2];
             // New refined corners that do not coincide with any corner from level zero.
-            prediction_lgr_points_needing_new_globalId[level] = ((lgr_dim[0]+1)*(lgr_dim[1]+1)*(lgr_dim[2]+1)) // all lgr corners
+            lgr_points_needing_new_globalId[level] = ((lgr_dim[0]+1)*(lgr_dim[1]+1)*(lgr_dim[2]+1)) // all lgr corners
                 - ((block_dim[0]+1)*(block_dim[1]+1)*(block_dim[2]+1)); // minus corners that coincide with parent cell corners from level 0.
         }
 
-        auto expected_max_globalId_cell = comm().max( std::accumulate(prediction_lgr_cells_needing_new_globalId.begin(),
-                                                                      prediction_lgr_cells_needing_new_globalId.end(),
+        auto expected_max_globalId_cell = comm().max( std::accumulate(lgr_cells_needing_new_globalId.begin(),
+                                                                      lgr_cells_needing_new_globalId.end(),
                                                                       max_globalId_levelZero + 1) );
 
         std::vector<int> min_globalId_cell_per_level(cells_per_dim_vec.size(), 0);
         std::vector<int> min_globalId_point_per_level(cells_per_dim_vec.size(), 0);
         for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level) {
-            min_globalId_cell_per_level[level] = std::accumulate(prediction_lgr_cells_needing_new_globalId.begin(),
-                                                                 prediction_lgr_cells_needing_new_globalId.begin()+level,
+            min_globalId_cell_per_level[level] = std::accumulate(lgr_cells_needing_new_globalId.begin(),
+                                                                 lgr_cells_needing_new_globalId.begin()+level,
                                                                  max_globalId_levelZero + 1);
-            min_globalId_point_per_level[level] = std::accumulate(prediction_lgr_points_needing_new_globalId.begin(),
-                                                                  prediction_lgr_points_needing_new_globalId.begin()+level,
+            min_globalId_point_per_level[level] = std::accumulate(lgr_points_needing_new_globalId.begin(),
+                                                                  lgr_points_needing_new_globalId.begin()+level,
                                                                   expected_max_globalId_cell);
         }
 
