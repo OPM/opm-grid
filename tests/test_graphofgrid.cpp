@@ -51,8 +51,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     BOOST_REQUIRE(edgeL[6]==1.);
     BOOST_REQUIRE(edgeL[4]==0.); // not a neighbor (edgeL's size increased)
 
-    edgeL = gog.edgeList(10); // vertex 10 is not in the graph
-    BOOST_REQUIRE(edgeL.size()==0);
+    BOOST_REQUIRE_THROW(gog.edgeList(10),std::logic_error); // vertex 10 is not in the graph
 }
 
 // test vertex contraction on a simple graph
@@ -85,9 +84,10 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
     BOOST_REQUIRE(edgeL.size()==4);
     BOOST_REQUIRE(edgeL[3]==2);
     BOOST_REQUIRE(gog.edgeList(3).size()==2);
-    BOOST_REQUIRE(gog.edgeList(3)[0]==2);
-    BOOST_REQUIRE_MESSAGE(gog.getVertex(1).weight==0.,"Implementation detail: \
-        Looking up vertex not present in GraphofGrid gives dummy with weight 0.");
+    BOOST_REQUIRE(gog.edgeList(3).at(0)==2);
+    // contracting vertices removes higher ID from the graph
+    // (when well is added, IDs removed from the graph are stored in the well)
+    BOOST_REQUIRE_THROW(gog.getVertex(1),std::logic_error);
 
     auto v5e = gog.getVertex(5).edges;
     BOOST_REQUIRE(v5e==gog.edgeList(5));

@@ -105,12 +105,12 @@ public:
   /// If no such vertex exists, returns vertex with
   /// process -1, weight 0, and empty edgeList.
   /// If the vertex is in a well, return the well's vertex.
-  VertexProperties getVertex (int gID) const
+  const VertexProperties& getVertex (int gID) const
   {
     auto pgID = find(gID);
     if (pgID == graph.end())
     {
-      return VertexProperties{-1,0,{}};
+      OPM_THROW(std::logic_error, "GraphOfGrid::getVertex: gID is not in the graph!");
     }
     return pgID->second;
   }
@@ -132,18 +132,15 @@ public:
   }
 
   /// \brief List of neighbors for given vertex
-  EdgeList edgeList(int gID) const
+  const EdgeList& edgeList(int gID) const
   {
     // get iterator to the vertex or the well containing it
     auto pgID = find(gID);
     if (pgID==graph.end())
     {
-      return EdgeList{};
+      OPM_THROW(std::logic_error, "GraphOfGrid::edgeList: gID is not in the graph!");
     }
-    else
-    {
-      return pgID->second.edges;
-    }
+    return pgID->second.edges;
   }
 
   /// \brief Contract two vertices

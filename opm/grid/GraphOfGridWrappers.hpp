@@ -135,7 +135,7 @@ namespace Opm {
     int id=0;
     for (int i=0; i<numCells; ++i)
     {
-      auto eList = gog.edgeList(gIDs[i]);
+      const auto& eList = gog.edgeList(gIDs[i]);
       if ((int)eList.size()!=numEdges[i])
       {
         std::ostringstream ostr;
