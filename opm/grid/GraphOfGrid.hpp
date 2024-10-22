@@ -58,6 +58,11 @@ public:
     createGraph();
   }
 
+  const Grid& getGrid() const
+  {
+    return grid;
+  }
+
   /// \brief Number of graph vertices
   int size () const
   {
@@ -145,6 +150,9 @@ public:
   ///
   /// If checkIntersection==true, it checks if any of well's cells is
   /// in another well(s) and merges them together.
+  /// checkIntersection==false skips those (possibly expensive) checks
+  /// but leaves it to user to guarantee that wells are disjoint and
+  /// that all cell global IDs are in the graph
   void addWell (const std::set<int>& well, bool checkIntersection=true);
 
   /// \brief Return the list of wells

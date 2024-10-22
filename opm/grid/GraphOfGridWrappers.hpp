@@ -159,12 +159,37 @@ namespace Opm {
 
   /// \brief Adds well to the GraphOfGrid
   ///
+  /// Translates wells' cartesian ID to global ID used in the graph.
   /// Adding the well contracts vertices of the well into one vertex.
+  ///
+  /// checkWellIntersections==true makes the algorithm check if wells
+  /// intersect and if their cell IDs are present in the graph.
+  /// Setting it to false makes the algorithm faster but leaves user
+  /// responsible for keeping wells disjoint.
   void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
-     const std::unordered_map<std::string, std::set<int>>& wells)
+     const std::unordered_map<std::string, std::set<int>>& wells,
+     bool checkWellIntersections=true)
   {
-    for (const auto& w : wells)
-      gog.addWell(w.second);
+    // create compressed lookup from cartesian.
+    const auto& grid = gog.getGrid();
+    const auto& cpgdim = grid.logicalCartesianSize();
+    std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
+    for( int i=0; i < grid.numCells(); ++i )
+    {
+      cartesian_to_compressed[grid.globalCell()[i]] = i;
+    }
+
+    for (const auto& w: wells)
+    {
+      std::set<int> wellsgID;
+      for (const int& cell : w.second)
+      {
+        int gID = cartesian_to_compressed.at(cell);
+        assert(gID!=-1); // well should be an active cell
+        wellsgID.insert(gID);
+      }
+      gog.addWell(wellsgID,checkWellIntersections);
+    }
   }
 
   /// \brief Add well cells' global IDs to the list
