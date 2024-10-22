@@ -1,6 +1,8 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
+  Copyright 2024 Equinor ASA.
+
   This file is part of the Open Porous Media project (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -92,10 +94,6 @@ public:
         return graph.end();
       }
       pgID = graph.find(gID);
-#ifndef NDEBUG
-      // well ID should be in the graph
-      assert(pgID!=graph.end());
-#endif
     }
     return pgID;
   }
