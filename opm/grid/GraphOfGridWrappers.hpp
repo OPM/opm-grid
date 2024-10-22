@@ -207,7 +207,9 @@ namespace Opm {
     using iter = std::set<int>::const_iterator;
     std::list<std::tuple<int,iter,iter>> wellList;
     for (const auto& well : gog.getWells())
+    {
       wellList.push_front(std::make_tuple(*well.begin(),well.begin(),well.end()));
+    }
 
     CellList addToList;
     // iterate once through the original cellList
@@ -232,10 +234,14 @@ namespace Opm {
           wID = wellList.erase(wID);
         }
         else
+        {
           ++wID;
+        }
       }
       if (wellList.empty())
+      {
         break;
+      }
     }
     int totsize = cellList.size()+addToList.size();
     cellList.reserve(totsize);

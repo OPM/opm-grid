@@ -199,7 +199,9 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
                         // later add  std::set<int>{37,38,39,34},
                         //                         {2,8} and {2,38}
     for (const auto& w : wells)
+    {
         gog.addWell(w,false);
+    }
     BOOST_REQUIRE(gog.getWells().size()==3);
 
     int err;

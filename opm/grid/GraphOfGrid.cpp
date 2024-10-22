@@ -41,11 +41,17 @@ void GraphOfGrid<Grid>::createGraph ()
       const int face  = grid.cellFace(gID, face_lID);
       int otherCell   = grid.faceCell(face, 0);
       if (otherCell == -1) // -1 means no cell, face is at boundary
+      {
         continue;
+      }
       if (otherCell == gID)
+      {
         otherCell = grid.faceCell(face, 1);
+      }
       if (otherCell == -1)
+      {
         continue;
+      }
       WeightType weight = 1; // default edge weight
       vertex.edges.try_emplace(otherCell,weight);
     }
@@ -63,15 +69,21 @@ int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
   auto pgID1 = find(gID1);
   auto pgID2 = find(gID2);
   if (pgID1==graph.end() || pgID2==graph.end())
+  {
     return -1;
+  }
 
   gID1 = pgID1->first;
   gID2 = pgID2->first;
   // ensure that gID1<gID2
   if (gID1==gID2)
+  {
     return gID1;
+  }
   if (gID2<gID1)
+  {
     std::swap(gID1,gID2);
+  }
 
   // add up vertex weights
   graph[gID1].weight += graph[gID2].weight;
@@ -113,7 +125,9 @@ int GraphOfGrid<Grid>::wellID (int gID) const
   {
     auto pgID = w.find(gID);
     if (pgID!=w.end())
+    {
       return *(w.begin()); // well entries are ordered
+    }
   }
   return -1;
 }
@@ -132,14 +146,18 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
     {
       // check if the cell is already in some well
       if (newWell.find(gID)!=newWell.end())
+      {
         continue;
+      }
       for (auto w=wells.begin(); w!=wells.end(); ++w)
       {
         if (w->find(gID)!=w->end())
         {
           // gID is in another well => remap it and join wells
           if (wID==gID)
+          {
             wID = *(w->begin());
+          }
           gID = *(w->begin());
           newWell.insert(w->begin(),w->end());
           wells.erase(w);
@@ -155,7 +173,9 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
   else
   {
     for (int gID : well)
+    {
       wID = contractVertices(wID,gID);
+    }
     wells.emplace_front(well);
   }
 }

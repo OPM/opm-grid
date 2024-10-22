@@ -88,7 +88,9 @@ public:
     {
       gID = wellID(gID);
       if (gID == -1)
+      {
         return graph.end();
+      }
       pgID = graph.find(gID);
 #ifndef NDEBUG
       // well ID should be in the graph
@@ -120,9 +122,13 @@ public:
   {
     auto pgID = find(gID);
     if (pgID == graph.end())
+    {
       return -1;
+    }
     else
+    {
       return pgID->second.edges.size();
+    }
   }
 
   /// \brief List of neighbors for given vertex
@@ -135,7 +141,9 @@ public:
       return EdgeList{};
     }
     else
+    {
       return pgID->second.edges;
+    }
   }
 
   /// \brief Contract two vertices
