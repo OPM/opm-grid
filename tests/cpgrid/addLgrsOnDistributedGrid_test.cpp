@@ -360,14 +360,14 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding point ids.
     BOOST_CHECK( allIds_set.size() == allIds_vec.size());
 
-    // ------------------------------------------------------------- 
+    // -------------------------------------------------------------
     // Check global id is not duplicated for interior cells
     std::vector<int> localInteriorCellIds_vec;
     localInteriorCellIds_vec.reserve(data.back()->size(0)); // more than actually needed since only care about interior cells
     int local_interior_cells_count = 0;
     for (const auto& element: elements(coarse_grid.leafGridView())) {
-         const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
-         if ( elemPartitionType == Dune::InteriorEntity) {
+        const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
+        if ( elemPartitionType == Dune::InteriorEntity) {
             localInteriorCellIds_vec.push_back(data.back()->globalIdSet().id(element));
             ++local_interior_cells_count;
         }
@@ -388,6 +388,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     }
     auto [allGlobalIds_points, displPoint ] = Opm::allGatherv(localPointIds_vec, coarse_grid.comm());
 
+    /**TO DO: For distributed LGRs, refactor/correct the following check for point global ids on refined level grids. */
     // Create a set out of the collection of repeteated global ids for points.
     const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
     // Compute expected amount of global ids for points via cells_per_dim_vec, startIJK_vec, endIJK_vec
@@ -491,11 +492,13 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}, {3,2,2}};
         const std::vector<std::array<int,3>> endIJK_vec = {{2,1,2}, {1,1,4}, {4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-        // LGR1 element indices = 0,1,80,81 -> 4x(2x2x2) = 32 refined cells
-        // LGR2 element indices = 240  -> refined into 3x3x3 = 27 cells
-        // LGR3 element indices = 183 -> refined into 4x4x4 = 64 cells
+        // LGR1 element indices = 0,1,80,81 -> 32 refined cells                       LGR1 dim 4x2x4
+        // LGR2 element indices = 240  -> refined into 3x3x3 = 27 cells               LGR2 dim 3x3x3
+        // LGR3 element indices = 183 -> refined into 4x4x4 = 64 cells                LGR3 dim 4x4x4
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-        
+
+        // 10x8x8 -6 + 32 + 27 + 64 = 757
+        // 11x9x9 + (75-18) + (64-8) + (125-8) = 1121
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
@@ -532,6 +535,12 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
+        // LGR1 dim 1x2x1 (16 refined cells)
+        // LGR2 dim 1x1x1 (27 refined cells)
+        // LGR3 dim 1x1x1 (64 refined cells)
+        // LGR4 dim 1x2x1 (16 refined cells) 3x5x3
+        // Total global ids in leaf grid view for cells: 36-(6 marked cells) + 16 + 27 + 64 + 16 = 153
+        // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
@@ -588,3 +597,222 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
         BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
     }
 }
+
+/* Commented due to restriction of fully interior LGRs. Used for developping a new approach to assign global ids when the
+   LGRs are distributed in different processes. To completely remove the assumption of fully interior LGRs, communication
+   is needed. 
+BOOST_AUTO_TEST_CASE(distributed_lgr)
+{
+    // Only for testing assignment of new global ids for refined entities (cells and point belonging to
+    // refined level grids).
+
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,1,1}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = 1 (rank 0), 2 (rank 2). Total 16 refined cells, 45 points (45-12 = 33 with new global id).
+
+        // LGR1 dim 2x1x1 (16 refined cells) (45 points - only 33 new points)
+
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+        // Check global id is not duplicated for interior cells
+        std::vector<int> cell_global_ids;
+        cell_global_ids.reserve(grid.currentData()[1]->size(0));
+        for (const auto& element: elements(grid.levelGridView(1))){
+            if (element.partitionType() == Dune::InteriorEntity) {
+                cell_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(element));
+            }
+        }
+        cell_global_ids.shrink_to_fit();
+        auto [all_level_cell_global_ids, displ] = Opm::allGatherv(cell_global_ids, grid.comm());
+        const std::set<int> all_level_cell_global_ids_set(all_level_cell_global_ids.begin(), all_level_cell_global_ids.end());
+        BOOST_CHECK( all_level_cell_global_ids.size() == all_level_cell_global_ids_set.size() );
+
+
+        // Check global id is not duplicated for points
+        std::vector<int> point_global_ids;
+        point_global_ids.reserve(grid.currentData()[1]->size(3));
+        for (const auto& point : vertices(grid.levelGridView(1))) {
+            point_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
+        }
+        point_global_ids.shrink_to_fit();
+        auto [all_level_point_global_ids, displPoint ] = Opm::allGatherv(point_global_ids, grid.comm());
+        const std::set<int> all_level_point_global_ids_set(all_level_point_global_ids.begin(), all_level_point_global_ids.end());
+        // Notice that cells 1 and 2 form a block of dimension 2x1x1.
+        // 4 points equivalent to 4 corners in face shared between cell 1 and 2 in level zero are counted twice:
+        // 1. as border points in P0 for level 1.
+        // 2. as border points in P2 for level 1.
+        // Therefore, all_level_point_global_ids contains two times 4 global ids from level zero corresponding to the 4 corners of the face
+        // shared between cells 9 and 10, 'which is part of the boundary of P0 and P2'.
+        BOOST_CHECK( all_level_point_global_ids.size() - 4 == all_level_point_global_ids_set.size() );
+
+        //BOOST_CHECK( all_level_point_global_ids_set.size() == 45 );
+
+        // Commented since communication step is not implemented yet, therefore refined level grids lack of
+        // global ids for non-interior entities, and the leaf cell index of the leaf grid vie
+        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(distributed_lgr_II)
+{
+    // Only for testing assignment of new global ids for refined entities (cells and point belonging to
+    // refined level grids).
+
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,2,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,3,1}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = 8,9 (rank 0), 10 (rank 2). Total 24 refined cells, 63 points (63-16 = 47 with new global id).
+
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+        // Check global id is not duplicated for interior cells
+        std::vector<int> cell_global_ids;
+        cell_global_ids.reserve(grid.currentData()[1]->size(0));
+        for (const auto& element: elements(grid.levelGridView(1))){
+            if (element.partitionType() == Dune::InteriorEntity) {
+                cell_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(element));
+            }
+        }
+        cell_global_ids.shrink_to_fit();
+        auto [all_level_cell_global_ids, displ] = Opm::allGatherv(cell_global_ids, grid.comm());
+        const std::set<int> all_level_cell_global_ids_set(all_level_cell_global_ids.begin(), all_level_cell_global_ids.end());
+        BOOST_CHECK( all_level_cell_global_ids.size() == all_level_cell_global_ids_set.size() );
+
+
+        // Check global id is not duplicated for points
+        std::vector<int> point_global_ids;
+        point_global_ids.reserve(grid.currentData()[1]->size(3));
+        for (const auto& point : vertices(grid.levelGridView(1))) {
+            point_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
+        }
+        point_global_ids.shrink_to_fit();
+        auto [all_level_point_global_ids, displPoint ] = Opm::allGatherv(point_global_ids, grid.comm());
+        const std::set<int> all_level_point_global_ids_set(all_level_point_global_ids.begin(), all_level_point_global_ids.end());
+        // Notice that cells 8,9, and 10 form a block of dimension 3x1x1.
+        // From the 4x2x2 = 16 parent cell corners, only 4 are partition type interior or border.
+        BOOST_CHECK( all_level_point_global_ids.size()-4 == all_level_point_global_ids_set.size());
+
+        // BOOST_CHECK( all_level_point_global_ids_set.size() == 63 );
+
+        // Commented since communication step is not implemented yet, therefore refined level grids lack of
+        // global ids for non-interior entities, and the leaf cell index of the leaf grid vie
+        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
+{
+    // Only for testing assignment of new global ids for refined entities (cells and point belonging to
+    // refined level grids).
+
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = {1,2,5,6,13,14,17,18} where
+        // 1,5 in rank 0,
+        // 13,17 in rank 1,
+        // 2,6,18 in rank 2,
+        // 14 in rank 3.
+        // Block of cells to refine dim 2x2x2. LGR1 dim 4x4x4.
+        // 64 new refined cells. 5x5x5 = 125 points (only 98 = 125 - 3x3x3 parent corners new points - new global ids).
+        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+
+        // Check global id is not duplicated for interior cells
+        std::vector<int> cell_global_ids;
+        cell_global_ids.reserve(grid.currentData()[1]->size(0));
+        for (const auto& element: elements(grid.levelGridView(1))){
+            if (element.partitionType() == Dune::InteriorEntity) {
+                cell_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(element));
+            }
+        }
+        cell_global_ids.shrink_to_fit();
+        auto [all_level_cell_global_ids, displ] = Opm::allGatherv(cell_global_ids, grid.comm());
+        const std::set<int> all_level_cell_global_ids_set(all_level_cell_global_ids.begin(), all_level_cell_global_ids.end());
+        BOOST_CHECK( all_level_cell_global_ids.size() == all_level_cell_global_ids_set.size() );
+
+        // Check global id is not duplicated for points
+        std::vector<int> point_global_ids;
+        point_global_ids.reserve(grid.currentData()[1]->size(3));
+        for (const auto& point : vertices(grid.levelGridView(1))) {
+            point_global_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
+        }
+        point_global_ids.shrink_to_fit();
+        auto [all_level_point_global_ids, displPoint ] = Opm::allGatherv(point_global_ids, grid.comm());
+        const std::set<int> all_level_point_global_ids_set(all_level_point_global_ids.begin(), all_level_point_global_ids.end());
+        // Notice that LGR1 element indices = {1,2,5,6,13,14,17,18} where
+        // 1,5 in rank 0,
+        // 13,17 in rank 1,
+        // 2,6,18 in rank 2,
+        // 14 in rank 3.
+        // form a block of cells to refine dim 2x2x2. LGR1 dim 4x4x4. From the 3x3x3 = 27 parent cell corners, only 21 are partition type
+        // interior or border.
+        BOOST_CHECK( all_level_point_global_ids.size()-21 == all_level_point_global_ids_set.size());
+
+        //refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
+*/

@@ -36,7 +36,6 @@ PartitionType PartitionTypeIndicator::getPointPartitionType(int index) const
     return InteriorEntity;
 }
 
-
 PartitionType getProcessorBoundaryPartitionType(PartitionType)
 {
     return FrontEntity;
