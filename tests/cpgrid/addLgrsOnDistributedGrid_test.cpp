@@ -491,11 +491,13 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}, {3,2,2}};
         const std::vector<std::array<int,3>> endIJK_vec = {{2,1,2}, {1,1,4}, {4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-        // LGR1 element indices = 0,1,80,81 -> 4x(2x2x2) = 32 refined cells
-        // LGR2 element indices = 240  -> refined into 3x3x3 = 27 cells
-        // LGR3 element indices = 183 -> refined into 4x4x4 = 64 cells
+        // LGR1 element indices = 0,1,80,81 -> 32 refined cells                       LGR1 dim 4x2x4
+        // LGR2 element indices = 240  -> refined into 3x3x3 = 27 cells               LGR2 dim 3x3x3
+        // LGR3 element indices = 183 -> refined into 4x4x4 = 64 cells                LGR3 dim 4x4x4
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-        
+
+        // 10x8x8 -6 + 32 + 27 + 64 = 757
+        // 11x9x9 + (75-18) + (64-8) + (125-8) = 1121
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
@@ -532,6 +534,12 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
         // LGR4 element indices = 27, 31 in rank 3.Total 16 refined cells, 45 points (45-12 = 33 with new global id).
         grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 
+        // LGR1 dim 1x2x1 (16 refined cells)
+        // LGR2 dim 1x1x1 (27 refined cells)
+        // LGR3 dim 1x1x1 (64 refined cells)
+        // LGR4 dim 1x2x1 (16 refined cells) 3x5x3
+        // Total global ids in leaf grid view for cells: 36-(6 marked cells) + 16 + 27 + 64 + 16 = 153
+        // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }

@@ -2177,8 +2177,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
 
-
-
     int non_empty_lgrs = 0;
     for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
         // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
@@ -2206,159 +2204,123 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
     // - Define ParallelIndex for overlap cells and their neighbors
     if(comm().size()>1) {
-
-        // Compute local owned/overlap cells per level (level 0, and new levels).
-        std::vector<int> local_owned_cells_per_level(cells_per_dim_vec.size() +1);
-        std::vector<int> local_overlap_cells_per_level(cells_per_dim_vec.size() +1);
-        std::vector<int> global_cells_per_level(cells_per_dim_vec.size() +1);
-
-        // Compute local owned/overlap cells per level (level 0, and new levels).
-        std::vector<int> local_owned_points_per_level(cells_per_dim_vec.size() +1);
-        std::vector<int> local_overlap_points_per_level(cells_per_dim_vec.size() +1);
-        std::vector<int> global_points_per_level(cells_per_dim_vec.size() +1);
-
-        for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
-            for(const auto& element : elements(levelGridView(level))) {
-                if (element.partitionType() == InteriorEntity) {
-                    ++local_owned_cells_per_level[level];
-                }
-                if (element.partitionType() == OverlapEntity) {
-                    ++local_overlap_cells_per_level[level];
-                }
-            }
-            global_cells_per_level[level] = comm().sum(local_owned_cells_per_level[level]);
-            if (level)
-            {
-                for (const auto& point : vertices(levelGridView(level))) {
-                    if (point.partitionType() == InteriorEntity) {
-                        const auto& bornLevel =  (*current_data_)[level]->corner_history_[point.index()][0];
-                        if(bornLevel == -1) { // It means that the corner is a new born one, i.e. does not
-                            // coincide with any corner from level zero.
-                            ++local_owned_points_per_level[level];
-                        }
-                    }
-                    if (point.partitionType() == OverlapEntity) {
-                        ++local_overlap_points_per_level[level];
-                    }
-                }
-                global_points_per_level[level] = comm().sum(local_owned_points_per_level[level]
-                                                            + local_overlap_points_per_level[level]);
-            }
-        }
-        auto global_refined_cell_count = std::accumulate(global_cells_per_level.begin()+1, global_cells_per_level.end(), 0);
-        // Comment on "almost" global refined point count: notice that points that belong to refined level grids but at the same time
-        // coincide with a point from level zero (with a parent cell corner) must not create a new global id. Therefore,
-        // "almost_global_refined_point_count" represents (not the total amount of points f all refined grids) the global amount of
-        // new born points that need to get a new global id.
-        auto almost_global_refined_point_count = std::accumulate(global_points_per_level.begin()+1, global_points_per_level.end(), 0);
-
-        // Next value takes into account only cells and points, faces are ignored.
+#if HAVE_MPI
+        // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
+        // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
         auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
-        global_points_per_level[0] = max_globalId_levelZero +1 - global_cells_per_level[0];
+        
+        // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign uniquily
+        // new ids ( and anticipat the maximum).
+        // At this point, neither cell_index_set_ nor partition_type_indicator_ are populated.
+        // Refined level grid cells:
+        //    1. Inherit their partition type from their parent cell (i.e., element.father().partitionType()).
+        //    2. Assign global ids only for interior cells.
+        // Refined level grid points/vertices:
+        //    1. Challenge: <refined level grid>.computePointPartitionType(). This requires face and cell partition type to be defined. For
+        //       a grid with LGRs, this can be done on the fly. Under the assumption of fully interior LGRs, all refined level grid
+        //       points are interior. 
+        //    2. Previous step allows us to assign uniquily global ids to non-overlap points.
+        // Under the assumption of LGRs fully-interior, no communication is needed. In the general case, communication will be used
+        // to populate overlap cell/point global ids on the refined level grids.
+       
+        std::vector<std::size_t> lgr_cells_needing_new_globalId(cells_per_dim_vec.size(), 0);
+        // All of the refined cells need new globalIds - no nested refinement in this context.
+        std::vector<std::size_t> lgr_points_needing_new_globalId(cells_per_dim_vec.size(), 0);
+        
+        for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level)
+        {
+            // Dimesion of the block of parent cells to be refined.
+            const auto& block_dim = currentData().front()->getPatchDim(startIJK_vec[level], endIJK_vec[level]);
+            // Dimension of the refined level grid (LGR).
+            const std::array<int,3>& lgr_dim = { block_dim[0]*cells_per_dim_vec[level][0],
+                                                 block_dim[1]*cells_per_dim_vec[level][1],
+                                                 block_dim[2]*cells_per_dim_vec[level][2] };
+            // All refined cells are new entities (and there is no nested refinement in this context).
+            lgr_cells_needing_new_globalId[level] = lgr_dim[0]*lgr_dim[1]*lgr_dim[2];
+            // New refined corners that do not coincide with any corner from level zero.
+            lgr_points_needing_new_globalId[level] = ((lgr_dim[0]+1)*(lgr_dim[1]+1)*(lgr_dim[2]+1)) // all lgr corners
+                - ((block_dim[0]+1)*(block_dim[1]+1)*(block_dim[2]+1)); // minus corners that coincide with parent cell corners from level 0.
+        }
 
-        // -- Global variables used to define new ids for cells and points respectively. --
-        // The first new global id for cells is the maximum global id from level 0 plus 1.
-        auto globalIdCell = max_globalId_levelZero+1;
-        // The values max_globalId_levelZero +1, max_globalId_levelZero +2, ..., max_globalId_levelZero + global_refined_cell_count
-        // will be used for defining global ids for CELLS in the refined level grids (level 1, ..., level maxLevel).
-        // Notice that  global_refined_cell_count represents the global and total amount of new refined cells.
+        auto expected_max_globalId_cell = comm().max( std::accumulate(lgr_cells_needing_new_globalId.begin(),
+                                                                      lgr_cells_needing_new_globalId.end(),
+                                                                      max_globalId_levelZero + 1) );
 
-        // (Most of) The values max_globalId_levelZero+global_refined_cell_count +1, max_globalId_levelZero+global_refined_cell_count+2, ...,
-        // max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count
-        // will be used for defining global ids for POINTS in the refined level grids (level 1, ..., level maxLevel).
-        // Notice that almost_global_refined_point_count does not represent exactly the global amount of NEW points, since there are a few
-        // that coincide with corners from parent cells. For those, the global id must be tracked from level 0. Therefore, "almost" appears
-        // in the variable name.
-        auto globalIdPoint = max_globalId_levelZero + global_refined_cell_count +1;
-
+        std::vector<int> min_globalId_cell_per_level(cells_per_dim_vec.size(), 0);
+        std::vector<int> min_globalId_point_per_level(cells_per_dim_vec.size(), 0);
+        for (std::size_t level = 0; level < cells_per_dim_vec.size(); ++level) {
+            min_globalId_cell_per_level[level] = std::accumulate(lgr_cells_needing_new_globalId.begin(),
+                                                                 lgr_cells_needing_new_globalId.begin()+level,
+                                                                 max_globalId_levelZero + 1);
+            min_globalId_point_per_level[level] = std::accumulate(lgr_points_needing_new_globalId.begin(),
+                                                                  lgr_points_needing_new_globalId.begin()+level,
+                                                                  expected_max_globalId_cell);
+        }
 
         // Only for level 1,2,.., maxLevel grids.
         // For each level, define the local-to-global maps for cells and points (for faces: empty).
-        // The "owned_cells/points" is to emphasize that we are under the assumption that each lgr is fully contained
-        // in one process, i.e., surrounding by other interior cells. Therefore all the new refined cells and points
-        // are/should be also interior.
-        // TO DO: For the general case, how to handle overlap of refined cells.
-        std::vector<std::vector<int>> localToGlobal_owned_cells_per_level(cells_per_dim_vec.size());
-        std::vector<std::vector<int>> localToGlobal_owned_points_per_level(cells_per_dim_vec.size());
+        // 1) Assignment of new global ids is done only for owned cells and non-overlap points.
+        // 2) For overlap cells and points: communicate. Not needed under the assumption of fully interior LGRs.
+        std::vector<std::vector<int>> localToGlobal_cells_per_level(cells_per_dim_vec.size(), std::vector<int>{});
+        std::vector<std::vector<int>> localToGlobal_points_per_level(cells_per_dim_vec.size(), std::vector<int>{});
         // Ignore faces - empty vectors.
-        std::vector<std::vector<int>> localToGlobal_owned_faces_per_level(cells_per_dim_vec.size());
+        std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size(), std::vector<int>{});
 
-        
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-            localToGlobal_owned_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
-            localToGlobal_owned_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
-            // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells.
-            // This is only true under the assumption of each lgr completly contained in a process.
-            // Therefore, all new refined cells for one LGR belong to a process and are interior,
-            // with parent cells in level zero who are surrounding by other interior cells of the
-            // same process.
+            localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
+            localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
+            // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
 
-            // Recall that, thanks to the few computations regarding global amount of cells and points for each level,
-            // assignment of global ids is done by shifting the maximum global id from level zero in a suitable way
-            // (described in more detail above). However, an extra check is needed: if a process contains more than one lgr,
-            // i.e. more than one non empty level grid, then globalIdCell and globalIdPoint do not need to be shifted, since
-            // "they reached these shifted values" by being increment (++globalIdCell/Point). Therefore, through the variable
-            // "expectedGlobalIdCell", it can be detected when a lower level lgr was contained in the same process that the current
-            // lgr we are computing global ids for.
-            // Notice that it is enough to check either expetedGlobalIdCell or expectedGlobalIdPoint (which is not defined here).
-            if ((level>1) && (lgrs_with_at_least_one_active_cell[level-1]>0)) {
-                int expectedGlobalIdCell = max_globalId_levelZero+1;
-                for (std::size_t lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
-                    expectedGlobalIdCell += global_cells_per_level[lowerLevel];
-                }
-                if(globalIdCell < expectedGlobalIdCell) {
-                    for (std::size_t lowerLevel = 1; lowerLevel < level; ++lowerLevel) {
-                        globalIdCell += global_cells_per_level[lowerLevel];
-                        globalIdPoint += global_points_per_level[lowerLevel];
-                    }
-                }
-            }
-            for(const auto& element : elements(levelGridView(level))) {
+            // Global ids for cells (for owned cells)
+            auto level_min_global_id_cell = comm().max( min_globalId_cell_per_level[level - 1]);
+            auto level_min_global_id_point = comm().max( min_globalId_point_per_level[level - 1]);
+            for (const auto& element : elements(levelGridView(level))) {
                 if (element.partitionType() == InteriorEntity) {
-                    localToGlobal_owned_cells_per_level[level-1][element.index()] = globalIdCell;
-                    ++globalIdCell;
+                    localToGlobal_cells_per_level[level - 1][element.index()] = level_min_global_id_cell;
+                    ++level_min_global_id_cell;
+                    ++min_globalId_cell_per_level[level - 1];
                 }
             }
+            // Compute the partition type for point
+            (*current_data_)[level]->computePointPartitionType();
+
+            // Global ids for points (for non-overlap points)
             for (const auto& point : vertices(levelGridView(level))) {
-                // Checking if the point is interior, under the assumption of fully interior lgrs, is not needed.
-                if (point.partitionType() == InteriorEntity) {
-                    if ( !(*current_data_)[level]->corner_history_.empty() ) {
-                        const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
-                        if (bornLevel_bornIdx[0] != -1)  {
-                            const auto& equivPoint =  cpgrid::Entity<3>(*( (*current_data_)[ bornLevel_bornIdx[0]]),  bornLevel_bornIdx[1], true);
-                            localToGlobal_owned_points_per_level[level-1][point.index()] =  current_data_->front()->global_id_set_->id(equivPoint);
-                            // Notice that
-                            // 1. current_data_->front()->global_id_set_->id(equivPoint) == (*current_data_)[ bornLevel_bornIdx[0]]->global_id_set_->id(equivPoint)
-                            // 2. (*current_data_)[level]->global_id_set_->id(point) does not coincide with the previous values
-                            //    considered in 1. The reason why they differ is due to the "default instantiation" of a CpGridData where local and
-                            //    global id sets coincide (default for a serial run, grid without lgrs).
-                        }
-                        else {
-                            localToGlobal_owned_points_per_level[level-1][point.index()] = globalIdPoint;
-                            ++globalIdPoint;
+                // If point coincides with an existing corner from level zero, then it does not need a new global id.
+                if ( !(*current_data_)[level]->corner_history_.empty() ) {
+                    const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
+                    if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                        // Therefore, search and assign the global id of the previous existing equivalent corner.
+                        const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                        localToGlobal_points_per_level[level-1][point.index()] =
+                            current_data_->front()->global_id_set_->id( equivPoint );
+                    }
+                    else {
+                        // Assign new global id only to non-overlap points that do not coincide with
+                        // any corners from level zero.
+                        if (point.partitionType() != OverlapEntity) {
+                            localToGlobal_points_per_level[level-1][point.index()] = level_min_global_id_point;
+                            ++level_min_global_id_point;
+                            ++min_globalId_point_per_level[level-1];
                         }
                     }
                 }
             }
-            localToGlobal_owned_cells_per_level[level-1].shrink_to_fit(); // Not needed in this special case without overlap refined cells
-            localToGlobal_owned_points_per_level[level-1].shrink_to_fit(); // Not needed in this special case without overlap refined points
+            // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
+            // for overlap cells and points.
 
-            // Currently, only fully interior LGRs are supported. Therefore, global_id_set_
-            // is defined only in the process that owns at least one LGR.
+            // Global id set for each (refined) level grid.
             if(lgrs_with_at_least_one_active_cell[level-1]>0) {
-                (*current_data_)[level]->global_id_set_->swap(localToGlobal_owned_cells_per_level[level-1],
-                                                              localToGlobal_owned_faces_per_level[level-1],
-                                                              localToGlobal_owned_points_per_level[level-1]);
+                (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
+                                                              localToGlobal_faces_per_level[level-1],
+                                                              localToGlobal_points_per_level[level-1]);
             }
         } // end-for-loop-level
-        assert(globalIdCell <= max_globalId_levelZero + global_refined_cell_count +1);
-        assert(globalIdPoint <= max_globalId_levelZero + global_refined_cell_count + almost_global_refined_point_count+1);
-        
 
         ////////////////////////////////
 
         // Global id for the cells in leaf grid view
-        std::vector<int> leafCellIds(current_data_->back()->size(0));
+        std::vector<int> leafCellIds(current_data_->back()->size(0), 0);
         for(const auto& element: elements(leafGridView())){
             // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
             // under the assumption of each lgr being fully contained in the interior of a process.
@@ -2390,10 +2352,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
         }
 
-#if HAVE_MPI
         auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
-        // Compute the partition type for cell
-        (*current_data_).back()->computeCellPartitionType();
+
 
         leaf_index_set.beginResize();
 
@@ -2429,6 +2389,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         leaf_index_set.endResize();
 
         (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
+
+        // Compute the partition type for cell
+        (*current_data_).back()->computeCellPartitionType();
 
         // Compute the partition type for point
         (*current_data_).back()->computePointPartitionType();
