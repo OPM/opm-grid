@@ -47,6 +47,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/CellQuadrature.cpp
   opm/grid/ColumnExtract.cpp
   opm/grid/FaceQuadrature.cpp
+  opm/grid/GraphOfGrid.cpp
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp
@@ -126,6 +127,7 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
+	  tests/test_graphofgrid.cpp
   )
 endif()
 
@@ -232,6 +234,8 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/CellQuadrature.hpp
   opm/grid/ColumnExtract.hpp
   opm/grid/FaceQuadrature.hpp
+  opm/grid/GraphOfGrid.hpp
+  opm/grid/GraphOfGridWrappers.hpp
   opm/grid/GridHelpers.hpp
   opm/grid/GridManager.hpp
   opm/grid/GridUtilities.hpp
