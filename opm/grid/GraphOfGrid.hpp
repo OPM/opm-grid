@@ -26,8 +26,6 @@
 #ifndef OPM_GRAPH_OF_GRID_HEADER
 #define OPM_GRAPH_OF_GRID_HEADER
 
-#include <forward_list>
-#include <config.h>
 #include <opm/grid/CpGrid.hpp>
 
 namespace Opm {
@@ -43,140 +41,140 @@ namespace Opm {
 /// to ensure that no well is split between processes.
 template<typename Grid>
 class GraphOfGrid{
-  using WeightType = float;
-  using EdgeList = std::unordered_map<int,WeightType>;
+    using WeightType = float;
+    using EdgeList = std::unordered_map<int,WeightType>;
 
-  struct VertexProperties
-  {
-    int nproc = 0; // number of processor
-    WeightType weight = 1; // vertex weight
-    EdgeList edges;
-  };
+    struct VertexProperties
+    {
+        int nproc = 0; // number of processor
+        WeightType weight = 1; // vertex weight
+        EdgeList edges;
+    };
 
 public:
-  explicit GraphOfGrid (const Grid& grid_)
-    : grid(grid_)
-  {
-    createGraph();
-  }
-
-  const Grid& getGrid() const
-  {
-    return grid;
-  }
-
-  /// \brief Number of graph vertices
-  int size () const
-  {
-    return graph.size();
-  }
-
-  auto begin() const
-  {
-    return graph.begin();
-  }
-  auto end() const
-  {
-    return graph.end();
-  }
-
-  /// \brief Get iterator to the vertex with this global ID
-  /// or ID of the well containing it
-  auto find(int gID) const
-  {
-    // search the graph first, and then wells
-    auto pgID = graph.find(gID);
-    if (pgID == graph.end())
+    explicit GraphOfGrid (const Grid& grid_)
+        : grid(grid_)
     {
-      gID = wellID(gID);
-      if (gID == -1)
-      {
+        createGraph();
+    }
+
+    const Grid& getGrid() const
+    {
+        return grid;
+    }
+
+    /// \brief Number of graph vertices
+    int size () const
+    {
+        return graph.size();
+    }
+
+    auto begin() const
+    {
+        return graph.begin();
+    }
+    auto end() const
+    {
         return graph.end();
-      }
-      pgID = graph.find(gID);
     }
-    return pgID;
-  }
 
-  /// \brief Return properties of vertex of given ID.
-  ///
-  /// If no such vertex exists, returns vertex with
-  /// process -1, weight 0, and empty edgeList.
-  /// If the vertex is in a well, return the well's vertex.
-  const VertexProperties& getVertex (int gID) const
-  {
-    auto pgID = find(gID);
-    if (pgID == graph.end())
+    /// \brief Get iterator to the vertex with this global ID
+    /// or ID of the well containing it
+    auto find(int gID) const
     {
-      OPM_THROW(std::logic_error, "GraphOfGrid::getVertex: gID is not in the graph!");
+        // search the graph first, and then wells
+        auto pgID = graph.find(gID);
+        if (pgID == graph.end())
+        {
+            gID = wellID(gID);
+            if (gID == -1)
+            {
+                return graph.end();
+            }
+            pgID = graph.find(gID);
+        }
+        return pgID;
     }
-    return pgID->second;
-  }
 
-  /// \brief Number of vertices for given vertex
-  ///
-  // returns -1 if vertex with such global ID is not in the graph (or wells)
-  int numEdges (int gID) const
-  {
-    auto pgID = find(gID);
-    if (pgID == graph.end())
+    /// \brief Return properties of vertex of given ID.
+    ///
+    /// If no such vertex exists, returns vertex with
+    /// process -1, weight 0, and empty edgeList.
+    /// If the vertex is in a well, return the well's vertex.
+    const VertexProperties& getVertex (int gID) const
     {
-      return -1;
+        auto pgID = find(gID);
+        if (pgID == graph.end())
+        {
+            OPM_THROW(std::logic_error, "GraphOfGrid::getVertex: gID is not in the graph!");
+        }
+        return pgID->second;
     }
-    else
+
+    /// \brief Number of vertices for given vertex
+    ///
+    // returns -1 if vertex with such global ID is not in the graph (or wells)
+    int numEdges (int gID) const
     {
-      return pgID->second.edges.size();
+        auto pgID = find(gID);
+        if (pgID == graph.end())
+        {
+            return -1;
+        }
+        else
+        {
+            return pgID->second.edges.size();
+        }
     }
-  }
 
-  /// \brief List of neighbors for given vertex
-  const EdgeList& edgeList(int gID) const
-  {
-    // get iterator to the vertex or the well containing it
-    auto pgID = find(gID);
-    if (pgID==graph.end())
+    /// \brief List of neighbors for given vertex
+    const EdgeList& edgeList(int gID) const
     {
-      OPM_THROW(std::logic_error, "GraphOfGrid::edgeList: gID is not in the graph!");
+        // get iterator to the vertex or the well containing it
+        auto pgID = find(gID);
+        if (pgID==graph.end())
+        {
+            OPM_THROW(std::logic_error, "GraphOfGrid::edgeList: gID is not in the graph!");
+        }
+        return pgID->second.edges;
     }
-    return pgID->second.edges;
-  }
 
-  /// \brief Contract two vertices
-  ///
-  /// Vertex weights are added, and edges are merged. Edge weights
-  /// for their common neighbors are added up.
-  /// Returns global ID of the resulting vertex, which is smaller ID.
-  /// If either gID is in a well, well's ID can be returned if it is smaller.
-  int contractVertices (int gID1, int gID2);
+    /// \brief Contract two vertices
+    ///
+    /// Vertex weights are added, and edges are merged. Edge weights
+    /// for their common neighbors are added up.
+    /// Returns global ID of the resulting vertex, which is smaller ID.
+    /// If either gID is in a well, well's ID can be returned if it is smaller.
+    int contractVertices (int gID1, int gID2);
 
-  /// \brief Register the well to the list of wells
-  ///
-  /// If checkIntersection==true, it checks if any of well's cells is
-  /// in another well(s) and merges them together.
-  /// checkIntersection==false skips those (possibly expensive) checks
-  /// but leaves it to user to guarantee that wells are disjoint and
-  /// that all cell global IDs are in the graph
-  void addWell (const std::set<int>& well, bool checkIntersection=true);
+    /// \brief Register the well to the list of wells
+    ///
+    /// If checkIntersection==true, it checks if any of well's cells is
+    /// in another well(s) and merges them together.
+    /// checkIntersection==false skips those (possibly expensive) checks
+    /// but leaves it to user to guarantee that wells are disjoint and
+    /// that all cell global IDs are in the graph
+    void addWell (const std::set<int>& well, bool checkIntersection=true);
 
-  /// \brief Return the list of wells
-  const auto& getWells () const
-  {
-    return wells;
-  }
+    /// \brief Return the list of wells
+    const auto& getWells () const
+    {
+        return wells;
+    }
 
 private:
-  /// \brief Create a graph representation of the grid
-  void createGraph (); // edge weight=1
+    /// \brief Create a graph representation of the grid
+    void createGraph (); // edge weight=1
 
-  /// \brief Identify the well containing the cell with this global ID
-  ///
-  /// returns the smallest cell-ID in the well or
-  /// returns -1 if no well contains given gID
-  int wellID (int gID) const;
+    /// \brief Identify the well containing the cell with this global ID
+    ///
+    /// returns the smallest cell-ID in the well or
+    /// returns -1 if no well contains given gID
+    int wellID (int gID) const;
 
-  const Grid& grid;
-  std::unordered_map<int, VertexProperties> graph; // <gID, VertexProperties>
-  std::list<std::set<int>> wells;
+    const Grid& grid;
+    std::unordered_map<int, VertexProperties> graph; // <gID, VertexProperties>
+    std::list<std::set<int>> wells;
 };
 
 } // namespace Opm

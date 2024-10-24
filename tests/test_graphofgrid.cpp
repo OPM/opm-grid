@@ -33,6 +33,7 @@
 #include <opm/grid/CpGrid.hpp>
 
 #include <opm/grid/GraphOfGrid.hpp>
+#include <opm/grid/GraphOfGridWrappers.hpp>
 
 // basic test to check if the graph was constructed correctly
 BOOST_AUTO_TEST_CASE(SimpleGraph)
@@ -51,7 +52,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     BOOST_REQUIRE(edgeL[0]==1.);
     BOOST_REQUIRE(edgeL[3]==1.);
     BOOST_REQUIRE(edgeL[6]==1.);
-    BOOST_REQUIRE(edgeL[4]==0.); // not a neighbor (edgeL's size increased)
+    BOOST_REQUIRE_THROW(edgeL.at(4),std::out_of_range); // not a neighbor (edgeL's size increased)
 
     BOOST_REQUIRE_THROW(gog.edgeList(10),std::logic_error); // vertex 10 is not in the graph
 }
@@ -67,17 +68,17 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
 
     auto edgeL = gog.edgeList(3); // std::map<int,float>(gID,edgeWeight)
     BOOST_REQUIRE(edgeL[1]==1);
-    BOOST_REQUIRE(edgeL[0]==0);
+    BOOST_REQUIRE_THROW(edgeL.at(0),std::out_of_range);
     gog.contractVertices(0,1);
     BOOST_REQUIRE(gog.size()==7);
     edgeL = gog.edgeList(3);
-    BOOST_REQUIRE(edgeL[1]==0);
+    BOOST_REQUIRE_THROW(edgeL.at(1),std::out_of_range);
     BOOST_REQUIRE(edgeL[0]==1);
     edgeL = gog.edgeList(0);
     BOOST_REQUIRE(edgeL.size()==4);
     BOOST_REQUIRE(edgeL[2]==1); // neighbor of 0
     BOOST_REQUIRE(edgeL[3]==1); // neighbor of 1
-    BOOST_REQUIRE(edgeL[1]==0); // removed vertex, former neighbor of 0
+    BOOST_REQUIRE_THROW(edgeL.at(1),std::out_of_range); // removed vertex, former neighbor of 0
 
     gog.contractVertices(0,2);
     BOOST_REQUIRE(gog.size()==6);
@@ -97,8 +98,6 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
     BOOST_REQUIRE(v5e!=gog.edgeList(7));
 
 }
-
-#include <opm/grid/GraphOfGridWrappers.hpp>
 
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 {
@@ -354,7 +353,6 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     imp[2] = std::make_tuple(5,0,AttributeSet::copy,3);
     extendImportExportList(gog,imp);
     BOOST_REQUIRE(imp.size()==7);
-    std::sort(imp.begin(),imp.end(),[](const auto& a, const auto& b){return std::get<0>(a) < std::get<0>(b);} );
     BOOST_CHECK(std::get<0>(imp[5])==8);
     BOOST_CHECK(std::get<1>(imp[5])==0);
     BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
@@ -369,7 +367,6 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     exp[1] = std::make_tuple(3,4,AttributeSet::copy);
     exp[2] = std::make_tuple(5,0,AttributeSet::copy);
     extendImportExportList(gog,exp);
-    std::sort(exp.begin(),exp.end(),[](const auto& a, const auto& b){return std::get<0>(a) < std::get<0>(b);} );
     BOOST_CHECK(std::get<0>(imp[5])==8);
     BOOST_CHECK(std::get<1>(imp[5])==0);
     BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
