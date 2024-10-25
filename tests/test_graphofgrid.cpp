@@ -31,6 +31,7 @@
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 #include <opm/grid/CpGrid.hpp>
+#include <dune/istl/owneroverlapcopy.hh>
 
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>

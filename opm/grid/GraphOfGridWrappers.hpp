@@ -219,47 +219,42 @@ void extendImportExportList (const GraphOfGrid<Dune::CpGrid>& gog,
     using CellList = std::vector<TheTuple>;
     // make a list of wells for easy identification. Contains ID, begin, end
     using iter = std::set<int>::const_iterator;
-    std::list<std::tuple<int,iter,iter>> wellList;
+    std::unordered_map<int,std::tuple<iter,iter>> wellMap;
     for (const auto& well : gog.getWells())
     {
-        wellList.push_front(std::make_tuple(*well.begin(),well.begin(),well.end()));
+        wellMap[*well.begin()] = std::make_tuple(well.begin(),well.end());
     }
 
     CellList addToList;
     // iterate once through the original cellList
-    for (const auto& cell : cellList)
+    for (const auto& cellProperties : cellList)
     {
         // if a cell is in any well, add cells of the well to cellList
-        // and remove the well from the wellList to quicken the search
-        for (auto wID=wellList.begin(); wID!=wellList.end(); )
+        auto pWell = wellMap.find(std::get<0>(cellProperties));
+        if (pWell!=wellMap.end())
         {
-            if (std::get<0>(*wID) == std::get<0>(cell))
+            const auto& [begin,end] = std::pair(std::get<0>(pWell->second),std::get<1>(pWell->second));
+            for (auto pgID = begin; pgID!=end; ++pgID)
             {
-                for (auto pgID = std::get<1>(*wID); pgID!=std::get<2>(*wID); ++pgID)
+                // cells in one well have the same attributes (except ID)
+                if (*pgID!=std::get<0>(cellProperties)) // avoid adding cell that is already in the list
                 {
-                    // cells in one well have the same attributes (except ID)
-                    if (*pgID!=std::get<0>(cell))
-                    {
-                        TheTuple wellCell = cell;
-                        std::get<0>(wellCell) = *pgID;
-                        addToList.push_back(wellCell);
-                    }
+                    TheTuple wellCell = cellProperties;
+                    std::get<0>(wellCell) = *pgID;
+                    addToList.push_back(wellCell);
                 }
-                wID = wellList.erase(wID);
             }
-            else
-            {
-              ++wID;
-            }
+            wellMap.erase(pWell);
         }
-        if (wellList.empty())
+
+        if (wellMap.empty())
         {
             break;
         }
     }
     std::sort(addToList.begin(),addToList.end(),[](const auto& a, const auto& b){return std::get<0>(a)<std::get<0>(b);});
-    int origSize = cellList.size();
-    int totsize = origSize+addToList.size();
+    auto origSize = cellList.size();
+    auto totsize = origSize+addToList.size();
     cellList.reserve(totsize);
     cellList.insert(cellList.end(),addToList.begin(),addToList.end());
     std::inplace_merge(cellList.begin(),cellList.begin()+origSize,cellList.end());
