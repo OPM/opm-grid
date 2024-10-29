@@ -28,6 +28,7 @@
 
 #include <opm/common/OpmLog/OpmLog.hpp>
 #include <opm/grid/GraphOfGrid.hpp>
+#include <opm/grid/common/WellConnections.hpp>
 
 namespace Opm {
 /*
@@ -203,6 +204,22 @@ void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
             wellsgID.insert(gID);
         }
         gog.addWell(wellsgID,checkWellIntersections);
+    }
+}
+
+/// \brief Add WellConnections to the GraphOfGrid
+///
+/// checkWellIntersections==true makes the algorithm check if wells
+/// intersect and if their cell IDs are present in the graph.
+/// Setting it to false makes the algorithm faster but leaves user
+/// responsible for keeping wells disjoint.
+void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
+               const Dune::cpgrid::WellConnections& wells,
+                                               bool checkWellIntersections=true)
+{
+    for (const auto& w : wells)
+    {
+      gog.addWell(w,checkWellIntersections);
     }
 }
 

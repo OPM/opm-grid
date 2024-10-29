@@ -36,6 +36,11 @@
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
 
+#include <opm/grid/utility/OpmWellType.hpp>
+#include <opm/input/eclipse/Schedule/Well/Connection.hpp>
+#include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
+#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+
 // basic test to check if the graph was constructed correctly
 BOOST_AUTO_TEST_CASE(SimpleGraph)
 {
@@ -326,6 +331,128 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
         BOOST_REQUIRE( *wellList.begin()==well2 );
         BOOST_REQUIRE( *wellList.rbegin()==well1 );
     }
+}
+
+// Create yet another small grid with wells and test graph properties.
+// This time wells are supplied via OpmWellType interface
+BOOST_AUTO_TEST_CASE(addWellConnections)
+{
+    // create a grid
+    Dune::CpGrid grid;
+    std::array<int,3> dims{2,2,2};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    Opm::GraphOfGrid gog(grid);
+    BOOST_REQUIRE(gog.size()==8);
+
+    // create Wells, we only use well name and cell locations
+    auto createConnection = [](int i, int j, int k)
+    {
+        return Opm::Connection(i,j,k,0, 0,Opm::Connection::State::OPEN,
+                                   Opm::Connection::Direction::Z,
+                                   Opm::Connection::CTFKind::DeckValue, 0,
+                                   5.,Opm::Connection::CTFProperties(),0,false);
+    };
+    auto createWell = [](const std::string& name)
+    {
+        using namespace Opm;
+        return Dune::cpgrid::OpmWellType(name,name,0,0,0,0,0.,WellType(),
+                   Well::ProducerCMode(),Connection::Order(),UnitSystem(),
+                   0.,0.,false,false,0,Well::GasInflowEquation());
+    };
+
+    auto wellCon = std::make_shared<Opm::WellConnections>(); // do not confuse with Dune::cpgrid::WellConnections
+    wellCon->add(createConnection(0,0,0));
+    wellCon->add(createConnection(0,1,0));
+    wellCon->add(createConnection(0,1,1));
+    std::vector<Dune::cpgrid::OpmWellType> wells;
+    wells.push_back(createWell("first"));
+    wells[0].updateConnections(wellCon,true);
+
+    wellCon = std::make_shared<Opm::WellConnections>(); //reset
+    wellCon->add(createConnection(0,0,1));
+    wellCon->add(createConnection(1,1,0));
+    wells.push_back(createWell("second"));
+    wells[1].updateConnections(wellCon,true);
+
+    wellCon = std::make_shared<Opm::WellConnections>(); //reset
+    wellCon->add(createConnection(0,0,1));
+    wellCon->add(createConnection(1,0,1));
+    wells.push_back(createWell("third")); // intersects with second
+    wells[2].updateConnections(wellCon,true);
+
+    Dune::cpgrid::WellConnections wellConnections(wells,std::unordered_map<std::string, std::set<int>>(),gog.getGrid());
+    BOOST_REQUIRE(wellConnections.size()==3);
+    BOOST_REQUIRE(wellConnections[0]==(std::set<int>{0,2,6}));
+    BOOST_REQUIRE(wellConnections[1].size()==2);
+    BOOST_REQUIRE(wellConnections[1]==(std::set<int>{3,4}));
+    BOOST_REQUIRE(wellConnections[2].size()==2);
+    BOOST_REQUIRE(wellConnections[2]==(std::set<int>{4,5}));
+
+    Opm::addWellConnections(gog,wellConnections,true);
+    BOOST_REQUIRE(gog.size()==4);
+    BOOST_REQUIRE(gog.getWells().size()==2); // second and third got merged (in gog)
+
+    int err;
+    int nVer = getGraphOfGridNumVertices(&gog,&err);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
+    BOOST_REQUIRE(nVer == 4);
+    int gIDs[nVer], lIDs[0];
+    float objWeights[nVer];
+    getGraphOfGridVerticesList(&gog, 1, 1, gIDs, lIDs, 1, objWeights, &err);
+    BOOST_REQUIRE(err=ZOLTAN_OK);
+    std::sort(gIDs,gIDs+nVer);
+    BOOST_REQUIRE(gIDs[0]==0 && gIDs[1]==1 && gIDs[2]==3 && gIDs[3]==7);
+    int numEdges[nVer];
+    getGraphOfGridNumEdges(&gog, 1, 1, nVer, gIDs, lIDs, numEdges, &err);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
+    BOOST_REQUIRE(numEdges[0]==3 && numEdges[1]==2 && numEdges[2]==3 && numEdges[3]==2);
+    int nEdges = 10; // sum of numEdges[i]
+    int nborGIDs[nEdges], nborProc[nEdges];
+    float edgeWeights[nEdges];
+    getGraphOfGridEdgeList(&gog, 1, 1, nVer, gIDs, lIDs, numEdges, nborGIDs, nborProc, 1, edgeWeights, &err);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
+
+    // check all edgeWeights. Note that nborGIDs are not sorted
+    for (int i=0; i<3; ++i)
+    {
+        switch (nborGIDs[i])
+        {
+            case 1: BOOST_REQUIRE(edgeWeights[i]==1); break;
+            case 3: BOOST_REQUIRE(edgeWeights[i]==3); break;
+            case 7: BOOST_REQUIRE(edgeWeights[i]==1); break;
+            default: throw("GraphOfGrid was constructed badly.");
+        }
+    }
+    for (int i=3; i<5; ++i)
+    {
+        switch (nborGIDs[i])
+        {
+            case 0: BOOST_REQUIRE(edgeWeights[i]==1); break;
+            case 3: BOOST_REQUIRE(edgeWeights[i]==2); break;
+            default: throw("GraphOfGrid was constructed badly.");
+        }
+    }
+    for (int i=5; i<8; ++i)
+    {
+        switch (nborGIDs[i])
+        {
+            case 0: BOOST_REQUIRE(edgeWeights[i]==3); break;
+            case 1: BOOST_REQUIRE(edgeWeights[i]==2); break;
+            case 7: BOOST_REQUIRE(edgeWeights[i]==2); break;
+            default: throw("GraphOfGrid was constructed badly.");
+        }
+    }
+    for (int i=8; i<10; ++i)
+    {
+        switch (nborGIDs[i])
+        {
+            case 0: BOOST_REQUIRE(edgeWeights[i]==1); break;
+            case 3: BOOST_REQUIRE(edgeWeights[i]==2); break;
+            default: throw("GraphOfGrid was constructed badly.");
+        }
+    }
+
 }
 
 // After partitioning, importList and exportList are not complete,
