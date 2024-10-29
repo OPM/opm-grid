@@ -205,6 +205,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PartitionIteratorRule.hpp
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp
+	opm/grid/cpgrid/RefinedCellToPointGlobalIdHandle.hpp
   opm/grid/common/CartesianIndexMapper.hpp
   opm/grid/common/GridEnums.hpp
   opm/grid/common/LevelCartesianIndexMapper.hpp

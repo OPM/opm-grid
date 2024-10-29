@@ -76,7 +76,6 @@ struct ParentToChildrenCellGlobalIdHandle {
         const auto& globalId = globalIdSet_levelZero_.id(element);
         if (!gather_parent_to_children_cells_globalIds_[globalId].empty()) {
             const auto& children_list = gather_parent_to_children_cells_globalIds_[globalId];
-            std::cout << children_list.size() << std::endl;
             return children_list.size(); // zero for non-parent cells
         } else {
             return 0;

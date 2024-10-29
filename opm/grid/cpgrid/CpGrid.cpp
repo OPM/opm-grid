@@ -51,6 +51,7 @@
 
 #include "../CpGrid.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
+#include "RefinedCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
@@ -2255,9 +2256,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         }
         comm().allgather(&local_point_ids_needed, 1, point_ids_needed_by_proc.data());
 
-        auto expected_max_globalId_cell = comm().max( std::accumulate(cell_ids_needed_by_proc.begin(),
+        auto expected_max_globalId_cell = std::accumulate(cell_ids_needed_by_proc.begin(),
                                                                       cell_ids_needed_by_proc.end(),
-                                                                      max_globalId_levelZero + 1) );
+                                                                      max_globalId_levelZero + 1);
         auto min_globalId_cell_in_proc = std::accumulate(cell_ids_needed_by_proc.begin(),
                                                          cell_ids_needed_by_proc.begin()+comm().rank(),
                                                          max_globalId_levelZero + 1);
@@ -2274,20 +2275,29 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Ignore faces - empty vectors.
         std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
-        // To communicate assigned global ids of interior cells to define global ids of overlap cells, we will use the map
-        // parent-to-children-cell-global-ids and its respective DataHandle. parent_to_children_cell_global_ids has size
-        // total amount of global cells in level zero, computed below as 'levelZero_cellGlobalIds_count'.
+        // To define the global IDs of overlapping cells, we will communicate the assigned global IDs of interior cells
+        // using a map called 'parent_to_children_cell_global_ids' and its associated DataHandle.
+        // This map links each parent cell to its corresponding child cell global IDs.
+        // The size of 'parent_to_children_cell_global_ids' corresponds to the total number of global cells at level zero,
+        // calculated below as 'levelZero_cellGlobalIds_count'.
         auto levelZero_cellGlobalIds_count = comm().max(current_data_->front()->global_id_set_->getMaxCodimGlobalId<0>());
         // parent_to_children_cell_global_ids [ global id of a parent cell ] = { global id of child 0, global id child 1, ...},
-        // or empty vector if the cell has been not refined (in every processes). 
+        // or empty vector if the cell has been not refined (in every processes).
         std::vector<std::vector<int>> parent_to_children_cell_global_ids(levelZero_cellGlobalIds_count, std::vector<int>{});
         const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
+
+        // To communicate global ids of interior and border points and define global ids of overlap and front points,
+        // ...
+        std::unordered_map<int,std::vector<std::size_t>> refined_cell_to_point_global_ids;
         
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
             localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
             // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
 
+             // Auxiliary container with 0s and 1s to keep track of the points that have already been assigned a global id.
+            std::vector<bool> has_global_id((*current_data_)[level]-> size(3)); // 0 it needs global id, 1 global id has been already assigned.
+            
             // Global ids for cells (for owned cells)
             for (const auto& element : elements(levelGridView(level))) {
                 if (element.partitionType() == InteriorEntity) {
@@ -2308,37 +2318,62 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     parent_to_children_cell_global_ids[parent_global_id].resize(children_list.size());
                     // Store the global id of the refined cell ("in the right entry", i.e. position-in-children-list index).
                     parent_to_children_cell_global_ids[parent_global_id][index_in_children_list] =  localToGlobal_cells_per_level[level - 1][element.index()];
-                }
-            }
-            // Global ids for points (global ids might be overestimated, but still unique).
-            for (const auto& point : vertices(levelGridView(level))) {
-                // If point coincides with an existing corner from level zero, then it does not need a new global id.
-                if ( !(*current_data_)[level]->corner_history_.empty() ) {
-                    const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
-                    if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
-                        // Therefore, search and assign the global id of the previous existing equivalent corner.
-                        const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
-                        localToGlobal_points_per_level[level-1][point.index()] =
-                            current_data_->front()->global_id_set_->id( equivPoint );
-                    }
-                    else {
-                        // Assign a global ID to points that do not coincide with any corners from level zero.
-                        // This ID may be overwritten later when parallel indices and level cell index sets
-                        // are defined for all level grids, particularly in cases where LGRs may be distributed
-                        // across processes.
-                        localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
-                        ++min_globalId_point_in_proc;
-                    }
+
+
+                    // Global ids for points (for interior and border points)
+                    const auto& cell_to_point = currentData()[level]->cell_to_point_[element.index()];
+                    std::vector<std::size_t> cell_to_point_global_ids(cell_to_point.size(), 0);
+                    // Ordering of the corners in cell_to_point is
+                    // Bottom:     2 --- 3    Top:   6 --- 7
+                    //            /     /           /     /
+                    //           0 --- 1           4 --- 5
+                    for (std::size_t point_idx = 0; point_idx < cell_to_point.size(); ++point_idx) {
+                        const auto& point = cell_to_point[point_idx];
+                        // Check if point entity is interior or border, otherwise, skip.
+                        const auto& point_entity = cpgrid::Entity<3>(*( (*current_data_)[level]), point, true);
+                        if ( (point_entity.partitionType() == InteriorEntity) || (point_entity.partitionType() == BorderEntity)) {
+                            if (has_global_id[point] == 0) {
+
+                                // If point coincides with an existing corner from level zero, then it does not need a new global id.
+                                if ( !(*current_data_)[level]->corner_history_.empty() ) {
+                                    // Check if it coincides with a corner from level zero. In that case, no global id is needed.
+                                    const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point];
+                                    if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                                        // Therefore, search and assign the global id of the previous existing equivalent corner.
+                                        const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                                        localToGlobal_points_per_level[level-1][point] = current_data_->front()->global_id_set_->id( equivPoint );
+                                        cell_to_point_global_ids[point_idx] =  current_data_->front()->global_id_set_->id( equivPoint );
+                                    }
+                                    else {
+                                        // Assign new global id only to non-overlap points that do not coincide with
+                                        // any corners from level zero.
+                                        localToGlobal_points_per_level[level-1][point] = min_globalId_point_in_proc;
+                                        cell_to_point_global_ids[point_idx] = min_globalId_point_in_proc;
+                                        ++min_globalId_point_in_proc;
+                                    }
+                                }
+                                // Mark corner as already assigned gloobal id
+                                has_global_id[point] = 1;
+                            } // end-if-has-global-id
+                        }
+                        refined_cell_to_point_global_ids[localToGlobal_cells_per_level[level - 1][element.index()] /*global id*/] = cell_to_point_global_ids;
+                    } // end-cell_to_point-for-loop
                 }
             }
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
             // for overlap cells and points.
             if ( lgrsFullyInteriorHasFailed ) {
                 const auto& globalIdSet_levelZero = current_data_->front()->global_id_set_;
-                ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalIds_handle(parent_to_children_cell_global_ids, *globalIdSet_levelZero);
-                current_data_->front()->communicate(parentToChildrenGlobalIds_handle,
+                ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children_cell_global_ids, *globalIdSet_levelZero);
+                current_data_->front()->communicate(parentToChildrenGlobalId_handle,
                                                     Dune::InteriorBorder_All_Interface,
                                                     Dune::ForwardCommunication );
+
+                RefinedCellToPointGlobalIdHandle refinedToPointGlobalId_handle(refined_cell_to_point_global_ids, localToGlobal_cells_per_level[level - 1]);
+                currentData()[level]->communicate(refinedToPointGlobalId_handle,
+                                                  Dune::InteriorBorder_All_Interface,
+                                                  Dune::ForwardCommunication);
+
 
                 for (const auto& element : elements(levelGridView(level))) {
                     if (element.partitionType() == OverlapEntity) {
@@ -2352,14 +2387,42 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         // Get position-in-children-list index (the index described above).
                         const auto& index_in_children_list =  currentData()[level]->cell_to_idxInParentCell_[element.index()];
                         localToGlobal_cells_per_level[level - 1][element.index()] = parent_to_children_cell_global_ids[parent_global_id][index_in_children_list];
-                    }
-                }
-                // Global ids for points overlap points. TO DO.
-                for (const auto& point : vertices(levelGridView(level))) {
-                        if ( (point.partitionType() == OverlapEntity) || (point.partitionType() == FrontEntity)) {
-                        //localToGlobal_points_per_level[level-1][point.index()] = TBD.
-                    }
-                }
+
+
+                        // Global ids for points (for front and overlap points)
+                        const auto& cell_to_point_global_ids = refined_cell_to_point_global_ids.at(localToGlobal_cells_per_level[level - 1][element.index()]);
+                        const auto& cell_to_point = currentData()[level]->cell_to_point_[element.index()];
+                        // Ordering of the corners in cell_to_point is
+                        // Bottom:     2 --- 3    Top:   6 --- 7
+                        //            /     /           /     /
+                        //           0 --- 1           4 --- 5
+                        for (std::size_t point_idx = 0; point_idx < cell_to_point.size(); ++point_idx) {
+                            const auto& point = cell_to_point[point_idx];
+                            // Check if point entity is interior or border, otherwise, skip.
+                            const auto& point_entity = cpgrid::Entity<3>(*( (*current_data_)[level]), point, true);
+                            if ( (point_entity.partitionType() == FrontEntity) || (point_entity.partitionType() == OverlapEntity)) {
+                                if (has_global_id[point] == 0) {
+                                    // If point coincides with an existing corner from level zero, then it does not need a new global id.
+                                    if ( !(*current_data_)[level]->corner_history_.empty() ) {
+                                        // Check if it coincides with a corner from level zero. In that case, no global id is needed.
+                                        const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point];
+                                        if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                                            // Therefore, search and assign the global id of the previous existing equivalent corner.
+                                            const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                                            localToGlobal_points_per_level[level-1][point] = current_data_->front()->global_id_set_->id( equivPoint );
+                                        }
+                                        else {
+                                            // Lookup global id 
+                                            localToGlobal_points_per_level[level-1][point] = cell_to_point_global_ids[point_idx];
+                                        }
+                                    }
+                                    // Mark corner as already assigned gloobal id
+                                    has_global_id[point] = 1;
+                                } // end-if-has-global-id
+                            } // end-if-front-overlap
+                        } // end-point_idx-for-loop
+                    } // end-element-overlap
+                } // end-element
             }
             // Global id set for each (refined) level grid.
             if(lgr_with_at_least_one_active_cell[level-1]>0) {
