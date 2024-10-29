@@ -50,6 +50,7 @@
 #endif
 
 #include "../CpGrid.hpp"
+#include "ParentToChildrenCellGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
@@ -2273,6 +2274,15 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Ignore faces - empty vectors.
         std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
+        // To communicate assigned global ids of interior cells to define global ids of overlap cells, we will use the map
+        // parent-to-children-cell-global-ids and its respective DataHandle. parent_to_children_cell_global_ids has size
+        // total amount of global cells in level zero, computed below as 'levelZero_cellGlobalIds_count'.
+        auto levelZero_cellGlobalIds_count = comm().max(current_data_->front()->global_id_set_->getMaxCodimGlobalId<0>());
+        // parent_to_children_cell_global_ids [ global id of a parent cell ] = { global id of child 0, global id child 1, ...},
+        // or empty vector if the cell has been not refined (in every processes). 
+        std::vector<std::vector<int>> parent_to_children_cell_global_ids(levelZero_cellGlobalIds_count, std::vector<int>{});
+        const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
+        
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
             localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
@@ -2283,6 +2293,21 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 if (element.partitionType() == InteriorEntity) {
                     localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
                     ++min_globalId_cell_in_proc;
+
+                    // Get global id from parent cell.
+                    const auto& parent_global_id = current_data_->front()->global_id_set_->id(element.father());
+                    // Get "element siblings local indices", i.e. complete list of local indices for all children from parent cell.
+                    const auto& [lgr, children_list] = parent_to_children[element.father().index()];
+                    // The children_list follows a specific ordering based on the total amount of children in each of the x,y, and z directions.
+                    // If the parent cell is subdivided into NX, NY, and NZ child cells along the x-,y-, and z-direction respectively,
+                    // then children are stored in 'ijk', where the index i changes fastest (x-direction), followed by j (y-direction), and
+                    // finally, k (z-direction). As a result, each child is assigned an index ranging from 0 to (NXxNYNZ -1) in the children_list,
+                    // corresponding to its position in this ordering.
+                    // Get position-in-children-list index (the index described above).
+                    const auto& index_in_children_list =  currentData()[level]->cell_to_idxInParentCell_[element.index()];
+                    parent_to_children_cell_global_ids[parent_global_id].resize(children_list.size());
+                    // Store the global id of the refined cell ("in the right entry", i.e. position-in-children-list index).
+                    parent_to_children_cell_global_ids[parent_global_id][index_in_children_list] =  localToGlobal_cells_per_level[level - 1][element.index()];
                 }
             }
             // Global ids for points (global ids might be overestimated, but still unique).
@@ -2308,8 +2333,34 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
             // for overlap cells and points.
-            /** TODO: Set up the parallel index set correctly. */
+            if ( lgrsFullyInteriorHasFailed ) {
+                const auto& globalIdSet_levelZero = current_data_->front()->global_id_set_;
+                ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalIds_handle(parent_to_children_cell_global_ids, *globalIdSet_levelZero);
+                current_data_->front()->communicate(parentToChildrenGlobalIds_handle,
+                                                    Dune::InteriorBorder_All_Interface,
+                                                    Dune::ForwardCommunication );
 
+                for (const auto& element : elements(levelGridView(level))) {
+                    if (element.partitionType() == OverlapEntity) {
+                        // Get global id from parent cell.
+                        const auto& parent_global_id = current_data_->front()->global_id_set_->id(element.father());
+                        // The children_list follows a specific ordering based on the total amount of children in each of the x,y, and z directions.
+                        // If the parent cell is subdivided into NX, NY, and NZ child cells along the x-,y-, and z-direction respectively,
+                        // then children are stored in 'ijk', where the index i changes fastest (x-direction), followed by j (y-direction), and
+                        // finally, k (z-direction). As a result, each child is assigned an index ranging from 0 to (NXxNYNZ -1) in the children_list,
+                        // corresponding to its position in this ordering.
+                        // Get position-in-children-list index (the index described above).
+                        const auto& index_in_children_list =  currentData()[level]->cell_to_idxInParentCell_[element.index()];
+                        localToGlobal_cells_per_level[level - 1][element.index()] = parent_to_children_cell_global_ids[parent_global_id][index_in_children_list];
+                    }
+                }
+                // Global ids for points overlap points. TO DO.
+                for (const auto& point : vertices(levelGridView(level))) {
+                        if ( (point.partitionType() == OverlapEntity) || (point.partitionType() == FrontEntity)) {
+                        //localToGlobal_points_per_level[level-1][point.index()] = TBD.
+                    }
+                }
+            }
             // Global id set for each (refined) level grid.
             if(lgr_with_at_least_one_active_cell[level-1]>0) {
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
