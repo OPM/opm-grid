@@ -2172,9 +2172,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         } // end-level-for-loop
     } // end-element-for-loop
     lgrsFullyInteriorHasFailed = comm().max(lgrsFullyInteriorHasFailed);
-    if(lgrsFullyInteriorHasFailed) {
+    /* if(lgrsFullyInteriorHasFailed) {
         OPM_THROW(std::logic_error, "At least one LGR cell is not in the interior of the process, not supported yet.");
-    }
+        }*/
     nonNNCsHasFailed = comm().max(nonNNCsHasFailed);
     if(nonNNCsHasFailed) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
@@ -2365,7 +2365,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             if ( lgrsFullyInteriorHasFailed ) {
                 const auto& globalIdSet_levelZero = current_data_->front()->global_id_set_;
                 ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children_cell_global_ids, *globalIdSet_levelZero);
-                current_data_->front()->communicate(parentToChildrenGlobalId_handle,
+                currentData().front()->communicate(parentToChildrenGlobalId_handle,
                                                     Dune::InteriorBorder_All_Interface,
                                                     Dune::ForwardCommunication );
 
@@ -2390,6 +2390,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
 
                         // Global ids for points (for front and overlap points)
+                        assert( refined_cell_to_point_global_ids.find(localToGlobal_cells_per_level[level - 1][element.index()]) != refined_cell_to_point_global_ids.end() );
                         const auto& cell_to_point_global_ids = refined_cell_to_point_global_ids.at(localToGlobal_cells_per_level[level - 1][element.index()]);
                         const auto& cell_to_point = currentData()[level]->cell_to_point_[element.index()];
                         // Ordering of the corners in cell_to_point is
@@ -2429,7 +2430,37 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
                                                               localToGlobal_faces_per_level[level-1],
                                                               localToGlobal_points_per_level[level-1]);
+
+                const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
+                auto& level_index_set =  currentData()[level]->cellIndexSet();
+
+                level_index_set.beginResize();
+
+                for(const auto& element : elements(levelGridView(level))) {
+                    if ( element.partitionType() == InteriorEntity) {
+                        level_index_set.add( level_global_id_set->id(element),
+                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                    }
+                    else { // overlap cell
+                        assert(element.partitionType() == OverlapEntity);
+                        level_index_set.add( level_global_id_set->id(element),
+                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+                    }
+                }
+                level_index_set.endResize();
+
+                currentData()[level]->cellRemoteIndices().template rebuild<false>();
+
+                // Compute the partition type for cell
+                currentData()[level]->computeCellPartitionType();
+
+                // Compute the partition type for point
+                //currentData()[level]->computePointPartitionType();
+
+                // Now we can compute the communication interface.
+                currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
             }
+            // end-if-active_lgr_cells
         } // end-for-loop-level
 
         ////////////////////////////////
