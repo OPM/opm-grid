@@ -666,10 +666,10 @@ public:
     /// \brief The type of the collective communication.
     using Communication = CpGridDataTraits::Communication;
     using CollectiveCommunication = CpGridDataTraits::CollectiveCommunication;
-#if HAVE_MPI
+
     /// \brief The type of the set of the attributes
     using AttributeSet = CpGridDataTraits::AttributeSet;
-
+#if HAVE_MPI
     /// \brief The type of the  Communicator.
     using Communicator = CpGridDataTraits::Communicator;
 
