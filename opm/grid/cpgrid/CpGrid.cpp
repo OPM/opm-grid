@@ -2129,7 +2129,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
     // To check "Non-NNCs (non neighboring connections)" for all processes.
     bool nonNNCsHasFailed = false;
-    std::vector<int> active_cell_count_per_level(startIJK_vec.size());
+    // To determine if an LGR is not empty in a given process, we set
+    // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
+    // at least one active cell, and to 0 otherwise.
+    std::vector<int> lgr_with_at_least_one_active_cell(startIJK_vec.size());
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(current_view_data_->size(0));
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
@@ -2163,7 +2166,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     this-> mark(1, element);
                     assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                     ++marked_elem_level_count;
-                    active_cell_count_per_level[level] = marked_elem_level_count;
+                    lgr_with_at_least_one_active_cell[level] = 1;
                 }
             } // end-if-belongsToLevel
         } // end-level-for-loop
@@ -2180,7 +2183,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     int non_empty_lgrs = 0;
     for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
         // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
-        if (active_cell_count_per_level[level] == 0) {
+        if (lgr_with_at_least_one_active_cell[level] == 0) {
             Opm::OpmLog::warning("LGR" + std::to_string(level+1) + " contains only inactive cells (in " + std::to_string(comm().rank()) + " rank).\n");
         }
         else {
@@ -2209,8 +2212,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
         auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
 
-        // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign uniquily
-        // new ids ( and anticipat the maximum).
+        // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign unique
+        // new ids ( and anticipate the maximum).
         // At this point, neither cell_index_set_ nor partition_type_indicator_ are populated.
         // Refined level grid cells:
         //    1. Inherit their partition type from their parent cell (i.e., element.father().partitionType()).
@@ -2238,8 +2241,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         std::vector<std::size_t> point_ids_needed_by_proc(comm().size());
         std::size_t local_point_ids_needed = 0;
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level){
-            // Compute the partition type for point
-            if(active_cell_count_per_level[level-1]>0) {
+            // Compute the partition type for point, if the level grid is not empty, i.e., it contains
+            // at least one active cell.
+            if(lgr_with_at_least_one_active_cell[level-1]>0) {
                 (*current_data_)[level]->computePointPartitionType();
                 // Count only interior or border points, that do not coincide with any point from level zero.
                 for ([[maybe_unused]] const auto& point : vertices(levelGridView(level),  Dune::Partitions::interiorBorder)){
@@ -2269,10 +2273,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // For each level, define the local-to-global maps for cells and points (for faces: empty).
         // 1) Assignment of new global ids is done only for owned cells and non-overlap points.
         // 2) For overlap cells and points: communicate. Not needed under the assumption of fully interior LGRs.
-        std::vector<std::vector<int>> localToGlobal_cells_per_level(cells_per_dim_vec.size(), std::vector<int>{});
-        std::vector<std::vector<int>> localToGlobal_points_per_level(cells_per_dim_vec.size(), std::vector<int>{});
+        std::vector<std::vector<int>> localToGlobal_cells_per_level(cells_per_dim_vec.size());
+        std::vector<std::vector<int>> localToGlobal_points_per_level(cells_per_dim_vec.size());
         // Ignore faces - empty vectors.
-        std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size(), std::vector<int>{});
+        std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
@@ -2309,7 +2313,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // for overlap cells and points.
 
             // Global id set for each (refined) level grid.
-            if(active_cell_count_per_level[level-1]>0) {
+            if(lgr_with_at_least_one_active_cell[level-1]>0) {
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
                                                               localToGlobal_faces_per_level[level-1],
                                                               localToGlobal_points_per_level[level-1]);
