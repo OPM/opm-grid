@@ -2241,12 +2241,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         std::vector<std::size_t> point_ids_needed_by_proc(comm().size());
         std::size_t local_point_ids_needed = 0;
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level){
-            // Compute the partition type for point, if the level grid is not empty, i.e., it contains
-            // at least one active cell.
             if(lgr_with_at_least_one_active_cell[level-1]>0) {
-                (*current_data_)[level]->computePointPartitionType();
-                // Count only interior or border points, that do not coincide with any point from level zero.
-                for ([[maybe_unused]] const auto& point : vertices(levelGridView(level),  Dune::Partitions::interiorBorder)){
+                // Amount of local_point_ids_needed might be overestimated.
+                for ([[maybe_unused]] const auto& point : vertices(levelGridView(level))){
                     // If point coincides with an existing corner from level zero, then it does not need a new global id.
                     if ( !(*current_data_)[level]->corner_history_.empty() ) {
                         const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
@@ -2290,8 +2287,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     ++min_globalId_cell_in_proc;
                 }
             }
-            // Global ids for points (for interior and border points)
-            for (const auto& point : vertices(levelGridView(level), Dune::Partitions::interiorBorder)) {
+            // Global ids for points (global ids might be overestimated, but still unique).
+            for (const auto& point : vertices(levelGridView(level))) {
                 // If point coincides with an existing corner from level zero, then it does not need a new global id.
                 if ( !(*current_data_)[level]->corner_history_.empty() ) {
                     const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
@@ -2302,8 +2299,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                             current_data_->front()->global_id_set_->id( equivPoint );
                     }
                     else {
-                        // Assign new global id only to non-overlap points that do not coincide with
-                        // any corners from level zero.
+                        // Assign a global ID to points that do not coincide with any corners from level zero.
+                        // This ID may be overwritten later when parallel indices and level cell index sets
+                        // are defined for all level grids, particularly in cases where LGRs may be distributed
+                        // across processes.
                         localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
                         ++min_globalId_point_in_proc;
                     }
