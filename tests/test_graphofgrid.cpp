@@ -151,7 +151,7 @@ BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 
     numEdges[16] = 8;
     std::string message("Expecting an error message from getGraphOfGridEdgeList, the vertex "
-                        + gIDs[16] + std::string(" has a wrong number of edges."));
+                        + std::to_string(gIDs[16]) + std::string(" has a wrong number of edges."));
     Opm::OpmLog::info(message);
     getGraphOfGridEdgeList(&gog, 1, 1, nVer, gIDs.data(), nullptr, numEdges.data(), nborGIDs.data(), nborProc.data(), 1, edgeWeights.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_FATAL);
