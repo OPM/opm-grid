@@ -2141,7 +2141,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         getIJK(element.index(), ijk);
         for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
             bool belongsToLevel = true;
-            int marked_elem_level_count = 0;
             for (int c = 0; c < 3; ++c) {
                 belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
                 if (!belongsToLevel)
@@ -2165,7 +2164,6 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     }
                     this-> mark(1, element);
                     assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
-                    ++marked_elem_level_count;
                     lgr_with_at_least_one_active_cell[level] = 1;
                 }
             } // end-if-belongsToLevel
@@ -2310,6 +2308,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
             // for overlap cells and points.
+            /** TODO: Set up the parallel index set correctly. */
 
             // Global id set for each (refined) level grid.
             if(lgr_with_at_least_one_active_cell[level-1]>0) {
@@ -2322,7 +2321,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         ////////////////////////////////
 
         // Global id for the cells in leaf grid view
-        std::vector<int> leafCellIds(current_data_->back()->size(0), 0);
+        std::vector<int> leafCellIds(current_data_->back()->size(0));
         for(const auto& element: elements(leafGridView())){
             // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
             // under the assumption of each lgr being fully contained in the interior of a process.
