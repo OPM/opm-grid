@@ -45,33 +45,33 @@ class LevelCartesianIndexMapper
 {
 public:
     // Dimension of the grid.
-    static const int dimension = Grid :: dimension ;
+    static constexpr int dimension = Grid :: dimension ;
 
     // Constructor taking a grid.
     explicit LevelCartesianIndexMapper( const Grid& )
     {}
 
     // Return the number of cells in each direction (Cartesian dimensions) of a local Cartesian grid with level "level"
-    const std::array<int, dimension>& cartesianDimensions(int level) const
+    const std::array<int, dimension>& cartesianDimensions(int /*level*/) const
     {
         static std::array<int, dimension> a;
         return a;
     }
 
     // Return total number of cells in a local Cartesian grid with level "level".
-    int cartesianSize(int level) const
+    int cartesianSize(int /*level*/) const
     {
         return 0;
     }
 
     // Return number of cells in the active local Cartesian grid with level "level".
-    int compressedSize(int level) const
+    int compressedSize(int /*level*/) const
     {
         return 0;
     }
 
     // Return index of a cell in the local Cartesian grid with level "level".
-    int cartesianIndex( const int /* compressedElementIndex */ , const int level) const
+    int cartesianIndex( const int /* compressedElementIndex */ , const int /*level*/) const
     {
         return 0;
     }
