@@ -48,6 +48,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/ColumnExtract.cpp
   opm/grid/FaceQuadrature.cpp
   opm/grid/GraphOfGrid.cpp
+  opm/grid/GraphOfGridWrappers.cpp
   opm/grid/GridHelpers.cpp
   opm/grid/GridManager.cpp
   opm/grid/GridUtilities.cpp

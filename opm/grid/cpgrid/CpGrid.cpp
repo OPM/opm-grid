@@ -53,6 +53,7 @@
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
+#include <opm/grid/GraphOfGridWrappers.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
 #include <opm/grid/common/GridPartitioning.hpp>
 //#include <opm/grid/common/WellConnections.hpp>
@@ -351,6 +352,15 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 OPM_THROW(std::runtime_error, "Parallel runs depend on METIS if useMetis is true. Please install!");
 #endif // HAVE_METIS
 
+            }
+            else if (partitionMethod == Dune::PartitionMethod::zoltanGoG)
+            {
+#ifdef HAVE_ZOLTAN
+                std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
+                    = Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams);
+#else
+                OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
+#endif // HAVE_ZOLTAN
             }
             else
             {

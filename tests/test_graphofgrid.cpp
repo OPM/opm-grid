@@ -104,6 +104,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
 
 }
 
+#if HAVE_MPI
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 {
     Dune::CpGrid grid;
@@ -451,6 +452,7 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     }
 
 }
+#endif // HAVE_MPI
 
 // After partitioning, importList and exportList are not complete,
 // other cells from wells need to be added.
