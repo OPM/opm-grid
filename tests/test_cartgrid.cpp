@@ -36,7 +36,7 @@
 #include <opm/grid/UnstructuredGrid.h>
 #include <cstdio>
 
-BOOST_AUTO_TEST_SUITE ()
+BOOST_AUTO_TEST_SUITE (CartGrid)
 
 BOOST_AUTO_TEST_CASE (facenumbers)
 {

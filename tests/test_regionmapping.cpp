@@ -34,7 +34,7 @@
 #include <algorithm>
 #include <map>
 
-BOOST_AUTO_TEST_SUITE ()
+BOOST_AUTO_TEST_SUITE (RegionMapping)
 
 
 BOOST_AUTO_TEST_CASE (Forward)
