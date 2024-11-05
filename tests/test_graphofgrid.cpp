@@ -31,7 +31,6 @@
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
 #include <opm/grid/CpGrid.hpp>
-#include <dune/istl/owneroverlapcopy.hh>
 
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
@@ -118,7 +117,7 @@ BOOST_AUTO_TEST_CASE(WrapperForZoltan)
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 60);
 
-    std::vector<int> gIDs(nVer);
+    std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);
     getGraphOfGridVerticesList(&gog, 1, 1, gIDs.data(), nullptr, 1, objWeights.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
@@ -141,7 +140,7 @@ BOOST_AUTO_TEST_CASE(WrapperForZoltan)
     }
     BOOST_REQUIRE(nEdges==266);
 
-    std::vector<int> nborGIDs(nEdges);
+    std::vector<uint> nborGIDs(nEdges);
     std::vector<int> nborProc(nEdges);
     std::vector<float> edgeWeights(nEdges);
     getGraphOfGridEdgeList(&gog, 1, 1, nVer, gIDs.data(), nullptr, numEdges.data(), nborGIDs.data(), nborProc.data(), 1, edgeWeights.data(), &err);
@@ -150,9 +149,6 @@ BOOST_AUTO_TEST_CASE(WrapperForZoltan)
     BOOST_REQUIRE(edgeWeights[203]==1.); // all are 1., no vertices were contracted
 
     numEdges[16] = 8;
-    std::string message("Expecting an error message from getGraphOfGridEdgeList, the vertex "
-                        + std::to_string(gIDs[16]) + std::string(" has a wrong number of edges."));
-    Opm::OpmLog::info(message);
     getGraphOfGridEdgeList(&gog, 1, 1, nVer, gIDs.data(), nullptr, numEdges.data(), nborGIDs.data(), nborProc.data(), 1, edgeWeights.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_FATAL);
 }
@@ -176,10 +172,10 @@ BOOST_AUTO_TEST_CASE(GraphWithWell)
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 49);
 
-    std::vector<int> gIDs(nVer);
+    std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);
     getGraphOfGridVerticesList(&gog, 1, 1, gIDs.data(), nullptr, 1, objWeights.data(), &err);
-    BOOST_REQUIRE(err=ZOLTAN_OK);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
     for (int i=0; i<nVer; ++i)
     {
         switch (gIDs[i])
@@ -238,10 +234,10 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 47);
 
-    std::vector<int> gIDs(nVer);
+    std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);
     getGraphOfGridVerticesList(&gog, 1, 1, gIDs.data(), nullptr, 1, objWeights.data(), &err);
-    BOOST_REQUIRE(err=ZOLTAN_OK);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
 
     for (int i=0; i<nVer; ++i)
     {
@@ -255,7 +251,7 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
 
     int nOut = 3;
     std::vector<int> numEdges(nOut);
-    std::vector<int> gID{12,0,54};
+    std::vector<uint> gID{12,0,54};
     getGraphOfGridNumEdges(&gog, 1, 1, nOut, gID.data(), nullptr, numEdges.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(numEdges[0]==12);
@@ -263,7 +259,7 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     BOOST_REQUIRE(numEdges[2]==3);
 
     int nEdges = 41;
-    std::vector<int> nborGIDs(nEdges);
+    std::vector<uint> nborGIDs(nEdges);
     std::vector<int> nborProc(nEdges);
     std::vector<float> edgeWeights(nEdges);
     getGraphOfGridEdgeList(&gog, 1, 1, nOut, gID.data(), nullptr, numEdges.data(), nborGIDs.data(), nborProc.data(), 1, edgeWeights.data(), &err);
@@ -397,10 +393,10 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     int nVer = getGraphOfGridNumVertices(&gog,&err);
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(nVer == 4);
-    std::vector<int> gIDs(nVer);
+    std::vector<uint> gIDs(nVer);
     std::vector<float> objWeights(nVer);
     getGraphOfGridVerticesList(&gog, 1, 1, gIDs.data(), nullptr, 1, objWeights.data(), &err);
-    BOOST_REQUIRE(err=ZOLTAN_OK);
+    BOOST_REQUIRE(err==ZOLTAN_OK);
     std::sort(gIDs.begin(),gIDs.end());
     BOOST_REQUIRE(gIDs[0]==0 && gIDs[1]==1 && gIDs[2]==3 && gIDs[3]==7);
     std::vector<int> numEdges(nVer);
@@ -408,7 +404,8 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     BOOST_REQUIRE(err==ZOLTAN_OK);
     BOOST_REQUIRE(numEdges[0]==3 && numEdges[1]==2 && numEdges[2]==3 && numEdges[3]==2);
     int nEdges = 10; // sum of numEdges[i]
-    std::vector<int> nborGIDs(nEdges), nborProc(nEdges);
+    std::vector<uint> nborGIDs(nEdges);
+    std::vector<int> nborProc(nEdges);
     std::vector<float> edgeWeights(nEdges);
     getGraphOfGridEdgeList(&gog, 1, 1, nVer, gIDs.data(), nullptr, numEdges.data(), nborGIDs.data(), nborProc.data(), 1, edgeWeights.data(), &err);
     BOOST_REQUIRE(err==ZOLTAN_OK);

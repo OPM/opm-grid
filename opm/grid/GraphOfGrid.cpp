@@ -31,10 +31,12 @@ namespace Opm{
 template<typename Grid>
 void GraphOfGrid<Grid>::createGraph ()
 {
+    const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
     {
         VertexProperties vertex;
+        vertex.nproc = rank;
         // get vertex's global ID
         int gID = grid.globalIdSet().id(*it);
 
