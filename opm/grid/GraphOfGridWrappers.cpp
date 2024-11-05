@@ -432,8 +432,10 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     bool partitionIsEmpty = cc.rank()!=root;
 
     // prepare graph and contract well cells
+    // non-root processes have empty grid and no wells
     GraphOfGrid gog(grid);
-    Dune::cpgrid::WellConnections wellConnections(*wells,possibleFutureConnections,grid);
+    auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
+                                          : Dune::cpgrid::WellConnections(*wells,possibleFutureConnections,grid);
     addWellConnections(gog,wellConnections);
 
     // call partitioner
