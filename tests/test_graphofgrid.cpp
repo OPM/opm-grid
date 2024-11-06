@@ -329,7 +329,27 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
         BOOST_REQUIRE( *wellList.rbegin()==well1 );
     }
 }
+#endif // HAVE_MPI
 
+namespace {
+    // create Wells, we only use well name and cell locations
+    auto createConnection (int i, int j, int k)
+    {
+        return Opm::Connection(i,j,k,0, 0,Opm::Connection::State::OPEN,
+                                   Opm::Connection::Direction::Z,
+                                   Opm::Connection::CTFKind::DeckValue, 0,
+                                   5.,Opm::Connection::CTFProperties(),0,false);
+    }
+    auto createWell (const std::string& name)
+    {
+        using namespace Opm;
+        return Dune::cpgrid::OpmWellType(name,name,0,0,0,0,0.,WellType(),
+                   Well::ProducerCMode(),Connection::Order(),UnitSystem(),
+                   0.,0.,false,false,0,Well::GasInflowEquation());
+    };
+} // end anonymous namespace
+
+#if HAVE_MPI
 // Create yet another small grid with wells and test graph properties.
 // This time wells are supplied via OpmWellType interface
 BOOST_AUTO_TEST_CASE(addWellConnections)
@@ -341,22 +361,6 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
     BOOST_REQUIRE(gog.size()==8);
-
-    // create Wells, we only use well name and cell locations
-    auto createConnection = [](int i, int j, int k)
-    {
-        return Opm::Connection(i,j,k,0, 0,Opm::Connection::State::OPEN,
-                                   Opm::Connection::Direction::Z,
-                                   Opm::Connection::CTFKind::DeckValue, 0,
-                                   5.,Opm::Connection::CTFProperties(),0,false);
-    };
-    auto createWell = [](const std::string& name)
-    {
-        using namespace Opm;
-        return Dune::cpgrid::OpmWellType(name,name,0,0,0,0,0.,WellType(),
-                   Well::ProducerCMode(),Connection::Order(),UnitSystem(),
-                   0.,0.,false,false,0,Well::GasInflowEquation());
-    };
 
     auto wellCon = std::make_shared<Opm::WellConnections>(); // do not confuse with Dune::cpgrid::WellConnections
     wellCon->add(createConnection(0,0,0));
@@ -475,31 +479,110 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
     std::vector<importTuple> imp(3);
-    imp[0] = std::make_tuple(0,1,AttributeSet::owner,1);
+    imp[0] = std::make_tuple(0,0,AttributeSet::owner,1);
     imp[1] = std::make_tuple(3,4,AttributeSet::copy,2);
-    imp[2] = std::make_tuple(5,0,AttributeSet::copy,3);
+    imp[2] = std::make_tuple(5,1,AttributeSet::copy,3);
     extendImportExportList(gog,imp);
     BOOST_REQUIRE(imp.size()==7);
+    for (int i=0; i<7; ++i)
+    {
+        if (i<3)
+        {
+            BOOST_CHECK(std::get<0>(imp[i])==i);
+            BOOST_CHECK(std::get<1>(imp[i])==0);
+            BOOST_CHECK(std::get<2>(imp[i])==AttributeSet::owner);
+            BOOST_CHECK(std::get<3>(imp[i])==1);
+        }
+        else if (i>3)
+        {
+            BOOST_CHECK(std::get<1>(imp[i])==1);
+            BOOST_CHECK(std::get<2>(imp[i])==AttributeSet::copy);
+            BOOST_CHECK(std::get<3>(imp[i])==3);
+        }
+    }
+    // lists are sorted by ID (by get<0>)
+    BOOST_CHECK(std::get<0>(imp[3])==3);
+    BOOST_CHECK(std::get<1>(imp[3])==4);
+    BOOST_CHECK(std::get<2>(imp[3])==AttributeSet::copy);
+    BOOST_CHECK(std::get<3>(imp[3])==2);
+    BOOST_CHECK(std::get<0>(imp[4])==5);
     BOOST_CHECK(std::get<0>(imp[5])==8);
-    BOOST_CHECK(std::get<1>(imp[5])==0);
-    BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
-    BOOST_CHECK(std::get<3>(imp[5])==3);
-    BOOST_CHECK(std::get<0>(imp[5])==8);
-    BOOST_CHECK(std::get<1>(imp[1])==1);
-    BOOST_CHECK(std::get<2>(imp[1])==AttributeSet::owner);
-    BOOST_CHECK(std::get<3>(imp[1])==1);
+    BOOST_CHECK(std::get<0>(imp[6])==11);
 
     std::vector<exportTuple> exp(3);
-    exp[0] = std::make_tuple(0,1,AttributeSet::owner);
+    exp[0] = std::make_tuple(0,0,AttributeSet::owner);
     exp[1] = std::make_tuple(3,4,AttributeSet::copy);
-    exp[2] = std::make_tuple(5,0,AttributeSet::copy);
+    exp[2] = std::make_tuple(5,1,AttributeSet::copy);
     extendImportExportList(gog,exp);
-    BOOST_CHECK(std::get<0>(imp[5])==8);
-    BOOST_CHECK(std::get<1>(imp[5])==0);
-    BOOST_CHECK(std::get<2>(imp[5])==AttributeSet::copy);
-    BOOST_CHECK(std::get<0>(imp[5])==8);
-    BOOST_CHECK(std::get<1>(imp[1])==1);
-    BOOST_CHECK(std::get<2>(imp[1])==AttributeSet::owner);
+    for (int i=0; i<7; ++i)
+    {
+        BOOST_CHECK(std::get<0>(imp[i])==std::get<0>(exp[i]));
+        BOOST_CHECK(std::get<1>(imp[i])==std::get<1>(exp[i]));
+        BOOST_CHECK(std::get<2>(imp[i])==std::get<2>(exp[i]));
+    }
+
+    std::vector<int>gIDtoRank(12,1);
+    gIDtoRank[0]=0; // well {0,1,2}
+    gIDtoRank[8]=2; // inside well {5,8,11}, to be rewritten unless skipped
+    extendGIDtoRank(gog,gIDtoRank,1); // skip wells on rank 1
+    BOOST_CHECK(gIDtoRank[8]==2);
+    for (int i=0; i<12; ++i)
+    {
+        if (i<3)
+            BOOST_CHECK(gIDtoRank[i]==0);
+        else if (i!=8)
+            BOOST_CHECK(gIDtoRank[i]==1);
+    }
+    extendGIDtoRank(gog,gIDtoRank);
+    BOOST_CHECK(gIDtoRank[8]==1);
+
+    // extendImportExportList skip Rank
+    std::vector<exportTuple> expSkipped(3);
+    expSkipped[0] = std::make_tuple(0,0,AttributeSet::owner);
+    expSkipped[1] = std::make_tuple(3,4,AttributeSet::copy);
+    expSkipped[2] = std::make_tuple(5,1,AttributeSet::copy);
+    extendImportExportList(gog,expSkipped,0,gIDtoRank);
+    BOOST_REQUIRE(expSkipped.size()==5);
+    BOOST_CHECK(expSkipped[0]==exp[0]);
+    for (int i=1; i<5; ++i)
+        BOOST_CHECK_MESSAGE(expSkipped[i]==exp[i+2],"expSkipped[i]!=exp[i+2] with i="+std::to_string(i));
+}
+
+// getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
+// and returns a vector of well ranks
+BOOST_AUTO_TEST_CASE(test_getWellRanks)
+{
+    // create a grid with wells
+    Dune::CpGrid grid;
+    std::array<int,3> dims{1,2,4};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+
+    auto wellCon = std::make_shared<Opm::WellConnections>();
+    wellCon->add(createConnection(0,0,0));
+    wellCon->add(createConnection(0,1,0));
+    wellCon->add(createConnection(0,1,1));
+    std::vector<Dune::cpgrid::OpmWellType> wells;
+    wells.push_back(createWell("first"));
+    wells[0].updateConnections(wellCon,true);
+
+    wellCon = std::make_shared<Opm::WellConnections>(); // reset
+    wellCon->add(createConnection(0,0,2));
+    wellCon->add(createConnection(0,1,2));
+    wells.push_back(createWell("second"));
+    wells[1].updateConnections(wellCon,true);
+
+    wells.push_back(createWell("third"));
+
+    std::vector<int> gIDtoRank{4,4,1,4,3,3,2,2};
+    std::unordered_map<std::string, std::set<int>> futureConnections;
+    futureConnections.emplace("third",std::set<int>{6,7});
+    Dune::cpgrid::WellConnections wellConnections(wells,futureConnections,grid);
+    auto wellRanks = Opm::getWellRanks(gIDtoRank,wellConnections);
+    BOOST_REQUIRE(wellRanks.size()==3);
+    BOOST_CHECK(wellRanks[0]==4);
+    BOOST_CHECK(wellRanks[1]==3);
+    BOOST_CHECK(wellRanks[2]==2);
 }
 
 bool
