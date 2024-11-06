@@ -82,10 +82,10 @@ class Entity : public EntityRep<codim>
 public:
     /// @brief
     /// @todo Doc me!
-    enum { codimension = codim };
-    enum { dimension = 3 };
-    enum { mydimension = dimension - codimension };
-    enum { dimensionworld = 3 };
+    static constexpr int codimension = codim;
+    static constexpr int dimension = 3;
+    static constexpr int mydimension = dimension - codimension;
+    static constexpr int dimensionworld = 3;
 
     // the official DUNE names
     typedef Entity    EntitySeed;
