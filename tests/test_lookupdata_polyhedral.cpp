@@ -91,8 +91,6 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
 
     std::vector<double> fake_feature_double(grid.size(0), 0.);
     std::iota(fake_feature_double.begin(), fake_feature_double.end(), .5);
-
-    const Opm::LevelCartesianIndexMapper< Dune::PolyhedralGrid<3,3> > levelCartMapp(grid);
     
     const auto leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(grid.leafGridView())>::type>;
@@ -100,6 +98,7 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
     const Opm::LookUpData<Dune::PolyhedralGrid<3,3>, GridView> lookUpData(leaf_view, false);
     // LookUpCartesianData
     const Dune::CartesianIndexMapper<Dune::PolyhedralGrid<3,3>> cartMapper(grid);
+    const Opm::LevelCartesianIndexMapper< Dune::PolyhedralGrid<3,3> > levelCartMapp(cartMapper);
     const Opm::LookUpCartesianData<Dune::PolyhedralGrid<3,3>, GridView> lookUpCartesianData(leaf_view, cartMapper, false);
     // Mapper
     const Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgElementLayout());
