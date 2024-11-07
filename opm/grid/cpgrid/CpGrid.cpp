@@ -2272,8 +2272,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
                 if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
                     // Therefore, search and assign the global id of the previous existing equivalent corner.
-                     const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
-                     localToGlobal_points_per_level[level-1][point.index()] = current_data_->front()->global_id_set_->id( equivPoint );
+                    const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                    localToGlobal_points_per_level[level-1][point.index()] = current_data_->front()->global_id_set_->id( equivPoint );
                 }
                 else {
                     // Assign new global id only to non-overlap points that do not coincide with
@@ -2283,57 +2283,66 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 }
             }
         }
-     
+
         const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
-        if(!parent_to_children.empty())
-        {
-                ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children, localToGlobal_cells_per_level);
-                currentData().front()->communicate(parentToChildrenGlobalId_handle,
+        ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children, localToGlobal_cells_per_level);
+        currentData().front()->communicate(parentToChildrenGlobalId_handle,
+                                           Dune::InteriorBorder_All_Interface,
+                                           Dune::ForwardCommunication );
+
+        /* Corners of redined interior cells will be inteior or border points.
+           To overwrite point global ids in such a way that each point has a unique global id, use a handle that for each interior refined cell
+           gathers the global ids of its 8 corners, and scatters the 8 global ids corners of overlap redined cell.
+           the container to gather/scatter should be localToGlobal_points_per_level.
+           
+          RefinedCellToPointGlobalIdHandle refinedToPointGlobalId_handle(refined_cell_to_point_global_ids, localToGlobal_cells_per_level[level - 1]);
+                currentData()[level]->communicate(refinedToPointGlobalId_handle,
                                                   Dune::InteriorBorder_All_Interface,
-                                                  Dune::ForwardCommunication );
-        }
-           for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+                                                  Dune::ForwardCommunication);*/
+
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
             // for overlap cells and points.
-           
+
             // Global id set for each (refined) level grid.
             if(lgr_with_at_least_one_active_cell[level-1]>0) {
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
                                                               localToGlobal_faces_per_level[level-1],
                                                               localToGlobal_points_per_level[level-1]);
-                
+            }
+        }
 
-                const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
-                auto& level_index_set =  currentData()[level]->cellIndexSet();
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
 
-                level_index_set.beginResize();
+            const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
+            auto& level_index_set =  currentData()[level]->cellIndexSet();
 
-                for(const auto& element : elements(levelGridView(level))) {
-                    if ( element.partitionType() == InteriorEntity) {
-                        level_index_set.add( level_global_id_set->id(element),
-                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
-                    }
-                    else { // overlap cell
-                        assert(element.partitionType() == OverlapEntity);
-                        level_index_set.add( level_global_id_set->id(element),
-                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
-                    }
+            level_index_set.beginResize();
+
+            for(const auto& element : elements(levelGridView(level))) {
+                if ( element.partitionType() == InteriorEntity) {
+                    level_index_set.add( level_global_id_set->id(element),
+                                         ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
                 }
-                level_index_set.endResize();
+                else { // overlap cell
+                    assert(element.partitionType() == OverlapEntity);
+                    level_index_set.add( level_global_id_set->id(element),
+                                         ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+                }
+            }
+            level_index_set.endResize();
 
-                currentData()[level]->cellRemoteIndices().template rebuild<false>();
+            currentData()[level]->cellRemoteIndices().template rebuild<false>();
 
-                // Compute the partition type for cell
-                currentData()[level]->computeCellPartitionType();
+            // Compute the partition type for cell
+            currentData()[level]->computeCellPartitionType();
 
-                // Compute the partition type for point
-                currentData()[level]->computePointPartitionType();
+            // Compute the partition type for point
+            currentData()[level]->computePointPartitionType();
 
-                // Now we can compute the communication interface.
-                currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
-            }// end-if
+            // Now we can compute the communication interface.
+            currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
         } // end-for-loop-level
-
         ////////////////////////////////
 
         // Global id for the cells in leaf grid view

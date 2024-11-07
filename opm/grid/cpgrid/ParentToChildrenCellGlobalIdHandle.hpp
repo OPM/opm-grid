@@ -83,7 +83,7 @@ struct ParentToChildrenCellGlobalIdHandle {
         // Skip values that are not interior, or have no children (in that case, 'invalid' level = -1)
         const auto& [level, children] = parent_to_children_[element.index()];
         if ( (element.partitionType() != Dune::InteriorEntity) || (level == -1))
-            return 0;
+            return 1;
         return children.size();
     }
 
@@ -94,6 +94,7 @@ struct ParentToChildrenCellGlobalIdHandle {
         // Skip values that are not interior, or have no children (in that case, 'invalid level' = -1)
         const auto& [level, children] = parent_to_children_[element.index()];
         if ( (element.partitionType() != Dune::InteriorEntity) || (level==-1)) {
+            buffer.write(42);
             return;
         }
         // Store the children's global ids in the buffer when the element is interior and has children.
