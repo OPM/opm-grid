@@ -42,7 +42,7 @@ namespace
 {
 #if HAVE_MPI
 
-/// \brief Handle for assignment of global ids of refined cells (cells from refined level grids). 
+/// \brief Handle for assignment of global ids of refined cells (cells from refined level grids).
 struct ParentToChildrenCellGlobalIdHandle {
     //   - The container used for gather and scatter contains global ids for interior elements of the refined level grids (LGRs).
     //     Access is done with the local index of a refined cell (child_cell_local_index),
@@ -96,7 +96,7 @@ struct ParentToChildrenCellGlobalIdHandle {
             return;
         }
         // Store the children's global ids in the buffer when the element is interior and has children.
-        for (const auto& child : children) 
+        for (const auto& child : children)
             // Shift level-> level-1 since level_global_ids_ stores only refined level grids global ids.
             // level_cell_global_ids_[0] corresponds to level 1, ..., level_cell_global_ids_[ maxLevel -1 ] to maxLevel grid.
             buffer.write(level_cell_global_ids_[level-1][child]);
@@ -119,7 +119,7 @@ struct ParentToChildrenCellGlobalIdHandle {
             // Read and store the values in the correct location directly.
             // Careful, we assume that the order of the children is the same on
             // each process.
-           for (const auto& child : children) {
+            for (const auto& child : children) {
                 // Shift level-> level-1 since level_cell_global_ids_ stores only refined level grids cell global ids.
                 // level_cell_global_ids_[0] corresponds to level 1, ..., level_cell_global_ids_[ maxLevel -1 ] to maxLevel grid.
                 auto& target_entry = level_cell_global_ids_[level-1][child];
@@ -129,8 +129,8 @@ struct ParentToChildrenCellGlobalIdHandle {
     }
 
 private:
-const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children_;
-std::vector<std::vector<DataType>>& level_cell_global_ids_;
+    const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children_;
+    std::vector<std::vector<DataType>>& level_cell_global_ids_;
 };
 #endif // HAVE_MPI
 } // namespace
