@@ -55,9 +55,10 @@ struct ParentToChildrenCellGlobalIdHandle {
 
     using DataType = int;
 
-    /// \param parent_to_children Map from parent index to all children, and the level they are stored.
-    ///                           parent_to_children_[ element.index() ] = { level, children_list }
-    /// \param level_cell_global_ids   A container that for the elements of a level contains all ids.
+    /// \param parent_to_children      Map from parent index to all children, and the level they are stored.
+    ///                                parent_to_children_[ element.index() ] = { level, children_list local indices }
+    /// \param level_cell_global_ids   A container that for the elements of a level contains all global cell ids.
+    ///                                level_cell_global_ids[ level-1 ][ refined cell local index ] = its global id.
     ParentToChildrenCellGlobalIdHandle(const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children,
                                        std::vector<std::vector<DataType>>& level_cell_global_ids)
         : parent_to_children_(parent_to_children)
@@ -107,7 +108,9 @@ struct ParentToChildrenCellGlobalIdHandle {
     void scatter(B& buffer, const T& element, std::size_t num_children)
     {
         const auto& [level, children] = parent_to_children_[element.index()];
-        if ( (element.partitionType() == Dune::OverlapEntity) && (level==-1) ) {
+        // Read all values to advance the pointer used by the buffer to the correct index.
+        // (Skip overlap cells without children and interior cells).
+        if ( ( (element.partitionType() == Dune::OverlapEntity) && (level==-1) ) || (element.partitionType() == Dune::InteriorEntity ) ) {
             // Read all values to advance the pointer used by the buffer
             // to the correct index
             for (std::size_t child = 0; child < num_children;  ++child) {
@@ -115,10 +118,12 @@ struct ParentToChildrenCellGlobalIdHandle {
                 buffer.read(tmp);
             }
         }
-        else {
+        else { // Overlap cell with children.
             // Read and store the values in the correct location directly.
             // Careful, we assume that the order of the children is the same on
             // each process.
+            assert(children.size()>0);
+            assert(level>0);
             for (const auto& child : children) {
                 // Shift level-> level-1 since level_cell_global_ids_ stores only refined level grids cell global ids.
                 // level_cell_global_ids_[0] corresponds to level 1, ..., level_cell_global_ids_[ maxLevel -1 ] to maxLevel grid.
