@@ -2289,16 +2289,30 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         currentData().front()->communicate(parentToChildrenGlobalId_handle,
                                            Dune::InteriorBorder_All_Interface,
                                            Dune::ForwardCommunication );
+        
+        // After assigning global IDs to points in refined-level grids, a single point may have 
+        // a "unique" global ID in each local leaf grid view for every process to which it belongs.
+        // To ensure true uniqueness, since global IDs must be distinct across the global leaf view 
+        // and consistent across each refined-level grid, we will rewrite the entries in 
+        // localToGlobal_points_per_level.
+        //
+        // This correction is done using cell_to_point_ across all refined-level grids through 
+        // communication: gathering the 8 corner points of each interior cell and scattering the 
+        // 8 corner points of overlapping cells.
+        //
+        // Get the cell_to_point_ info from all refined level grids.
+        std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+            level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
+        }
 
-        /* Corners of redined interior cells will be inteior or border points.
-           To overwrite point global ids in such a way that each point has a unique global id, use a handle that for each interior refined cell
-           gathers the global ids of its 8 corners, and scatters the 8 global ids corners of overlap redined cell.
-           the container to gather/scatter should be localToGlobal_points_per_level.
-           
-          RefinedCellToPointGlobalIdHandle refinedToPointGlobalId_handle(refined_cell_to_point_global_ids, localToGlobal_cells_per_level[level - 1]);
-                currentData()[level]->communicate(refinedToPointGlobalId_handle,
-                                                  Dune::InteriorBorder_All_Interface,
-                                                  Dune::ForwardCommunication);*/
+        RefinedCellToPointGlobalIdHandle refinedCellToPointGlobalId_handle(level_cell_to_point,
+                                                                           localToGlobal_points_per_level);
+        // communicate in each refined level grid fails also to re-write the global ids.
+        currentData().back()->communicate(refinedCellToPointGlobalId_handle,
+                                          Dune::InteriorBorder_All_Interface,
+                                          Dune::ForwardCommunication);
+
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids

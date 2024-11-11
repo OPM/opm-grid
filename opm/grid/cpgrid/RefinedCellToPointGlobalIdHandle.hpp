@@ -13,18 +13,18 @@
 //===========================================================================
 
 /*
-Copyright 2024 TBD
-This file is part of The Open Porous Media project  (OPM).
-OPM is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License as published by
-the Free Software Foundation, either version 3 of the License, or
-(at your option) any later version.
-OPM is distributed in the hope that it will be useful,
-but WITHOUT ANY WARRANTY; without even the implied warranty of
-MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-GNU General Public License for more details.
-You should have received a copy of the GNU General Public License
-along with OPM.  If not, see <http://www.gnu.org/licenses/>.
+  Copyright 2024 TBD
+  This file is part of The Open Porous Media project  (OPM).
+  OPM is free software: you can redistribute it and/or modify
+  it under the terms of the GNU General Public License as published by
+  the Free Software Foundation, either version 3 of the License, or
+  (at your option) any later version.
+  OPM is distributed in the hope that it will be useful,
+  but WITHOUT ANY WARRANTY; without even the implied warranty of
+  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  GNU General Public License for more details.
+  You should have received a copy of the GNU General Public License
+  along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
 #ifndef OPM_REFINEDCELLTOPOINTGLOBALIDHANDLE_HEADER
@@ -33,7 +33,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 
 #include <opm/grid/cpgrid/Entity.hpp>
 
-#include <unordered_map>
+#include <array>
 #include <vector>
 
 
@@ -41,81 +41,94 @@ namespace
 {
 #if HAVE_MPI
 
-/// \brief Handle for assignment of global ids of refined points....
+/// \brief Handle for correcting assignment of global ids of refined points.
 ///
 struct RefinedCellToPointGlobalIdHandle {
-    using DataType = std::vector<std::size_t>;
+    //   - The container used for gather and scatter contains "may-be-rewritten-global ids" for points of the refined level grids (LGRs).
+    //     Access is done with the level and local index of a refined cell, and the local indices of its 8 corners.
+    //     level_point_global_ids[ element.level() -1 ] [ corner ] = may-be-rewritten-point-global-id,
+    //     when corner belongs to
+    //     level_cell_to_point_[ element.level() -1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
+    //     The shift 'element.level() -1' is due to not taken into account level zero grid.
+    //   - We use the number of entries in the scatter method. That number is the number of corners when sending.
+    //   - We skip non-refined cells, i.e., coarse cells equivalent to level zero cells.
 
-    RefinedCellToPointGlobalIdHandle(
-        std::unordered_map<int, std::vector<std::size_t>> refined_cell_to_point_global_ids,
-        const std::vector<int>& local_to_global_refined_cells)
-        : gather_refined_cell_to_point_global_ids_(refined_cell_to_point_global_ids)
-        , scatter_refined_cell_to_point_global_ids_(refined_cell_to_point_global_ids)
-        , local_to_global_refined_cells_(local_to_global_refined_cells)
+    using DataType = int;
+
+    /// \param level_cell_to_point     Map from all refined level grids, cell_to_point_
+    ///                                level_cell_to_point_[ element.level()-1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
+    /// \param level_point_global_ids  A container that for a refined level grid contains all global point ids.
+    ///                                level_point_global_ids[ element.level()-1 ][ corner ] = its global id
+    ///                                when corner belongs to
+    ///                                level_cell_to_point_[ element.level() -1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
+    RefinedCellToPointGlobalIdHandle(const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point,
+                                     std::vector<std::vector<DataType>>& level_point_global_ids)
+        : level_cell_to_point_(level_cell_to_point)
+        , level_point_global_ids_(level_point_global_ids)
     {
     }
 
-    // Not every cell has children. When they have children, the amount might vary.
+    // We do not take into account cells from level zero.
     bool fixedSize(std::size_t, std::size_t)
     {
         return false;
     }
-    // Only communicate values attached to cells.
+    // Only communicate values attached to refined cells.
     bool contains(std::size_t, std::size_t codim)
     {
         return codim == 0;
     }
-    // Communicate variable size: amount of children cells from a parent cell from level zero grid.
+    // Communicate variable size: 8 corners per refined cell; skip coarse cells from level zero.
     template <class T> // T = Entity<0>
     std::size_t size(const T& element)
     {
-        const auto& global_id = local_to_global_refined_cells_[element.index()];
-        // check at
-        if (gather_refined_cell_to_point_global_ids_.find(global_id)
-            != gather_refined_cell_to_point_global_ids_.end()) {
-
-            const auto& cell_to_point = gather_refined_cell_to_point_global_ids_.at(global_id);
-            return cell_to_point.size(); // zero for overlap refined cells
-        } else {
-            return 0;
-        }
+        // Skip values that are not interior
+        if ( (element.getLevelElem().partitionType() != Dune::InteriorEntity)  || (element.level() == 0) )
+            return 1;
+        return level_cell_to_point_[element.level()-1][element.getLevelElem().index()].size(); // each refined cell has 8 corners.
     }
 
     // Gather global ids of points of an interior refined cell
     template <class B, class T> // T = Entity<0>
     void gather(B& buffer, const T& element)
     {
-        // Gather only for interior cells.
-        assert(element.partitionType() == Dune::InteriorEntity);
-        // Get global id of the cell.
-        const auto& global_id = local_to_global_refined_cells_[element.index()];
-        if (gather_refined_cell_to_point_global_ids_.find(global_id)
-            != gather_refined_cell_to_point_global_ids_.end()) {
-            buffer.write(gather_refined_cell_to_point_global_ids_.at(global_id));
+        // Skip values that are non interior or coarse cells.
+        if ( (element.getLevelElem().partitionType() != Dune::InteriorEntity)  || (element.level() == 0) ) {
+            buffer.write(42);
+            return;
+        }
+        // Store/rewritte global ids in the buffer when the element is an interior refined cell.
+        for (const auto& corner : level_cell_to_point_[element.level()-1][element.getLevelElem().index()]) {
+            buffer.write(level_point_global_ids_[element.level()-1][corner]);
         }
     }
 
-    // Scatter global ids of children cells of a coarse overlap cell
+    // Scatter global ids of overlap refined cells.
     template <class B, class T> // T = Entity<0>
-    void scatter(B& buffer, const T& element, std::size_t)
+    void scatter(B& buffer, const T& element, std::size_t num_corners)
     {
-        // Scatter only for overlap cells.
-        const auto& global_id = local_to_global_refined_cells_[element.index()];
-        if (gather_refined_cell_to_point_global_ids_.find(global_id)
-            != gather_refined_cell_to_point_global_ids_.end()) {
-            DataType tmp = gather_refined_cell_to_point_global_ids_.at(global_id);
-            buffer.read(tmp);
-        
-            if (element.partitionType() == Dune::OverlapEntity) {
-                scatter_refined_cell_to_point_global_ids_[global_id] = tmp;
+        // Read all values to advance the pointer used by the buffer to the correct index.
+        // Skip interior refined cells and overlap coarse cells.
+        if  ( (element.getLevelElem().partitionType() == Dune::InteriorEntity) || (element.level() == 0) ) {
+            // Read all values to advance the pointer used by the buffer
+            // to the correct index
+            for (std::size_t corner = 0; corner < num_corners;  ++corner) {
+                DataType tmp;
+                buffer.read(tmp);
+            }
+        }
+        else { // Overlap refined cell.
+            // Read and store the values in the correct location directly.
+            for (const auto& corner: level_cell_to_point_[element.level()-1][element.getLevelElem().index()]){
+                auto target_entry = level_point_global_ids_[element.level()-1][corner];
+                buffer.read(target_entry);
             }
         }
     }
 
 private:
-    const std::unordered_map<int, std::vector<std::size_t>>& gather_refined_cell_to_point_global_ids_;
-    std::unordered_map<int, std::vector<std::size_t>>& scatter_refined_cell_to_point_global_ids_;
-    const std::vector<int>& local_to_global_refined_cells_;
+    const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point_;
+    const std::vector<std::vector<DataType>>& level_point_global_ids_;
 };
 #endif // HAVE_MPI
 } // namespace
