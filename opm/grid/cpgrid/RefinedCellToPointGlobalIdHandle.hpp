@@ -53,7 +53,7 @@ struct RefinedCellToPointGlobalIdHandle {
     //   - We use the number of entries in the scatter method. That number is the number of corners when sending.
     //   - We skip non-refined cells, i.e., coarse cells equivalent to level zero cells.
 
-    using DataType = int;
+    using DataType = std::pair<int,int>;
 
     /// \param level_cell_to_point     Map from all refined level grids, cell_to_point_
     ///                                level_cell_to_point_[ element.level()-1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
@@ -62,9 +62,11 @@ struct RefinedCellToPointGlobalIdHandle {
     ///                                when corner belongs to
     ///                                level_cell_to_point_[ element.level() -1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
     RefinedCellToPointGlobalIdHandle(const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point,
-                                     std::vector<std::vector<DataType>>& level_point_global_ids)
+                                     std::vector<std::vector<int>>& level_point_global_ids,
+                                     std::vector<std::vector<DataType>>& level_point_global_ids_with_ranks)
         : level_cell_to_point_(level_cell_to_point)
         , level_point_global_ids_(level_point_global_ids)
+        , level_point_global_ids_with_ranks_(level_point_global_ids_with_ranks)
     {
     }
 
@@ -94,12 +96,15 @@ struct RefinedCellToPointGlobalIdHandle {
     {
         // Skip values that are non interior or coarse cells.
         if ( (element.getLevelElem().partitionType() != Dune::InteriorEntity)  || (element.level() == 0) ) {
-            buffer.write(42);
+            DataType tmp;
+            buffer.write(tmp);
             return;
         }
         // Store/rewritte global ids in the buffer when the element is an interior refined cell.
         for (const auto& corner : level_cell_to_point_[element.level()-1][element.getLevelElem().index()]) {
-            buffer.write(level_point_global_ids_[element.level()-1][corner]);
+            // const auto& [corner_id, rank] = level_point_global_ids_with_ranks_[element.level()-1][corner];
+            // buffer.write(level_point_global_ids_[element.level()-1][corner]);
+            buffer.write(level_point_global_ids_with_ranks_[element.level()-1][corner]); // [corner_id, rank]
         }
     }
 
@@ -120,15 +125,27 @@ struct RefinedCellToPointGlobalIdHandle {
         else { // Overlap refined cell.
             // Read and store the values in the correct location directly.
             for (const auto& corner: level_cell_to_point_[element.level()-1][element.getLevelElem().index()]){
-                auto target_entry = level_point_global_ids_[element.level()-1][corner];
-                buffer.read(target_entry);
+                auto cornerId_rank  = level_point_global_ids_with_ranks_[element.level()-1][corner];
+                DataType tmp;
+                buffer.read(tmp);
+                if (cornerId_rank.second < tmp.second) { // re-write
+                    level_point_global_ids_with_ranks_[element.level()-1][corner] = tmp;
+                    level_point_global_ids_[element.level()-1][corner] = tmp.first;
+                }
+                else {
+                    // auto target_entry = level_point_global_ids_[element.level()-1][corner];
+                    //  buffer.read(cornerId_rank);
+                }
+              
             }
         }
     }
 
 private:
     const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point_;
-    const std::vector<std::vector<DataType>>& level_point_global_ids_;
+    std::vector<std::vector<int>>& level_point_global_ids_;
+    std::vector<std::vector<DataType>>& level_point_global_ids_with_ranks_;
+    
 };
 #endif // HAVE_MPI
 } // namespace

@@ -2302,12 +2302,20 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         //
         // Get the cell_to_point_ info from all refined level grids.
         std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+        std::vector<std::vector<std::pair<int,int>>> localToGlobal_points_per_level_with_ranks(cells_per_dim_vec.size());
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
+            localToGlobal_points_per_level_with_ranks[level-1].resize(currentData()[level]->size(3));
+            for (std::size_t point_idx = 0; point_idx < localToGlobal_points_per_level[level-1].size(); ++point_idx){
+                int rank = comm().rank();
+                localToGlobal_points_per_level_with_ranks[level-1][point_idx] =
+                    std::make_pair(localToGlobal_points_per_level[level-1][point_idx], rank);
+            }
         }
 
         RefinedCellToPointGlobalIdHandle refinedCellToPointGlobalId_handle(level_cell_to_point,
-                                                                           localToGlobal_points_per_level);
+                                                                           localToGlobal_points_per_level,
+                                                                           localToGlobal_points_per_level_with_ranks);
         // communicate in each refined level grid fails also to re-write the global ids.
         currentData().back()->communicate(refinedCellToPointGlobalId_handle,
                                           Dune::InteriorBorder_All_Interface,
