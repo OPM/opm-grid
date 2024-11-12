@@ -756,3 +756,61 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
     }
 }
 
+
+BOOST_AUTO_TEST_CASE(call_adapt_on_distributed_grid)
+{
+    // Only for testing assignment of new global ids for refined entities (cells and point belonging to
+    // refined level grids).
+
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+        // grid.adapt(); It does not throw an exeption. Note: adapt() implements global refinement.
+        //
+        // The following test fails. TODO: Move the assignment of global IDs for refined level grids and the leaf grid view
+        // into the adapt(...) function, as it is invoked within 'addLgrsUpdateLeafGridView', not the other way around.
+        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = {1,2,5,6,13,14,17,18} where
+        // 1,5 in rank 0,
+        // 13,17 in rank 1,
+        // 2,6,18 in rank 2,
+        // 14 in rank 3.
+        // Block of cells to refine dim 2x2x2. LGR1 dim 4x4x4.
+        // 64 new refined cells. 5x5x5 = 125 points (only 98 = 125 - 3x3x3 parent corners new points - new global ids).
+        const std::vector<int>& marked_elemIdx = {1,2,5,6,13,14,17,18};
+        std::vector<int> assignRefinedLevel(grid.currentData().front()->size(0));
+        for (const auto& idx : marked_elemIdx)
+            assignRefinedLevel[idx] = 1;
+
+        grid.adapt(cells_per_dim_vec,
+                   assignRefinedLevel,
+                   lgr_name_vec,
+                   true,
+                   startIJK_vec,
+                   endIJK_vec);
+        // The following test fails. TODO: Move the assignment of global IDs for refined level grids and the leaf grid view
+        // into the adapt(...) function, as it is invoked within 'addLgrsUpdateLeafGridView', not the other way around.
+        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
+
