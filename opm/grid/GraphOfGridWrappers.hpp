@@ -128,6 +128,9 @@ void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
 void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
                                      std::vector<int>& gIDtoRank,
                                             const int& thisRank = -1);
+void extendGIDtoRank (const Dune::cpgrid::WellConnections& wellConnections,
+                                         std::vector<int>& gIDtoRank,
+                                                const int& thisRank = -1);
 
 /// \brief Add well cells' global IDs to the list
 ///
@@ -143,6 +146,16 @@ void extendImportExportList (const GraphOfGrid<Dune::CpGrid>& gog,
                                        std::vector<TheTuple>& cellList,
                                                           int skippedRank=-1,
                                       const std::vector<int>& gIDtoRank={});
+void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
+                                const std::vector<std::set<int>>& extraWells);
+std::vector<std::vector<std::set<int>>> getExtendedExportList (const GraphOfGrid<Dune::CpGrid>& gog,
+                 std::vector<std::tuple<int,int,char>>& exportList,
+                                                    int root,
+                                const std::vector<int>& gIDtoRank);
+std::vector<std::set<int>> communicateToExtendWells (
+    const std::vector<std::vector<std::set<int>>>& toBeCommunicatedCells,
+    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+    int root);
 
 /// \brief Find to which ranks wells were assigned
 ///

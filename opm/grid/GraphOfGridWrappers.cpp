@@ -25,6 +25,7 @@
 
 #include <config.h>
 #include "GraphOfGridWrappers.hpp"
+#include <opm/grid/common/CommunicationUtils.hpp>
 
 namespace Opm {
 
@@ -275,6 +276,194 @@ void extendImportExportList (const GraphOfGrid<Dune::CpGrid>& gog,
     std::inplace_merge(cellList.begin(),cellList.begin()+origSize,cellList.end(),compareTuple);
 }
 
+std::vector<std::vector<std::set<int>>> getExtendedExportList (const GraphOfGrid<Dune::CpGrid>& gog,
+                 std::vector<std::tuple<int,int,char>>& exportList,
+                                                    int root,
+                                const std::vector<int>& gIDtoRank)
+{
+    const auto& cc = gog.getGrid().comm();
+    // non-root ranks have empty export lists.
+    if (cc.rank()!=root)
+    {
+        return std::vector<std::vector<std::set<int>>>();
+    }
+    std::vector<std::vector<std::set<int>>> toBeCommunicatedCells(cc.size());
+    using ExportList = std::vector<std::tuple<int,int,char>>;
+    // make a list of wells for easy identification. Contains ID, begin, end
+    using iter = std::set<int>::const_iterator;
+    std::unordered_map<int,std::tuple<iter,iter>> wellMap;
+    for (const auto& well : gog.getWells())
+    {
+        if (gIDtoRank.size()>0)
+        {
+            auto wellID = *well.begin();
+            if (gIDtoRank.at(wellID)!=root)
+            {
+                wellMap[wellID] = std::make_tuple(well.begin(),well.end());
+            }
+        }
+        else
+        {
+            wellMap[*well.begin()] = std::make_tuple(well.begin(),well.end());
+        }
+    }
+
+    ExportList addToList;
+    // iterate once through the original exportList
+    for (const auto& cellProperties : exportList)
+    {
+        // if a cell is in any well, add cells of the well to exportList
+        auto pWell = wellMap.find(std::get<0>(cellProperties));
+        if (pWell!=wellMap.end())
+        {
+            int rankToExport = std::get<1>(cellProperties);
+            if (rankToExport!=root)
+            {
+                std::set<int> wellToExport;
+                const auto& [begin,end] = std::pair(std::get<0>(pWell->second),std::get<1>(pWell->second));
+                for (auto pgID = begin; pgID!=end; ++pgID)
+                {
+                    // cells in one well have the same attributes (except ID)
+                    if (*pgID!=std::get<0>(cellProperties)) // avoid adding cell that is already in the list
+                    {
+                        std::tuple<int,int,char> wellCell = cellProperties;
+                        std::get<0>(wellCell) = *pgID;
+                        addToList.push_back(wellCell);
+                    }
+                    wellToExport.emplace(*pgID);
+                }
+                toBeCommunicatedCells[rankToExport].push_back(std::move(wellToExport));
+            }
+            wellMap.erase(pWell);
+            if (wellMap.empty())
+            {
+                break;
+            }
+        }
+    }
+
+    // add new cells to the exportList and sort it. It is assumed that exportList starts sorted.
+    auto compareTuple = [](const auto& a, const auto& b){return std::get<0>(a)<std::get<0>(b);};
+    std::sort(addToList.begin(),addToList.end(),compareTuple);
+    auto origSize = exportList.size();
+    auto totsize = origSize+addToList.size();
+    exportList.reserve(totsize);
+    exportList.insert(exportList.end(),addToList.begin(),addToList.end());
+    std::inplace_merge(exportList.begin(),exportList.begin()+origSize,exportList.end(),compareTuple);
+
+    return toBeCommunicatedCells;
+}
+
+std::vector<std::set<int>> communicateToExtendWells (
+    const std::vector<std::vector<std::set<int>>>& toBeCommunicatedCells,
+    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+    int root)
+{
+    // create a vector with well-cells-to-be-imported that will be communicated to non-root ranks
+    int totsize = 0;
+    if (cc.rank()==root)
+    {
+        totsize = 2*cc.size()-1;
+        for (int i=0; i<cc.size(); ++i)
+        {
+            for (const auto& v : toBeCommunicatedCells[i])
+            {
+                totsize += v.size()+1;
+            }
+        }
+    }
+    // toBeCommunicated contains
+    //  in 0..cc.size() the index of the start for each rank's section (root is present but irrelevant)
+    //  in each section the number of well-parts and then
+    //  in each well-part the length of the well and its indices
+    std::vector<int> toBeCommunicated(totsize);
+    if (cc.rank()==root)
+    {
+        int index=cc.size();
+        for (int i=1; i<cc.size(); ++i)
+        {
+            toBeCommunicated[i]=index; // starting index for section belonging to rank i
+            const auto& vectorOfWellSets = toBeCommunicatedCells[i];
+            toBeCommunicated[index++] = vectorOfWellSets.size(); // number of wells
+            for (const auto& wellSet : vectorOfWellSets)
+            {
+                toBeCommunicated[index++] = wellSet.size();
+                for (const auto& cellID : wellSet)
+                {
+                    toBeCommunicated[index++] = cellID;
+                }
+            }
+        }
+    }
+    std::vector<int> offsets;
+    std::tie(toBeCommunicated, offsets) = Opm::allGatherv(toBeCommunicated,cc);
+    if (cc.rank()==root)
+    {
+        return std::vector<std::set<int>>();
+    }
+    int index = toBeCommunicated[cc.rank()];
+    int nrSets = toBeCommunicated[index++];
+    std::vector<std::set<int>> result(nrSets);
+    for (int i=0; i<nrSets; ++i)
+    {
+        int size = toBeCommunicated[index++];
+        for (int j=0; j<size; ++j)
+        {
+            result[i].emplace(toBeCommunicated[index++]);
+        }
+    }
+    return result;
+}
+
+void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
+                                const std::vector<std::set<int>>& extraWells)
+{
+    using ImportList = std::vector<std::tuple<int,int,char,int>>;
+    // make a list of wells for easy identification. Contains ID, begin, end
+    using iter = std::set<int>::const_iterator;
+    std::unordered_map<int,std::tuple<iter,iter>> wellMap;
+    for (const auto& well : extraWells) // empty on non-root
+    {
+        wellMap[*well.begin()] = std::make_tuple(well.begin(),well.end());
+    }
+
+    ImportList addToList;
+    // iterate once through the original importList
+    for (const auto& cellProperties : importList)
+    {
+        // if a cell is in any well, add cells of the well to importList
+        auto pWell = wellMap.find(std::get<0>(cellProperties));
+        if (pWell!=wellMap.end())
+        {
+            const auto& [begin,end] = std::pair(std::get<0>(pWell->second),std::get<1>(pWell->second));
+            for (auto pgID = begin; pgID!=end; ++pgID)
+            {
+                // cells in one well have the same attributes (except ID)
+                if (*pgID!=std::get<0>(cellProperties)) // avoid adding cell that is already in the list
+                {
+                    std::tuple<int,int,char,int> wellCell = cellProperties;
+                    std::get<0>(wellCell) = *pgID;
+                    addToList.push_back(wellCell);
+                }
+            }
+            wellMap.erase(pWell);
+            if (wellMap.empty())
+            {
+                break;
+            }
+        }
+    }
+
+    // add new cells to the importList and sort it. It is assumed that importList starts sorted.
+    auto compareTuple = [](const auto& a, const auto& b){return std::get<0>(a)<std::get<0>(b);};
+    std::sort(addToList.begin(),addToList.end(),compareTuple);
+    auto origSize = importList.size();
+    auto totsize = origSize+addToList.size();
+    importList.reserve(totsize);
+    importList.insert(importList.end(),addToList.begin(),addToList.end());
+    std::inplace_merge(importList.begin(),importList.begin()+origSize,importList.end(),compareTuple);
+}
+
 std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
                  const Dune::cpgrid::WellConnections& wellConnections)
 {
@@ -334,36 +523,45 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     myImportList.reserve(1.2*myImportList.size());
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
-    for ( int i=0; i < numExport; ++i )
-    {
-        gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
-        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
-    }
-    // partitioner sees only one cell per well, modify remaining
-    extendGIDtoRank(gog,gIDtoRank,rank);
-
     for ( int i=0; i < numImport; ++i )
     {
         myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
     }
-
-
-    // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
-    for ( std::size_t i = 0; i < gIDtoRank.size(); ++i)
+    assert(rank==root || numExport==0);
+    if (rank==root)
     {
-        if ( gIDtoRank[i] == rank )
+        for ( int i=0; i < numExport; ++i )
         {
-            myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
-            myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
+            gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
+            myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
         }
-    }
-    std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
-    std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+        std::sort(myExportList.begin(),myExportList.end());
+        // partitioner sees only one cell per well, modify remaining
+        extendGIDtoRank(gog,gIDtoRank,rank);
 
-    // Complete the lists by adding cells that were contracted in the graph.
-    // All cells on the rank "rank" were added before.
-    extendImportExportList(gog,myImportList,rank,gIDtoRank);
-    extendImportExportList(gog,myExportList,rank,gIDtoRank);
+        // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
+        for ( std::size_t i = 0; i < gIDtoRank.size(); ++i)
+        {
+            if ( gIDtoRank[i] == rank )
+            {
+                myExportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner) );
+                myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
+            }
+        }
+        std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
+        std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
+        // Complete the lists by adding cells that were contracted in the graph.
+        // All cells on the rank "rank" were added before.
+        extendImportExportList(gog,myImportList,rank,gIDtoRank);
+        // extendImportExportList(gog,myExportList,rank); // ,gIDtoRank);
+    }
+    auto eExL = getExtendedExportList(gog,myExportList,root,gIDtoRank);
+    auto extended = communicateToExtendWells(eExL,cc,root);
+    if (cc.rank()!=root)
+    {
+        extendImportList(myImportList,extended);
+    }
+    std::sort(myImportList.begin(),myImportList.end());
 
     std::vector<std::pair<std::string,bool>> parallel_wells;
     if( wells )
@@ -371,7 +569,10 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
     }
-    return std::make_tuple(gIDtoRank, parallel_wells, myExportList, myImportList);
+    return std::make_tuple( std::move(gIDtoRank),
+                            std::move(parallel_wells),
+                            std::move(myExportList),
+                            std::move(myImportList) );
 }
 
 namespace {
@@ -434,6 +635,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
     GraphOfGrid gog(grid);
+    assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
                                           : Dune::cpgrid::WellConnections(*wells,possibleFutureConnections,grid);
     addWellConnections(gog,wellConnections);
