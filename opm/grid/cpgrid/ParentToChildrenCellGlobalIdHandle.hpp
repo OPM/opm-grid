@@ -14,7 +14,7 @@
 //===========================================================================
 
 /*
-  Copyright 2024 TBD
+  Copyright 2024 Equinor ASA
   This file is part of The Open Porous Media project  (OPM).
   OPM is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
@@ -82,6 +82,9 @@ struct ParentToChildrenCellGlobalIdHandle {
     {
         // Skip values that are not interior, or have no children (in that case, 'invalid' level = -1)
         const auto& [level, children] = parent_to_children_[element.index()];
+        // [Bug in dune-common] VariableSizeCommunicator will deadlock if a process attempts to send a message of size zero.
+        // This can happen if the size method returns zero for all entities that are shared with another process.
+        // Therefore, when skipping cells without children or for overlap cells, we set the size to 1.
         if ( (element.partitionType() != Dune::InteriorEntity) || (level == -1))
             return 1;
         return children.size();
@@ -93,6 +96,9 @@ struct ParentToChildrenCellGlobalIdHandle {
     {
         // Skip values that are not interior, or have no children (in that case, 'invalid level' = -1)
         const auto& [level, children] = parent_to_children_[element.index()];
+        // [Bug in dune-common] VariableSizeCommunicator will deadlock if a process tries to send a message with size zero.
+        // To avoid this, for cells without children or for overlap cells, we set the size to 1 and write a single DataType
+        // value (e.g., '42').
         if ( (element.partitionType() != Dune::InteriorEntity) || (level==-1)) {
             buffer.write(42);
             return;
