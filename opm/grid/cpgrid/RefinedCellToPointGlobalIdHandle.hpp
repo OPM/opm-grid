@@ -94,7 +94,7 @@ struct RefinedCellToPointGlobalIdHandle {
     void gather(B& buffer, const T& element)
     {
         // Skip values that are non interior.
-        if ( element.partitionType() != Dune::InteriorEntity ) {
+        /*   if ( element.partitionType() != Dune::InteriorEntity ) {
             DataType tmp_rank;
             buffer.write(tmp_rank);
             for (std::size_t corner = 0; corner < 8;  ++corner) {
@@ -102,7 +102,7 @@ struct RefinedCellToPointGlobalIdHandle {
                 buffer.write(tmp_id);
             }
             return;
-            }
+            }*/
         // Store/rewritte global ids in the buffer when the element is an interior refined cell.
               buffer.write(comm_.rank());
         for (const auto& corner : cell_to_point_[element.index()]) {
@@ -116,7 +116,7 @@ struct RefinedCellToPointGlobalIdHandle {
     {
         // Read all values to advance the pointer used by the buffer to the correct index.
         // Skip interior refined cells.
-         if  ( element.partitionType() == Dune::InteriorEntity ) {
+        /*  if  ( element.partitionType() == Dune::InteriorEntity ) {
             // Read all values to advance the pointer used by the buffer
             // to the correct index
             DataType tmp_rank;
@@ -126,24 +126,24 @@ struct RefinedCellToPointGlobalIdHandle {
                 buffer.read(tmp_id);
             }
         }
-        else { // Overlap refined cell.
+        else { // Overlap refined cell.*/
             // Read and store the values in the correct location directly.
             DataType tmp_rank;
             buffer.read(tmp_rank);
-            if ( comm_.rank() < tmp_rank ) { // re-write (larger rank wins)
-                for (const auto& corner: cell_to_point_[element.index()]){
+            if ( comm_.rank() > tmp_rank ) { // re-write (larger rank wins)
+                /*  for (const auto& corner: cell_to_point_[element.index()]){
                     DataType tmp_id;
                     buffer.read(tmp_id);
-                    point_global_ids_[corner] = tmp_id; // is this necessary?
+                    // point_global_ids_[corner] = tmp_id; // is this necessary?
                 }
             }
-            else {
+            else { // Rank is not rewritten to the larger...*/
                 for (const auto& corner: cell_to_point_[element.index()]){
                     auto target_entry = point_global_ids_[corner];
                     buffer.read(target_entry);
                 }
             }
-            }
+            //  }
     }
 
 private:

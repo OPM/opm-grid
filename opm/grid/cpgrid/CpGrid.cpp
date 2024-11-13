@@ -2398,7 +2398,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for(const auto& element : elements(leafGridView())) {
             const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
             if ( elemPartitionType == InteriorEntity) {
-                // Check if it has an overlap neighbor
+                /* // Check if it has an overlap neighbor
                 bool isFullyInterior = true;
                 for (const auto& intersection : intersections(leafGridView(), element)) {
                     if ( intersection.neighbor() ) {
@@ -2413,10 +2413,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         }
                     }
                 }
-                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
+                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().*/
                     leaf_index_set.add(globalIdSet().id(element),
-                                       ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
-                }
+                                       ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                    // }
             }
             else { // overlap cell
                 assert(elemPartitionType == OverlapEntity);
