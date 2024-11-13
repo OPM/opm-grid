@@ -30,7 +30,8 @@
 #ifndef OPM_REFINEDCELLTOPOINTGLOBALIDHANDLE_HEADER
 #define OPM_REFINEDCELLTOPOINTGLOBALIDHANDLE_HEADER
 
-
+//#include <opm/grid/CpGrid.hpp>
+#include <opm/grid/common/CommunicationUtils.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 
 #include <array>
@@ -53,7 +54,7 @@ struct RefinedCellToPointGlobalIdHandle {
     //   - We use the number of entries in the scatter method. That number is the number of corners when sending.
     //   - We skip non-refined cells, i.e., coarse cells equivalent to level zero cells.
 
-    using DataType = std::pair<int,int>;
+    using DataType = int;
 
     /// \param level_cell_to_point     Map from all refined level grids, cell_to_point_
     ///                                level_cell_to_point_[ element.level()-1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
@@ -61,91 +62,95 @@ struct RefinedCellToPointGlobalIdHandle {
     ///                                level_point_global_ids[ element.level()-1 ][ corner ] = its global id
     ///                                when corner belongs to
     ///                                level_cell_to_point_[ element.level() -1 ][ element.index() ] = { corner0, corner1, ..., corner7 }.
-    RefinedCellToPointGlobalIdHandle(const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point,
-                                     std::vector<std::vector<int>>& level_point_global_ids,
-                                     std::vector<std::vector<DataType>>& level_point_global_ids_with_ranks)
-        : level_cell_to_point_(level_cell_to_point)
-        , level_point_global_ids_(level_point_global_ids)
-        , level_point_global_ids_with_ranks_(level_point_global_ids_with_ranks)
+    /** documentation will be fixed soon */
+    RefinedCellToPointGlobalIdHandle(const Dune::CpGrid::Communication& comm,
+                                     const std::vector<std::array<int,8>>& cell_to_point,
+                                     std::vector<DataType>& point_global_ids)
+        : comm_(comm)
+        , cell_to_point_(cell_to_point)
+        , point_global_ids_(point_global_ids)
     {
     }
 
-    // We do not take into account cells from level zero.
+    // Every cell has 8 corners.
     bool fixedSize(std::size_t, std::size_t)
     {
-        return false;
+        return true;
     }
     // Only communicate values attached to refined cells.
     bool contains(std::size_t, std::size_t codim)
     {
         return codim == 0;
     }
-    // Communicate variable size: 8 corners per refined cell; skip coarse cells from level zero.
+    // Communicate variable size: 8 corners per refined cell plus rank
     template <class T> // T = Entity<0>
     std::size_t size(const T& element)
     {
-        // Skip values that are not interior
-        if ( (element.getLevelElem().partitionType() != Dune::InteriorEntity)  || (element.level() == 0) )
-            return 1;
-        return level_cell_to_point_[element.level()-1][element.getLevelElem().index()].size(); // each refined cell has 8 corners.
+        return 1+cell_to_point_[element.index()].size(); // rank, each refined cell has 8 corners.
     }
 
-    // Gather global ids of points of an interior refined cell
+    // Gather global ids of the 8 corners of an interior refined cell
     template <class B, class T> // T = Entity<0>
     void gather(B& buffer, const T& element)
     {
-        // Skip values that are non interior or coarse cells.
-        if ( (element.getLevelElem().partitionType() != Dune::InteriorEntity)  || (element.level() == 0) ) {
-            DataType tmp;
-            buffer.write(tmp);
+        // Skip values that are non interior.
+        if ( element.partitionType() != Dune::InteriorEntity ) {
+            DataType tmp_rank;
+            buffer.write(tmp_rank);
+            for (std::size_t corner = 0; corner < 8;  ++corner) {
+                DataType tmp_id;
+                buffer.write(tmp_id);
+            }
             return;
-        }
+            }
         // Store/rewritte global ids in the buffer when the element is an interior refined cell.
-        for (const auto& corner : level_cell_to_point_[element.level()-1][element.getLevelElem().index()]) {
-            // const auto& [corner_id, rank] = level_point_global_ids_with_ranks_[element.level()-1][corner];
-            // buffer.write(level_point_global_ids_[element.level()-1][corner]);
-            buffer.write(level_point_global_ids_with_ranks_[element.level()-1][corner]); // [corner_id, rank]
+              buffer.write(comm_.rank());
+        for (const auto& corner : cell_to_point_[element.index()]) {
+            buffer.write(point_global_ids_[corner]);
         }
     }
 
     // Scatter global ids of overlap refined cells.
     template <class B, class T> // T = Entity<0>
-    void scatter(B& buffer, const T& element, std::size_t num_corners)
+    void scatter(B& buffer, const T& element, [[maybe_unused]] std::size_t num_corners_plus_one)
     {
         // Read all values to advance the pointer used by the buffer to the correct index.
-        // Skip interior refined cells and overlap coarse cells.
-        if  ( (element.getLevelElem().partitionType() == Dune::InteriorEntity) || (element.level() == 0) ) {
+        // Skip interior refined cells.
+         if  ( element.partitionType() == Dune::InteriorEntity ) {
             // Read all values to advance the pointer used by the buffer
             // to the correct index
-            for (std::size_t corner = 0; corner < num_corners;  ++corner) {
-                DataType tmp;
-                buffer.read(tmp);
+            DataType tmp_rank;
+            buffer.read(tmp_rank);
+            for (std::size_t corner = 0; corner < 8;  ++corner) {
+                DataType tmp_id;
+                buffer.read(tmp_id);
             }
         }
         else { // Overlap refined cell.
             // Read and store the values in the correct location directly.
-            for (const auto& corner: level_cell_to_point_[element.level()-1][element.getLevelElem().index()]){
-                auto cornerId_rank  = level_point_global_ids_with_ranks_[element.level()-1][corner];
-                DataType tmp;
-                buffer.read(tmp);
-                if (cornerId_rank.second < tmp.second) { // re-write
-                    level_point_global_ids_with_ranks_[element.level()-1][corner] = tmp;
-                    level_point_global_ids_[element.level()-1][corner] = tmp.first;
+            DataType tmp_rank;
+            buffer.read(tmp_rank);
+            if ( comm_.rank() < tmp_rank ) { // re-write (larger rank wins)
+                for (const auto& corner: cell_to_point_[element.index()]){
+                    DataType tmp_id;
+                    buffer.read(tmp_id);
+                    point_global_ids_[corner] = tmp_id; // is this necessary?
                 }
-                else {
-                    // auto target_entry = level_point_global_ids_[element.level()-1][corner];
-                    //  buffer.read(cornerId_rank);
-                }
-              
             }
-        }
+            else {
+                for (const auto& corner: cell_to_point_[element.index()]){
+                    auto target_entry = point_global_ids_[corner];
+                    buffer.read(target_entry);
+                }
+            }
+            }
     }
 
 private:
-    const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point_;
-    std::vector<std::vector<int>>& level_point_global_ids_;
-    std::vector<std::vector<DataType>>& level_point_global_ids_with_ranks_;
-    
+    const Dune::CpGrid::Communication& comm_;
+    const std::vector<std::array<int,8>>& cell_to_point_;
+    std::vector<DataType>& point_global_ids_;
+
 };
 #endif // HAVE_MPI
 } // namespace
