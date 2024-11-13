@@ -2304,9 +2304,19 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Get the cell_to_point_ info from all refined level grids.
 
          for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+             std::vector<int> winning_ranks(currentData()[level]->size(0), std::numeric_limits<int>::max());
+             for (const auto& element : elements(levelGridView(level))) {
+                 if (element.partitionType() == InteriorEntity) {
+                     for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
+                         int rank = comm().rank();
+                         winning_ranks[corner] = rank;
+                     }
+                 }
+             }
              RefinedCellToPointGlobalIdHandle refinedCellToPointGlobalId_handle(comm(),
                                                                                 currentData()[level]->cell_to_point_,
-                                                                           localToGlobal_points_per_level[level-1]);
+                                                                                localToGlobal_points_per_level[level-1],
+                                                                                winning_ranks);
         // communicate in each refined level grid fails also to re-write the global ids.
         currentData()[level]->communicate(refinedCellToPointGlobalId_handle,
                                           Dune::InteriorBorder_All_Interface,
@@ -2336,6 +2346,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 if ( element.partitionType() == InteriorEntity) {
                     level_index_set.add( level_global_id_set->id(element),
                                          ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                    /** Do we need to distinguish here between fully interior cells and interior cells with overlap neighbors?*/
                 }
                 else { // overlap cell
                     assert(element.partitionType() == OverlapEntity);
@@ -2398,7 +2409,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         for(const auto& element : elements(leafGridView())) {
             const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
             if ( elemPartitionType == InteriorEntity) {
-                /* // Check if it has an overlap neighbor
+                // Check if it has an overlap neighbor
                 bool isFullyInterior = true;
                 for (const auto& intersection : intersections(leafGridView(), element)) {
                     if ( intersection.neighbor() ) {
@@ -2407,16 +2418,17 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         if (neighborPartitionType == OverlapEntity )  {
                             isFullyInterior = false;
                             leaf_index_set.add(globalIdSet().id(element),
-                                               ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                                               ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
                             // Store it only once
                             break;
                         }
                     }
                 }
-                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().*/
+                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding
+                    // leaf_index_set.size().
                     leaf_index_set.add(globalIdSet().id(element),
                                        ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
-                    // }
+                    }
             }
             else { // overlap cell
                 assert(elemPartitionType == OverlapEntity);
