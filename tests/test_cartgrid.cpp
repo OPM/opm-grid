@@ -46,7 +46,7 @@ BOOST_AUTO_TEST_CASE (facenumbers)
                     4, 9, 5, 11 };
     struct UnstructuredGrid *g = create_grid_cart2d(2, 2, 1., 1.);
     int i;
-    int k;
+    unsigned k;
     for (i = 0; i < g->number_of_cells; ++i) {
         for (k = g->cell_facepos[i]; k < g->cell_facepos[i + 1]; ++k) {
             BOOST_REQUIRE_EQUAL (g->cell_faces[k], faces[k]);

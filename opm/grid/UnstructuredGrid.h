@@ -124,7 +124,7 @@ struct UnstructuredGrid
        for f's nodes in the face_nodes array.
        The size of the array is equal to (number_of_faces + 1).
     */
-    int    *face_nodepos;
+    unsigned *face_nodepos;
     /**
        For a face f, face_cells[2*f] and face_cells[2*f + 1] contain
        the cell indices of the cells adjacent to f. The number -1
@@ -149,7 +149,7 @@ struct UnstructuredGrid
        for c's faces in the cell_faces array.
        The size of the array is equal to (number_of_cells + 1).
     */
-    int    *cell_facepos;
+    unsigned *cell_facepos;
 
     /**
        Node coordinates, stored consecutively for each node. That is,
