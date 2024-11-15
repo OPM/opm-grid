@@ -323,8 +323,10 @@ namespace cpgrid
                 }
             }
 
-            auto suffix = std::string{(nnc_cells[PinchNNC].size() != 1)? "s" : ""};
-            Opm::OpmLog::info(std::to_string(nnc_cells.size()) + " pinch-out connection" + suffix + " generated");
+            if (!nnc_cells[PinchNNC].empty()) {
+                auto suffix = std::string{(nnc_cells[PinchNNC].size() != 1)? "s" : ""};
+                Opm::OpmLog::info(std::to_string(nnc_cells[PinchNNC].size()) + " pinch-out connection" + suffix + " generated");
+            }
 
             // Add explicit NNCs.
             const auto& nncs = ecl_state->getInputNNC();
