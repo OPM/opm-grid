@@ -140,8 +140,11 @@ struct RefinedCellToPointGlobalIdHandle {
                     auto& min_rank = winning_ranks_[corner];
                     if (tmp_rank < min_rank) {
                          min_rank = tmp_rank; 
-                        auto& target_entry = point_global_ids_[corner];
+                         auto& target_entry = point_global_ids_[corner];
+                         // DataType min_rank_target_entity;
                         buffer.read(target_entry);
+                        // Rewrite
+                        //point_global_ids_[corner] = min_rank_target_entity;
                     } else {
                         DataType rubbish;
                         buffer.read(rubbish);
