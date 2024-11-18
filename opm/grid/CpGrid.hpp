@@ -725,7 +725,8 @@ namespace Dune
         bool loadBalance(int overlapLayers=1,
                          int partitionMethod = Dune::PartitionMethod::zoltan,
                          double imbalanceTol = 1.1,
-                         int level =-1)
+                         int level =-1,
+                         bool addCornerCells = true)
         {
             using std::get;
             return get<0>(scatterGrid(/* edgeWeightMethod = */ defaultTransEdgeWgt,
@@ -734,7 +735,7 @@ namespace Dune
                                       /* possibleFutureConnections = */ {},
                                       /* serialPartitioning = */ false,
                                       /* transmissibilities = */ nullptr,
-                                      /* addCornerCells = */ true,
+                                      addCornerCells,
                                       overlapLayers,
                                       partitionMethod,
                                       imbalanceTol,
