@@ -123,39 +123,63 @@ void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
 
 /// \brief Correct gIDtoRank's data about well cells
 ///
-/// gIDtoRank is constructed with default value thisRank, other entries
-/// come from Zoltan partitioner's export list that does not contain all well cells
+/// gIDtoRank's entries come from Zoltan partitioner's export list
+/// that does not contain all well cells. Default value is root's rank.
+/// parameter root allows skipping wells that are correct.
 void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
                                      std::vector<int>& gIDtoRank,
-                                            const int& thisRank = -1);
-void extendGIDtoRank (const Dune::cpgrid::WellConnections& wellConnections,
-                                         std::vector<int>& gIDtoRank,
-                                                const int& thisRank = -1);
+                                            const int& root = -1);
 
-/// \brief Add well cells' global IDs to the list
+namespace Impl{
+/// \brief Add well cells' global IDs to the import list
+///
+/// Helper function for extendExportAndImportLists.
+/// Used on non-root ranks that do not have access to wells.
+void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
+                                const std::vector<std::set<int>>& extraWells);
+
+/// \brief Add well cells' global IDs to the root's export list and output other rank's wells
+///
+/// Helper function for extendExportAndImportLists.
+/// Does nothing on non-root ranks.
+/// On root, exportList is extended by well cells that are hidden from the partitioner.
+/// These wells are also collected and returned so they can be communicated to other ranks.
+/// \return vector of size cc.size(). Each entry contains vector of wells exported to that rank.
+std::vector<std::vector<std::set<int>>>
+extendedRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
+                  std::vector<std::tuple<int,int,char>>& exportList,
+                                                     int root,
+                                 const std::vector<int>& gIDtoRank);
+
+/// \brief Communicate wells exported from root, needed for extending other rank's import lists
+///
+/// Helper function for extendExportAndImportLists.
+/// \param exportedWells Contains for each rank the wells that are exported there,
+///                      empty on non-root ranks
+/// \param cc Communication object
+/// \param root The root's rank
+/// \return Vector of wells necessary to extend this rank's import lists,
+///         empty on the root rank
+std::vector<std::set<int>> communicateExportedWells (
+    const std::vector<std::vector<std::set<int>>>& exportedWells,
+    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+    int root);
+} // end namespace Impl
+
+/// \brief Add well cells' global IDs to the root's export and others' import list
 ///
 /// Output of the partitioning is missing vertices that were contracted.
 /// This function fills in omitted gIDs and gives them the properties
 /// (like process number and ownership) of their representative cell (well ID).
-/// It is possible to skip wells on a given rank, because import and export
-/// lists are expanded by all cells on a current rank in makeImportAndExportLists.
-/// Knowing gIDtoRank speeds up the process, wells can be skipped sooner.
-/// TheTuple is <int,int,char> for ExportList and <int,int,char,int> for ImportList.
-template<typename TheTuple>
-void extendImportExportList (const GraphOfGrid<Dune::CpGrid>& gog,
-                                       std::vector<TheTuple>& cellList,
-                                                          int skippedRank=-1,
-                                      const std::vector<int>& gIDtoRank={});
-void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
-                                const std::vector<std::set<int>>& extraWells);
-std::vector<std::vector<std::set<int>>> getExtendedExportList (const GraphOfGrid<Dune::CpGrid>& gog,
-                 std::vector<std::tuple<int,int,char>>& exportList,
-                                                    int root,
-                                const std::vector<int>& gIDtoRank);
-std::vector<std::set<int>> communicateToExtendWells (
-    const std::vector<std::vector<std::set<int>>>& toBeCommunicatedCells,
-    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-    int root);
+/// Root is the only rank with information about wells, and communicates
+/// the necessary information to other ranks.
+/// On root ImportList has been already extended with all cells on the current rank.
+void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
+            const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                                             int root,
+                          std::vector<std::tuple<int,int,char>>& exportList,
+                      std::vector<std::tuple<int,int,char,int>>& importList,
+                                         const std::vector<int>& gIDtoRank={});
 
 /// \brief Find to which ranks wells were assigned
 ///

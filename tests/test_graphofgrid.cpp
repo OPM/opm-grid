@@ -461,6 +461,9 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
 // After partitioning, importList and exportList are not complete,
 // other cells from wells need to be added.
 BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
+{}
+
+BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
 {
     // create a grid with wells
     Dune::CpGrid grid;
@@ -472,54 +475,6 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     gog.addWell(std::set<int>{5,8,11});
     const auto& wells = gog.getWells();
     BOOST_REQUIRE(wells.size()==2);
-
-    // mock import and export lists
-    using importTuple = std::tuple<int,int,char,int>;
-    using exportTuple = std::tuple<int,int,char>;
-    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
-
-    std::vector<importTuple> imp(3);
-    imp[0] = std::make_tuple(0,0,AttributeSet::owner,1);
-    imp[1] = std::make_tuple(3,4,AttributeSet::copy,2);
-    imp[2] = std::make_tuple(5,1,AttributeSet::copy,3);
-    extendImportExportList(gog,imp);
-    BOOST_REQUIRE(imp.size()==7);
-    for (int i=0; i<7; ++i)
-    {
-        if (i<3)
-        {
-            BOOST_CHECK(std::get<0>(imp[i])==i);
-            BOOST_CHECK(std::get<1>(imp[i])==0);
-            BOOST_CHECK(std::get<2>(imp[i])==AttributeSet::owner);
-            BOOST_CHECK(std::get<3>(imp[i])==1);
-        }
-        else if (i>3)
-        {
-            BOOST_CHECK(std::get<1>(imp[i])==1);
-            BOOST_CHECK(std::get<2>(imp[i])==AttributeSet::copy);
-            BOOST_CHECK(std::get<3>(imp[i])==3);
-        }
-    }
-    // lists are sorted by ID (by get<0>)
-    BOOST_CHECK(std::get<0>(imp[3])==3);
-    BOOST_CHECK(std::get<1>(imp[3])==4);
-    BOOST_CHECK(std::get<2>(imp[3])==AttributeSet::copy);
-    BOOST_CHECK(std::get<3>(imp[3])==2);
-    BOOST_CHECK(std::get<0>(imp[4])==5);
-    BOOST_CHECK(std::get<0>(imp[5])==8);
-    BOOST_CHECK(std::get<0>(imp[6])==11);
-
-    std::vector<exportTuple> exp(3);
-    exp[0] = std::make_tuple(0,0,AttributeSet::owner);
-    exp[1] = std::make_tuple(3,4,AttributeSet::copy);
-    exp[2] = std::make_tuple(5,1,AttributeSet::copy);
-    extendImportExportList(gog,exp);
-    for (int i=0; i<7; ++i)
-    {
-        BOOST_CHECK(std::get<0>(imp[i])==std::get<0>(exp[i]));
-        BOOST_CHECK(std::get<1>(imp[i])==std::get<1>(exp[i]));
-        BOOST_CHECK(std::get<2>(imp[i])==std::get<2>(exp[i]));
-    }
 
     std::vector<int>gIDtoRank(12,1);
     gIDtoRank[0]=0; // well {0,1,2}
@@ -535,17 +490,6 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     }
     extendGIDtoRank(gog,gIDtoRank);
     BOOST_CHECK(gIDtoRank[8]==1);
-
-    // extendImportExportList skip Rank
-    std::vector<exportTuple> expSkipped(3);
-    expSkipped[0] = std::make_tuple(0,0,AttributeSet::owner);
-    expSkipped[1] = std::make_tuple(3,4,AttributeSet::copy);
-    expSkipped[2] = std::make_tuple(5,1,AttributeSet::copy);
-    extendImportExportList(gog,expSkipped,0,gIDtoRank);
-    BOOST_REQUIRE(expSkipped.size()==5);
-    BOOST_CHECK(expSkipped[0]==exp[0]);
-    for (int i=1; i<5; ++i)
-        BOOST_CHECK_MESSAGE(expSkipped[i]==exp[i+2],"expSkipped[i]!=exp[i+2] with i="+std::to_string(i));
 }
 
 // getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
