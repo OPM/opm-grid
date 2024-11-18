@@ -649,6 +649,7 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
 
          std::cout<<  allGlobalIds_points_set.size() << std::endl;
         BOOST_CHECK( allGlobalIds_points_set.size() == 125);
+        
 
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
     }
