@@ -223,7 +223,6 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
     static_cast<void>(transmissibilities);
-    static_cast<void>(overlapLayers);
     static_cast<void>(method);
     static_cast<void>(imbalanceTol);
     static_cast<void>(level);
@@ -399,7 +398,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                                                addCornerCells,
                                                transmissibilities,
                                                useTransToFilterOverlap,
-                                               1 /*layers*/,
+                                               overlapLayers,
                                                level);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
