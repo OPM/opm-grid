@@ -317,7 +317,7 @@ std::vector<std::set<int>> communicateExportedWells (
                         sentData[index++] = gID;
                     }
                 }
-                assert(totsize==sentData.size());
+                assert(totsize==(int)sentData.size());
                 int tag = 37; // a random number
                 MPI_Send(&totsize, 1, MPI_INT, i, tag++, cc);
                 MPI_Send(sentData.data(), totsize, MPI_INT, i, tag, cc);

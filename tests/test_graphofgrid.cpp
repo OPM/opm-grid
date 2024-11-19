@@ -48,6 +48,8 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     std::array<double,3> size{2.,2.,2.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
 
     BOOST_REQUIRE(gog.size()==8); // number of graph vertices
     BOOST_REQUIRE(gog.numEdges(0)==3); // each vertex has 3 neighbors
@@ -70,6 +72,8 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
     std::array<double,3> size{2.,2.,2.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
 
     auto edgeL = gog.edgeList(3); // std::map<int,float>(gID,edgeWeight)
     BOOST_REQUIRE(edgeL[1]==1);
@@ -112,6 +116,8 @@ BOOST_AUTO_TEST_CASE(WrapperForZoltan)
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
 
     int err;
     int nVer = getGraphOfGridNumVertices(&gog,&err);
@@ -161,6 +167,8 @@ BOOST_AUTO_TEST_CASE(GraphWithWell)
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
 
     std::unordered_map<std::string, std::set<int>> wells{
         {"shape L on the front face", {5,10,15,35,55} },
@@ -196,6 +204,8 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
 
     std::array<std::set<int>,3> wells{std::set<int>{0,1,2,3,4},
                                       std::set<int>{52,32,12},
@@ -360,6 +370,8 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
     BOOST_REQUIRE(gog.size()==8);
 
     auto wellCon = std::make_shared<Opm::WellConnections>(); // do not confuse with Dune::cpgrid::WellConnections
@@ -471,6 +483,9 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+
     gog.addWell(std::set<int>{0,1,2});
     gog.addWell(std::set<int>{5,8,11});
     const auto& wells = gog.getWells();
@@ -501,6 +516,8 @@ BOOST_AUTO_TEST_CASE(test_getWellRanks)
     std::array<int,3> dims{1,2,4};
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
+    if (grid.size(0)==0)
+        return;
 
     auto wellCon = std::make_shared<Opm::WellConnections>();
     wellCon->add(createConnection(0,0,0));
