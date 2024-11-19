@@ -51,6 +51,7 @@
 
 #include "../CpGrid.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
+#include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include "RefinedCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
@@ -2217,6 +2218,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
         comm().allgather(&local_cell_ids_needed, 1, cell_ids_needed_by_proc.data());
+      
 
         std::vector<std::size_t> point_ids_needed_by_proc(comm().size());
         std::size_t local_point_ids_needed = 0;
@@ -2303,25 +2305,36 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         //
         // Get the cell_to_point_ info from all refined level grids.
 
+        std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+        std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
          for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-             std::vector<int> winning_ranks(currentData()[level]->size(3), comm().size()); // std::numeric_limits<int>::max());
+             level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
+             level_winning_ranks[level-1].resize(currentData()[level]->size(3), comm().size()); // std::numeric_limits<int>::max());
              for (const auto& element : elements(levelGridView(level))) {
                  if (element.partitionType() == InteriorEntity) {
                      for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
                          int rank = comm().rank();
-                         winning_ranks[corner] = rank;
+                         level_winning_ranks[level -1][corner] = rank;
                      }
                  }
              }
-             RefinedCellToPointGlobalIdHandle refinedCellToPointGlobalId_handle(comm(),
-                                                                                currentData()[level]->cell_to_point_,
+             /*    RefinedCellToPointGlobalIdHandle refinedCellToPointGlobalId_handle(currentData()[level]->cell_to_point_,
                                                                                 localToGlobal_points_per_level[level-1],
                                                                                 winning_ranks);
         // communicate in each refined level grid fails also to re-write the global ids.
         currentData()[level]->communicate(refinedCellToPointGlobalId_handle,
                                           Dune::InteriorBorder_All_Interface,
-                                          Dune::ForwardCommunication);
+                                          Dune::ForwardCommunication);*/
          }
+
+         ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(parent_to_children,
+                                                                                        level_cell_to_point,
+                                                                                        level_winning_ranks,
+                                                                                        localToGlobal_cells_per_level,
+                                                                                        localToGlobal_points_per_level);
+        currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
+                                           Dune::InteriorBorder_All_Interface,
+                                           Dune::ForwardCommunication );
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids

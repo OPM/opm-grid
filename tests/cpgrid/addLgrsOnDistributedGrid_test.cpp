@@ -49,6 +49,7 @@
 #include <opm/grid/common/CommunicationUtils.hpp>
 
 #include <dune/grid/common/mcmgmapper.hh>
+#include <dune/grid/common/gridenums.hh>
 
 #include <sstream>
 #include <iostream>
@@ -381,14 +382,18 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         std::vector<int> interior_point_global_ids;
         int local_interior_point_count = 0;
         interior_point_global_ids.reserve(coarse_grid.currentData()[level]->size(3));
-        for (const auto& point : vertices(coarse_grid.levelGridView(level),  Dune::Partitions::interior)){
+        for (const auto& point : vertices(coarse_grid.levelGridView(level), Dune::Partitions::interior)){
+                const auto& bornLevel_bornIdx =  coarse_grid.currentData()[level]->corner_history_[point.index()];
+                if (bornLevel_bornIdx[0] == -1)  { // Corner in the refined grid coincides with a corner from level 0.
             interior_point_global_ids.push_back(coarse_grid.currentData()[level]->globalIdSet().id(point));
-            ++local_interior_point_count;
+              ++local_interior_point_count;
+                }
+            //      
         }
-        auto global_level_interior_point_count = coarse_grid.comm().sum(local_interior_point_count);
+                 auto global_level_interior_point_count = coarse_grid.comm().sum(local_interior_point_count);
         auto [all_level_interior_point_global_ids, displ_point] = Opm::allGatherv(interior_point_global_ids, coarse_grid.comm());
         const std::set<int> all_level_interior_point_global_ids_set(all_level_interior_point_global_ids.begin(), all_level_interior_point_global_ids.end());
-        BOOST_CHECK( static_cast<std::size_t>(global_level_interior_point_count)  == all_level_interior_point_global_ids_set.size() );
+             BOOST_CHECK( static_cast<std::size_t>(global_level_interior_point_count)  == all_level_interior_point_global_ids_set.size() );
     }
 
     // Check global id is not duplicated for interior cells
@@ -423,7 +428,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
     BOOST_CHECK( static_cast<int>(allGlobalIds_points.size()) == global_point_count);
     BOOST_CHECK( allGlobalIds_points.size() == allGlobalIds_points_set.size() );
-    std::cout<< allGlobalIds_points_set.size()  << std::endl;
+    std::cout<< allGlobalIds_points_set.size() << " vs " <<  allGlobalIds_points.size() << std::endl;
     
     // Local/Global id sets for level grids (level 0, 1, ..., maxLevel). For level grids, local might differ from global id.
     for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
@@ -631,21 +636,32 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
         std::iota(lgr3_cell_global_ids.begin(), lgr3_cell_global_ids.end(), 159);
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(500);
+        int interior = 0;
+        int border = 0;
+        int front = 0;
+        int overlap = 0;
         for (const auto& element : elements(grid.levelGridView(3)))
         {
             const auto& cell_global_id = grid.currentData()[3]->globalIdSet().id(element);
             if( (cell_global_id > 158)   && (cell_global_id < 223))
             {
-                std::cout<< grid.comm().rank() << std::endl;
             for (int corner = 0; corner < 8; ++corner)
             {
                 const auto& point = element.subEntity<3>(corner);
                 localPointIds_vec.push_back(grid.currentData()[3]->globalIdSet().id(point));
+                if (point.partitionType() == Dune::InteriorEntity) { ++interior;}
+                if (point.partitionType() == Dune::BorderEntity) { ++border;}
+                  if (point.partitionType() == Dune::FrontEntity) { ++front;}
+                    if (point.partitionType() == Dune::OverlapEntity) { ++overlap;}
             }
             }
         }
+        std::cout << "interior: " << interior << " border: " << border << " front: " << front << " overlap: " << overlap << " rank " << grid.comm().rank() <<
+            std::endl;
          auto [allGlobalIds_points, displPoint ] = Opm::allGatherv(localPointIds_vec, grid.comm());
          const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
+
+         for (const auto& id : allGlobalIds_points_set) {std::cout << id << " rank: " << grid.comm().rank() <<std::endl;}
 
          std::cout<<  allGlobalIds_points_set.size() << std::endl;
         BOOST_CHECK( allGlobalIds_points_set.size() == 125);
