@@ -2239,6 +2239,41 @@ void CpGridData::validStartEndIJKs(const std::vector<std::array<int,3>>& startIJ
     }
 }
 
+bool CpGridData::compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                        const std::vector<std::array<int,3>>& startIJK_vec,
+                                        const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    bool compatibleSubdivisions = true;
+    if (startIJK_vec.size() > 1) {
+        bool notAllowedYet = false;
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
+                const auto& sharedFaceTag = this-> sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
+                if(sharedFaceTag == -1){
+                    break; // Go to the next "other patch"
+                }
+                if (sharedFaceTag == 0 ) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedFaceTag == 1) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedFaceTag == 2) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
+                }
+                if (notAllowedYet){
+                    compatibleSubdivisions = false;
+                    break;
+                }
+            } // end-otherLevel-for-loop
+        } // end-level-for-loop
+    }// end-if-patchesShareFace
+    return compatibleSubdivisions;
+}
+
 Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
                                        const std::vector<int>& patch_cells,
                                        DefaultGeometryPolicy& cellifiedPatch_geometry,

@@ -364,9 +364,9 @@ public:
     /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
     ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
     ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    /// @param [in]  startIJK_vec       Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec         Vector of Cartesian triplet indices where each patch ends.
+    ///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
     void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Check that every cell to be refined has cuboid shape.
@@ -412,6 +412,25 @@ public:
     void postAdapt();
 
 private:
+    /// @brief Check compatibility of number of subdivisions of neighboring LGRs.
+    ///
+    /// Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
+    /// active/inactive cells, instead, relies on "ijk-computations".
+    ///
+    /// @param [in]  cells_per_dim_vec    Vector of expected subdivisions per cell, per direction, in each LGR.
+    /// @param [in]  startIJK_vec         Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec           Vector of Cartesian triplet indices where each patch ends.
+    ///                                   Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    /// @return True if all block of cells either do not share faces on their boundaries, or they may share faces with compatible
+    ///         subdivisions. Example: block1 and block2 share an I_FACE, then number of subdivisions NY NZ should coincide, i.e.
+    ///         if block1, block2 cells_per_dim values are {NX1, NY1, NZ1}, {NX2, NY2, NZ2}, respectively, then NY1 == NY2 and
+    ///         NZ1 == Nz2.
+    ///         False if at least two blocks share a face and their subdivions are not compatible. In the example above,
+    ///         if NY1 != NY2 or NZ1 != NZ2.
+    bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                const std::vector<std::array<int,3>>& startIJK_vec,
+                                const std::vector<std::array<int,3>>& endIJK_vec) const;
+
     std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
