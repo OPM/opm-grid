@@ -291,60 +291,61 @@ std::vector<std::set<int>> communicateExportedWells (
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root)
 {
-    // create a vector with well-cells-to-be-imported that will be communicated to non-root ranks
-    int totsize = cc.size();
+    // send data from root
     if (cc.rank()==root)
     {
-        totsize = 2*cc.size()-1;
         for (int i=0; i<cc.size(); ++i)
         {
-            for (const auto& v : exportedWells[i])
+            if (i!=root)
             {
-                totsize += v.size()+1;
-            }
-        }
-    }
-    // toBeCommunicated contains
-    //  in 0..cc.size() the index of the start for each rank's section (root is present but irrelevant)
-    //  in each section the number of well-parts and then
-    //  in each well-part the length of the well and its indices
-    std::vector<int> toBeCommunicated(totsize);
-    if (cc.rank()==root)
-    {
-        int index=cc.size();
-        for (int i=1; i<cc.size(); ++i)
-        {
-            toBeCommunicated[i]=index; // starting index for section belonging to rank i
-            const auto& vectorOfWellSets = exportedWells[i];
-            toBeCommunicated[index++] = vectorOfWellSets.size(); // number of wells
-            for (const auto& wellSet : vectorOfWellSets)
-            {
-                toBeCommunicated[index++] = wellSet.size();
-                for (const auto& cellID : wellSet)
+                int n = exportedWells[i].size();
+                int totsize = n+1;
+                for (const auto& well : exportedWells[i])
                 {
-                    toBeCommunicated[index++] = cellID;
+                    totsize += well.size();
                 }
+                // data: {N, size0, data0, size1, data1,... size(N-1), data(N-1)},
+                std::vector<int> sentData(totsize);
+                int index = 0;
+                sentData[index++] = n;
+                for (const auto& well : exportedWells[i])
+                {
+                    sentData[index++] = well.size();
+                    for (const auto& gID : well)
+                    {
+                        sentData[index++] = gID;
+                    }
+                }
+                assert(totsize==sentData.size());
+                int tag = 37; // a random number
+                MPI_Send(&totsize, 1, MPI_INT, i, tag++, cc);
+                MPI_Send(sentData.data(), totsize, MPI_INT, i, tag, cc);
             }
         }
+        return {};
     }
-    std::vector<int> offsets;
-    std::tie(toBeCommunicated, offsets) = Opm::allGatherv(toBeCommunicated,cc);
-    if (cc.rank()==root)
+    else // receive data from root
     {
-        return std::vector<std::set<int>>();
-    }
-    int index = toBeCommunicated[cc.rank()];
-    int nrSets = toBeCommunicated[index++];
-    std::vector<std::set<int>> result(nrSets);
-    for (int i=0; i<nrSets; ++i)
-    {
-        int size = toBeCommunicated[index++];
-        for (int j=0; j<size; ++j)
+        int tag = 37; // a random number
+        int totsize;
+        MPI_Recv(&totsize, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+        std::vector<int> receivedData(totsize);
+        MPI_Recv(receivedData.data(), totsize, MPI_INT, root, tag, cc, MPI_STATUS_IGNORE);
+
+        int n = receivedData[0];
+        std::vector<std::set<int>> result(n);
+        int index = 1;
+        for (int i=0; i<n; ++i)
         {
-            result[i].emplace(toBeCommunicated[index++]);
+            int wellSize = receivedData[index++];
+            assert(index+wellSize<=totsize);
+            for (int j=0; j<wellSize; ++j)
+            {
+                result[i].emplace(receivedData[index++]);
+            }
         }
+        return result;
     }
-    return result;
 }
 
 void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
