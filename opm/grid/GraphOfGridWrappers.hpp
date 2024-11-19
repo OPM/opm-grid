@@ -130,6 +130,7 @@ void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
                                      std::vector<int>& gIDtoRank,
                                             const int& root = -1);
 
+#if HAVE_MPI
 namespace Impl{
 /// \brief Add well cells' global IDs to the import list
 ///
@@ -180,6 +181,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                           std::vector<std::tuple<int,int,char>>& exportList,
                       std::vector<std::tuple<int,int,char,int>>& importList,
                                          const std::vector<int>& gIDtoRank={});
+#endif // HAVE_MPI
 
 /// \brief Find to which ranks wells were assigned
 ///

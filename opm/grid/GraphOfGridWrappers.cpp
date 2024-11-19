@@ -205,6 +205,7 @@ void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
     }
 }
 
+#if HAVE_MPI
 namespace Impl{
 
 std::vector<std::vector<std::set<int>>>
@@ -419,6 +420,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         Impl::extendImportList(importList,extraWells);
     }
 }
+#endif // HAVE_MPI
 
 std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
                  const Dune::cpgrid::WellConnections& wellConnections)
