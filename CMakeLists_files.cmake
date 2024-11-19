@@ -202,6 +202,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/LookUpData.hh
   opm/grid/cpgrid/OrientedEntityTable.hpp
   opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp
+	opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp

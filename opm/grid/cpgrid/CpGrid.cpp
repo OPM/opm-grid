@@ -51,6 +51,7 @@
 
 #include "../CpGrid.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
+#include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 //#include <opm/grid/common/ZoltanGraphFunctions.hpp>
@@ -2298,11 +2299,52 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                            Dune::InteriorBorder_All_Interface,
                                            Dune::ForwardCommunication );
         
-        // After assigning global IDs to points in refined-level grids, a single point may have 
+        // After assigning global IDs to points in refined-level grids, a single point may have
         // a "unique" global ID in each local leaf grid view for every process to which it belongs.
-        // To ensure true uniqueness, since global IDs must be distinct across the global leaf view 
-        // and consistent across each refined-level grid, we will rewrite the entries in 
-        // localToGlobal_points_per_level. Correction: TO DO.
+        // To ensure true uniqueness, since global IDs must be distinct across the global leaf view
+        // and consistent across each refined-level grid, we will rewrite the entries in
+        // localToGlobal_points_per_level.
+        //
+        // This correction is done using cell_to_point_ across all refined cells through
+        // communication: gathering the 8 corner points of each interior cell and scattering the
+        // 8 corner points of overlapping cells, for all child cells of a parent cell in level zero grid.
+        //
+        // Design decision: Why we communicate via level zero grid instead of in each refined level grid.
+        // The reason is that how children are stored (the ordering) in parent_to_children_cells_
+        // is always the same, accross all processes.
+        // Even though the ordering of the corners in cell_to_point_ is the same accross all processes,
+        // this may not be enough to correctly overwrite the "winner" point global ids for refined cells.
+
+        // To store cell_to_point_ information of all refined level grids.
+        std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+        // To decide which "candidate" point global id wins, the rank is stored. The smallest ranks wins,
+        // i.e., the other non-selected candidates get rewritten with the values from the smallest (winner) rank.
+        std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
+
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+
+            level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
+            // Set std::numeric_limits<int>::max() to make sure that, during communication, the rank of the interior cell
+            // wins (int between 0 and comm().size()).
+            level_winning_ranks[level-1].resize(currentData()[level]->size(3), std::numeric_limits<int>::max());
+
+            for (const auto& element : elements(levelGridView(level))) {
+                // For interior cells, rewrite the rank value - later used in "point global id competition".
+                if (element.partitionType() == InteriorEntity) {
+                    for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
+                        int rank = comm().rank();
+                        level_winning_ranks[level -1][corner] = rank;
+                    }
+                }
+            }
+        }
+        ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(parent_to_children,
+                                                                                       level_cell_to_point,
+                                                                                       level_winning_ranks,
+                                                                                       localToGlobal_points_per_level);
+        currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
+                                           Dune::InteriorBorder_All_Interface,
+                                           Dune::ForwardCommunication );
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
