@@ -147,7 +147,7 @@ void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
 /// These wells are also collected and returned so they can be communicated to other ranks.
 /// \return vector of size cc.size(). Each entry contains vector of wells exported to that rank.
 std::vector<std::vector<std::set<int>>>
-extendedRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
+extendRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
                   std::vector<std::tuple<int,int,char>>& exportList,
                                                      int root,
                                  const std::vector<int>& gIDtoRank);

@@ -631,7 +631,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                              std::move(std::get<1>(importExportLists)),
                              std::move(std::get<2>(importExportLists)),
                              std::move(std::get<3>(importExportLists)),
-                             wellConnections);
+                             std::move(wellConnections));
     return result;
 }
 #endif // HAVE_MPI

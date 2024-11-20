@@ -48,7 +48,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     std::array<double,3> size{2.,2.,2.};
     grid.createCartesian(dims,size);
     Opm::GraphOfGrid gog(grid);
-    if (grid.size(0)==0)
+    if (grid.size(0)==0) // in prallel run, non-root ranks are empty
         return;
 
     BOOST_REQUIRE(gog.size()==8); // number of graph vertices
@@ -59,7 +59,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraph)
     BOOST_REQUIRE(edgeL[0]==1.);
     BOOST_REQUIRE(edgeL[3]==1.);
     BOOST_REQUIRE(edgeL[6]==1.);
-    BOOST_REQUIRE_THROW(edgeL.at(4),std::out_of_range); // not a neighbor (edgeL's size increased)
+    BOOST_REQUIRE_THROW(edgeL.at(4),std::out_of_range); // not a neighbor
 
     BOOST_REQUIRE_THROW(gog.edgeList(10),std::logic_error); // vertex 10 is not in the graph
 }
@@ -469,11 +469,6 @@ BOOST_AUTO_TEST_CASE(addWellConnections)
 
 }
 #endif // HAVE_MPI
-
-// After partitioning, importList and exportList are not complete,
-// other cells from wells need to be added.
-BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
-{}
 
 BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
 {
