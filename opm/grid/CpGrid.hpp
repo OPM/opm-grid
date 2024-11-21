@@ -482,6 +482,7 @@ namespace Dune
                                   const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
 
+        void populateCellIndexSetRefinedGrid(int level);
 
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).

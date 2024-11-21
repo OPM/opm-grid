@@ -1418,6 +1418,53 @@ void CpGrid::selectWinnerPointIds([[maybe_unused]] std::vector<std::vector<int>>
 #endif
 }
 
+void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
+{
+#if HAVE_MPI
+    const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
+    auto& level_index_set =  currentData()[level]->cellIndexSet();
+
+    level_index_set.beginResize();
+
+    for(const auto& element : elements(levelGridView(level))) {
+        if ( element.partitionType() == InteriorEntity) {
+
+            // Check if it has an overlap neighbor
+            bool parentFullyInterior = true;
+            const auto& parent_cell = element.father();
+
+            for (const auto& intersection : intersections(levelGridView(parent_cell.level()), parent_cell)) {
+                if ( intersection.neighbor() ) {
+                    const auto& neighborPartitionType = intersection.outside().partitionType();
+                    // To help detection of fully interior cells, i.e., without overlap neighbors
+                    if (neighborPartitionType == OverlapEntity )  {
+                        parentFullyInterior = false;
+                        // Interior cells with overlap neighbor may appear in other processess -> true
+                        level_index_set.add( level_global_id_set->id(element),
+                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                        // Store it only once
+                        break;
+                    }
+                }
+            }
+            if(parentFullyInterior) { // Fully interior cells do not appear in any other process -> false
+                level_index_set.add( level_global_id_set->id(element),
+                                     ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
+            }
+        }
+        else { // overlap cell
+            assert(element.partitionType() == OverlapEntity);
+            level_index_set.add( level_global_id_set->id(element),
+                                 ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+        }
+    }
+
+    level_index_set.endResize();
+
+    currentData()[level]->cellRemoteIndices().template rebuild<false>(); // Do not ignore bool in ParallelIndexSet!
+#endif
+}
+
 double CpGrid::cellCenterDepth(int cell_index) const
 {
     // Here cell center depth is computed as a raw average of cell corner depths.
@@ -2419,47 +2466,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
 
-            const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
-            auto& level_index_set =  currentData()[level]->cellIndexSet();
-
-            level_index_set.beginResize();
-
-            for(const auto& element : elements(levelGridView(level))) {
-                if ( element.partitionType() == InteriorEntity) {
-
-                    // Check if it has an overlap neighbor
-                    bool parentFullyInterior = true;
-                    const auto& parent_cell = element.father();
-
-                    for (const auto& intersection : intersections(levelGridView(parent_cell.level()), parent_cell)) {
-                        if ( intersection.neighbor() ) {
-                            const auto& neighborPartitionType = intersection.outside().partitionType();
-                            // To help detection of fully interior cells, i.e., without overlap neighbors
-                            if (neighborPartitionType == OverlapEntity )  {
-                                parentFullyInterior = false;
-                                 // Interior cells with overlap neighbor may appear in other processess -> true
-                                level_index_set.add( level_global_id_set->id(element),
-                                                     ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
-                                // Store it only once
-                                break;
-                            }
-                        }
-                    }
-                    if(parentFullyInterior) { // Fully interior cells do not appear in any other process -> false
-                        level_index_set.add( level_global_id_set->id(element),
-                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
-                    }
-                }
-                else { // overlap cell
-                    assert(element.partitionType() == OverlapEntity);
-                    level_index_set.add( level_global_id_set->id(element),
-                                         ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
-                }
-            }
-
-            level_index_set.endResize();
-
-            currentData()[level]->cellRemoteIndices().template rebuild<false>(); // Do not ignore bool in ParallelIndexSet!
+            populateCellIndexSetRefinedGrid(level);
 
             // Compute the partition type for cell
             currentData()[level]->computeCellPartitionType();
