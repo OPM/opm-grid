@@ -486,6 +486,8 @@ namespace Dune
 
         void populateCellIndexSetLeafGridView();
 
+        void populateLeafGlobalIdSet();
+
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
         ///

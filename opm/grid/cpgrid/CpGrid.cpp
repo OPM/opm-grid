@@ -1521,6 +1521,34 @@ void CpGrid::populateCellIndexSetLeafGridView()
 #endif
 }
 
+void CpGrid::populateLeafGlobalIdSet()
+{
+    // Global id for the cells in leaf grid view
+    std::vector<int> leafCellIds(current_data_->back()->size(0));
+    for(const auto& element: elements(leafGridView())){
+        // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
+        // under the assumption of each lgr being fully contained in the interior of a process.
+        // Therefore, it is not needed here to distingish between owned and overlap cells.
+        auto equivElem = element.getEquivLevelElem();
+        leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
+    }
+
+    // Global id for the faces in leaf grid view. Empty vector (Entity<1> not supported for CpGrid).
+    std::vector<int> leafFaceIds{};
+
+    // Global id for the points in leaf grid view
+    std::vector<int> leafPointIds(current_data_->back()->size(3));
+    for(const auto& point : vertices(leafGridView())){
+        const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
+        assert(level_pointLevelIdx[0] != -1);
+        assert(level_pointLevelIdx[1] != -1);
+        const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
+        leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
+    }
+
+    current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
+}
+
 double CpGrid::cellCenterDepth(int cell_index) const
 {
     // Here cell center depth is computed as a raw average of cell corner depths.
@@ -2501,19 +2529,16 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                              cells_per_dim_vec);
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-            // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids
-            // for overlap cells and points.
-
             // Global id set for each (refined) level grid.
-            if(lgr_with_at_least_one_active_cell[level-1]>0) {
+            if(lgr_with_at_least_one_active_cell[level-1]>0) { // Check if LGR is active in currect process.
                 (*current_data_)[level]->global_id_set_->swap(localToGlobal_cells_per_level[level-1],
                                                               localToGlobal_faces_per_level[level-1],
                                                               localToGlobal_points_per_level[level-1]);
             }
         }
-        
-        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
 
+        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+            
             populateCellIndexSetRefinedGrid(level);
             // Compute the partition type for cell
             currentData()[level]->computeCellPartitionType();
@@ -2522,35 +2547,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             // Now we can compute the communication interface.
             currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
         }
-        ////////////////////////////////
 
-        // Global id for the cells in leaf grid view
-        std::vector<int> leafCellIds(current_data_->back()->size(0));
-        for(const auto& element: elements(leafGridView())){
-            // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
-            // under the assumption of each lgr being fully contained in the interior of a process.
-            // Therefore, it is not needed here to distingish between owned and overlap cells.
-            auto equivElem = element.getEquivLevelElem();
-            leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
-        }
-        leafCellIds.shrink_to_fit();
-
-        // Global id for the faces in leaf grid view. Empty vector (Entity<1> not supported for CpGrid).
-        std::vector<int> leafFaceIds{};
-
-        // Global id for the points in leaf grid view
-        std::vector<int> leafPointIds(current_data_->back()->size(3));
-        for(const auto& point : vertices(leafGridView())){
-            const auto& level_pointLevelIdx = current_data_->back()->corner_history_[point.index()];
-            assert(level_pointLevelIdx[0] != -1);
-            assert(level_pointLevelIdx[1] != -1);
-            const auto& pointLevelEntity =  cpgrid::Entity<3>(*( (*current_data_)[level_pointLevelIdx[0]]), level_pointLevelIdx[1], true);
-            leafPointIds[point.index()] = (*current_data_)[level_pointLevelIdx[0]]->global_id_set_->id(pointLevelEntity);
-        }
-        leafPointIds.shrink_to_fit();
-
-        current_data_->back()->global_id_set_->swap(leafCellIds, leafFaceIds, leafPointIds);
-
+        populateLeafGlobalIdSet();
 
         this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
         for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
