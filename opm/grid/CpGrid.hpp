@@ -468,6 +468,12 @@ namespace Dune
                                                  std::vector<int>& assignRefinedLevel,
                                                  std::vector<int>& lgr_with_at_least_one_active_cell);
 
+        void predictMinCellAndPointGlobalIdPerProcess(int& min_globalId_cell_in_proc,
+                                                      int& min_globalId_point_in_proc,
+                                                      const std::vector<int>& assignRefinedLevel,
+                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                      const std::vector<int>& lgr_with_at_least_one_active_cell) const;
+
 
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
