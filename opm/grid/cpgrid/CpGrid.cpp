@@ -1213,6 +1213,34 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
 
+bool CpGrid::nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
+    bool nonNNCs = true;
+    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
+    // and check if they have NNCs.
+    for(const auto& element: elements(this->leafGridView())) {
+        std::array<int,3> ijk;
+        getIJK(element.index(), ijk);
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            bool belongsToLevel = true;
+            for (int c = 0; c < 3; ++c) {
+                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
+                if (!belongsToLevel)
+                    break;
+            }
+            if(belongsToLevel) {
+                // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
+                if (this->currentData().back()->hasNNCs({element.index()})){
+                    nonNNCs = false;
+                    break;
+                }
+            } // end-if-belongsToLevel
+        } // end-level-for-loop
+    } // end-element-for-loop
+    return nonNNCs;
+}
+
 double CpGrid::cellCenterDepth(int cell_index) const
 {
     // Here cell center depth is computed as a raw average of cell corner depths.
@@ -2088,8 +2116,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
     
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    // To check "Non-NNCs (non neighboring connections)" for all processes.
-    bool nonNNCsHasFailed = false;
+    // To check "Non-NNCs (non non neighboring connections)" for all processes.
+    bool nonNNCs = this->nonNNCs(startIJK_vec, endIJK_vec);
+    nonNNCs = comm().max(nonNNCs);
+    if(!nonNNCs) {
+        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+    }
+    
     // To determine if an LGR is not empty in a given process, we set
     // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
     // at least one active cell, and to 0 otherwise.
@@ -2108,22 +2141,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                     break;
             }
             if(belongsToLevel) {
-                // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
-                if (current_view_data_->hasNNCs({element.index()})){
-                    nonNNCsHasFailed = true;
-                    break;
-                }
                 this-> mark(1, element);
                 assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
                 lgr_with_at_least_one_active_cell[level] = 1;
             } // end-if-belongsToLevel
         } // end-level-for-loop
     } // end-element-for-loop
-   
-    nonNNCsHasFailed = comm().max(nonNNCsHasFailed);
-    if(nonNNCsHasFailed) {
-        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
-    }
 
     int non_empty_lgrs = 0;
     for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {

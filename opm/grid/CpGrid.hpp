@@ -460,6 +460,9 @@ namespace Dune
         //        from certain LGR
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
+        // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
+        bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
 
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
