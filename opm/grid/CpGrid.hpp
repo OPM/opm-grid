@@ -460,34 +460,6 @@ namespace Dune
         //        from certain LGR
         Dune::cpgrid::Intersection getParentIntersectionFromLgrBoundaryFace(const Dune::cpgrid::Intersection& intersection) const;
 
-        // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
-        bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
-        void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
-                                                 const std::vector<std::array<int,3>>& endIJK_vec,
-                                                 std::vector<int>& assignRefinedLevel,
-                                                 std::vector<int>& lgr_with_at_least_one_active_cell);
-
-        std::pair<int,int> predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
-                                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                                    const std::vector<int>& lgr_with_at_least_one_active_cell) const;
-
-        void collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
-                                                 std::vector<std::vector<int>>& localToGlobal_points_per_level,
-                                                 int min_globalId_cell_in_proc,
-                                                 int min_globalId_point_in_proc,
-                                                 const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
-
-        void selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
-                                  const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
-                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
-
-        void populateCellIndexSetRefinedGrid(int level);
-
-        void populateCellIndexSetLeafGridView();
-
-        void populateLeafGlobalIdSet();
-
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
         ///
@@ -1099,6 +1071,34 @@ namespace Dune
                                                    const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
                                                    int elemLgr)  const;
         /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
+
+              // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
+        bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+
+        void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                                                 const std::vector<std::array<int,3>>& endIJK_vec,
+                                                 std::vector<int>& assignRefinedLevel,
+                                                 std::vector<int>& lgr_with_at_least_one_active_cell);
+
+        std::pair<int,int> predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
+                                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                                    const std::vector<int>& lgr_with_at_least_one_active_cell) const;
+
+        void collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
+                                                 std::vector<std::vector<int>>& localToGlobal_points_per_level,
+                                                 int min_globalId_cell_in_proc,
+                                                 int min_globalId_point_in_proc,
+                                                 const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
+
+        void selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
+                                  const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
+
+        void populateCellIndexSetRefinedGrid(int level);
+
+        void populateCellIndexSetLeafGridView();
+
+        void populateLeafGlobalIdSet();
 
     public:
 

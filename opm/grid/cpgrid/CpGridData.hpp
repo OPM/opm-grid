@@ -369,19 +369,6 @@ public:
     ///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
     void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
-    /// @brief Check compatibility of number of subdivisions of neighboring LGRs.
-    ///
-    /// Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
-    /// active/inactive cells, instead, relies on "ijk-computations".
-    ///
-    /// @param [in]  cells_per_dim_vec    Vector of expected subdivisions per cell, per direction, in each LGR.
-    /// @param [in]  startIJK_vec         Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec           Vector of Cartesian triplet indices where each patch ends.
-    ///                                   Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
-    bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                const std::vector<std::array<int,3>>& startIJK_vec,
-                                const std::vector<std::array<int,3>>& endIJK_vec) const;
-
     /// @brief Check that every cell to be refined has cuboid shape.
     void checkCuboidShape(const std::vector<int>& cellIdx_vec) const;
 
@@ -425,6 +412,19 @@ public:
     void postAdapt();
 
 private:
+    /// @brief Check compatibility of number of subdivisions of neighboring LGRs.
+    ///
+    /// Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
+    /// active/inactive cells, instead, relies on "ijk-computations".
+    ///
+    /// @param [in]  cells_per_dim_vec    Vector of expected subdivisions per cell, per direction, in each LGR.
+    /// @param [in]  startIJK_vec         Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec           Vector of Cartesian triplet indices where each patch ends.
+    ///                                   Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                const std::vector<std::array<int,3>>& startIJK_vec,
+                                const std::vector<std::array<int,3>>& endIJK_vec) const;
+
     std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
     /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
