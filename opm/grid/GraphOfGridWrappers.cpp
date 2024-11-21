@@ -7,7 +7,7 @@
 
   OPM is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 2 of the License, or
+  the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
   OPM is distributed in the hope that it will be useful,
@@ -131,8 +131,8 @@ void getGraphOfGridEdgeList(void *pGraph,
 
 template<typename Zoltan_Struct>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                      const GraphOfGrid<Dune::CpGrid>& gog,
-                                                  bool pretendNull)
+                                        const GraphOfGrid<Dune::CpGrid>& gog,
+                                        bool pretendNull)
 {
     GraphOfGrid<Dune::CpGrid>* pGraph = const_cast<GraphOfGrid<Dune::CpGrid>*>(&gog);
     if (pretendNull)
@@ -152,9 +152,9 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
 }
 #endif // HAVE_MPI
 
-void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
-    const std::unordered_map<std::string, std::set<int>>& wells,
-                                                     bool checkWellIntersections)
+void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,
+                              const std::unordered_map<std::string, std::set<int>>& wells,
+                              bool checkWellIntersections)
 {
     // create compressed lookup from cartesian.
     const auto& grid = gog.getGrid();
@@ -170,7 +170,7 @@ void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
         std::set<int> wellsgID;
         for (const int& cell : w.second)
         {
-            int gID = cartesian_to_compressed.at(cell);
+            int gID = cartesian_to_compressed[cell];
             assert(gID!=-1); // well should be an active cell
             wellsgID.insert(gID);
         }
@@ -178,9 +178,9 @@ void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
     }
 }
 
-void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
-               const Dune::cpgrid::WellConnections& wells,
-                                               bool checkWellIntersections)
+void addWellConnections(GraphOfGrid<Dune::CpGrid>& gog,
+                        const Dune::cpgrid::WellConnections& wells,
+                        bool checkWellIntersections)
 {
     for (const auto& w : wells)
     {
@@ -188,18 +188,18 @@ void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
     }
 }
 
-void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
-                                     std::vector<int>& gIDtoRank,
-                                            const int& root)
+void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
+                     std::vector<int>& gIDtoRank,
+                     const int& root)
 {
     for (const auto& w : gog.getWells())
     {
-        auto wellID = *w.begin();
-        if (gIDtoRank[wellID]!=root)
+        auto wellRank = gIDtoRank[*w.begin()];
+        if (wellRank!=root)
         {
             for (const auto& gID : w)
             {
-                gIDtoRank.at(gID) = gIDtoRank.at(wellID);
+                gIDtoRank[gID] = wellRank;
             }
         }
     }
@@ -209,10 +209,10 @@ void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
 namespace Impl{
 
 std::vector<std::vector<std::set<int>>>
-extendRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
-                std::vector<std::tuple<int,int,char>>& exportList,
-                                                   int root,
-                               const std::vector<int>& gIDtoRank)
+extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
+                     std::vector<std::tuple<int,int,char>>& exportList,
+                     int root,
+                     const std::vector<int>& gIDtoRank)
 {
     const auto& cc = gog.getGrid().comm();
     // non-root ranks have empty export lists.
@@ -230,7 +230,7 @@ extendRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
         if (gIDtoRank.size()>0)
         {
             auto wellID = *well.begin();
-            if (gIDtoRank.at(wellID)!=root)
+            if (gIDtoRank[wellID]!=root)
             {
                 wellMap[wellID] = std::make_pair(well.begin(),well.end());
             }
@@ -276,54 +276,53 @@ extendRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
     }
 
     // add new cells to the exportList and sort it. It is assumed that exportList starts sorted.
-    auto compareTuple = [](const auto& a, const auto& b){return std::get<0>(a)<std::get<0>(b);};
-    std::sort(addToList.begin(),addToList.end(),compareTuple);
+    std::sort(addToList.begin(),addToList.end());
     auto origSize = exportList.size();
     auto totsize = origSize+addToList.size();
     exportList.reserve(totsize);
     exportList.insert(exportList.end(),addToList.begin(),addToList.end());
-    std::inplace_merge(exportList.begin(),exportList.begin()+origSize,exportList.end(),compareTuple);
+    std::inplace_merge(exportList.begin(),exportList.begin()+origSize,exportList.end());
 
     return exportedWells;
 }
 
-std::vector<std::set<int>> communicateExportedWells (
+std::vector<std::set<int>> communicateExportedWells(
     const std::vector<std::vector<std::set<int>>>& exportedWells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root)
 {
     // send data from root
+    std::vector<std::set<int>> result;
     if (cc.rank()==root)
     {
         for (int i=0; i<cc.size(); ++i)
         {
             if (i!=root)
             {
-                int n = exportedWells[i].size();
-                int totsize = n+1;
+                int numWells = exportedWells[i].size();
+                int totsize = numWells+1;
                 for (const auto& well : exportedWells[i])
                 {
                     totsize += well.size();
                 }
                 // data: {N, size0, data0, size1, data1,... size(N-1), data(N-1)},
-                std::vector<int> sentData(totsize);
-                int index = 0;
-                sentData[index++] = n;
+                std::vector<int> commData;
+                commData.reserve(totsize);
+                commData.push_back(numWells);
                 for (const auto& well : exportedWells[i])
                 {
-                    sentData[index++] = well.size();
+                    commData.push_back(well.size());
                     for (const auto& gID : well)
                     {
-                        sentData[index++] = gID;
+                        commData.push_back(gID);
                     }
                 }
-                assert(totsize==(int)sentData.size());
+                assert(totsize==(int)commData.size());
                 int tag = 37; // a random number
                 MPI_Send(&totsize, 1, MPI_INT, i, tag++, cc);
-                MPI_Send(sentData.data(), totsize, MPI_INT, i, tag, cc);
+                MPI_Send(commData.data(), totsize, MPI_INT, i, tag, cc);
             }
         }
-        return {};
     }
     else // receive data from root
     {
@@ -333,10 +332,10 @@ std::vector<std::set<int>> communicateExportedWells (
         std::vector<int> receivedData(totsize);
         MPI_Recv(receivedData.data(), totsize, MPI_INT, root, tag, cc, MPI_STATUS_IGNORE);
 
-        int n = receivedData[0];
-        std::vector<std::set<int>> result(n);
+        int numWells = receivedData[0];
+        result.resize(numWells);
         int index = 1;
-        for (int i=0; i<n; ++i)
+        for (int i=0; i<numWells; ++i)
         {
             int wellSize = receivedData[index++];
             assert(index+wellSize<=totsize);
@@ -345,12 +344,12 @@ std::vector<std::set<int>> communicateExportedWells (
                 result[i].emplace(receivedData[index++]);
             }
         }
-        return result;
     }
+    return result;
 }
 
-void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
-                                const std::vector<std::set<int>>& extraWells)
+void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
+                      const std::vector<std::set<int>>& extraWells)
 {
     using ImportList = std::vector<std::tuple<int,int,char,int>>;
     // make a list of wells for easy identification. Contains ID, begin, end
@@ -392,23 +391,22 @@ void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
     }
 
     // add new cells to the importList and sort it. It is assumed that importList starts sorted.
-    auto compareTuple = [](const auto& a, const auto& b){return std::get<0>(a)<std::get<0>(b);};
-    std::sort(addToList.begin(),addToList.end(),compareTuple);
+    std::sort(addToList.begin(),addToList.end());
     auto origSize = importList.size();
     auto totsize = origSize+addToList.size();
     importList.reserve(totsize);
     importList.insert(importList.end(),addToList.begin(),addToList.end());
-    std::inplace_merge(importList.begin(),importList.begin()+origSize,importList.end(),compareTuple);
+    std::inplace_merge(importList.begin(),importList.begin()+origSize,importList.end());
 }
 
 } // end namespace Impl
 
 void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
-         const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-                                                          int root,
-                       std::vector<std::tuple<int,int,char>>& exportList,
-                   std::vector<std::tuple<int,int,char,int>>& importList,
-                                      const std::vector<int>& gIDtoRank)
+                                const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                int root,
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                const std::vector<int>& gIDtoRank)
 {
     // extend root's export list and get sets of well cells for other ranks
     auto expListToComm = Impl::extendRootExportList(gog,exportList,root,gIDtoRank);
@@ -423,7 +421,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 #endif // HAVE_MPI
 
 std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
-                 const Dune::cpgrid::WellConnections& wellConnections)
+                              const Dune::cpgrid::WellConnections& wellConnections)
 {
     std::vector<int> wellIndices(wellConnections.size());
     for (std::size_t wellIndex = 0; wellIndex < wellConnections.size(); ++wellIndex)
@@ -445,7 +443,7 @@ wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
     std::vector<std::vector<int>> wells_on_proc(numProcs);
     for (std::size_t i=0; i<wellRanks.size(); ++i)
     {
-        wells_on_proc.at(wellRanks[i]).push_back(i);
+        wells_on_proc[wellRanks[i]].push_back(i);
     }
     return Dune::cpgrid::computeParallelWells(wells_on_proc, wells, cc, root);
 }
@@ -474,16 +472,22 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     std::vector<std::vector<int> > wellsOnProc;
 
     // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
-    std::vector<std::tuple<int,int,char>> myExportList(numExport);
+    std::vector<std::tuple<int,int,char>> myExportList;
     // List entry: process to import from, global index, process rank, attribute here, local index (determined later)
-    std::vector<std::tuple<int,int,char,int>> myImportList(numImport);
-    myExportList.reserve(1.2*myExportList.size());
-    myImportList.reserve(1.2*myImportList.size());
+    std::vector<std::tuple<int,int,char,int>> myImportList;
+    float buffer = 1.05; // to allocate extra space for wells in myExportList and myImportList
+    assert(rank==root || numExport==0);
+    assert(rank!=root || numImport==0);
+    // all cells on root are added to its export and its import list
+    std::size_t reserveEx = rank!=root ? 0 : cpgrid.size(0);
+    std::size_t reserveIm = rank!=root ? buffer*numImport : cpgrid.size(0)*buffer/cc.size();
+    myExportList.reserve(reserveEx);
+    myImportList.reserve(reserveIm);
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
     for ( int i=0; i < numImport; ++i )
     {
-        myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
+        myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
     }
     assert(rank==root || numExport==0);
     if (rank==root)
@@ -491,7 +495,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         for ( int i=0; i < numExport; ++i )
         {
             gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
-            myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
+            myExportList.emplace_back(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
         }
         std::sort(myExportList.begin(),myExportList.end());
         // partitioner sees only one cell per well, modify remaining

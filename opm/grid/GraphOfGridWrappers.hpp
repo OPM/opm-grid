@@ -7,7 +7,7 @@
 
   OPM is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 2 of the License, or
+  the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
   OPM is distributed in the hope that it will be useful,
@@ -94,8 +94,8 @@ void getGraphOfGridEdgeList(void *pGraph,
 /// \brief Register callback functions to Zoltan
 template<typename Zoltan_Struct>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                      const GraphOfGrid<Dune::CpGrid>& gog,
-                                                  bool pretendNull);
+                                        const GraphOfGrid<Dune::CpGrid>& gog,
+                                        bool pretendNull);
 #endif
 
 /// \brief Adds well to the GraphOfGrid
@@ -107,9 +107,9 @@ void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
 /// intersect and if their cell IDs are present in the graph.
 /// Setting it to false makes the algorithm faster but leaves user
 /// responsible for keeping wells disjoint.
-void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
-    const std::unordered_map<std::string, std::set<int>>& wells,
-                                                     bool checkWellIntersections=true);
+void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,
+                              const std::unordered_map<std::string, std::set<int>>& wells,
+                              bool checkWellIntersections=true);
 
 /// \brief Add WellConnections to the GraphOfGrid
 ///
@@ -117,18 +117,18 @@ void addFutureConnectionWells (GraphOfGrid<Dune::CpGrid>& gog,
 /// intersect and if their cell IDs are present in the graph.
 /// Setting it to false makes the algorithm faster but leaves user
 /// responsible for keeping wells disjoint.
-void addWellConnections (GraphOfGrid<Dune::CpGrid>& gog,
-               const Dune::cpgrid::WellConnections& wells,
-                                               bool checkWellIntersections=true);
+void addWellConnections(GraphOfGrid<Dune::CpGrid>& gog,
+                        const Dune::cpgrid::WellConnections& wells,
+                        bool checkWellIntersections=true);
 
 /// \brief Correct gIDtoRank's data about well cells
 ///
 /// gIDtoRank's entries come from Zoltan partitioner's export list
 /// that does not contain all well cells. Default value is root's rank.
 /// parameter root allows skipping wells that are correct.
-void extendGIDtoRank (const GraphOfGrid<Dune::CpGrid>& gog,
-                                     std::vector<int>& gIDtoRank,
-                                            const int& root = -1);
+void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
+                     std::vector<int>& gIDtoRank,
+                     const int& root = -1);
 
 #if HAVE_MPI
 namespace Impl{
@@ -136,32 +136,37 @@ namespace Impl{
 ///
 /// Helper function for extendExportAndImportLists.
 /// Used on non-root ranks that do not have access to wells.
-void extendImportList (std::vector<std::tuple<int,int,char,int>>& importList,
-                                const std::vector<std::set<int>>& extraWells);
+void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
+                      const std::vector<std::set<int>>& extraWells);
 
 /// \brief Add well cells' global IDs to the root's export list and output other rank's wells
 ///
 /// Helper function for extendExportAndImportLists.
-/// Does nothing on non-root ranks.
+/// On non-root ranks, it does nothing and returns an empty vector.
 /// On root, exportList is extended by well cells that are hidden from the partitioner.
 /// These wells are also collected and returned so they can be communicated to other ranks.
 /// \return vector of size cc.size(). Each entry contains vector of wells exported to that rank.
 std::vector<std::vector<std::set<int>>>
-extendRootExportList (const GraphOfGrid<Dune::CpGrid>& gog,
-                  std::vector<std::tuple<int,int,char>>& exportList,
-                                                     int root,
-                                 const std::vector<int>& gIDtoRank);
+extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
+                     std::vector<std::tuple<int,int,char>>& exportList,
+                     int root,
+                     const std::vector<int>& gIDtoRank);
 
 /// \brief Communicate wells exported from root, needed for extending other rank's import lists
 ///
 /// Helper function for extendExportAndImportLists.
+/// Only the root rank has acccess to the grid and can map well coordinates
+/// to the cell global ID. This function communicates well cell IDs to
+/// other ranks. Input (the prepared container with cell IDs) is thus
+/// relevant only on the root rank, whereas output (well cells received
+/// by MPI communication) only on the non-root ranks.
 /// \param exportedWells Contains for each rank the wells that are exported there,
 ///                      empty on non-root ranks
 /// \param cc Communication object
 /// \param root The root's rank
 /// \return Vector of wells necessary to extend this rank's import lists,
 ///         empty on the root rank
-std::vector<std::set<int>> communicateExportedWells (
+std::vector<std::set<int>> communicateExportedWells(
     const std::vector<std::vector<std::set<int>>>& exportedWells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root);
@@ -176,11 +181,11 @@ std::vector<std::set<int>> communicateExportedWells (
 /// the necessary information to other ranks.
 /// On root ImportList has been already extended with all cells on the current rank.
 void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
-            const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-                                                             int root,
-                          std::vector<std::tuple<int,int,char>>& exportList,
-                      std::vector<std::tuple<int,int,char,int>>& importList,
-                                         const std::vector<int>& gIDtoRank={});
+                                const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                int root,
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                std::vector<std::tuple<int,int,char,int>>& importList,
+                                const std::vector<int>& gIDtoRank={});
 #endif // HAVE_MPI
 
 /// \brief Find to which ranks wells were assigned
@@ -189,7 +194,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 /// \param gIDtoRank Takes global ID and returns rank
 /// \param wellConnections Has global IDs of well cells
 std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
-                 const Dune::cpgrid::WellConnections& wellConnections);
+                              const Dune::cpgrid::WellConnections& wellConnections);
 
 #if HAVE_MPI
 /// \brief Get rank-specific information about which wells are present
