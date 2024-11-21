@@ -1349,7 +1349,6 @@ void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& 
                                                  int min_globalId_point_in_proc,
                                                  const std::vector<std::array<int,3>>& cells_per_dim_vec ) const
 {
-#if HAVE_MPI
     for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
         localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
         localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
@@ -1380,6 +1379,43 @@ void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& 
             }
         }
     }
+}
+
+void CpGrid::selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
+                                  const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const
+{
+#if HAVE_MPI
+    // To store cell_to_point_ information of all refined level grids.
+    std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+    // To decide which "candidate" point global id wins, the rank is stored. The smallest ranks wins,
+    // i.e., the other non-selected candidates get rewritten with the values from the smallest (winner) rank.
+    std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
+
+    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+
+        level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
+        // Set std::numeric_limits<int>::max() to make sure that, during communication, the rank of the interior cell
+        // wins (int between 0 and comm().size()).
+        level_winning_ranks[level-1].resize(currentData()[level]->size(3), std::numeric_limits<int>::max());
+
+        for (const auto& element : elements(levelGridView(level))) {
+            // For interior cells, rewrite the rank value - later used in "point global id competition".
+            if (element.partitionType() == InteriorEntity) {
+                for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
+                    int rank = comm().rank();
+                    level_winning_ranks[level -1][corner] = rank;
+                }
+            }
+        }
+    }
+    ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(parent_to_children,
+                                                                                   level_cell_to_point,
+                                                                                   level_winning_ranks,
+                                                                                   localToGlobal_points_per_level);
+    currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
+                                       Dune::InteriorBorder_All_Interface,
+                                       Dune::ForwardCommunication );
 #endif
 }
 
@@ -2224,7 +2260,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec)
 {
-    // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked, then current_view_data_ == distributed_data_[0].
+    // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked,
+    // then current_view_data_ == distributed_data_[0].
     // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
     // Note: currentData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
 
@@ -2329,13 +2366,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                            min_globalId_point_in_proc,
                                            cells_per_dim_vec);
 
-        
+
         const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
         ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children, localToGlobal_cells_per_level);
         currentData().front()->communicate(parentToChildrenGlobalId_handle,
                                            Dune::InteriorBorder_All_Interface,
                                            Dune::ForwardCommunication );
-        
+
         // After assigning global IDs to points in refined-level grids, a single point may have
         // a "unique" global ID in each local leaf grid view for every process to which it belongs.
         // To ensure true uniqueness, since global IDs must be distinct across the global leaf view
@@ -2351,37 +2388,18 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // is always the same, accross all processes.
         // Even though the ordering of the corners in cell_to_point_ is the same accross all processes,
         // this may not be enough to correctly overwrite the "winner" point global ids for refined cells.
-
-        // To store cell_to_point_ information of all refined level grids.
-        std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
-        // To decide which "candidate" point global id wins, the rank is stored. The smallest ranks wins,
-        // i.e., the other non-selected candidates get rewritten with the values from the smallest (winner) rank.
-        std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
-
-        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-
-            level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
-            // Set std::numeric_limits<int>::max() to make sure that, during communication, the rank of the interior cell
-            // wins (int between 0 and comm().size()).
-            level_winning_ranks[level-1].resize(currentData()[level]->size(3), std::numeric_limits<int>::max());
-
-            for (const auto& element : elements(levelGridView(level))) {
-                // For interior cells, rewrite the rank value - later used in "point global id competition".
-                if (element.partitionType() == InteriorEntity) {
-                    for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
-                        int rank = comm().rank();
-                        level_winning_ranks[level -1][corner] = rank;
-                    }
-                }
-            }
-        }
-        ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(parent_to_children,
-                                                                                       level_cell_to_point,
-                                                                                       level_winning_ranks,
-                                                                                       localToGlobal_points_per_level);
-        currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
-                                           Dune::InteriorBorder_All_Interface,
-                                           Dune::ForwardCommunication );
+        //
+        /** Current approach avoids duplicated point ids when
+         // 1. the LGR is distributed in P_{i_0}, ..., P_{i_n}, with n+1 < comm().size(),
+         // AND
+         // 2. there is no coarse cell seen by a process P with P != P_{i_j}, j = 0, ..., n.
+         // Otherwise, there will be duplicated point ids.
+         //
+         // Reason: neighboring cells that only share corners (not faces) are NOT considered in the
+         // overlap layer of the process.*/
+        selectWinnerPointIds(localToGlobal_points_per_level,
+                             parent_to_children,
+                             cells_per_dim_vec);
 
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
             // For the general case where the LGRs might be also distributed, a communication step is needed to assign global ids

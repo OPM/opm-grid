@@ -480,6 +480,10 @@ namespace Dune
                                                  int min_globalId_point_in_proc,
                                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
 
+        void selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
+                                  const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
+                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
+
 
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
