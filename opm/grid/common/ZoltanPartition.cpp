@@ -60,23 +60,30 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
     std::vector<std::vector<int> > wellsOnProc;
 
     // List entry: process to export to, (global) index, process rank, attribute there (not needed?)
-    std::vector<std::tuple<int,int,char>> myExportList(numExport);
+    std::vector<std::tuple<int,int,char>> myExportList;
     // List entry: process to import from, global index, process rank, attribute here, local index
     // (determined later)
-    std::vector<std::tuple<int,int,char,int>> myImportList(numImport);
-    myExportList.reserve(1.2*myExportList.size());
-    myImportList.reserve(1.2*myImportList.size());
+    std::vector<std::tuple<int,int,char,int>> myImportList;
+    assert(rank==root || numExport==0);
+    assert(rank!=root || numImport==0);
+    int buffer = 1.05;
+    // all cells on root are added to its export and its import list
+    // myImportList will be expanded if distributed wells are not allowed and well cells are moved
+    std::size_t reserveEx = rank!=root ? 0 : cpgrid.size(0);
+    std::size_t reserveIm = rank!=root ? buffer*numImport : cpgrid.size(0)*buffer/cc.size();
+    myExportList.reserve(reserveEx);
+    myImportList.reserve(reserveIm);
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
     for ( int i=0; i < numExport; ++i )
     {
         parts[exportLocalGids[i]] = exportToPart[i];
-        myExportList[i] = std::make_tuple(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
+        myExportList.emplace_back(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
     }
 
     for ( int i=0; i < numImport; ++i )
     {
-        myImportList[i] = std::make_tuple(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
+        myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
     }
 
 
