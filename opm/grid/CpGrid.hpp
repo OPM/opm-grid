@@ -415,28 +415,12 @@ namespace Dune
         template <int codim>
         cpgrid::Entity<codim> entity(const cpgrid::Entity<codim>& seed) const;
 
-        /// @brief Create a grid out of a coarse one and a refinement(LGR) of a selected block-shaped patch of cells from that coarse grid.
-        ///
-        /// Level0 refers to the coarse grid, assumed to be this-> data_[0]. Level1 refers to the LGR (stored in this->data_[1]).
-        /// LeafView (stored in this-> data_[2]) is built with the level0-entities which weren't involded in the
-        /// refinenment, together with the new born entities created in level1.
-        /// Old-corners and old-faces (from coarse grid) lying on the boundary of the patch, get replaced by new-born-equivalent corners
-        /// and new-born-faces.
-        ///
-        /// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
-        /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
-        /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
-        ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-        /// @param [in] lgr_name                 Name (std::string) for the lgr/level1
-        void addLgrUpdateLeafView(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK,
-                                  const std::array<int,3>& endIJK,  const std::string& lgr_name);
-
         /// @brief Create a grid out of a coarse one and (at most) 2 refinements(LGRs) of selected block-shaped disjoint patches
         ///        of cells from that coarse grid.
         ///
         /// Level0 refers to the coarse grid, assumed to be this-> data_[0]. Level1 and level2 refer to the LGRs (stored in this->data_[1]
         /// data_[2]). LeafView (stored in this-> data_[3]) is built with the level0-entities which weren't involded in the
-        /// refinenment, together with the new born entities created in level1 and level2. 
+        /// refinenment, together with the new born entities created in level1 and level2.
         /// Old-corners and old-faces (from coarse grid) lying on the boundary of the patches, get replaced by new-born-equivalent corners
         /// and new-born-faces.
         ///
