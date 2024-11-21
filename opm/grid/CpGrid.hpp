@@ -468,11 +468,9 @@ namespace Dune
                                                  std::vector<int>& assignRefinedLevel,
                                                  std::vector<int>& lgr_with_at_least_one_active_cell);
 
-        void predictMinCellAndPointGlobalIdPerProcess(int& min_globalId_cell_in_proc,
-                                                      int& min_globalId_point_in_proc,
-                                                      const std::vector<int>& assignRefinedLevel,
-                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                      const std::vector<int>& lgr_with_at_least_one_active_cell) const;
+        std::pair<int,int> predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
+                                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                                    const std::vector<int>& lgr_with_at_least_one_active_cell) const;
 
         void collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
                                                  std::vector<std::vector<int>>& localToGlobal_points_per_level,

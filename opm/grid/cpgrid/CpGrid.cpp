@@ -1266,11 +1266,9 @@ void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<in
     }
 }
 
-void CpGrid::predictMinCellAndPointGlobalIdPerProcess(int& min_globalId_cell_in_proc,
-                                                      int& min_globalId_point_in_proc,
-                                                      const std::vector<int>& assignRefinedLevel,
-                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                      const std::vector<int>& lgr_with_at_least_one_active_cell) const
+std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
+                                                                    [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                                    [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell) const
 {
 #if HAVE_MPI
     // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
@@ -1333,13 +1331,14 @@ void CpGrid::predictMinCellAndPointGlobalIdPerProcess(int& min_globalId_cell_in_
     auto expected_max_globalId_cell = std::accumulate(cell_ids_needed_by_proc.begin(),
                                                       cell_ids_needed_by_proc.end(),
                                                       max_globalId_levelZero + 1);
-    min_globalId_cell_in_proc = std::accumulate(cell_ids_needed_by_proc.begin(),
-                                                cell_ids_needed_by_proc.begin()+comm().rank(),
-                                                max_globalId_levelZero + 1);
-    min_globalId_point_in_proc = std::accumulate(point_ids_needed_by_proc.begin(),
-                                                 point_ids_needed_by_proc.begin()+ comm().rank(),
-                                                 expected_max_globalId_cell);
+    auto min_globalId_cell_in_proc = std::accumulate(cell_ids_needed_by_proc.begin(),
+                                                     cell_ids_needed_by_proc.begin()+comm().rank(),
+                                                     max_globalId_levelZero + 1);
+    auto min_globalId_point_in_proc = std::accumulate(point_ids_needed_by_proc.begin(),
+                                                      point_ids_needed_by_proc.begin()+ comm().rank(),
+                                                      expected_max_globalId_cell);
 
+    return std::make_pair<int,int>(std::move(min_globalId_cell_in_proc), std::move(min_globalId_point_in_proc));
 #endif
 }
 
@@ -1381,9 +1380,9 @@ void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& 
     }
 }
 
-void CpGrid::selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
-                                  const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
-                                  const std::vector<std::array<int,3>>& cells_per_dim_vec) const
+void CpGrid::selectWinnerPointIds([[maybe_unused]] std::vector<std::vector<int>>&  localToGlobal_points_per_level,
+                                  [[maybe_unused]] const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
+                                  [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
 #if HAVE_MPI
     // To store cell_to_point_ information of all refined level grids.
@@ -2343,13 +2342,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     if(comm().size()>1) {
 #if HAVE_MPI
         // Prediction min cell and point global ids per process
-        int min_globalId_cell_in_proc = 0;
-        int min_globalId_point_in_proc = 0;
-        predictMinCellAndPointGlobalIdPerProcess(min_globalId_cell_in_proc,
-                                                 min_globalId_point_in_proc,
-                                                 assignRefinedLevel,
-                                                 cells_per_dim_vec,
-                                                 lgr_with_at_least_one_active_cell);
+        auto [min_globalId_cell_in_proc,
+              min_globalId_point_in_proc] = predictMinCellAndPointGlobalIdPerProcess(assignRefinedLevel,
+                                                                                     cells_per_dim_vec,
+                                                                                     lgr_with_at_least_one_active_cell);
 
         // Only for level 1,2,.., maxLevel grids.
         // For each level, define the local-to-global maps for cells and points (for faces: empty).
