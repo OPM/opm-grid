@@ -2413,6 +2413,14 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             }
         }
 
+        // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
+        // The bool indicates whether the global index might exist on other processes with other attributes.
+        // RemoteIndices::rebuild has a Boolean as a template parameter telling the method whether to ignore this
+        // Boolean on the indices or not when building.
+        //
+        // For refined level grids, we check if the parent cell is fully interior. Then, its children won't be seen
+        // by any other process. Therefore, the boolean is set to false.
+
         for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
 
             const auto& level_global_id_set =  (*current_data_)[level]->global_id_set_;
@@ -2422,8 +2430,29 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
             for(const auto& element : elements(levelGridView(level))) {
                 if ( element.partitionType() == InteriorEntity) {
-                    level_index_set.add( level_global_id_set->id(element),
-                                         ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+
+                    // Check if it has an overlap neighbor
+                    bool parentFullyInterior = true;
+                    const auto& parent_cell = element.father();
+
+                    for (const auto& intersection : intersections(levelGridView(parent_cell.level()), parent_cell)) {
+                        if ( intersection.neighbor() ) {
+                            const auto& neighborPartitionType = intersection.outside().partitionType();
+                            // To help detection of fully interior cells, i.e., without overlap neighbors
+                            if (neighborPartitionType == OverlapEntity )  {
+                                parentFullyInterior = false;
+                                 // Interior cells with overlap neighbor may appear in other processess -> true
+                                level_index_set.add( level_global_id_set->id(element),
+                                                     ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+                                // Store it only once
+                                break;
+                            }
+                        }
+                    }
+                    if(parentFullyInterior) { // Fully interior cells do not appear in any other process -> false
+                        level_index_set.add( level_global_id_set->id(element),
+                                             ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
+                    }
                 }
                 else { // overlap cell
                     assert(element.partitionType() == OverlapEntity);
@@ -2431,9 +2460,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                                          ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
                 }
             }
+
             level_index_set.endResize();
 
-            currentData()[level]->cellRemoteIndices().template rebuild<false>();
+            currentData()[level]->cellRemoteIndices().template rebuild<false>(); // Do not ignore bool in ParallelIndexSet!
 
             // Compute the partition type for cell
             currentData()[level]->computeCellPartitionType();
@@ -2483,6 +2513,10 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
 
         leaf_index_set.beginResize();
 
+        // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
+        // The bool indicates whether the global index might exist on other processes with other attributes.
+        // RemoteIndices::rebuild has a Boolean as a template parameter telling the method whether to ignore this
+        // Boolean on the indices or not when building.
         for(const auto& element : elements(leafGridView())) {
             const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
             if ( elemPartitionType == InteriorEntity) {
@@ -2494,6 +2528,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         // To help detection of fully interior cells, i.e., without overlap neighbors
                         if (neighborPartitionType == OverlapEntity )  {
                             isFullyInterior = false;
+                            // Interior cells with overlap neighbor may appear in other processess -> false
                             leaf_index_set.add(globalIdSet().id(element),
                                                ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
                             // Store it only once
@@ -2501,7 +2536,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                         }
                     }
                 }
-                if(isFullyInterior) { // In case we do not need these indices, then modify/remove the assert below regarding leaf_index_set.size().
+                if(isFullyInterior) { // Fully interior cells do not appear in any other process -> false
                     leaf_index_set.add(globalIdSet().id(element),
                                        ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
                 }
