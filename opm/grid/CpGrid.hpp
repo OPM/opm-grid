@@ -463,6 +463,11 @@ namespace Dune
         // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
         bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
+        void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                                                 const std::vector<std::array<int,3>>& endIJK_vec,
+                                                 std::vector<int>& assignRefinedLevel,
+                                                 std::vector<int>& lgr_with_at_least_one_active_cell);
+
 
         /// --------------- Adaptivity (begin) ---------------
         /// @brief Mark entity for refinement (or coarsening).
