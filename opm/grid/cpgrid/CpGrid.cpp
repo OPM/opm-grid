@@ -1343,6 +1343,45 @@ void CpGrid::predictMinCellAndPointGlobalIdPerProcess(int& min_globalId_cell_in_
 #endif
 }
 
+void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
+                                                 std::vector<std::vector<int>>& localToGlobal_points_per_level,
+                                                 int min_globalId_cell_in_proc,
+                                                 int min_globalId_point_in_proc,
+                                                 const std::vector<std::array<int,3>>& cells_per_dim_vec ) const
+{
+#if HAVE_MPI
+    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+        localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
+        localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
+        // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
+
+        // Global ids for cells (for owned cells)
+        for (const auto& element : elements(levelGridView(level))) {
+            if (element.partitionType() == InteriorEntity) {
+                localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
+                ++min_globalId_cell_in_proc;
+            }
+        }
+        for (const auto& point : vertices(levelGridView(level))) {
+            // Check if it coincides with a corner from level zero. In that case, no global id is needed.
+            const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
+            if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                // Therefore, search and assign the global id of the previous existing equivalent corner.
+                const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                localToGlobal_points_per_level[level-1][point.index()] = current_data_->front()->global_id_set_->id( equivPoint );
+            }
+            else {
+                // Assign CANDIDATE global id to (all partition type) points that do not coincide with
+                // any corners from level zero.
+                // TO DO after invoking this method: make a final decision on a unique id for points of refined level grids,
+                // via a communication step.
+                localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
+                ++min_globalId_point_in_proc;
+            }
+        }
+    }
+#endif
+}
 
 double CpGrid::cellCenterDepth(int cell_index) const
 {
@@ -2284,36 +2323,13 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Ignore faces - empty vectors.
         std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
-        for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-            localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
-            localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
-            // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
+        collectCellIdsAndCandidatePointIds(localToGlobal_cells_per_level,
+                                           localToGlobal_points_per_level,
+                                           min_globalId_cell_in_proc,
+                                           min_globalId_point_in_proc,
+                                           cells_per_dim_vec);
 
-            // Global ids for cells (for owned cells)
-            for (const auto& element : elements(levelGridView(level))) {
-                if (element.partitionType() == InteriorEntity) {
-                    localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
-                    ++min_globalId_cell_in_proc;
-                }
-            }
-            for (const auto& point : vertices(levelGridView(level))) {
-                // Check if it coincides with a corner from level zero. In that case, no global id is needed.
-                const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
-                if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
-                    // Therefore, search and assign the global id of the previous existing equivalent corner.
-                    const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
-                    localToGlobal_points_per_level[level-1][point.index()] = current_data_->front()->global_id_set_->id( equivPoint );
-                }
-                else {
-                    // Assign new global id to (all partition type) points that do not coincide with
-                    // any corners from level zero.
-                    // TO DO: Implement a final decision on a unique id for points of refined level grids.
-                    localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
-                    ++min_globalId_point_in_proc;
-                }
-            }
-        }
-
+        
         const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
         ParentToChildrenCellGlobalIdHandle parentToChildrenGlobalId_handle(parent_to_children, localToGlobal_cells_per_level);
         currentData().front()->communicate(parentToChildrenGlobalId_handle,
