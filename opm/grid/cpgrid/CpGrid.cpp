@@ -2076,37 +2076,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     //                                                              active/inactive cells, instead, relies on "ijk-computations".
     //                                                              TO DO: improve/remove.
     // To check "Compatibility of numbers of subdivisions of neighboring LGRs".
-    bool compatibleSubdivisionsHasFailed = false;
-    if (startIJK_vec.size() > 1) {
-        bool notAllowedYet = false;
-        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-            for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
-                const auto& sharedFaceTag =
-                    current_view_data_->sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
-                if(sharedFaceTag == -1){
-                    break; // Go to the next "other patch"
-                }
-                if (sharedFaceTag == 0 ) {
-                    notAllowedYet = notAllowedYet ||
-                        ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
-                }
-                if (sharedFaceTag == 1) {
-                    notAllowedYet = notAllowedYet ||
-                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
-                }
-                if (sharedFaceTag == 2) {
-                    notAllowedYet = notAllowedYet ||
-                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
-                }
-                if (notAllowedYet){
-                    compatibleSubdivisionsHasFailed = true;
-                    break;
-                }
-            } // end-otherLevel-for-loop
-        } // end-level-for-loop
-    }// end-if-patchesShareFace
-    compatibleSubdivisionsHasFailed = comm().max(compatibleSubdivisionsHasFailed);
-    if(compatibleSubdivisionsHasFailed) {
+    bool compatibleSubdivisions = current_view_data_->compatibleSubdivisions(cells_per_dim_vec, startIJK_vec, endIJK_vec);
+    compatibleSubdivisions= comm().max(compatibleSubdivisions);
+    if(!compatibleSubdivisions) {
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
         }
