@@ -1235,10 +1235,35 @@ bool CpGrid::nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const 
                     nonNNCs = false;
                     break;
                 }
-            } // end-if-belongsToLevel
-        } // end-level-for-loop
-    } // end-element-for-loop
+            }
+        }
+    }
     return nonNNCs;
+}
+
+void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                                                 const std::vector<std::array<int,3>>& endIJK_vec,
+                                                 std::vector<int>& assignRefinedLevel,
+                                                 std::vector<int>& lgr_with_at_least_one_active_cell)
+{
+    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
+    for(const auto& element: elements(this->leafGridView())) {
+        std::array<int,3> ijk;
+        getIJK(element.index(), ijk);
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            bool belongsToLevel = true;
+            for (int c = 0; c < 3; ++c) {
+                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
+                if (!belongsToLevel)
+                    break;
+            }
+            if(belongsToLevel) {
+                this-> mark(1, element);
+                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
+                lgr_with_at_least_one_active_cell[level] = 1;
+            }
+        }
+    }
 }
 
 double CpGrid::cellCenterDepth(int cell_index) const
@@ -2116,8 +2141,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
     
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    // To check "Non-NNCs (non non neighboring connections)" for all processes.
     bool nonNNCs = this->nonNNCs(startIJK_vec, endIJK_vec);
+    // To check "Non-NNCs (non non neighboring connections)" for all processes.
     nonNNCs = comm().max(nonNNCs);
     if(!nonNNCs) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
@@ -2129,24 +2154,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     std::vector<int> lgr_with_at_least_one_active_cell(startIJK_vec.size());
     // Determine the assigned level for the refinement of each marked cell
     std::vector<int> assignRefinedLevel(current_view_data_->size(0));
-    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
-    for(const auto& element: elements(this->leafGridView())) {
-        std::array<int,3> ijk;
-        getIJK(element.index(), ijk);
-        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-            bool belongsToLevel = true;
-            for (int c = 0; c < 3; ++c) {
-                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
-                if (!belongsToLevel)
-                    break;
-            }
-            if(belongsToLevel) {
-                this-> mark(1, element);
-                assignRefinedLevel[element.index()] = level+1; // shifted since starting grid is level 0, and refined grids levels are >= 1.
-                lgr_with_at_least_one_active_cell[level] = 1;
-            } // end-if-belongsToLevel
-        } // end-level-for-loop
-    } // end-element-for-loop
+
+    markElemAssignLevelDetectActiveLgrs(startIJK_vec,
+                                        endIJK_vec,
+                                        assignRefinedLevel,
+                                        lgr_with_at_least_one_active_cell);
 
     int non_empty_lgrs = 0;
     for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
