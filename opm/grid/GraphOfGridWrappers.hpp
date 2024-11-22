@@ -94,7 +94,7 @@ void getGraphOfGridEdgeList(void *pGraph,
 /// \brief Register callback functions to Zoltan
 template<typename Zoltan_Struct>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        const GraphOfGrid<Dune::CpGrid>& gog,
+                                        GraphOfGrid<Dune::CpGrid>& gog,
                                         bool pretendNull);
 #endif
 
@@ -137,7 +137,7 @@ namespace Impl{
 /// Helper function for extendExportAndImportLists.
 /// Used on non-root ranks that do not have access to wells.
 void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                      const std::vector<std::set<int>>& extraWells);
+                      const std::vector<std::vector<int>>& extraWells);
 
 /// \brief Add well cells' global IDs to the root's export list and output other rank's wells
 ///
@@ -145,8 +145,8 @@ void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
 /// On non-root ranks, it does nothing and returns an empty vector.
 /// On root, exportList is extended by well cells that are hidden from the partitioner.
 /// These wells are also collected and returned so they can be communicated to other ranks.
-/// \return vector of size cc.size(). Each entry contains vector of wells exported to that rank.
-std::vector<std::vector<std::set<int>>>
+/// \return vector[rank][well][cell] Each entry contains vector of wells exported to that rank.
+std::vector<std::vector<std::vector<int>>>
 extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
@@ -166,8 +166,8 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
 /// \param root The root's rank
 /// \return Vector of wells necessary to extend this rank's import lists,
 ///         empty on the root rank
-std::vector<std::set<int>> communicateExportedWells(
-    const std::vector<std::vector<std::set<int>>>& exportedWells,
+std::vector<std::vector<int>> communicateExportedWells(
+    const std::vector<std::vector<std::vector<int>>>& exportedWells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root);
 } // end namespace Impl

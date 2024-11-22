@@ -131,10 +131,10 @@ void getGraphOfGridEdgeList(void *pGraph,
 
 template<typename Zoltan_Struct>
 void setGraphOfGridZoltanGraphFunctions(Zoltan_Struct *zz,
-                                        const GraphOfGrid<Dune::CpGrid>& gog,
+                                        GraphOfGrid<Dune::CpGrid>& gog,
                                         bool pretendNull)
 {
-    GraphOfGrid<Dune::CpGrid>* pGraph = const_cast<GraphOfGrid<Dune::CpGrid>*>(&gog);
+    GraphOfGrid<Dune::CpGrid>* pGraph = &gog;
     if (pretendNull)
     {
         Zoltan_Set_Num_Obj_Fn(zz, Dune::cpgrid::getNullNumCells, pGraph);
@@ -208,7 +208,7 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 #if HAVE_MPI
 namespace Impl{
 
-std::vector<std::vector<std::set<int>>>
+std::vector<std::vector<std::vector<int>>>
 extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
@@ -216,15 +216,16 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
 {
     const auto& cc = gog.getGrid().comm();
     // non-root ranks have empty export lists.
+    std::vector<std::vector<std::vector<int>>> exportedWells;
     if (cc.rank()!=root)
     {
-        return std::vector<std::vector<std::set<int>>>();
+        return exportedWells;
     }
-    std::vector<std::vector<std::set<int>>> exportedWells(cc.size());
+    exportedWells.resize(cc.size());
     using ExportList = std::vector<std::tuple<int,int,char>>;
     // make a list of wells for easy identification. Contains ID, begin, end
     using iter = std::set<int>::const_iterator;
-    std::unordered_map<int,std::pair<iter,iter>> wellMap;
+    std::unordered_map<int,std::tuple<iter,iter,int>> wellMap;
     for (const auto& well : gog.getWells())
     {
         if (gIDtoRank.size()>0)
@@ -232,12 +233,12 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             auto wellID = *well.begin();
             if (gIDtoRank[wellID]!=root)
             {
-                wellMap[wellID] = std::make_pair(well.begin(),well.end());
+                wellMap[wellID] = std::make_tuple(well.begin(),well.end(),well.size());
             }
         }
         else
         {
-            wellMap[*well.begin()] = std::make_pair(well.begin(),well.end());
+            wellMap[*well.begin()] = std::make_tuple(well.begin(),well.end(),well.size());
         }
     }
 
@@ -252,8 +253,10 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             int rankToExport = std::get<1>(cellProperties);
             if (rankToExport!=root)
             {
-                const auto& [begin,end] = pWell->second;
-                std::set<int> wellToExport{*begin};
+                const auto& [begin,end,wSize] = pWell->second;
+                std::vector<int> wellToExport;
+                wellToExport.reserve(wSize);
+                wellToExport.push_back(*begin);
                 // well ID is its cell of lowest index and is already in the exportList
                 assert(*begin==std::get<0>(cellProperties));
                 for (auto pgID = begin; ++pgID!=end; )
@@ -263,7 +266,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                     std::get<0>(wellCell) = *pgID;
                     addToList.push_back(wellCell);
 
-                    wellToExport.emplace(*pgID);
+                    wellToExport.push_back(*pgID);
                 }
                 exportedWells[rankToExport].push_back(std::move(wellToExport));
             }
@@ -286,13 +289,13 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     return exportedWells;
 }
 
-std::vector<std::set<int>> communicateExportedWells(
-    const std::vector<std::vector<std::set<int>>>& exportedWells,
+std::vector<std::vector<int>> communicateExportedWells(
+    const std::vector<std::vector<std::vector<int>>>& exportedWells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root)
 {
     // send data from root
-    std::vector<std::set<int>> result;
+    std::vector<std::vector<int>> result;
     if (cc.rank()==root)
     {
         for (int i=0; i<cc.size(); ++i)
@@ -339,27 +342,25 @@ std::vector<std::set<int>> communicateExportedWells(
         {
             int wellSize = receivedData[index++];
             assert(index+wellSize<=totsize);
-            for (int j=0; j<wellSize; ++j)
-            {
-                result[i].emplace(receivedData[index++]);
-            }
+            const auto dataBegin = receivedData.begin()+index;
+            result[i] = std::vector<int>(dataBegin,dataBegin+wellSize);
+            index+=wellSize;
         }
     }
     return result;
 }
 
 void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                      const std::vector<std::set<int>>& extraWells)
+                      const std::vector<std::vector<int>>& extraWells)
 {
     using ImportList = std::vector<std::tuple<int,int,char,int>>;
-    // make a list of wells for easy identification. Contains ID, begin, end
-    using iter = std::set<int>::const_iterator;
-    std::unordered_map<int,std::pair<iter,iter>> wellMap;
-    for (const auto& well : extraWells)
+    // make a list of wells for easy identification
+    std::unordered_map<int,std::size_t> wellMap;
+    for (std::size_t i=0; i<extraWells.size(); ++i)
     {
-        if (well.size()>1)
+        if (extraWells[i].size()>1)
         {
-            wellMap[*well.begin()] = std::make_pair(well.begin(),well.end());
+            wellMap[extraWells[i][0]] = i;
         }
     }
 
@@ -371,14 +372,14 @@ void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
         auto pWell = wellMap.find(std::get<0>(cellProperties));
         if (pWell!=wellMap.end())
         {
-            const auto& [begin,end] = pWell->second;
+            const auto& wellVector = extraWells[pWell->second];
             // well ID is its cell of lowest index and is already in the importList
-            assert(*begin==std::get<0>(cellProperties));
-            for (auto pgID = begin; ++pgID!=end; )
+            assert(wellVector[0]==std::get<0>(cellProperties));
+            for (std::size_t j=1; j<wellVector.size(); ++j)
             {
                 // cells in one well have the same attributes (except ID)
                 std::tuple<int,int,char,int> wellCell = cellProperties;
-                std::get<0>(wellCell) = *pgID;
+                std::get<0>(wellCell) = wellVector[j];
                 addToList.push_back(wellCell);
             }
 
