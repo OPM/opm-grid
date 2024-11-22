@@ -1270,6 +1270,9 @@ std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unus
                                                                     [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                                                     [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell) const
 {
+    int min_globalId_cell_in_proc = 0;
+    int min_globalId_point_in_proc = 0;
+
 #if HAVE_MPI
     // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
     // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
@@ -1331,15 +1334,14 @@ std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unus
     auto expected_max_globalId_cell = std::accumulate(cell_ids_needed_by_proc.begin(),
                                                       cell_ids_needed_by_proc.end(),
                                                       max_globalId_levelZero + 1);
-    auto min_globalId_cell_in_proc = std::accumulate(cell_ids_needed_by_proc.begin(),
-                                                     cell_ids_needed_by_proc.begin()+comm().rank(),
-                                                     max_globalId_levelZero + 1);
-    auto min_globalId_point_in_proc = std::accumulate(point_ids_needed_by_proc.begin(),
-                                                      point_ids_needed_by_proc.begin()+ comm().rank(),
-                                                      expected_max_globalId_cell);
-
-    return std::make_pair<int,int>(std::move(min_globalId_cell_in_proc), std::move(min_globalId_point_in_proc));
+    min_globalId_cell_in_proc = std::accumulate(cell_ids_needed_by_proc.begin(),
+                                                cell_ids_needed_by_proc.begin()+comm().rank(),
+                                                max_globalId_levelZero + 1);
+    min_globalId_point_in_proc = std::accumulate(point_ids_needed_by_proc.begin(),
+                                                 point_ids_needed_by_proc.begin()+ comm().rank(),
+                                                 expected_max_globalId_cell);
 #endif
+    return std::make_pair<int,int>(std::move(min_globalId_cell_in_proc), std::move(min_globalId_point_in_proc));
 }
 
 void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
