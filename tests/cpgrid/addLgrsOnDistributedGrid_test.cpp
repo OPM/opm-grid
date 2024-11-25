@@ -104,8 +104,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         {
             Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
             BOOST_CHECK( entity.hasFather() == false);
-            // BOOST_CHECK_THROW(entity.father(), std::logic_error);
-            // BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
             BOOST_CHECK( entity.getOrigin() ==  entity);
             BOOST_CHECK( entity.getOrigin().level() == 0);
             auto it = entity.hbegin(coarse_grid.maxLevel());
@@ -181,7 +181,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
             BOOST_CHECK( *itMax < maxCartesianIdxLevel);
         }
-
 
         // LGRs
         for (int cell = 0; cell <  data[level]-> size(0); ++cell)
@@ -276,8 +275,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( level_cellIdx[0] == entity.level());
             }
             else{
-                // BOOST_CHECK_THROW(entity.father(), std::logic_error);
-                // BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+                BOOST_CHECK_THROW(entity.father(), std::logic_error);
+                BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
                 BOOST_CHECK_EQUAL(child_to_parent[0], -1);
                 BOOST_CHECK_EQUAL(child_to_parent[1], -1);
                 BOOST_CHECK( level_cellIdx[0] == 0);
@@ -568,7 +567,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
         // Total global ids in leaf grid view for cells: 36-(6 marked cells) + 16 + 27 + 64 + 16 = 153
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-        
+
         // Check global id is not duplicated for points for each LGR
         // LGR1 dim 2x4x2 -> 3x5x3 = 45 points
         // LGR2 dim 3x3x3 -> 4x4x4 = 64 points
@@ -673,7 +672,37 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
     }
 }
 
-//Calling globalRefine on a distributed grid is not supported yet.
+//Calling globalRefine on a distributed grid is supported now.
+BOOST_AUTO_TEST_CASE(globalRefine1)
+{
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,2,1};
+    grid.createCartesian(grid_dim, cell_sizes);
+
+    std::vector<int> parts(8);
+    std::vector<std::vector<int>> cells_per_rank = {{0,4},{1,5},{2,6}, {3,7}};
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    // Distribute the grid
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance();
+
+        grid.globalRefine(1);
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{4,2,1}};
+        const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
+
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
+
 BOOST_AUTO_TEST_CASE(globalRefine2)
 {
     // Create a grid
@@ -681,12 +710,28 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
     const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
+
+     std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
     // Distribute the grid
     if(grid.comm().size()>1)
     {
         grid.loadBalance();
 
-        BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
+        grid.globalRefine(1);
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{4,3,3}};
+        const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
 
@@ -752,12 +797,12 @@ BOOST_AUTO_TEST_CASE(distributed_lgr)
         // That means that the "unfortunate" expected point ids count is 45 (desired value) + 5 (duplicated laying on
         // shared I_FACE) = 50.
         BOOST_CHECK( static_cast<int>(all_point_ids_set.size()) == 50);
-        
-        /** Current approach avoids duplicated point ids when
+
+         // Current approach avoids duplicated point ids when
          // 1. the LGR is distributed in P_{i_0}, ..., P_{i_n}, with n+1 < grid.comm().size(),
          // AND
          // 2. there is no coarse cell seen by a process P with P != P_{i_j}, j = 0, ..., n.
-         // Otherwise, there will be duplicated point ids.*/ 
+         // Otherwise, there will be duplicated point ids.
 
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
@@ -930,6 +975,56 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
     }
 }
 
+BOOST_AUTO_TEST_CASE(call_adapt_with_args_on_distributed_grid)
+{
+    // Only for testing assignment of new global ids for refined entities (cells and point belonging to
+    // refined level grids).
+
+    // Create a grid
+    Dune::CpGrid grid;
+    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int, 3> grid_dim = {4,3,3};
+    grid.createCartesian(grid_dim, cell_sizes);
+    std::vector<int> parts(36);
+    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
+    for (int rank = 0; rank < 4; ++rank) {
+        for (const auto& elemIdx : cells_per_rank[rank]) {
+            parts[elemIdx] = rank;
+        }
+    }
+    if(grid.comm().size()>1)
+    {
+        grid.loadBalance(parts);
+
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
+        const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}};
+        const std::vector<std::string> lgr_name_vec = {"LGR1"};
+        // LGR1 element indices = {1,2,5,6,13,14,17,18} where
+        // 1,5 in rank 0,
+        // 13,17 in rank 1,
+        // 2,6,18 in rank 2,
+        // 14 in rank 3.
+        // Block of cells to refine dim 2x2x2. LGR1 dim 4x4x4.
+        // 64 new refined cells. 5x5x5 = 125 points (only 98 = 125 - 3x3x3 parent corners new points - new global ids).
+        const std::vector<int>& marked_elemIdx = {1,2,5,6,13,14,17,18};
+        std::vector<int> assignRefinedLevel(grid.currentData().front()->size(0));
+        for (const auto& idx : marked_elemIdx)
+            assignRefinedLevel[idx] = 1;
+
+        grid.adapt(cells_per_dim_vec,
+                   assignRefinedLevel,
+                   lgr_name_vec,
+                   true,
+                   startIJK_vec,
+                   endIJK_vec);
+
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    }
+}
 
 BOOST_AUTO_TEST_CASE(call_adapt_on_distributed_grid)
 {
@@ -954,37 +1049,20 @@ BOOST_AUTO_TEST_CASE(call_adapt_on_distributed_grid)
     if(grid.comm().size()>1)
     {
         grid.loadBalance(parts);
-        // grid.adapt(); It does not throw an exeption. Note: adapt() implements global refinement.
-        //
-        // The following test fails. TODO: Move the assignment of global IDs for refined level grids and the leaf grid view
-        // into the adapt(...) function, as it is invoked within 'addLgrsUpdateLeafGridView', not the other way around.
-        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        // Mark all elements -> indirect global refinement
+        for (const auto& element : elements(grid.leafGridView())){
+            grid.mark(1, element);
+        }
+        grid.preAdapt();
+        grid.adapt();
+        grid.postAdapt();
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
         const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
-        const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}};
-        const std::vector<std::string> lgr_name_vec = {"LGR1"};
-        // LGR1 element indices = {1,2,5,6,13,14,17,18} where
-        // 1,5 in rank 0,
-        // 13,17 in rank 1,
-        // 2,6,18 in rank 2,
-        // 14 in rank 3.
-        // Block of cells to refine dim 2x2x2. LGR1 dim 4x4x4.
-        // 64 new refined cells. 5x5x5 = 125 points (only 98 = 125 - 3x3x3 parent corners new points - new global ids).
-        const std::vector<int>& marked_elemIdx = {1,2,5,6,13,14,17,18};
-        std::vector<int> assignRefinedLevel(grid.currentData().front()->size(0));
-        for (const auto& idx : marked_elemIdx)
-            assignRefinedLevel[idx] = 1;
+        const std::vector<std::array<int,3>> endIJK_vec = {{4,3,3}};
+        const std::vector<std::string> lgr_name_vec = {"GR1"};
 
-        grid.adapt(cells_per_dim_vec,
-                   assignRefinedLevel,
-                   lgr_name_vec,
-                   true,
-                   startIJK_vec,
-                   endIJK_vec);
-        // The following test fails. TODO: Move the assignment of global IDs for refined level grids and the leaf grid view
-        // into the adapt(...) function, as it is invoked within 'addLgrsUpdateLeafGridView', not the other way around.
-        // refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+        refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
 }
 

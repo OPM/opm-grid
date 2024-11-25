@@ -1010,10 +1010,6 @@ void CpGrid::globalRefine (int refCount)
             OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
         }
     }
-    // Preventcalls of globalRefine on a distributed grid.
-    //  if ( !distributed_data_.empty() ) {
-    //      OPM_THROW(std::logic_error, "Global refinement of a distributed grid is not supported yet.");
-    // }
     if (refCount>0) {
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
             // Mark all the elements of the current leaf grid view for refinement
@@ -1950,6 +1946,7 @@ bool CpGrid::adapt()
         }
     }
     // Check if its a global refinement
+    bool is_global_refine = false;
     std::vector<std::string> lgr_name_vec = { "LGR" + std::to_string(preAdaptMaxLevel +1) };
     // Rewrite if global refinement
 #if HAVE_MPI
@@ -1958,11 +1955,17 @@ bool CpGrid::adapt()
     if (global_marked_elem_count == global_cell_count_before_adapt) {
         // GR stands for GLOBAL REFINEMET
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
+        is_global_refine = true; // parallel
     }
 #endif
     if (local_marked_elem_count == current_view_data_-> size(0)) {
         // GR stands for GLOBAL REFINEMET
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
+        is_global_refine = true; // sequential
+    }
+    if (is_global_refine) {
+        const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
+        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, is_global_refine, {{0,0,0}}, {endIJK});
     }
     return this-> adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
@@ -2342,7 +2345,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // Populate some attributes of the level LGR
         (*data[refinedLevelGridIdx]).level_data_ptr_ = &(this -> currentData());
         (*data[refinedLevelGridIdx]).level_ = refinedLevelGridIdx;
-        std::cout<< "from adapt(..):  " << lgr_name_vec[level] << std::endl;
         this -> lgr_names_[lgr_name_vec[level]] = refinedLevelGridIdx; // {"name_lgr", level}
         (*data[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
         (*data[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
