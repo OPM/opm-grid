@@ -1072,13 +1072,16 @@ namespace Dune
                                                    int elemLgr)  const;
         /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
 
-              // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
+        // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
         bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
-        void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
-                                                 const std::vector<std::array<int,3>>& endIJK_vec,
-                                                 std::vector<int>& assignRefinedLevel,
-                                                 std::vector<int>& lgr_with_at_least_one_active_cell);
+        void markElemAssignLevel(const std::vector<std::array<int,3>>& startIJK_vec,
+                                 const std::vector<std::array<int,3>>& endIJK_vec,
+                                 std::vector<int>& assignRefinedLevel);
+
+        void detectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                              const std::vector<std::array<int,3>>& endIJK_vec,
+                              std::vector<int>& lgr_with_at_least_one_active_cell);
 
         std::pair<int,int> predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
                                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec,
