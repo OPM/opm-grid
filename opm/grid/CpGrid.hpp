@@ -1083,23 +1083,26 @@ namespace Dune
         bool nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec,
                                       const std::vector<std::array<int,3>>& endIJK_vec) const;
 
-        /// @brief Mark selected elements and assign them their corresponding level.
+        /// @brief Detect active LGRs, mark element and assign their level.
         ///
-        /// Given blocks of cells selected for refinement, Mark selected elements and assign them their corresponding
-        /// (refined) level (grid). When level zero grid is distributed before refinement, detect which LGRs are active
-        /// in each process.
+        /// Given blocks of cells selected for refinement on a level zero distributed grid, detect which LGRs are active
+        /// in each process. If "onlyDetectLgrs = false", additionally, mark selected elements and assign them their corresponding
+        /// (refined) level (grid).
         ///
         /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
         /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
-        /// @param [out] assignRefinedLevel   Assign level for the refinement of each marked cell. Example: refined element from
-        ///                                   LGR1 have level 1, refined element rfom LGR2 have level 2, etc.
-        /// @param [out] lgr_with_at_least_one_active_cell Determine if an LGR is not empty in a given process, we set
-        ///                                                lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
-        ///                                                at least one active cell, and to 0 otherwise.
-        void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
-                                                 const std::vector<std::array<int,3>>& endIJK_vec,
-                                                 std::vector<int>& assignRefinedLevel,
-                                                 std::vector<int>& lgr_with_at_least_one_active_cell);
+        /// @param [in] onlyDetectLgrs  If true, the return the second vector of the return pair<vector<int>, vector<int>> is empty
+        ///                             since the method will only detect the active lgrs, and skip marking elements and assigning
+        ///                             their levels. If false, both pair.fisrt (representing active lgrs) and pair.second
+        ///                             (representing the assigned refined levels) will be populated
+        /// @return [lgr_with_at_least_one_active_cell,  Determine if an LGR is not empty in a given process, we set
+        ///         assignRefinedLevel]                  lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
+        ///                                              at least one active cell, and to 0 otherwise.
+        ///                                              Assign level for the refinement of each marked cell. Example: refined
+        ///                                              element from LGR1 have level 1, refined element rfom LGR2 have level 2, etc.
+        std::pair<std::vector<int>, std::vector<int>> markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                                                                                          const std::vector<std::array<int,3>>& endIJK_vec,
+                                                                                          bool onlyDetectLgrs);
 
         /// @brief Predict minimum cell and point global ids per process.
         ///
