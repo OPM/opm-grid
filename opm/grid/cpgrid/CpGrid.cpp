@@ -1011,9 +1011,9 @@ void CpGrid::globalRefine (int refCount)
         }
     }
     // Preventcalls of globalRefine on a distributed grid.
-    if ( !distributed_data_.empty() ) {
-        OPM_THROW(std::logic_error, "Global refinement of a distributed grid is not supported yet.");
-    }
+    //  if ( !distributed_data_.empty() ) {
+    //      OPM_THROW(std::logic_error, "Global refinement of a distributed grid is not supported yet.");
+    // }
     if (refCount>0) {
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
             // Mark all the elements of the current leaf grid view for refinement
@@ -1941,12 +1941,30 @@ bool CpGrid::adapt()
     const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
     std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
     const auto& preAdaptMaxLevel = this ->maxLevel();
+    int local_marked_elem_count = 0;
     for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
         const auto& element = cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
         assignRefinedLevel[elemIdx] = (this->getMark(element) == 1) ? (preAdaptMaxLevel +1) : 0;
+        if (this->getMark(element) == 1) {
+            ++local_marked_elem_count;
+        }
     }
-    const std::vector<std::string>& lgr_name_vec = { "LGR" + std::to_string(preAdaptMaxLevel +1) };
-    return this-> adapt(cells_per_dim_vec, assignRefinedLevel,lgr_name_vec);
+    // Check if its a global refinement
+    std::vector<std::string> lgr_name_vec = { "LGR" + std::to_string(preAdaptMaxLevel +1) };
+    // Rewrite if global refinement
+#if HAVE_MPI
+    auto global_marked_elem_count = comm().sum(local_marked_elem_count);
+    auto global_cell_count_before_adapt = comm().sum(current_view_data_-> size(0)); // Recall overlap cells are also marked
+    if (global_marked_elem_count == global_cell_count_before_adapt) {
+        // GR stands for GLOBAL REFINEMET
+        lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
+    }
+#endif
+    if (local_marked_elem_count == current_view_data_-> size(0)) {
+        // GR stands for GLOBAL REFINEMET
+        lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
+    }
+    return this-> adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
 
 bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
@@ -2324,6 +2342,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // Populate some attributes of the level LGR
         (*data[refinedLevelGridIdx]).level_data_ptr_ = &(this -> currentData());
         (*data[refinedLevelGridIdx]).level_ = refinedLevelGridIdx;
+        std::cout<< "from adapt(..):  " << lgr_name_vec[level] << std::endl;
         this -> lgr_names_[lgr_name_vec[level]] = refinedLevelGridIdx; // {"name_lgr", level}
         (*data[refinedLevelGridIdx]).child_to_parent_cells_ = refined_child_to_parent_cells_vec[level];
         (*data[refinedLevelGridIdx]).cell_to_idxInParentCell_ = refined_cell_to_idxInParentCell_vec[level];
