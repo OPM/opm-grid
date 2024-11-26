@@ -1213,12 +1213,17 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
 
-bool CpGrid::nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
+bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
 {
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
     bool nonNNCs = true;
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
     // and check if they have NNCs.
+    // Note: at this point, the (level zero) grid might be already distributed, before adding the LGRs. Therefore,
+    // we get the active index of each element and its corresponding ijk from the global grid, to be able to determine
+    // if the cell bolengs to certain block of cells selected for refinement (comparing element's ijk with start/endIJK values).
+    // It is not correct to make the comparasion with element.index() and minimum/maximum index of each block of cell, since
+    // element.index() is local and the block of cells are defined with global values.
     for(const auto& element: elements(this->leafGridView())) {
         std::array<int,3> ijk;
         getIJK(element.index(), ijk);
@@ -1226,8 +1231,6 @@ bool CpGrid::nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const 
             bool belongsToLevel = true;
             for (int c = 0; c < 3; ++c) {
                 belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
-                if (!belongsToLevel)
-                    break;
             }
             if(belongsToLevel) {
                 // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
@@ -1236,6 +1239,8 @@ bool CpGrid::nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const 
                     break;
                 }
             }
+            if (!nonNNCs) // At least one level contains NNCs.
+                break;
         }
     }
     return nonNNCs;
@@ -1266,35 +1271,16 @@ void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<in
     }
 }
 
-std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
-                                                                    [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                                    [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell) const
+void CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
+                                                      [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                      [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell,
+                                                      [[maybe_unused]] int& min_globalId_cell_in_proc,
+                                                      [[maybe_unused]] int& min_globalId_point_in_proc) const
 {
-    int min_globalId_cell_in_proc = 0;
-    int min_globalId_point_in_proc = 0;
-
 #if HAVE_MPI
     // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
     // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
     auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
-
-    // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign unique
-    // new ids ( and anticipate the maximum).
-    // At this point, neither cell_index_set_ nor partition_type_indicator_ are populated.
-    // Refined level grid cells:
-    //    1. Inherit their partition type from their parent cell (i.e., element.father().partitionType()).
-    //    2. Assign global ids only for interior cells.
-    //    3. Communicate the already assigned cell global ids from interior to overlap refined cells.
-    // Refined level grid points/vertices:
-    // There are 4 partition types: interior, border, front, overlap. This classification requires that both
-    // cell and face partition types are already defined, not available yet for refined level grids.
-    //    1. Assign for all partition type points a 'candidate of global id' (unique in each process).
-    //       Except the points that coincide with a point from level zero.
-    //    2. To make point ids globally unique, re-write the values for points that are corners of overlap
-    //       refined cells, via communication.
-    // Under the assumption of LGRs fully-interior, no communication is needed. In the general case, communication will be used
-    // to populate overlap cell/point global ids on the refined level grids.
-
 
     // Predict how many new cell ids per process are needed.
     std::vector<std::size_t> cell_ids_needed_by_proc(comm().size());
@@ -1322,7 +1308,7 @@ std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unus
                 // If point coincides with an existing corner from level zero, then it does not need a new global id.
                 if ( !(*current_data_)[level]->corner_history_.empty() ) {
                     const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
-                    if (bornLevel_bornIdx[0] == -1)  { // Corner is new-> it needs a new global id
+                    if (bornLevel_bornIdx[0] == -1)  { // Corner is new-> it needs a new(candidate) global id
                         local_point_ids_needed += 1;
                     }
                 }
@@ -1339,12 +1325,11 @@ std::pair<int,int> CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unus
                                                 max_globalId_levelZero + 1);
     min_globalId_point_in_proc = std::accumulate(point_ids_needed_by_proc.begin(),
                                                  point_ids_needed_by_proc.begin()+ comm().rank(),
-                                                 expected_max_globalId_cell);
+                                                 expected_max_globalId_cell+1);
 #endif
-    return std::make_pair<int,int>(std::move(min_globalId_cell_in_proc), std::move(min_globalId_point_in_proc));
 }
 
-void CpGrid::collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
+void CpGrid::assignCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
                                                  std::vector<std::vector<int>>& localToGlobal_points_per_level,
                                                  int min_globalId_cell_in_proc,
                                                  int min_globalId_point_in_proc,
@@ -2427,7 +2412,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
     
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    bool nonNNCs = this->nonNNCs(startIJK_vec, endIJK_vec);
+    bool nonNNCs = this->nonNNCsSelectedCellsLGR(startIJK_vec, endIJK_vec);
     // To check "Non-NNCs (non non neighboring connections)" for all processes.
     nonNNCs = comm().max(nonNNCs);
     if(!nonNNCs) {
@@ -2475,10 +2460,33 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     if(comm().size()>1) {
 #if HAVE_MPI
         // Prediction min cell and point global ids per process
-        auto [min_globalId_cell_in_proc,
-              min_globalId_point_in_proc] = predictMinCellAndPointGlobalIdPerProcess(assignRefinedLevel,
-                                                                                     cells_per_dim_vec,
-                                                                                     lgr_with_at_least_one_active_cell);
+        //
+        // Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign unique
+        // new ids ( and anticipate the maximum).
+        // The grid is already refined according to the LGR specification
+        // At this point, neither cell_index_set_ nor partition_type_indicator_ are populated.
+        // Refined level grid cells:
+        //    1. Inherit their partition type from their parent cell (i.e., element.father().partitionType()).
+        //    2. Assign global ids only for interior cells.
+        //    3. Communicate the already assigned cell global ids from interior to overlap refined cells.
+        // Refined level grid points/vertices:
+        // There are 4 partition types: interior, border, front, overlap. This classification requires that both
+        // cell and face partition types are already defined, not available yet for refined level grids.
+        //    1. Assign for all partition type points a 'candidate of global id' (unique in each process).
+        //       Except the points that coincide with a point from level zero.
+        //    2. Re-write the values for points that are corners of overlap refined cells, via communication.
+        // Under the assumption of LGRs fully-interior, no communication is needed. In the general case, communication will be used
+        // to populate overlap cell/point global ids on the refined level grids.
+        /** Warning: due to the overlap layer size (equal to 1) cells that share corners or edges (not faces) with interior cells
+            are not included/seen by the process. This, in some cases, ends up in duplicated point ids. */
+        //
+        int min_globalId_cell_in_proc = 0;
+        int min_globalId_point_in_proc = 0;
+        predictMinCellAndPointGlobalIdPerProcess(assignRefinedLevel,
+                                                 cells_per_dim_vec,
+                                                 lgr_with_at_least_one_active_cell,
+                                                 min_globalId_cell_in_proc,
+                                                 min_globalId_point_in_proc);
 
         // Only for level 1,2,.., maxLevel grids.
         // For each level, define the local-to-global maps for cells and points (for faces: empty).
@@ -2489,11 +2497,11 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         // Ignore faces - empty vectors.
         std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
-        collectCellIdsAndCandidatePointIds(localToGlobal_cells_per_level,
-                                           localToGlobal_points_per_level,
-                                           min_globalId_cell_in_proc,
-                                           min_globalId_point_in_proc,
-                                           cells_per_dim_vec);
+        assignCellIdsAndCandidatePointIds(localToGlobal_cells_per_level,
+                                          localToGlobal_points_per_level,
+                                          min_globalId_cell_in_proc,
+                                          min_globalId_point_in_proc,
+                                          cells_per_dim_vec);
 
 
         const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;

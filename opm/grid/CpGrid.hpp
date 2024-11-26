@@ -1066,38 +1066,96 @@ namespace Dune
         /// @param [in] cells_per_dim:    Total children cells in each direction (x-,y-, and z-direction) of the single-cell-refinement.
         /// @param [in] faceIdxInLgr:     Face index in the single-cell-refinement.
         /// @param [in] elemLgr_ptr:      Pointer to the elemLgr single-cell-refinement grid.
-        /// @param [in] elemLgr:         Cell index from starting grid, that has been refined into a single-cell-refinement.
+        /// @param [in] elemLgr:          Cell index from starting grid, that has been refined into a single-cell-refinement.
         int getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
                                                    const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
                                                    int elemLgr)  const;
+        
         /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
 
-              // @brief Check if there non neighboring connections on blocks of cells selected for refinement.
-        bool nonNNCs( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
+        /// @brief Check if there are non neighboring connections on blocks of cells selected for refinement.
+        ///
+        /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+        /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+        ///
+        /// @return bool   True when all blocks of cells do not contain any NNCs (non-neighboring-connection).
+        ///                False when there is a block with at least one cell with a NNC.
+        bool nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec,
+                                      const std::vector<std::array<int,3>>& endIJK_vec) const;
 
+        /// @brief Given blocks of cells selected for refinement, mark selected elements and assign them their corresponding
+        ///        (refined) level (grid).
+        ///        When level zero grid is distributed before refinement, detect which LGRs are active in each process.
+        ///
+        /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+        /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+        /// @param [out] assignRefinedLevel   Assign level for the refinement of each marked cell. Example: refined element from
+        ///                                   LGR1 have level 1, refined element rfom LGR2 have level 2, etc.
+        /// @param [out] lgr_with_at_least_one_active_cell Determine if an LGR is not empty in a given process, we set
+        ///                                                lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
+        ///                                                at least one active cell, and to 0 otherwise.
         void markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
                                                  const std::vector<std::array<int,3>>& endIJK_vec,
                                                  std::vector<int>& assignRefinedLevel,
                                                  std::vector<int>& lgr_with_at_least_one_active_cell);
 
-        std::pair<int,int> predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
-                                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                                    const std::vector<int>& lgr_with_at_least_one_active_cell) const;
+        /// @brief Predict minimum cell and point global ids per process.
+        ///
+        /// Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign unique
+        /// new ids ( and anticipate the maximum). At this point, the grid is already refined according to the LGR specification.
+        ///
+        /// @param [in] assignRefinedLevel   Assign level for the refinement of each marked cell. Example: refined element from
+        ///                                  LGR1 have level 1, refined element rfom LGR2 have level 2, etc.
+        /// @param [in] cells_per_dim_vec    Total child cells in each direction (x-,y-, and z-direction) per block of cells.
+        /// @param [in] lgr_with_at_least_one_active_cell  Determine if an LGR is not empty in a given process:
+        ///                                                lgr_with_at_least_one_active_cell[level] = 1 if it contains
+        ///                                                at least one active cell in the current process, and 0 otherwise.
+        /// @param [out] min_globalId_cell_in_proc
+        /// @param [out] min_globalId_point_in_proc
+        void predictMinCellAndPointGlobalIdPerProcess(const std::vector<int>& assignRefinedLevel,
+                                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                      const std::vector<int>& lgr_with_at_least_one_active_cell,
+                                                      int& min_globalId_cell_in_proc,
+                                                      int& min_globalId_point_in_proc) const;
 
-        void collectCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
-                                                 std::vector<std::vector<int>>& localToGlobal_points_per_level,
-                                                 int min_globalId_cell_in_proc,
-                                                 int min_globalId_point_in_proc,
-                                                 const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
+        /// @brief Assign cell global ids of new born cell from refined level grids. Assign 'candidate' point global ids
+        ///        for points in refined level grids.
+        ///
+        /// @param [out] localToGlobal_cells_per_level    Relation local element.index() to assigned cell global id.
+        /// @param [out] localToGlobal_points_per_level   Relation local point.index() to assigned 'candidate' global id.
+        /// @param [in] min_globalId_cell_in_proc         Minimum cell global id per process.
+        /// @param [in] min_globalId_point_in_proc        Minimum point global id per process.
+        /// @param [in] cells_per_dim_vec                 Total child cells in each direction (x-,y-, and z-direction) per block of cells.
+        void assignCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
+                                                std::vector<std::vector<int>>& localToGlobal_points_per_level,
+                                                int min_globalId_cell_in_proc,
+                                                int min_globalId_point_in_proc,
+                                                const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
 
+        /// @brief Select and re-write point global ids.
+        ///
+        /// After assigning global IDs to points in refined-level grids, a single point may have
+        /// "multiple unique" global IDs, one in each process to which it belongs.
+        /// To reduce the unnucesary id assigments, since global IDs must be distinct across the global leaf view
+        /// and consistent across each refined-level grid, we will rewrite the entries in
+        /// localToGlobal_points_per_level. Using cell_to_point_ across all refined cells through
+        /// communication: gathering the 8 corner points of each interior cell and scattering the
+        /// 8 corner points of overlapping cells, for all child cells of a parent cell in level zero grid.
+        ///
+        /// @param [out] localToGlobal_points_per_level   Relation local point.index() to assigned 'candidate' global id.
+        /// @param [in] parent_to_children                The communication step is based on level zero grid, via the relation parent-children-cells.
+        /// @param [in] cells_per_dim_vec                 Total child cells in each direction (x-,y-, and z-direction) per block of cells.
         void selectWinnerPointIds(std::vector<std::vector<int>>&  localToGlobal_points_per_level,
                                   const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec) const;
 
+        /// @brief For a grid whose level zero has been distributed and then locally refined, populate the cell_index_set_ of each refined level grid.
         void populateCellIndexSetRefinedGrid(int level);
 
+        /// @brief For a grid whose level zero has been distributed and then locally refined, populate the cell_index_set_ of the leaf grid view.
         void populateCellIndexSetLeafGridView();
 
+        /// @brief For a grid whose level zero has been distributed and then locally refined, populate the global_id_set_ of the leaf grid view.
         void populateLeafGlobalIdSet();
 
     public:
