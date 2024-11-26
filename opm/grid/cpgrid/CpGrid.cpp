@@ -1216,7 +1216,6 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
 bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
 {
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    bool nonNNCs = true;
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
     // and check if they have NNCs.
     // Note: at this point, the (level zero) grid might be already distributed, before adding the LGRs. Therefore,
@@ -1228,22 +1227,18 @@ bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& star
         std::array<int,3> ijk;
         getIJK(element.index(), ijk);
         for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-            bool belongsToLevel = true;
-            for (int c = 0; c < 3; ++c) {
-                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
-            }
+            bool belongsToLevel = ( (ijk[0] >= startIJK_vec[level][0]) && (ijk[0] < endIJK_vec[level][0]) )
+                && ( (ijk[1] >= startIJK_vec[level][1]) && (ijk[1] < endIJK_vec[level][1]) )
+                && ( (ijk[2] >= startIJK_vec[level][2]) && (ijk[2] < endIJK_vec[level][2]) );
             if(belongsToLevel) {
                 // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
                 if (this->currentData().back()->hasNNCs({element.index()})){
-                    nonNNCs = false;
-                    break;
+                    return false;
                 }
             }
-            if (!nonNNCs) // At least one level contains NNCs.
-                break;
         }
     }
-    return nonNNCs;
+    return true;
 }
 
 void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
@@ -1342,6 +1337,9 @@ void CpGrid::assignCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& l
 
         // Global ids for cells (for owned cells)
         for (const auto& element : elements(levelGridView(level))) {
+            // At his point, partition_type_indicator_ of refined level grids is not set. However, for refined cells,
+            // element.partitionType() returns the partition type of the parent cell. Therefore, all child cells of
+            // an interior/overlap parent cell are also interior/overlap.
             if (element.partitionType() == InteriorEntity) {
                 localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
                 ++min_globalId_cell_in_proc;
@@ -2400,8 +2398,9 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     //                                                              active/inactive cells, instead, relies on "ijk-computations".
     //                                                              TO DO: improve/remove.
     // To check "Compatibility of numbers of subdivisions of neighboring LGRs".
-    bool compatibleSubdivisions = current_view_data_->compatibleSubdivisions(cells_per_dim_vec, startIJK_vec, endIJK_vec);
-    compatibleSubdivisions= comm().max(compatibleSubdivisions);
+    // The method compatibleSubdivision returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.
+    int compatibleSubdivisions = current_view_data_->compatibleSubdivisions(cells_per_dim_vec, startIJK_vec, endIJK_vec);
+    compatibleSubdivisions = comm().min(compatibleSubdivisions); // 0 when at least one process returns false (un-compatible subdivisions).
     if(!compatibleSubdivisions) {
         if (comm().rank()==0){
             OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
@@ -2410,15 +2409,16 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
             OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
         }
     }
-    
+
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    bool nonNNCs = this->nonNNCsSelectedCellsLGR(startIJK_vec, endIJK_vec);
+    // The method nonNNCsSelectedCellsLGR returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.
+    int nonNNCs = this->nonNNCsSelectedCellsLGR(startIJK_vec, endIJK_vec);
     // To check "Non-NNCs (non non neighboring connections)" for all processes.
-    nonNNCs = comm().max(nonNNCs);
+    nonNNCs = comm().min(nonNNCs); // 0 when at least one process returns false (there are NNCs on a selected cell for refinement).
     if(!nonNNCs) {
         OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
     }
-    
+
     // To determine if an LGR is not empty in a given process, we set
     // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
     // at least one active cell, and to 0 otherwise.
