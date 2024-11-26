@@ -31,7 +31,7 @@
 #ifndef OPM_PARENTTOCHILDCELLTOPOINTGLOBALIDHANDLE_HEADER
 #define OPM_PARENTTOCHILDCELLTOPOINTGLOBALIDHANDLE_HEADER
 
-
+#include <opm/grid/common/CommunicationUtils.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 
 #include <array>
@@ -57,22 +57,24 @@ struct ParentToChildCellToPointGlobalIdHandle {
 
     using DataType = int;
 
+    /// \param comm                    Communication
     /// \param parent_to_children      Map from parent index to all children, and the level they are stored.
     ///                                parent_to_children_[ element.index() ] = { level, children_list local indices }
     /// \param level_cell_to_point
     /// \param level_point_global_ids  A container that for the elements of a level contains all candidate point global ids.
     /// \param level_winning_ranks
     /// \param level_point_global_ids
-    ParentToChildCellToPointGlobalIdHandle(const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children,
+    ParentToChildCellToPointGlobalIdHandle(const Dune::CpGrid::Communication& comm,
+                                           const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children,
                                            const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point,
                                            std::vector<std::vector<DataType>>& level_winning_ranks,
                                            std::vector<std::vector<DataType>>& level_point_global_ids)
-        : parent_to_children_(parent_to_children)
-        , level_cell_to_point_(level_cell_to_point)
-        , level_winning_ranks_(level_winning_ranks)
-        , level_point_global_ids_(level_point_global_ids)
-    {
-    }
+    : comm_(comm)
+    , parent_to_children_(parent_to_children)
+    , level_cell_to_point_(level_cell_to_point)
+    , level_winning_ranks_(level_winning_ranks)
+    , level_point_global_ids_(level_point_global_ids)
+    {}
 
     // Not every cell has children. When they have children, the amount might vary.
     bool fixedSize(std::size_t, std::size_t)
@@ -115,7 +117,7 @@ struct ParentToChildCellToPointGlobalIdHandle {
         // Write the rank first, for example via the "corner 0" of cell_to_point_ of the first child:
         // First child: children[0]
         // First corner of first child:  level_cell_to_point_[ level -1 ][children[0]] [0]
-        buffer.write(level_winning_ranks_[level-1][ level_cell_to_point_[ level -1 ][children[0]] [0] ]); // winner rank
+        buffer.write( comm_.rank() ); // winner rank level_winning_ranks_[level-1][ level_cell_to_point_[ level -1 ][children[0]] [0]
         for (const auto& child : children)
             for (const auto& corner : level_cell_to_point_[level -1][child])
                 buffer.write(level_point_global_ids_[level-1][corner]);
@@ -162,6 +164,7 @@ struct ParentToChildCellToPointGlobalIdHandle {
     }
 
 private:
+    const Dune::CpGrid::Communication& comm_;
     const std::vector<std::tuple<int, std::vector<int>>>& parent_to_children_;
     const std::vector<std::vector<std::array<int,8>>>& level_cell_to_point_;
     std::vector<std::vector<DataType>>& level_winning_ranks_;

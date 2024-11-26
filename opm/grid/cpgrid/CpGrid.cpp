@@ -1393,7 +1393,8 @@ void CpGrid::selectWinnerPointIds([[maybe_unused]] std::vector<std::vector<int>>
             }
         }
     }
-    ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(parent_to_children,
+    ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(comm(),
+                                                                                   parent_to_children,
                                                                                    level_cell_to_point,
                                                                                    level_winning_ranks,
                                                                                    localToGlobal_points_per_level);
