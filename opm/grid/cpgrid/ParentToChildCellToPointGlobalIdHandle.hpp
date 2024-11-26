@@ -76,20 +76,22 @@ struct ParentToChildCellToPointGlobalIdHandle {
     , level_point_global_ids_(level_point_global_ids)
     {}
 
-    // Not every cell has children. When they have children, the amount might vary.
     bool fixedSize(std::size_t, std::size_t)
     {
+        // Not every cell has children. When they have children, the amount might vary.
         return false;
     }
-    // Only communicate values attached to cells.
+
     bool contains(std::size_t, std::size_t codim)
     {
+        // Only communicate values attached to cells.
         return codim == 0;
     }
-    // Communicate variable size: 1 (rank) + (8* amount of child cells) from an interior parent cell from level zero grid.
+
     template <class T> // T = Entity<0>
     std::size_t size(const T& element)
     {
+        // Communicate variable size: 1 (rank) + (8* amount of child cells) from an interior parent cell from level zero grid.
         // Skip values that are not interior, or have no children (in that case, 'invalid' level = -1)
         const auto& [level, children] = parent_to_children_[element.index()];
         // [Bug in dune-common] VariableSizeCommunicator will deadlock if a process attempts to send a message of size zero.
@@ -117,7 +119,7 @@ struct ParentToChildCellToPointGlobalIdHandle {
         // Write the rank first, for example via the "corner 0" of cell_to_point_ of the first child:
         // First child: children[0]
         // First corner of first child:  level_cell_to_point_[ level -1 ][children[0]] [0]
-        buffer.write( comm_.rank() ); // winner rank level_winning_ranks_[level-1][ level_cell_to_point_[ level -1 ][children[0]] [0]
+        buffer.write( comm_.rank() );
         for (const auto& child : children)
             for (const auto& corner : level_cell_to_point_[level -1][child])
                 buffer.write(level_point_global_ids_[level-1][corner]);

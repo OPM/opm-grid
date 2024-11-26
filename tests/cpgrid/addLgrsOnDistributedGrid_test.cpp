@@ -104,8 +104,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         {
             Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
             BOOST_CHECK( entity.hasFather() == false);
-            // BOOST_CHECK_THROW(entity.father(), std::logic_error);
-            // BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
             BOOST_CHECK( entity.getOrigin() ==  entity);
             BOOST_CHECK( entity.getOrigin().level() == 0);
             auto it = entity.hbegin(coarse_grid.maxLevel());
@@ -276,8 +276,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK( level_cellIdx[0] == entity.level());
             }
             else{
-                // BOOST_CHECK_THROW(entity.father(), std::logic_error);
-                // BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+                BOOST_CHECK_THROW(entity.father(), std::logic_error);
+                BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
                 BOOST_CHECK_EQUAL(child_to_parent[0], -1);
                 BOOST_CHECK_EQUAL(child_to_parent[1], -1);
                 BOOST_CHECK( level_cellIdx[0] == 0);
@@ -397,6 +397,10 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     const std::set<int> allGlobalIds_cells_set(allGlobalIds_cells.begin(), allGlobalIds_cells.end());
     BOOST_CHECK( static_cast<int>(allGlobalIds_cells.size()) == global_cells_count);
     BOOST_CHECK( allGlobalIds_cells.size() == allGlobalIds_cells_set.size() );
+
+    /** [Bug] Uniqueness of point global ids cannot be checked in general since current code sets overlap layer size equal to 1,
+        which in particular means that cells that share corners or edges (and not faces) with interior cells are not considered/
+        seen by the process. Therefore, depending how the LGRs are distributed, there may be "multiple ids" for the same points.*/
 
     // Local/Global id sets for level grids (level 0, 1, ..., maxLevel). For level grids, local might differ from global id.
     for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
@@ -757,7 +761,7 @@ BOOST_AUTO_TEST_CASE(distributed_lgr)
          // 1. the LGR is distributed in P_{i_0}, ..., P_{i_n}, with n+1 < grid.comm().size(),
          // AND
          // 2. there is no coarse cell seen by a process P with P != P_{i_j}, j = 0, ..., n.
-         // Otherwise, there will be duplicated point ids.*/ 
+         // Otherwise, there will be points with multiple ids.*/ 
 
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
@@ -808,17 +812,13 @@ BOOST_AUTO_TEST_CASE(distributed_lgr_II)
         // LGR1 dim 6x2x2 -> 7x3x3 = 63 points
         std::vector<int> local_point_ids;
         local_point_ids.reserve(63); // expected_point_ids in LGR1
-        for (const auto& element : elements(grid.levelGridView(1))) {
-            for (int corner = 0; corner < 8; ++corner)
-            {
-                const auto& point = element.subEntity<3>(corner);
-                local_point_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
-            }
+        for (const auto& point : vertices(grid.levelGridView(1))) {
+            local_point_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
         }
         auto [all_point_ids, displPoint ] = Opm::allGatherv(local_point_ids, grid.comm());
         const std::set<int> all_point_ids_set(all_point_ids.begin(), all_point_ids.end());
         BOOST_CHECK( static_cast<int>(all_point_ids_set.size()) == 63);
-        // Difference with preveious test case:
+        // Difference with previous test case:
         // Global cell ids of cells to be refined = {8, 9, 10}
         // cell 8 = { interior in P0, does not exist in P1, does not exist in P2, does not exist in P3}
         // cell 9 = { interior in P0, does not exist in P1, overlap in P2, does not exist in P3}
@@ -890,6 +890,10 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
         }
         auto [all_point_ids, displPoint ] = Opm::allGatherv(local_point_ids, grid.comm());
         const std::set<int> all_point_ids_set(all_point_ids.begin(), all_point_ids.end());
+
+        /** [Bug] Uniqueness of point global ids cannot be checked in general since current code sets overlap layer size equal to 1,
+            which in particular means that cells that share corners or edges (and not faces) with interior cells are not considered/
+            seen by the process. Therefore, depending how the LGRs are distributed, there may be "multiple ids" for the same points.*/
         // Difference with preveious test case:
         // Global cell ids of cells to be refined = {1,2,5,6,13,14,17,18}
         // cell 1 = { interior in P0, overlap in P1, overlap in P2, does not exist in P3}
@@ -905,7 +909,7 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
         // - P1 does NOT see cells 2 and 6, but sees the rest of them.
         // - P2 does NOT see cell 13, but sees all the others.
         // - P3 does NOT see cell 1, 5 and 17, but sees all the others.
-        // Remark: the LGR is distributed only in 2 processes which are the only two processes seeing these cells.
+        // More details:
         // P0 creates +1 duplicated id (middle point edge)
         // P1 creates +2 duplicated ids (middle point of an edge in cell 2, cell 6 respectively).
         // P2 creates +1 duplicated id (middle point edge)
