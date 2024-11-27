@@ -150,6 +150,18 @@ BOOST_AUTO_TEST_CASE(NNCAtSeveralLgrs)
     testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, true);
 }
 
+BOOST_AUTO_TEST_CASE(LgrWithNNC_and_lgrsWithoutNNC)
+{
+    Opm::NNC nnc;
+    nnc.addNNC(0, 2, 1.0); // connect cell 0 and cell 2 (both belong to LGR1). LGR2 does not have NNCs.
+    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {4,4,4}};
+    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0},{0,0,4}};
+    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,3}, {1,1,5}};
+    // LGR1 cell indices = {0,1,2}, LGR2 cell indices = {4}.
+    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
+    testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, true);
+}
+
 BOOST_AUTO_TEST_CASE(NNCoutsideLgrs)
 {
     Opm::NNC nnc;
