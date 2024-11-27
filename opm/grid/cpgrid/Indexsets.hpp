@@ -404,17 +404,35 @@ namespace Dune
             template<int codim>
             IdType getMaxCodimGlobalId()
             {
-                auto max_elem_codim = std::max_element(this->template getMapping<codim>().begin(),
-                                                       this->template getMapping<codim>().end());
-                return *max_elem_codim;
+                if(idSet_)
+                {
+                    IdType max_codim_id = 0;
+                    if (codim == 0) {
+                        for (int elemIdx = 0; elemIdx < view_-> size(0); ++elemIdx) {
+                            const auto& element=  cpgrid::Entity<0>(*view_, elemIdx, true);
+                            max_codim_id = std::max(max_codim_id, idSet_->id(element));
+                        }
+                    }
+                    if (codim == 3) {
+                        for (int pointIdx = 0; pointIdx < view_->size(3); ++pointIdx) {
+                            const auto& point =  cpgrid::Entity<3>(*view_, pointIdx, true);
+                            max_codim_id = std::max(max_codim_id, idSet_->id(point));
+                        }
+                    }
+                    return max_codim_id;
+                }
+                else  {
+                    // This a parallel grid and we need to use the mapping
+                    // build from the ids of the sequential grid
+                    auto max_elem_codim = std::max_element(this->template getMapping<codim>().begin(),
+                                                           this->template getMapping<codim>().end());
+                    return *max_elem_codim;
+                }
             }
 
             IdType getMaxGlobalId()
             {
-                /*// Ignore faces
-                auto max_globalId = std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<1>());
-                max_globalId = std::max(max_globalId, getMaxCodimGlobalId<3>());
-                return max_globalId;*/
+                // Ignore faces
                 return std::max(getMaxCodimGlobalId<0>(), getMaxCodimGlobalId<3>());
             }
 
