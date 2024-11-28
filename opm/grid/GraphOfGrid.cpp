@@ -7,7 +7,7 @@
 
   OPM is free software: you can redistribute it and/or modify
   it under the terms of the GNU General Public License as published by
-  the Free Software Foundation, either version 2 of the License, or
+  the Free Software Foundation, either version 3 of the License, or
   (at your option) any later version.
 
   OPM is distributed in the hope that it will be useful,
@@ -31,10 +31,12 @@ namespace Opm{
 template<typename Grid>
 void GraphOfGrid<Grid>::createGraph ()
 {
+    const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
     {
         VertexProperties vertex;
+        vertex.nproc = rank;
         // get vertex's global ID
         int gID = grid.globalIdSet().id(*it);
 
