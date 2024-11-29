@@ -52,10 +52,10 @@ class GraphOfGrid{
     };
 
 public:
-    explicit GraphOfGrid (const Grid& grid_)
+    explicit GraphOfGrid (const Grid& grid_, const double* transmissibilities=nullptr)
         : grid(grid_)
     {
-        createGraph();
+        createGraph(transmissibilities);
     }
 
     const Grid& getGrid() const
@@ -164,7 +164,8 @@ public:
 
 private:
     /// \brief Create a graph representation of the grid
-    void createGraph (); // edge weight=1
+    /// If transmissibilities are not supplied, edge weight=1
+    void createGraph (const double* transmissibilities=nullptr);
 
     /// \brief Identify the well containing the cell with this global ID
     ///

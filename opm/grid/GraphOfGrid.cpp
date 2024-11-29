@@ -29,7 +29,7 @@
 namespace Opm{
 
 template<typename Grid>
-void GraphOfGrid<Grid>::createGraph ()
+void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
 {
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
@@ -57,7 +57,7 @@ void GraphOfGrid<Grid>::createGraph ()
             {
                 continue;
             }
-            WeightType weight = 1; // default edge weight
+            WeightType weight = transmissibilities ? transmissibilities[face] : 1; // default edge weight is 1
             vertex.edges.try_emplace(otherCell,weight);
         }
 

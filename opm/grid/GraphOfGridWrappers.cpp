@@ -591,7 +591,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
-    GraphOfGrid gog(grid);
+    GraphOfGrid gog(grid,transmissibilities);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
                                           : Dune::cpgrid::WellConnections(*wells,possibleFutureConnections,grid);
