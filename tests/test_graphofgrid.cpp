@@ -341,6 +341,112 @@ BOOST_AUTO_TEST_CASE(IntersectingWells)
 }
 #endif // HAVE_MPI
 
+BOOST_AUTO_TEST_CASE(WellWithBuffers)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{5,1,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+
+    std::set<int> well{0,1};
+    gog.addWell(well);
+
+    // buffers of negative or zero size are ignored
+    gog.addWellBuffer(0);
+    BOOST_REQUIRE(gog.size()==4);
+    gog.addWellBuffer(-4);
+    BOOST_REQUIRE(gog.size()==4);
+
+    gog.addWellBuffer(); // no arg is 1 layer
+    BOOST_REQUIRE(gog.size()==3);
+    gog.addWellBuffer(2);
+    BOOST_REQUIRE(gog.size()==1);
+}
+
+BOOST_AUTO_TEST_CASE(NeighboringWellsWithBuffers)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{6,1,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+
+    std::set<int> well0{0,1};
+    std::set<int> well1{2,3};
+    gog.addWell(well0);
+    gog.addWell(well1);
+    BOOST_REQUIRE(gog.size()==4);
+    gog.addWellBuffer();
+    BOOST_REQUIRE(gog.size()==2);
+    BOOST_REQUIRE(gog.getWells().size()==1);
+    BOOST_REQUIRE(*gog.getWells().begin()==(std::set<int>{0,1,2,3,4}));
+}
+
+BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{6,1,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+
+    std::set<int> well0{0,1};
+    std::set<int> well1{3,4};
+    gog.addWell(well0);
+    gog.addWell(well1);
+    BOOST_REQUIRE(gog.size()==4);
+    gog.addWellBuffer();
+    BOOST_REQUIRE(gog.size()==1);
+    BOOST_REQUIRE(gog.getWells().size()==1);
+    BOOST_REQUIRE(*gog.getWells().begin()==(std::set<int>{0,1,2,3,4,5}));
+}
+
+BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers2)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{6,4,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+
+    std::set<int> well0{0,1};
+    std::set<int> well1{5,11};
+    std::set<int> well2{3,8,9,14};
+    std::set<int> well3{18,22};
+    gog.addWell(well0);
+    gog.addWell(well1);
+    gog.addWell(well2);
+    gog.addWell(well3);
+    BOOST_REQUIRE(gog.size()==18);
+    gog.addWellBuffer();
+    BOOST_REQUIRE(gog.size()==2);
+    const auto& wells = gog.getWells();
+    BOOST_REQUIRE(wells.size()==2);
+    for (const auto& w : wells)
+    {
+        if (*w.begin()==0)
+        {
+            BOOST_REQUIRE(w==(std::set<int>{0,1,2,3,4,5,6,7,8,9,10,11,13,14,15,17,20}));
+        }
+        else
+        {
+            BOOST_REQUIRE(w==(std::set<int>{12,16,18,19,21,22,23}));
+        }
+    }
+    // adding one layer contracts everything into one vertex, another layer does nothing
+    gog.addWellBuffer(2);
+    BOOST_REQUIRE(gog.size()==1);
+}
+
 namespace {
     // create Wells, we only use well name and cell locations
     auto createConnection (int i, int j, int k)

@@ -162,6 +162,20 @@ public:
         return wells;
     }
 
+    /// \brief Contract a layer of verices around each wells into it
+    ///
+    /// Representing a well by one node guarantees that the well won't
+    /// be split over several processes. Giving the well an extra layer
+    /// of cells distances that well from the subdomain boundary.
+    void addWellBuffer ();
+    void addWellBuffer (int layers)
+    {
+        for (int i=0; i<layers; ++i)
+        {
+            addWellBuffer();
+        }
+    }
+
 private:
     /// \brief Create a graph representation of the grid
     /// If transmissibilities are not supplied, edge weight=1

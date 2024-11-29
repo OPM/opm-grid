@@ -185,5 +185,30 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
     }
 }
 
+template<typename Grid>
+void GraphOfGrid<Grid>::addWellBuffer ()
+{
+    // mark all cells that will be added to wells (addding them one
+    // by one would require recursive checks for neighboring wells)
+    std::vector<std::set<int>> buffer(wells.size());
+    int i=0;
+    for (auto& w : wells)
+    {
+        buffer[i].insert(*w.begin()); // intersects with its well
+        for (const auto& v : edgeList(*w.begin()))
+        {
+            buffer[i].insert(v.first);
+        }
+        ++i;
+    }
+
+    // intersecting wells and buffers will be merged
+    for (const auto& b : buffer)
+    {
+        addWell(b);
+    }
+}
+
+
 template class GraphOfGrid<Dune::CpGrid>;
 } // namespace Opm
