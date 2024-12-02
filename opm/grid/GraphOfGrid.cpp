@@ -186,7 +186,7 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
 }
 
 template<typename Grid>
-void GraphOfGrid<Grid>::addWellBuffer ()
+void GraphOfGrid<Grid>::addNeighboringCellsToWells ()
 {
     // mark all cells that will be added to wells (addding them one
     // by one would require recursive checks for neighboring wells)

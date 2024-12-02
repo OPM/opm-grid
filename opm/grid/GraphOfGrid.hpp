@@ -162,17 +162,17 @@ public:
         return wells;
     }
 
-    /// \brief Contract a layer of verices around each wells into it
+    /// \brief Contract a layer of verices around each well into it
     ///
     /// Representing a well by one node guarantees that the well won't
     /// be split over several processes. Giving the well an extra layer
     /// of cells distances that well from the subdomain boundary.
-    void addWellBuffer ();
-    void addWellBuffer (int layers)
+    void addNeighboringCellsToWells ();
+    void addNeighboringCellsToWells (int layers)
     {
         for (int i=0; i<layers; ++i)
         {
-            addWellBuffer();
+            addNeighboringCellsToWells();
         }
     }
 
