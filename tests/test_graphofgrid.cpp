@@ -351,6 +351,8 @@ BOOST_AUTO_TEST_CASE(WellWithBuffers)
     if (grid.size(0)==0)
         return;
 
+    gog.addWellBuffer(); // adding buffer to zero wells does nothing
+    BOOST_REQUIRE(gog.size()==5);
     std::set<int> well{0,1};
     gog.addWell(well);
 
@@ -586,6 +588,11 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     Opm::GraphOfGrid gog(grid);
     if (grid.size(0)==0)
         return;
+
+    // well needs at least 2 cells for vertex contraction
+    gog.addWell(std::set<int>{});
+    gog.addWell(std::set<int>{1});
+    BOOST_REQUIRE(gog.getWells().size()==0);
 
     gog.addWell(std::set<int>{0,1,2});
     gog.addWell(std::set<int>{5,8,11});
