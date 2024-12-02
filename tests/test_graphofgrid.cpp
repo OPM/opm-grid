@@ -351,20 +351,20 @@ BOOST_AUTO_TEST_CASE(WellWithBuffers)
     if (grid.size(0)==0)
         return;
 
-    gog.addWellBuffer(); // adding buffer to zero wells does nothing
+    gog.addNeighboringCellsToWells(); // adding buffer to zero wells does nothing
     BOOST_REQUIRE(gog.size()==5);
     std::set<int> well{0,1};
     gog.addWell(well);
 
     // buffers of negative or zero size are ignored
-    gog.addWellBuffer(0);
+    gog.addNeighboringCellsToWells(0);
     BOOST_REQUIRE(gog.size()==4);
-    gog.addWellBuffer(-4);
+    gog.addNeighboringCellsToWells(-4);
     BOOST_REQUIRE(gog.size()==4);
 
-    gog.addWellBuffer(); // no arg is 1 layer
+    gog.addNeighboringCellsToWells(); // no arg is 1 layer
     BOOST_REQUIRE(gog.size()==3);
-    gog.addWellBuffer(2);
+    gog.addNeighboringCellsToWells(2);
     BOOST_REQUIRE(gog.size()==1);
 }
 
@@ -383,7 +383,7 @@ BOOST_AUTO_TEST_CASE(NeighboringWellsWithBuffers)
     gog.addWell(well0);
     gog.addWell(well1);
     BOOST_REQUIRE(gog.size()==4);
-    gog.addWellBuffer();
+    gog.addNeighboringCellsToWells();
     BOOST_REQUIRE(gog.size()==2);
     BOOST_REQUIRE(gog.getWells().size()==1);
     BOOST_REQUIRE(*gog.getWells().begin()==(std::set<int>{0,1,2,3,4}));
@@ -404,7 +404,7 @@ BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers)
     gog.addWell(well0);
     gog.addWell(well1);
     BOOST_REQUIRE(gog.size()==4);
-    gog.addWellBuffer();
+    gog.addNeighboringCellsToWells();
     BOOST_REQUIRE(gog.size()==1);
     BOOST_REQUIRE(gog.getWells().size()==1);
     BOOST_REQUIRE(*gog.getWells().begin()==(std::set<int>{0,1,2,3,4,5}));
@@ -429,7 +429,7 @@ BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers2)
     gog.addWell(well2);
     gog.addWell(well3);
     BOOST_REQUIRE(gog.size()==18);
-    gog.addWellBuffer();
+    gog.addNeighboringCellsToWells();
     BOOST_REQUIRE(gog.size()==2);
     const auto& wells = gog.getWells();
     BOOST_REQUIRE(wells.size()==2);
@@ -445,7 +445,7 @@ BOOST_AUTO_TEST_CASE(WellsWithIntersectingBuffers2)
         }
     }
     // adding one layer contracts everything into one vertex, another layer does nothing
-    gog.addWellBuffer(2);
+    gog.addNeighboringCellsToWells(2);
     BOOST_REQUIRE(gog.size()==1);
 }
 
