@@ -174,7 +174,7 @@ void addFutureConnectionWells(GraphOfGrid<Dune::CpGrid>& gog,
             assert(gID!=-1); // well should be an active cell
             wellsgID.insert(gID);
         }
-        gog.addWell(wellsgID,checkWellIntersections);
+        gog.addWell(wellsgID, checkWellIntersections);
     }
 }
 
@@ -184,7 +184,7 @@ void addWellConnections(GraphOfGrid<Dune::CpGrid>& gog,
 {
     for (const auto& w : wells)
     {
-        gog.addWell(w,checkWellIntersections);
+        gog.addWell(w, checkWellIntersections);
     }
 }
 
@@ -225,7 +225,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     using ExportList = std::vector<std::tuple<int,int,char>>;
     // make a list of wells for easy identification. Contains ID, begin, end
     using iter = std::set<int>::const_iterator;
-    std::unordered_map<int,std::tuple<iter,iter,int>> wellMap;
+    std::unordered_map<int, std::tuple<iter,iter,int>> wellMap;
     for (const auto& well : gog.getWells())
     {
         if (gIDtoRank.size()>0)
@@ -233,12 +233,12 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             auto wellID = *well.begin();
             if (gIDtoRank[wellID]!=root)
             {
-                wellMap[wellID] = std::make_tuple(well.begin(),well.end(),well.size());
+                wellMap[wellID] = std::make_tuple(well.begin(), well.end(), well.size());
             }
         }
         else
         {
-            wellMap[*well.begin()] = std::make_tuple(well.begin(),well.end(),well.size());
+            wellMap[*well.begin()] = std::make_tuple(well.begin(), well.end(), well.size());
         }
     }
 
@@ -253,7 +253,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             int rankToExport = std::get<1>(cellProperties);
             if (rankToExport!=root)
             {
-                const auto& [begin,end,wSize] = pWell->second;
+                const auto& [begin, end, wSize] = pWell->second;
                 std::vector<int> wellToExport;
                 wellToExport.reserve(wSize);
                 wellToExport.push_back(*begin);
@@ -279,12 +279,12 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     }
 
     // add new cells to the exportList and sort it. It is assumed that exportList starts sorted.
-    std::sort(addToList.begin(),addToList.end());
+    std::sort(addToList.begin(), addToList.end());
     auto origSize = exportList.size();
     auto totsize = origSize+addToList.size();
     exportList.reserve(totsize);
-    exportList.insert(exportList.end(),addToList.begin(),addToList.end());
-    std::inplace_merge(exportList.begin(),exportList.begin()+origSize,exportList.end());
+    exportList.insert(exportList.end(), addToList.begin(), addToList.end());
+    std::inplace_merge(exportList.begin(), exportList.begin()+origSize, exportList.end());
 
     return exportedWells;
 }
@@ -343,7 +343,7 @@ std::vector<std::vector<int>> communicateExportedWells(
             int wellSize = receivedData[index++];
             assert(index+wellSize<=totsize);
             const auto dataBegin = receivedData.begin()+index;
-            result[i] = std::vector<int>(dataBegin,dataBegin+wellSize);
+            result[i] = std::vector<int>(dataBegin, dataBegin+wellSize);
             index+=wellSize;
         }
     }
@@ -355,7 +355,7 @@ void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
 {
     using ImportList = std::vector<std::tuple<int,int,char,int>>;
     // make a list of wells for easy identification
-    std::unordered_map<int,std::size_t> wellMap;
+    std::unordered_map<int, std::size_t> wellMap;
     for (std::size_t i=0; i<extraWells.size(); ++i)
     {
         if (extraWells[i].size()>1)
@@ -392,12 +392,12 @@ void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
     }
 
     // add new cells to the importList and sort it. It is assumed that importList starts sorted.
-    std::sort(addToList.begin(),addToList.end());
+    std::sort(addToList.begin(), addToList.end());
     auto origSize = importList.size();
     auto totsize = origSize+addToList.size();
     importList.reserve(totsize);
-    importList.insert(importList.end(),addToList.begin(),addToList.end());
-    std::inplace_merge(importList.begin(),importList.begin()+origSize,importList.end());
+    importList.insert(importList.end(), addToList.begin(), addToList.end());
+    std::inplace_merge(importList.begin(), importList.begin()+origSize, importList.end());
 }
 
 } // end namespace Impl
@@ -410,13 +410,13 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                                 const std::vector<int>& gIDtoRank)
 {
     // extend root's export list and get sets of well cells for other ranks
-    auto expListToComm = Impl::extendRootExportList(gog,exportList,root,gIDtoRank);
+    auto expListToComm = Impl::extendRootExportList(gog, exportList, root, gIDtoRank);
     // obtain wells on this rank from root
-    auto extraWells = Impl::communicateExportedWells(expListToComm,cc,root);
+    auto extraWells = Impl::communicateExportedWells(expListToComm, cc, root);
     if (cc.rank()!=root)
     {
-        std::sort(importList.begin(),importList.end());
-        Impl::extendImportList(importList,extraWells);
+        std::sort(importList.begin(), importList.end());
+        Impl::extendImportList(importList, extraWells);
     }
 }
 #endif // HAVE_MPI
@@ -434,7 +434,7 @@ std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
 }
 
 #if HAVE_MPI
-std::vector<std::pair<std::string,bool>>
+std::vector<std::pair<std::string, bool>>
 wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
                 const std::vector<int>& wellRanks,
                 const Dune::cpgrid::CpGridDataTraits::Communication& cc,
@@ -451,7 +451,7 @@ wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
 
 template<class Id>
 std::tuple<std::vector<int>,
-           std::vector<std::pair<std::string,bool>>,
+           std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
@@ -488,7 +488,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 
     for ( int i=0; i < numImport; ++i )
     {
-        myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner),-1);
+        myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner), -1);
     }
     assert(rank==root || numExport==0);
     if (rank==root)
@@ -498,9 +498,9 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
             gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
             myExportList.emplace_back(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
         }
-        std::sort(myExportList.begin(),myExportList.end());
+        std::sort(myExportList.begin(), myExportList.end());
         // partitioner sees only one cell per well, modify remaining
-        extendGIDtoRank(gog,gIDtoRank,rank);
+        extendGIDtoRank(gog, gIDtoRank, rank);
 
         // Add cells that stay here to the lists. Somehow I could not persuade Zoltan to do this.
         // This also adds all well cells that were missing in the importGlobalIDs.
@@ -517,11 +517,11 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     }
 
 
-    std::vector<std::pair<std::string,bool>> parallel_wells;
+    std::vector<std::pair<std::string, bool>> parallel_wells;
     if( wells )
     {
         // complete root's export and other's import list by adding remaining well cells
-        extendExportAndImportLists(gog,cc,root,myExportList,myImportList,gIDtoRank);
+        extendExportAndImportLists(gog, cc, root, myExportList, myImportList, gIDtoRank);
 
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
@@ -540,7 +540,7 @@ void setDefaultZoltanParameters(Zoltan_Struct* zz)
     Zoltan_Set_Param(zz, "NUM_GID_ENTRIES", "1");
     Zoltan_Set_Param(zz, "NUM_LID_ENTRIES", "0");
     Zoltan_Set_Param(zz, "RETURN_LISTS", "ALL");
-    Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM","1");
+    Zoltan_Set_Param(zz, "EDGE_WEIGHT_DIM", "1");
     Zoltan_Set_Param(zz, "OBJ_WEIGHT_DIM", "1");
     Zoltan_Set_Param(zz, "PHG_EDGE_SIZE_THRESHOLD", ".35");  /* 0-remove all, 1-remove none */
     Zoltan_Set_Param(zz, "DEBUG_LEVEL", "0");
@@ -553,7 +553,7 @@ void setDefaultZoltanParameters(Zoltan_Struct* zz)
 
 } // anon namespace
 
-std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> >,
            Dune::cpgrid::WellConnections>
@@ -565,7 +565,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                  [[maybe_unused]] Dune::EdgeWeightMethod edgeWeightsMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
-                                  const std::map<std::string,std::string>& params)
+                                  const std::map<std::string, std::string>& params)
 {
     int rc = ZOLTAN_OK - 1;
     float ver = 0;
@@ -591,14 +591,14 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
-    GraphOfGrid gog(grid,transmissibilities);
+    GraphOfGrid gog(grid, transmissibilities);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
-                                          : Dune::cpgrid::WellConnections(*wells,possibleFutureConnections,grid);
-    addWellConnections(gog,wellConnections);
+                                          : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
+    addWellConnections(gog, wellConnections);
 
     // call partitioner
-    setGraphOfGridZoltanGraphFunctions(zz,gog,partitionIsEmpty);
+    setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
     rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
                              &changes,        /* 1 if partitioning was changed, 0 otherwise */
                              &numGidEntries,  /* Number of integers used for a global ID */

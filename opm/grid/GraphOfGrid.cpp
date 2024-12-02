@@ -58,10 +58,10 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
                 continue;
             }
             WeightType weight = transmissibilities ? transmissibilities[face] : 1; // default edge weight is 1
-            vertex.edges.try_emplace(otherCell,weight);
+            vertex.edges.try_emplace(otherCell, weight);
         }
 
-        graph.try_emplace(gID,vertex);
+        graph.try_emplace(gID, vertex);
     }
 
 }
@@ -87,7 +87,7 @@ int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
     }
     if (gID2<gID1)
     {
-        std::swap(gID1,gID2);
+        std::swap(gID1, gID2);
     }
 
     // add up vertex weights
@@ -107,7 +107,7 @@ int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
                 v1e.insert(edge);
                 // remap neighbor's edge
                 graph[edge.first].edges.erase(gID2);
-                graph[edge.first].edges.emplace(gID1,edge.second);
+                graph[edge.first].edges.emplace(gID1, edge.second);
             }
         }
         else
@@ -164,22 +164,22 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
                         wID = *(w->begin());
                     }
                     gID = *(w->begin());
-                    newWell.insert(w->begin(),w->end());
+                    newWell.insert(w->begin(), w->end());
                     wells.erase(w);
                     break; // GraphOfGrid::wells are constructed to be disjoint, each gID has max 1 match
                 }
             }
-            wID = contractVertices(wID,gID);
+            wID = contractVertices(wID, gID);
             assert(wID!=-1 && "Added well vertex was not found in the grid (or its wells).");
         }
-        newWell.insert(well.begin(),well.end());
+        newWell.insert(well.begin(), well.end());
         wells.push_front(newWell);
     }
     else
     {
         for (int gID : well)
         {
-            wID = contractVertices(wID,gID);
+            wID = contractVertices(wID, gID);
         }
         wells.emplace_front(well);
     }

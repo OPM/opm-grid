@@ -209,7 +209,7 @@ std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
 ///
 /// This function only gets the information from wellRanks into proper
 /// format to call computeParallelWells.
-std::vector<std::pair<std::string,bool>>
+std::vector<std::pair<std::string, bool>>
 wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
                 const std::vector<int>& wellRanks,
                 const Dune::cpgrid::CpGridDataTraits::Communication& cc,
@@ -235,7 +235,7 @@ wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
 ///         myImportList vector of cells to be moved to this rank
 template<class Id>
 std::tuple<std::vector<int>,
-           std::vector<std::pair<std::string,bool>>,
+           std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> > >
 makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
@@ -255,7 +255,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 /// GraphOfGrid represents a well by one vertex, so wells can not be
 /// spread over several processes.
 /// transmissiblities are currently not supported, but are queued
-std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
+std::tuple<std::vector<int>, std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int,int,char> >,
            std::vector<std::tuple<int,int,char,int> >,
            Dune::cpgrid::WellConnections>
