@@ -118,20 +118,20 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
         return;
     // boundary faces should not appear in the graph, give them -1
     // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
-    std::vector<double> transmissiblities(24,-1);
-    transmissiblities[grid.cellFace(0,1)] =  1;
-    transmissiblities[grid.cellFace(1,1)] = 12;
-    transmissiblities[grid.cellFace(3,1)] = 34;
-    transmissiblities[grid.cellFace(4,1)] = 45;
-    transmissiblities[grid.cellFace(6,1)] = 67;
-    transmissiblities[grid.cellFace(7,1)] = 78;
-    transmissiblities[grid.cellFace(0,3)] =  3;
-    transmissiblities[grid.cellFace(1,3)] = 14;
-    transmissiblities[grid.cellFace(2,3)] = 25;
-    transmissiblities[grid.cellFace(3,3)] = 36;
-    transmissiblities[grid.cellFace(4,3)] = 47;
-    transmissiblities[grid.cellFace(5,3)] = 58;
-    Opm::GraphOfGrid gog(grid,transmissiblities.data());
+    std::vector<double> transmissibilities(24,-1);
+    transmissibilities[grid.cellFace(0,1)] =  1;
+    transmissibilities[grid.cellFace(1,1)] = 12;
+    transmissibilities[grid.cellFace(3,1)] = 34;
+    transmissibilities[grid.cellFace(4,1)] = 45;
+    transmissibilities[grid.cellFace(6,1)] = 67;
+    transmissibilities[grid.cellFace(7,1)] = 78;
+    transmissibilities[grid.cellFace(0,3)] =  3;
+    transmissibilities[grid.cellFace(1,3)] = 14;
+    transmissibilities[grid.cellFace(2,3)] = 25;
+    transmissibilities[grid.cellFace(3,3)] = 36;
+    transmissibilities[grid.cellFace(4,3)] = 47;
+    transmissibilities[grid.cellFace(5,3)] = 58;
+    Opm::GraphOfGrid gog(grid,transmissibilities.data());
 
     int checked=0;
     double sum=0;
