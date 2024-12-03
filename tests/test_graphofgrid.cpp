@@ -114,6 +114,8 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
     std::array<int,3> dims{3,3,1};
     std::array<double,3> size{1.,1.,1.};
     grid.createCartesian(dims,size);
+    if (grid.size(0)==0)
+        return;
     // boundary faces should not appear in the graph, give them -1
     // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
     std::vector<double> transmissiblities(24,-1);
@@ -130,8 +132,6 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
     transmissiblities[grid.cellFace(4,3)] = 47;
     transmissiblities[grid.cellFace(5,3)] = 58;
     Opm::GraphOfGrid gog(grid,transmissiblities.data());
-    if (grid.size(0)==0)
-        return;
 
     int checked=0;
     double sum=0;
