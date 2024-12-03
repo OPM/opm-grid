@@ -178,6 +178,7 @@ public:
 
 private:
     /// \brief Create a graph representation of the grid
+    ///
     /// If transmissibilities are not supplied, edge weight=1
     void createGraph (const double* transmissibilities=nullptr);
 

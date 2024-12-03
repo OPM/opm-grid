@@ -108,6 +108,83 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
 
 }
 
+BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{3,3,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    // boundary faces should not appear in the graph, give them -1
+    // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
+    std::vector<double> transmissiblities(24,-1);
+    transmissiblities[grid.cellFace(0,1)] =  1;
+    transmissiblities[grid.cellFace(1,1)] = 12;
+    transmissiblities[grid.cellFace(3,1)] = 34;
+    transmissiblities[grid.cellFace(4,1)] = 45;
+    transmissiblities[grid.cellFace(6,1)] = 67;
+    transmissiblities[grid.cellFace(7,1)] = 78;
+    transmissiblities[grid.cellFace(0,3)] =  3;
+    transmissiblities[grid.cellFace(1,3)] = 14;
+    transmissiblities[grid.cellFace(2,3)] = 25;
+    transmissiblities[grid.cellFace(3,3)] = 36;
+    transmissiblities[grid.cellFace(4,3)] = 47;
+    transmissiblities[grid.cellFace(5,3)] = 58;
+    Opm::GraphOfGrid gog(grid,transmissiblities.data());
+    if (grid.size(0)==0)
+        return;
+
+    int checked=0;
+    double sum=0;
+    BOOST_REQUIRE(gog.size()==9);
+    for (int i=0; i<9; ++i)
+    {
+        const auto& edges = gog.edgeList(i);
+        for (const auto& v : edges)
+        {
+            const double transm = i<v.first ? 10*i+v.first : i+10*v.first;
+            BOOST_CHECK(transm==v.second);
+            ++checked;
+            sum += transm;
+        }
+    }
+    BOOST_REQUIRE(checked==24); // each face gets checked twice
+    BOOST_CHECK(sum==840); // 2*sum(transmissibilities) excluding boundaries
+
+    gog.addWell(std::set<int>{0,1,3});
+    gog.addWell(std::set<int>{2,6,7});
+    BOOST_REQUIRE(gog.size()==5);
+    {
+        const auto& edges = gog.edgeList(0);
+        checked=0;
+        BOOST_REQUIRE(edges.size()==2);
+        for (const auto& v : edges)
+        {
+            switch(v.first)
+            {
+                case 2: BOOST_CHECK(v.second==12+36); break;
+                case 4: BOOST_CHECK(v.second==14+34); break;
+                default: throw("Well 0 has a wrong edge.");
+            }
+        }
+    }
+    {
+        const auto& edges = gog.edgeList(2);
+        checked=0;
+        BOOST_REQUIRE(edges.size()==4);
+        for (const auto& v : edges)
+        {
+            switch(v.first)
+            {
+                case 0: BOOST_CHECK(v.second==12+36); break;
+                case 4: BOOST_CHECK(v.second==47); break;
+                case 5: BOOST_CHECK(v.second==25); break;
+                case 8: BOOST_CHECK(v.second==78); break;
+                default: throw("Well 2 has a wrong edge.");
+            }
+        }
+    }
+}
+
 #if HAVE_MPI
 BOOST_AUTO_TEST_CASE(WrapperForZoltan)
 {
