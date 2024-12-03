@@ -1083,9 +1083,23 @@ namespace Dune
         bool nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec,
                                       const std::vector<std::array<int,3>>& endIJK_vec) const;
 
-        /// @brief Mark selected elements and assign them their corresponding level.
+        /// @brief Detect active LGRs in each process.
         ///
-        /// Given blocks of cells selected for refinement, Mark selected elements and assign them their corresponding
+        /// Given blocks of cells selected for refinement on a level zero distributed grid, detect which LGRs are active
+        /// in each process.
+        ///
+        /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+        /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+        /// @param [out] lgr_with_at_least_one_active_cell Determine if an LGR is not empty in a given process, we set
+        ///                                                lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
+        ///                                                at least one active cell, and to 0 otherwise.
+        void detectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
+                              const std::vector<std::array<int,3>>& endIJK_vec,
+                              std::vector<int>& lgr_with_at_least_one_active_cell);
+
+        /// @brief Mark selected elements, assign them their corresponding level, and detect active LGRs.
+        ///
+        /// Given blocks of cells selected for refinement, mark selected elements and assign them their corresponding
         /// (refined) level (grid). When level zero grid is distributed before refinement, detect which LGRs are active
         /// in each process.
         ///
@@ -1100,6 +1114,16 @@ namespace Dune
                                                  const std::vector<std::array<int,3>>& endIJK_vec,
                                                  std::vector<int>& assignRefinedLevel,
                                                  std::vector<int>& lgr_with_at_least_one_active_cell);
+
+        /// @brief Auxilliary function to compute one or more properties on selected block of parent cells.
+        ///
+        /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+        /// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+        /// @param [in] function        Lambda expression/function that computes the desired properties for each parent cell.
+        template<class T>
+        void computeOnLgrParents(const std::vector<std::array<int,3>>& startIJK_vec,
+                                 const std::vector<std::array<int,3>>& endIJK_vec,
+                                 T func);
 
         /// @brief Predict minimum cell and point global ids per process.
         ///
