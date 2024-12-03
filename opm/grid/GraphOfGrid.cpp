@@ -29,7 +29,7 @@
 namespace Opm{
 
 template<typename Grid>
-void GraphOfGrid<Grid>::createGraph ()
+void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
 {
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
@@ -57,11 +57,11 @@ void GraphOfGrid<Grid>::createGraph ()
             {
                 continue;
             }
-            WeightType weight = 1; // default edge weight
-            vertex.edges.try_emplace(otherCell,weight);
+            WeightType weight = transmissibilities ? transmissibilities[face] : 1; // default edge weight is 1
+            vertex.edges.try_emplace(otherCell, weight);
         }
 
-        graph.try_emplace(gID,vertex);
+        graph.try_emplace(gID, vertex);
     }
 
 }
@@ -87,7 +87,7 @@ int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
     }
     if (gID2<gID1)
     {
-        std::swap(gID1,gID2);
+        std::swap(gID1, gID2);
     }
 
     // add up vertex weights
@@ -107,7 +107,7 @@ int GraphOfGrid<Grid>::contractVertices (int gID1, int gID2)
                 v1e.insert(edge);
                 // remap neighbor's edge
                 graph[edge.first].edges.erase(gID2);
-                graph[edge.first].edges.emplace(gID1,edge.second);
+                graph[edge.first].edges.emplace(gID1, edge.second);
             }
         }
         else
@@ -164,26 +164,51 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
                         wID = *(w->begin());
                     }
                     gID = *(w->begin());
-                    newWell.insert(w->begin(),w->end());
+                    newWell.insert(w->begin(), w->end());
                     wells.erase(w);
                     break; // GraphOfGrid::wells are constructed to be disjoint, each gID has max 1 match
                 }
             }
-            wID = contractVertices(wID,gID);
+            wID = contractVertices(wID, gID);
             assert(wID!=-1 && "Added well vertex was not found in the grid (or its wells).");
         }
-        newWell.insert(well.begin(),well.end());
+        newWell.insert(well.begin(), well.end());
         wells.push_front(newWell);
     }
     else
     {
         for (int gID : well)
         {
-            wID = contractVertices(wID,gID);
+            wID = contractVertices(wID, gID);
         }
         wells.emplace_front(well);
     }
 }
+
+template<typename Grid>
+void GraphOfGrid<Grid>::addNeighboringCellsToWells ()
+{
+    // mark all cells that will be added to wells (addding them one
+    // by one would require recursive checks for neighboring wells)
+    std::vector<std::set<int>> buffer(wells.size());
+    int i=0;
+    for (auto& w : wells)
+    {
+        buffer[i].insert(*w.begin()); // intersects with its well
+        for (const auto& v : edgeList(*w.begin()))
+        {
+            buffer[i].insert(v.first);
+        }
+        ++i;
+    }
+
+    // intersecting wells and buffers will be merged
+    for (const auto& b : buffer)
+    {
+        addWell(b);
+    }
+}
+
 
 template class GraphOfGrid<Dune::CpGrid>;
 } // namespace Opm

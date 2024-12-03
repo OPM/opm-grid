@@ -52,10 +52,10 @@ class GraphOfGrid{
     };
 
 public:
-    explicit GraphOfGrid (const Grid& grid_)
+    explicit GraphOfGrid (const Grid& grid_, const double* transmissibilities=nullptr)
         : grid(grid_)
     {
-        createGraph();
+        createGraph(transmissibilities);
     }
 
     const Grid& getGrid() const
@@ -162,9 +162,24 @@ public:
         return wells;
     }
 
+    /// \brief Contract a layer of verices around each well into it
+    ///
+    /// Representing a well by one node guarantees that the well won't
+    /// be split over several processes. Giving the well an extra layer
+    /// of cells distances that well from the subdomain boundary.
+    void addNeighboringCellsToWells ();
+    void addNeighboringCellsToWells (int layers)
+    {
+        for (int i=0; i<layers; ++i)
+        {
+            addNeighboringCellsToWells();
+        }
+    }
+
 private:
     /// \brief Create a graph representation of the grid
-    void createGraph (); // edge weight=1
+    /// If transmissibilities are not supplied, edge weight=1
+    void createGraph (const double* transmissibilities=nullptr);
 
     /// \brief Identify the well containing the cell with this global ID
     ///
