@@ -676,7 +676,7 @@ BOOST_AUTO_TEST_CASE(throw_not_fully_interior_lgr)
     }
 }
 
-//Calling (only once, with argument equal to 1) globalRefine on a distributed grid is supported now.
+//Calling globalRefine on a distributed grid is supported now.
 BOOST_AUTO_TEST_CASE(globalRefine1)
 {
     // Create a grid
@@ -715,7 +715,7 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
 
-    std::vector<int> parts(36);
+     std::vector<int> parts(36);
     std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
                                                      {12,13,17,24,25,28,29,32,33},
                                                      {2,3,6,7,10,11,18,22,23},
@@ -736,29 +736,6 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
         const std::vector<std::array<int,3>> endIJK_vec = {{4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    }
-}
-
-BOOST_AUTO_TEST_CASE(globalRefine_throw)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,2,1};
-    grid.createCartesian(grid_dim, cell_sizes);
-
-    std::vector<int> parts(8);
-    std::vector<std::vector<int>> cells_per_rank = {{0,4},{1,5},{2,6}, {3,7}};
-    for (int rank = 0; rank < 4; ++rank) {
-        for (const auto& elemIdx : cells_per_rank[rank]) {
-            parts[elemIdx] = rank;
-        }
-    }
-    // Distribute the grid
-    if(grid.comm().size()>1)
-    {
-        grid.loadBalance();
-        BOOST_CHECK_THROW(grid.globalRefine(2), std::logic_error);
     }
 }
 
@@ -1053,8 +1030,8 @@ BOOST_AUTO_TEST_CASE(call_adapt_with_args_on_distributed_grid)
     }
 }
 
-// Cannot call adapt() on a distribted grid
-/*BOOST_AUTO_TEST_CASE(call_adapt_on_distributed_grid)
+// Call adapt() on a distribted grid, marking all the elements (equivalent to call globalRefine).
+BOOST_AUTO_TEST_CASE(call_adapt_on_distributed_grid)
 {
     // Only for testing assignment of new global ids for refined entities (cells and point belonging to
     // refined level grids).
@@ -1066,9 +1043,9 @@ BOOST_AUTO_TEST_CASE(call_adapt_with_args_on_distributed_grid)
     grid.createCartesian(grid_dim, cell_sizes);
     std::vector<int> parts(36);
     std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
-                                                     {12,13,17,24,25,28,29,32,33},
-                                                     {2,3,6,7,10,11,18,22,23},
-                                                     {14,15,19,26,27,30,31,34,35} };
+        {12,13,17,24,25,28,29,32,33},
+        {2,3,6,7,10,11,18,22,23},
+        {14,15,19,26,27,30,31,34,35} };
     for (int rank = 0; rank < 4; ++rank) {
         for (const auto& elemIdx : cells_per_rank[rank]) {
             parts[elemIdx] = rank;
@@ -1077,7 +1054,7 @@ BOOST_AUTO_TEST_CASE(call_adapt_with_args_on_distributed_grid)
     if(grid.comm().size()>1)
     {
         grid.loadBalance(parts);
-        // Mark all elements -> indirect global refinement
+        // Mark all elements -> 'indirect' global refinement
         for (const auto& element : elements(grid.leafGridView())){
             grid.mark(1, element);
         }
@@ -1092,5 +1069,5 @@ BOOST_AUTO_TEST_CASE(call_adapt_with_args_on_distributed_grid)
 
         refinePatch_and_check(grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     }
-    }*/
+}
 
