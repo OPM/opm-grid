@@ -30,6 +30,9 @@
 #define BOOST_TEST_MODULE GraphRepresentationOfGrid
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/grid/CpGrid.hpp>
 
 #include <opm/grid/GraphOfGrid.hpp>
@@ -183,6 +186,64 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
             }
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
+{
+    const std::string deckString =
+    R"( RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0
+        0 0 1
+        1 0 0
+        1 0 1
+        0 1 0
+        0 1 1
+        1 1 0
+        1 1 1
+        /
+        ZCORN
+        4*0
+        8*1
+        8*2
+        8*3
+        8*4
+        4*5
+        /
+        ACTNUM
+        0
+        1
+        0
+        1
+        1
+        /
+        PORO
+        5*0.15
+        /)";
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+    Opm::EclipseState es(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
+
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+    BOOST_REQUIRE(gog.size()==3);
+    int checked=0;
+    for (const auto& v : gog)
+    {
+        checked += v.first;
+        if (v.first==0)
+            BOOST_CHECK(v.second.edges.size()==0);
+        else
+            BOOST_CHECK(v.second.edges.size()==1);
+    }
+    BOOST_REQUIRE(checked==0+1+2);
 }
 
 #if HAVE_MPI
