@@ -350,6 +350,80 @@ std::vector<std::vector<int>> communicateExportedWells(
     return result;
 }
 
+std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
+    const std::vector<std::vector<std::vector<int>>>& exportedWells,
+    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+    int root)
+{
+    // send data from root
+    std::vector<std::vector<int>> result;
+    if (cc.rank()==root)
+    {
+        assert((int)exportedWells.size()==cc.size());
+        assert((int)exportedWells[root].size()==0);
+        // check send success for each well
+        std::vector<MPI_Request> requestSize(cc.size());
+        std::vector<std::vector<MPI_Request>> requestData(cc.size());
+
+        // number of wells and their sizes on each rank
+        // equal to exportedWells***.size() but we can not send temporary
+        std::vector<int> nrWells(cc.size());
+        std::vector<std::vector<int>> wellSizes(cc.size());
+        for (int i=0; i<cc.size(); ++i)
+        {
+            nrWells[i]=exportedWells[i].size();
+            requestData[i].resize(2*nrWells[i]);
+            wellSizes[i].reserve(nrWells[i]);
+            for (const auto& ewi : exportedWells[i])
+            {
+                wellSizes[i].push_back(ewi.size());
+            }
+        }
+
+        for (int i=0; i<cc.size(); ++i)
+        {
+            if (i!=root)
+            {
+                int tag = 37; // a random number
+                MPI_Isend(&nrWells[i], 1, MPI_INT, i, tag++, cc, &requestSize[i]);
+                for (int j=0; j<(int)exportedWells[i].size(); ++j)
+                {
+                    assert(j+1<(int)requestData[i].size());
+                    MPI_Isend(&wellSizes[i][j], 1, MPI_INT, i, tag++, cc, &requestData[i][2*j]);
+                    MPI_Isend(exportedWells[i][j].data(), wellSizes[i][j], MPI_INT, i, tag++, cc, &requestData[i][2*j+1]);
+                }
+            }
+        }
+        // wait till all messages are completed
+        for (int i=0; i<cc.size(); ++i)
+        {
+            if (i!=root)
+            {
+                MPI_Wait(&requestSize[i],MPI_STATUS_IGNORE);
+                for (auto& r : requestData[i])
+                {
+                    MPI_Wait(&r,MPI_STATUS_IGNORE);
+                }
+            }
+        }
+    }
+    else // receive data from root
+    {
+        int tag = 37; // a random number
+        int nrWells;
+        MPI_Recv(&nrWells, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+        result.resize(nrWells);
+        for (int i=0; i<nrWells; ++i)
+        {
+            int wellSize;
+            MPI_Recv(&wellSize, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+            result[i].resize(wellSize);
+            MPI_Recv(result[i].data(), wellSize, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+        }
+    }
+    return result;
+}
+
 void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
                       const std::vector<std::vector<int>>& extraWells)
 {
@@ -412,7 +486,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     // extend root's export list and get sets of well cells for other ranks
     auto expListToComm = Impl::extendRootExportList(gog, exportList, root, gIDtoRank);
     // obtain wells on this rank from root
-    auto extraWells = Impl::communicateExportedWells(expListToComm, cc, root);
+    auto extraWells = Impl::nonblockingCommunicateExportedWells(expListToComm, cc, root);
     if (cc.rank()!=root)
     {
         std::sort(importList.begin(), importList.end());

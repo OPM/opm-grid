@@ -170,6 +170,18 @@ std::vector<std::vector<int>> communicateExportedWells(
     const std::vector<std::vector<std::vector<int>>>& exportedWells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root);
+/// \brief Communicate wells exported from root, needed for extending other rank's import lists
+///
+/// Similar to communicateExportedWells, only instead of creating one
+/// joint data vector for each rank this function sends each well separately.
+/// The wells are sent without copying them around (unlike communicateExportWells),
+/// but the number of messages rises from 2 to (1+2*numberOfWells[rank]) per corresponding rank.
+/// Sending is nonblocking to quicken the root,
+/// receiving is blocking - non-root ranks have nothing else to do anyway.
+std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
+    const std::vector<std::vector<std::vector<int>>>& exportedWells,
+    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+    int root);
 } // end namespace Impl
 
 /// \brief Add well cells' global IDs to the root's export and others' import list
