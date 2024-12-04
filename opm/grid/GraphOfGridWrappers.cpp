@@ -583,8 +583,14 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
+    int layers = 0; // extra layers of cells attached to wells to distance them from boundary
     for (const auto& [key, value] : params)
-        Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    {
+        if (key=="EnvelopeWellLayers")
+            layers = std::stoi(value);
+        else
+            Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    }
 
     // root process has the whole grid, other ranks nothing
     bool partitionIsEmpty = cc.rank()!=root;
@@ -596,6 +602,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
                                           : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
     addWellConnections(gog, wellConnections);
+    gog.addNeighboringCellsToWells(layers);
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
