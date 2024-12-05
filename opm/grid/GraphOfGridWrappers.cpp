@@ -362,49 +362,41 @@ std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
         assert((int)exportedWells.size()==cc.size());
         assert((int)exportedWells[root].size()==0);
         // check send success for each well
-        std::vector<MPI_Request> requestSize(cc.size());
-        std::vector<std::vector<MPI_Request>> requestData(cc.size());
+        std::vector<MPI_Request> requestSize(2*(cc.size()-1));
+        std::vector<std::vector<MPI_Request>> requestData(cc.size()-1);
 
         // number of wells and their sizes on each rank
         // equal to exportedWells***.size() but we can not send temporary
-        std::vector<int> nrWells(cc.size());
-        std::vector<std::vector<int>> wellSizes(cc.size());
-        for (int i=0; i<cc.size(); ++i)
+        std::vector<int> nrWells(cc.size()-1);
+        std::vector<std::vector<int>> wellSizes(cc.size()-1);
+        for (int i=0; i<cc.size()-1; ++i)
         {
-            nrWells[i]=exportedWells[i].size();
-            requestData[i].resize(2*nrWells[i]);
+            int ii=i+(int)(i>=root); // ii takes values {0,...,mpisize-1} but skips root
+            nrWells[i]=exportedWells[ii].size();
+            requestData[i].resize(nrWells[i]);
             wellSizes[i].reserve(nrWells[i]);
-            for (const auto& ewi : exportedWells[i])
+            for (const auto& ewi : exportedWells[ii])
             {
                 wellSizes[i].push_back(ewi.size());
             }
         }
 
-        for (int i=0; i<cc.size(); ++i)
+        for (int i=0; i<cc.size()-1; ++i)
         {
-            if (i!=root)
+            int ii=i+(int)(i>=root); // ii takes values {0,...,mpisize-1} but skips root
+            int tag = 37; // a random number
+            MPI_Isend(&nrWells[i], 1, MPI_INT, ii, tag++, cc, &requestSize[2*i]);
+            MPI_Isend(wellSizes[i].data(), nrWells[i], MPI_INT, ii, tag++, cc, &requestSize[2*i+1]);
+            for (int j=0; j<(int)exportedWells[ii].size(); ++j)
             {
-                int tag = 37; // a random number
-                MPI_Isend(&nrWells[i], 1, MPI_INT, i, tag++, cc, &requestSize[i]);
-                for (int j=0; j<(int)exportedWells[i].size(); ++j)
-                {
-                    assert(j+1<(int)requestData[i].size());
-                    MPI_Isend(&wellSizes[i][j], 1, MPI_INT, i, tag++, cc, &requestData[i][2*j]);
-                    MPI_Isend(exportedWells[i][j].data(), wellSizes[i][j], MPI_INT, i, tag++, cc, &requestData[i][2*j+1]);
-                }
+                MPI_Isend(exportedWells[ii][j].data(), wellSizes[i][j], MPI_INT, ii, tag++, cc, &requestData[i][j]);
             }
         }
         // wait till all messages are completed
-        for (int i=0; i<cc.size(); ++i)
+        MPI_Waitall(requestSize.size(), requestSize.data(), MPI_STATUS_IGNORE);
+        for (int i=0; i<cc.size()-1; ++i)
         {
-            if (i!=root)
-            {
-                MPI_Wait(&requestSize[i],MPI_STATUS_IGNORE);
-                for (auto& r : requestData[i])
-                {
-                    MPI_Wait(&r,MPI_STATUS_IGNORE);
-                }
-            }
+            MPI_Waitall(requestData[i].size(), requestData[i].data(), MPI_STATUS_IGNORE);
         }
     }
     else // receive data from root
@@ -413,12 +405,12 @@ std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
         int nrWells;
         MPI_Recv(&nrWells, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
         result.resize(nrWells);
+        std::vector<int> wellSize(nrWells);
+        MPI_Recv(wellSize.data(), nrWells, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
         for (int i=0; i<nrWells; ++i)
         {
-            int wellSize;
-            MPI_Recv(&wellSize, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
-            result[i].resize(wellSize);
-            MPI_Recv(result[i].data(), wellSize, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+            result[i].resize(wellSize[i]);
+            MPI_Recv(result[i].data(), wellSize[i], MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
         }
     }
     return result;
@@ -634,9 +626,9 @@ std::tuple<std::vector<int>, std::vector<std::pair<std::string, bool>>,
 zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   const std::vector<Dune::cpgrid::OpmWellType> * wells,
                                   const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
-                 [[maybe_unused]] const double* transmissibilities,
+                                  const double* transmissibilities,
                                   const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-                 [[maybe_unused]] Dune::EdgeWeightMethod edgeWeightsMethod,
+                                  Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
                                   const std::map<std::string, std::string>& params)
@@ -671,7 +663,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
-    GraphOfGrid gog(grid, transmissibilities);
+    GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
                                           : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);

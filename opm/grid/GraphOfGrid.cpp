@@ -29,8 +29,24 @@
 namespace Opm{
 
 template<typename Grid>
-void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
+void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
+                                     const Dune::EdgeWeightMethod edgeWeightMethod)
 {
+    // Find the lowest positive transmissibility in the grid.
+    // This includes boundary faces, even though they will not appear in the graph.
+    WeightType minTransm = std::numeric_limits<WeightType>::max();
+    if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
+    {
+        for (int face = 0; face < getGrid().numFaces(); ++face)
+        {
+            WeightType transm = transmissibilities[face];
+            if (transm > 0 && transm < minTransm)
+            {
+                minTransm = transm;
+            }
+        }
+    }
+
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
@@ -57,7 +73,16 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
             {
                 continue;
             }
-            WeightType weight = transmissibilities ? transmissibilities[face] : 1; // default edge weight is 1
+            WeightType weight;
+            if (!transmissibilities || edgeWeightMethod==0)
+                weight = 1.;
+            else if (edgeWeightMethod==1)
+                weight = transmissibilities[face];
+            else // if (edgeWeightMethod==2)
+            {
+                assert(transmissibilities[face]>=0);
+                weight = 1e6*std::log(1.+transmissibilities[face]-minTransm);
+            }
             vertex.edges.try_emplace(otherCell, weight);
         }
 
