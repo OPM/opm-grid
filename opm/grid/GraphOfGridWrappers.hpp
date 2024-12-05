@@ -132,12 +132,12 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 
 #if HAVE_MPI
 namespace Impl{
-/// \brief Add well cells' global IDs to the import list
+/// \brief Add well cells' global IDs to the import list and sort it
 ///
 /// Helper function for extendExportAndImportLists.
 /// Used on non-root ranks that do not have access to wells.
-void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                      const std::vector<std::vector<int>>& extraWells);
+void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
+                             const std::vector<std::vector<int>>& extraWells);
 
 /// \brief Add well cells' global IDs to the root's export list and output other rank's wells
 ///

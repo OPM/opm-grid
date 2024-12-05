@@ -256,7 +256,6 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                 const auto& [begin, end, wSize] = pWell->second;
                 std::vector<int> wellToExport;
                 wellToExport.reserve(wSize);
-                wellToExport.push_back(*begin);
                 // well ID is its cell of lowest index and is already in the exportList
                 assert(*begin==std::get<0>(cellProperties));
                 for (auto pgID = begin; ++pgID!=end; )
@@ -416,54 +415,33 @@ std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
     return result;
 }
 
-void extendImportList(std::vector<std::tuple<int,int,char,int>>& importList,
+void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
                       const std::vector<std::vector<int>>& extraWells)
 {
-    using ImportList = std::vector<std::tuple<int,int,char,int>>;
-    // make a list of wells for easy identification
-    std::unordered_map<int, std::size_t> wellMap;
-    for (std::size_t i=0; i<extraWells.size(); ++i)
+    if (importList.empty() || extraWells.empty())
     {
-        if (extraWells[i].size()>1)
+        std::sort(importList.begin(), importList.end());
+        return;
+    }
+    int rank = std::get<1>(importList[0]);
+    int totalWellsSize = 0;
+    for (const auto& well : extraWells)
+    {
+        totalWellsSize += well.size();
+    }
+
+    importList.reserve(importList.size()+totalWellsSize);
+    for (const auto& well : extraWells)
+    {
+        for (int i=0; i<(int)well.size(); ++i)
         {
-            wellMap[extraWells[i][0]] = i;
+            // Beware: AttributeSet and localID are hard-coded
+            using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+            importList.emplace_back(well[i], rank, AttributeSet::owner, -1);
         }
     }
 
-    ImportList addToList;
-    // iterate once through the original importList
-    for (const auto& cellProperties : importList)
-    {
-        // if a cell is in any well, add cells of the well to importList
-        auto pWell = wellMap.find(std::get<0>(cellProperties));
-        if (pWell!=wellMap.end())
-        {
-            const auto& wellVector = extraWells[pWell->second];
-            // well ID is its cell of lowest index and is already in the importList
-            assert(wellVector[0]==std::get<0>(cellProperties));
-            for (std::size_t j=1; j<wellVector.size(); ++j)
-            {
-                // cells in one well have the same attributes (except ID)
-                std::tuple<int,int,char,int> wellCell = cellProperties;
-                std::get<0>(wellCell) = wellVector[j];
-                addToList.push_back(wellCell);
-            }
-
-            wellMap.erase(pWell);
-            if (wellMap.empty())
-            {
-                break;
-            }
-        }
-    }
-
-    // add new cells to the importList and sort it. It is assumed that importList starts sorted.
-    std::sort(addToList.begin(), addToList.end());
-    auto origSize = importList.size();
-    auto totsize = origSize+addToList.size();
-    importList.reserve(totsize);
-    importList.insert(importList.end(), addToList.begin(), addToList.end());
-    std::inplace_merge(importList.begin(), importList.begin()+origSize, importList.end());
+    std::sort(importList.begin(), importList.end());
 }
 
 } // end namespace Impl
@@ -481,8 +459,7 @@ void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     auto extraWells = Impl::nonblockingCommunicateExportedWells(expListToComm, cc, root);
     if (cc.rank()!=root)
     {
-        std::sort(importList.begin(), importList.end());
-        Impl::extendImportList(importList, extraWells);
+        Impl::extendAndSortImportList(importList, extraWells);
     }
 }
 #endif // HAVE_MPI
