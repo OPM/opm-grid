@@ -137,49 +137,40 @@ namespace Impl{
 /// Helper function for extendExportAndImportLists.
 /// Used on non-root ranks that do not have access to wells.
 void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                             const std::vector<std::vector<int>>& extraWells);
+                             const std::vector<int>& extraWells);
 
-/// \brief Add well cells' global IDs to the root's export list and output other rank's wells
+/// \brief Add well cells' global IDs to the root's export list and output cells missing in other rank's import lists
 ///
 /// Helper function for extendExportAndImportLists.
 /// On non-root ranks, it does nothing and returns an empty vector.
 /// On root, exportList is extended by well cells that are hidden from the partitioner.
-/// These wells are also collected and returned so they can be communicated to other ranks.
-/// \return vector[rank][well][cell] Each entry contains vector of wells exported to that rank.
-std::vector<std::vector<std::vector<int>>>
+/// These cells are also collected and returned so they can be communicated to other ranks.
+/// \return vector[rank][cell] Each entry contains vector of cells exported to that rank.
+std::vector<std::vector<int>>
 extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      int root,
                      const std::vector<int>& gIDtoRank);
-
-/// \brief Communicate wells exported from root, needed for extending other rank's import lists
+/// \brief Communicate cells exported from root, needed for extending other rank's import lists
 ///
 /// Helper function for extendExportAndImportLists.
-/// Only the root rank has acccess to the grid and can map well coordinates
-/// to the cell global ID. This function communicates well cell IDs to
-/// other ranks. Input (the prepared container with cell IDs) is thus
-/// relevant only on the root rank, whereas output (well cells received
-/// by MPI communication) only on the non-root ranks.
-/// \param exportedWells Contains for each rank the wells that are exported there,
+/// Only the root rank has access to the grid and wells. Partitioning
+/// with GraphOfGrid hides some well cells from the partitioner and
+/// the importLists are incomplete. This function serves to communicate
+/// the missing (well) cells to non-root ranks.
+/// Input (the prepared container with cell IDs) is thus relevant only
+/// on the root rank, whereas output (cells received by communication)
+/// only on the non-root ranks.
+/// Sending is nonblocking to quicken the root,
+/// receiving is blocking - non-root ranks have nothing else to do anyway.
+/// \param exportedWells Contains for each rank the cells that are exported there,
 ///                      empty on non-root ranks
 /// \param cc Communication object
 /// \param root The root's rank
-/// \return Vector of wells necessary to extend this rank's import lists,
+/// \return Vector of cells necessary to extend this rank's import lists,
 ///         empty on the root rank
-std::vector<std::vector<int>> communicateExportedWells(
-    const std::vector<std::vector<std::vector<int>>>& exportedWells,
-    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-    int root);
-/// \brief Communicate wells exported from root, needed for extending other rank's import lists
-///
-/// Similar to communicateExportedWells, only instead of creating one
-/// joint data vector for each rank this function sends each well separately.
-/// The wells are sent without copying them around (unlike communicateExportWells),
-/// but the number of messages rises from 2 to (1+2*numberOfWells[rank]) per corresponding rank.
-/// Sending is nonblocking to quicken the root,
-/// receiving is blocking - non-root ranks have nothing else to do anyway.
-std::vector<std::vector<int>> nonblockingCommunicateExportedWells(
-    const std::vector<std::vector<std::vector<int>>>& exportedWells,
+std::vector<int> nonblockingCommunicateExportedCells(
+    const std::vector<std::vector<int>>& exportedCells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root);
 } // end namespace Impl
