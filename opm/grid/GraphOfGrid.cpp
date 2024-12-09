@@ -34,17 +34,19 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
 {
     // Find the lowest positive transmissibility in the grid.
     // This includes boundary faces, even though they will not appear in the graph.
-    WeightType minTransm = std::numeric_limits<WeightType>::max();
+    WeightType logMinTransm = std::numeric_limits<WeightType>::max();
     if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
     {
         for (int face = 0; face < getGrid().numFaces(); ++face)
         {
             WeightType transm = transmissibilities[face];
-            if (transm > 0 && transm < minTransm)
+            if (transm > 0 && transm < logMinTransm)
             {
-                minTransm = transm;
+                logMinTransm = transm;
             }
         }
+        assert(logMinTransm < std::numeric_limits<WeightType>::max());
+        logMinTransm = std::log(logMinTransm);
     }
 
     const auto& rank = grid.comm().rank();
@@ -80,8 +82,8 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
                 weight = transmissibilities[face];
             else // if (edgeWeightMethod==2)
             {
-                assert(transmissibilities[face]>=0);
-                weight = 1e6*std::log(1.+transmissibilities[face]-minTransm);
+                assert(transmissibilities[face]>0);
+                weight = 1+std::log(transmissibilities[face])-logMinTransm;
             }
             vertex.edges.try_emplace(otherCell, weight);
         }
