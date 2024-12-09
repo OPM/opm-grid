@@ -1104,7 +1104,7 @@ reverse_face_nodes(struct processed_grid *out)
 }
 
 /* ---------------------------------------------------------------------- */
-static void
+void
 add_cells(struct processed_grid *grid)
 /* ---------------------------------------------------------------------- */
 {
