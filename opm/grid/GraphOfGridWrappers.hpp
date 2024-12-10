@@ -134,14 +134,14 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 namespace Impl{
 /// \brief Add well cells' global IDs to the import list and sort it
 ///
-/// Helper function for extendExportAndImportLists.
+/// Helper function for extendAndSortExportAndImportLists.
 /// Used on non-root ranks that do not have access to wells.
 void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
                              const std::vector<int>& extraWells);
 
 /// \brief Add well cells' global IDs to the root's export list and output cells missing in other rank's import lists
 ///
-/// Helper function for extendExportAndImportLists.
+/// Helper function for extendAndSortExportAndImportLists.
 /// On non-root ranks, it does nothing and returns an empty vector.
 /// On root, exportList is extended by well cells that are hidden from the partitioner.
 /// These cells are also collected and returned so they can be communicated to other ranks.
@@ -153,7 +153,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
                      const std::vector<int>& gIDtoRank);
 /// \brief Communicate cells exported from root, needed for extending other rank's import lists
 ///
-/// Helper function for extendExportAndImportLists.
+/// Helper function for extendAndSortExportAndImportLists.
 /// Only the root rank has access to the grid and wells. Partitioning
 /// with GraphOfGrid hides some well cells from the partitioner and
 /// the importLists are incomplete. This function serves to communicate
@@ -183,7 +183,7 @@ std::vector<int> nonblockingCommunicateExportedCells(
 /// Root is the only rank with information about wells, and communicates
 /// the necessary information to other ranks.
 /// On root ImportList has been already extended with all cells on the current rank.
-void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
+void extendAndSortExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                                 const Dune::cpgrid::CpGridDataTraits::Communication& cc,
                                 int root,
                                 std::vector<std::tuple<int,int,char>>& exportList,

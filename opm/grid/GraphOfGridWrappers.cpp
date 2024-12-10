@@ -222,88 +222,80 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
         return exportedCells;
     }
 
-    using ExportList = std::vector<std::tuple<int,int,char>>;
-    // make a list of wells for easy identification during search. Contains {begin, end, well ID}
     using iter = std::set<int>::const_iterator;
-    std::unordered_map<int, std::tuple<iter,iter,int>> wellMap;
     // store which wells are exported. Contains {begin, end, destination rank}
     std::vector<std::tuple<iter,iter,int>> wellsToExport;
     // track how many cells per rank are exported - to reserve the vector size
     std::vector<int> sizesOfExport(cc.size(), 0);
     const auto& gogWells = gog.getWells();
     wellsToExport.reserve(gogWells.size());
-    for (const auto& well : gogWells)
+
+    // with gIDtoRank we can directly tell which wells belong where
+    if (gIDtoRank.size()>0)
     {
-        if (gIDtoRank.size()>0)
+        for (const auto& well : gogWells)
         {
             auto wellID = *well.begin();
             if (gIDtoRank[wellID]!=root)
             {
-                wellMap[wellID] = std::make_tuple(well.begin(), well.end(), well.size());
+                wellsToExport.emplace_back(well.begin(), well.end(), gIDtoRank[wellID]);
+                sizesOfExport[gIDtoRank[wellID]] += well.size()-1;
             }
         }
-        else
+    }
+    else
+    {
+        // make a list of wells for easy identification during search. Contains {begin, end, well ID}
+        std::unordered_map<int, std::tuple<iter,iter,int>> wellMap;
+        for (const auto& well : gogWells)
         {
             wellMap[*well.begin()] = std::make_tuple(well.begin(), well.end(), well.size());
         }
-    }
-
-    ExportList addToList;
-    // iterate once through the original exportList
-    for (const auto& cellProperties : exportList)
-    {
-        // if a cell is in any well, add cells of the well to exportList
-        auto pWell = wellMap.find(std::get<0>(cellProperties));
-        if (pWell!=wellMap.end())
+        // iterate once through the original exportList and identify exported wells
+        for (const auto& cellProperties : exportList)
         {
-            int rankToExport = std::get<1>(cellProperties);
-            if (rankToExport!=root)
+            auto pWell = wellMap.find(std::get<0>(cellProperties));
+            if (pWell!=wellMap.end())
             {
-                const auto& [begin, end, wSize] = pWell->second;
-                // well ID is its cell of lowest index and is already in the exportList
-                assert(*begin==std::get<0>(cellProperties));
-                for (auto pgID = begin; ++pgID!=end; )
+                int rankToExport = std::get<1>(cellProperties);
+                if (rankToExport!=root) // wells on root are not exported
                 {
-                    // cells in one well have the same attributes (except ID)
-                    std::tuple<int,int,char> wellCell = cellProperties;
-                    std::get<0>(wellCell) = *pgID;
-                    addToList.push_back(wellCell);
+                    const auto& [begin, end, wSize] = pWell->second;
+                    wellsToExport.emplace_back(begin, end, rankToExport);
+                    sizesOfExport[rankToExport] += wSize-1; // one cell is already in the list
                 }
-                // keep track of wells that are exported, their cells need to be communicated
-                wellsToExport.emplace_back(begin, end, rankToExport);
-                sizesOfExport[rankToExport] += wSize-1;
-            }
-            wellMap.erase(pWell);
-            if (wellMap.empty())
-            {
-                break;
+                wellMap.erase(pWell);
+                if (wellMap.empty())
+                {
+                    break;
+                }
             }
         }
     }
 
-    // add new cells to the exportList and sort it. It is assumed that exportList starts sorted.
-    std::sort(addToList.begin(), addToList.end());
-    auto origSize = exportList.size();
-    auto totsize = origSize+addToList.size();
-    exportList.reserve(totsize);
-    exportList.insert(exportList.end(), addToList.begin(), addToList.end());
-    std::inplace_merge(exportList.begin(), exportList.begin()+origSize, exportList.end());
-
     // create the output: the cells that are missing from importList on non-root ranks
+    // also add new cells to the exportList and sort it
     exportedCells.resize(cc.size());
+    int addedExportsSize = 0;
     for (int i=0; i<cc.size(); ++i)
     {
         exportedCells[i].reserve(sizesOfExport[i]);
+        addedExportsSize += sizesOfExport[i];
     }
+    exportList.reserve(exportList.size()+addedExportsSize);
     for (const auto& pWell : wellsToExport)
     {
         const auto& [begin, end, rank] = pWell;
         // remember to skip the well's first cell which already is in the importList
         for (auto pgID = begin; ++pgID!=end; )
         {
+            using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+            exportList.emplace_back(*pgID, rank, AttributeSet::owner);
+
             exportedCells[rank].push_back(*pgID);
         }
     }
+    std::sort(exportList.begin(), exportList.end());
     return exportedCells;
 }
 
@@ -368,7 +360,7 @@ void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importLi
 
 } // end namespace Impl
 
-void extendExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
+void extendAndSortExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                                 const Dune::cpgrid::CpGridDataTraits::Communication& cc,
                                 int root,
                                 std::vector<std::tuple<int,int,char>>& exportList,
@@ -463,7 +455,6 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
             gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
             myExportList.emplace_back(exportGlobalGids[i], exportToPart[i], static_cast<char>(AttributeSet::owner));
         }
-        std::sort(myExportList.begin(), myExportList.end());
         // partitioner sees only one cell per well, modify remaining
         extendGIDtoRank(gog, gIDtoRank, rank);
 
@@ -477,8 +468,6 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
                 myImportList.emplace_back(i, rank, static_cast<char>(AttributeSet::owner), -1 );
             }
         }
-        std::inplace_merge(myImportList.begin(), myImportList.begin() + numImport, myImportList.end());
-        std::inplace_merge(myExportList.begin(), myExportList.begin() + numExport, myExportList.end());
     }
 
 
@@ -486,7 +475,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     if( wells )
     {
         // complete root's export and other's import list by adding remaining well cells
-        extendExportAndImportLists(gog, cc, root, myExportList, myImportList, gIDtoRank);
+        extendAndSortExportAndImportLists(gog, cc, root, myExportList, myImportList, gIDtoRank);
 
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
