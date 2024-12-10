@@ -97,7 +97,7 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
     {
         // Zoltan does not include cells that remain on the rank into import and export list
         // but they are added manually to both lists (cell on root is in its import AND export)
-        // before extendExportAndImportLists is called
+        // before extendAndSortExportAndImportLists is called
         for (const auto& gID : cells[ranks[0]])
         {
             importList.push_back(std::make_tuple(gID,ranks[0],owner,-1));
@@ -132,7 +132,7 @@ BOOST_AUTO_TEST_CASE(ImportExportListExpansion)
         importList.push_back(std::make_tuple(14,ranks[3],owner,-1));
     }
 
-    extendExportAndImportLists(gog,cc,ranks[0],exportList,importList);
+    extendAndSortExportAndImportLists(gog,cc,ranks[0],exportList,importList);
 
     BOOST_CHECK_MESSAGE(importList==importSolution,"On rank "+std::to_string(cc.rank()));
     BOOST_CHECK_MESSAGE(exportList==exportSolution,"On rank "+std::to_string(cc.rank()));
