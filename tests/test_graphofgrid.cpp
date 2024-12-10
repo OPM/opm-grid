@@ -121,7 +121,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
         return;
     // boundary faces should not appear in the graph, give them -1
     // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
-    std::vector<double> transmissibilities(24,-1);
+    std::vector<double> transmissibilities(42,-1);
     transmissibilities[grid.cellFace(0,1)] =  1;
     transmissibilities[grid.cellFace(1,1)] = 12;
     transmissibilities[grid.cellFace(3,1)] = 34;
@@ -186,6 +186,63 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
             }
         }
     }
+}
+
+BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{3,3,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    if (grid.size(0)==0)
+        return;
+    // boundary faces should not appear in the graph, give them -1
+    // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
+    std::vector<double> transmissibilities(42,-1);
+    transmissibilities[grid.cellFace(0,1)] =  1;
+    transmissibilities[grid.cellFace(1,1)] = 12;
+    transmissibilities[grid.cellFace(3,1)] = 34;
+    transmissibilities[grid.cellFace(4,1)] = 45;
+    transmissibilities[grid.cellFace(6,1)] = 67;
+    transmissibilities[grid.cellFace(7,1)] = 78;
+    transmissibilities[grid.cellFace(0,3)] =  3;
+    transmissibilities[grid.cellFace(1,3)] = 14;
+    transmissibilities[grid.cellFace(2,3)] = 25;
+    transmissibilities[grid.cellFace(3,3)] = 36;
+    transmissibilities[grid.cellFace(4,3)] = 47;
+    transmissibilities[grid.cellFace(5,3)] = 58;
+    Opm::GraphOfGrid gog(grid,transmissibilities.data());
+
+    // change values of transmissibilities so that edge weights of the graph
+    // with log transmissibilities are equal to the original, then compare them
+    for (auto& v : transmissibilities)
+    {
+        if (v > 0)
+        {
+            v = std::exp(v-1.);
+        }
+    }
+    Opm::GraphOfGrid gog2(grid,transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
+    int checked=0;
+    for (const auto& v : gog2)
+    {
+        const auto& edgeL2 = v.second.edges;
+        const auto& edgeL  = gog.edgeList(v.first);
+        for (const auto& e : edgeL2)
+        {
+            const auto& pvertex = edgeL.find(e.first);
+            if (pvertex!=edgeL.end())
+            {
+                BOOST_CHECK_SMALL(pvertex->second-e.second,1e-6f);
+                ++checked;
+            }
+            else
+            {
+                throw("Graphs gog and gog1 should have the same structure.");
+            }
+        }
+    }
+    BOOST_REQUIRE(checked==24);
 }
 
 BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
