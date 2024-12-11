@@ -132,12 +132,11 @@ void extendGIDtoRank(const GraphOfGrid<Dune::CpGrid>& gog,
 
 #if HAVE_MPI
 namespace Impl{
-/// \brief Add well cells' global IDs to the import list and sort it
+/// \brief Add cells to the import list and sort it
 ///
 /// Helper function for extendAndSortExportAndImportLists.
-/// Used on non-root ranks that do not have access to wells.
 void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                             const std::vector<int>& extraWells);
+                             const std::vector<int>& extraCells);
 
 /// \brief Add well cells' global IDs to the root's export list and output cells missing in other rank's import lists
 ///
@@ -163,16 +162,15 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
 /// only on the non-root ranks.
 /// Sending is nonblocking to quicken the root,
 /// receiving is blocking - non-root ranks have nothing else to do anyway.
-/// \param exportedWells Contains for each rank the cells that are exported there,
+/// \param exportedCells Contains for each rank the cells that are exported there,
 ///                      empty on non-root ranks
 /// \param cc Communication object
 /// \param root The root's rank
 /// \return Vector of cells necessary to extend this rank's import lists,
 ///         empty on the root rank
-std::vector<int> nonblockingCommunicateExportedCells(
-    const std::vector<std::vector<int>>& exportedCells,
-    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-    int root);
+std::vector<int> communicateExportedCells(const std::vector<std::vector<int>>& exportedCells,
+                                          const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                          int root);
 } // end namespace Impl
 
 /// \brief Add well cells' global IDs to the root's export and others' import list
@@ -184,11 +182,11 @@ std::vector<int> nonblockingCommunicateExportedCells(
 /// the necessary information to other ranks.
 /// On root ImportList has been already extended with all cells on the current rank.
 void extendAndSortExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
-                                const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-                                int root,
-                                std::vector<std::tuple<int,int,char>>& exportList,
-                                std::vector<std::tuple<int,int,char,int>>& importList,
-                                const std::vector<int>& gIDtoRank={});
+                                       const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                       int root,
+                                       std::vector<std::tuple<int, int, char>>& exportList,
+                                       std::vector<std::tuple<int, int, char, int>>& importList,
+                                       const std::vector<int>& gIDtoRank = {});
 #endif // HAVE_MPI
 
 /// \brief Find to which ranks wells were assigned

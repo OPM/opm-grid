@@ -76,14 +76,22 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
                 continue;
             }
             WeightType weight;
-            if (!transmissibilities || edgeWeightMethod==0)
+            if (transmissibilities) {
+                switch (edgeWeightMethod) {
+                case 0:
+                    weight = 1.;
+                    break;
+                case 1:
+                    weight = transmissibilities[face];
+                    break;
+                case 2:
+                    weight = 1 + std::log(transmissibilities[face]) - logMinTransm;
+                    break;
+                default:
+                    OPM_THROW(std::invalid_argument, "GraphOfGrid recognizes only EdgeWeightMethod of value 0, 1, or 2.");
+                }
+            } else {
                 weight = 1.;
-            else if (edgeWeightMethod==1)
-                weight = transmissibilities[face];
-            else // if (edgeWeightMethod==2)
-            {
-                assert(transmissibilities[face]>0);
-                weight = 1+std::log(transmissibilities[face])-logMinTransm;
             }
             vertex.edges.try_emplace(otherCell, weight);
         }

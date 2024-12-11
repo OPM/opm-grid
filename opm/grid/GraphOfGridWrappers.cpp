@@ -239,7 +239,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
             if (gIDtoRank[wellID]!=root)
             {
                 wellsToExport.emplace_back(well.begin(), well.end(), gIDtoRank[wellID]);
-                sizesOfExport[gIDtoRank[wellID]] += well.size()-1;
+                sizesOfExport[gIDtoRank[wellID]] += well.size()-1;  // one of well's cells is already in the list
             }
         }
     }
@@ -247,6 +247,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     {
         // make a list of wells for easy identification during search. Contains {begin, end, well ID}
         std::unordered_map<int, std::tuple<iter,iter,int>> wellMap;
+        wellMap.reserve(gogWells.size());
         for (const auto& well : gogWells)
         {
             wellMap[*well.begin()] = std::make_tuple(well.begin(), well.end(), well.size());
@@ -299,60 +300,55 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     return exportedCells;
 }
 
-std::vector<int> nonblockingCommunicateExportedCells(
+std::vector<int> communicateExportedCells(
     const std::vector<std::vector<int>>& exportedCells,
     const Dune::cpgrid::CpGridDataTraits::Communication& cc,
     int root)
 {
     // send data from root
     std::vector<int> result;
-    if (cc.rank()==root)
-    {
-        assert((int)exportedCells.size()==cc.size());
-        assert((int)exportedCells[root].size()==0);
+    if (cc.rank() == root) {
+        assert((int)exportedCells.size() == cc.size());
+        assert((int)exportedCells[root].size() == 0);
         // check send success for each well
-        std::vector<MPI_Request> requestSize(2*(cc.size()-1));
-        std::vector<int> nrWells(cc.size()-1); // store well sizes (can not send temporary)
+        std::vector<MPI_Request> requestSize(2 * (cc.size() - 1));
+        std::vector<int> numWells(cc.size() - 1); // store well sizes (can not send temporary)
 
-        for (int i=0; i<cc.size()-1; ++i)
-        {
-            int ii=i+(int)(i>=root); // ii takes values {0,...,mpisize-1} but skips root
+        for (int i = 0; i < cc.size() - 1; ++i) {
+            int ii = i + (int)(i >= root); // ii takes values {0,...,mpisize-1} but skips root
             int tag = 37; // a random number
-            nrWells[i]=exportedCells[ii].size();
-            MPI_Isend(&nrWells[i], 1, MPI_INT, ii, tag++, cc, &requestSize[2*i]);
-            MPI_Isend(exportedCells[ii].data(), nrWells[i], MPI_INT, ii, tag++, cc, &requestSize[2*i+1]);
+            numWells[i] = exportedCells[ii].size();
+            MPI_Isend(&numWells[i], 1, MPI_INT, ii, tag, cc, &requestSize[2 * i]);
+            MPI_Isend(exportedCells[ii].data(), numWells[i], MPI_INT, ii, tag + 1, cc, &requestSize[2 * i + 1]);
         }
         // wait till all messages are completed
         MPI_Waitall(requestSize.size(), requestSize.data(), MPI_STATUS_IGNORE);
-    }
-    else // receive data from root
-    {
+    } else {
+        // receive data from root
         int tag = 37; // a random number
-        int nrWells;
-        MPI_Recv(&nrWells, 1, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
-        result.resize(nrWells);
-        MPI_Recv(result.data(), nrWells, MPI_INT, root, tag++, cc, MPI_STATUS_IGNORE);
+        int numWells;
+        MPI_Recv(&numWells, 1, MPI_INT, root, tag, cc, MPI_STATUS_IGNORE);
+        result.resize(numWells);
+        MPI_Recv(result.data(), numWells, MPI_INT, root, tag + 1, cc, MPI_STATUS_IGNORE);
     }
     return result;
 }
 
-
 void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importList,
-                             const std::vector<int>& extraWells)
+                             const std::vector<int>& extraCells)
 {
-    if (importList.empty() || extraWells.empty())
-    {
-        std::sort(importList.begin(), importList.end());
+    if (importList.empty()) {
+        // An empty importList implies that extraCells is empty
+        assert(extraCells.empty());
         return;
     }
     int rank = std::get<1>(importList[0]);
 
-    importList.reserve(importList.size()+extraWells.size());
-    for (const auto& well : extraWells)
-    {
+    importList.reserve(importList.size() + extraCells.size());
+    for (const auto& cell : extraCells) {
         // Beware: AttributeSet and localID are hard-coded
         using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
-        importList.emplace_back(well, rank, AttributeSet::owner, -1);
+        importList.emplace_back(cell, rank, AttributeSet::owner, -1);
     }
 
     std::sort(importList.begin(), importList.end());
@@ -370,7 +366,7 @@ void extendAndSortExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     // extend root's export list and get sets of well cells for other ranks
     auto expListToComm = Impl::extendRootExportList(gog, exportList, root, gIDtoRank);
     // obtain wells on this rank from root
-    auto extraWells = Impl::nonblockingCommunicateExportedCells(expListToComm, cc, root);
+    auto extraWells = Impl::communicateExportedCells(expListToComm, cc, root);
     if (cc.rank()!=root)
     {
         Impl::extendAndSortImportList(importList, extraWells);
