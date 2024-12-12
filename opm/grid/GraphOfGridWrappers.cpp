@@ -300,10 +300,9 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     return exportedCells;
 }
 
-std::vector<int> communicateExportedCells(
-    const std::vector<std::vector<int>>& exportedCells,
-    const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-    int root)
+std::vector<int> communicateExportedCells(const std::vector<std::vector<int>>& exportedCells,
+                                          const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                          int root)
 {
     // send data from root
     std::vector<int> result;
@@ -357,11 +356,11 @@ void extendAndSortImportList(std::vector<std::tuple<int,int,char,int>>& importLi
 } // end namespace Impl
 
 void extendAndSortExportAndImportLists(const GraphOfGrid<Dune::CpGrid>& gog,
-                                const Dune::cpgrid::CpGridDataTraits::Communication& cc,
-                                int root,
-                                std::vector<std::tuple<int,int,char>>& exportList,
-                                std::vector<std::tuple<int,int,char,int>>& importList,
-                                const std::vector<int>& gIDtoRank)
+                                       const Dune::cpgrid::CpGridDataTraits::Communication& cc,
+                                       int root,
+                                       std::vector<std::tuple<int,int,char>>& exportList,
+                                       std::vector<std::tuple<int,int,char,int>>& importList,
+                                       const std::vector<int>& gIDtoRank)
 {
     // extend root's export list and get sets of well cells for other ranks
     auto expListToComm = Impl::extendRootExportList(gog, exportList, root, gIDtoRank);

@@ -810,6 +810,38 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     BOOST_CHECK(gIDtoRank[8]==1);
 }
 
+BOOST_AUTO_TEST_CASE(ExtendAndSortImportList)
+{
+    using ITuple = std::tuple<int, int, char, int>;
+    std::vector<ITuple> importList;
+    importList.reserve(7);
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+    importList.emplace_back(2, 3, AttributeSet::owner, -1);
+    importList.emplace_back(4, 3, AttributeSet::owner, -1);
+    importList.emplace_back(0, 3, AttributeSet::owner, -1);
+    auto importList2 = importList;
+    // adding no extra cells just sorts it
+    Opm::Impl::extendAndSortImportList(importList2, std::vector<int> {});
+    BOOST_REQUIRE(importList2.size() == 3);
+    for (int i = 0; i < 3; ++i) {
+        const auto& [gID, rank, attr, lID] = importList2[i];
+        BOOST_CHECK(gID == 2 * i);
+        BOOST_CHECK(rank == 3);
+        BOOST_CHECK(attr == AttributeSet::owner);
+        BOOST_CHECK(lID == -1);
+    }
+    std::vector<int> extraCells { 1, 6, 5, 3 };
+    Opm::Impl::extendAndSortImportList(importList, extraCells);
+    BOOST_REQUIRE(importList.size() == 7);
+    for (int i = 0; i < 7; ++i) {
+        const auto& [gID, rank, attr, lID] = importList[i];
+        BOOST_CHECK(gID == i);
+        BOOST_CHECK(rank == 3);
+        BOOST_CHECK(attr == AttributeSet::owner);
+        BOOST_CHECK(lID == -1);
+    }
+}
+
 // getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
 // and returns a vector of well ranks
 BOOST_AUTO_TEST_CASE(test_getWellRanks)
