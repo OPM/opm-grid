@@ -45,7 +45,9 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
                 logMinTransm = transm;
             }
         }
-        assert(logMinTransm < std::numeric_limits<WeightType>::max());
+        if (logMinTransm == std::numeric_limits<WeightType>::max()) {
+            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
+        }
         logMinTransm = std::log(logMinTransm);
     }
 
