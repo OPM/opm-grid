@@ -284,11 +284,11 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
         addedExportsSize += sizesOfExport[i];
     }
     exportList.reserve(exportList.size()+addedExportsSize);
-    for (const auto& pWell : wellsToExport)
+    for (auto& pWell : wellsToExport)
     {
-        const auto& [begin, end, rank] = pWell;
+        auto& [begin, end, rank] = pWell;
         // remember to skip the well's first cell which already is in the importList
-        for (auto pgID = begin; ++pgID!=end; )
+        for (auto& pgID = ++begin; pgID!=end; ++pgID)
         {
             using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
             exportList.emplace_back(*pgID, rank, AttributeSet::owner);
