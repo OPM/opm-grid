@@ -247,7 +247,6 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     {
         // make a list of wells for easy identification during search. Contains {begin, end, well ID}
         std::map<int, std::tuple<iter,iter,int>> wellMap;
-        wellMap.reserve(gogWells.size());
         for (const auto& well : gogWells)
         {
             wellMap[*well.begin()] = std::make_tuple(well.begin(), well.end(), well.size());
