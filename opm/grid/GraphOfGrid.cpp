@@ -53,6 +53,7 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
 
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
+    graph.reserve(grid.size(0));
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
     {
         VertexProperties vertex;
