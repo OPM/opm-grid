@@ -246,7 +246,7 @@ extendRootExportList(const GraphOfGrid<Dune::CpGrid>& gog,
     else
     {
         // make a list of wells for easy identification during search. Contains {begin, end, well ID}
-        std::unordered_map<int, std::tuple<iter,iter,int>> wellMap;
+        std::map<int, std::tuple<iter,iter,int>> wellMap;
         wellMap.reserve(gogWells.size());
         for (const auto& well : gogWells)
         {

@@ -42,7 +42,7 @@ namespace Opm {
 template<typename Grid>
 class GraphOfGrid{
     using WeightType = float;
-    using EdgeList = std::unordered_map<int,WeightType>;
+    using EdgeList = std::map<int,WeightType>;
 
     struct VertexProperties
     {
