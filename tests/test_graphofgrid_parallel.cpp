@@ -35,6 +35,9 @@
 #include <opm/grid/GraphOfGrid.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
 
+// #include <opm/grid/utility/OpmWellType.hpp>
+#include <opm/input/eclipse/Schedule/Well/Well.hpp>
+
 #if HAVE_MPI
 BOOST_AUTO_TEST_CASE(ExtendRootExportList)
 {
@@ -156,6 +159,54 @@ BOOST_AUTO_TEST_CASE(CommunicateExportedCells)
             BOOST_REQUIRE(cells.size() == 0); // nothing assigned to ranks 4 and up
         }
     }
+}
+
+namespace {
+auto createWell(const std::string& name)
+{
+    using namespace Opm;
+    return Dune::cpgrid::OpmWellType(name, name, 0, 0, 0, 0, 0., WellType(),
+        Well::ProducerCMode(), Connection::Order(), UnitSystem(),
+        0., 0., false, false, 0, Well::GasInflowEquation());
+};
+}
+
+BOOST_AUTO_TEST_CASE(WellsOnThisRank)
+{
+    const auto& cc = Dune::MPIHelper::getCommunication();
+    std::vector<Dune::cpgrid::OpmWellType> wells;
+    wells.reserve(6);
+    wells.push_back(createWell("OnRank3a"));
+    wells.push_back(createWell("OnRank1a"));
+    wells.push_back(createWell("OnRank0"));
+    wells.push_back(createWell("OnRank2"));
+    wells.push_back(createWell("OnRank1b"));
+    wells.push_back(createWell("OnRank3b"));
+    std::array<int, 4> ranks;
+    for (int i = 0; i < 4; ++i) {
+        ranks[i] = std::min(i, cc.size() - 1);
+    }
+    std::vector<int> wellRanks { 3, 1, 0, 2, 1, 3 };
+    for (auto& v : wellRanks) {
+        v = ranks[v];
+    }
+
+    const auto wotr = wellsOnThisRank(wells, wellRanks, cc, 0);
+
+    BOOST_REQUIRE(wotr.size() == 6); // number of wells
+    // output is sorted by name in computeParallelWells
+    BOOST_CHECK(wotr[0].first == "OnRank0");
+    BOOST_CHECK(wotr[1].first == "OnRank1a");
+    BOOST_CHECK(wotr[2].first == "OnRank1b");
+    BOOST_CHECK(wotr[3].first == "OnRank2");
+    BOOST_CHECK(wotr[4].first == "OnRank3a");
+    BOOST_CHECK(wotr[5].first == "OnRank3b");
+    BOOST_CHECK(wotr[0].second == (cc.rank() == ranks[0]));
+    BOOST_CHECK(wotr[1].second == (cc.rank() == ranks[1]));
+    BOOST_CHECK(wotr[2].second == (cc.rank() == ranks[1]));
+    BOOST_CHECK(wotr[3].second == (cc.rank() == ranks[2]));
+    BOOST_CHECK(wotr[4].second == (cc.rank() == ranks[3]));
+    BOOST_CHECK(wotr[5].second == (cc.rank() == ranks[3]));
 }
 
 // After partitioning, importList and exportList are not complete,
