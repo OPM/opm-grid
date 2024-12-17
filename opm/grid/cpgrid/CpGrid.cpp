@@ -1316,7 +1316,7 @@ void CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std
     // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
     // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
     auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
-    std::cout<< "max id from level zero " << max_globalId_levelZero << std::endl;
+    
     assert(max_globalId_levelZero  > 0 );
     // Predict how many new cell ids per process are needed.
     std::vector<std::size_t> cell_ids_needed_by_proc(comm().size());
@@ -4311,7 +4311,7 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    /*if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
+    /* if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
         return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
     if (ijkLgr1[1] == cells_per_dim_lgr1[1]) {
@@ -4319,7 +4319,7 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     }
     if (ijkLgr1[2] == cells_per_dim_lgr1[2]) {
         return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
-    }*/
+        }*/
 
 
 
@@ -4329,23 +4329,23 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     // On a serial run, it would be enough to consider i = cells_per_dim[0], j = cells_per_dim[1], and k = cells_per_dim[2].
     // To cover all possible escenarios, serial and parallel, we consider the six cases.
     //
-    if (ijkLgr1[0] == 0) { // same j,k, but i = cells_per_dim[0]
-        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (cells_per_dim_lgr1[0]*(cells_per_dim_lgr2[2]+1))+ ijkLgr1[2];
-    }
     if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j, k, but i = 0
         return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-    }
-    if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_Dim[1]
-        return  (cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
     if (ijkLgr1[1] == cells_per_dim_lgr1[1]) { // same i,k, but j = 0
         return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
+ if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
+        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
+    }
+   if (ijkLgr1[0] == 0) { // same j,k, but i = cells_per_dim[0]
+        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (cells_per_dim_lgr1[0]*(cells_per_dim_lgr2[2]+1))+ ijkLgr1[2];
+    }
+  if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_Dim[1]
+      return  (cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
+  }
     if (ijkLgr1[2] == 0) { // same i,j, but k = cells_per_dim[2]
         return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + cells_per_dim_lgr2[2];
-    }
-    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
-        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
     }
     else {
         //  OPM_THROW(std::logic_error,
@@ -4488,7 +4488,6 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
         return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr1[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2]) + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
     }
     else {
-        //  OPM_THROW(std::logic_error,
         const auto& message = "Cannot convert face index from one LGR to its neighboring LGR.";
 
           if (comm().rank() == 0){
