@@ -236,20 +236,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
-    if (data_.size() > 1)
-    {
-        if (comm().rank() == 0)
-        {
-            OPM_THROW(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
-        }
-        else
-        {
-            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
-        }
-    }
-
 #if HAVE_MPI
-    auto& cc = data_[0]->ccobj_;
+    auto& cc = currentData().back()->ccobj_;
 
     if (cc.size() > 1)
     {
@@ -266,10 +254,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         {
             std::vector<int> errors;
             std::vector<std::string> errorMessages =
-                { "More parts than MPI Communicator can handle",
-                  "Indices of parts need to zero starting",
-                  "Indices of parts need to be consecutive",
-                  "Only rank 0 should provide partitioning information for each cell"};
+            { "More parts than MPI Communicator can handle",
+              "Indices of parts need to zero starting",
+              "Indices of parts need to be consecutive",
+              "Only rank 0 should provide partitioning information for each cell"};
 
             std::set<int> existingParts;
 
@@ -328,7 +316,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
                 cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, nullptr, input_cell_part,
-                                                   true);
+                                             true);
         }
         else
         {
@@ -423,7 +411,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 procsWithZeroCells += (cellsOnProc == 0);
             }
             std::ostringstream ostr;
-            ostr << "\nLoad balancing distributes " << data_[0]->size(0)
+            ostr << "\nLoad balancing distributes " << currentData().back()->size(0)
                  << " active cells on " << cc.size() << " processes as follows:\n";
             ostr << "  rank   owned cells   overlap cells   total cells\n";
             ostr << "--------------------------------------------------\n";
@@ -509,37 +497,33 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             }
         }
 
-
         // distributed_data should be empty at this point.
         distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
-        distributed_data_[0]->setUniqueBoundaryIds(data_[0]->uniqueBoundaryIds());
+        distributed_data_.back()->setUniqueBoundaryIds(data_.back()->uniqueBoundaryIds());
 
         // Just to be sure we assume that only master knows
-        cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
-
+        cc.broadcast(&distributed_data_.back()->use_unique_boundary_ids_, 1, 0);
 
         // Create indexset
-        distributed_data_[0]->cellIndexSet().beginResize();
+        distributed_data_.back()->cellIndexSet().beginResize();
         for(const auto& entry: importList)
         {
-            distributed_data_[0]->cellIndexSet()
+            distributed_data_.back()->cellIndexSet()
                 .add(std::get<0>(entry),ParallelIndexSet::LocalIndex(std::get<3>(entry),AttributeSet(std::get<2>(entry)), true));
         }
-        distributed_data_[0]->cellIndexSet().endResize();
+        distributed_data_.back()->cellIndexSet().endResize();
         // add an interface for gathering/scattering data with communication
         // forward direction will be scatter and backward gather
         // Interface will communicate from owner to all
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
-        distributed_data_[0]->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
-        (*global_id_set_ptr_).insertIdSet(*distributed_data_[0]);
-        distributed_data_[0]-> index_set_.reset(new cpgrid::IndexSet(distributed_data_[0]->cell_to_face_.size(),
-                                                                     distributed_data_[0]-> geomVector<3>().size()));
+        distributed_data_.back()->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
+        (*global_id_set_ptr_).insertIdSet(*distributed_data_.back());
+        distributed_data_.back() -> index_set_.reset(new cpgrid::IndexSet(distributed_data_.back()->cell_to_face_.size(),
+                                                                          distributed_data_.back()-> geomVector<3>().size()));
 
-
-
-        current_view_data_ = distributed_data_[0].get();
+        current_view_data_ = distributed_data_.back().get();
         current_data_ = &distributed_data_;
         return std::make_pair(true, wells_on_proc);
     }
