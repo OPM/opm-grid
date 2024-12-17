@@ -357,6 +357,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             else if (partitionMethod == Dune::PartitionMethod::zoltanGoG)
             {
 #ifdef HAVE_ZOLTAN
+                if (serialPartitioning)
+                    OPM_MESSAGE("Warning: Serial partitioning is set to true and Zoltan with GraphOfGrid was selected to partition the grid, but only parallel case is implemented. Continuing with prallel partitioning...");
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams);
 #else
