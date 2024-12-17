@@ -78,7 +78,7 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
     if (cc.rank() == 0) {
         switch (ranks[3]) {
         case 3:
-            BOOST_REQUIRE(exportCells.size() == 4);
+            BOOST_REQUIRE((int)exportCells.size() == cc.size());
             BOOST_REQUIRE(exportCells[0].size() == 0);
             BOOST_REQUIRE(exportCells[1].size() == 0);
             BOOST_REQUIRE(exportCells[2].size() == 1);
@@ -120,6 +120,41 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
     } else {
         // non-root ranks return an empty vector, no matter what arguments they have got
         BOOST_REQUIRE(exportCells.size() == 0);
+    }
+}
+
+BOOST_AUTO_TEST_CASE(CommunicateExportedCells)
+{
+    const auto& cc = Dune::MPIHelper::getCommunication();
+    std::array<int, 4> ranks;
+    for (int i = 0; i < 4; ++i) {
+        ranks[i] = std::min(i, cc.size() - 1);
+    }
+
+    // root (rank 0) exports, other ranks do not
+    std::vector<std::vector<int>> exportCells;
+    if (cc.rank() == 0) {
+        exportCells.resize(cc.size());
+        for (int r = 1; r <= ranks[3]; ++r) {
+            exportCells[r].push_back(r * 10);
+            exportCells[r].push_back(r * 10 + 1);
+            exportCells[r].push_back(r * 10 + 2);
+        }
+    }
+
+    auto cells = Opm::Impl::communicateExportedCells(exportCells, cc, 0);
+
+    if (cc.rank() == 0) {
+        BOOST_REQUIRE(cells.size() == 0); // root receives nothing
+    } else {
+        if (cc.rank() <= ranks[3]) {
+            BOOST_REQUIRE(cells.size() == 3);
+            for (int i = 0; i < 3; ++i) {
+                BOOST_CHECK(cells[i] == cc.rank() * 10 + i);
+            }
+        } else {
+            BOOST_REQUIRE(cells.size() == 0); // nothing assigned to ranks 4 and up
+        }
     }
 }
 
