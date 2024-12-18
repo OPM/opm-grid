@@ -172,7 +172,7 @@ CpGrid::CpGrid()
     current_view_data_ = data_[0].get();
     current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
-    
+
 }
 
 CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
@@ -186,7 +186,7 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
     current_view_data_ = data_[0].get();
     current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
-    
+
 }
 
 std::vector<int>
@@ -1003,7 +1003,13 @@ const CpGridFamily::Traits::LeafIndexSet& CpGrid::leafIndexSet() const
 void CpGrid::globalRefine (int refCount)
 {
     if (refCount < 0) {
-        OPM_THROW(std::logic_error, "Invalid argument. Provide a nonnegative integer for global refinement.");
+        const auto& message = "Invalid argument. Provide a nonnegative integer for global refinement.";
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, message);
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
     // Throw if the grid has been already partially refined, i.e., there exist coarse cells with more than 6 faces.
     // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
@@ -1017,28 +1023,33 @@ void CpGrid::globalRefine (int refCount)
             isOnlyGlobalRefined = isOnlyGlobalRefined && ( (currentData()[level+1]->size(0)) / (currentData()[level]->size(0)) == 8 );
         }
         if (!isOnlyGlobalRefined) {
-            OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
+            //  if (comm().rank() == 0){
+                OPM_THROW(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
+                /*    }
+            else {
+                OPM_THROW_NOLOG(std::logic_error, "Global refinement of a mixed grid with coarse and refined cells is not supported yet.");
+                }*/
         }
-    }
-    if (refCount>0) {
-        const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
-        for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
+        if (refCount>0) {
+            const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
+            for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
 
-            std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
-            const auto& preAdaptMaxLevel = this ->maxLevel();
-            std::vector<std::string> lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-            bool isCARFIN = true;
-            const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
+                std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
+                const auto& preAdaptMaxLevel = this ->maxLevel();
+                std::vector<std::string> lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
+                bool isCARFIN = true;
+                const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
 
-            for(const auto& element: elements(this-> leafGridView())) {
-                // Mark all the elements of the current leaf grid view for refinement
-                mark(1, element);
-                assignRefinedLevel[element.index()] = preAdaptMaxLevel +1;
+                for(const auto& element: elements(this-> leafGridView())) {
+                    // Mark all the elements of the current leaf grid view for refinement
+                    mark(1, element);
+                    assignRefinedLevel[element.index()] = preAdaptMaxLevel +1;
+                }
+
+                preAdapt();
+                adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, isCARFIN, {{0,0,0}}, {endIJK});
+                postAdapt();
             }
-
-            preAdapt();
-            adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, isCARFIN, {{0,0,0}}, {endIJK});
-            postAdapt();
         }
     }
 }
@@ -1222,13 +1233,25 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
                 }
             }
         }
-        OPM_THROW(std::invalid_argument, "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
-                  " and index in inside: " + std::to_string(intersection.indexInInside()));
+        const auto& message = "Parent intersection not found for face with index: " + std::to_string(intersection.id()) +
+            " and index in inside: " + std::to_string(intersection.indexInInside());
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, message);
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
-    OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
+    if (comm().rank() == 0) {
+        OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
+    }
+    else {
+        OPM_THROW_NOLOG(std::logic_error,  "Face is on the boundary of the grid");
+    }
 }
 
-bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
+bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec,
+                                      const std::vector<std::array<int,3>>& endIJK_vec) const
 {
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
@@ -1316,7 +1339,7 @@ void CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std
     // Maximum global id from level zero. (Then, new entities get global id values greater than max_globalId_levelZero).
     // Recall that only cells and points are taken into account; faces are ignored (do not have any global id).
     auto max_globalId_levelZero = comm().max(current_data_->front()->global_id_set_->getMaxGlobalId());
-    
+
     assert(max_globalId_levelZero  > 0 );
     // Predict how many new cell ids per process are needed.
     std::vector<std::size_t> cell_ids_needed_by_proc(comm().size());
@@ -1452,7 +1475,7 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
     auto& level_index_set =  currentData()[level]->cellIndexSet();
 
     level_index_set.beginResize();
-    
+
     // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
     // The bool indicates whether the global index might exist on other processes with other attributes.
     // RemoteIndices::rebuild has a Boolean as a template parameter telling the method whether to ignore this
@@ -2457,9 +2480,9 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         /** Warning: due to the overlap layer size (equal to 1) cells that share corners or edges (not faces) with interior cells
             are not included/seen by the process. This, in some cases, ends up in duplicated point ids. */
         //
-        //   auto atLeastOneLgr = std::accumulate(lgr_with_at_least_one_active_cell.begin(), lgr_with_at_least_one_active_cell.end(), 0);
-        //   if (atLeastOneLgr) {
-            
+        //  auto atLeastOneLgr = std::accumulate(lgr_with_at_least_one_active_cell.begin(), lgr_with_at_least_one_active_cell.end(), 0);
+        //    if (atLeastOneLgr) {
+
             int min_globalId_cell_in_proc = 0;
             int min_globalId_point_in_proc = 0;
             predictMinCellAndPointGlobalIdPerProcess(assignRefinedLevel,
@@ -2528,7 +2551,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
             }
 
             for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-            
+
                 populateCellIndexSetRefinedGrid(level);
                 // Compute the partition type for cell
                 currentData()[level]->computeCellPartitionType();
@@ -2537,13 +2560,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                 // Now we can compute the communication interface.
                 currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
             }
-            //   }
+            // }
             //    else
            //   {
                                                                                          //   }
-        
-       
-    
+
+
+
 
         populateLeafGlobalIdSet();
 
@@ -2553,7 +2576,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         }
 
         populateCellIndexSetLeafGridView();
-        
+
         // Compute the partition type for cell
         (*current_data_).back()->computeCellPartitionType();
 
@@ -2628,7 +2651,12 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // To check "Non-NNCs (non non neighboring connections)" for all processes.
     nonNNCs = comm().min(nonNNCs); // 0 when at least one process returns false (there are NNCs on a selected cell for refinement).
     if(!nonNNCs) {
-        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
+        }
     }
 
     // Determine the assigned level for the refinement of each marked cell
@@ -2702,10 +2730,10 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                                                      int& cell_count,
                                                      std::vector<std::vector<int>>& preAdapt_level_to_leaf_cells_vec,
                                                      /* Additional parameters */
-                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const 
+                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // Each marked element for refinement (mark equal to 1), will be refined individuality, creating its own Lgr. The element index will
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
@@ -2723,7 +2751,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
             cell_count +=1;
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getEquivLevelElem().index()] = cell_count;
         }
-        
+
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
         if (getMark(element) ==  1) {
@@ -2757,7 +2785,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
-            
+
             preAdapt_parent_to_children_cells_vec[element.level()][element.getEquivLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
@@ -2777,7 +2805,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
                                               const int& cell_count) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // ------------------------ Refined grid parameters
     // Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
     // Each entry represents a refined level.
@@ -3124,7 +3152,7 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                                      const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // Step 1. Select/store the corners from the starting grid not involved in any (new) LGR.
     //         Replace the corners from level zero involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the level zero corner
@@ -3277,8 +3305,8 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
     // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel(); 
-    
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
         if (markedElem_to_itsLgr[elem]!=nullptr)  {
@@ -3339,7 +3367,7 @@ void CpGrid::populateLeafGridCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Ge
                                      const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     adapted_corners.resize(corner_count);
     for (int corner = 0; corner < corner_count; ++corner) {
         const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner.at(corner);
@@ -3380,7 +3408,7 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                                    const int& preAdaptMaxLevel) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
     mutable_face_normals.resize(face_count);
@@ -3560,7 +3588,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                                    const int& preAdaptMaxLevel) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // --- Adapted cells ---
     // Store the adapted cells. Main difficulty: to lookup correctly the indices of the corners and faces of each cell.
     adapted_cells.resize(cell_count);
@@ -3691,7 +3719,7 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                                   const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   const std::vector<std::array<int,3>>&  cells_per_dim_vec) const
-{   
+{
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
 
@@ -3956,7 +3984,7 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
             currentData()[refinedLevel]->corner_history_[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, static_cast<int>(corner)}} :  preAdaptGrid_corner_history[corner];
         }
     }
-   
+
     // corner_history_ leaf grid view
     for ( int leafCorner = 0; leafCorner < corner_count; ++leafCorner){
         currentData().back()->corner_history_.resize(corner_count);
@@ -4031,7 +4059,12 @@ std::array<int,3>  CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_
         ijk[2] = faceIdxInLgr / cells_per_dim[1];
         break;
     default:
-        OPM_THROW(std::logic_error, "FaceTag is not I, J, or K!");
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "FaceTag is not I, J, or K!");
+        }
+        else {
+             OPM_THROW_NOLOG(std::logic_error, "FaceTag is not I, J, or K!");
+        }
     }
     return ijk;
 }
@@ -4129,7 +4162,12 @@ std::array<int,2> CpGrid::getParentFacesAssocWithNewRefinedCornLyingOnEdge(const
 
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
     if(parentCell_to_face.size()>6){
-        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        }
     }
     // Corners Order defined in Geometry::refine  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
@@ -4198,7 +4236,13 @@ int CpGrid::getParentFaceWhereNewRefinedCornerLiesOn(const std::array<int,3>& ce
 
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
     if(parentCell_to_face.size()>6){
-        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        if (comm().rank() == 0 )
+        {
+            OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        }
     }
     const auto& ijk = getRefinedCornerIJK(cells_per_dim, cornerIdxInLgr);
 
@@ -4231,7 +4275,12 @@ int CpGrid::getParentFaceWhereNewRefinedCornerLiesOn(const std::array<int,3>& ce
             return face.index();
         }
     }
-    OPM_THROW(std::logic_error, "Cannot find parent face index where new refined corner lays on.");
+    if (comm().rank() == 0) {
+        OPM_THROW(std::logic_error, "Cannot find parent face index where new refined corner lays on.");
+    }
+    else {
+        OPM_THROW_NOLOG(std::logic_error, "Cannot find parent face index where new refined corner lays on.");
+    }
 }
 
 int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cells_per_dim,
@@ -4245,15 +4294,13 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
     // I false, I true, J false, J true, K false, K true, if current_view_data_ is level zero
 
     if(parentCell_to_face.size()>6){
-        //OPM_THROW(std::logic_error,
         const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
-         if (comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
-        
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
 
     // Order defined in Geometry::refine
@@ -4293,12 +4340,11 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
             }
              if ((ijk[1] == 0) && (faceTag == 1) && !face.orientation()) { // {J_FACE, false}
                 return face.index();
-            }
+             }
         }
     }
-    //   OPM_THROW(std::logic_error,
     const auto& message = "Cannot find parent face index where the new refined face lays on.";
-       if (comm().rank() == 0){
+    if (comm().rank() == 0){
         OPM_THROW(std::logic_error, message);
     }
     else{
@@ -4348,14 +4394,13 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
         return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + cells_per_dim_lgr2[2];
     }
     else {
-        //  OPM_THROW(std::logic_error,
         const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
-    if (comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
 }
 
@@ -4364,13 +4409,12 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
 {
     assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
     const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
-    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx)); 
- 
+    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
+
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr1, true)];
 
     if(parentCell_to_face.size()>6){
-        //OPM_THROW(std::logic_error,
         const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
         if (comm().rank() == 0){
             OPM_THROW(std::logic_error, message);
@@ -4389,19 +4433,19 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
         const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
         const auto& faceTag = current_view_data_->face_tag_[faceEntity];
         /*   if (parentFaceLastAppearanceIdx == face.index() && face.orientation()) {
-            if (faceTag == 0) { // I_FACE true
-                // The same new born refined corner will have equal values of j and k, but i == 0 instead of cells_per_dim[0]
-                return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))  + ijkLgr1[2];
-            }
-            if (faceTag == 1) { // J_FACE true
-                // The same new born refined corner will have equal values of i and k, but j == 0 instead of cells_per_dim[1]
-                return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-            }
-            if (faceTag == 2) { // K_FACE true
-                // The same new born refined corner will have equal values of i and j, but k == 0 instead of cells_per_dim[2]
-                return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
-                }*/
-             if (parentFaceLastAppearanceIdx == face.index()) {
+             if (faceTag == 0) { // I_FACE true
+             // The same new born refined corner will have equal values of j and k, but i == 0 instead of cells_per_dim[0]
+             return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))  + ijkLgr1[2];
+             }
+             if (faceTag == 1) { // J_FACE true
+             // The same new born refined corner will have equal values of i and k, but j == 0 instead of cells_per_dim[1]
+             return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
+             }
+             if (faceTag == 2) { // K_FACE true
+             // The same new born refined corner will have equal values of i and j, but k == 0 instead of cells_per_dim[2]
+             return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
+             }*/
+        if (parentFaceLastAppearanceIdx == face.index()) {
             if ( face.orientation() ){
                 if (faceTag == 0) { // I_FACE true. The same new born refined corner will have equal j and k, but i == 0.
                     return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))  + ijkLgr1[2];
@@ -4427,20 +4471,18 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
                         + cells_per_dim_lgr2[2];
                 }
             }
+        }
     }
+    const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
+    if (comm().rank() == 0){
+        OPM_THROW(std::logic_error, message);
     }
-    
-       //  OPM_THROW(std::logic_error,
-                const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
-                if (comm().rank() == 0){
-                    OPM_THROW(std::logic_error, message);
-                }
-                else{
-                    OPM_THROW_NOLOG(std::logic_error, message);
-                }
+    else{
+        OPM_THROW_NOLOG(std::logic_error, message);
+    }
 }
 
-int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
+int CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
                                              const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
                                              const std::array<int,3>& cells_per_dim_lgr2) const
 {
@@ -4456,7 +4498,7 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
     const int& kFacesLgr2 = cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[2]+1);
     const int& iFacesLgr2 = ((cells_per_dim_lgr2[0]+1)*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2]);
 
-    
+
     if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j,k, but i = 0
         assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
         assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
@@ -4482,7 +4524,7 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
         assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
         return  (cells_per_dim_lgr2[2]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]) + (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
     }
-     if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_dim[1]
+    if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_dim[1]
         assert( cells_per_dim_lgr1[0] == cells_per_dim_lgr2[0]);
         assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
         return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr1[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2]) + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
@@ -4490,19 +4532,14 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
     else {
         const auto& message = "Cannot convert face index from one LGR to its neighboring LGR.";
 
-          if (comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
-        
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
+
     }
 }
 
-
-
-
 } // namespace Dune
-
-
