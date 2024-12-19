@@ -192,7 +192,7 @@ void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid, Opm::EclipseGrid ecl
     // Element mapper
     const Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(leaf_view, Dune::mcmgElementLayout());
 
-    const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
+    const auto& poroOnLeaf = lookUpData.template assignFieldPropsDoubleOnLeaf<Dune::PolyhedralGrid<3,3>>(fpm, "PORO");
     const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
 
     const auto& eqlnumOnLeaf = lookUpData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", true);

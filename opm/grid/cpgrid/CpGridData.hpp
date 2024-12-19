@@ -536,6 +536,11 @@ public:
         return *level_data_ptr_;
     }
 
+    std::array<int,3> getCellsPerDim() const
+    {
+        return cells_per_dim_;
+    }
+    
 
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///

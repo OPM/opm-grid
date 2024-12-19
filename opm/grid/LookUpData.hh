@@ -93,7 +93,15 @@ public:
     operator()(const EntityType& elem, const std::vector<FieldPropType>& fieldProp) const;
 
     /// \brief: Get field property of type double from field properties manager by name.
-    std::vector<double> assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
+    template<typename GridType>
+    typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, std::vector<double>>
+    assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
+                                                     const std::string& propString) const;
+
+    /// \brief: Get field property of type double from field properties manager by name.
+    template<typename GridType>
+    typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>, std::vector<double>>
+    assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                      const std::string& propString) const;
 
     /// \brief: Get field property of type int from field properties manager by name.
@@ -303,7 +311,9 @@ Opm::LookUpData<Grid,GridView>::operator()(const EntityType& elem,
 }
 
 template<typename Grid, typename GridView>
-std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
+template<typename GridType>
+typename std::enable_if_t<!std::is_same_v<GridType,Dune::CpGrid>, std::vector<double>>
+Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                                                  const std::string& propString) const
 {
     std::vector<double> fieldPropOnLeaf;
@@ -337,6 +347,50 @@ std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf
     }
     return fieldPropOnLeaf;
 }
+
+
+template<typename Grid, typename GridView>
+template<typename GridType>
+typename std::enable_if_t<std::is_same_v<GridType,Dune::CpGrid>, std::vector<double>>
+Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
+                                                                                 const std::string& propString) const
+{
+    std::vector<double> fieldPropOnLeaf;
+    unsigned int numElements = gridView_.size(0);
+    fieldPropOnLeaf.resize(numElements);
+    const auto& fieldProp = fieldPropsManager.get_double(propString);
+    if ( (propString == "PORV") && (gridView_.grid().maxLevel() > 0)) {
+        // PORV poreVolume. LGRs supported (so far) only for CpGrid.
+        // For CpGrid with LGRs, poreVolume of a cell on the leaf grid view which has a parent cell on level 0,
+        // is computed as  porv[parent] * leafCellVolume / parentCellVolume. In this way, the sum of the pore
+        // volume of a parent cell coincides with the sum of the pore volume of its children.
+        for (const auto& element : elements(gridView_)) {
+            const auto& elemIdx = this-> elemMapper_.index(element);
+            const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
+            if (element.hasFather()) {
+                // const auto fatherVolume = element.father().geometry().volume();
+                // Compute total amount of siblings (total amount of refined child cells of father cell)
+                const auto& cells_per_dim = gridView_.grid().currentData()[element.level()]-> getCellsPerDim();
+                const auto& total_children = cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2];
+                // const auto& elemVolume = element.geometry().volume();
+                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] / total_children;
+                    //fieldProp[fieldPropIdx] * elemVolume / fatherVolume;
+            }
+            else {
+                fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+            }
+        }
+    }
+    else {
+        for (const auto& element : elements(gridView_)) {
+            const auto& elemIdx = this-> elemMapper_.index(element);
+            const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
+            fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx];
+        }
+    }
+    return fieldPropOnLeaf;
+}
+
 
 template<typename Grid, typename GridView>
 template<typename IntType>
