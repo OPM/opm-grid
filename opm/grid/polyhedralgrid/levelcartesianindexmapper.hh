@@ -50,72 +50,55 @@ namespace Opm
 // Interface class to access the local Cartesian grid of each level grid (when refinement).
 // Further documentation in opm/grid/common/LevelCartesianIndexMapper.hpp
 //
+// Adapter Design Pattern: In this case, LevelCartesianIndexMapper uses the Object Adapter variant, where it holds an instance
+// (here, a std::unique_ptr) of CartesianIndexMapper, the wrapped type. The goal is to provide a standardized interface, allowing
+// incompatible functionality (such as Cartesian indexing in the context of refinement that may not be supported - yet -for all
+// grid types, like CpGrid) to integrate smoothly within the existing conventions.
+//
 // Specialization for PolyhedralGrid
 template<int dim, int dimworld, typename coord_t>
 class LevelCartesianIndexMapper<Dune::PolyhedralGrid< dim, dimworld, coord_t >>
 {
-    typedef Dune::PolyhedralGrid< dim, dimworld, coord_t >  Grid;
+    using Grid = Dune::PolyhedralGrid< dim, dimworld, coord_t >;
 public:
-    static const int dimension = 3 ;
+    static constexpr int dimension = 3 ;
 
-    explicit LevelCartesianIndexMapper(const Grid& grid) : grid_{ &grid }
+    explicit LevelCartesianIndexMapper(const Dune::CartesianIndexMapper<Grid>& cartesian_index_mapper)
+        : cartesianIndexMapper_{std::make_unique<Dune::CartesianIndexMapper<Grid>>(cartesian_index_mapper)}
     {}
 
     const std::array<int,3>& cartesianDimensions(int level) const
     {
         throwIfLevelPositive(level);
-        return grid_->logicalCartesianSize();
+        return cartesianIndexMapper_->logicalCartesianSize();
     }
 
     int cartesianSize(int level) const
     {
         throwIfLevelPositive(level);
-        return computeCartesianSize(0);
+        return cartesianIndexMapper_->cartesianSize();
     }
 
     int compressedSize(int level) const
     {
         throwIfLevelPositive(level);
-        return grid_->size(0);
+        return cartesianIndexMapper_->compressedSize();
     }
 
     int cartesianIndex( const int compressedElementIndex, const int level) const
     {
         throwIfLevelPositive(level);
-        assert( compressedElementIndex >= 0 && compressedElementIndex < compressedSize(0) );
-        return grid_->globalCell()[ compressedElementIndex ];
+        return cartesianIndexMapper_->cartesianIndex(compressedElementIndex);
     }
 
     void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords, int level) const
     {
         throwIfLevelPositive(level);
-
-        int gc = cartesianIndex( compressedElementIndex, 0);
-        auto cartesianDimensions = grid_->logicalCartesianSize();
-        if( dimension >=2 )
-        {
-            for( int d=0; d<dimension-2; ++d )
-            {
-                coords[d] = gc % cartesianDimensions[d];  gc /= cartesianDimensions[d];
-            }
-
-            coords[dimension-2] = gc % cartesianDimensions[dimension-2];
-            coords[dimension-1] = gc / cartesianDimensions[dimension-1];
-        }
-        else
-            coords[ 0 ] = gc ;
+        cartesianIndexMapper_->cartesianCoordinate(compressedElementIndex, coords);
     }
 
 private:
-    const Grid* grid_;
-
-    int computeCartesianSize(int level) const
-    {
-        int size = cartesianDimensions(level)[ 0 ];
-        for( int d=1; d<dimension; ++d )
-            size *= cartesianDimensions(level)[ d ];
-        return size;
-    }
+    std::unique_ptr<Dune::CartesianIndexMapper<Grid>> cartesianIndexMapper_;
 
     void throwIfLevelPositive(int level) const
     {
