@@ -303,13 +303,13 @@ void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const s
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::GridView<Dune::DefaultLeafGridViewTraits<Dune::CpGrid>>>
         mapper(leaf_view, Dune::mcmgElementLayout());
 
-    const auto& poroOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
+    const auto& poroOnLeaf = lookUpData.template assignFieldPropsDoubleOnLeaf<Dune::CpGrid>(fpm, "PORO");
     const auto& poroOnLeafCart = lookUpCartesianData.assignFieldPropsDoubleOnLeaf(fpm, "PORO");
 
     const auto& eqlnumOnLeaf = lookUpData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", true);
     const auto& eqlnumOnLeafCart = lookUpCartesianData.assignFieldPropsIntOnLeaf<int>(fpm, "EQLNUM", true);
 
-    const auto& porvOnLeaf = lookUpData.assignFieldPropsDoubleOnLeaf(fpm, "PORV");
+    const auto& porvOnLeaf = lookUpData.template assignFieldPropsDoubleOnLeaf<Dune::CpGrid>(fpm, "PORV");
 
     for (const auto& elem : elements(leaf_view))
     {
