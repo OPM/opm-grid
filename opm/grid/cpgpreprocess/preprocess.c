@@ -225,7 +225,7 @@ process_vertical_faces(int direction,
     int i,j;
     int *cornerpts[4];
     int d[3];
-    int f;
+    unsigned f;
     enum face_tag tag[] = { I_FACE, J_FACE };
     int *tmp;
     int nx = out->dimensions[0];
@@ -1065,7 +1065,8 @@ static void
 reverse_face_nodes(struct processed_grid *out)
 /* ---------------------------------------------------------------------- */
 {
-    int f, t, *i, *j;
+    int t, *i, *j;
+    unsigned f;
 
     for (f = 0; f < out->number_of_faces; f++) {
         i = out->face_nodes + (out->face_ptr[f + 0] + 0);

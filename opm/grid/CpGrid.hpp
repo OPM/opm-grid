@@ -48,13 +48,10 @@
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
 #include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h> //  Not really needed it seems, but alas.
-#include "common/GridEnums.hpp"   
-#include <opm/grid/utility/OpmWellType.hpp>  
+#include "common/GridEnums.hpp"
+#include <opm/grid/utility/OpmWellType.hpp>
 
-#include <iostream>
-#if ! HAVE_MPI
-#include <list>
-#endif
+#include <set>
 
 namespace Opm
 {

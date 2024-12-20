@@ -83,11 +83,11 @@ extern "C" {
 
         int    dimensions[3];     /**< Cartesian box dimensions. */
 
-        int    number_of_faces;   /**< Total number of unique grid faces
+        unsigned number_of_faces;   /**< Total number of unique grid faces
                                        (i.e., connections). */
         int    *face_nodes;       /**< Node (vertex) numbers of each face,
                                        stored sequentially. */
-        int    *face_ptr;         /**< Start position for each face's
+        unsigned int    *face_ptr;         /**< Start position for each face's
                                        `face_nodes'. */
         int    *face_neighbors;   /**< Global cell numbers.  Two elements per
                                        face, stored sequentially. */
