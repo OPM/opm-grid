@@ -52,7 +52,7 @@ template<>
 class LevelCartesianIndexMapper<Dune::CpGrid>
 {
 public:
-    static const int dimension = 3 ;
+    static constexpr int dimension = 3 ;
 
     explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{ &grid }
     {}
