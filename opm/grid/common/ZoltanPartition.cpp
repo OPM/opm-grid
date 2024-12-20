@@ -66,7 +66,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
     std::vector<std::tuple<int,int,char,int>> myImportList;
     assert(rank==root || numExport==0);
     assert(rank!=root || numImport==0);
-    int buffer = 1.05;
+    constexpr double buffer = 1.05;
     // all cells on root are added to its export and its import list
     // myImportList will be expanded if distributed wells are not allowed and well cells are moved
     std::size_t reserveEx = rank!=root ? 0 : cpgrid.size(0);
