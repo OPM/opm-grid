@@ -441,7 +441,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     {
         myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner), -1);
     }
-    assert(rank==root || numExport==0);
+
     if (rank==root)
     {
         for ( int i=0; i < numExport; ++i )

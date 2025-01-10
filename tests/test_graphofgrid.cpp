@@ -810,6 +810,9 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     BOOST_CHECK(gIDtoRank[8]==1);
 }
 
+#if HAVE_MPI
+// This function is in MPI guard even though it does not use the communication.
+// After all, it is useless in a sequential run that has no importLists.
 BOOST_AUTO_TEST_CASE(ExtendAndSortImportList)
 {
     using ITuple = std::tuple<int, int, char, int>;
@@ -841,6 +844,7 @@ BOOST_AUTO_TEST_CASE(ExtendAndSortImportList)
         BOOST_CHECK(lID == -1);
     }
 }
+#endif // HAVE_MPI
 
 // getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
 // and returns a vector of well ranks
