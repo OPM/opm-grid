@@ -22,6 +22,7 @@
 
 #include <stddef.h>
 #include <stdbool.h>
+#include <stdint.h>
 
 /**
  * \file
@@ -78,7 +79,7 @@ read_grid(const char *fname);
  ---- end of synopsis of grid.h ----
 */
 
-typedef unsigned grid_size_t;
+typedef int64_t grid_size_t;
 
 /**
    Data structure for an unstructured grid, unstructured meaning that
