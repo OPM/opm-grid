@@ -30,7 +30,7 @@ norm(const double w[3])
 /* ------------------------------------------------------------------ */
 static void
 compute_face_geometry_3d(double *coords, int nfaces,
-                         int *nodepos, int *facenodes, double *fnormals,
+                         unsigned* nodepos, int *facenodes, double *fnormals,
                          double *fcentroids, double *fareas)
 /* ------------------------------------------------------------------ */
 {
@@ -43,7 +43,8 @@ compute_face_geometry_3d(double *coords, int nfaces,
    double v[3];
    double w[3];
 
-   int i,k;
+   int i;
+   unsigned k;
    int node;
 
    double cface[3]  = {0};
@@ -124,13 +125,13 @@ static void
 compute_edge_geometry_2d(
       /* in  */ double *node_coords,
       /* in  */ int     num_edges,
-      /* in  */ int    *edge_node_pos,
+      /* in  */ unsigned* edge_node_pos,
       /* in  */ int    *edge_nodes,
       /* out */ double *edge_normals,
       /* out */ double *edge_midpoints,
       /* out */ double *edge_lengths)
 {
-   const int num_dims = 2;
+   const unsigned num_dims = 2;
 
    /* offsets to each of the nodes in a compacted edge */
    const int a_ofs = 0;
@@ -188,7 +189,7 @@ compute_edge_geometry_2d(
 /* ------------------------------------------------------------------ */
 void
 compute_face_geometry(int ndims, double *coords, int nfaces,
-                      int *nodepos, int *facenodes, double *fnormals,
+                      unsigned* nodepos, int *facenodes, double *fnormals,
                       double *fcentroids, double *fareas)
 /* ------------------------------------------------------------------ */
 {
@@ -213,15 +214,16 @@ compute_face_geometry(int ndims, double *coords, int nfaces,
 /* ------------------------------------------------------------------ */
 static void
 compute_cell_geometry_3d(double *coords,
-                         int *nodepos, int *facenodes, int *neighbors,
+                         unsigned* nodepos, int *facenodes, int *neighbors,
                          double *fnormals,
                          double *fcentroids,
-                         int ncells, int *facepos, int *cellfaces,
+                         int ncells, unsigned* facepos, int *cellfaces,
                          double *ccentroids, double *cvolumes)
 /* ------------------------------------------------------------------ */
 {
    const int ndims = 3;
-   int i,k, f,c;
+   int i, c;
+   unsigned f, k;
    int face,node;
    double x[3];
    double u[3];
@@ -342,11 +344,11 @@ compute_cell_geometry_3d(double *coords,
 static void
 compute_cell_geometry_2d(
       /* in  */ double *node_coords,
-      /* in  */ int     *edge_node_pos,
+      /* in  */ unsigned *edge_node_pos,
       /* in  */ int    *edge_nodes,
       /* in  */ double *edge_midpoints,
       /* in  */ int     num_cells,
-      /* in  */ int    *cell_edge_pos,
+      /* in  */ unsigned *cell_edge_pos,
       /* in  */ int    *cell_edges,
       /* out */ double *cell_centers,
       /* out */ double *cell_areas)
@@ -363,7 +365,7 @@ compute_cell_geometry_2d(
 
    int cell;            /* cell index */
    int num_nodes;       /* number of vertices in current cell */
-   int edge_ndx;        /* relative edge index within cell */
+   unsigned edge_ndx;        /* relative edge index within cell */
    int edge;            /* absolute cell index */
    double center_x;     /* x-coordinate for cell barycenter */
    double center_y;     /* y-coordinate for cell barycenter */
@@ -435,10 +437,10 @@ compute_cell_geometry_2d(
 /* ------------------------------------------------------------------ */
 void
 compute_cell_geometry(int ndims, double *coords,
-                      int *nodepos, int *facenodes, int *neighbors,
+                      unsigned* nodepos, int *facenodes, int *neighbors,
                       double *fnormals,
                       double *fcentroids,
-                      int ncells, int *facepos, int *cellfaces,
+                      int ncells, unsigned *facepos, int *cellfaces,
                       double *ccentroids, double *cvolumes)
 /* ------------------------------------------------------------------ */
 {

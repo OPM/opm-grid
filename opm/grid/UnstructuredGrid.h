@@ -78,6 +78,8 @@ read_grid(const char *fname);
  ---- end of synopsis of grid.h ----
 */
 
+typedef unsigned grid_size_t;
+
 /**
    Data structure for an unstructured grid, unstructured meaning that
    any cell may have an arbitrary number of adjacent cells. The struct
@@ -124,7 +126,7 @@ struct UnstructuredGrid
        for f's nodes in the face_nodes array.
        The size of the array is equal to (number_of_faces + 1).
     */
-    int    *face_nodepos;
+    grid_size_t *face_nodepos;
     /**
        For a face f, face_cells[2*f] and face_cells[2*f + 1] contain
        the cell indices of the cells adjacent to f. The number -1
@@ -149,7 +151,7 @@ struct UnstructuredGrid
        for c's faces in the cell_faces array.
        The size of the array is equal to (number_of_cells + 1).
     */
-    int    *cell_facepos;
+    grid_size_t *cell_facepos;
 
     /**
        Node coordinates, stored consecutively for each node. That is,

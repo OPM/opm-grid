@@ -6,14 +6,14 @@
 #define MRST_GEOMETRY_H_INCLUDED
 
 void compute_face_geometry(int ndims, double *coords, int nfaces,
-                           int *nodepos, int *facenodes,
+                           unsigned *nodepos, int *facenodes,
                            double *fnormals, double *fcentroids,
                            double *fareas);
 void compute_cell_geometry(int ndims, double *coords,
-                           int *nodepos, int *facenodes, int *neighbours,
+                           unsigned* nodepos, int *facenodes, int *neighbours,
                            double *fnormals,
                            double *fcentroids, int ncells,
-                           int *facepos, int *cellfaces,
+                           unsigned* facepos, int *cellfaces,
                            double *ccentroids, double *cvolumes);
 
 #endif /* MRST_GEOMETRY_H_INCLUDED */
