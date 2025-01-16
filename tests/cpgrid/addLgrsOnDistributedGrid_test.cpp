@@ -400,9 +400,10 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     /** Uniqueness of point global ids cannot be checked in general since current code sets overlap layer size equal to 1,
         which in particular means that cells that share corners or edges (and not faces) with interior cells are not considered/
         seen by the process. Therefore, depending how the LGRs are distributed, there may be "multiple ids" for the same points.
-        To achieve unique point global ids, IN SOME CASES, we invoke loanBalance( parts, false, true) where parts determines
+        For some cases, achieving unique point global ids is possible by calling loadBalance( parts, false, true) where parts determines
         the rank of each cell, false represents ownerFisrt, true represents addCornerCells. The last defaulted argument is
-        overlapLayerSize = 1. */
+        overlapLayerSize = 1.
+    */
 
     // Local/Global id sets for level grids (level 0, 1, ..., maxLevel). For level grids, local might differ from global id.
     for (int level = 0; level < coarse_grid.maxLevel() +1; ++level)
@@ -559,7 +560,7 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
     if(grid.comm().size()>1)
     {
         grid.loadBalance(parts); // ownerFirst = false, addCornerCells = false, overlapLayerSize =1
-        // IT's not necessary to change the default values since the LGRs are fully interior.
+        // It's not necessary to change the default values since the LGRs are fully interior.
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}, {2,2,2}};
         const std::vector<std::array<int,3>> startIJK_vec = {{0,1,0}, {0,0,2}, {3,2,0}, {3,0,2}};
