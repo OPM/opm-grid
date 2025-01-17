@@ -2669,6 +2669,23 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 }
 
+/*int CpGrid::setNumCell()
+{
+    auto numCells = comm().max(currentData().front()->size(0));
+    return numCells;
+}
+
+void CpGrid::setGlobalCell()
+{
+    auto global_cell = currentData().front()->globalCell();
+    if (!global_cell.empty())
+        comm().broadcast(&global_cell, global_cell.size(), 0);
+    if (currentData().front()->globalCell().size()==0)
+    {
+        currentData().front()->global_cell_ = global_cell;
+    }
+}
+*/
 
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
