@@ -29,10 +29,31 @@
 namespace Opm{
 
 template<typename Grid>
-void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
+void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
+                                     const Dune::EdgeWeightMethod edgeWeightMethod)
 {
+    // Find the lowest positive transmissibility in the grid.
+    // This includes boundary faces, even though they will not appear in the graph.
+    WeightType logMinTransm = std::numeric_limits<WeightType>::max();
+    if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
+    {
+        for (int face = 0; face < getGrid().numFaces(); ++face)
+        {
+            WeightType transm = transmissibilities[face];
+            if (transm > 0 && transm < logMinTransm)
+            {
+                logMinTransm = transm;
+            }
+        }
+        if (logMinTransm == std::numeric_limits<WeightType>::max()) {
+            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
+        }
+        logMinTransm = std::log(logMinTransm);
+    }
+
     const auto& rank = grid.comm().rank();
     // load vertices (grid cells) into graph
+    graph.reserve(grid.size(0));
     for (auto it=grid.template leafbegin<0>(); it!=grid.template leafend<0>(); ++it)
     {
         VertexProperties vertex;
@@ -57,7 +78,24 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities)
             {
                 continue;
             }
-            WeightType weight = transmissibilities ? transmissibilities[face] : 1; // default edge weight is 1
+            WeightType weight;
+            if (transmissibilities) {
+                switch (edgeWeightMethod) {
+                case 0:
+                    weight = 1.;
+                    break;
+                case 1:
+                    weight = transmissibilities[face];
+                    break;
+                case 2:
+                    weight = 1 + std::log(transmissibilities[face]) - logMinTransm;
+                    break;
+                default:
+                    OPM_THROW(std::invalid_argument, "GraphOfGrid recognizes only EdgeWeightMethod of value 0, 1, or 2.");
+                }
+            } else {
+                weight = 1.;
+            }
             vertex.edges.try_emplace(otherCell, weight);
         }
 
