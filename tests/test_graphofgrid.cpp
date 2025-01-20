@@ -30,6 +30,9 @@
 #define BOOST_TEST_MODULE GraphRepresentationOfGrid
 #define BOOST_TEST_NO_MAIN
 #include <boost/test/unit_test.hpp>
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
 #include <opm/grid/CpGrid.hpp>
 
 #include <opm/grid/GraphOfGrid.hpp>
@@ -106,6 +109,198 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithVertexContraction)
     BOOST_REQUIRE(v5e==gog.edgeList(6)); // 5 and 6 have the same neighbors (1, 2 got merged)
     BOOST_REQUIRE(v5e!=gog.edgeList(7));
 
+}
+
+BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{3,3,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    if (grid.size(0)==0)
+        return;
+    // boundary faces should not appear in the graph, give them -1
+    // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
+    std::vector<double> transmissibilities(42,-1);
+    transmissibilities[grid.cellFace(0,1)] =  1;
+    transmissibilities[grid.cellFace(1,1)] = 12;
+    transmissibilities[grid.cellFace(3,1)] = 34;
+    transmissibilities[grid.cellFace(4,1)] = 45;
+    transmissibilities[grid.cellFace(6,1)] = 67;
+    transmissibilities[grid.cellFace(7,1)] = 78;
+    transmissibilities[grid.cellFace(0,3)] =  3;
+    transmissibilities[grid.cellFace(1,3)] = 14;
+    transmissibilities[grid.cellFace(2,3)] = 25;
+    transmissibilities[grid.cellFace(3,3)] = 36;
+    transmissibilities[grid.cellFace(4,3)] = 47;
+    transmissibilities[grid.cellFace(5,3)] = 58;
+    Opm::GraphOfGrid gog(grid,transmissibilities.data());
+
+    int checked=0;
+    double sum=0;
+    BOOST_REQUIRE(gog.size()==9);
+    for (int i=0; i<9; ++i)
+    {
+        const auto& edges = gog.edgeList(i);
+        for (const auto& v : edges)
+        {
+            const double transm = i<v.first ? 10*i+v.first : i+10*v.first;
+            BOOST_CHECK(transm==v.second);
+            ++checked;
+            sum += transm;
+        }
+    }
+    BOOST_REQUIRE(checked==24); // each face gets checked twice
+    BOOST_CHECK(sum==840); // 2*sum(transmissibilities) excluding boundaries
+
+    gog.addWell(std::set<int>{0,1,3});
+    gog.addWell(std::set<int>{2,6,7});
+    BOOST_REQUIRE(gog.size()==5);
+    {
+        const auto& edges = gog.edgeList(0);
+        checked=0;
+        BOOST_REQUIRE(edges.size()==2);
+        for (const auto& v : edges)
+        {
+            switch(v.first)
+            {
+                case 2: BOOST_CHECK(v.second==12+36); break;
+                case 4: BOOST_CHECK(v.second==14+34); break;
+                default: throw("Well 0 has a wrong edge.");
+            }
+        }
+    }
+    {
+        const auto& edges = gog.edgeList(2);
+        checked=0;
+        BOOST_REQUIRE(edges.size()==4);
+        for (const auto& v : edges)
+        {
+            switch(v.first)
+            {
+                case 0: BOOST_CHECK(v.second==12+36); break;
+                case 4: BOOST_CHECK(v.second==47); break;
+                case 5: BOOST_CHECK(v.second==25); break;
+                case 8: BOOST_CHECK(v.second==78); break;
+                default: throw("Well 2 has a wrong edge.");
+            }
+        }
+    }
+}
+
+BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
+{
+    Dune::CpGrid grid;
+    std::array<int,3> dims{3,3,1};
+    std::array<double,3> size{1.,1.,1.};
+    grid.createCartesian(dims,size);
+    if (grid.size(0)==0)
+        return;
+    // boundary faces should not appear in the graph, give them -1
+    // other faces get value 10*ID1+ID2, where ID1<ID2 are cell global IDs
+    std::vector<double> transmissibilities(42,-1);
+    transmissibilities[grid.cellFace(0,1)] =  1;
+    transmissibilities[grid.cellFace(1,1)] = 12;
+    transmissibilities[grid.cellFace(3,1)] = 34;
+    transmissibilities[grid.cellFace(4,1)] = 45;
+    transmissibilities[grid.cellFace(6,1)] = 67;
+    transmissibilities[grid.cellFace(7,1)] = 78;
+    transmissibilities[grid.cellFace(0,3)] =  3;
+    transmissibilities[grid.cellFace(1,3)] = 14;
+    transmissibilities[grid.cellFace(2,3)] = 25;
+    transmissibilities[grid.cellFace(3,3)] = 36;
+    transmissibilities[grid.cellFace(4,3)] = 47;
+    transmissibilities[grid.cellFace(5,3)] = 58;
+    Opm::GraphOfGrid gog(grid,transmissibilities.data());
+
+    // change values of transmissibilities so that edge weights of the graph
+    // with log transmissibilities are equal to the original, then compare them
+    for (auto& v : transmissibilities)
+    {
+        if (v > 0)
+        {
+            v = std::exp(v-1.);
+        }
+    }
+    Opm::GraphOfGrid gog2(grid,transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
+    int checked=0;
+    for (const auto& v : gog2)
+    {
+        const auto& edgeL2 = v.second.edges;
+        const auto& edgeL  = gog.edgeList(v.first);
+        for (const auto& e : edgeL2)
+        {
+            const auto& pvertex = edgeL.find(e.first);
+            if (pvertex!=edgeL.end())
+            {
+                BOOST_CHECK_SMALL(pvertex->second-e.second,1e-6f);
+                ++checked;
+            }
+            else
+            {
+                throw("Graphs gog and gog1 should have the same structure.");
+            }
+        }
+    }
+    BOOST_REQUIRE(checked==24);
+}
+
+BOOST_AUTO_TEST_CASE(SimpleGraphWithInactiveCells)
+{
+    const std::string deckString =
+    R"( RUNSPEC
+        DIMENS
+        1  1  5 /
+        GRID
+        COORD
+        0 0 0
+        0 0 1
+        1 0 0
+        1 0 1
+        0 1 0
+        0 1 1
+        1 1 0
+        1 1 1
+        /
+        ZCORN
+        4*0
+        8*1
+        8*2
+        8*3
+        8*4
+        4*5
+        /
+        ACTNUM
+        0
+        1
+        0
+        1
+        1
+        /
+        PORO
+        5*0.15
+        /)";
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+    Opm::EclipseState es(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
+
+    Opm::GraphOfGrid gog(grid);
+    if (grid.size(0)==0)
+        return;
+    BOOST_REQUIRE(gog.size()==3);
+    int checked=0;
+    for (const auto& v : gog)
+    {
+        checked += v.first;
+        if (v.first==0)
+            BOOST_CHECK(v.second.edges.size()==0);
+        else
+            BOOST_CHECK(v.second.edges.size()==1);
+    }
+    BOOST_REQUIRE(checked==0+1+2);
 }
 
 #if HAVE_MPI
@@ -614,6 +809,42 @@ BOOST_AUTO_TEST_CASE(gIDtoRankCorrection)
     extendGIDtoRank(gog,gIDtoRank);
     BOOST_CHECK(gIDtoRank[8]==1);
 }
+
+#if HAVE_MPI
+// This function is in MPI guard even though it does not use the communication.
+// After all, it is useless in a sequential run that has no importLists.
+BOOST_AUTO_TEST_CASE(ExtendAndSortImportList)
+{
+    using ITuple = std::tuple<int, int, char, int>;
+    std::vector<ITuple> importList;
+    importList.reserve(7);
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+    importList.emplace_back(2, 3, AttributeSet::owner, -1);
+    importList.emplace_back(4, 3, AttributeSet::owner, -1);
+    importList.emplace_back(0, 3, AttributeSet::owner, -1);
+    auto importList2 = importList;
+    // adding no extra cells just sorts it
+    Opm::Impl::extendAndSortImportList(importList2, std::vector<int> {});
+    BOOST_REQUIRE(importList2.size() == 3);
+    for (int i = 0; i < 3; ++i) {
+        const auto& [gID, rank, attr, lID] = importList2[i];
+        BOOST_CHECK(gID == 2 * i);
+        BOOST_CHECK(rank == 3);
+        BOOST_CHECK(attr == AttributeSet::owner);
+        BOOST_CHECK(lID == -1);
+    }
+    std::vector<int> extraCells { 1, 6, 5, 3 };
+    Opm::Impl::extendAndSortImportList(importList, extraCells);
+    BOOST_REQUIRE(importList.size() == 7);
+    for (int i = 0; i < 7; ++i) {
+        const auto& [gID, rank, attr, lID] = importList[i];
+        BOOST_CHECK(gID == i);
+        BOOST_CHECK(rank == 3);
+        BOOST_CHECK(attr == AttributeSet::owner);
+        BOOST_CHECK(lID == -1);
+    }
+}
+#endif // HAVE_MPI
 
 // getWellRanks takes wellConnections and vector gIDtoRank mapping cells to their ranks
 // and returns a vector of well ranks

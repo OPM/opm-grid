@@ -42,7 +42,7 @@ namespace Opm {
 template<typename Grid>
 class GraphOfGrid{
     using WeightType = float;
-    using EdgeList = std::unordered_map<int,WeightType>;
+    using EdgeList = std::map<int,WeightType>;
 
     struct VertexProperties
     {
@@ -52,10 +52,12 @@ class GraphOfGrid{
     };
 
 public:
-    explicit GraphOfGrid (const Grid& grid_, const double* transmissibilities=nullptr)
+    explicit GraphOfGrid (const Grid& grid_,
+                          const double* transmissibilities=nullptr,
+                          const Dune::EdgeWeightMethod edgeWeightMethod=Dune::EdgeWeightMethod::defaultTransEdgeWgt)
         : grid(grid_)
     {
-        createGraph(transmissibilities);
+        createGraph(transmissibilities,edgeWeightMethod);
     }
 
     const Grid& getGrid() const
@@ -178,8 +180,10 @@ public:
 
 private:
     /// \brief Create a graph representation of the grid
+    ///
     /// If transmissibilities are not supplied, edge weight=1
-    void createGraph (const double* transmissibilities=nullptr);
+    void createGraph (const double* transmissibilities=nullptr,
+                      const Dune::EdgeWeightMethod edgeWeightMethod=Dune::EdgeWeightMethod::defaultTransEdgeWgt);
 
     /// \brief Identify the well containing the cell with this global ID
     ///
