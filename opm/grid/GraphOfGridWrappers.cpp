@@ -652,7 +652,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
         rc = Zoltan_Initialize(argc, argv, &ver);
 
         zz = Zoltan_Create(MPI_COMM_SELF);
-        if (rc == ZOLTAN_OK){
+        if (rc == ZOLTAN_OK) {
             setDefaultZoltanParameters(zz);
             Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
             Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
@@ -727,22 +727,21 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
             myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
         }
     }
-    std::sort(myExportList.begin(),myExportList.end());
-    std::sort(myImportList.begin(),myImportList.end());
+    std::sort(myExportList.begin(), myExportList.end());
+    std::sort(myImportList.begin(), myImportList.end());
 
     // get the distribution of wells
     std::vector<std::pair<std::string, bool>> parallel_wells;
-    if( wells )
-    {
+    if (wells) {
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
     }
 
-    return std::make_tuple( std::move(gIDtoRank),
-                            std::move(parallel_wells),
-                            std::move(myExportList),
-                            std::move(myImportList),
-                            std::move(wellConnections));
+    return std::make_tuple(std::move(gIDtoRank),
+                           std::move(parallel_wells),
+                           std::move(myExportList),
+                           std::move(myImportList),
+                           std::move(wellConnections));
 }
 #endif // HAVE_MPI
 
