@@ -438,7 +438,6 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     myImportList.reserve(reserveIm);
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
 
-    std::cout << "Rank " << cc.rank() << " fills myImportList of size " << numImport << std::endl;
     for ( int i=0; i < numImport; ++i )
     {
         myImportList.emplace_back(importGlobalGids[i], root, static_cast<char>(AttributeSet::owner), -1);
@@ -613,6 +612,85 @@ makeExportListsFromGIDtoRank(const std::vector<int>& gIDtoRank, int ccsize)
     return exportedCells;
 }
 
+namespace {
+std::tuple<int, std::vector<int>>
+applySerialZoltan (const Dune::CpGrid& grid,
+                   const Dune::cpgrid::WellConnections& wellConnections,
+                   const double* transmissibilities,
+                   int numParts,
+                   Dune::EdgeWeightMethod edgeWeightMethod,
+                   int root,
+                   const double zoltanImbalanceTol,
+                   const std::map<std::string, std::string>& params)
+{
+    int rc = ZOLTAN_OK;
+    ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
+    int numExport = 0, numImport = 0;
+    int *importProcs, *importToPart, *exportProcs, *exportToPart;
+    struct Zoltan_Struct* zz;
+    int changes, numGidEntries, numLidEntries;
+
+    int argc = 0;
+    char** argv = 0;
+    float ver = 0;
+    std::vector<int> gIDtoRank;
+
+    rc = Zoltan_Initialize(argc, argv, &ver);
+    if (rc != ZOLTAN_OK)
+        return std::make_tuple(ZOLTAN_OK + 1, gIDtoRank);
+    zz = Zoltan_Create(MPI_COMM_SELF);
+    if (!zz)
+        return std::make_tuple(ZOLTAN_OK + 2, gIDtoRank);
+    setDefaultZoltanParameters(zz);
+    Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
+    Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(numParts).c_str());
+    int layers = 0; // extra layers of cells attached to wells to distance them from boundary
+    for (const auto& [key, value] : params) {
+        if (key == "EnvelopeWellLayers")
+            layers = std::stoi(value);
+        else
+            Zoltan_Set_Param(zz, key.c_str(), value.c_str());
+    }
+
+    // prepare graph and contract well cells
+    GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
+    addWellConnections(gog, wellConnections);
+    gog.addNeighboringCellsToWells(layers);
+
+    // call partitioner
+    setGraphOfGridZoltanGraphFunctions(zz, gog, false);
+    rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
+                             &changes, /* 1 if partitioning was changed, 0 otherwise */
+                             &numGidEntries, /* Number of integers used for a global ID */
+                             &numLidEntries, /* Number of integers used for a local ID */
+                             &numImport, /* Number of vertices to be sent to me */
+                             &importGlobalGids, /* Global IDs of vertices to be sent to me */
+                             &importLocalGids, /* Local IDs of vertices to be sent to me */
+                             &importProcs, /* Process rank for source of each incoming vertex */
+                             &importToPart, /* New partition for each incoming vertex */
+                             &numExport, /* Number of vertices I must send to other processes*/
+                             &exportGlobalGids, /* Global IDs of the vertices I must send */
+                             &exportLocalGids, /* Local IDs of the vertices I must send */
+                             &exportProcs, /* Process to which I send each of the vertices */
+                             &exportToPart); /* Partition to which each vertex will belong */
+    numImport = 0;
+    if (rc == ZOLTAN_OK) {
+        gIDtoRank.resize(grid.numCells(), root);
+        for (int i = 0; i < numExport; ++i) {
+            gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
+        }
+        // partitioner sees only one cell per well, modify remaining
+        extendGIDtoRank(gog, gIDtoRank, root);
+    } else {
+        rc = ZOLTAN_OK + 3; // distinguish Zoltan failures
+    }
+    Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
+    Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
+    Zoltan_Destroy(&zz);
+    return std::make_tuple(rc, gIDtoRank);
+}
+} // end anonymous namespace
+
 std::tuple<std::vector<int>,
            std::vector<std::pair<std::string, bool>>,
            std::vector<std::tuple<int,int,char> >,
@@ -631,7 +709,6 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // root process has the whole grid, other ranks nothing
     bool partitionIsEmpty = cc.rank() != root;
     int rc = ZOLTAN_OK;
-    int numExport = 0, numImport = 0;
     std::vector<int> gIDtoRank;
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
     std::vector<std::tuple<int, int, char>> myExportList;
@@ -641,80 +718,41 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                             : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
 
     if (cc.rank() == root) {
-        ZOLTAN_ID_PTR importGlobalGids, importLocalGids, exportGlobalGids, exportLocalGids;
-        int *importProcs, *importToPart, *exportProcs, *exportToPart;
-        struct Zoltan_Struct* zz;
-        int changes, numGidEntries, numLidEntries;
-
-        int argc = 0;
-        char** argv = 0;
-        float ver = 0;
-        rc = Zoltan_Initialize(argc, argv, &ver);
-
-        zz = Zoltan_Create(MPI_COMM_SELF);
-        if (rc == ZOLTAN_OK) {
-            setDefaultZoltanParameters(zz);
-            Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
-            Zoltan_Set_Param(zz, "NUM_GLOBAL_PARTS", std::to_string(cc.size()).c_str());
-            int layers = 0; // extra layers of cells attached to wells to distance them from boundary
-            for (const auto& [key, value] : params) {
-                if (key == "EnvelopeWellLayers")
-                    layers = std::stoi(value);
-                else
-                    Zoltan_Set_Param(zz, key.c_str(), value.c_str());
-            }
-
-            // prepare graph and contract well cells
-            GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
-            addWellConnections(gog, wellConnections);
-            gog.addNeighboringCellsToWells(layers);
-
-            // call partitioner
-            setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
-            rc = Zoltan_LB_Partition(zz, /* input (all remaining fields are output) */
-                                     &changes, /* 1 if partitioning was changed, 0 otherwise */
-                                     &numGidEntries, /* Number of integers used for a global ID */
-                                     &numLidEntries, /* Number of integers used for a local ID */
-                                     &numImport, /* Number of vertices to be sent to me */
-                                     &importGlobalGids, /* Global IDs of vertices to be sent to me */
-                                     &importLocalGids, /* Local IDs of vertices to be sent to me */
-                                     &importProcs, /* Process rank for source of each incoming vertex */
-                                     &importToPart, /* New partition for each incoming vertex */
-                                     &numExport, /* Number of vertices I must send to other processes*/
-                                     &exportGlobalGids, /* Global IDs of the vertices I must send */
-                                     &exportLocalGids, /* Local IDs of the vertices I must send */
-                                     &exportProcs, /* Process to which I send each of the vertices */
-                                     &exportToPart); /* Partition to which each vertex will belong */
-            numImport = 0;
-            if (rc == ZOLTAN_OK) {
-                gIDtoRank.resize(grid.numCells(), root);
-                for (int i = 0; i < numExport; ++i) {
-                    gIDtoRank[exportGlobalGids[i]] = exportToPart[i];
-                }
-                // partitioner sees only one cell per well, modify remaining
-                extendGIDtoRank(gog, gIDtoRank, root);
-
-                // prepare export lists for communication, exclude root's own cells
-                exportedCells = makeExportListsFromGIDtoRank(gIDtoRank, cc.size());
-                std::vector<int> rootCells;
-                exportedCells[root].swap(rootCells);
-                myImportList.reserve(rootCells.size());
-                for (const auto& cell : rootCells) {
-                    myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
-                }
-            }
-        }
-        Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
-        Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
-        Zoltan_Destroy(&zz);
+        std::tie(rc, gIDtoRank) = applySerialZoltan(grid,
+                                                    wellConnections,
+                                                    transmissibilities,
+                                                    cc.size(),
+                                                    edgeWeightMethod,
+                                                    root,
+                                                    zoltanImbalanceTol,
+                                                    params);
     }
 
     cc.broadcast(&rc, 1, root);
-    if (rc != ZOLTAN_OK)
-        OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+    if (rc != ZOLTAN_OK) {
+        switch (rc) {
+        case ZOLTAN_OK+1:
+            OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+        case ZOLTAN_OK+2:
+            OPM_THROW(std::runtime_error, "Could not create Zoltan!");
+        case ZOLTAN_OK+3:
+            OPM_THROW(std::runtime_error, "Partitioning with Zoltan failed!");
+        default:
+            OPM_THROW(std::runtime_error, "Unknown error reported by Zoltan!");
+        }
+    }
 
+    if (cc.rank() == root) {
+        // prepare exportedCells for communication
+        exportedCells = makeExportListsFromGIDtoRank(gIDtoRank, cc.size());
+        myImportList.reserve(exportedCells[root].size());
+        for (const auto& cell : exportedCells[root]) {
+            myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
+        }
+        // exclude root's own cells from communication
+        exportedCells[root].resize(0);
+    }
     // communicate and create import+export lists
-    // root's importList has been completed
     auto importedCells = Opm::Impl::communicateExportedCells(exportedCells, cc, root);
     if (cc.rank() == root) {
         myExportList.reserve(grid.numCells());
@@ -727,8 +765,6 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
             myImportList.emplace_back(cell, root, static_cast<char>(AttributeSet::owner), -1);
         }
     }
-    std::sort(myExportList.begin(), myExportList.end());
-    std::sort(myImportList.begin(), myImportList.end());
 
     // get the distribution of wells
     std::vector<std::pair<std::string, bool>> parallel_wells;
