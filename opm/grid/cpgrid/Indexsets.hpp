@@ -41,10 +41,9 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "GlobalIdMapping.hpp"
 #include "Intersection.hpp"
 
+#include <cstdint>
 #include <unordered_map>
-#include <cstdint>
 #include <utility>
-#include <cstdint>
 
 namespace Dune
 {
