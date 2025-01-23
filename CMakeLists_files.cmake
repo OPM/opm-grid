@@ -102,6 +102,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/zoltan_test.cpp
   tests/test_cellCentroid_polyhedralGrid.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_elementchunks.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
   tests/test_lookupdata_polyhedral.cpp
@@ -160,6 +161,7 @@ list (APPEND TEST_DATA_FILES
 list (APPEND EXAMPLE_SOURCE_FILES
   examples/finitevolume/finitevolume.cc
   examples/mirror_grid.cpp
+  examples/griditer.cpp
   )
 
 # programs listed here will not only be compiled, but also marked for
@@ -257,6 +259,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/utility/compressedToCartesian.hpp
   opm/grid/utility/cartesianToCompressed.hpp
   opm/grid/utility/createThreadIterators.hpp
+  opm/grid/utility/ElementChunks.hpp
   opm/grid/utility/IteratorRange.hpp
   opm/grid/utility/OpmWellType.hpp
   opm/grid/utility/RegionMapping.hpp
