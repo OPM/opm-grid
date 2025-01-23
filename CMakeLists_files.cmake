@@ -102,6 +102,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/zoltan_test.cpp
   tests/test_cellCentroid_polyhedralGrid.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_elementchunks.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
   tests/test_lookupdata_polyhedral.cpp
