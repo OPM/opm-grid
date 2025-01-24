@@ -83,7 +83,11 @@ public:
     ///
     /// \param [in] elementOrIdx  Element or index of the element in the leaf grid view.
     /// \param [in] fieldProp     Vector (indexable collection) of field properties.
-    auto operator()(const auto& elementOrIdx, const auto& fieldProp) const;
+    ///
+    /// \tparam ElementOrIndex the type of the element or index passed in.
+    /// \tparam FieldProperties the type of the field properties vector. Should be an \c std::vector like type.
+    template<class ElementOrIndex, class FieldProperties>
+    auto operator()(const ElementOrIndex& elementOrIdx, const FieldProperties& fieldProp) const;
 
     /// \brief: Get field property of type double from field properties manager by name.
     std::vector<double> assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
@@ -108,12 +112,45 @@ public:
                      const std::string& propString,
                      const ElemOrIndex& elemOrIndex) const;
 
-    /// \brief: Return the same element index for all grids different from CpGrid.
+    /// @brief calls \c getFieldPropIdx<Grid, ElementType>(elem) 
+    template<typename ElementType>
+    auto getFieldPropIdx(const ElementType& elem) const;
+
+    /// \brief Return the index used for retrieving field properties, depending on whether
+    ///        the grid is a CpGrid or a general grid, and whether the element is in an LGR.
     ///
-    /// \tparam     GridType    Auxiliary type to overload the method, distinguishing general grids from CpGrid, with std::enable_if.
-    ///                         Default: GridType = Grid.
-    template<typename GridType = Grid>
-    auto getFieldPropIdx(const auto& elem) const;
+    /// This method determines the appropriate index under two main conditions:
+    ///
+    /// - **Non-CpGrid**: Returns the same element index that was passed in. If an entity is
+    ///   provided, it uses \c elemMapper_ to retrieve the index. The function asserts
+    ///   that \c maxLevel() == 0 (i.e., no LGR support) for non-CpGrid grids.
+    ///
+    /// - **CpGrid**: Depending on whether \c isFieldPropInLgr_ is \c true and the element
+    ///   (or index) is in a refined level (> 0), the returned index is for the equivalent
+    ///   LGR cell; otherwise, the index of the origin (level 0) cell is returned.
+    ///
+    /// \tparam GridType
+    ///     Auxiliary type used to specialize the method for CpGrid
+    ///     vs. other grids. If \c GridType = \c Dune::CpGrid, local grid refinements (LGR)
+    ///     are considered; otherwise, LGR is not supported.
+    /// 
+    /// \tparam ElementType
+    ///     The type of the element or index passed in. 
+    ///
+    /// \param elementOrIndex
+    ///     An integral cell index or a grid entity (e.g., \c Dune::cpgrid::Entity<0>).
+    ///
+    /// \return
+    ///     The integer index to be used for looking up the relevant field properties. For
+    ///     non-CpGrid grids, this is the same index or one retrieved from \c elemMapper_.
+    ///     For CpGrid grids, it is either the LGR-based index or the origin index,
+    ///     depending on \c isFieldPropInLgr_ and whether the cell is refined.
+    ///
+    /// \note
+    ///     If \c GridType is not CpGrid, the method will assert that \c maxLevel() == 0,
+    ///     since local grid refinements are only supported for CpGrid.
+    template<typename GridType, typename ElementType>
+    auto getFieldPropIdx(const ElementType& elem) const;
 
 protected:
     const GridView& gridView_;
@@ -154,7 +191,11 @@ public:
     ///         For general grids, the field property vector is assumed to be given for the gridView_.
     ///         For CpGrid, the field property vector is assumed to be given for level 0 when isFieldPropLgr_ == false,
     ///         and for certain LGR/level > 0 when isFieldPropLgr_ == true.
-    auto operator()(const auto& elemIdx, const auto& fieldProp) const;
+    ///
+    /// \tparam ElementOrIndex the type of the element or index passed in.
+    /// \tparam FieldProperties the type of the field properties vector. Should be an \c std::vector like type.
+    template<class ElementOrIndex, class FieldProperties>
+    auto operator()(const ElementOrIndex& elemIdx, const FieldProperties& fieldProp) const;
 
 
     /// \brief: Get field property of type double from field properties manager by name.
@@ -180,8 +221,49 @@ public:
                      const std::string& propString,
                      const ElemOrIndex& elemOrIndex) const;
 
-    template<typename GridType = Grid>
-    auto getFieldPropCartesianIdx(const auto& elemIdx) const;
+    /// \brief Calls \c getFieldPropCartesianIdx<Grid, ElementType>(elemIdx)
+    template<class ElementType>
+    auto getFieldPropCartesianIdx(const ElementType& elemIdx) const;
+
+    /// \brief Return the cartesian index used to retrieve field properties, depending on
+    ///        whether the grid is a CpGrid or another type of grid (with no LGR).
+    ///
+    /// This method determines the correct cartesian index under two main conditions:
+    ///
+    /// - **Non-CpGrid**: If \c GridType is not \c Dune::CpGrid, the cartesian index is
+    ///   obtained via \c cartMapper_->cartesianIndex(...). The function asserts that
+    ///   \c maxLevel() == 0, i.e., no local grid refinements (LGR). 
+    ///
+    /// - **CpGrid**: For CpGrid, if \c isFieldPropInLgr_ is true and the element resides
+    ///   on a refined level (> 0), then its cartesian index is taken from the LGR-level
+    ///   entity. Otherwise, the index is derived from the origin (level 0) entity through
+    ///   \c cartMapper_ after mapping the underlying entity index.
+    ///
+    /// \tparam GridType
+    ///     Auxiliary type used to specialize the method for CpGrid
+    ///     vs. other grids. If \c GridType = \c Dune::CpGrid, local grid refinements (LGR)
+    ///     are considered; otherwise, LGR is not supported.
+    ///
+    /// \tparam ElementType the type of the element or index passed in.
+    ///
+    ///
+    /// \param elementOrIndex
+    ///     An integral cell index or a grid entity (\c EntityType) used to compute the
+    ///     cartesian index. For CpGrid, if an integral index is passed, the method creates
+    ///     a \c Dune::cpgrid::Entity on the fly. Otherwise, it uses the provided entity.
+    ///
+    /// \return
+    ///     The integer cartesian index to be used for looking up the relevant field
+    ///     properties. For non-CpGrid, it is simply the mapped index via
+    ///     \c cartMapper_->cartesianIndex(...). For CpGrid, it can be the LGR-based
+    ///     cartesian index if \c isFieldPropInLgr_ and the element is refined, or the
+    ///     origin-based cartesian index otherwise.
+    ///
+    /// \note
+    ///     For non-CpGrid use-cases, the method asserts that \c maxLevel() == 0, since
+    ///     local grid refinements are only supported for CpGrid.
+    template<class GridType, class ElementType>
+    auto getFieldPropCartesianIdx(const ElementType& elemIdx) const;
 
 protected:
     const GridView& gridView_;
@@ -195,12 +277,12 @@ protected:
 
 
 /// LookUpData
-
 template<typename Grid, typename GridView>
-auto Opm::LookUpData<Grid,GridView>::operator()(const auto& elemIdx,
-                                                const auto& fieldProp) const
+template<class ElementOrIndex, class FieldProperties>
+auto Opm::LookUpData<Grid,GridView>::operator()(const ElementOrIndex& elemIdx,
+                                                const FieldProperties& fieldProp) const
 {
-    const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx);
+    const auto& fieldPropIdx = this->getFieldPropIdx(elemIdx);
     assert(0 <= fieldPropIdx && static_cast<int>(fieldProp.size()) > fieldPropIdx);
     return fieldProp[fieldPropIdx];
 }
@@ -209,8 +291,6 @@ template<typename Grid, typename GridView>
 std::vector<double> Opm::LookUpData<Grid,GridView>::assignFieldPropsDoubleOnLeaf(const FieldPropsManager& fieldPropsManager,
                                                                                  const std::string& propString) const
 {
-    using IndexType = typename Dune::MultipleCodimMultipleGeomTypeMapper<GridView>::Index;
-
     std::vector<double> fieldPropOnLeaf;
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
@@ -257,7 +337,7 @@ std::vector<IntType> Opm::LookUpData<Grid,GridView>::assignFieldPropsIntOnLeaf(c
     const auto& fieldProp = fieldPropsManager.get_int(propString);
     for (const auto& element : elements(gridView_)) {
         const auto& elemIdx = this-> elemMapper_.index(element);
-        const auto& fieldPropIdx = this->getFieldPropIdx<Grid>(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
+        const auto& fieldPropIdx = this->getFieldPropIdx(elemIdx); // gets parentIdx (or (lgr)levelIdx) for CpGrid with LGRs
         fieldPropOnLeaf[elemIdx] = fieldProp[fieldPropIdx] - needsTranslation;
         valueCheck(fieldProp[fieldPropIdx], fieldPropIdx);
     }
@@ -285,10 +365,15 @@ int Opm::LookUpData<Grid,GridView>::fieldPropInt(const FieldPropsManager& fieldP
 }
 
 template<typename Grid, typename GridView>
-template<typename GridType>
-auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const auto& elementOrIndex) const
+template<typename ElementType>
+auto Opm::LookUpData<Grid, GridView>::getFieldPropIdx(const ElementType& elementOrIndex) const {
+    return this->template getFieldPropIdx<Grid, ElementType>(elementOrIndex);
+}
+
+template<typename Grid, typename GridView>
+template<typename GridType, typename IndexType>
+auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrIndex) const
 {
-    using IndexType = std::remove_const_t<std::remove_reference_t<decltype(elementOrIndex)>>;
     constexpr static bool isIntegral = std::is_integral_v<IndexType>;
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
         if constexpr (isIntegral) {
@@ -330,12 +415,10 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const auto& elementOrIndex)
 /// LookUpCartesianData
 
 template<typename Grid, typename GridView>
-//template<typename IdType, typename FieldPropType>
-//std::enable_if_t<std::is_integral_v<IdType>, FieldPropType>
-auto Opm::LookUpCartesianData<Grid,GridView>::operator()(const auto& elementOrIndex,
-                                                         const auto& fieldProp) const
+template<typename IndexType, typename FieldPropType>
+auto Opm::LookUpCartesianData<Grid,GridView>::operator()(const IndexType& elementOrIndex,
+                                                         const FieldPropType& fieldProp) const
 {
-    using IndexType = std::remove_const_t<std::remove_reference_t<decltype(elementOrIndex)>>;
     constexpr static bool isIntegral = std::is_integral_v<IndexType>;
     if constexpr (isIntegral) {
         assert(cartMapper_);
@@ -405,11 +488,16 @@ int Opm::LookUpCartesianData<Grid,GridView>::fieldPropInt(const FieldPropsManage
 }
 
 template<typename Grid, typename GridView>
-template<typename GridType>
-auto Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const auto& elementOrIndex) const
+template<class ElementType>
+auto Opm::LookUpCartesianData<Grid, GridView>::getFieldPropCartesianIdx(const ElementType& elemIdx) const {
+    return this->getFieldPropCartesianIdx<Grid, ElementType>(elemIdx);
+}
+
+template<typename Grid, typename GridView>
+template<typename GridType, typename ElementType>
+auto Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const ElementType& elementOrIndex) const
 {
-    using IndexType = std::remove_const_t<std::remove_reference_t<decltype(elementOrIndex)>>;
-    constexpr static bool isIntegral = std::is_integral_v<IndexType>;
+    constexpr static bool isIntegral = std::is_integral_v<ElementType>;
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
         if constexpr (isIntegral) {
             static_assert(std::is_same_v<Grid,GridType>);
