@@ -35,7 +35,7 @@ namespace Dune
 
     typedef typename Base::IndexType IndexType;
 
-    PolyhedralGridIndexSet ( const GridType& grid )
+    explicit PolyhedralGridIndexSet ( const GridType& grid )
         : grid_(&grid)
     {
     }

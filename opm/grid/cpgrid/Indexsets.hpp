@@ -202,7 +202,7 @@ namespace Dune
         public:
             typedef int IdType;
 
-            IdSet(const CpGridData& grid)
+            explicit IdSet(const CpGridData& grid)
                 : grid_(grid)
             {
             }
@@ -453,7 +453,7 @@ namespace Dune
         /// \brief The type of the id.
         using IdType = typename LevelGlobalIdSet::IdType;
 
-        GlobalIdSet(const CpGridData& view);
+        explicit GlobalIdSet(const CpGridData& view);
 
         template<int codim>
         IdType id(const Entity<codim>& e) const
@@ -485,7 +485,7 @@ namespace Dune
     class ReversePointGlobalIdSet
     {
     public:
-        ReversePointGlobalIdSet(const LevelGlobalIdSet& idSet)
+        explicit ReversePointGlobalIdSet(const LevelGlobalIdSet& idSet)
         {
             if(idSet.idSet_)
             {

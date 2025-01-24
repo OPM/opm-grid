@@ -69,7 +69,7 @@ namespace Dune
           : data_( data ), seed_( seed )
         {}
 
-        Storage( ExtraData data )
+        explicit Storage( ExtraData data )
           : data_( data ), seed_()
         {}
 

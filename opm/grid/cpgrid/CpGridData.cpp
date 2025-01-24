@@ -688,7 +688,7 @@ private:
 template<int from>
 struct SparseTableEntity
 {
-    SparseTableEntity(const Opm::SparseTable<int>& table)
+    explicit SparseTableEntity(const Opm::SparseTable<int>& table)
         : table_(table)
     {}
     int rowSize(const EntityRep<from>& index) const
@@ -862,7 +862,7 @@ private:
 template<class IndexSet>
 struct IndexSet2IdSet
 {
-    IndexSet2IdSet(const IndexSet& indexSet)
+    explicit IndexSet2IdSet(const IndexSet& indexSet)
     {
         map_.resize(indexSet.size());
         for (const auto& entry: indexSet)
@@ -989,7 +989,7 @@ struct AttributeDataHandle
 template<class T, class Functor, class FromSet, class ToSet>
 struct InterfaceFunctor
 {
-    InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
+    explicit InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
         : map_(m)
     {}
     void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
@@ -1025,7 +1025,7 @@ struct InterfaceAdder
 template<class Tuple>
 struct InterfaceTupleFunctor
 {
-    InterfaceTupleFunctor(Tuple& t)
+    explicit InterfaceTupleFunctor(Tuple& t)
         : t_(t)
     {}
 
@@ -1109,8 +1109,8 @@ struct SizeFunctor :
                              typename std::tuple_element<i,typename Converter::SourceTuple>::type,
                              typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
-    SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
-        :Base(m)
+    explicit SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
+        : Base(m)
     {}
 };
 
@@ -1128,7 +1128,7 @@ struct AddFunctor :
                              typename std::tuple_element<i,typename Converter::SourceTuple>::type,
                              typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
-    AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
+    explicit AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
         : Base(m)
     {}
 };
@@ -1136,7 +1136,7 @@ struct AddFunctor :
 class FacePartitionTypeIterator
 {
 public:
-    FacePartitionTypeIterator(const PartitionTypeIndicator* part)
+    explicit FacePartitionTypeIterator(const PartitionTypeIndicator* part)
         : indicator_(part), index_()
     {}
     void operator++()

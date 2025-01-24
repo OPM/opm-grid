@@ -304,7 +304,7 @@ namespace Opm { namespace UgGridHelpers {
         public:
             /// Constructor
             template <class CartDims>
-            ZCornIndex(const CartDims& cartDims)
+            explicit ZCornIndex(const CartDims& cartDims)
                 : nx_         (cartDims[0])
                 , ny_         (cartDims[1])
                 , nz_         (cartDims[2])

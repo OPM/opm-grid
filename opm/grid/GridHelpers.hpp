@@ -317,7 +317,7 @@ const double* vertexCoordinates(const UnstructuredGrid& grid, int index);
 class FaceCellsProxy
 {
 public:
-    FaceCellsProxy(const UnstructuredGrid& grid)
+    explicit FaceCellsProxy(const UnstructuredGrid& grid)
     : face_cells_(grid.face_cells)
     {}
     int operator()(int face_index, int local_index) const

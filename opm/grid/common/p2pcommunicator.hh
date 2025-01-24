@@ -45,7 +45,7 @@ namespace Dune
 public:
     /** \brief constructor taking memory reserve estimation factor (default is 1.1, i.e. 10% over estimation )
      */
-    SimpleMessageBuffer( const double factor = 1.1 )
+    explicit SimpleMessageBuffer( const double factor = 1.1 )
       : buffer_(), factor_( factor )
     {
       resetReadPosition();
@@ -176,11 +176,11 @@ public:
 
   public:
     /** \brief constructor taking mpi communicator */
-    Point2PointCommunicator( const MPICommunicator& mpiComm = MPIHelper::getCommunicator() )
+    explicit Point2PointCommunicator( const MPICommunicator& mpiComm = MPIHelper::getCommunicator() )
       : BaseType( mpiComm ) { removeLinkage(); }
 
     /** \brief constructor taking collective communication */
-    Point2PointCommunicator( const BaseType& comm ) : BaseType( comm ) { removeLinkage(); }
+    explicit Point2PointCommunicator( const BaseType& comm ) : BaseType( comm ) { removeLinkage(); }
 
 
     /** \brief insert communication request with a set os ranks to send to and a set of ranks to receive from */

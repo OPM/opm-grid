@@ -112,7 +112,7 @@ namespace Dune
             /// @brief
             /// @todo Doc me!
             /// @param
-            HierarchicIterator(const CpGridData& grid)
+            explicit HierarchicIterator(const CpGridData& grid)
                 : virtualEntity_(grid, EntityRep<0>::InvalidIndex, true )
             {
             }
@@ -130,7 +130,7 @@ namespace Dune
 
 
             // Constructor without valid element (end iterator).
-            HierarchicIterator(int maxLevel)
+            explicit HierarchicIterator(int maxLevel)
                 : maxLevel_(maxLevel)
             {
                 resetEntity_();

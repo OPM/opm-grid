@@ -219,7 +219,7 @@ namespace Dune
         /// Default constructor
         CpGrid();
 
-        CpGrid(MPIHelper::MPICommunicator comm);
+        explicit CpGrid(MPIHelper::MPICommunicator comm);
 
 #if HAVE_ECL_INPUT
         /// Read the Eclipse grid format ('grdecl').
@@ -1689,7 +1689,7 @@ namespace Dune
             GeometryIterator;
             /// \brief Constructs a new iterator from an iterator over the geometries.
             /// \param iter The iterator of the geometry objects.
-            CentroidIterator(GeometryIterator iter)
+            explicit CentroidIterator(GeometryIterator iter)
             : iter_(iter)
             {}
 

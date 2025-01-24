@@ -59,7 +59,7 @@ namespace Dune
 
         struct IndexToIJK
         {
-            IndexToIJK(const coord_t& lc_size)
+            explicit IndexToIJK(const coord_t& lc_size)
                 : num_i(lc_size[0]),
                   num_ij(lc_size[0]*lc_size[1])
             {

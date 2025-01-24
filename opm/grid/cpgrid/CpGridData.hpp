@@ -1074,7 +1074,7 @@ struct Mover
 template<class DataHandle>
 struct BaseMover
 {
-    BaseMover(DataHandle& data)
+    explicit BaseMover(DataHandle& data)
     : data_(data)
     {}
     template<class E>
