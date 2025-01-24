@@ -364,6 +364,14 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                              &exportProcs,    /* Process to which I send each of the vertices */
                              &exportToPart);  /* Partition to which each vertex will belong */
 
+    if (rc == ZOLTAN_WARN) {
+        Opm::OpmLog::warning("Zoltan_LB_Partition returned with warning");
+    } else if (rc == ZOLTAN_MEMERR) {
+        OPM_THROW(std::runtime_error, "Memory allocation failure in Zoltan_LB_Partition");
+    } else if (rc == ZOLTAN_FATAL) {
+        OPM_THROW(std::runtime_error, "Error returned from Zoltan_LB_Partition");
+    }
+
     auto importExportLists = makeImportAndExportLists(cpgrid,
                                      cc,
                                      wells,
