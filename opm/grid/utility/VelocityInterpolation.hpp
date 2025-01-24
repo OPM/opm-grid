@@ -63,7 +63,7 @@ namespace Opm
 
         /// Set up fluxes for interpolation.
         /// \param[in]  flux   One signed flux per face in the grid.
-        virtual void setupFluxes(const double* flux);
+        void setupFluxes(const double* flux) override;
 
         /// Interpolate velocity.
         /// \param[in]  cell   Cell in which to interpolate.
@@ -71,9 +71,9 @@ namespace Opm
         ///                    Must be array of length grid.dimensions.
         /// \param[out] v      Interpolated velocity.
         ///                    Must be array of length grid.dimensions.
-        virtual void interpolate(const int cell,
-                                 const double* x,
-                                 double* v) const;
+        void interpolate(const int cell,
+                         const double* x,
+                         double* v) const override;
     private:
         const UnstructuredGrid& grid_;
         const double* flux_;
@@ -96,7 +96,7 @@ namespace Opm
 
         /// Set up fluxes for interpolation.
         /// \param[in]  flux   One signed flux per face in the grid.
-        virtual void setupFluxes(const double* flux);
+        void setupFluxes(const double* flux) override;
 
         /// Interpolate velocity.
         /// \param[in]  cell   Cell in which to interpolate.
@@ -104,9 +104,9 @@ namespace Opm
         ///                    Must be array of length grid.dimensions.
         /// \param[out] v      Interpolated velocity.
         ///                    Must be array of length grid.dimensions.
-        virtual void interpolate(const int cell,
-                                 const double* x,
-                                 double* v) const;
+        void interpolate(const int cell,
+                         const double* x,
+                         double* v) const override;
     private:
         WachspressCoord bcmethod_;
         const UnstructuredGrid& grid_;
