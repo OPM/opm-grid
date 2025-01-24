@@ -2431,7 +2431,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         this->global_id_set_ptr_->insertIdSet(*data[refinedLevelGridIdx]);
     }
 
-     // Only for parallel runs
+    // Only for parallel runs
     // - Define global ids for refined level grids (level 1, 2, ..., maxLevel)
     // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
     // - Define ParallelIndex for overlap cells and their neighbors
@@ -2456,8 +2456,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // Under the assumption of LGRs fully-interior, no communication is needed. In the general case, communication will be used
         // to populate overlap cell/point global ids on the refined level grids.
         /** Warning: due to the overlap layer size (equal to 1) cells that share corners or edges (not faces) with interior cells
-            are not included/seen by the process. This, in some cases, ends up in duplicated point ids. */
-        //
+            are not included/seen by the process. This, in some cases, ends up in multiple ids for a same point. */
+
         int min_globalId_cell_in_proc = 0;
         int min_globalId_point_in_proc = 0;
         predictMinCellAndPointGlobalIdPerProcess(assignRefinedLevel,
@@ -3754,7 +3754,8 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);
                     // Get the last LGR (marked element) where the marked face appeared.
                     const int& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                    const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace,
+                    const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel],
+                                                                                             preAdaptFace,
                                                                                              markedElem_to_itsLgr[elemLgr],
                                                                                              cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
                     refinedFace = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace})[1];
@@ -4230,12 +4231,20 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
+    // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current_view_data_ is level zero
 
     if(parentCell_to_face.size()>6){
-        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
 
-    // Order defined in Geometry::refine
+    // Order defined in Geometry::refine (to be used for distinguishing if faceIdxInLgr is K, I, or J face)
+    //
     // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
     // I_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
     //           + (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
@@ -4245,6 +4254,7 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
     int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
     int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
     int refined_j_faces = cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
+
     assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
 
     for (const auto& face : parentCell_to_face) {
@@ -4275,43 +4285,79 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
             }
         }
     }
-    OPM_THROW(std::logic_error, "Cannot find parent face index where the new refined face lays on.");
+    const auto& message = "Cannot find parent face index where the new refined face lays on.";
+    if (comm().rank() == 0){
+        OPM_THROW(std::logic_error, message);
+    }
+    else{
+        OPM_THROW_NOLOG(std::logic_error, message);
+    }
 }
 
-int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, const std::array<int,3>& cells_per_dim_lgr2) const
+int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1,
+                                                int cornerIdxLgr1,
+                                                const std::array<int,3>& cells_per_dim_lgr2) const
 {
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     // Order defined in Geometry::refine
-    //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
+    // (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
+
+    // On a parallel run, no symmetry between neighboring elements should be assumed. Therefore, all the six cases
+    // (i = 0, cells_per_dim[0], j = 0, cells_per_dim[1], and k = 0, cells_per_dim[2]) have to be taken into account.
+    // On a serial run, it would be enough to consider i = cells_per_dim[0], j = cells_per_dim[1], and k = cells_per_dim[2].
+    // To cover all possible escenarios, serial and parallel, we consider the six cases.
+
+    if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j, k, but i = 0
         return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
-    if (ijkLgr1[1] == cells_per_dim_lgr1[1]) {
+    if (ijkLgr1[1] == cells_per_dim_lgr1[1]) { // same i,k, but j = 0
         return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
     }
-    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) {
+    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
         return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
     }
+    if (ijkLgr1[0] == 0) { // same j,k, but i = cells_per_dim[0]
+        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (cells_per_dim_lgr1[0]*(cells_per_dim_lgr2[2]+1))+ ijkLgr1[2];
+    }
+    if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_Dim[1]
+        return  (cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
+    }
+    if (ijkLgr1[2] == 0) { // same i,j, but k = cells_per_dim[2]
+        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + cells_per_dim_lgr2[2];
+    }
     else {
-        OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");
+        const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
 }
 
-int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1, int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
+int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1,
+                                                int cornerIdxLgr1,
+                                                int elemLgr1,
+                                                int parentFaceLastAppearanceIdx,
                                                 const std::array<int,3>& cells_per_dim_lgr2) const
 {
     assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
     const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
-    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx)); 
- 
+    assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
+
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr1, true)];
 
     if(parentCell_to_face.size()>6){
-        OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
+        const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
+        if (comm().rank() == 0){
+            OPM_THROW(std::logic_error, message);
+        }
+        else{
+            OPM_THROW_NOLOG(std::logic_error, message);
+        }
     }
-    // Since lgr1 is associated with an element index smaller than "a last appearance lgr", then the only possibilities are
-    // I_FACE true, J_FACE true, K_FACE true
 
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
@@ -4319,27 +4365,47 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     for (const auto& face : parentCell_to_face) {
         const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
         const auto& faceTag = current_view_data_->face_tag_[faceEntity];
-        if (parentFaceLastAppearanceIdx == face.index() && face.orientation()) {
-            if (faceTag == 0) { // I_FACE true
-                // The same new born refined corner will have equal values of j and k, but i == 0 instead of cells_per_dim[0]
-                return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))  + ijkLgr1[2];
+        if (parentFaceLastAppearanceIdx == face.index()) {
+            if ( face.orientation() ){
+                if (faceTag == 0) { // I_FACE true. The same new born refined corner will have equal j and k, but i == 0.
+                    return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))  + ijkLgr1[2];
+                }
+                if (faceTag == 1) {// J_FACE true. The same new born refined corner will have equal i and k, but j == 0.
+                    return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
+                }
+                if (faceTag == 2) {// K_FACE true. The same new born refined corner will have equal  i and j, but k == 0.
+                    return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
+                }
             }
-            if (faceTag == 1) { // J_FACE true
-                // The same new born refined corner will have equal values of i and k, but j == 0 instead of cells_per_dim[1]
-                return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-            }
-            if (faceTag == 2) { // K_FACE true
-                // The same new born refined corner will have equal values of i and j, but k == 0 instead of cells_per_dim[2]
-                return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
+            if(!face.orientation()) {
+                if (faceTag == 0) {// I_FACE false. The same new born refined corner will have equal values of j and k, but i == cells_per_dim[0].
+                    return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) +
+                        (cells_per_dim_lgr2[0]*(cells_per_dim_lgr2[2]+1)) +ijkLgr1[2];
+                }
+                if (faceTag == 1) {// J_FACE false. The same new born refined corner will have equal  i and k, but j == cells_per_dim[1].
+                    return   (cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1))
+                        + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
+                }
+                if (faceTag == 2) {// K_FACE false.  The same new born refined corner will have equal  i and j, but k == cells_per_dim[2].
+                    return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1))
+                        + cells_per_dim_lgr2[2];
+                }
             }
         }
     }
-    OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");
+    const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
+    if (comm().rank() == 0){
+        OPM_THROW(std::logic_error, message);
+    }
+    else{
+        OPM_THROW_NOLOG(std::logic_error, message);
+    }
 }
 
-int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
-                                             const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
-                                             const std::array<int,3>& cells_per_dim_lgr2) const
+int CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
+                                            int faceIdxInLgr1,
+                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
+                                            const std::array<int,3>& cells_per_dim_lgr2) const
 {
     const auto& ijkLgr1 = getRefinedFaceIJK(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr);
     // lgr1 represents an element index < lgr2 (neighboring cells sharing a face with lgr1-element)
@@ -4353,28 +4419,44 @@ int  CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_
     const int& kFacesLgr2 = cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[2]+1);
     const int& iFacesLgr2 = ((cells_per_dim_lgr2[0]+1)*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2]);
 
-    if (ijkLgr1[0] == cells_per_dim_lgr1[0]) {
+    const auto& face_lgr1 =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr1, true);
+    const auto& face_tag = elemLgr1_ptr-> face_tag_[face_lgr1];
+
+    if (face_tag == I_FACE) {
         assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
         assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
-        return  kFacesLgr2 + (ijkLgr1[2]*cells_per_dim_lgr2[1]) + ijkLgr1[1];
+        if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j,k, but i = 0
+            return  kFacesLgr2 + (ijkLgr1[2]*cells_per_dim_lgr2[1]) + ijkLgr1[1];
+        }
+        else { // same j,k, but i = cells_per_dim[0]
+            return  kFacesLgr2 + (cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2])
+                + (ijkLgr1[2]*cells_per_dim_lgr2[1]) + ijkLgr1[1];
+        }
     }
-    if (ijkLgr1[1] == cells_per_dim_lgr1[1]) {
+    if (face_tag == J_FACE) {
         assert( cells_per_dim_lgr1[0] == cells_per_dim_lgr2[0]);
         assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
-        return kFacesLgr2 + iFacesLgr2 + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
+        if (ijkLgr1[1] == cells_per_dim_lgr1[1]) { // same i,k, but j = 0
+            return kFacesLgr2 + iFacesLgr2 + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
+        }
+        else { // same i,k, but j = cells_per_dim[1]
+            return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr1[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2])
+                + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
+        }
     }
-    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) {
+    if (face_tag == K_FACE) {
         assert( cells_per_dim_lgr1[0] == cells_per_dim_lgr2[0]);
         assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
-        return  (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
+        if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
+            return  (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
+        }
+        else{ // same i, j, but k = cells_per_dim[2]
+            return  (cells_per_dim_lgr2[2]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1])
+                + (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
+        }
     }
-    else {
-        OPM_THROW(std::logic_error, "Cannot convert face index from one LGR to its neighboring LGR.");
-    }
+    OPM_THROW(std::logic_error,  "Cannot convert face index from one LGR to its neighboring LGR.");
 }
-
-
-
 
 } // namespace Dune
 
