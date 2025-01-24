@@ -419,18 +419,10 @@ template<typename IndexType, typename FieldPropType>
 auto Opm::LookUpCartesianData<Grid,GridView>::operator()(const IndexType& elementOrIndex,
                                                          const FieldPropType& fieldProp) const
 {
-    constexpr static bool isIntegral = std::is_integral_v<IndexType>;
-    if constexpr (isIntegral) {
-        assert(cartMapper_);
-        const auto fieldPropCartIdx = this->getFieldPropCartesianIdx<Grid>(elementOrIndex);
-        assert(0 <=  fieldPropCartIdx && (static_cast<int>(fieldProp.size()) > fieldPropCartIdx));
-        return fieldProp[fieldPropCartIdx];
-    } else {
-        assert(cartMapper_);
-        const auto fieldPropCartIdx = this->getFieldPropCartesianIdx<Grid>(elementOrIndex);
-        assert( (0 <= fieldPropCartIdx) && (static_cast<int>(fieldProp.size()) > fieldPropCartIdx) );
-        return fieldProp[fieldPropCartIdx];
-    }    
+    assert(cartMapper_);
+    const auto fieldPropCartIdx = this->getFieldPropCartesianIdx<Grid>(elementOrIndex);
+    assert(0 <=  fieldPropCartIdx && (static_cast<int>(fieldProp.size()) > fieldPropCartIdx));
+    return fieldProp[fieldPropCartIdx];
 }
 
 template<typename Grid, typename GridView>
