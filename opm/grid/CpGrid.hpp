@@ -831,7 +831,7 @@ namespace Dune
                                              std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
                                              std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
                                              std::vector<std::vector<int>>& refined_global_cell_vec,
-                                             std::vector<int>& refined_cell_count_vec,
+                                             const std::vector<int>& refined_cell_count_vec,
                                              std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
                                              std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
                                              /* Auxiliary arguments */

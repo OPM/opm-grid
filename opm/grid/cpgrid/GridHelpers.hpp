@@ -302,7 +302,7 @@ public:
 
     Cell2FacesRow operator[](int cell_index) const
     {
-        auto& row=grid_->cellFaceRow(cell_index);
+        const auto& row = grid_->cellFaceRow(cell_index);
         return Cell2FacesRow(row, cell_index);
     }
 

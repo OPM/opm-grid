@@ -370,7 +370,7 @@ T increment(const T& t, int i, int)
 /// \param i The index of the coordinate.
 /// \tparam T The type of the coordinate of the centroid.
 template<class T>
-double getCoordinate(T* cc, int i)
+double getCoordinate(const T* cc, int i)
 {
     return cc[i];
 }

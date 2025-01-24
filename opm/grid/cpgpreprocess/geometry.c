@@ -29,8 +29,8 @@ norm(const double w[3])
 
 /* ------------------------------------------------------------------ */
 static void
-compute_face_geometry_3d(double *coords, int nfaces,
-                         unsigned* nodepos, int *facenodes, double *fnormals,
+compute_face_geometry_3d(const double *coords, int nfaces,
+                         const unsigned* nodepos, const int* facenodes, double *fnormals,
                          double *fcentroids, double *fareas)
 /* ------------------------------------------------------------------ */
 {
@@ -123,10 +123,10 @@ compute_face_geometry_3d(double *coords, int nfaces,
 /* ------------------------------------------------------------------ */
 static void
 compute_edge_geometry_2d(
-      /* in  */ double *node_coords,
+      /* in  */ const double* node_coords,
       /* in  */ int     num_edges,
-      /* in  */ unsigned* edge_node_pos,
-      /* in  */ int    *edge_nodes,
+      /* in  */ const unsigned* edge_node_pos,
+      /* in  */ const int    *edge_nodes,
       /* out */ double *edge_normals,
       /* out */ double *edge_midpoints,
       /* out */ double *edge_lengths)
@@ -188,9 +188,13 @@ compute_edge_geometry_2d(
 
 /* ------------------------------------------------------------------ */
 void
-compute_face_geometry(int ndims, double *coords, int nfaces,
-                      unsigned* nodepos, int *facenodes, double *fnormals,
-                      double *fcentroids, double *fareas)
+compute_face_geometry(int ndims,
+                      const double* coords,
+                      int nfaces,
+                      const unsigned* nodepos,
+                      const int* facenodes,
+                      double* fnormals,
+                      double* fcentroids, double* fareas)
 /* ------------------------------------------------------------------ */
 {
    if (ndims == 3)
@@ -213,11 +217,15 @@ compute_face_geometry(int ndims, double *coords, int nfaces,
 
 /* ------------------------------------------------------------------ */
 static void
-compute_cell_geometry_3d(double *coords,
-                         unsigned* nodepos, int *facenodes, int *neighbors,
-                         double *fnormals,
-                         double *fcentroids,
-                         int ncells, unsigned* facepos, int *cellfaces,
+compute_cell_geometry_3d(const double *coords,
+                         const unsigned* nodepos,
+                         const int* facenodes,
+                         const int* neighbors,
+                         const double* fnormals,
+                         const double* fcentroids,
+                         int ncells,
+                         const unsigned* facepos,
+                         const int* cellfaces,
                          double *ccentroids, double *cvolumes)
 /* ------------------------------------------------------------------ */
 {
@@ -343,13 +351,13 @@ compute_cell_geometry_3d(double *coords,
 /* ------------------------------------------------------------------ */
 static void
 compute_cell_geometry_2d(
-      /* in  */ double *node_coords,
-      /* in  */ unsigned *edge_node_pos,
-      /* in  */ int    *edge_nodes,
-      /* in  */ double *edge_midpoints,
+      /* in  */ const double* node_coords,
+      /* in  */ const unsigned* edge_node_pos,
+      /* in  */ const int* edge_nodes,
+      /* in  */ const double* edge_midpoints,
       /* in  */ int     num_cells,
-      /* in  */ unsigned *cell_edge_pos,
-      /* in  */ int    *cell_edges,
+      /* in  */ const unsigned *cell_edge_pos,
+      /* in  */ const int* cell_edges,
       /* out */ double *cell_centers,
       /* out */ double *cell_areas)
 {
@@ -436,11 +444,16 @@ compute_cell_geometry_2d(
 
 /* ------------------------------------------------------------------ */
 void
-compute_cell_geometry(int ndims, double *coords,
-                      unsigned* nodepos, int *facenodes, int *neighbors,
-                      double *fnormals,
-                      double *fcentroids,
-                      int ncells, unsigned *facepos, int *cellfaces,
+compute_cell_geometry(int ndims,
+                      const double* coords,
+                      const unsigned* nodepos,
+                      const int* facenodes,
+                      const int* neighbors,
+                      const double* fnormals,
+                      const double* fcentroids,
+                      int ncells,
+                      const unsigned* facepos,
+                      const int* cellfaces,
                       double *ccentroids, double *cvolumes)
 /* ------------------------------------------------------------------ */
 {

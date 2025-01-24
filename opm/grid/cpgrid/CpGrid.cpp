@@ -3427,7 +3427,7 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                         // Get the index of this corner with respect to the greatest marked element index, using find instead of count.
                         lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
                         while (elemLgrAndElemLgrCorner_to_adaptedCorner.find( lastAppearanceLgr_lgrEquivCorner ) == elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
-                            auto& tempLgr_lgrCorner = lastAppearanceLgr_lgrEquivCorner;
+                            const auto& tempLgr_lgrCorner = lastAppearanceLgr_lgrEquivCorner;
                             lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
                         }
                     }
@@ -3512,7 +3512,7 @@ void CpGrid::populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<c
                         lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, elemLgrCorn});
                         while (elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find(lastAppearanceLgr_lgrEquivCorner) ==
                                elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.end()) {
-                            auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
+                            const auto& tempLgr_lgrCorner  = lastAppearanceLgr_lgrEquivCorner;
                             lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
                         }
                     }
@@ -3598,7 +3598,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                         // Get the index of this corner with respect to the greatest marked element index.
                         lastAppearanceLgr_lgrEquivCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, preAdaptCorn});
                         while (elemLgrAndElemLgrCorner_to_adaptedCorner.find(lastAppearanceLgr_lgrEquivCorner) == elemLgrAndElemLgrCorner_to_adaptedCorner.end()) {
-                            auto& tempLgr_lgrCorner =  lastAppearanceLgr_lgrEquivCorner;
+                            const auto& tempLgr_lgrCorner =  lastAppearanceLgr_lgrEquivCorner;
                             lastAppearanceLgr_lgrEquivCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
                         }
                     }
@@ -3728,7 +3728,7 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                         // Get the index of this corner with respect to the greatest marked element index.
                         lastAppearanceLgr_lgrCorner = vanishedRefinedCorner_to_itsLastAppearance.at({elemLgr, preAdaptCorn});
                         while (elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.find(lastAppearanceLgr_lgrCorner) == elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.end()) {
-                            auto& tempLgr_lgrCorner =   lastAppearanceLgr_lgrCorner;
+                            const auto& tempLgr_lgrCorner =   lastAppearanceLgr_lgrCorner;
                             lastAppearanceLgr_lgrCorner =  vanishedRefinedCorner_to_itsLastAppearance.at(tempLgr_lgrCorner);
                         }
                     }
@@ -3793,7 +3793,7 @@ void CpGrid::setRefinedLevelGridsGeometries( /* Refined corner arguments */
                                              std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
                                              std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
                                              std::vector<std::vector<int>>& refined_global_cell_vec,
-                                             std::vector<int>& refined_cell_count_vec,
+                                             const std::vector<int>& refined_cell_count_vec,
                                              std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
                                              std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
                                              /* Auxiliary arguments */
