@@ -2456,7 +2456,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // Under the assumption of LGRs fully-interior, no communication is needed. In the general case, communication will be used
         // to populate overlap cell/point global ids on the refined level grids.
         /** Warning: due to the overlap layer size (equal to 1) cells that share corners or edges (not faces) with interior cells
-            are not included/seen by the process. This, in some cases, ends up in multiple ids for a same point. */
+            are not included/seen by the process. This, in some cases, ends up in multiple ids for the same point. */
 
         int min_globalId_cell_in_proc = 0;
         int min_globalId_point_in_proc = 0;
@@ -4234,7 +4234,7 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
     // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current_view_data_ is level zero
 
     if(parentCell_to_face.size()>6){
-        const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
+        const auto& message = "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.";
         if (comm().rank() == 0){
             OPM_THROW(std::logic_error, message);
         }
@@ -4285,7 +4285,7 @@ int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cell
             }
         }
     }
-    const auto& message = "Cannot find parent face index where the new refined face lays on.";
+    const auto& message = "Cannot find index of parent face where the new refined face lies on.";
     if (comm().rank() == 0){
         OPM_THROW(std::logic_error, message);
     }
@@ -4305,7 +4305,7 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     // On a parallel run, no symmetry between neighboring elements should be assumed. Therefore, all the six cases
     // (i = 0, cells_per_dim[0], j = 0, cells_per_dim[1], and k = 0, cells_per_dim[2]) have to be taken into account.
     // On a serial run, it would be enough to consider i = cells_per_dim[0], j = cells_per_dim[1], and k = cells_per_dim[2].
-    // To cover all possible escenarios, serial and parallel, we consider the six cases.
+    // To cover all possible scenarios, serial and parallel, we consider the six cases.
 
     if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j, k, but i = 0
         return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
@@ -4350,7 +4350,7 @@ int CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_p
     const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr1, true)];
 
     if(parentCell_to_face.size()>6){
-        const auto& message = "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.";
+        const auto& message = "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.";
         if (comm().rank() == 0){
             OPM_THROW(std::logic_error, message);
         }
