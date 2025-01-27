@@ -3979,8 +3979,9 @@ std::array<int,3>  CpGrid::getRefinedCornerIJK(const std::array<int,3>& cells_pe
     return ijk;
 }
 
-std::array<int,3>  CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
-                                             const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const
+std::array<int,3> CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_dim,
+                                            int faceIdxInLgr,
+                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const
 {
     // Order defined in Geometry::refine
     // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
@@ -3989,6 +3990,14 @@ std::array<int,3>  CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_
     // J_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
     //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
     //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
+    const auto& i_faces =  (cells_per_dim[0] +1)*cells_per_dim[1]*cells_per_dim[2];
+    const auto& j_faces =  cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
+    const auto& k_faces =  cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
+
+    if (faceIdxInLgr >= i_faces + j_faces + k_faces) {
+        OPM_THROW(std::logic_error, "Invalid face index from single-cell-refinement.\n");
+    }
+
     const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr, true);
     const auto& faceTag = elemLgr_ptr ->face_tag_[faceEntity];
     std::array<int,3> ijk;
@@ -4444,7 +4453,7 @@ int CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_d
             return kFacesLgr2 + iFacesLgr2 + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
         }
         else { // same i,k, but j = cells_per_dim[1]
-            return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr1[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2])
+            return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr2[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2])
                 + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
         }
     }
