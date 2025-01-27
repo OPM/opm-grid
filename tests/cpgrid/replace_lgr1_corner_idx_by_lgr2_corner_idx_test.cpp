@@ -42,9 +42,11 @@
 
 
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/CpGridData.hpp>
 
 #include <array>
+#include <memory>
+#include <stdexcept>
+#include <unordered_map>
 
 
 struct Fixture
@@ -139,8 +141,8 @@ const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(co
 {
     // Create two grids, one single cell in each grid.
     Dune::CpGrid lgr;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int,3> coarse_grid_dim = {1,1,1};
+    const std::array<double,3>& cell_sizes = {1.0, 1.0, 1.0};
+    const std::array<int,3>& coarse_grid_dim = {1,1,1};
     lgr.createCartesian(coarse_grid_dim, cell_sizes);
 
     // Single-cell-refinement for the only cell contained in lgr grid.
@@ -176,8 +178,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     // lgr1 and lgr2 grids mimick single-cell-refinements sharing I_FACE: | 0 | 1 |
 
     // Refine grids lgr1 and lgr2.
-    const std::array<int, 3> lgr1_dim = {3,3,3};
-    const std::array<int, 3> lgr2_dim = {4,3,3};
+    const std::array<int, 3>& lgr1_dim = {3,3,3};
+    const std::array<int, 3>& lgr2_dim = {4,3,3};
     // Number of subbivisions in y- and z- direction must coincide, when cells
     // from different LGRs share I_FACEs. In x-direction, they can differ.
 
@@ -191,7 +193,7 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     //     2 -- 3    BOTTOM FACE
     //    /    /
     //   0 -- 1
-    std::unordered_map<int, int> lgrLeft_to_lgrRight = {{1,0}, {3,2}, {5,4}, {7,6}};
+    const std::unordered_map<int, int>& lgrLeft_to_lgrRight = {{1,0}, {3,2}, {5,4}, {7,6}};
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR1 refines cell 0 and LGR2 refined cell 1.
@@ -247,8 +249,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     //  ---
 
     // Refine grids lgr1 and lgr2.
-    const std::array<int, 3> lgr1_dim = {3,3,3};
-    const std::array<int, 3> lgr2_dim = {3,4,3};
+    const std::array<int, 3>& lgr1_dim = {3,3,3};
+    const std::array<int, 3>& lgr2_dim = {3,4,3};
     // Number of subbivisions in x- and z- direction must coincide, when cells
     // from different LGRs share J_FACEs. In y-direction, they can differ.
     const auto& lgr1_ptr = createSingleCellGridAndRefine(lgr1_dim);
@@ -261,7 +263,7 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     //     2 -- 3    BOTTOM FACE
     //    /    /
     //   0 -- 1
-    std::unordered_map<int, int> lgrBack_to_lgrFront = {{2,0}, {3,1}, {6,4}, {7,5}};
+    const std::unordered_map<int, int>& lgrBack_to_lgrFront = {{2,0}, {3,1}, {6,4}, {7,5}};
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR1 refines cell 0 and LGR2 refined cell 1.
@@ -320,8 +322,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     //  ---
 
     // Refine grids lgr1 and lgr2.
-    const std::array<int, 3> lgr1_dim = {3,3,3};
-    const std::array<int, 3> lgr2_dim = {3,3,4};
+    const std::array<int, 3>& lgr1_dim = {3,3,3};
+    const std::array<int, 3>& lgr2_dim = {3,3,4};
     // Number of subbivisions in x- and y- direction must coincide, when cells
     // from different LGRs share K_FACEs. In z-direction, they can differ.
     const auto& lgr1_ptr = createSingleCellGridAndRefine(lgr1_dim);
@@ -334,7 +336,7 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     //     2 -- 3    BOTTOM FACE
     //    /    /
     //   0 -- 1
-    std::unordered_map<int, int> lgrTop_to_lgrBottom = {{4,0}, {5,1}, {6,2}, {7,3}};
+    const std::unordered_map<int, int>& lgrTop_to_lgrBottom = {{4,0}, {5,1}, {6,2}, {7,3}};
 
     // Illustration of cells on the boundary between LGR1 and LGR2,
     // if LGR1 refines cell 1 and LGR2 refined cell 0.
