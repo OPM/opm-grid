@@ -156,11 +156,11 @@ const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(co
     return lgr_ptr;
 }
 
-void check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(const Dune::cpgrid::Entity<0>& elemLgrA,
-                                                                  const Dune::cpgrid::Entity<0>& elemLgrB,
-                                                                  const std::unordered_map<int, int>& lgrA_to_lgrB,
-                                                                  const std::array<int,3>& lgrA_dim,
-                                                                  const std::array<int,3>& lgrB_dim)
+void checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(const Dune::cpgrid::Entity<0>& elemLgrA,
+                                                                                                const Dune::cpgrid::Entity<0>& elemLgrB,
+                                                                                                const std::unordered_map<int, int>& lgrA_to_lgrB,
+                                                                                                const std::array<int,3>& lgrA_dim,
+                                                                                                const std::array<int,3>& lgrB_dim)
 {
     for (const auto& [idx_in_cell_lgrA, idx_in_cell_lgrB] : lgrA_to_lgrB)
     {
@@ -208,11 +208,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& elem14_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 14, true);
     const auto& elem16_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 16, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem14_lgr1,
-                                                                 elem16_lgr2,
-                                                                 lgrLeft_to_lgrRight,
-                                                                 lgr1_dim,
-                                                                 lgr2_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem14_lgr1,
+                                                                                               elem16_lgr2,
+                                                                                               lgrLeft_to_lgrRight,
+                                                                                               lgr1_dim,
+                                                                                               lgr2_dim);
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR2 refines cell 0 and LGR1 refines cell 1.
@@ -227,11 +227,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& elem19_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 19, true);
     const auto& elem12_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 12, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem19_lgr2,
-                                                                 elem12_lgr1,
-                                                                 lgrLeft_to_lgrRight,
-                                                                 lgr2_dim,
-                                                                 lgr1_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem19_lgr2,
+                                                                                               elem12_lgr1,
+                                                                                               lgrLeft_to_lgrRight,
+                                                                                               lgr2_dim,
+                                                                                               lgr1_dim);
 
     // lgr1 has (3+1)x(3+1)x(3+1) = 64 corners (with indices 0, ..., 63).
     // lgr2 has (4+1)x(3+1)x(3+1) = 80 corners (with indices 0, ..., 79).
@@ -283,11 +283,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& elem16_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 16, true);
     const auto& elem13_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 13, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem16_lgr1,
-                                                                 elem13_lgr2,
-                                                                 lgrBack_to_lgrFront,
-                                                                 lgr1_dim,
-                                                                 lgr2_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem16_lgr1,
+                                                                                               elem13_lgr2,
+                                                                                               lgrBack_to_lgrFront,
+                                                                                               lgr1_dim,
+                                                                                               lgr2_dim);
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR1 refines cell 1 and LGR2 refined cell 0.
@@ -306,11 +306,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& elem22_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 22, true);
     const auto& elem10_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 10, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem22_lgr2,
-                                                                 elem10_lgr1,
-                                                                 lgrBack_to_lgrFront,
-                                                                 lgr2_dim,
-                                                                 lgr1_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem22_lgr2,
+                                                                                               elem10_lgr1,
+                                                                                               lgrBack_to_lgrFront,
+                                                                                               lgr2_dim,
+                                                                                               lgr1_dim);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
@@ -354,11 +354,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& elem22_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 22, true);
     const auto& elem4_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 4, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem22_lgr1,
-                                                                 elem4_lgr2,
-                                                                 lgrTop_to_lgrBottom,
-                                                                 lgr1_dim,
-                                                                 lgr2_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem22_lgr1,
+                                                                                               elem4_lgr2,
+                                                                                               lgrTop_to_lgrBottom,
+                                                                                               lgr1_dim,
+                                                                                               lgr2_dim);
 
     // Illustration of cells on the boundary between LGR1 and LGR2,
     // if LGR1 refines cell 1 and LGR2 refined cell 0.
@@ -377,9 +377,9 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& elem31_lgr2 =  Dune::cpgrid::Entity<0>(*(lgr2_ptr), 31, true);
     const auto& elem4_lgr1 =  Dune::cpgrid::Entity<0>(*(lgr1_ptr), 4, true);
 
-    check4CornersOfSharedRefinedFaceBetweenSingleCellRefinements(elem31_lgr2,
-                                                                 elem4_lgr1,
-                                                                 lgrTop_to_lgrBottom,
-                                                                 lgr2_dim,
-                                                                 lgr1_dim);
+    checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingleCellRefinements(elem31_lgr2,
+                                                                                               elem4_lgr1,
+                                                                                               lgrTop_to_lgrBottom,
+                                                                                               lgr2_dim,
+                                                                                               lgr1_dim);
 }
