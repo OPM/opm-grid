@@ -1,6 +1,6 @@
 //===========================================================================
 //
-// File: replace_corner_idx_neigh_cells_test.cpp
+// File: replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
 //
 // Created: Friday 24.01.2025 11:55:00
 //
