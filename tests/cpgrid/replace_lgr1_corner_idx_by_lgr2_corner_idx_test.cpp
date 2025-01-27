@@ -80,6 +80,11 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 
 std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr)
 {
+    const auto& total_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
+    if (cornerIdxInLgr >= total_corners) {
+        OPM_THROW(std::logic_error, "Invalid corner index from single-cell-refinement.\n");
+    }
+
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
     std::array<int,3> ijk;
@@ -225,6 +230,12 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
                                                                  lgrLeft_to_lgrRight,
                                                                  lgr2_dim,
                                                                  lgr1_dim);
+
+    // lgr1 has (3+1)x(3+1)x(3+1) = 64 corners (with indices 0, ..., 63).
+    // lgr2 has (4+1)x(3+1)x(3+1) = 80 corners (with indices 0, ..., 79).
+    const auto& non_existing_corner = 80; // non exisitng corner index for both lgrs.
+    BOOST_CHECK_THROW( replaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( replaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)

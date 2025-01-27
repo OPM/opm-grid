@@ -3963,6 +3963,10 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
 
 std::array<int,3>  CpGrid::getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr) const
 {
+    const auto& total_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
+    if (cornerIdxInLgr >= total_corners) {
+        OPM_THROW(std::logic_error, "Invalid corner index from single-cell-refinement.\n");
+    }
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
     std::array<int,3> ijk;
