@@ -174,7 +174,6 @@ CpGrid::CpGrid()
     current_view_data_ = data_[0].get();
     current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
-    
 }
 
 CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
@@ -188,7 +187,6 @@ CpGrid::CpGrid(MPIHelper::MPICommunicator comm)
     current_view_data_ = data_[0].get();
     current_data_ = &data_;
     global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
-    
 }
 
 std::vector<int>
@@ -381,8 +379,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 #ifdef HAVE_ZOLTAN
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
-                    ? Opm::zoltanSerialPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams)
-                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams, level);
+                    ? Opm::zoltanSerialPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams)
+                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, allowDistributedWells, partitioningParams, level);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
