@@ -267,6 +267,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
+                                  bool allowDistributedWells,
                                   const std::map<std::string,std::string>& params);
 
 /// \brief Make complete export lists from a vector holding destination rank for each global ID
@@ -295,6 +296,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                         Dune::EdgeWeightMethod edgeWeightMethod,
                                         int root,
                                         const double zoltanImbalanceTol,
+                                        bool allowDistributedWells,
                                         const std::map<std::string,std::string>& params);
 #endif // HAVE_MPI
 

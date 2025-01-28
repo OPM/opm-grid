@@ -27,6 +27,7 @@
 #include "GraphOfGridWrappers.hpp"
 #include <opm/grid/common/CommunicationUtils.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp> // function scatterExportInformation
+#include <opm/grid/common/ZoltanGraphFunctions.hpp> // makeImportAndExportLists when allowDistributedWells==true
 
 namespace Opm {
 
@@ -515,6 +516,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
+                                  bool allowDistributedWells,
                                   const std::map<std::string, std::string>& params)
 {
     int rc = ZOLTAN_OK - 1;
@@ -551,8 +553,11 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
                                           : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
-    addWellConnections(gog, wellConnections);
-    gog.addNeighboringCellsToWells(layers);
+    if (!allowDistributedWells){
+        // skip cell contraction if wells can be distributed over multiple processes
+        addWellConnections(gog, wellConnections);
+        gog.addNeighboringCellsToWells(layers);
+    }
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
@@ -572,29 +577,62 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                              &exportToPart);  /* Partition to which each vertex will belong */
 
     // arrange output into tuples and add well cells
-    auto importExportLists = makeImportAndExportLists(gog,
-                                                      cc,
-                                                      wells,
-                                                      wellConnections,
-                                                      root,
-                                                      numExport,
-                                                      numImport,
-                                                      exportLocalGids,
-                                                      exportGlobalGids,
-                                                      exportProcs,
-                                                      importGlobalGids);
+    auto prepareIELists = [&]() {
+        if (allowDistributedWells) {
+            // wells can be split among several processes
+            using CombinedGridWellGraph = Dune::cpgrid::CombinedGridWellGraph;
+            std::shared_ptr<CombinedGridWellGraph> gridAndWells;
+            if (wells) {
+                gridAndWells.reset(new CombinedGridWellGraph(grid,
+                                                             wells,
+                                                             possibleFutureConnections,
+                                                             transmissibilities,
+                                                             partitionIsEmpty,
+                                                             edgeWeightMethod));
+            }
+            auto result = makeImportAndExportLists(grid,
+                                                   cc,
+                                                   wells,
+                                                   possibleFutureConnections,
+                                                   gridAndWells.get(),
+                                                   root,
+                                                   numExport,
+                                                   numImport,
+                                                   exportGlobalGids, // function uses Local GIDs that are identical to global GIDs
+                                                   exportGlobalGids,
+                                                   exportProcs,
+                                                   importGlobalGids,
+                                                   allowDistributedWells);
+            std::sort(std::get<2>(result).begin(), std::get<2>(result).end());
+            std::sort(std::get<3>(result).begin(), std::get<3>(result).end());
+            return result;
+        } else {
+            // each well is guaranteed to be on a single process
+            auto partResult = makeImportAndExportLists(gog,
+                                                       cc,
+                                                       wells,
+                                                       wellConnections,
+                                                       root,
+                                                       numExport,
+                                                       numImport,
+                                                       exportLocalGids,
+                                                       exportGlobalGids,
+                                                       exportProcs,
+                                                       importGlobalGids);
+            return std::tuple(std::move(std::get<0>(partResult)),
+                              std::move(std::get<1>(partResult)),
+                              std::move(std::get<2>(partResult)),
+                              std::move(std::get<3>(partResult)),
+                              wellConnections);
+        }
+    };
+    auto importExportLists = prepareIELists();
 
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
     Zoltan_Destroy(&zz);
 
-    // add wellConnections to the importExportLists and return it
-    auto result = std::tuple(std::move(std::get<0>(importExportLists)),
-                             std::move(std::get<1>(importExportLists)),
-                             std::move(std::get<2>(importExportLists)),
-                             std::move(std::get<3>(importExportLists)),
-                             std::move(wellConnections));
-    return result;
+    return importExportLists;
 }
 
 std::vector<std::vector<int> >
@@ -621,6 +659,7 @@ applySerialZoltan (const Dune::CpGrid& grid,
                    Dune::EdgeWeightMethod edgeWeightMethod,
                    int root,
                    const double zoltanImbalanceTol,
+                   bool allowDistributedWells,
                    const std::map<std::string, std::string>& params)
 {
     int rc = ZOLTAN_OK;
@@ -654,8 +693,11 @@ applySerialZoltan (const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
-    addWellConnections(gog, wellConnections);
-    gog.addNeighboringCellsToWells(layers);
+    if (!allowDistributedWells){
+        // skip cell contraction if wells can be distributed over multiple processes
+        addWellConnections(gog, wellConnections);
+        gog.addNeighboringCellsToWells(layers);
+    }
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, false);
@@ -704,6 +746,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                         Dune::EdgeWeightMethod edgeWeightMethod,
                                         int root,
                                         const double zoltanImbalanceTol,
+                                        bool allowDistributedWells,
                                         const std::map<std::string, std::string>& params)
 {
     // root process has the whole grid, other ranks nothing
@@ -725,6 +768,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                                     edgeWeightMethod,
                                                     root,
                                                     zoltanImbalanceTol,
+                                                    allowDistributedWells,
                                                     params);
     }
 
@@ -769,8 +813,15 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // get the distribution of wells
     std::vector<std::pair<std::string, bool>> parallel_wells;
     if (wells) {
-        auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
-        parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
+        if (allowDistributedWells) {
+            // wells can be split among several processes
+            auto wellsOnProc = Dune::cpgrid::perforatingWellIndicesOnProc(gIDtoRank, *wells, possibleFutureConnections, grid);
+            parallel_wells = Dune::cpgrid::computeParallelWells(wellsOnProc, *wells, cc, root);
+        } else {
+            // each well is guaranteed to be on a single process
+            auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
+            parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
+        }
     }
 
     return std::make_tuple(std::move(gIDtoRank),
