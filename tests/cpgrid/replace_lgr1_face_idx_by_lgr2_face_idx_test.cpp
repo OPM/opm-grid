@@ -47,7 +47,6 @@
 #include <memory>
 #include <stdexcept>
 
-
 struct Fixture
 {
     Fixture()
@@ -61,6 +60,18 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+class TestCpGrid : public Dune::CpGrid
+{
+public:
+    int testReplaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
+                                            int faceIdxInLgr1,
+                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
+                                            const std::array<int,3>& cells_per_dim_lgr2)
+    {
+        return replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr, cells_per_dim_lgr2);
+    }
+};
+
 /* To add LGRs in a CpGrid, each marked element for refinement gets refined into a
    single-cell-refinement. To store new born refined entities [points or faces]
    only once, we detect equivalent entities via their indices in each single-cell-refinement.
@@ -69,133 +80,12 @@ BOOST_GLOBAL_FIXTURE(Fixture);
    containing only one cell. Add different LGRs in each grid, in different cases to
    create all possible escenarios (the two coarse cells sharing I_FACE, J_FACE or K_FACE).
 
-   To avoid friend declarations, we 'copy' here replaceLgr1FaceIdxByLgr2FaceIdx
-   (and getRefinedFaceIJK).
-
    Why single-cell-refinements instead of adding LGRs in one grid?:
    replaceLgr1FaceIdxByLgr2FaceIdx is a private method in CpGrid, meant to be
    used between independent/un-related single-cell-refinements (stored in CpGridData objects).
    Therefore, creating a grid, adding LGRs to it, and checking face indices afterwards in
    refined cells on bouandary of the LGRs is not the escenario where this method should be tested.
 */
-
-
-std::array<int,3> getRefinedFaceIJK(const std::array<int,3>& cells_per_dim,
-                                    int faceIdxInLgr,
-                                    const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr)
-{
-    // Order defined in Geometry::refine
-    // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-    // I_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
-    //           + (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-    // J_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-    //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
-    //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-    const auto& i_faces =  (cells_per_dim[0] +1)*cells_per_dim[1]*cells_per_dim[2];
-    const auto& j_faces =  cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
-    const auto& k_faces =  cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
-
-    if (faceIdxInLgr >= i_faces + j_faces + k_faces) {
-        OPM_THROW(std::logic_error, "Invalid face index from single-cell-refinement.\n");
-    }
-
-    const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr, true);
-    const auto& faceTag = elemLgr_ptr ->faceTag(faceEntity);
-    std::array<int,3> ijk;
-    switch (faceTag) {
-    case I_FACE:
-        faceIdxInLgr -= (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1));
-        // faceIdxInLgr =  (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-        ijk[1] = faceIdxInLgr % cells_per_dim[1];
-        faceIdxInLgr -= ijk[1]; // (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1])
-        faceIdxInLgr /= cells_per_dim[1]; // (i*cells_per_dim[2]) + k
-        ijk[2] = faceIdxInLgr % cells_per_dim[2];
-        faceIdxInLgr -=ijk[2]; // i*cells_per_dim[2]
-        ijk[0] = faceIdxInLgr / cells_per_dim[2];
-        break;
-    case J_FACE:
-        faceIdxInLgr -=  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-            + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]);
-        // faceIdxInLgr =  (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-        ijk[2] = faceIdxInLgr % cells_per_dim[2];
-        faceIdxInLgr -= ijk[2]; // (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2])
-        faceIdxInLgr /= cells_per_dim[2]; // (j*cells_per_dim[0]) + i
-        ijk[0] = faceIdxInLgr % cells_per_dim[0];
-        faceIdxInLgr -=ijk[0]; // j*cells_per_dim[0]
-        ijk[1] = faceIdxInLgr / cells_per_dim[0];
-        break;
-    case K_FACE:
-        //  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-        ijk[0] = faceIdxInLgr % cells_per_dim[0];
-        faceIdxInLgr -= ijk[0]; // (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0])
-        faceIdxInLgr /= cells_per_dim[0]; // (k*cells_per_dim[1]) + j
-        ijk[1] = faceIdxInLgr % cells_per_dim[1];
-        faceIdxInLgr -=ijk[1]; // k*cells_per_dim[1]
-        ijk[2] = faceIdxInLgr / cells_per_dim[1];
-        break;
-    default:
-        OPM_THROW(std::logic_error, "FaceTag is not I, J, or K!");
-    }
-    return ijk;
-}
-
-
-int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
-                                    int faceIdxInLgr1,
-                                    const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
-                                    const std::array<int,3>& cells_per_dim_lgr2)
-{
-    const auto& ijkLgr1 = getRefinedFaceIJK(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr);
-    // lgr1 represents an element index < lgr2 (neighboring cells sharing a face with lgr1-element)
-    // Order defined in Geometry::refine
-    // K_FACES (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-    // I_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
-    //           + (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-    // J_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-    //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
-    //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-    const int& kFacesLgr2 = cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[2]+1);
-    const int& iFacesLgr2 = ((cells_per_dim_lgr2[0]+1)*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2]);
-
-    const auto& face_lgr1 =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr1, true);
-    const auto& face_tag = elemLgr1_ptr-> faceTag(face_lgr1);
-
-    if (face_tag == I_FACE) {
-        assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
-        assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
-        if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j,k, but i = 0
-            return  kFacesLgr2 + (ijkLgr1[2]*cells_per_dim_lgr2[1]) + ijkLgr1[1];
-        }
-        else { // same j,k, but i = cells_per_dim[0]
-            return  kFacesLgr2 + (cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1]*cells_per_dim_lgr2[2])
-                + (ijkLgr1[2]*cells_per_dim_lgr2[1]) + ijkLgr1[1];
-        }
-    }
-    if (face_tag == J_FACE) {
-        assert( cells_per_dim_lgr1[0] == cells_per_dim_lgr2[0]);
-        assert( cells_per_dim_lgr1[2] == cells_per_dim_lgr2[2]);
-        if (ijkLgr1[1] == cells_per_dim_lgr1[1]) { // same i,k, but j = 0
-            return kFacesLgr2 + iFacesLgr2 + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
-        }
-        else { // same i,k, but j = cells_per_dim[1]
-            return kFacesLgr2 + iFacesLgr2 + (cells_per_dim_lgr2[1]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[2])
-                + (ijkLgr1[0]*cells_per_dim_lgr2[2]) + ijkLgr1[2];
-        }
-    }
-    if (face_tag == K_FACE) {
-        assert( cells_per_dim_lgr1[0] == cells_per_dim_lgr2[0]);
-        assert( cells_per_dim_lgr1[1] == cells_per_dim_lgr2[1]);
-        if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
-            return  (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
-        }
-        else{ // same i, j, but k = cells_per_dim[2]
-            return  (cells_per_dim_lgr2[2]*cells_per_dim_lgr2[0]*cells_per_dim_lgr2[1])
-                + (ijkLgr1[1]*cells_per_dim_lgr2[0]) + ijkLgr1[0];
-        }
-    }
-    OPM_THROW(std::logic_error,  "Cannot convert face index from one LGR to its neighboring LGR.");
-}
-
 
 const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(const std::array<int,3>& lgr_dim)
 {
@@ -215,7 +105,6 @@ const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(co
         = lgr.currentData().back()->refineSingleCell(lgr_dim, 0);
     return lgr_ptr;
 }
-
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
 {
@@ -247,8 +136,9 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 14, /*local face index*/ 3); // I true for elem14_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 16, /*local face index*/ 2); // I false for elem16_lgr2
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    TestCpGrid tcpg;
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR2 refines cell 0 and LGR1 refines cell 1.
@@ -264,14 +154,14 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 19, /*local face index*/ 3);; // I true for elem19_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 12, /*local face index*/ 2); // I false for elem12_lgr1
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 
     // lgr1 has 108 faces (with indices 0, ..., 107).
     // lgr2 has 141 faces (with indices 0, ..., 140).
     const auto& non_existing_face = 141; // non exisitng face index for both lgrs.
-    BOOST_CHECK_THROW( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, non_existing_face, lgr1_ptr, lgr2_dim), std::logic_error);
-    BOOST_CHECK_THROW( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, non_existing_face, lgr2_ptr, lgr1_dim), std::logic_error);
+    BOOST_CHECK_THROW( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, non_existing_face, lgr1_ptr, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, non_existing_face, lgr2_ptr, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
@@ -311,8 +201,9 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 16, /*local face index*/ 4); // J true for elem16_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 13, /*local face index*/ 1); // J false for elem13_lgr2
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    TestCpGrid tcpg;
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
@@ -333,8 +224,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 22, /*local face index*/ 4); // J true for elem22_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 10, /*local face index*/ 1); // J false for elem10_lgr1
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 
 }
 
@@ -374,8 +265,9 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 22, /*local face index*/ 5); // J true for elem22_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 4, /*local face index*/ 0); // K false for elem4_lgr2
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    TestCpGrid tcpg;
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
 
     // Illustration of cells on the boundary between LGR1 and LGR2,
@@ -396,7 +288,7 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 31, /*local face index*/ 5);; // K true for elem31_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 4, /*local face index*/ 0); // K false for elem4_lgr1
 
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 }
 

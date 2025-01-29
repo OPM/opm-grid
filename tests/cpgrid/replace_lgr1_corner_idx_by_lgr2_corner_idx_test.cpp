@@ -62,6 +62,17 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+class TestCpGrid : public Dune::CpGrid
+{
+public:
+    int testReplaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1,
+                                                int cornerIdxLgr1,
+                                                const std::array<int,3>& cells_per_dim_lgr2)
+    {
+        return replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_lgr1, cornerIdxLgr1, cells_per_dim_lgr2);
+    }
+};
+
 /* To add LGRs in a CpGrid, each marked element for refinement gets refined into a
    single-cell-refinement. To store new born refined entities [points or faces]
    only once, we detect equivalent entities via their indices in each single-cell-refinement.
@@ -70,72 +81,12 @@ BOOST_GLOBAL_FIXTURE(Fixture);
    containing only one cell. Add different LGRs in each grid, in different cases to
    create all possible escenarios (the two coarse cells sharing I_FACE, J_FACE or K_FACE).
 
-   To avoid friend declarations, we 'copy' here replaceLgr1CornerIdxByLgr2CornerIdx
-   (and getRefinedCornerIJK).
-
    Why single-cell-refinements instead of adding LGRs in one grid?:
    replaceLgr1CornerIdxByLgr2CornerIdx is a private method in CpGrid, meant to be
    used between independent/un-related single-cell-refinements (stored in CpGridData objects).
    Therefore, creating a grid, adding LGRs to it, and checking corner indices afterwards in
    refined cells on bouandary of the LGRs is not the escenario where this method should be tested.
 */
-
-std::array<int,3> getRefinedCornerIJK(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr)
-{
-    const auto& total_corners = (cells_per_dim[0] +1)*(cells_per_dim[1]+1)*(cells_per_dim[2]+1);
-    if (cornerIdxInLgr >= total_corners) {
-        OPM_THROW(std::logic_error, "Invalid corner index from single-cell-refinement.\n");
-    }
-
-    // Order defined in Geometry::refine
-    //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-    std::array<int,3> ijk;
-    ijk[2] = cornerIdxInLgr % (cells_per_dim[2] +1);
-    cornerIdxInLgr -= ijk[2];
-    cornerIdxInLgr /= (cells_per_dim[2] +1);
-    ijk[0] = cornerIdxInLgr % (cells_per_dim[0]+1);
-    cornerIdxInLgr -=ijk[0];
-    ijk[1] = cornerIdxInLgr / (cells_per_dim[0]+1);
-    return ijk;
-}
-
-// Mimic CpGrid::replaceLgr1CornerIdxByLgr2CornerIdx
-int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1,
-                                        int cornerIdxLgr1,
-                                        const std::array<int,3>& cells_per_dim_lgr2)
-{
-    const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
-    // Order defined in Geometry::refine
-    // (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
-
-    // On a parallel run, no symmetry between neighboring elements should be assumed. Therefore, all the six cases
-    // (i = 0, cells_per_dim[0], j = 0, cells_per_dim[1], and k = 0, cells_per_dim[2]) have to be taken into account.
-    // On a serial run, it would be enough to consider i = cells_per_dim[0], j = cells_per_dim[1], and k = cells_per_dim[2].
-    // To cover all possible scenarios, serial and parallel, we consider the six cases.
-
-    if (ijkLgr1[0] == cells_per_dim_lgr1[0]) { // same j, k, but i = 0
-        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-    }
-    if (ijkLgr1[1] == cells_per_dim_lgr1[1]) { // same i,k, but j = 0
-        return  (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-    }
-    if (ijkLgr1[2] == cells_per_dim_lgr1[2]) { // same i,j, but k = 0
-        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1));
-    }
-    if (ijkLgr1[0] == 0) { // same j,k, but i = cells_per_dim[0]
-        return   (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (cells_per_dim_lgr2[0]*(cells_per_dim_lgr2[2]+1))+ ijkLgr1[2];
-    }
-    if (ijkLgr1[1] == 0) { // same i,k, but j = cells_per_dim[1]
-        return  (cells_per_dim_lgr2[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + ijkLgr1[2];
-    }
-    if (ijkLgr1[2] == 0) { // same i,j, but k = cells_per_dim[2]
-        return  (ijkLgr1[1]*(cells_per_dim_lgr2[0]+1)*(cells_per_dim_lgr2[2]+1)) + (ijkLgr1[0]*(cells_per_dim_lgr2[2]+1)) + cells_per_dim_lgr2[2];
-    }
-    else {
-        const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
-        OPM_THROW(std::logic_error, message);
-    }
-}
 
 const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(const std::array<int,3>& lgr_dim)
 {
@@ -162,13 +113,14 @@ void checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingle
                                                                                                 const std::array<int,3>& lgrA_dim,
                                                                                                 const std::array<int,3>& lgrB_dim)
 {
+    TestCpGrid tcpg;
     for (const auto& [idx_in_cell_lgrA, idx_in_cell_lgrB] : lgrA_to_lgrB)
     {
         const auto& corn_lgrA = elemLgrA.subEntity<3>( idx_in_cell_lgrA ).index();
         const auto& corn_lgrB = elemLgrB.subEntity<3>( idx_in_cell_lgrB ).index();
 
-        BOOST_CHECK_EQUAL( replaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
-        BOOST_CHECK_EQUAL( replaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
+        BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
+        BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
     }
 }
 
@@ -232,12 +184,12 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
                                                                                                lgrLeft_to_lgrRight,
                                                                                                lgr2_dim,
                                                                                                lgr1_dim);
-
+    TestCpGrid tcpg;
     // lgr1 has (3+1)x(3+1)x(3+1) = 64 corners (with indices 0, ..., 63).
     // lgr2 has (4+1)x(3+1)x(3+1) = 80 corners (with indices 0, ..., 79).
     const auto& non_existing_corner = 80; // non exisitng corner index for both lgrs.
-    BOOST_CHECK_THROW( replaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
-    BOOST_CHECK_THROW( replaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
+    BOOST_CHECK_THROW( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
