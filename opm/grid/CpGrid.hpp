@@ -1029,6 +1029,7 @@ namespace Dune
         /// @param [in] elemLgr:          Cell index from starting grid, that has been refined into a single-cell-refinement.
         std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const std::array<int,3>& cells_per_dim, int cornerIdxInLgr, int elemLgr) const;
 
+    protected:
         /// @brief A refined corner appears in two single-cell-refinements. Given the corner index in the first single-cell-refinement, compute the
         ///         corner index in the neighboring single-cell-refinement.
         ///
@@ -1057,6 +1058,7 @@ namespace Dune
         int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
                                             const std::shared_ptr<cpgrid::CpGridData>& elemLgr1_ptr,
                                             const std::array<int,3>& cells_per_dim_lgr2) const;
+    private:
 
         /// @brief Get the parent face index where the new refined face lays on.
         ///

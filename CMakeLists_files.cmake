@@ -128,6 +128,8 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/lgr_cartesian_idx_test.cpp
 	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
+	  tests/cpgrid/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
+	  tests/cpgrid/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
 	  tests/cpgrid/shifted_cart_test.cpp
 	  tests/test_graphofgrid.cpp
 	  tests/test_graphofgrid_parallel.cpp
