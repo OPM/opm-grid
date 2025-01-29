@@ -588,8 +588,7 @@ template<int codim>
 int Dune::cpgrid::Entity<codim>::getLevelCartesianIdx() const
 {
     const auto& level_data = (*(pgrid_ -> level_data_ptr_))[level()].get();
-    // getLevelElem() throws when the entity does not belong to the leaf grid view.
-    return level_data -> global_cell_[getLevelElem().index()];
+    return level_data -> global_cell_[getEquivLevelElem().index()];
 }
 
 } // namespace cpgrid

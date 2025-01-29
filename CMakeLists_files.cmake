@@ -37,6 +37,7 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
+  opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
   opm/grid/common/GridPartitioning.cpp
@@ -115,6 +116,7 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/grid_lgr_test.cpp
 	  tests/cpgrid/inactiveCell_lgr_test.cpp
 	  tests/cpgrid/lgr_cartesian_idx_test.cpp
+	  tests/cpgrid/lgrIJK_test.cpp
 	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
 	  tests/cpgrid/lookupdataCpGrid_test.cpp
 	  tests/cpgrid/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
@@ -179,6 +181,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/CartesianIndexMapper.hpp
   opm/grid/cpgrid/CpGridData.hpp
   opm/grid/cpgrid/CpGridDataTraits.hpp
+  opm/grid/cpgrid/CpGridUtilities.hpp
   opm/grid/cpgrid/DataHandleWrappers.hpp
   opm/grid/cpgrid/DefaultGeometryPolicy.hpp
   opm/grid/cpgrid/dgfparser.hh
