@@ -221,7 +221,7 @@ class FaceVerticesContainerProxy
 public:
     /// \brief Constructor.
     /// \param grid The grid whose information we represent.
-    FaceVerticesContainerProxy(const Dune::CpGrid* grid)
+    explicit FaceVerticesContainerProxy(const Dune::CpGrid* grid)
         : LocalIndexContainerProxy<&Dune::CpGrid::faceVertex, &Dune::CpGrid::numFaceVertices>(grid)
     {}
 };
@@ -302,7 +302,7 @@ public:
 
     Cell2FacesRow operator[](int cell_index) const
     {
-        auto& row=grid_->cellFaceRow(cell_index);
+        const auto& row = grid_->cellFaceRow(cell_index);
         return Cell2FacesRow(row, cell_index);
     }
 

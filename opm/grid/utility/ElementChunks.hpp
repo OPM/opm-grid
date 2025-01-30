@@ -95,7 +95,7 @@ public:
 
     struct ChunkIterator : public StorageIter
     {
-        ChunkIterator(const StorageIter itit) : StorageIter(itit) {}
+        explicit ChunkIterator(const StorageIter itit) : StorageIter(itit) {}
         Chunk operator*() const
         {
             const StorageIter it = *this;

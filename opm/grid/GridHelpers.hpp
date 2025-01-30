@@ -317,7 +317,7 @@ const double* vertexCoordinates(const UnstructuredGrid& grid, int index);
 class FaceCellsProxy
 {
 public:
-    FaceCellsProxy(const UnstructuredGrid& grid)
+    explicit FaceCellsProxy(const UnstructuredGrid& grid)
     : face_cells_(grid.face_cells)
     {}
     int operator()(int face_index, int local_index) const
@@ -370,7 +370,7 @@ T increment(const T& t, int i, int)
 /// \param i The index of the coordinate.
 /// \tparam T The type of the coordinate of the centroid.
 template<class T>
-double getCoordinate(T* cc, int i)
+double getCoordinate(const T* cc, int i)
 {
     return cc[i];
 }

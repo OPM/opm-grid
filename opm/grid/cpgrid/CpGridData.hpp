@@ -786,8 +786,8 @@ private:
     /// \param distributed_view The view of the distributed grid.
     /// \tparam DataHandle The type of the data handle used.
     template<class DataHandle>
-    void scatterData(DataHandle& data, CpGridData* global_data,
-                     CpGridData* distributed_data, const InterfaceMap& cell_inf,
+    void scatterData(DataHandle& data, const CpGridData* global_data,
+                     const CpGridData* distributed_data, const InterfaceMap& cell_inf,
                      const InterfaceMap& point_inf);
 
     /// \brief Scatter data specific to given codimension from a global grid representation
@@ -827,7 +827,7 @@ private:
 
 #endif
 
-    void computeGeometry(CpGrid& grid,
+    void computeGeometry(const CpGrid& grid,
                          const DefaultGeometryPolicy&  globalGeometry,
                          const std::vector<int>& globalAquiferCells,
                          const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -1079,7 +1079,7 @@ struct Mover
 template<class DataHandle>
 struct BaseMover
 {
-    BaseMover(DataHandle& data)
+    explicit BaseMover(DataHandle& data)
     : data_(data)
     {}
     template<class E>
@@ -1127,7 +1127,7 @@ struct Mover<DataHandle,1> : public BaseMover<DataHandle>
         typedef typename OrientedEntityTable<0,1>::row_type row_type;
         EntityRep<0> from_cell=EntityRep<0>(from_cell_index, true);
         EntityRep<0> to_cell=EntityRep<0>(to_cell_index, true);
-        OrientedEntityTable<0,1>& table = gatherView_->cell_to_face_;
+        const OrientedEntityTable<0,1>& table = gatherView_->cell_to_face_;
         row_type from_faces=table.operator[](from_cell);
         row_type to_faces=scatterView_->cell_to_face_[to_cell];
 
@@ -1164,8 +1164,8 @@ struct Mover<DataHandle,3> : public BaseMover<DataHandle>
 } // end mover namespace
 
 template<class DataHandle>
-void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
-                             CpGridData* distributed_data, const InterfaceMap& cell_inf,
+void CpGridData::scatterData(DataHandle& data, const CpGridData* global_data,
+                             const CpGridData* distributed_data, const InterfaceMap& cell_inf,
                              const InterfaceMap& point_inf)
 {
 #if HAVE_MPI
@@ -1184,7 +1184,7 @@ void CpGridData::scatterData(DataHandle& data, CpGridData* global_data,
 
 template<int codim, class DataHandle>
 void CpGridData::scatterCodimData(DataHandle& data, CpGridData* global_data,
-                          CpGridData* distributed_data)
+                                  CpGridData* distributed_data)
 {
     CpGridData *gather_view, *scatter_view;
     gather_view=global_data;

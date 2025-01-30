@@ -64,7 +64,7 @@
 static int *
 computeFaceTopology(const int *a1, const int *a2,
                     const int *b1, const int *b2,
-                    int intersect[4], int *faces)
+                    const int intersect[4], int *faces)
 {
     int mask[8];
     int k;

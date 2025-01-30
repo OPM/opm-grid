@@ -37,7 +37,7 @@ namespace Dune
     typedef typename Traits::template Codim< codimension > :: EntityImpl EntityImpl;
 
   public:
-    PolyhedralGridEntityPointer ( ExtraData data )
+    explicit PolyhedralGridEntityPointer ( ExtraData data )
     : entity_( EntityImpl( data ) )
     {}
 

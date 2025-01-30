@@ -458,7 +458,7 @@ process_horizontal_faces(int **intersections,
   pt holds coordinates to intersection between lines given by point
   numbers L[0]-L[1] and L[2]-L[3].
 */
-static void approximate_intersection_pt(int *L, double *c, double *pt)
+static void approximate_intersection_pt(const int* L, const double* c, double* pt)
 {
     double a;
     double z0, z1, z2, z3;

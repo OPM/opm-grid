@@ -310,7 +310,7 @@ public:
 class CopyCellValues
 {
 public:
-    CopyCellValues(std::vector<int>& cont)
+    explicit CopyCellValues(std::vector<int>& cont)
         : cont_(cont)
     {}
 

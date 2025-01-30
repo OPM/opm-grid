@@ -30,7 +30,7 @@ namespace {
 /// Compares the underlying k-index
 struct ExtractColumnCompare
 {
-    ExtractColumnCompare(const UnstructuredGrid& g)
+    explicit ExtractColumnCompare(const UnstructuredGrid& g)
     : grid(g)
     {
         // empty

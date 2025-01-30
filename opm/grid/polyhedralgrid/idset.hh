@@ -24,7 +24,7 @@ namespace Dune
     typedef PolyhedralGridIdSet< dim, dimworld, coord_t > This;
     typedef IdSet< Grid, This, IdType > Base;
 
-    PolyhedralGridIdSet (const Grid& grid)
+    explicit PolyhedralGridIdSet (const Grid& grid)
         : grid_( grid ),
           globalCellPtr_( grid_.globalCellPtr() )
     {

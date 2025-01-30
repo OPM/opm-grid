@@ -51,7 +51,7 @@ class PartitionTypeIndicator
 public:
     /// Constructor
     /// \param data The data of the cornerpoint grid.
-    PartitionTypeIndicator(const CpGridData& data)
+    explicit PartitionTypeIndicator(const CpGridData& data)
     : grid_data_(&data)
     {}
     /// Get the partition type of a cell.

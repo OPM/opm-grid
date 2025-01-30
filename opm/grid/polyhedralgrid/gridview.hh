@@ -55,7 +55,7 @@ namespace Dune
     static const bool conforming = Traits :: conforming;
     static const PartitionIteratorType pitype = Traits :: pitype;
 
-    PolyhedralGridView ( const Grid &grid, const int level = 0 )
+    explicit PolyhedralGridView ( const Grid &grid, const int level = 0 )
     : grid_( &grid )
     {
       (void)level;

@@ -162,7 +162,7 @@ struct CountExistent
 {
     CountExistent() : count() {}
 
-    void operator()(int& i)
+    void operator()(const int i)
     {
         if(i < std::numeric_limits<int>::max())
             count++;
@@ -688,7 +688,7 @@ private:
 template<int from>
 struct SparseTableEntity
 {
-    SparseTableEntity(const Opm::SparseTable<int>& table)
+    explicit SparseTableEntity(const Opm::SparseTable<int>& table)
         : table_(table)
     {}
     int rowSize(const EntityRep<from>& index) const
@@ -862,7 +862,7 @@ private:
 template<class IndexSet>
 struct IndexSet2IdSet
 {
-    IndexSet2IdSet(const IndexSet& indexSet)
+    explicit IndexSet2IdSet(const IndexSet& indexSet)
     {
         map_.resize(indexSet.size());
         for (const auto& entry: indexSet)
@@ -989,7 +989,7 @@ struct AttributeDataHandle
 template<class T, class Functor, class FromSet, class ToSet>
 struct InterfaceFunctor
 {
-    InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
+    explicit InterfaceFunctor(std::map<int,std::pair<T,T> >& m)
         : map_(m)
     {}
     void operator()(int rank, std::size_t index, PartitionType mine, PartitionType other)
@@ -1025,7 +1025,7 @@ struct InterfaceAdder
 template<class Tuple>
 struct InterfaceTupleFunctor
 {
-    InterfaceTupleFunctor(Tuple& t)
+    explicit InterfaceTupleFunctor(Tuple& t)
         : t_(t)
     {}
 
@@ -1109,8 +1109,8 @@ struct SizeFunctor :
                              typename std::tuple_element<i,typename Converter::SourceTuple>::type,
                              typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
-    SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
-        :Base(m)
+    explicit SizeFunctor(std::map<int,std::pair<std::size_t,std::size_t> >& m)
+        : Base(m)
     {}
 };
 
@@ -1128,7 +1128,7 @@ struct AddFunctor :
                              typename std::tuple_element<i,typename Converter::SourceTuple>::type,
                              typename std::tuple_element<i,typename Converter::DestinationTuple>::type>
     Base;
-    AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
+    explicit AddFunctor(std::map<int,std::pair<InterfaceInformation,InterfaceInformation> >& m)
         : Base(m)
     {}
 };
@@ -1136,7 +1136,7 @@ struct AddFunctor :
 class FacePartitionTypeIterator
 {
 public:
-    FacePartitionTypeIterator(const PartitionTypeIndicator* part)
+    explicit FacePartitionTypeIterator(const PartitionTypeIndicator* part)
         : indicator_(part), index_()
     {}
     void operator++()
@@ -1220,7 +1220,7 @@ void createInterfaces(std::vector<std::map<int,char> >& attributes,
 
 }
 
-void CpGridData::computeGeometry(CpGrid& grid,
+void CpGridData::computeGeometry(const CpGrid& grid,
                                  const DefaultGeometryPolicy&  globalGeometry,
                                  const std::vector<int>& globalAquiferCells,
                                  const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -1247,7 +1247,7 @@ void CpGridData::computeGeometry(CpGrid& grid,
     grid.scatterData(cellGeomHandle);
 }
 
-void computeFace2Point(CpGrid& grid,
+void computeFace2Point(const CpGrid& grid,
                        const OrientedEntityTable<0, 1>& globalCell2Faces,
                        const LevelGlobalIdSet& globalIds,
                        const OrientedEntityTable<0, 1>& cell2Faces,
@@ -1323,7 +1323,7 @@ void computeFace2Cell(CpGrid& grid,
 }
 
 
-std::map<int,int> computeCell2Face(CpGrid& grid,
+std::map<int,int> computeCell2Face(const CpGrid& grid,
                                    const OrientedEntityTable<0, 1>& globalCell2Faces,
                                    const LevelGlobalIdSet& globalIds,
                                    OrientedEntityTable<0, 1>& cell2Faces,
@@ -1436,7 +1436,7 @@ void createInterfaceList(const typename CpGridData::InterfaceMap::value_type& pr
         pointList.add(point);
 }
 
-std::map<int,int> computeCell2Point(CpGrid& grid,
+std::map<int,int> computeCell2Point(const CpGrid& grid,
                                     const std::vector<std::array<int,8> >& globalCell2Points,
                                     const LevelGlobalIdSet& globalIds,
                                     const OrientedEntityTable<0, 1>& globalCell2Faces,
@@ -2399,7 +2399,7 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
     // Populate parent_to_children_faces and child_to_parent_faces.
     for (const auto& face : parent_cell_to_face) {
         // Check face tag to identify the type of face (bottom, top, left, right, front, or back).
-        auto& parent_face_tag = (this-> face_tag_[Dune::cpgrid::EntityRep<1>(face.index(), true)]);
+        const auto& parent_face_tag = (this-> face_tag_[Dune::cpgrid::EntityRep<1>(face.index(), true)]);
         // To store the new born faces for each face.
         std::vector<int> children_faces; // Cannot reserve/resize "now", it depends of the type of face.
         // K_FACES

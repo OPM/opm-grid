@@ -570,6 +570,13 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                              &exportLocalGids,   /* Local IDs of the vertices I must send */
                              &exportProcs,    /* Process to which I send each of the vertices */
                              &exportToPart);  /* Partition to which each vertex will belong */
+    if (rc == ZOLTAN_WARN) {
+        OpmLog::warning("Zoltan_LB_Partition returned with warning");
+    } else if (rc == ZOLTAN_MEMERR) {
+        OPM_THROW(std::runtime_error, "Memory allocation failure in Zoltan_LB_Partition");
+    } else if (rc == ZOLTAN_FATAL) {
+        OPM_THROW(std::runtime_error, "Error returned from Zoltan_LB_Partition");
+    }
 
     // arrange output into tuples and add well cells
     auto importExportLists = makeImportAndExportLists(gog,

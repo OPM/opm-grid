@@ -89,8 +89,7 @@ BOOST_AUTO_TEST_CASE(zoltan)
     int m_argc = boost::unit_test::framework::master_test_suite().argc;
     char** m_argv = boost::unit_test::framework::master_test_suite().argv;
     {
-        auto& inst = Dune::MPIHelper::instance(m_argc, m_argv);
-        (void) inst; //omit unused variable warning.
+        [[maybe_unused]] const auto& inst = Dune::MPIHelper::instance(m_argc, m_argv);
 
 #if defined(HAVE_ZOLTAN) && defined(HAVE_MPI)
         int rc;

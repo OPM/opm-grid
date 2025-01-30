@@ -1213,7 +1213,7 @@ namespace cpgrid
         struct MakeGeometry<3>
         {
             std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_;
-            MakeGeometry(std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners)
+            explicit MakeGeometry(std::shared_ptr<const cpgrid::EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners)
                 : allcorners_(std::move(allcorners))
             {
             }

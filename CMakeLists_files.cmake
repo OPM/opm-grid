@@ -74,17 +74,6 @@ if (opm-common_FOUND)
 endif()
 
 # originally generated with the command:
-# find tests/not-unit/ -name \*.cpp -o \*.cc
-list (APPEND ATTIC_FILES
-  attic/partition_test.cpp
-# attic/dumux_test.cpp
-  attic/mapper_test.cpp
-  attic/buildcpgrid_test.cpp
-# attic/cpgrid_test.cpp
-  attic/check_grid_normals.cpp
-  )
-
-# originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
 list (APPEND TEST_SOURCE_FILES
   tests/p2pcommunicator_test.cc
