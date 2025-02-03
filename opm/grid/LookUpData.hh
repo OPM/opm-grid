@@ -330,7 +330,6 @@ std::vector<IntType> Opm::LookUpData<Grid,GridView>::assignFieldPropsIntOnLeaf(c
                                                                                const bool& needsTranslation,
                                                                                std::function<void(IntType, int)> valueCheck) const
 {
-    using IndexType = typename Dune::MultipleCodimMultipleGeomTypeMapper<GridView>::Index;
     std::vector<IntType> fieldPropOnLeaf;
     unsigned int numElements = gridView_.size(0);
     fieldPropOnLeaf.resize(numElements);
@@ -376,8 +375,8 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
 {
     constexpr static bool isIntegral = std::is_integral_v<IndexType>;
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
+        static_assert(std::is_same_v<Grid,GridType>);
         if constexpr (isIntegral) {
-            static_assert(std::is_same_v<Grid,GridType>);
             const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elementOrIndex, true);
             if (isFieldPropInLgr_ && elem.level()) { // level > 0 == true ; level == 0 == false
                 // In case some LGRs do not have refined field properties, the next line need to be modified.
@@ -387,7 +386,6 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
                 return elem.getOrigin().index();
             }
         } else {
-            static_assert(std::is_same_v<Grid,GridType>);
             static_assert(std::is_same_v<IndexType, Dune::cpgrid::Entity<0>>);
             if (isFieldPropInLgr_ && elementOrIndex.level()) { // level > 0 == true ; level == 0 == false
                 // In case some LGRs do not have refined field properties, the next line need to be modified.
@@ -398,13 +396,12 @@ auto Opm::LookUpData<Grid,GridView>::getFieldPropIdx(const IndexType& elementOrI
             }
         }
     } else {
+        static_assert(std::is_same_v<Grid,GridType>);
         if constexpr (isIntegral) {
-            static_assert(std::is_same_v<Grid,GridType>);
             // Check there are no LGRs. LGRs (level>0) only supported for CpGrid.
             assert(gridView_.grid().maxLevel() == 0);
             return elementOrIndex;
         } else {
-            static_assert(std::is_same_v<Grid,GridType>);
             assert(elementOrIndex.level() == 0); // LGRs (level>0) only supported for CpGrid.
             return this-> elemMapper_.index(elementOrIndex);
         }
@@ -491,12 +488,11 @@ auto Opm::LookUpCartesianData<Grid,GridView>::getFieldPropCartesianIdx(const Ele
 {
     constexpr static bool isIntegral = std::is_integral_v<ElementType>;
     if constexpr (std::is_same_v<GridType, Dune::CpGrid>) {
+        static_assert(std::is_same_v<Grid,GridType>);
         if constexpr (isIntegral) {
-            static_assert(std::is_same_v<Grid,GridType>);
             const auto& elem = Dune::cpgrid::Entity<0>(*(gridView_.grid().currentData().back()), elementOrIndex, true);
             return this -> getFieldPropCartesianIdx<Dune::CpGrid>(elem);
         } else {
-            static_assert(std::is_same_v<Grid,GridType>);
             if (isFieldPropInLgr_ && elementOrIndex.level()) { // level == 0 false; level > 0 true
                 return elementOrIndex.getLevelCartesianIdx();
             }
