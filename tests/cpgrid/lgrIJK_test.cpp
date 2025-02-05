@@ -154,11 +154,13 @@ SCHEDULE
 
     const auto grid = createGridAndAddTestLgr(deck_string);
 
-    const auto [cellIdxToLgrCartesianIdx, lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+    const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
 
     // Get LGR level
     const int lgr1_level = grid.getLgrNameToLevel().at("LGR1");
     const int numLgrCells = grid.levelGridView(lgr1_level).size(0);
+
+    const auto& cellIdxToLgrCartesianIdx = grid.currentData()[lgr1_level]->globalCell();
 
     // Verify the size matches expected elements
     const int expected_elements = 108; // 4 parent cells into 3x3x3 children each -> 108
@@ -311,7 +313,9 @@ SCHEDULE
     // Total active refined cells on the level grid
     const int numLgrCells = grid.levelGridView(lgr1_level).size(0);
 
-    const auto [cellIdxToLgrCartesianIdx, lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+    const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+
+    const auto& cellIdxToLgrCartesianIdx = grid.currentData()[lgr1_level]->globalCell();
 
     // Verify the size matches expected elements
     const int expected_elements = 81; // 3 ACTIVE parent cellS into 3x3x3 children each -> 81
@@ -440,7 +444,9 @@ SCHEDULE
     // Total active refined cells on the level grid
     const int numLgrCells = grid.levelGridView(lgr1_level).size(0); // here, 0
 
-    const auto [cellIdxToLgrCartesianIdx, lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+    const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+
+    const auto& cellIdxToLgrCartesianIdx = grid.currentData()[lgr1_level]->globalCell();
 
     // Verify the size matches expected elements
     const int expected_elements = 0;

@@ -32,11 +32,10 @@ namespace Opm
 ///
 /// @param grid The Dune::CpGrid
 /// @param lgr_name The name of the LGR whose indices are to be retrieved.
-/// @return A tuple containing:
-///   - A std::vector<int> mapping cell indices to their corresponding Cartesian indices in the LGR.
+/// @return A pair containing:
 ///   - A std::unordered_map<int, int> mapping Cartesian indices back to cell indices (handles inactive parent cells).
 ///   - A std::vector<std::array<int, 3>> storing the (i, j, k) Cartesian coordinates for active cells.
-std::tuple<std::vector<int>, std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
+std::pair<std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
 lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
 
 } // namespace Opm

@@ -29,7 +29,7 @@
 namespace Opm
 {
 
-std::tuple<std::vector<int>, std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
+std::pair<std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
 lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
 {
     // Check if lgr_name exists in lgr_names_
@@ -45,7 +45,6 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
     const auto numCells = levelView.size(0);
 
     std::vector<std::array<int, 3>> lgrIJK(numCells);
-    std::vector<int> cellIdxToLgrCartesianIdx(numCells);
     std::unordered_map<int, int> lgrCartesianIdxToCellIdx;
     lgrCartesianIdxToCellIdx.reserve(numCells);
 
@@ -58,11 +57,10 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
         const int cartesianIdx = element.getLevelCartesianIdx();
 
         lgrIJK[cellIndex] = ijk;
-        cellIdxToLgrCartesianIdx[cellIndex] = cartesianIdx;
         lgrCartesianIdxToCellIdx[cartesianIdx] = cellIndex;
     }
 
-    return std::make_tuple(cellIdxToLgrCartesianIdx, lgrCartesianIdxToCellIdx, lgrIJK);
+    return std::make_pair(lgrCartesianIdxToCellIdx, lgrIJK);
 }
 
 } // namespace Opm
