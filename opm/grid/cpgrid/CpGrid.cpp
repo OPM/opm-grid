@@ -697,7 +697,7 @@ std::vector<std::unordered_map<std::size_t, std::size_t>> CpGrid::mapLocalCartes
 {
     std::vector<std::unordered_map<std::size_t, std::size_t>> localCartesianIdxSets_to_leafIdx(maxLevel()+1); // Plus level 0
     for (const auto& element : elements(leafGridView())) {
-        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         localCartesianIdxSets_to_leafIdx[element.level()][global_cell_level] = element.index();
     }
     return localCartesianIdxSets_to_leafIdx;
@@ -707,7 +707,7 @@ std::vector<std::array<int,2>> CpGrid::mapLeafIndexSetToLocalCartesianIndexSets(
 {
     std::vector<std::array<int,2>> leafIdx_to_localCartesianIdxSets(currentData().back()->size(0));
     for (const auto& element : elements(leafGridView())) {
-        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        const auto& global_cell_level = currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         leafIdx_to_localCartesianIdxSets[element.index()] = {element.level(), global_cell_level};
     }
     return leafIdx_to_localCartesianIdxSets;
@@ -1513,13 +1513,13 @@ void CpGrid::populateCellIndexSetLeafGridView()
     // RemoteIndices::rebuild has a Boolean as a template parameter telling the method whether to ignore this
     // Boolean on the indices or not when building.
     for(const auto& element : elements(leafGridView())) {
-        const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
+        const auto& elemPartitionType = element.getLevelElem().partitionType();
         if ( elemPartitionType == InteriorEntity) {
             // Check if it has an overlap neighbor
             bool isFullyInterior = true;
             for (const auto& intersection : intersections(leafGridView(), element)) {
                 if ( intersection.neighbor() ) {
-                    const auto& neighborPartitionType = intersection.outside().getEquivLevelElem().partitionType();
+                    const auto& neighborPartitionType = intersection.outside().getLevelElem().partitionType();
                     // To help detection of fully interior cells, i.e., without overlap neighbors
                     if (neighborPartitionType == OverlapEntity )  {
                         isFullyInterior = false;
@@ -1557,7 +1557,7 @@ void CpGrid::populateLeafGlobalIdSet()
         // Notice that for level zero cells the global_id_set_ is given, for refined level grids was defined
         // under the assumption of each lgr being fully contained in the interior of a process.
         // Therefore, it is not needed here to distingish between owned and overlap cells.
-        auto equivElem = element.getEquivLevelElem();
+        auto equivElem = element.getLevelElem();
         leafCellIds[element.index()] = (*current_data_)[element.level()]->global_id_set_->id(equivElem);
     }
 
@@ -1916,7 +1916,7 @@ bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
     // For serial run, mark elements also in the level they were born.
     if(currentData().size()>1) {
         // Mark element in its level
-        currentData()[element.level()] -> mark(refCount, element.getEquivLevelElem());
+        currentData()[element.level()] -> mark(refCount, element.getLevelElem());
     }
     // Mark element (also in the serial run case) in current_view_data_. Note that if scatterGrid has been invoked, then
     // current_view_data_ == distributed_data_[0].
@@ -2712,7 +2712,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
             elemLgrAndElemLgrCell_to_adaptedCell[{-1, elemIdx}] = cell_count;
             adaptedCell_to_elemLgrAndElemLgrCell[cell_count] = {-1, elemIdx};
             cell_count +=1;
-            preAdapt_level_to_leaf_cells_vec[element.level()][element.getEquivLevelElem().index()] = cell_count;
+            preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
         }
         
         // When the element is marked for refinement, we also mark its corners and faces
@@ -2751,7 +2751,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
 
             }
             
-            preAdapt_parent_to_children_cells_vec[element.level()][element.getEquivLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
+            preAdapt_parent_to_children_cells_vec[element.level()][element.getLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
                 markedElemAndEquivRefinedCorn_to_corner[ {elemIdx, lgrEquivCorner}] = markedCorner;
@@ -2796,7 +2796,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
         // Get the element of either a parent cell of a new born refined cell with index "cell" or an equivalent cell, in the preAdapt-leaf-grid-view ("current_view_data_").
         const auto& preAdapt_parent_or_elem = Dune::cpgrid::Entity<0>(*current_view_data_, ((elemLgr != -1) ? elemLgr : elemLgrCell), true);
         if (elemLgr != -1) { // "cell" is a new born refined cell
-            adapted_child_to_parent_cells[cell] = {preAdapt_parent_or_elem.level(), preAdapt_parent_or_elem.getEquivLevelElem().index()};
+            adapted_child_to_parent_cells[cell] = {preAdapt_parent_or_elem.level(), preAdapt_parent_or_elem.getLevelElem().index()};
             adapted_cell_to_idxInParentCell[cell] = elemLgrCell;
         }
         else {// "cell" is either a coarse cell or a refined cell that was born in a preAdapt-refined-level-grid
@@ -2804,7 +2804,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
             if (preAdapt_parent_or_elem.hasFather()) {
                 adapted_child_to_parent_cells[cell] =  {preAdapt_parent_or_elem.father().level(), preAdapt_parent_or_elem.father().index() };
                 adapted_cell_to_idxInParentCell[cell] = currentData()[preAdapt_parent_or_elem.level()]->
-                    cell_to_idxInParentCell_[preAdapt_parent_or_elem.getEquivLevelElem().index()];
+                    cell_to_idxInParentCell_[preAdapt_parent_or_elem.getLevelElem().index()];
             }
         }
     }
@@ -2823,7 +2823,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
             // Search for the level where the parent cell was born, and its index in that level grid.
             // Notice that elemLgr is a cell index in current_view_data_ (the starting grid where elements got marked for (further) refinement).
             const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemLgr, true);  // elemLgr == parent cell index in starting grid.
-            refined_child_to_parent_cells_vec[shiftedLevel][cell] = {element.level(), element.getEquivLevelElem().index()};
+            refined_child_to_parent_cells_vec[shiftedLevel][cell] = {element.level(), element.getLevelElem().index()};
             refined_cell_to_idxInParentCell_vec[shiftedLevel][cell] = elemLgrCell;
         }
     }
@@ -2863,7 +2863,7 @@ CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,st
         // cell was born, as well as its cell index in that level.
         if (elemLgr == -1) {
             const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemLgrCell, true);
-            leaf_to_level_cells[cell] = { element.level(), element.getEquivLevelElem().index()};
+            leaf_to_level_cells[cell] = { element.level(), element.getLevelElem().index()};
         }
         else {
             leaf_to_level_cells[cell] = elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell.at({elemLgr, elemLgrCell});

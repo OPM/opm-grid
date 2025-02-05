@@ -318,7 +318,7 @@ void testInactiveCellsLgrs(const std::string& deckString,
             allIds_set.insert(localId);
             allIds_vec.push_back(localId);
             // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-            BOOST_CHECK_EQUAL( grid.globalIdSet().id(element), (*data[element.level()]).globalIdSet().id(element.getEquivLevelElem()));
+            BOOST_CHECK_EQUAL( grid.globalIdSet().id(element), (*data[element.level()]).globalIdSet().id(element.getLevelElem()));
         }
         // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
         BOOST_CHECK( allIds_set.size() == allIds_vec.size());
@@ -355,7 +355,7 @@ void testInactiveCellsLgrs(const std::string& deckString,
                                                   [localId, data](const Dune::cpgrid::Entity<0>& leafElem)
                                                   { return (localId == data.back()->localIdSet().id(leafElem)); });
                     itIsLeaf != elements(grid.leafGridView()).end()) {
-                    BOOST_CHECK( itIsLeaf->getEquivLevelElem() == element);
+                    BOOST_CHECK( itIsLeaf->getLevelElem() == element);
                 }
                 if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
                     BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());

@@ -263,7 +263,7 @@ namespace Dune
                     // Level 1, 2, ...., maxLevel refined grids
                     if ( (gridIdx>0) && (gridIdx < static_cast<int>(grid_.levelData().size() -1)) ) {
                         if ((e.level() != gridIdx)) { // cells equiv to pre-existing cells
-                            return  grid_.levelData()[e.level()]->localIdSet().id(e.getEquivLevelElem());
+                            return  grid_.levelData()[e.level()]->localIdSet().id(e.getLevelElem());
                         }
                         else {
                             // Count (and add to myId) all the entities of all the codimensions (for CpGrid, only 0 and 3)

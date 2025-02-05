@@ -106,12 +106,12 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
         // How to get the Level Cartesian Index of a cell on the leaf grid view.
         // Each LGR can be seen as a Cartesian Grid itself, with its own (local) logical_cartesian_size and its own (local) Cartesian indices.
         // Given a leaf cell, via the CartesianIndexMapper and its method cartesianIndexLevel(...), we get the local-Cartesian-index.
-        const auto& cartesian_idx_from_level_elem =  levelCartMapp.cartesianIndex( element.getEquivLevelElem().index(), element.level() );
-        const auto& global_cell_idx_level = grid.currentData()[element.level()]->globalCell()[element.getEquivLevelElem().index()];
+        const auto& cartesian_idx_from_level_elem =  levelCartMapp.cartesianIndex( element.getLevelElem().index(), element.level() );
+        const auto& global_cell_idx_level = grid.currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         BOOST_CHECK_EQUAL(cartesian_idx_from_level_elem, global_cell_idx_level);
         // local_ijk represents the ijk values of the equivalent cell on the level its was born.
         std::array<int,3> local_ijk = {0,0,0};
-        levelCartMapp.cartesianCoordinate( element.getEquivLevelElem().index(), local_ijk, element.level() );
+        levelCartMapp.cartesianCoordinate( element.getLevelElem().index(), local_ijk, element.level() );
 
         // For leaf cells that were not involved in any refinement, global_ijk and local_ijk must coincide.
         if(element.level()==0)
