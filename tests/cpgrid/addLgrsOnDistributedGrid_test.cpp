@@ -342,7 +342,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
         allIds_set.insert(localId);
         allIds_vec.push_back(localId);
         // Check that the global_id_set_ptr_ has the correct id (id from the level where the entity was born).
-        BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->globalIdSet().id(element.getEquivLevelElem()));
+        BOOST_CHECK_EQUAL( coarse_grid.globalIdSet().id(element), data[element.level()]->globalIdSet().id(element.getLevelElem()));
     }
     // Check injectivity of the map local_id_set_ (and, indirectly, global_id_set_) after adding cell ids.
     BOOST_CHECK( allIds_set.size() == allIds_vec.size());
@@ -385,7 +385,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
     localInteriorCellIds_vec.reserve(data.back()->size(0)); // more than actually needed since only care about interior cells
     int local_interior_cells_count = 0;
     for (const auto& element: elements(coarse_grid.leafGridView())) {
-        const auto& elemPartitionType = element.getEquivLevelElem().partitionType();
+        const auto& elemPartitionType = element.getLevelElem().partitionType();
         if ( elemPartitionType == Dune::InteriorEntity) {
             localInteriorCellIds_vec.push_back(data.back()->globalIdSet().id(element));
             ++local_interior_cells_count;
@@ -423,7 +423,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                                               [localId, data](const Dune::cpgrid::Entity<0>& leafElem)
                                               { return (localId == data.back()->localIdSet().id(leafElem)); });
                 itIsLeaf != elements(coarse_grid.leafGridView()).end()) {
-                BOOST_CHECK( itIsLeaf->getEquivLevelElem() == element);
+                BOOST_CHECK( itIsLeaf->getLevelElem() == element);
             }
             if (element.isLeaf()) { // Check that the id of a cell not involved in any further refinement appears on the IdSet of the leaf grid view.
                 BOOST_CHECK( std::find(allIds_set.begin(), allIds_set.end(), localId) != allIds_set.end());
