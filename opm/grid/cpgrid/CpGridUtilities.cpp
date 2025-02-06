@@ -139,13 +139,20 @@ void setPillarCoordinates(int i, int j, int nx,
                           const Dune::cpgrid::Entity<0>& bottomElem,
                           std::vector<std::array<double, 6>>& lgrCOORD)
 {
-    // positionIdx (0,1,2, or 3) is used to distinguish the 4 pillars:
+    // positionIdx (0, 1, 2, or 3) is used to distinguish the 4 corner pillars in a cell column.
     //
-    // pillar       positionIdx   positionIdx / 2   positionIdx % 2
-    // (i,j)             0               0                  0
-    // (i+1,j)           1               0                  1
-    // (i,j+1)           2               1                  0
-    // (i+1,j+1)         3               1                  1
+    // Corner pillar position mapping:
+    //
+    //   positionIdx   corresponding pillar   positionIdx / 2   positionIdx % 2
+    //   ---------------------------------------------------------------------
+    //       0          (i, j)                     0                  0
+    //       1          (i+1, j)                   0                  1
+    //       2          (i, j+1)                   1                  0
+    //       3          (i+1, j+1)                 1                  1
+    //
+    // - positionIdx / 2 determines the position at the y-axis (0 for j, 1 for j+1).
+    // - positionIdx % 2 determines the position at the x-axis (0 for i, 1 for i+1).
+
     const int pillar = ((j + positionIdx / 2) * (nx + 1)) + (i + positionIdx % 2);
 
     // Top pillar's COORD values
