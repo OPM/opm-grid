@@ -76,7 +76,9 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
     const auto& lgr_dim = grid.currentData()[level]->logicalCartesianSize();
     const int nx = lgr_dim[0];
     const int ny = lgr_dim[1];
+    const int nz = lgr_dim[2];
 
+    const auto& levelGrid = *(grid.currentData()[level]);
 
     // Initialize all pillars as inactive (setting COORD values to std::numeric_limits<double>::max()).
     std::vector<std::array<double,6>> lgrCOORD((nx+1)*(ny+1));
@@ -84,34 +86,36 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
         pillar.fill(std::numeric_limits<double>::max());
     }
 
-    // Map to all k values (per pillar) grouped by (i,j)
-    std::map<std::pair<int, int>, std::vector<int>> pillars;
+    // Map to determine min and max k per cell column (i, j) (min/max_k = 0, ..., nz-1).
+    // Initialized as {nz, -1} to detect inactive cell columns.
+    std::vector<std::array<int,2>> minMaxPerCellPillar(nx*ny, {nz, -1});
 
-    // Group elements by first two entries (i,j)
+    // Compute the bottom and top k per cell pillar (i, j).
     for (const auto& ijk : lgrIJK) {
-        pillars[std::make_pair(ijk[0], ijk[1])].push_back(ijk[2]);
+        int cell_pillar_idx = ijk[1] * nx + ijk[0];
+        auto& minMax = minMaxPerCellPillar[cell_pillar_idx];
+
+        minMax[0] = std::min(ijk[2], minMax[0]);
+        minMax[1] = std::max(ijk[2], minMax[1]);
     }
 
     // Rewrite values for active pillars
     for (int j = 0; j < ny; ++j) {
         for (int i = 0; i < nx; ++i) {
-            auto it = pillars.find(std::make_pair(i,j));
-            if (it == pillars.end()) {
-                continue; // no active pillar at (i,j)
-            }
-
-            const auto& pillar = it->second; // vector with all k's attached to (i,j)
+            const int cell_pillar_idx = (j*nx) + i;
 
             // Get min/max k for pillar at (i,j)
-            auto [bottom_k, top_k] = std::minmax_element(pillar.begin(), pillar.end());
+            const auto& [bottom_k, top_k] = minMaxPerCellPillar[cell_pillar_idx];
 
-            const auto bottom_lgr_cartesian_idx = ((*bottom_k)*nx*ny) + (j*nx) + i;
-            const auto top_lgr_cartesian_idx = ((*top_k)*nx*ny) + (j*nx) + i;
+            if ( (bottom_k == nz) || (top_k == -1)) {
+                 continue; // no active pillar at (i,j)
+            }
+
+            const auto bottom_lgr_cartesian_idx = (bottom_k*nx*ny) + cell_pillar_idx;
+            const auto top_lgr_cartesian_idx = (top_k*nx*ny) + cell_pillar_idx;
 
             const auto& bottomElemIdx = lgrCartesianIdxToCellIdx.at(bottom_lgr_cartesian_idx);
             const auto& topElemIdx = lgrCartesianIdxToCellIdx.at(top_lgr_cartesian_idx);
-
-            const auto& levelGrid = *(grid.currentData()[level]);
 
             const auto& bottomElem = Dune::cpgrid::Entity<0>(levelGrid, bottomElemIdx, true);
             const auto& topElem = Dune::cpgrid::Entity<0>(levelGrid, topElemIdx, true);
