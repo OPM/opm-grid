@@ -518,7 +518,7 @@ SCHEDULE
     std::cout << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE(fullInactiveParentCellsBlock, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(fullInactiveParentCellsBlock_lgrCOORD_throws, *boost::unit_test::disabled())
 {
     const std::string deck_string = R"(
 RUNSPEC
@@ -596,15 +596,7 @@ SCHEDULE
     // Accessing inactive (non-existing) cell
     BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(0), std::out_of_range);
 
-    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
-    // If a pillar within the LGR block is "inactive," its COORD values are set to
-    // std::numeric_limits<double>::min() to indicate the inactive status
-    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
-
-    // All inactive cells, therefore each value in COORD table should be close to std::numeric_limits<double>::max()
-    for (const auto& coord : lgrCOORD) {
-        for (const auto& val : coord) {
-            BOOST_CHECK_CLOSE(std::numeric_limits<double>::max(), val, 1e-13);
-        }
-    }
+    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block.
+    // All inactive cells, therefore lgrCOORD(...) throws an exception
+    BOOST_CHECK_THROW(Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK), std::logic_error);
 }

@@ -24,6 +24,7 @@
 #include <array>
 #include <limits>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -72,13 +73,19 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
                                             const std::unordered_map<int, int>&  lgrCartesianIdxToCellIdx,
                                             const std::vector<std::array<int, 3>>& lgrIJK)
 {
+    const auto& levelGrid = *(grid.currentData()[level]);
+    
+    // Check not all cells are inactive
+    const auto numCells = levelGrid.size(0);
+    if (numCells == 0) {
+        OPM_THROW(std::logic_error, "LGR in level " + std::to_string(level) + " has no active cells.\n");
+    }
+
     // LGR dimensions
     const auto& lgr_dim = grid.currentData()[level]->logicalCartesianSize();
     const int nx = lgr_dim[0];
     const int ny = lgr_dim[1];
     const int nz = lgr_dim[2];
-
-    const auto& levelGrid = *(grid.currentData()[level]);
 
     // Initialize all pillars as inactive (setting COORD values to std::numeric_limits<double>::max()).
     std::vector<std::array<double,6>> lgrCOORD((nx+1)*(ny+1));

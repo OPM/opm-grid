@@ -44,9 +44,10 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
 /// the coordinate values of a pillar in the LGR block. The values correspond to the
 /// COORD keyword, which defines the corner-point geometry of the grid.
 ///
-/// Special Case:
+/// Special Cases:
 /// - If a pillar within the LGR block is "inactive", its COORD values are set to
 /// std::numeric_limits<double>::max() to indicate the inactive status.
+/// - If all pillars are "inactive", an exception is thrown.
 ///
 /// @param [in] grid
 /// @param [in] level The refinement level of the LGR block.
