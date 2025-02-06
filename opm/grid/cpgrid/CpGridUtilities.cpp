@@ -116,19 +116,6 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
             const auto& bottomElem = Dune::cpgrid::Entity<0>(levelGrid, bottomElemIdx, true);
             const auto& topElem = Dune::cpgrid::Entity<0>(levelGrid, topElemIdx, true);
 
-            // Recall that a cell has 8 corners:
-            //        6 --- 7
-            //       /     /   TOP FACE
-            //      4 --- 5
-            //        2 --- 3
-            //       /     /   BOTTOM FACE
-            //      0 --- 1
-
-            // To take into account inactive cells, consider for each (i,j) group of cells, 4 pillars:
-            // (i,j)     pillar associated with bottom element corner 0 and top element corner 4
-            // (i+1,j)   pillar associated with bottom element corner 1 and top element corner 5
-            // (i,j+1)   pillar associated with bottom element corner 2 and top element corner 6
-            // (i+1,j+1) pillar associated with bottom element corner 3 and top element corner 7
             Opm::processPillars(i,j, nx, topElem, bottomElem, lgrCOORD);
         }
     }
@@ -141,6 +128,13 @@ void setPillarCoordinates(int i, int j, int nx,
                           const Dune::cpgrid::Entity<0>& bottomElem,
                           std::vector<std::array<double, 6>>& lgrCOORD)
 {
+    // positionIdx (0,1,2, or 3) is used to distinguish the 4 pillars:
+    //
+    // pillar       positionIdx   positionIdx / 2   positionIdx % 2
+    // (i,j)             0               0                  0
+    // (i+1,j)           1               0                  1
+    // (i,j+1)           2               1                  0
+    // (i+1,j+1)         3               1                  1
     const int pillar = ((j + positionIdx / 2) * (nx + 1)) + (i + positionIdx % 2);
 
     // Top pillar's COORD values
@@ -157,10 +151,23 @@ void processPillars(int i, int j, int nx,
                     const Dune::cpgrid::Entity<0>& bottomElem,
                     std::vector<std::array<double, 6>>& lgrCOORD)
 {
-    setPillarCoordinates(i, j, nx, 4, 0,  0, topElem, bottomElem, lgrCOORD);
-    setPillarCoordinates(i, j, nx, 5, 1,  1, topElem, bottomElem, lgrCOORD);
-    setPillarCoordinates(i, j, nx, 6, 2,  2, topElem, bottomElem, lgrCOORD);
-    setPillarCoordinates(i, j, nx, 7, 3,  3, topElem, bottomElem, lgrCOORD);
+    // Recall that a cell has 8 corners:
+    //        6 --- 7
+    //       /     /   TOP FACE
+    //      4 --- 5
+    //        2 --- 3
+    //       /     /   BOTTOM FACE
+    //      0 --- 1
+
+    // To take into account inactive cells, consider for each (i,j) column of cells, 4 pillars:
+    // (i,j)     pillar associated with bottom element corner 0 and top element corner 4
+    // (i+1,j)   pillar associated with bottom element corner 1 and top element corner 5
+    // (i,j+1)   pillar associated with bottom element corner 2 and top element corner 6
+    // (i+1,j+1) pillar associated with bottom element corner 3 and top element corner 7
+    setPillarCoordinates(i, j, nx, 4 /*topCorner*/, 0 /*bottomCorner*/,  0 /*to select pillar (i,j)*/, topElem, bottomElem, lgrCOORD);
+    setPillarCoordinates(i, j, nx, 5 /*topCorner*/, 1 /*bottomCorner*/,  1 /*to select pillar (i+1,j)*/, topElem, bottomElem, lgrCOORD);
+    setPillarCoordinates(i, j, nx, 6 /*topCorner*/, 2 /*bottomCorner*/,  2 /*to select pillar (i,j+1)*/, topElem, bottomElem, lgrCOORD);
+    setPillarCoordinates(i, j, nx, 7 /*topCorner*/, 3 /*bottomCorner*/,  3 /*to select pillar (i+1,j+1)*/, topElem, bottomElem, lgrCOORD);
 }
 
 } // namespace Opm
