@@ -241,7 +241,130 @@ SCHEDULE
     BOOST_TEST(lgr1IJK[77][0] == 2);
     BOOST_TEST(lgr1IJK[77][1] == 4);
     BOOST_TEST(lgr1IJK[77][2] == 2);
+
+    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
+    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    std::cout<< "COORD for LGR with all active cells" << std::endl;
+    for (const auto& coord : lgrCOORD)
+    {
+        const auto& [x1, y1, z1, x2, y2, z2] = coord;
+
+        std::cout << x1 << " " << y1 << " " << z1 << " "
+                  << x2 << " " << y2 << " " << z2 << std::endl;
+    }
+    std::cout<< std::endl;
 }
+
+
+BOOST_AUTO_TEST_CASE(singleCellGrid_easyToTestlgrCOORD)
+{
+    // Single-cell-grid (with dimension 1x1x1)
+    // {DX,DY,DZ} = {8,4,2} which makes easy to check the values
+    // of LGR COORD if the LGR dimensions are 8x4x2.
+
+    const std::string deck_string = R"(
+RUNSPEC
+DIMENS
+  1 1 1 /
+GRID
+CARFIN
+-- NAME I1-I2 J1-J2 K1-K2 NX NY NZ
+'LGR1'  1  1  1  1  1  1  8  4  2/
+ENDFIN
+DX
+  1*8 /
+DY
+	1*4 /
+DZ
+	1*2 /
+TOPS
+	1*0 /
+ ACTNUM
+        1
+        /
+PORO
+  1*0.15 /
+PERMX
+  1*1 /
+COPY
+  PERMX PERMZ /
+  PERMX PERMY /
+/
+EDIT
+OIL
+GAS
+TITLE
+The title
+START
+16 JUN 1988 /
+PROPS
+REGIONS
+SOLUTION
+SCHEDULE
+)";
+
+    Dune::CpGrid grid;
+    // Create the starting grid (before adding LGRs)
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deck_string);
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid eclipse_grid = ecl_state.getInputGrid();
+    grid.processEclipseFormat(&eclipse_grid, &ecl_state, false, false, false);
+
+    // Add LGR1 and update grid view
+    const std::vector<std::array<int, 3>> cells_per_dim_vec
+        = {{8, 4, 2}}; // 8x4x2 child cells in x-,y-, and z-direction per ACTIVE parent cell
+    const std::vector<std::array<int, 3>> startIJK_vec
+        = {{0, 0, 0}}; // starts at (0,0,0) in coarse grid - equivalent to (I1-1, J1-1, K1-1) from its CARFIN block
+    const std::vector<std::array<int, 3>> endIJK_vec
+        = {{1, 1, 1}}; // ends at (1,1,1) in coarse grid - equivalent to (I2, J2, K2) from its CARFIN block
+    const std::vector<std::string> lgr_name_vec = {"LGR1"};
+    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+
+    // Get LGR level
+    const int lgr1_level = grid.getLgrNameToLevel().at("LGR1");
+    const int numLgrCells = grid.levelGridView(lgr1_level).size(0);
+
+    const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
+    const auto cellIdxToLgrCartesianIdx = grid.currentData()[lgr1_level]->globalCell();
+
+    // Verify the size matches expected elements
+    const int expected_elements = 64; // 1 parent cells into 8x4x2 children each -> 64
+    checkExpectedSize(expected_elements,
+                      numLgrCells,
+                      cellIdxToLgrCartesianIdx.size(),
+                      lgrCartesianIdxToCellIdx.size(),
+                      lgr1IJK.size());
+
+    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
+    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    const int nx = 8;
+    const int ny = 4;
+    const int nz = 2;
+    // Pillars are ordered j*(nx+1) + i, i faster than j, i=0,...,nx, j=0, ..., ny.
+    for (int j = 0;  j < ny+1; ++j) {
+        for (int i = 0; i < nx+1; ++i) {
+            int pillar_idx = (j*(nx+1)) + i;
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][0], i);
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][1], j);
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][2], nz);
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][3], i);
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][4], j);
+            BOOST_CHECK_EQUAL( lgrCOORD[pillar_idx][5], 0 );
+        }
+    }
+
+    std::cout<< "COORD for LGR with all active cells" << std::endl;
+    for (const auto& coord : lgrCOORD)
+    {
+        const auto& [x1, y1, z1, x2, y2, z2] = coord;
+
+        std::cout << x1 << " " << y1 << " " << z1 << " "
+                  << x2 << " " << y2 << " " << z2 << std::endl;
+    }
+    std::cout<< std::endl;
+}
+
 
 /* Tests lgrIJK() for a grid containing inactive cells within the LGR block.
 
@@ -379,9 +502,23 @@ SCHEDULE
     // Accessing inactive (non-existing) cells
     BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(70), std::out_of_range);
     BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(170), std::out_of_range);
+
+    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
+    // If a pillar within the LGR block is "inactive," its COORD values are set to
+    // std::numeric_limits<double>::max() to indicate the inactive status
+    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    std::cout<< "COORD for LGR with active and inactive cells" << std::endl;
+    for (const auto& coord : lgrCOORD)
+    {
+        const auto& [x1, y1, z1, x2, y2, z2] = coord;
+
+        std::cout << x1 << " " << y1 << " " << z1 << " "
+                  << x2 << " " << y2 << " " << z2 << std::endl;
+    }
+    std::cout << std::endl;
 }
 
-BOOST_AUTO_TEST_CASE(fullInactiveParentCellsBlock, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(fullInactiveParentCellsBlock_lgrCOORD_throws, *boost::unit_test::disabled())
 {
     const std::string deck_string = R"(
 RUNSPEC
@@ -458,4 +595,8 @@ SCHEDULE
 
     // Accessing inactive (non-existing) cell
     BOOST_CHECK_THROW(lgrCartesianIdxToCellIdx.at(0), std::out_of_range);
+
+    // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block.
+    // All inactive cells, therefore lgrCOORD(...) throws an exception
+    BOOST_CHECK_THROW(Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK), std::logic_error);
 }
