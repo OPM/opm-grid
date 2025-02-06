@@ -38,11 +38,14 @@ namespace Opm
 std::pair<std::unordered_map<int, int>, std::vector<std::array<int, 3>>>
 lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
 
-/// @brief Extracts the COORD keyword values for the LGR (Local Grid Refinement) block.
+/// @brief Extracts the COORD and ZCORN values for the LGR (Local Grid Refinement) block.
 ///
-/// This retrieves a vector of std::array<double, 6>, where each element represents
+/// COORD: This retrieves a vector of std::array<double, 6>, where each element represents
 /// the coordinate values of a pillar in the LGR block. The values correspond to the
 /// COORD keyword, which defines the corner-point geometry of the grid.
+/// ZCORN: It is initialized to inactive values and then calculates
+/// the bottom and top ZCORN values for each cell in the LGR based on its geometry.
+/// It determines the active cell layers and assigns ZCORN values accordingly.
 ///
 /// Special Cases:
 /// - If a pillar within the LGR block is "inactive", its COORD values are set to
@@ -53,11 +56,14 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
 /// @param [in] level The refinement level of the LGR block.
 /// @param [in] lgrCartesianIdxToCellIdx Mapping from LGR Cartesian indices to level cell indices.
 /// @param [in] lgrIJK The IJK indices corresponding to the LGR block active cells.
-/// @return A vector of std::array<double, 6> containing the coordinate values for each pilar.
-std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
-                                            int level,
-                                            const std::unordered_map<int, int>& lgrCartesianIdxToCellIdx,
-                                            const std::vector<std::array<int, 3>>& lgrIJK);
+/// @return A pair containing:
+///    - A std::vector<std::array<double, 6>> storing the coordinate values for each pillar.
+///    - A std::vector<double> storing the depth of each corner point of the LGR pillars.
+std::pair<std::vector<std::array<double, 6>>, std::vector<double>>
+lgrCOORDandZCORN(const Dune::CpGrid& grid,
+                 int level,
+                 const std::unordered_map<int, int>& lgrCartesianIdxToCellIdx,
+                 const std::vector<std::array<int, 3>>& lgrIJK);
 
 /// @brief Sets the coordinates for a pillar.
 ///

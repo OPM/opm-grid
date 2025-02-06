@@ -67,13 +67,14 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
     return std::make_pair(lgrCartesianIdxToCellIdx, lgrIJK);
 }
 
-std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
-                                            int level,
-                                            const std::unordered_map<int, int>&  lgrCartesianIdxToCellIdx,
-                                            const std::vector<std::array<int, 3>>& lgrIJK)
+std::pair<std::vector<std::array<double, 6>>, std::vector<double>>
+lgrCOORDandZCORN(const Dune::CpGrid& grid,
+                 int level,
+                 const std::unordered_map<int, int>&  lgrCartesianIdxToCellIdx,
+                 const std::vector<std::array<int, 3>>& lgrIJK)
 {
     const auto& levelGrid = *(grid.currentData()[level]);
-    
+
     // Check not all cells are inactive
     const auto numCells = levelGrid.size(0);
     if (numCells == 0) {
@@ -92,18 +93,79 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
         pillar.fill(std::numeric_limits<double>::max());
     }
 
+    // Initialize all ZCORN as inactive (setting values to std::numeric_limits<double>::max()).
+    std::vector<double> lgrZCORN(8*nx*ny*nz, std::numeric_limits<double>::max());
+
+    // Store cells per layer (via their ijk's, i.e. cells_per_layer[ k ] = { {i0, j0}, {i1, j1}, ... }).
+    std::vector<std::vector<std::pair<int,int>>> cells_per_layer(nz);
+
     // Map to determine min and max k per cell column (i, j) (min/max_k = 0, ..., nz-1).
     // Initialized as {nz, -1} to detect inactive cell columns.
     std::vector<std::array<int,2>> minMaxPerCellPillar(nx*ny, {nz, -1});
 
-    // Compute the bottom and top k per cell pillar (i, j).
+   
     for (const auto& ijk : lgrIJK) {
+
+         // Compute the bottom and top k per cell pillar (i, j).
         int cell_pillar_idx = ijk[1] * nx + ijk[0];
         auto& minMax = minMaxPerCellPillar[cell_pillar_idx];
 
         minMax[0] = std::min(ijk[2], minMax[0]);
         minMax[1] = std::max(ijk[2], minMax[1]);
+
+        // Store cells per layer 
+        cells_per_layer[ijk[2]].emplace_back(std::make_pair(ijk[0],ijk[1]));
     }
+
+    for (int layer = 0; layer < nz; ++layer) {
+        for (const auto& ij : cells_per_layer[layer]) {
+            int cell_lgr_cartesian_idx =  (layer*nx*ny) + (ij.second *nx) + ij.first;
+
+            const auto& elemIdx = lgrCartesianIdxToCellIdx.at(cell_lgr_cartesian_idx);
+            const auto& elem = Dune::cpgrid::Entity<0>(levelGrid, elemIdx, true);
+
+            // For a grid with nz layers, ZCORN values are ordered:
+            //
+            //      top layer nz-1
+            //   bottom layer nz-1
+            //      top layer nz-2
+            //   bottom layer nz-2
+            // ...
+            //      top layer 1
+            //   bottom layer 1
+            //      top layer 0
+            //   bottom layer 0
+
+            int zcorn_top_00_idx = ((nz-1-layer)*8*nx*ny) + (ij.second*4*nx) + (2*ij.first); // assoc. w. elem corner 4
+
+            // Bottom indices
+            int zcorn_top_10_idx = zcorn_top_00_idx + 1;  // assoc. w. elem corner 5
+            int zcorn_top_01_idx = zcorn_top_00_idx + (2*nx);  // assoc. w. elem corner 6
+            int zcorn_top_11_idx = zcorn_top_01_idx + 1; // assoc. w. elem corner 7
+
+            // Top indices
+            int zcorn_bottom_00_idx = zcorn_top_00_idx + (4*nx*ny); // assoc. w. elem corner 0
+            int zcorn_bottom_10_idx = zcorn_bottom_00_idx + 1;  // assoc. w. elem corner 1
+            int zcorn_bottom_01_idx = zcorn_bottom_00_idx + (2*nx); // assoc. w. elem corner 2
+            int zcorn_bottom_11_idx = zcorn_bottom_01_idx + 1;  // assoc. w. elem corner
+
+            // Note: zcorn_idx + 1 moves to the next position along the x-axis (i+1, j, k)
+            //       zcorn_idx + (2*nx) moves to the next position along the y-axis (i, j+1, k)
+            //       zcorn_idx + (4*nx*ny) moves to the next position along the z-axis (i,j, k+1)
+
+            // Assign ZCORN values
+            lgrZCORN[zcorn_top_00_idx] = elem.subEntity<3>(4).geometry().center()[2];
+            lgrZCORN[zcorn_top_10_idx] = elem.subEntity<3>(5).geometry().center()[2];
+            lgrZCORN[zcorn_top_01_idx] = elem.subEntity<3>(6).geometry().center()[2];
+            lgrZCORN[zcorn_top_11_idx] = elem.subEntity<3>(7).geometry().center()[2];
+
+            lgrZCORN[zcorn_bottom_00_idx] = elem.subEntity<3>(0).geometry().center()[2];
+            lgrZCORN[zcorn_bottom_10_idx] = elem.subEntity<3>(1).geometry().center()[2];
+            lgrZCORN[zcorn_bottom_01_idx] = elem.subEntity<3>(2).geometry().center()[2];
+            lgrZCORN[zcorn_bottom_11_idx] = elem.subEntity<3>(3).geometry().center()[2];
+        }
+    }
+
 
     // Rewrite values for active pillars
     for (int j = 0; j < ny; ++j) {
@@ -129,7 +191,7 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
             Opm::processPillars(i,j, nx, topElem, bottomElem, lgrCOORD);
         }
     }
-    return lgrCOORD;
+    return std::make_pair(lgrCOORD, lgrZCORN);
 }
 
 void setPillarCoordinates(int i, int j, int nx,
