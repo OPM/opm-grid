@@ -23,7 +23,6 @@
 #include <algorithm>
 #include <array>
 #include <limits>
-#include <map>
 #include <stdexcept>
 #include <string>
 #include <tuple>
@@ -114,7 +113,7 @@ std::vector<std::array<double, 6>> lgrCOORD(const Dune::CpGrid& grid,
             // Get min/max k for pillar at (i,j)
             const auto& [bottom_k, top_k] = minMaxPerCellPillar[cell_pillar_idx];
 
-            if ( (bottom_k == nz) || (top_k == -1)) {
+            if ( bottom_k == nz ) {
                  continue; // no active pillar at (i,j)
             }
 
