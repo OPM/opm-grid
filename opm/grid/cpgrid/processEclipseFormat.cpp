@@ -174,7 +174,7 @@ namespace cpgrid
             const auto& permZ = [&fp, cartGridSize](){
                 if(fp.has_double("PERMZ")) return fp.get_global_double("PERMZ");
                 if(fp.has_double("PERMY")) return fp.get_global_double("PERMY");
-                if(fp.has_double("PERMY")) return fp.get_global_double("PERMX");
+                if(fp.has_double("PERMX")) return fp.get_global_double("PERMX");
                 // Make this part run without PERM* for some tests
                 return std::vector<double>(cartGridSize, 1);
             }();
