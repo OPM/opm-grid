@@ -125,7 +125,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
             std::size_t index = 0;
             std::unordered_set<int> distributed_wells;
 
-            for( auto well : gridAndWells->getWellsGraph() )
+            for (const auto& well : gridAndWells->getWellsGraph() )
             {
                 int part=parts[index];
                 std::set<std::pair<int,int> > cells_on_other;

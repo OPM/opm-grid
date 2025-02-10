@@ -330,7 +330,7 @@ namespace cpgrid
 
             // Add explicit NNCs.
             const auto& nncs = ecl_state->getInputNNC();
-            for (const auto single_nnc : nncs.input()) {
+            for (const auto& single_nnc : nncs.input()) {
                 // Repeated NNCs will only exist in the map once (repeated
                 // insertions have no effect). The code that computes the
                 // transmissibilities is responsible for ensuring repeated NNC
@@ -469,7 +469,7 @@ namespace cpgrid
                 const auto& aquifer_nnc = aquifer.numericalAquifers().aquiferConnectionNNCs(ecl_grid, fp);
                 // We need to update the nnc in the ecl_state
                 ecl_state->appendInputNNC(aquifer_nnc);
-                for (const auto single_nnc : aquifer_nnc) {
+                for (const auto& single_nnc : aquifer_nnc) {
                     nnc[ExplicitNNC].insert({single_nnc.cell1, single_nnc.cell2});
                 }
             }
