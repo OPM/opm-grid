@@ -761,8 +761,8 @@ namespace cpgrid
             }
 
             // Clamp z-coord to make shoe box shape
-            bool clamp_z = true;
-            if (clamp_z) {
+            constexpr bool clamp_z = true;
+            if constexpr (clamp_z) {
                 double zb;
                 double zt;
                 findTopAndBottomZ(new_n, zcorn, zb, zt);
