@@ -1540,7 +1540,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         map2GlobalCellId[i.local()]=i.global();
     }
 
-    std::map<int,int> face_indicator =
+    [[maybe_unused]] std::map<int,int> face_indicator =
         computeCell2Face(grid, view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                          map2GlobalFaceId, cell_indexset.size());
 

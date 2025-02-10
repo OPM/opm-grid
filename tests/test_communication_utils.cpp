@@ -150,7 +150,7 @@ void testAllGatherv(const C& comm)
     std::tie(allVals, displ) = Opm::allGatherv(myVals, comm);
     checkGlobalData(allVals, expectedAllVals, displ, expectedDispl);
     // test with a pair
-    std::pair<std::vector<double>, std::vector<int>> out;
+    [[maybe_unused]] std::pair<std::vector<double>, std::vector<int>> out;
     out = Opm::allGatherv(myVals, comm);
 }
 
@@ -174,7 +174,7 @@ void testGatherv(const C& comm)
     }
     checkGlobalData(allVals, expectedAllVals, displ, expectedDispl);
     // test with a pair
-    std::pair<std::vector<double>, std::vector<int>> out;
+    [[maybe_unused]] std::pair<std::vector<double>, std::vector<int>> out;
     out = Opm::gatherv(myVals, comm, 0);
 }
 

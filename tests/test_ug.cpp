@@ -196,7 +196,7 @@ BOOST_AUTO_TEST_CASE(TOPS_Fully_Specified) {
 
     BOOST_CHECK(grid_equal(cgrid1, cgrid2));
 
-    Opm::EclipseGrid grid = Opm::UgGridHelpers::createEclipseGrid( *cgrid1 , es1.getInputGrid( ) );
+    [[maybe_unused]] Opm::EclipseGrid grid = Opm::UgGridHelpers::createEclipseGrid( *cgrid1 , es1.getInputGrid( ) );
     auto actnum = Opm::UgGridHelpers::createACTNUM(*cgrid1);
     for (std::size_t g = 0; g < 300; g++)
         BOOST_CHECK_EQUAL(actnum[g], 1);
