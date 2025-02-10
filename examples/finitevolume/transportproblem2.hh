@@ -25,10 +25,10 @@ template<int dimworld, class ct>
 double b (const Dune::FieldVector<ct,dimworld>& x, double t)
 {
   return 0.0;
-  if (x.two_norm()<t+0.125)
-        return 1.0;
-  else
-        return 0.0;
+  // if (x.two_norm()<t+0.125)
+  //       return 1.0;
+  // else
+  //       return 0.0;
 }
 
 // the vector field u is returned in r
