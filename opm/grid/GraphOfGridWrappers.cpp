@@ -722,7 +722,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     std::vector<std::tuple<int, int, char>> myExportList;
     std::vector<std::tuple<int, int, char, int>> myImportList;
     std::vector<std::vector<int>> exportedCells;
-    auto wellConnections = partitionIsEmpty ? Dune::cpgrid::WellConnections()
+    auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                             : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
 
     if (cc.rank() == root) {
