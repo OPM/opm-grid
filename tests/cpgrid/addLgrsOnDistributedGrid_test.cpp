@@ -114,7 +114,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             if (entity.isLeaf()){ // In particular, cell has no children/is not a father.
                 BOOST_CHECK_EQUAL(lgr, -1);
                 BOOST_CHECK(childrenList.empty());
-                BOOST_CHECK( entity.isLeaf() == true);
                 // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                 BOOST_CHECK( it == endIt);
             }

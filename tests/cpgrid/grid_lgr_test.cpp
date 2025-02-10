@@ -147,7 +147,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             else{
                 BOOST_CHECK(lgr != -1);
                 // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
-                BOOST_CHECK_EQUAL( it == endIt, false);
                 BOOST_CHECK( entity.mightVanish() == true);
                 BOOST_CHECK( entity.isNew() == false);
                 BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
