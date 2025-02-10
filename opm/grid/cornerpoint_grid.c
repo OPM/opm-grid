@@ -12,18 +12,21 @@
 */
 
 #include "config.h"
+
 #include <assert.h>
+#include <stdbool.h>
 #include <stdlib.h>
 
 #include <opm/grid/cornerpoint_grid.h>
 #include <opm/grid/cpgpreprocess/geometry.h>
 #include <opm/grid/cpgpreprocess/preprocess.h>
+#include <opm/grid/cpgpreprocess/make_edge_conformal.hpp>
 #include <opm/grid/UnstructuredGrid.h>
 
 
 static int
 fill_cell_topology(struct processed_grid  *pg,
-                   struct UnstructuredGrid *g )
+                   struct UnstructuredGrid *g)
 {
     int    f, c1, c2, tag;
     size_t c, nc, nhf;
@@ -159,83 +162,92 @@ void compute_geometry(struct UnstructuredGrid *g)
     }
 }
 
-
 struct UnstructuredGrid *
-create_grid_cornerpoint(const struct grdecl *in, double tol)
+create_grid_cornerpoint(const struct grdecl *in,
+                        double tol,
+                        int edge_conformal)
 {
     struct UnstructuredGrid *g;
-   int                      ok;
-   struct processed_grid    pg;
+    int                      ok;
+    struct processed_grid    pg;
 
-   g = create_grid_empty();
-   if (g == NULL)
-   {
-       return NULL;
-   }
+    g = create_grid_empty();
+    if (g == NULL) {
+        return NULL;
+    }
 
-   ok = process_grdecl(in, tol, NULL, &pg, false);
-   if (!ok)
-   {
-       free_processed_grid(&pg);
-       destroy_grid(g);
-       return NULL;
-   }
+    ok = process_grdecl(/* pinchActive = */ 0, edge_conformal, tol,
+                        in, /* is_aquifer_cell = */ NULL, &pg);
 
-   /*
-    *  Convert "struct processed_grid" to "struct UnstructuredGrid".
-    *
-    *  In particular, convey resource ownership from 'pg' to 'g'.
-    *  Consequently, memory resources obtained in process_grdecl()
-    *  will be released in destroy_grid().
-    */
-   g->dimensions = 3;
+    if (ok && edge_conformal) {
+        /* This is a slight variation of fill_cell_topology(), so we could
+         * arguably omit fill_cell_topology() later when the edge_conformal
+         * flag is set. */
+        ok = add_cell_face_mapping(&pg);
 
-   g->number_of_nodes  = pg.number_of_nodes;
-   g->number_of_faces  = pg.number_of_faces;
-   g->number_of_cells  = pg.number_of_cells;
+        if (ok) {
+            ok = make_edge_conformal(&pg);
+        }
+    }
 
-   g->node_coordinates = pg.node_coordinates;
+    if (!ok) {
+        free_processed_grid(&pg);
+        destroy_grid(g);
+        return NULL;
+    }
 
-   g->face_nodes       = pg.face_nodes;
-   g->face_nodepos     = pg.face_ptr;
-   g->face_cells       = pg.face_neighbors;
+    /*
+     *  Convert "struct processed_grid" to "struct UnstructuredGrid".
+     *
+     *  In particular, convey resource ownership from 'pg' to 'g'.
+     *  Consequently, memory resources obtained in process_grdecl() will be
+     *  released in destroy_grid().
+     */
+    g->dimensions = 3;
 
-   /* Explicitly relinquish resource references conveyed to 'g'.  This
-    * is needed to avoid creating dangling references in the
-    * free_processed_grid() call. */
-   pg.node_coordinates = NULL;
-   pg.face_nodes       = NULL;
-   pg.face_ptr         = NULL;
-   pg.face_neighbors   = NULL;
+    g->number_of_nodes  = pg.number_of_nodes;
+    g->number_of_faces  = pg.number_of_faces;
+    g->number_of_cells  = pg.number_of_cells;
 
-   /* allocate and fill g->cell_faces/g->cell_facepos and
-    * g->cell_facetag as well as the geometry-related fields. */
-   ok =       fill_cell_topology(&pg, g);
-   ok = ok && allocate_geometry(g);
+    g->node_coordinates = pg.node_coordinates;
 
-   if (!ok)
-   {
-       destroy_grid(g);
-       g = NULL;
-   }
-   else
-   {
+    g->face_nodes       = pg.face_nodes;
+    g->face_nodepos     = pg.face_node_ptr;
+    g->face_cells       = pg.face_neighbors;
 
-       compute_geometry(g);
+    /* Explicitly relinquish resource references conveyed to 'g'.  This
+     * is needed to avoid creating dangling references in the
+     * free_processed_grid() call. */
+    pg.node_coordinates = NULL;
+    pg.face_nodes       = NULL;
+    pg.face_node_ptr    = NULL;
+    pg.face_neighbors   = NULL;
 
-       g->cartdims[0]      = pg.dimensions[0];
-       g->cartdims[1]      = pg.dimensions[1];
-       g->cartdims[2]      = pg.dimensions[2];
+    /* allocate and fill g->cell_faces/g->cell_facepos and
+     * g->cell_facetag as well as the geometry-related fields. */
+    ok =       fill_cell_topology(&pg, g);
+    ok = ok && allocate_geometry(g);
 
-       g->global_cell      = pg.local_cell_index;
+    if (!ok) {
+        destroy_grid(g);
+        g = NULL;
+    }
+    else {
+        compute_geometry(g);
 
-       /* Explicitly relinquish resource references conveyed to 'g'.
-        * This is needed to avoid creating dangling references in the
-        * free_processed_grid() call. */
-       pg.local_cell_index = NULL;
-   }
+        g->cartdims[0]      = pg.dimensions[0];
+        g->cartdims[1]      = pg.dimensions[1];
+        g->cartdims[2]      = pg.dimensions[2];
 
-   free_processed_grid(&pg);
+        g->global_cell      = pg.local_cell_index;
 
-   return g;
+        /* Explicitly relinquish resource references conveyed to 'g'.  This
+         * is needed to avoid creating dangling references in the
+         * free_processed_grid() call. */
+        pg.local_cell_index = NULL;
+    }
+
+    free_processed_grid(&pg);
+
+    return g;
 }
