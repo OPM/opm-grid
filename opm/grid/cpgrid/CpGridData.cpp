@@ -539,7 +539,7 @@ struct CellGeometryHandle
         buffer.write(geom.volume());
         auto aquiferCell = std::lower_bound(gatherAquiferCells_.begin(),
                                             gatherAquiferCells_.end(), t.index());
-        double isAquifer = (aquiferCell != gatherAquiferCells_.end() && *aquiferCell == t.index());
+        double isAquifer = (aquiferCell != gatherAquiferCells_.end() && *aquiferCell == t.index()) ? 1.0 : 0.0;
         buffer.write(isAquifer);
     }
     template<class B, class T>
