@@ -100,7 +100,6 @@ BOOST_AUTO_TEST_CASE(EqualEclipseGrid) {
     Opm::Parser parser;
     Opm::Deck deck = parser.parseFile( filename);
     Opm::EclipseState es(deck);
-    auto grid = es.getInputGrid();
 
     Opm::GridManager gridM(es.getInputGrid());
     const UnstructuredGrid* cgrid1 = gridM.c_grid();

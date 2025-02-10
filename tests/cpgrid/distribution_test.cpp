@@ -657,9 +657,6 @@ for (auto partition_method : partition_methods) {
         grid.gatherData(gather_gid_set_data);
 
     }
-    decltype(std::get<0>(Dune::CpGrid().loadBalance(nullptr))) test1 = true;
-    decltype(std::get<0>(Dune::CpGrid().loadBalance(Dune::EdgeWeightMethod(), nullptr))) test2 = true;
-    test2 = test1;
 }
 }
 

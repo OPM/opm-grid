@@ -2016,8 +2016,6 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::vector<cpgrid::OrientedEntityTable<0,1>> refined_cell_to_face_vec(levels);
     std::vector<Opm::SparseTable<int>> refined_face_to_point_vec(levels);
     std::vector<cpgrid::OrientedEntityTable<1,0>> refined_face_to_cell_vec(levels);
-    std::vector<cpgrid::EntityVariable<enum face_tag,1>> refined_face_tags_vec(levels);
-    std::vector<cpgrid::SignedEntityVariable<Dune::FieldVector<double,3>,1>> refined_face_normals_vec(levels);
 
     // Mutable containers for refined corners, faces, cells, face tags, and face normals.
     std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>> refined_corners_vec(levels);
