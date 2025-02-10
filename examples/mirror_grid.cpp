@@ -39,7 +39,7 @@
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
 /// Print init message in new grid filename
-void printInitMessage(std::ofstream& out, const char* origfilename, std::string direction) {
+void printInitMessage(std::ofstream& out, const char* origfilename, const std::string& direction) {
     std::ifstream infile;
     infile.open(origfilename, std::ios::in);
     if (!infile) {
@@ -65,12 +65,11 @@ void printInitMessage(std::ofstream& out, const char* origfilename, std::string 
 
 /// Write keyword values to file
 template <class T>
-void printKeywordValues(std::ofstream& out, std::string keyword, std::vector<T> values, int nCols) {
+void printKeywordValues(std::ofstream& out, const std::string& keyword, const std::vector<T>& values, int nCols) {
     out << keyword << std::endl;
     int col = 0;
-    typename std::vector<T>::iterator iter;
-    for (iter = values.begin(); iter != values.end(); ++iter) {
-        out << *iter << " ";
+    for (const auto& value : values) {
+        out << value << " ";
         ++col;
         // Break line for every nCols entry.
         if (col == nCols) {
@@ -87,7 +86,7 @@ void printKeywordValues(std::ofstream& out, std::string keyword, std::vector<T> 
 std::vector<double> getMapaxesValues(const Opm::Deck& deck);
 
 /// Mirror keyword MAPAXES in deck
-void mirror_mapaxes( const Opm::Deck& deck, std::string direction, std::ofstream& out) {
+void mirror_mapaxes( const Opm::Deck& deck, const std::string& direction, std::ofstream& out) {
     // Assumes axis aligned with x/y-direction
     std::cout << "Warning: Keyword MAPAXES not fully understood. Result should be verified manually." << std::endl;
     if (deck.hasKeyword("MAPAXES")) {
@@ -105,7 +104,7 @@ void mirror_mapaxes( const Opm::Deck& deck, std::string direction, std::ofstream
 }
 
 /// Mirror keyword SPECGRID in deck
-void mirror_specgrid( const Opm::Deck& deck, std::string direction, std::ofstream& out) {
+void mirror_specgrid( const Opm::Deck& deck, const std::string& direction, std::ofstream& out) {
     // We only need to multiply the dimension by 2 in the correct direction.
     const auto& specgridRecord = deck["SPECGRID"].back().getRecord(0);
     std::vector<int> dimensions(3);
@@ -122,7 +121,7 @@ void mirror_specgrid( const Opm::Deck& deck, std::string direction, std::ofstrea
 }
 
 /// Mirror keyword COORD in deck
-void mirror_coord(const Opm::Deck& deck, std::string direction, std::ofstream& out) {
+void mirror_coord(const Opm::Deck& deck, const std::string& direction, std::ofstream& out) {
     // We assume uniform spacing in x and y directions and parallel top and bottom faces
     const auto& specgridRecord = deck["SPECGRID"].back().getRecord(0);
     std::vector<int> dimensions(3);
@@ -188,7 +187,7 @@ void mirror_coord(const Opm::Deck& deck, std::string direction, std::ofstream& o
 }
 
 /// Mirror keyword ZCORN in deck
-void mirror_zcorn(const Opm::Deck& deck, std::string direction, std::ofstream& out) {
+void mirror_zcorn(const Opm::Deck& deck, const std::string& direction, std::ofstream& out) {
     const auto& specgridRecord = deck["SPECGRID"].back().getRecord(0);
     std::vector<int> dimensions(3);
     dimensions[0] = specgridRecord.getItem("NX").get< int >(0);
@@ -255,11 +254,11 @@ void mirror_zcorn(const Opm::Deck& deck, std::string direction, std::ofstream& o
     printKeywordValues(out, "ZCORN", zcorn_mirrored, 8);
 }
 
-std::vector<int> getKeywordValues(std::string keyword, const Opm::Deck& deck, int /*dummy*/) {
+std::vector<int> getKeywordValues(const std::string& keyword, const Opm::Deck& deck, int /*dummy*/) {
     return deck[keyword].back().getIntData();
 }
 
-std::vector<double> getKeywordValues(std::string keyword, const Opm::Deck& deck, double /*dummy*/) {
+std::vector<double> getKeywordValues(const std::string& keyword, const Opm::Deck& deck, double /*dummy*/) {
     return deck[keyword].back().getRawDoubleData();
 }
 
@@ -279,7 +278,8 @@ std::vector<double> getMapaxesValues(const Opm::Deck& deck)
 
 /// Mirror keywords that have one value for each cell
 template <class T>
-void mirror_celldata(std::string keyword, const Opm::Deck& deck, std::string direction, std::ofstream& out) {
+void mirror_celldata(const std::string& keyword, const Opm::Deck& deck,
+                     const std::string& direction, std::ofstream& out) {
     if ( ! deck.hasKeyword(keyword)) {
         std::cout << "Ignoring keyword " << keyword << " as it was not found." << std::endl;
         return;

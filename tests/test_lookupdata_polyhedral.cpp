@@ -173,7 +173,9 @@ BOOST_AUTO_TEST_CASE(PolyGridFromEcl)
 #endif
 }
 
-void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid, Opm::EclipseGrid eclGrid, std::string deck_string)
+void fieldProp_check(const Dune::PolyhedralGrid<3,3>& grid,
+                     Opm::EclipseGrid eclGrid,
+                     const std::string& deck_string)
 {
 
     Opm::Deck deck = Opm::Parser{}.parseString(deck_string);

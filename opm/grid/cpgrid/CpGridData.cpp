@@ -2038,7 +2038,7 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
         }
     }
 
-    const auto& detectSharing = [](std::vector<int> faceIdxs, std::vector<int> otherFaceIdxs){
+    auto detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs) {
         bool faceIsShared = false;
         for (const auto& face : faceIdxs) {
             for (const auto& otherFace : otherFaceIdxs) {
