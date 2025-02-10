@@ -606,9 +606,11 @@ namespace cpgrid
         cellz_t getCellZvals(const coord_t& c, const coord_t& n, const double* z)
         {
             // cout << c << endl;
-            int delta[3] = { 1,
-                             2*n[0],
-                             4*n[0]*n[1] };
+            const int delta[3] = {
+                1,
+                2*n[0],
+                4*n[0]*n[1]
+            };
             int ix = 2*(c[0]*delta[0] + c[1]*delta[1] + c[2]*delta[2]);
             // cout << ix << endl;
             cellz_t cellz = {{ z[ix], z[ix + delta[0]],
@@ -622,9 +624,11 @@ namespace cpgrid
 
         void setCellZvals(const coord_t& c, const coord_t& n, double* z, const cellz_t& cellvals)
         {
-            int delta[3] = { 1,
-                             2*n[0],
-                             4*n[0]*n[1] };
+            const int delta[3] = {
+                1,
+                2*n[0],
+                4*n[0]*n[1]
+            };
             int ix = 2*(c[0]*delta[0] + c[1]*delta[1] + c[2]*delta[2]);
             z[ix]                                  = cellvals[0];
             z[ix + delta[0]]                       = cellvals[1];

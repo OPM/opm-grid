@@ -226,7 +226,7 @@ process_vertical_faces(int direction,
     int *cornerpts[4];
     int d[3];
     unsigned f;
-    enum face_tag tag[] = { I_FACE, J_FACE };
+    const enum face_tag tag[] = { I_FACE, J_FACE };
     int *tmp;
     int nx = out->dimensions[0];
     int ny = out->dimensions[1];

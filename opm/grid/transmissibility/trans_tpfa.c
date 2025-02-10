@@ -28,7 +28,7 @@ tpfa_htrans_compute(struct UnstructuredGrid *G, const double *perm, double *htra
     unsigned i;
 
     double Kn[3];
-    double *cc, *fc, *n;
+    const double *cc, *fc, *n;
     const double *K;
 
     MAT_SIZE_T nrows, ncols, ldA, incx, incy;
