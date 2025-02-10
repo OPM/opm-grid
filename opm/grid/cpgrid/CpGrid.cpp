@@ -3039,8 +3039,12 @@ void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::arra
 
                     if ((lastLgrWhereMarkedFaceAppeared == elemIdx) || (lastLgrLevel != level)) {
                         // Store the refined corner in its last appearence - to avoid repetition.
-                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner[{elemIdx, corner}] = {level, refined_corner_count_vec[shiftedLevel]};
-                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner[{level, refined_corner_count_vec[shiftedLevel]}] = {elemIdx, corner};
+                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner.
+                                insert_or_assign(std::array{elemIdx, corner},
+                                                 std::array{level, refined_corner_count_vec[shiftedLevel]});
+                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner.
+                                insert_or_assign(std::array{level, refined_corner_count_vec[shiftedLevel]},
+                                                 std::array{elemIdx, corner});
                         refined_corner_count_vec[shiftedLevel] +=1;
                     }
                 }
