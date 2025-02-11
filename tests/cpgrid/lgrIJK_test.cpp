@@ -243,7 +243,7 @@ SCHEDULE
     BOOST_TEST(lgr1IJK[77][2] == 2);
 
     // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
-    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    const auto [lgrCOORD, lgrZCORN] = Opm::lgrCOORDandZCORN(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
     std::cout<< "COORD for LGR with all active cells" << std::endl;
     for (const auto& coord : lgrCOORD)
     {
@@ -256,7 +256,7 @@ SCHEDULE
 }
 
 
-BOOST_AUTO_TEST_CASE(singleCellGrid_easyToTestlgrCOORD)
+BOOST_AUTO_TEST_CASE(singleCellGrid_easyToTestlgrCOORDandZCORN)
 {
     // Single-cell-grid (with dimension 1x1x1)
     // {DX,DY,DZ} = {8,4,2} which makes easy to check the values
@@ -337,7 +337,7 @@ SCHEDULE
                       lgr1IJK.size());
 
     // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
-    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    const auto [lgrCOORD, lgrZCORN] = Opm::lgrCOORDandZCORN(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
     const int nx = 8;
     const int ny = 4;
     const int nz = 2;
@@ -363,6 +363,34 @@ SCHEDULE
                   << x2 << " " << y2 << " " << z2 << std::endl;
     }
     std::cout<< std::endl;
+
+    std::cout<< "ZCORN for LGR with all active cells" << std::endl;
+    for (const auto& zcorn : lgrZCORN)
+    {
+        std::cout << zcorn << std::endl;
+    }
+    std::cout<< std::endl;
+
+    // For a grid with nz layers, ZCORN values are ordered:
+    //
+    //      top layer nz-1
+    //   bottom layer nz-1
+    //      top layer nz-2
+    //   bottom layer nz-2
+    // ...
+    //      top layer 1
+    //   bottom layer 1
+    //      top layer 0
+    //   bottom layer 0
+    for (int k = 0; k < nz; ++k) {
+        for (int j = 0;  j < ny; ++j) {
+            for (int i = 0; i < nx; ++i) {
+                int zcorn_idx =  ((nz-1-k)*8*nx*ny) + (j*4*nx) + (2*i);
+                BOOST_CHECK_EQUAL( lgrZCORN[zcorn_idx], k+1); // top layer zcorn values
+                BOOST_CHECK_EQUAL( lgrZCORN[zcorn_idx + (4*nx*ny)], k); // bottom layer zcorn values
+            }
+        }
+    }
 }
 
 
@@ -506,7 +534,7 @@ SCHEDULE
     // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block
     // If a pillar within the LGR block is "inactive," its COORD values are set to
     // std::numeric_limits<double>::max() to indicate the inactive status
-    const auto lgrCOORD = Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
+    const auto [lgrCOORD, lgrZCORN] = Opm::lgrCOORDandZCORN(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK);
     std::cout<< "COORD for LGR with active and inactive cells" << std::endl;
     for (const auto& coord : lgrCOORD)
     {
@@ -598,5 +626,5 @@ SCHEDULE
 
     // Assuming lgrCOORD is a vector of std::array<double, 6> with the content of COORD keyword for the LGR block.
     // All inactive cells, therefore lgrCOORD(...) throws an exception
-    BOOST_CHECK_THROW(Opm::lgrCOORD(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK), std::logic_error);
+    BOOST_CHECK_THROW(Opm::lgrCOORDandZCORN(grid, lgr1_level, lgrCartesianIdxToCellIdx, lgr1IJK), std::logic_error);
 }
