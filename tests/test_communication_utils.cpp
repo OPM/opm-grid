@@ -128,7 +128,7 @@ createParallelData(const C& comm, T)
 
 template<class T>
 void checkGlobalData(const std::vector<T>& data, const std::vector<T>& expected,
-                     const std::vector<int> displ, const std::vector<int> expectedDispl){
+                     const std::vector<int>& displ, const std::vector<int>& expectedDispl) {
     using std::begin;
     using std::end;
     BOOST_CHECK_EQUAL_COLLECTIONS(begin(data), end(data), begin(expected), end(expected));
@@ -150,7 +150,7 @@ void testAllGatherv(const C& comm)
     std::tie(allVals, displ) = Opm::allGatherv(myVals, comm);
     checkGlobalData(allVals, expectedAllVals, displ, expectedDispl);
     // test with a pair
-    std::pair<std::vector<double>, std::vector<int>> out;
+    [[maybe_unused]] std::pair<std::vector<double>, std::vector<int>> out;
     out = Opm::allGatherv(myVals, comm);
 }
 
@@ -174,7 +174,7 @@ void testGatherv(const C& comm)
     }
     checkGlobalData(allVals, expectedAllVals, displ, expectedDispl);
     // test with a pair
-    std::pair<std::vector<double>, std::vector<int>> out;
+    [[maybe_unused]] std::pair<std::vector<double>, std::vector<int>> out;
     out = Opm::gatherv(myVals, comm, 0);
 }
 

@@ -41,8 +41,8 @@ inline double triangleArea3d(const double* p0,
                              const double* p1,
                              const double* p2)
 {
-    double a[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
-    double b[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
+    const double a[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+    const double b[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
     double cr[3];
     cross(a, b, cr);
     return 0.5*std::sqrt(cr[0]*cr[0] + cr[1]*cr[1] + cr[2]*cr[2]);

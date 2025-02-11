@@ -539,7 +539,7 @@ struct CellGeometryHandle
         buffer.write(geom.volume());
         auto aquiferCell = std::lower_bound(gatherAquiferCells_.begin(),
                                             gatherAquiferCells_.end(), t.index());
-        double isAquifer = (aquiferCell != gatherAquiferCells_.end() && *aquiferCell == t.index());
+        double isAquifer = (aquiferCell != gatherAquiferCells_.end() && *aquiferCell == t.index()) ? 1.0 : 0.0;
         buffer.write(isAquifer);
     }
     template<class B, class T>
@@ -1540,7 +1540,7 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
         map2GlobalCellId[i.local()]=i.global();
     }
 
-    std::map<int,int> face_indicator =
+    [[maybe_unused]] std::map<int,int> face_indicator =
         computeCell2Face(grid, view_data.cell_to_face_, *view_data.global_id_set_, cell_to_face_,
                          map2GlobalFaceId, cell_indexset.size());
 
@@ -2038,7 +2038,7 @@ bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK
         }
     }
 
-    const auto& detectSharing = [](std::vector<int> faceIdxs, std::vector<int> otherFaceIdxs){
+    auto detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs) {
         bool faceIsShared = false;
         for (const auto& face : faceIdxs) {
             for (const auto& otherFace : otherFaceIdxs) {

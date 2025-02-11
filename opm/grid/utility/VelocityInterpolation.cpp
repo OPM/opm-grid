@@ -102,9 +102,9 @@ namespace Opm
         // for each corner.
         const int dim = grid_.dimensions;
         std::vector<double> N(dim*dim); // Normals matrix. Fortran ordering!
-        std::vector<double> orig_N(dim*dim); // Normals matrix. Fortran ordering!
+        std::vector<double> orig_N; // Normals matrix. Fortran ordering!
         std::vector<double> f(dim);     // Flux vector.
-        std::vector<double> orig_f(dim);     // Flux vector.
+        std::vector<double> orig_f;     // Flux vector.
         std::vector<MAT_SIZE_T> piv(dim); // For LAPACK solve
         const SparseTable<WachspressCoord::CornerInfo>& all_ci = bcmethod_.cornerInfo();
         const std::vector<int>& adj_faces = bcmethod_.adjacentFaces();

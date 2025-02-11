@@ -517,7 +517,6 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   const double zoltanImbalanceTol,
                                   const std::map<std::string, std::string>& params)
 {
-    int rc = ZOLTAN_OK - 1;
     float ver = 0;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries, numLidEntries, numImport, numExport;
@@ -525,11 +524,13 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     int argc=0;
     char** argv = 0 ;
-    rc = Zoltan_Initialize(argc, argv, &ver);
-    zz = Zoltan_Create(cc);
-    if ( rc != ZOLTAN_OK )
-    {
+    int rc = Zoltan_Initialize(argc, argv, &ver);
+    if (rc != ZOLTAN_OK) {
         OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+    }
+    zz = Zoltan_Create(cc);
+    if (zz == nullptr) {
+        OPM_THROW(std::runtime_error, "Could not create Zoltan data structures!");
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());
@@ -721,7 +722,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     std::vector<std::tuple<int, int, char>> myExportList;
     std::vector<std::tuple<int, int, char, int>> myImportList;
     std::vector<std::vector<int>> exportedCells;
-    auto wellConnections = partitionIsEmpty ? Dune::cpgrid::WellConnections()
+    auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                             : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
 
     if (cc.rank() == root) {

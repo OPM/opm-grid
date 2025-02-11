@@ -114,7 +114,6 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             if (entity.isLeaf()){ // In particular, cell has no children/is not a father.
                 BOOST_CHECK_EQUAL(lgr, -1);
                 BOOST_CHECK(childrenList.empty());
-                BOOST_CHECK( entity.isLeaf() == true);
                 // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
                 BOOST_CHECK( it == endIt);
             }
@@ -697,13 +696,6 @@ BOOST_AUTO_TEST_CASE(globalRefine1)
     const std::array<int, 3> grid_dim = {4,2,1};
     grid.createCartesian(grid_dim, cell_sizes);
 
-    std::vector<int> parts(8);
-    std::vector<std::vector<int>> cells_per_rank = {{0,4},{1,5},{2,6}, {3,7}};
-    for (int rank = 0; rank < 4; ++rank) {
-        for (const auto& elemIdx : cells_per_rank[rank]) {
-            parts[elemIdx] = rank;
-        }
-    }
     // Distribute the grid
     if(grid.comm().size()>1)
     {
@@ -727,16 +719,6 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
     const std::array<int, 3> grid_dim = {4,3,3};
     grid.createCartesian(grid_dim, cell_sizes);
 
-     std::vector<int> parts(36);
-    std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
-                                                     {12,13,17,24,25,28,29,32,33},
-                                                     {2,3,6,7,10,11,18,22,23},
-                                                     {14,15,19,26,27,30,31,34,35} };
-    for (int rank = 0; rank < 4; ++rank) {
-        for (const auto& elemIdx : cells_per_rank[rank]) {
-            parts[elemIdx] = rank;
-        }
-    }
     // Distribute the grid
     if(grid.comm().size()>1)
     {

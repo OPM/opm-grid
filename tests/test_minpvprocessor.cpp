@@ -54,7 +54,6 @@ BOOST_AUTO_TEST_CASE(GAP_MAXGAP)
     BOOST_CHECK_EQUAL(minpv_result.nnc[0], 2);
 
     max_gap = .29;
-    zcorn = z1;
     minpv_result = mp1.process(thickness, z_threshold, max_gap, pv, minpvv, actnum, fill_removed_cells, z1.data(), pinch_no_gap);
     BOOST_CHECK_EQUAL(minpv_result.nnc.size(), 0);
 }

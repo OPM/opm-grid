@@ -294,7 +294,7 @@ int finduniquepoints(const struct grdecl *g,
     int     i,j,k;
 
     int     d1[3];
-    int     len    = 0;
+    int     len;
     double  *zout  = zlist;
     int     pos    = 0;
     double *pt;

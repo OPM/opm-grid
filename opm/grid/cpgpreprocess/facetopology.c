@@ -209,10 +209,10 @@ void findconnections(int n, int *pts[4],
                      struct processed_grid *out)
 {
     /* vectors of point numbers for faces a(b) on pillar 1(2) */
-    int *a1 = pts[0];
-    int *a2 = pts[1];
-    int *b1 = pts[2];
-    int *b2 = pts[3];
+    const int *a1 = pts[0];
+    const int *a2 = pts[1];
+    const int *b1 = pts[2];
+    const int *b2 = pts[3];
 
     /* Intersection record for top line and bottomline of a */
     int *itop    = work;

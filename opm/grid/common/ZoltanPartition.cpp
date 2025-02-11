@@ -125,7 +125,7 @@ makeImportAndExportLists(const Dune::CpGrid& cpgrid,
             std::size_t index = 0;
             std::unordered_set<int> distributed_wells;
 
-            for( auto well : gridAndWells->getWellsGraph() )
+            for (const auto& well : gridAndWells->getWellsGraph() )
             {
                 int part=parts[index];
                 std::set<std::pair<int,int> > cells_on_other;
@@ -307,7 +307,6 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                bool allowDistributedWells,
                                const std::map<std::string,std::string>& params)
 {
-    int rc = ZOLTAN_OK - 1;
     float ver = 0;
     struct Zoltan_Struct *zz;
     int changes, numGidEntries, numLidEntries, numImport, numExport;
@@ -315,11 +314,13 @@ zoltanGraphPartitionGridOnRoot(const CpGrid& cpgrid,
     int *importProcs, *importToPart, *exportProcs, *exportToPart;
     int argc=0;
     char** argv = 0 ;
-    rc = Zoltan_Initialize(argc, argv, &ver);
-    zz = Zoltan_Create(cc);
-    if ( rc != ZOLTAN_OK )
-    {
+    int rc = Zoltan_Initialize(argc, argv, &ver);
+    if (rc != ZOLTAN_OK) {
         OPM_THROW(std::runtime_error, "Could not initialize Zoltan!");
+    }
+    zz = Zoltan_Create(cc);
+    if (zz == nullptr) {
+        OPM_THROW(std::runtime_error, "Could not create Zoltan data structures!");
     }
     setDefaultZoltanParameters(zz);
     Zoltan_Set_Param(zz, "IMBALANCE_TOL", std::to_string(zoltanImbalanceTol).c_str());

@@ -45,9 +45,9 @@ inline double tetVolume(const double* p0,
                         const double* p2,
                         const double* p3)
 {
-    double a[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
-    double b[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
-    double c[3] = { p3[0] - p0[0], p3[1] - p0[1], p3[2] - p0[2] };
+    const double a[3] = { p1[0] - p0[0], p1[1] - p0[1], p1[2] - p0[2] };
+    const double b[3] = { p2[0] - p0[0], p2[1] - p0[1], p2[2] - p0[2] };
+    const double c[3] = { p3[0] - p0[0], p3[1] - p0[1], p3[2] - p0[2] };
     return std::fabs(determinantOf(a, b, c) / 6.0);
 }
 
@@ -57,9 +57,9 @@ inline double triangleArea2d(const double* p0,
                              const double* p1,
                              const double* p2)
 {
-    double a[2] = { p1[0] - p0[0], p1[1] - p0[1] };
-    double b[2] = { p2[0] - p0[0], p2[1] - p0[1] };
-    double a_cross_b = a[0]*b[1] - a[1]*b[0];
+    const double a[2] = { p1[0] - p0[0], p1[1] - p0[1] };
+    const double b[2] = { p2[0] - p0[0], p2[1] - p0[1] };
+    const double a_cross_b = a[0]*b[1] - a[1]*b[0];
     return 0.5*std::fabs(a_cross_b);
 }
 
