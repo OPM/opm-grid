@@ -43,9 +43,9 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name);
 /// COORD: This retrieves a vector of std::array<double, 6>, where each element represents
 /// the coordinate values of a pillar in the LGR block. The values correspond to the
 /// COORD keyword, which defines the corner-point geometry of the grid.
-/// ZCORN: It is initialized to inactive values and then calculates
-/// the bottom and top ZCORN values for each cell in the LGR based on its geometry.
-/// It determines the active cell layers and assigns ZCORN values accordingly.
+/// ZCORN: It is initialized to inactive values, i.e. set to std::numeric_limits<double>::max(),
+/// and then calculates the bottom and top ZCORN values for each cell in the LGR based on its
+/// geometry. It determines the active cell layers and assigns ZCORN values accordingly.
 ///
 /// Special Cases:
 /// - If a pillar within the LGR block is "inactive", its COORD values are set to
