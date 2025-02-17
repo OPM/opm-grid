@@ -26,7 +26,9 @@
 #include <config.h>
 #include "GraphOfGrid.hpp"
 
-namespace Opm{
+#include <numeric>
+
+namespace Opm {
 
 template<typename Grid>
 void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
@@ -215,10 +217,9 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
     }
     else
     {
-        for (int gID : well)
-        {
-            wID = contractVertices(wID, gID);
-        }
+        std::accumulate(well.begin(), well.end(), wID,
+                        [this](const auto wId, const auto gID)
+                        { return contractVertices(wId, gID); });
         wells.emplace_front(well);
     }
 }
@@ -247,6 +248,6 @@ void GraphOfGrid<Grid>::addNeighboringCellsToWells ()
     }
 }
 
-
 template class GraphOfGrid<Dune::CpGrid>;
+
 } // namespace Opm

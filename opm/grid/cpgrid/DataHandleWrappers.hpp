@@ -32,16 +32,14 @@
 #ifndef OPM_DATAHANDLEWRAPPERS_HEADER
 #define OPM_DATAHANDLEWRAPPERS_HEADER
 
-#include <array>
-#include <vector>
-
 #include "OrientedEntityTable.hpp"
 #include "EntityRep.hpp"
 
-namespace Dune
-{
-namespace cpgrid
-{
+#include <array>
+#include <numeric>
+#include <vector>
+
+namespace Dune::cpgrid {
 
 /// \brief A data handle to send data attached to faces via cell communication
 ///
@@ -85,12 +83,9 @@ struct FaceViaCellHandleWrapper
     std::size_t size(const EntityRep<0>& t)
     {
         const auto& faces = c2fGather_[t];
-        std::size_t size{};
-        for (const auto& face : faces)
-        {
-            size += handle_.size(face);
-        }
-        return size;
+        return std::accumulate(faces.begin(), faces.end(), std::size_t{0},
+                               [this](const auto acc, const auto& face)
+                               { return acc + handle_.size(face); });
     }
     bool contains(std::size_t dim, std::size_t codim)
     {
@@ -183,12 +178,9 @@ struct PointViaCellHandleWrapper : public PointViaCellWarner
     std::size_t size(const EntityRep<0>& t)
     {
         const auto& points = c2pGather_[t.index()];
-        std::size_t size{};
-        for (const auto& point : points)
-        {
-            size += handle_.size(EntityRep<3>(point, true));
-        }
-        return size;
+        return std::accumulate(points.begin(), points.end(), std::size_t{0},
+                               [this](const auto acc, const auto& point)
+                               { return acc + handle_.size(EntityRep<3>(point, true)); });
     }
     bool contains(std::size_t dim, std::size_t codim)
     {
@@ -229,6 +221,6 @@ private:
     const C2PTable& c2pGather_, c2p_;
 };
 
-} // end namespace cpgrid
-} // end namespace Dune
+} // end namespace Dune::cpgrid
+
 #endif
