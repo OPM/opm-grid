@@ -106,11 +106,13 @@ int getNumberOfEdgesForSpecificCell(const Dune::CpGrid& grid, int localCellId) {
 void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
-                           int *numEdges, int *err)
+                           int *numEdges, int *err
+                           /*int level*/)
 {
     (void) globalID;
     const Dune::CpGrid&  grid = *static_cast<const Dune::CpGrid*>(cpGridPointer);
-    if ( sizeGID != 1 || sizeLID != 1 || numCells != grid.numCells() )
+    int levelOrLeafNumCells = /*grid.maxLevel()? grid.size(level0, 0) :*/ grid.numCells();
+    if ( sizeGID != 1 || sizeLID != 1 || numCells != levelOrLeafNumCells )
     {
         *err = ZOLTAN_FATAL;
         return;

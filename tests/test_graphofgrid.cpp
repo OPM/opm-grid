@@ -136,7 +136,7 @@ BOOST_AUTO_TEST_CASE(SimpleGraphWithTransmissibilities)
     transmissibilities[grid.cellFace(3,3)] = 36;
     transmissibilities[grid.cellFace(4,3)] = 47;
     transmissibilities[grid.cellFace(5,3)] = 58;
-    Opm::GraphOfGrid gog(grid,transmissibilities.data());
+    Opm::GraphOfGrid gog(grid,-1 /*to consider leaf grid view instead of any other level grid*/, transmissibilities.data());
 
     int checked=0;
     double sum=0;
@@ -213,7 +213,7 @@ BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
     transmissibilities[grid.cellFace(3,3)] = 36;
     transmissibilities[grid.cellFace(4,3)] = 47;
     transmissibilities[grid.cellFace(5,3)] = 58;
-    Opm::GraphOfGrid gog(grid,transmissibilities.data());
+    Opm::GraphOfGrid gog(grid, -1 /*to consider leaf grid view instead of any other level grid*/, transmissibilities.data());
 
     // change values of transmissibilities so that edge weights of the graph
     // with log transmissibilities are equal to the original, then compare them
@@ -221,7 +221,8 @@ BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
                    transmissibilities.begin(),
                    [](const auto& v)
                    { return v > 0 ? std::exp(v-1.) : v; });
-    Opm::GraphOfGrid gog2(grid,transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
+    Opm::GraphOfGrid gog2(grid, -1 /*to consider leaf grid view instead of any other level grid*/,
+                          transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
     int checked = 0;
     for (const auto& v : gog2)
     {

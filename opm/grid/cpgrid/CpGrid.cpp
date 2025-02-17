@@ -222,7 +222,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] int partitionMethod,
                     double imbalanceTol,
                     [[maybe_unused]] bool allowDistributedWells,
-                    [[maybe_unused]] const std::vector<int>& input_cell_part)
+                    [[maybe_unused]] const std::vector<int>& input_cell_part,
+                    int level)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -238,20 +239,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
-    if (data_.size() > 1)
-    {
-        if (comm().rank() == 0)
-        {
-            OPM_THROW(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
-        }
-        else
-        {
-            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
-        }
-    }
-
 #if HAVE_MPI
-    auto& cc = data_[0]->ccobj_;
+    auto& cc = (level==-1)? data_.back()->ccobj_ : data_[level]->ccobj_;
 
     if (cc.size() > 1)
     {
@@ -323,12 +312,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     OPM_THROW_NOLOG(std::logic_error, message);
                 }
             }
-
-
+            
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
-                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, nullptr, input_cell_part,
-                                                   true);
+             cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, nullptr, input_cell_part,
+                                          true, nullptr, level);
         }
         else
         {
@@ -360,7 +348,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
                     ? Opm::zoltanSerialPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams)
-                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams);
+                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams, level);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
@@ -374,8 +362,15 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         comm().barrier();
 
         // first create the overlap
-        auto noImportedOwner = addOverlapLayer(*this, computedCellPart, exportList, importList, cc, addCornerCells,
-                                               transmissibilities);
+        auto noImportedOwner = addOverlapLayer(*this,
+                                               computedCellPart,
+                                               exportList,
+                                               importList,
+                                               cc,
+                                               addCornerCells,
+                                               transmissibilities,
+                                               1 /*layers*/,
+                                               level);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
                                 const std::tuple<int,int,char,int>&t2)
@@ -514,7 +509,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
         // distributed_data should be empty at this point.
         distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
-        distributed_data_[0]->setUniqueBoundaryIds(data_[0]->uniqueBoundaryIds());
+        distributed_data_[0]->setUniqueBoundaryIds((level==-1)? data_.back()->uniqueBoundaryIds() : data_[0]->uniqueBoundaryIds());
 
         // Just to be sure we assume that only master knows
         cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
@@ -534,7 +529,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
-        distributed_data_[0]->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
+        distributed_data_[0]->distributeGlobalGrid(*this, (level==-1)? *this->data_.back() : *this->data_[level], computedCellPart);
         (*global_id_set_ptr_).insertIdSet(*distributed_data_[0]);
         distributed_data_[0]-> index_set_.reset(new cpgrid::IndexSet(distributed_data_[0]->cell_to_face_.size(),
                                                                      distributed_data_[0]-> geomVector<3>().size()));
@@ -1149,13 +1144,15 @@ const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) c
     return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
 }
 
-int CpGrid::faceCell(int face, int local_index) const
+int CpGrid::faceCell(int face, int local_index, int level) const
 {
     // In the parallel case we store non-existent cells for faces along
     // the front region. Theses marked with index std::numeric_limits<int>::max(),
     // orientation might be arbitrary, though.
     cpgrid::OrientedEntityTable<1,0>::row_type r
-        = current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
+        = (level==-1)?
+        current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)]
+        : currentData()[level]->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
     bool a = (local_index == 0);
     bool b = r[0].orientation();
     bool use_first = a ? b : !b;

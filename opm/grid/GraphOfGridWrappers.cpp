@@ -416,10 +416,11 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         [[maybe_unused]] const Id* exportLocalGids,
                          const Id* exportGlobalGids,
                          const int* exportToPart,
-                         const Id* importGlobalGids)
+                         const Id* importGlobalGids,
+                         int level)
 {
     const auto& cpgrid = gog.getGrid();
-    int size = cpgrid.numCells();
+    int size = (level == -1) ? cpgrid.numCells() : cpgrid.size(level, 0);
     int rank  = cc.rank();
     std::vector<int> gIDtoRank(size, rank);
     std::vector<std::vector<int> > wellsOnProc;
@@ -432,8 +433,8 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
     assert(rank==root || numExport==0);
     assert(rank!=root || numImport==0);
     // all cells on root are added to its export and its import list
-    std::size_t reserveEx = rank!=root ? 0 : cpgrid.size(0);
-    std::size_t reserveIm = rank!=root ? buffer*numImport : cpgrid.size(0)*buffer/cc.size();
+    std::size_t reserveEx = rank!=root ? 0 : size;
+    std::size_t reserveIm = rank!=root ? buffer*numImport : size*buffer/cc.size();
     myExportList.reserve(reserveEx);
     myImportList.reserve(reserveIm);
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
@@ -520,7 +521,8 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
-                                  const std::map<std::string, std::string>& params)
+                                  const std::map<std::string, std::string>& params,
+                                  int level)
 {
     float ver = 0;
     struct Zoltan_Struct *zz;
@@ -553,7 +555,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     // prepare graph and contract well cells
     // non-root processes have empty grid and no wells
-    GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
+    GraphOfGrid gog(grid, level, transmissibilities, edgeWeightMethod);
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                                       : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
@@ -595,7 +597,8 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                                       exportLocalGids,
                                                       exportGlobalGids,
                                                       exportProcs,
-                                                      importGlobalGids);
+                                                      importGlobalGids,
+                                                      level);
 
     Zoltan_LB_Free_Part(&exportGlobalGids, &exportLocalGids, &exportProcs, &exportToPart);
     Zoltan_LB_Free_Part(&importGlobalGids, &importLocalGids, &importProcs, &importToPart);
@@ -666,7 +669,7 @@ applySerialZoltan (const Dune::CpGrid& grid,
     }
 
     // prepare graph and contract well cells
-    GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
+    GraphOfGrid gog(grid, -1 /*represents leaf grid view*/, transmissibilities, edgeWeightMethod);
     addWellConnections(gog, wellConnections);
     gog.addNeighboringCellsToWells(layers);
 

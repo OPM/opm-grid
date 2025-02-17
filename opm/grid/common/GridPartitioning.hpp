@@ -16,7 +16,7 @@
 /*
   Copyright 2009, 2010, 2013 SINTEF ICT, Applied Mathematics.
   Copyright 2009, 2010 Statoil ASA.
-  Copyright 2013       Dr. Markus Blatt - HPC-Simulation-Software & Services
+  Copyright 2013, 2025       Dr. Markus Blatt - HPC-Simulation-Software & Services
   Copyright 2020, 2021 OPM-OP AS
 
   This file is part of The Open Porous Media project  (OPM).
@@ -85,10 +85,15 @@ namespace Dune
     /// \param[in] mypart The partition number of the processor.
     /// \param[in] all Whether to compute the overlap for all partions or just the
     ///            one associated by mypart.
+    /// \param[in] level Integer indicating the level grid that is partitioned.
+    ///            Default -1 for the leaf grid view.
     void addOverlapLayer(const CpGrid& grid,
                          const std::vector<int>& cell_part,
                          std::vector<std::set<int> >& cell_overlap,
-                         int mypart, int overlapLayers, bool all=false);
+                         int mypart,
+                         int overlapLayers,
+                         bool all=false,
+                         int level = -1);
 
     /// \brief Adds a layer of overlap cells to a partitioning.
     /// \param[in] grid The grid that is partitioned.
@@ -102,11 +107,17 @@ namespace Dune
     /// \param[in] addCornerCells Switch for adding corner cells to overlap layer.
     /// \param[in] trans The transmissibilities on cell faces. When trans[i]==0, no overlap is added.
     /// \param[in] layer Number of overlap layers
-    int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
+    /// \param[in] level Integer indicating the level grid that is partitioned.
+    ///            Default -1 for the leaf grid view.
+    int addOverlapLayer(const CpGrid& grid,
+                        const std::vector<int>& cell_part,
                         std::vector<std::tuple<int,int,char>>& exportList,
                         std::vector<std::tuple<int,int,char,int>>& importList,
                         const Communication<Dune::MPIHelper::MPICommunicator>& cc,
-                        bool addCornerCells, const double* trans, int layers = 1);
+                        bool addCornerCells,
+                        const double* trans,
+                        int layers = 1,
+                        int level = -1);
 
 namespace cpgrid
 {
@@ -122,6 +133,7 @@ namespace cpgrid
     /// \param transmissibilities C-array with transmissibilities or nullptr.
     /// \param parts The partitioning information. Contains for each cells the partition number (zero-based,
     ///              consecutive
+    /// \param level Integer indicating the level grid that is partitioned. Default -1 for the leaf grid view.
     /// \return  A tuple consisting of a vector that contains for each local cell of the original grid the
     ///         the number of the process that owns it after repartitioning,
     ///         a vector containing a pair of name  and a boolean indicating whether this well has
@@ -136,10 +148,13 @@ namespace cpgrid
                std::vector<std::tuple<int,int,char> >,
                std::vector<std::tuple<int,int,char,int> >,
                WellConnections>
-    createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
-                               const double* transmissibilities, const std::vector<int>& parts,
-                               bool allowDistributedWells, std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells = nullptr);
+    createListsFromParts(const CpGrid& grid,
+                         const std::vector<cpgrid::OpmWellType> * wells,
+                         const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                         const double* transmissibilities, const std::vector<int>& parts,
+                         bool allowDistributedWells,
+                         std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells = nullptr,
+                         int level = -1);
 
     /// \brief Creates a vanilla partitioning without a real loadbalancer
     ///

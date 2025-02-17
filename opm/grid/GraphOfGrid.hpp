@@ -1,7 +1,7 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -53,11 +53,13 @@ class GraphOfGrid{
 
 public:
     explicit GraphOfGrid (const Grid& grid_,
+                          int level = -1,
                           const double* transmissibilities=nullptr,
                           const Dune::EdgeWeightMethod edgeWeightMethod=Dune::EdgeWeightMethod::defaultTransEdgeWgt)
         : grid(grid_)
     {
-        createGraph(transmissibilities,edgeWeightMethod);
+        // 'level' represents the level grid used to build the GoG. Default equal to -1 for the leaf grid view.
+        createGraph(level, transmissibilities, edgeWeightMethod);
     }
 
     const Grid& getGrid() const
@@ -181,8 +183,10 @@ public:
 private:
     /// \brief Create a graph representation of the grid
     ///
+    /// 'level' represents the level grid used to build the GoG. Default equal to -1 for the leaf grid view.
     /// If transmissibilities are not supplied, edge weight=1
-    void createGraph (const double* transmissibilities=nullptr,
+    void createGraph (int level = -1,
+                      const double* transmissibilities = nullptr,
                       const Dune::EdgeWeightMethod edgeWeightMethod=Dune::EdgeWeightMethod::defaultTransEdgeWgt);
 
     /// \brief Identify the well containing the cell with this global ID

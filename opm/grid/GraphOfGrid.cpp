@@ -1,7 +1,7 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -25,13 +25,15 @@
 
 #include <config.h>
 #include "GraphOfGrid.hpp"
+#include <opm/grid/CpGrid.hpp>
 
 #include <numeric>
 
 namespace Opm {
 
 template<typename Grid>
-void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
+void GraphOfGrid<Grid>::createGraph ([[maybe_unused]] int level,
+                                     const double* transmissibilities,
                                      const Dune::EdgeWeightMethod edgeWeightMethod)
 {
     // Find the lowest positive transmissibility in the grid.
@@ -75,6 +77,90 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
             if (otherCell == gID)
             {
                 otherCell = grid.faceCell(face, 1);
+            }
+            if (otherCell == -1)
+            {
+                continue;
+            }
+            WeightType weight;
+            if (transmissibilities) {
+                switch (edgeWeightMethod) {
+                case 0:
+                    weight = 1.;
+                    break;
+                case 1:
+                    weight = transmissibilities[face];
+                    break;
+                case 2:
+                    weight = 1 + std::log(transmissibilities[face]) - logMinTransm;
+                    break;
+                default:
+                    OPM_THROW(std::invalid_argument, "GraphOfGrid recognizes only EdgeWeightMethod of value 0, 1, or 2.");
+                }
+            } else {
+                weight = 1.;
+            }
+            vertex.edges.try_emplace(otherCell, weight);
+        }
+
+        graph.try_emplace(gID, vertex);
+    }
+
+}
+
+// CpGrid Spetialization
+template<>
+void GraphOfGrid<Dune::CpGrid>::createGraph(int level,
+                                            const double* transmissibilities,
+                                            const Dune::EdgeWeightMethod edgeWeightMethod)
+{
+    // The leaf grid view is accosiated with 'level=-1'.
+    const auto& levelOrLeafGrid = (level==-1)? grid.currentData().back() : grid.currentData()[level];
+
+    // Find the lowest positive transmissibility in the grid.
+    // This includes boundary faces, even though they will not appear in the graph.
+    WeightType logMinTransm = std::numeric_limits<WeightType>::max();
+    if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
+    {
+        for (int face = 0; face < levelOrLeafGrid->numFaces(); ++face)
+        {
+            WeightType transm = transmissibilities[face];
+            if (transm > 0 && transm < logMinTransm)
+            {
+                logMinTransm = transm;
+            }
+        }
+        if (logMinTransm == std::numeric_limits<WeightType>::max()) {
+            OPM_THROW(std::domain_error, "All transmissibilities are negative, zero, or bigger than the limit of the WeightType.");
+        }
+        logMinTransm = std::log(logMinTransm);
+    }
+
+    const auto& rank = grid.comm().rank();
+    // load vertices (grid cells) into graph
+    graph.reserve(levelOrLeafGrid->size(0));
+    auto it = (level=-1)? grid.template leafbegin<0>() : grid.template lbegin<0>(level);
+    auto endIt = (level=-1)? grid.template leafend<0>() : grid.template lend<0>(level);
+    for (; it!=endIt; ++it)
+    {
+        VertexProperties vertex;
+        vertex.nproc = rank;
+        // get vertex's global ID
+        int gID = (level==-1)? grid.globalIdSet().id(*it) : grid.currentData()[level]->globalIdSet().id(*it);
+
+        // iterate over vertex's faces and store neighbors' IDs
+
+        for (int face_lID = 0; face_lID < levelOrLeafGrid->numCellFaces(it->index()); ++face_lID)
+        {
+            const int face  = levelOrLeafGrid->cellFace(it->index(), face_lID);
+            int otherCell   = grid.faceCell(face, 0, level);
+            if (otherCell == -1) // -1 means no cell, face is at boundary
+            {
+                continue;
+            }
+            if (otherCell == it->index())
+            {
+                otherCell = grid.faceCell(face, 1, level);
             }
             if (otherCell == -1)
             {

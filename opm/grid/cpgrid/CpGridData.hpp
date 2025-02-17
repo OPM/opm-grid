@@ -313,6 +313,17 @@ public:
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
     }
 
+    /// \brief Get the number of faces.
+    int numFaces() const
+    {
+        return face_to_cell_.size();
+    }
+
+    int numCellFaces(int cell) const
+    {
+        return cell_to_face_[cpgrid::EntityRep<0>(cell,true)].size();
+    }
+    
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///

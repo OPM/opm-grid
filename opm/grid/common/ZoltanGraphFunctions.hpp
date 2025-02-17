@@ -62,10 +62,13 @@ void getCpGridVertexList(void* cpGridPointer, int numGlobalIds,
 int getNumberOfEdgesForSpecificCell(const Dune::CpGrid& grid, int localCellId);
 
 /// \brief Get the number of edges of the graph of the grid.
+///
+/// \param[in] level Integer indicating the level grid that is partitioned. Default -1 for leaf grid view. 
 void getCpGridNumEdgesList(void *cpGridPointer, int sizeGID, int sizeLID,
                            int numCells,
                            ZOLTAN_ID_PTR globalID, ZOLTAN_ID_PTR localID,
-                           int *numEdges, int *err);
+                           int *numEdges, int *err
+                           /* int level = -1*/);
 
 /// \brief Get the list of edges for one cell of a grid witout wells
 template <typename ID>

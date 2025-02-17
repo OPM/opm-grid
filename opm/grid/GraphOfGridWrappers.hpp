@@ -230,6 +230,7 @@ wellsOnThisRank(const std::vector<Dune::cpgrid::OpmWellType>& wells,
 /// \param exportGlobalGids Zoltan output: Global IDs of exported cells
 /// \param exportToPart     Zoltan output: ranks to which cells are exported
 /// \param importGlobalGids Zoltan output: Global IDs of cells imported to this rank
+/// \param level Integer representing the level grid associated with the GoG. Default -1 for leaf grid view.
 /// \return gIDtoRank A vector indexed by global ID storing the rank of cell
 ///         parallel_wells A vector of pairs wells.name and bool of "Is wells.name on this rank?"
 ///         myExportList vector of cells to be moved from this rank
@@ -249,7 +250,8 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         [[maybe_unused]] const Id* exportLocalGids,
                          const Id* exportGlobalGids,
                          const int* exportToPart,
-                         const Id* importGlobalGids);
+                         const Id* importGlobalGids,
+                         int level = -1);
 
 /// \brief Call Zoltan partitioner on GraphOfGrid
 ///
@@ -267,7 +269,8 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
-                                  const std::map<std::string,std::string>& params);
+                                  const std::map<std::string,std::string>& params,
+                                  int level = -1);
 
 /// \brief Make complete export lists from a vector holding destination rank for each global ID
 ///
