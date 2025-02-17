@@ -433,14 +433,15 @@ namespace Dune
       // send message buffers, we need several because of the
       // non-blocking send routines, send might not be finished
       // when we start recieving
-      std::vector< MessageBufferType > sendBuffers ;
       std::vector< MessageBufferType > recvBuffers ;
+      // note: due to non-blocking we cannot limit scope
+      std::vector< MessageBufferType > sendBuffers;
 
       // if data was noy send yet, do it now
       if( _needToSend )
       {
         // resize message buffer vector
-        sendBuffers.resize( _sendLinks );
+        sendBuffers.resize(_sendLinks);
 
         // send data
         send( sendBuffers, recvBuffers, dataHandle );

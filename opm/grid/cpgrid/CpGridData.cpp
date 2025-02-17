@@ -2667,10 +2667,10 @@ CpGridData::refinePatch(const std::array<int,3>& cells_per_dim, const std::array
     for (int k = 0; k < grid_dim[2]; ++k) {
         for (int j = 0; j < grid_dim[1]; ++j) {
             for (int i = 0; i < grid_dim[0]; ++i) {
-                int cell_idx = (k*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) +i;
-                std::vector<int> children_list;
                 if ( (i > startIJK[0]-1) && (i < endIJK[0]) && (j > startIJK[1]-1) && (j < endIJK[1])
                      && (k > startIJK[2]-1) && (k < endIJK[2])) {
+                    const int cell_idx = (k*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) +i;
+                    std::vector<int> children_list;
                     for (int n = (k-startIJK[2])*cells_per_dim[2]; n < (k-startIJK[2]+1)*cells_per_dim[2]; ++n) {
                         for (int m = (j-startIJK[1])*cells_per_dim[1]; m < (j-startIJK[1]+1)*cells_per_dim[1]; ++m) {
                             for (int l = (i-startIJK[0])*cells_per_dim[0]; l < (i-startIJK[0]+1)*cells_per_dim[0]; ++l) {

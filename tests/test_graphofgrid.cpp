@@ -43,6 +43,8 @@
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 
+#include <algorithm>
+
 // basic test to check if the graph was constructed correctly
 BOOST_AUTO_TEST_CASE(SimpleGraph)
 {
@@ -215,15 +217,12 @@ BOOST_AUTO_TEST_CASE(LogarithmicTransmissibilities)
 
     // change values of transmissibilities so that edge weights of the graph
     // with log transmissibilities are equal to the original, then compare them
-    for (auto& v : transmissibilities)
-    {
-        if (v > 0)
-        {
-            v = std::exp(v-1.);
-        }
-    }
+    std::transform(transmissibilities.begin(), transmissibilities.end(),
+                   transmissibilities.begin(),
+                   [](const auto& v)
+                   { return v > 0 ? std::exp(v-1.) : v; });
     Opm::GraphOfGrid gog2(grid,transmissibilities.data(),Dune::EdgeWeightMethod::logTransEdgeWgt);
-    int checked=0;
+    int checked = 0;
     for (const auto& v : gog2)
     {
         const auto& edgeL2 = v.second.edges;

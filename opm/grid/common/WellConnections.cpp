@@ -416,8 +416,8 @@ postProcessPartitioningForWells(std::vector<int>& parts,
     // unpack data
     auto status = statuses.begin();
     for (const auto &cellIndexBuffer : cellIndexBuffers) {
-        int otherRank = status->MPI_SOURCE;
         if (!cellIndexBuffer.empty()) {
+            const int otherRank = status->MPI_SOURCE;
             // add cells that moved here
             auto noAdded = sizeBuffers[otherRank][0];
             importList.reserve(importList.size() + noAdded);

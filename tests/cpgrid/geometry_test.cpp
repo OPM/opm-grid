@@ -33,8 +33,7 @@
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
 
-#include <sstream>
-#include <iostream>
+#include <algorithm>
 
 struct Fixture
 {
@@ -419,9 +418,9 @@ void refine_and_check(const cpgrid::Geometry<3, 3>& parent_geometry,
         // Create a grid that is equivalent to the refinement
         Dune::CpGrid equivalent_refined_grid;
         std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-        std::size_t i = 0;
-        for (auto& size: cell_sizes)
-            size /= cells[i++];
+        std::transform(cell_sizes.begin(), cell_sizes.end(), cell_sizes.begin(),
+                       [i = 0, &cells](const auto cell_size) mutable
+                       { return cell_size / cells[i++]; });
 
         equivalent_refined_grid.createCartesian(cells, cell_sizes);
 

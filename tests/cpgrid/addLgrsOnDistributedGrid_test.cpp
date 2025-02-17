@@ -50,8 +50,7 @@
 
 #include <dune/grid/common/mcmgmapper.hh>
 
-#include <sstream>
-#include <iostream>
+#include <algorithm>
 #include <cstdlib>
 #include <cmath>
 
@@ -526,10 +525,12 @@ BOOST_AUTO_TEST_CASE(threeLgrs)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPoint ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
 
@@ -604,10 +605,12 @@ BOOST_AUTO_TEST_CASE(atLeastOneLgr_per_process_attempt)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPoint ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
@@ -676,10 +679,12 @@ BOOST_AUTO_TEST_CASE(not_fully_interior_lgr)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPoint ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + 33 + 56 + 117 + 33 = 319
@@ -784,10 +789,12 @@ BOOST_AUTO_TEST_CASE(distributed_lgr)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+         // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPointLeaf ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + (45 - 12) = 113
@@ -831,9 +838,10 @@ BOOST_AUTO_TEST_CASE(distributed_lgr_II)
         // LGR1 dim 6x2x2 -> 7x3x3 = 63 points
         std::vector<int> local_point_ids;
         local_point_ids.reserve(63); // expected_point_ids in LGR1
-        for (const auto& point : vertices(grid.levelGridView(1))) {
-            local_point_ids.push_back(grid.currentData()[1]->globalIdSet().id(point));
-        }
+        const auto& verts1 = vertices(grid.levelGridView(1));
+        std::transform(verts1.begin(), verts1.end(), std::back_inserter(local_point_ids),
+                       [&is = grid.currentData()[1]->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [all_point_ids, displPoint ] = Opm::allGatherv(local_point_ids, grid.comm());
         const std::set<int> all_point_ids_set(all_point_ids.begin(), all_point_ids.end());
         BOOST_CHECK( static_cast<int>(all_point_ids_set.size()) == 63);
@@ -841,10 +849,12 @@ BOOST_AUTO_TEST_CASE(distributed_lgr_II)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPointLeaf ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + (63 - 16) = 127
@@ -915,10 +925,12 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPointLeaf ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + (125 - 27) = 178
@@ -987,10 +999,12 @@ BOOST_AUTO_TEST_CASE(distributed_in_all_ranks_lgr_II)
         // Check global id is not duplicated for points
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
-        for (const auto& point : vertices(grid.leafGridView())) {
-            // Notice that all partition type points are pushed back. Selecting only interior points does not bring us to the expected value.
-            localPointIds_vec.push_back(grid.currentData().back()->globalIdSet().id(point));
-        }
+        const auto& verts = vertices(grid.leafGridView());
+        // Notice that all partition type points are pushed back.
+        // Selecting only interior points does not bring us to the expected value.
+        std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
+                       [&is = grid.currentData().back()->globalIdSet()](const auto& point)
+                       { return is.id(point); });
         auto [allGlobalIds_points, displPointLeaf ] = Opm::allGatherv(localPointIds_vec, grid.comm());
         const std::set<int> allGlobalIds_points_set(allGlobalIds_points.begin(), allGlobalIds_points.end());
         // Total global ids in leaf grid view for points: 80 + (125 - 27) = 178

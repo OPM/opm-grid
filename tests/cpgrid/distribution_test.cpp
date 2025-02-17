@@ -27,6 +27,8 @@
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <dune/grid/common/mcmgmapper.hh>
 
+#include <numeric>
+
 #if defined(HAVE_ZOLTAN) && defined(HAVE_METIS)
 const int partition_methods[] = {1,2};
 #elif defined (HAVE_ZOLTAN)
@@ -681,11 +683,9 @@ BOOST_AUTO_TEST_CASE(distributeParts)
     }
 
     grid.createCartesian(dims, size);
-    std::size_t numCells = 1;
-    for(const auto& dim : dims)
-    {
-        numCells *= dim;
-    }
+    const std::size_t numCells = std::accumulate(dims.begin(), dims.end(), std::size_t{1},
+                                                 [](const auto acc, const auto dim)
+                                                 { return acc*dim; });
 
     auto numCellsPerProc = numCells / grid.comm().size();
     std::vector<int> parts(numCells);

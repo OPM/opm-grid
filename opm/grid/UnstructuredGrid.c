@@ -313,7 +313,7 @@ read_grid_faces(FILE *fp, struct UnstructuredGrid *G)
     /* G->face_nodepos */
     i = 0;
     while ((i < nf + 1) &&
-           (fscanf(fp, " %d", & G->face_nodepos[ i ]) == 1)) {
+           (fscanf(fp, " %u", & G->face_nodepos[ i ]) == 1)) {
         i += 1;
     }
     ok = i == nf + 1;
@@ -417,7 +417,7 @@ read_grid_cells(FILE *fp, int has_tag, int has_indexmap,
 
     /* G->cell_facepos */
     i = 0;
-    while ((i < nc + 1) && (fscanf(fp, " %d", & G->cell_facepos[ i ]) == 1)) {
+    while ((i < nc + 1) && (fscanf(fp, " %u", & G->cell_facepos[ i ]) == 1)) {
         i += 1;
     }
     ok = i == nc + 1;

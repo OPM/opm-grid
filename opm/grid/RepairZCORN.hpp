@@ -473,9 +473,8 @@ namespace Opm { namespace UgGridHelpers {
         void ensureZCornIsDepth()
         {
             if (this->zcornIsElevation()) {
-                for (auto& zc : this->zcorn_) {
-                    zc = - zc;
-                }
+                std::transform(this->zcorn_.begin(), this->zcorn_.end(),
+                               this->zcorn_.begin(), std::negate<>{});
 
                 this->switchedToDepth_ = true;
             }
@@ -595,9 +594,11 @@ namespace Opm { namespace UgGridHelpers {
             auto all_signs = std::vector<int>{};
             all_signs.reserve(this->active_.numGlobalCells());
 
-            for (const auto& globCell : this->active_.activeGlobal()) {
-                all_signs.push_back(this->getZCornSign(globCell));
-            }
+            std::transform(this->active_.activeGlobal().begin(),
+                           this->active_.activeGlobal().end(),
+                           std::back_inserter(all_signs),
+                           [this](const auto globCell)
+                           { return this->getZCornSign(globCell); });
 
             // Ignore twisted cells (i.e., cells of indeterminate signs).
             const int ignore = 0;

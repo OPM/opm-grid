@@ -62,7 +62,9 @@
 
 //#include <fstream>
 //#include <iostream>
+#include <algorithm>
 #include <iomanip>
+#include <numeric>
 #include <tuple>
 
 namespace
@@ -289,13 +291,11 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 {
                     errors.push_back(1);
                 }
-                for (const auto& part: existingParts)
+                if (std::any_of(existingParts.begin(), existingParts.end(),
+                                [&i](const auto& part)
+                                { return part != i++; }))
                 {
-                    if (part != i++)
-                    {
-                        errors.push_back(2);
-                        break;
-                    }
+                    errors.push_back(2);
                 }
                 if (std::size_t(size(0)) != input_cell_part.size())
                 {
@@ -420,10 +420,10 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 }
             }
 
-            for(const auto& cellsOnProc: ownedCells)
-            {
-                procsWithZeroCells += (cellsOnProc == 0);
-            }
+            procsWithZeroCells =
+                    std::accumulate(ownedCells.begin(), ownedCells.end(), 0,
+                                    [](const auto acc, const auto cellsOnProc)
+                                    { return acc + (cellsOnProc == 0); });
             std::ostringstream ostr;
             ostr << "\nLoad balancing distributes " << data_[0]->size(0)
                  << " active cells on " << cc.size() << " processes as follows:\n";
@@ -1230,7 +1230,8 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
 
-bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
+bool CpGrid::nonNNCsSelectedCellsLGR(const std::vector<std::array<int,3>>& startIJK_vec,
+                                     const std::vector<std::array<int,3>>& endIJK_vec) const
 {
     // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
     // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
@@ -1240,22 +1241,26 @@ bool CpGrid::nonNNCsSelectedCellsLGR( const std::vector<std::array<int,3>>& star
     // if the cell bolengs to certain block of cells selected for refinement (comparing element's ijk with start/endIJK values).
     // It is not correct to make the comparasion with element.index() and minimum/maximum index of each block of cell, since
     // element.index() is local and the block of cells are defined with global values.
-    for(const auto& element: elements(this->leafGridView())) {
-        std::array<int,3> ijk;
-        getIJK(element.index(), ijk);
-        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-            bool belongsToLevel = ( (ijk[0] >= startIJK_vec[level][0]) && (ijk[0] < endIJK_vec[level][0]) )
-                && ( (ijk[1] >= startIJK_vec[level][1]) && (ijk[1] < endIJK_vec[level][1]) )
-                && ( (ijk[2] >= startIJK_vec[level][2]) && (ijk[2] < endIJK_vec[level][2]) );
-            if(belongsToLevel) {
-                // Check that the cell to be marked for  refinement has no NNC (no neighbouring connections).
-                if (this->currentData().back()->hasNNCs({element.index()})){
-                    return false;
-                }
-            }
-        }
-    }
-    return true;
+    return std::all_of(this->leafGridView().begin<0>(), this->leafGridView().end<0>(),
+                        [&startIJK_vec, this, &endIJK_vec](const auto& element)
+                        {
+                            std::array<int,3> ijk;
+                            getIJK(element.index(), ijk);
+                            for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+                                const bool belongsToLevel =
+                                        ijk[0] >= startIJK_vec[level][0] && ijk[0] < endIJK_vec[level][0]
+                                     && ijk[1] >= startIJK_vec[level][1] && ijk[1] < endIJK_vec[level][1]
+                                     && ijk[2] >= startIJK_vec[level][2] && ijk[2] < endIJK_vec[level][2];
+                                if (belongsToLevel) {
+                                    // Check that the cell to be marked for refinement has
+                                    // no NNC (no neighbouring connections).
+                                    if (this->currentData().back()->hasNNCs({element.index()})) {
+                                        return false;
+                                    }
+                                }
+                            }
+                            return true;
+                        });
 }
 
 template<class T>
@@ -3210,13 +3215,14 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                     int faceAtMaxLastAppearance = (maxLastAppearance == lastAppearanceMarkedFace1) ? markedFace1 : markedFace2;
 
                     int maxLastAppearanceLevel = assignRefinedLevel[maxLastAppearance];
-                    int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - preAdaptMaxLevel -1;
 
 
                     // Save the relationship between the vanished refined corner and its last appearance
                     bool atLeastOneFaceAppearsTwice = (faceInMarkedElemAndRefinedFaces[markedFace1].size()>1) ||
                         (faceInMarkedElemAndRefinedFaces[markedFace2].size()>1);
                     if ((atLeastOneFaceAppearsTwice && (maxLastAppearance != elemIdx)) || (maxLastAppearanceLevel != level)) {
+                        const int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] -
+                                                                  preAdaptMaxLevel - 1;
                         const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel],
                                                                                                   corner, elemIdx, faceAtMaxLastAppearance,
                                                                                                   cells_per_dim_vec[maxLastAppearanceLevelShifted]);
@@ -3642,10 +3648,9 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
         // Cell to face.
         for (const auto& face : preAdapt_cell_to_face) {
             const auto& preAdaptFace = face.index();
-            int adaptedFace = 0; // It will be rewritten.
             // Face is stored in adapted_faces
             if (auto candidate = elemLgrAndElemLgrFace_to_adaptedFace.find({elemLgr, preAdaptFace}); candidate != elemLgrAndElemLgrFace_to_adaptedFace.end()) {
-                adaptedFace = candidate->second;
+                const int adaptedFace = candidate->second;
                 aux_cell_to_face.push_back({adaptedFace, face.orientation()});
             }
             else{
@@ -3655,7 +3660,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                     assert(!faceInMarkedElemAndRefinedFaces[preAdaptFace].empty());
                     const auto& [lastAppearanceLgr, lastAppearanceLgrFaces] = faceInMarkedElemAndRefinedFaces[preAdaptFace].back();
                     for (const auto& refinedFace : lastAppearanceLgrFaces) {
-                        adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastAppearanceLgr, refinedFace});
+                        const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastAppearanceLgr, refinedFace});
                         aux_cell_to_face.push_back({adaptedFace, face.orientation()});
                     }
                 }
@@ -3669,7 +3674,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                     const auto& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
                     const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace, markedElem_to_itsLgr[elemLgr],
                                                                                              cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
-                    adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
+                    const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
                     aux_cell_to_face.push_back({adaptedFace, face.orientation()});
                 }
             }

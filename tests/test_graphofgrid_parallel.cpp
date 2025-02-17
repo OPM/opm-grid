@@ -38,6 +38,8 @@
 // #include <opm/grid/utility/OpmWellType.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 
+#include <algorithm>
+
 #if HAVE_MPI
 BOOST_AUTO_TEST_CASE(ExtendRootExportList)
 {
@@ -57,15 +59,13 @@ BOOST_AUTO_TEST_CASE(ExtendRootExportList)
         ranks[i] = std::min(i, cc.size() - 1);
     }
     std::vector<int> gIDtoRank { 0, 0, 0, 3, 3, 3, 2, 2, 1, 1 };
-    for (auto& v : gIDtoRank) {
-        v = ranks[v];
-    }
+    std::transform(gIDtoRank.begin(), gIDtoRank.end(), gIDtoRank.begin(),
+                   [&ranks](const auto& v) { return ranks[v]; });
     // all cells from the root (including wells) are added manually before using extendRootExportList
     std::vector<int> exportedID { 5, 0, 6, 3, 8, 2, 9, 1 };
     std::vector<int> exportedRank { 3, 0, 2, 3, 1, 0, 1, 0 };
-    for (auto& v : exportedRank) {
-        v = ranks[v];
-    }
+    std::transform(exportedRank.begin(), exportedRank.end(), exportedRank.begin(),
+                   [&ranks](const auto& v) { return ranks[v]; });
     std::vector<std::tuple<int, int, char>> exportList, exportList2;
     exportList.reserve(grid.size(0));
     for (int i = 0; i < 8; ++i) {
@@ -187,9 +187,8 @@ BOOST_AUTO_TEST_CASE(WellsOnThisRank)
         ranks[i] = std::min(i, cc.size() - 1);
     }
     std::vector<int> wellRanks { 3, 1, 0, 2, 1, 3 };
-    for (auto& v : wellRanks) {
-        v = ranks[v];
-    }
+    std::transform(wellRanks.begin(), wellRanks.end(), wellRanks.begin(),
+                   [&ranks](const auto& v) { return ranks[v]; });
 
     const auto wotr = wellsOnThisRank(wells, wellRanks, cc, 0);
 
@@ -318,7 +317,7 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
     int maxrank = cc.size() - 1;
     std::vector<int> ranks { 0, std::min(maxrank, 1), std::min(maxrank, 2), std::min(maxrank, 3) };
 
-    std::vector<int> gIDtoRank, importedCells, importSol;
+    std::vector<int> importedCells, importSol;
     std::vector<std::vector<int>> exportedCells;
     std::vector<std::vector<int>> rankSol {{ 3, 4, 5, 12, 14 },
                                            { 0, 1, 2, 10, 11 },
@@ -340,7 +339,7 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
         BOOST_REQUIRE(gog.size() == 10);
 
         // setup vector of IDs to ranks
-        gIDtoRank.resize(grid.numCells(), root);
+        std::vector<int> gIDtoRank(grid.numCells(), root);
         assert(gIDtoRank.size() == 18);
         // what partitioner sees
         gIDtoRank[0] = ranks[1];
