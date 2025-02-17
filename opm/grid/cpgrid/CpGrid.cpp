@@ -3215,13 +3215,14 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                     int faceAtMaxLastAppearance = (maxLastAppearance == lastAppearanceMarkedFace1) ? markedFace1 : markedFace2;
 
                     int maxLastAppearanceLevel = assignRefinedLevel[maxLastAppearance];
-                    int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] - preAdaptMaxLevel -1;
 
 
                     // Save the relationship between the vanished refined corner and its last appearance
                     bool atLeastOneFaceAppearsTwice = (faceInMarkedElemAndRefinedFaces[markedFace1].size()>1) ||
                         (faceInMarkedElemAndRefinedFaces[markedFace2].size()>1);
                     if ((atLeastOneFaceAppearsTwice && (maxLastAppearance != elemIdx)) || (maxLastAppearanceLevel != level)) {
+                        const int maxLastAppearanceLevelShifted = assignRefinedLevel[maxLastAppearance] -
+                                                                  preAdaptMaxLevel - 1;
                         const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_vec[shiftedLevel],
                                                                                                   corner, elemIdx, faceAtMaxLastAppearance,
                                                                                                   cells_per_dim_vec[maxLastAppearanceLevelShifted]);
@@ -3647,10 +3648,9 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
         // Cell to face.
         for (const auto& face : preAdapt_cell_to_face) {
             const auto& preAdaptFace = face.index();
-            int adaptedFace = 0; // It will be rewritten.
             // Face is stored in adapted_faces
             if (auto candidate = elemLgrAndElemLgrFace_to_adaptedFace.find({elemLgr, preAdaptFace}); candidate != elemLgrAndElemLgrFace_to_adaptedFace.end()) {
-                adaptedFace = candidate->second;
+                const int adaptedFace = candidate->second;
                 aux_cell_to_face.push_back({adaptedFace, face.orientation()});
             }
             else{
@@ -3660,7 +3660,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                     assert(!faceInMarkedElemAndRefinedFaces[preAdaptFace].empty());
                     const auto& [lastAppearanceLgr, lastAppearanceLgrFaces] = faceInMarkedElemAndRefinedFaces[preAdaptFace].back();
                     for (const auto& refinedFace : lastAppearanceLgrFaces) {
-                        adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastAppearanceLgr, refinedFace});
+                        const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastAppearanceLgr, refinedFace});
                         aux_cell_to_face.push_back({adaptedFace, face.orientation()});
                     }
                 }
@@ -3674,7 +3674,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                     const auto& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
                     const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace, markedElem_to_itsLgr[elemLgr],
                                                                                              cells_per_dim_vec[assignRefinedLevel[lastLgrWhereMarkedFaceAppeared] - preAdaptMaxLevel -1]);
-                    adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
+                    const int adaptedFace = elemLgrAndElemLgrFace_to_adaptedFace.at({lastLgrWhereMarkedFaceAppeared, lastAppearanceLgrEquivFace});
                     aux_cell_to_face.push_back({adaptedFace, face.orientation()});
                 }
             }

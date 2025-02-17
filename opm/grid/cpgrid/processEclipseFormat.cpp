@@ -127,8 +127,6 @@ namespace cpgrid
                                      bool periodic_extension, bool turn_normals, bool clip_z,
                                      bool pinchActive)
     {
-        std::vector<std::size_t> removed_cells;
-
         if (ccobj_.rank() != 0 ) {
             if (ecl_state) {
                 // Handle potential exception during MINPV processing
@@ -141,7 +139,7 @@ namespace cpgrid
                 }
             }
             // Store global grid only on rank 0
-            return removed_cells;
+            return {};
         }
 
         const Opm::EclipseGrid& ecl_grid = *ecl_grid_ptr;
@@ -163,12 +161,12 @@ namespace cpgrid
         Opm::MinpvProcessor::Result minpv_result;
 
         double tolerance_unique_points = 0;
-        bool pinchOptionALL = false;
         NNCMaps nnc_cells;
 
         // Possibly process MINPV and PINCH
         // This even needs to be done if neither of them is specified.
         if (ecl_state ) {
+            bool pinchOptionALL = false;
             const size_t cartGridSize = g.dims[0] * g.dims[1] * g.dims[2];
             const auto& fp = ecl_state->fieldProps();
             const auto& permZ = [&fp, cartGridSize](){

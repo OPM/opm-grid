@@ -215,9 +215,8 @@ private:
 
     void findMaxMinTrans()
     {
-        double min_val = std::numeric_limits<float>::max();
-
         if (transmissibilities_) {
+            double min_val = std::numeric_limits<float>::max();
             for (int face = 0; face < getGrid().numFaces(); ++face)
             {
                 double trans = transmissibilities_[face];

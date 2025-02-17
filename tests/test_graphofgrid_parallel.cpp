@@ -317,7 +317,7 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
     int maxrank = cc.size() - 1;
     std::vector<int> ranks { 0, std::min(maxrank, 1), std::min(maxrank, 2), std::min(maxrank, 3) };
 
-    std::vector<int> gIDtoRank, importedCells, importSol;
+    std::vector<int> importedCells, importSol;
     std::vector<std::vector<int>> exportedCells;
     std::vector<std::vector<int>> rankSol {{ 3, 4, 5, 12, 14 },
                                            { 0, 1, 2, 10, 11 },
@@ -339,7 +339,7 @@ BOOST_AUTO_TEST_CASE(SequentialZoltanSupport)
         BOOST_REQUIRE(gog.size() == 10);
 
         // setup vector of IDs to ranks
-        gIDtoRank.resize(grid.numCells(), root);
+        std::vector<int> gIDtoRank(grid.numCells(), root);
         assert(gIDtoRank.size() == 18);
         // what partitioner sees
         gIDtoRank[0] = ranks[1];
