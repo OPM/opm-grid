@@ -203,15 +203,11 @@ void setPillarCoordinates(int i, int j, int nx,
 
     // Top pillar's COORD values
     const auto& top_point = topElem.subEntity<3>(topCorner).geometry().center();
-    lgrCOORD[pillar] = top_point[0];
-    lgrCOORD[pillar+1] = top_point[1];
-    lgrCOORD[pillar+2] = top_point[2];
+    std::copy(top_point.begin(), top_point.end(), lgrCOORD.begin()+pillar);
 
     // Bottom pillar's COORD values
     const auto& bottom_point = bottomElem.subEntity<3>(bottomCorner).geometry().center();
-    lgrCOORD[pillar+3] = bottom_point[0];
-    lgrCOORD[pillar+4] = bottom_point[1];
-    lgrCOORD[pillar+5] = bottom_point[2];
+    std::copy(bottom_point.begin(), bottom_point.end(), lgrCOORD.begin() + pillar + 3);
 }
 
 void processPillars(int i, int j, int nx,
