@@ -94,18 +94,19 @@ void refinePatch_and_check(Dune::CpGrid& grid,
     BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
 
     // GLOBAL grid
-    for (int cell = 0; cell <  data[0]-> size(0); ++cell)
+    for (const auto& element : elements(grid.levelGridView(0)))
     {
-        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[0], cell, true);
-        BOOST_CHECK( entity.hasFather() == false);
-        BOOST_CHECK_THROW(entity.father(), std::logic_error);
-        BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
-        BOOST_CHECK( entity.getOrigin() ==  entity);
-        BOOST_CHECK( entity.getOrigin().level() == 0);
-        auto it = entity.hbegin(grid.maxLevel());
-        auto endIt = entity.hend(grid.maxLevel());
-        const auto& [lgr, childrenList] = (*data[0]).getChildrenLevelAndIndexList(cell);
-        if (entity.isLeaf()){ // In particular, cell has no children/is not a father.
+
+        BOOST_CHECK( element.hasFather() == false);
+        BOOST_CHECK_THROW(element.father(), std::logic_error);
+        BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
+        BOOST_CHECK( element.getOrigin() ==  element);
+        BOOST_CHECK( element.level() == 0);
+        BOOST_CHECK( element.getOrigin().level() == 0);
+        auto it = element.hbegin(grid.maxLevel());
+        auto endIt = element.hend(grid.maxLevel());
+        const auto& [lgr, childrenList] = (*data[0]).getChildrenLevelAndIndexList(element.index());
+        if (element.isLeaf()){ // In particular, cell has no children/is not a father.
             BOOST_CHECK_EQUAL(lgr, -1);
             BOOST_CHECK(childrenList.empty());
             // If it == endIt, then entity.isLeaf() true (when dristibuted_data_ is empty)
@@ -120,7 +121,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             for (const auto& child : childrenList) {
                 BOOST_CHECK( child != -1);
                 BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][0] == 0);
-                BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == cell);
+                BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == element.index());
 
                 const auto& childElem =  Dune::cpgrid::Entity<0>(*data[lgr], child, true);
                 BOOST_CHECK(childElem.hasFather() == true);
@@ -131,7 +132,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
                     referenceElem_entity_center[c] += (childElem.geometryInFather().center())[c];
                 }
             }
-            BOOST_CHECK_EQUAL( entity.isLeaf(), false); // parent cells do not appear in the LeafView
+            BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
             // Auxiliary int to check hierarchic iterator functionality
             double referenceElemOneParent_volume_it = 0.;
             std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
@@ -164,7 +165,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
             BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-13);
         }
-        BOOST_CHECK( entity.level() == 0);
     }
 
 
