@@ -182,33 +182,33 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             checkBoundsGlobalCell(data[level] -> globalCell(),
                                   data[level]->logicalCartesianSize());
         }
-
-        // LGRs
-        for (int cell = 0; cell <  data[level]-> size(0); ++cell)
+        
+        for (const auto& element : elements(grid.levelGridView(level)))
         {
-            Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[level], cell, true);
-            BOOST_CHECK( entity.hasFather() == true);
-            BOOST_CHECK( entity.getOrigin() ==  entity.father());
-            BOOST_CHECK( entity.getOrigin().level() == 0);
-            BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
+            BOOST_CHECK( element.hasFather() == true);
+            BOOST_CHECK( element.getOrigin() ==  element.father());
+            BOOST_CHECK( element.getOrigin().level() == 0);
+            
+            BOOST_CHECK_CLOSE(element.geometryInFather().volume(),
                               1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
-            BOOST_CHECK(entity.father().level() == 0);
-            const auto& child_to_parent = (*data[level]).child_to_parent_cells_[cell];
+            
+            BOOST_CHECK(element.father().level() == 0);
+            const auto& child_to_parent = (*data[level]).child_to_parent_cells_[element.index()];
             BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
             BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
-            BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
-            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == entity.level());
+            BOOST_CHECK_EQUAL( child_to_parent[1], element.father().index());
+            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == element.level());
             BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
                                          std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
-                                         entity.index()) ==
+                                         element.index()) ==
                                std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
             // Check amount of children cells of the parent cell
             BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
                               cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]);
-            BOOST_CHECK( entity.level() == static_cast<int>(level));
-            BOOST_CHECK( entity.isLeaf() == true);
-            auto it = entity.hbegin(grid.maxLevel());
-            auto endIt = entity.hend(grid.maxLevel());
+            BOOST_CHECK( element.level() == static_cast<int>(level));
+            BOOST_CHECK( element.isLeaf() == true);
+            auto it = element.hbegin(grid.maxLevel());
+            auto endIt = element.hend(grid.maxLevel());
             // If entity.isLeaf(), then it == endIt (when dristibuted_data_ is empty)
             BOOST_CHECK( it == endIt);
         }
