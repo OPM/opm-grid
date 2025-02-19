@@ -75,11 +75,34 @@ struct Fixture
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 
-
 #define CHECK_COORDINATES(c1, c2)                                       \
     for (int c = 0; c < 3; c++) {                                       \
         BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
     }
+
+void checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
+                                 const Dune::cpgrid::HierarchicIterator& endIt,
+                                 double total_children)
+{
+    double referenceElemOneParent_volume_it;
+    std::array<double,3> referenceElem_entity_center_it; // Expected {.5,.5,.5}
+
+    for (; it != endIt; ++it)
+    {
+        referenceElemOneParent_volume_it += it-> geometryInFather().volume();
+        for (int c = 0; c < 3; ++c)
+        {
+            referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
+        }
+    }
+    BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
+
+    for (int c = 0; c < 3; ++c)
+    {
+        referenceElem_entity_center_it[c]/= total_children;
+        BOOST_CHECK_CLOSE(referenceElem_entity_center_it[c], .5, 1e-13);
+    }
+}
 
 void refinePatch_and_check(Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
@@ -103,9 +126,11 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         BOOST_CHECK( element.getOrigin() ==  element);
         BOOST_CHECK( element.level() == 0);
         BOOST_CHECK( element.getOrigin().level() == 0);
+        
         auto it = element.hbegin(grid.maxLevel());
         auto endIt = element.hend(grid.maxLevel());
         const auto& [lgr, childrenList] = (*data[0]).getChildrenLevelAndIndexList(element.index());
+        
         if (element.isLeaf()){ // In particular, cell has no children/is not a father.
             BOOST_CHECK_EQUAL(lgr, -1);
             BOOST_CHECK(childrenList.empty());
@@ -114,33 +139,13 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         }
         else{
             BOOST_CHECK(lgr != -1);
-            BOOST_CHECK(childrenList.size() > 1);
-            
-            // Auxiliary int to check hierarchic iterator functionality
-            double referenceElemOneParent_volume_it = 0.;
-            std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
+            const auto total_children = cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
+            BOOST_CHECK_EQUAL(childrenList.size(), total_children);
+            BOOST_CHECK(it ->hasFather() == true);
+            BOOST_CHECK(it ->level() == lgr);
             // If it != endIt, then entity.isLeaf() false (when dristibuted_data_ is empty)
             BOOST_CHECK( it != endIt );
-            for (; it != endIt; ++it)
-            {
-                // Do something with the son available through it->
-                BOOST_CHECK(it ->hasFather() == true);
-                BOOST_CHECK(it ->level() == lgr);
-                referenceElemOneParent_volume_it += it-> geometryInFather().volume();
-                for (int c = 0; c < 3; ++c)
-                {
-                    referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
-                }
-            }
-            for (int c = 0; c < 3; ++c)
-            {
-                referenceElem_entity_center_it[c]
-                    /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
-            }
-            BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center_it[2], .5, 1e-13);
+            checkAverageCenterAndVolume(it, endIt, total_children);
         }
     }
 
