@@ -109,7 +109,7 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK( entity.getOrigin().level() == 0);
             auto it = entity.hbegin(coarse_grid.maxLevel());
             auto endIt = entity.hend(coarse_grid.maxLevel());
-            const auto& [lgr, childrenList] = (*data[0]).parent_to_children_cells_[cell];
+            const auto& [lgr, childrenList] = (*data[0]).getChildrenLevelAndIndexList(cell);
             if (entity.isLeaf()){ // In particular, cell has no children/is not a father.
                 BOOST_CHECK_EQUAL(lgr, -1);
                 BOOST_CHECK(childrenList.empty());
@@ -195,13 +195,13 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
             BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
             BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
             BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
-            BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[child_to_parent[1]]) == entity.level());
-            BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).begin(),
-                                         std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).end(),
+            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == entity.level());
+            BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
+                                         std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
                                          entity.index()) ==
-                               std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).end()) , false);
+                               std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
             // Check amount of children cells of the parent cell
-            BOOST_CHECK_EQUAL(std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).size(),
+            BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
                               cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]);
             BOOST_CHECK( entity.level() == static_cast<int>(level));
             BOOST_CHECK( entity.isLeaf() == true);
@@ -260,13 +260,13 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
                 BOOST_CHECK( entity.father() == entity.getOrigin());
                 BOOST_CHECK( entity.getOrigin().level() == 0);
-                BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[child_to_parent[1]]) == entity.level());
-                BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).begin(),
-                                             std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).end(),
+                BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == entity.level());
+                BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
+                                             std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
                                              level_cellIdx[1]) ==
-                                   std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).end()) , false);
+                                   std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
                 // Check amount of children cells of the parent cell
-                BOOST_CHECK_EQUAL(std::get<1>((*data[0]).parent_to_children_cells_[child_to_parent[1]]).size(),
+                BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
                                   cells_per_dim_vec[entity.level()-1][0]*
                                   cells_per_dim_vec[entity.level()-1][1]*cells_per_dim_vec[entity.level()-1][2]);
                 BOOST_CHECK( entity.father().isLeaf() == false);
@@ -279,8 +279,8 @@ void refinePatch_and_check(Dune::CpGrid& coarse_grid,
                 BOOST_CHECK_EQUAL(child_to_parent[0], -1);
                 BOOST_CHECK_EQUAL(child_to_parent[1], -1);
                 BOOST_CHECK( level_cellIdx[0] == 0);
-                BOOST_CHECK( std::get<0>((*data[0]).parent_to_children_cells_[level_cellIdx[1]]) == -1);
-                BOOST_CHECK( std::get<1>((*data[0]).parent_to_children_cells_[level_cellIdx[1]]).empty());
+                BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])) == -1);
+                BOOST_CHECK( std::get<1>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])).empty());
                 BOOST_CHECK( entity.level() == 0);
                 // Get index of the cell in level 0
                 const auto& entityOldIdx =  (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()][1];
