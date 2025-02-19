@@ -139,6 +139,18 @@ void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
     }
 }
 
+void checkBoundsGlobalCell(const std::vector<int>& globalCell,
+                           const std::array<int, 3>& logicalCartesianSize)
+{
+    auto [itMin, itMax] = std::minmax_element(globalCell.begin(), globalCell.end());
+    BOOST_CHECK( *itMin >= 0);
+    //Note:  An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in all processes.
+
+    const auto& maxCartesianIdxLevel = logicalCartesianSize[0]*logicalCartesianSize[1]*logicalCartesianSize[2];
+    BOOST_CHECK( *itMax < maxCartesianIdxLevel);
+}
+
+
 
 void refinePatch_and_check(Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
@@ -152,20 +164,14 @@ void refinePatch_and_check(Dune::CpGrid& grid,
     BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
 
     checkLevelZeroGridHierarchyInfo(grid, cells_per_dim_vec);
-   
 
     for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
     {
         BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
-        
-        if (!(data[level] -> globalCell().empty()))
-        {
-            auto itMin = std::min_element((data[level] -> globalCell()).begin(),  (data[level] -> globalCell()).end());
-            auto itMax = std::max_element((data[level] -> globalCell()).begin(),  (data[level] -> globalCell()).end());
-            BOOST_CHECK( *itMin >= 0); // An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in all processes.
-            const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
-            BOOST_CHECK( *itMax < maxCartesianIdxLevel);
+        if (!(data[level] -> globalCell().empty())) { // In some processes, LGR might be empty
+            checkBoundsGlobalCell(data[level] -> globalCell(),
+                                  data[level]->logicalCartesianSize());
         }
 
         // LGRs
@@ -211,11 +217,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
         }
 
-        auto itMin = std::min_element((data.back() -> globalCell()).begin(),  (data.back()-> globalCell()).end());
-        auto itMax = std::max_element((data.back() -> globalCell()).begin(),  (data.back() -> globalCell()).end());
-        BOOST_CHECK( *itMin >= 0);
-        const auto& maxCartesianIdx = grid.logicalCartesianSize()[0]*grid.logicalCartesianSize()[1]*grid.logicalCartesianSize()[2];
-        BOOST_CHECK( *itMax < maxCartesianIdx);
+        checkBoundsGlobalCell(data.back()->globalCell(), data.back()->logicalCartesianSize());
 
         // LeafView
         for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
