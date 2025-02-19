@@ -159,10 +159,10 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
         
-        if (!(data[level] -> global_cell_.empty()))
+        if (!(data[level] -> globalCell().empty()))
         {
-            auto itMin = std::min_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
-            auto itMax = std::max_element((data[level] -> global_cell_).begin(),  (data[level] -> global_cell_).end());
+            auto itMin = std::min_element((data[level] -> globalCell()).begin(),  (data[level] -> globalCell()).end());
+            auto itMax = std::max_element((data[level] -> globalCell()).begin(),  (data[level] -> globalCell()).end());
             BOOST_CHECK( *itMin >= 0); // An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in all processes.
             const auto& maxCartesianIdxLevel = data[level]->logical_cartesian_size_[0]*data[level]->logical_cartesian_size_[1]* data[level]->logical_cartesian_size_[2];
             BOOST_CHECK( *itMax < maxCartesianIdxLevel);
@@ -211,8 +211,8 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
         }
 
-        auto itMin = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
-        auto itMax = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
+        auto itMin = std::min_element((data.back() -> globalCell()).begin(),  (data.back()-> globalCell()).end());
+        auto itMax = std::max_element((data.back() -> globalCell()).begin(),  (data.back() -> globalCell()).end());
         BOOST_CHECK( *itMin >= 0);
         const auto& maxCartesianIdx = grid.logicalCartesianSize()[0]*grid.logicalCartesianSize()[1]*grid.logicalCartesianSize()[2];
         BOOST_CHECK( *itMax < maxCartesianIdx);
@@ -279,10 +279,10 @@ void refinePatch_and_check(Dune::CpGrid& grid,
 
     BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == grid.maxLevel());
 
-    auto it_min = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
-    auto it_max = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
-    auto it_min_level_zero = std::min_element((data.front() -> global_cell_).begin(),  (data.front() -> global_cell_).end());
-    auto it_max_level_zero = std::max_element((data.front() -> global_cell_).begin(),  (data.front() -> global_cell_).end());
+    auto it_min = std::min_element((data.back() -> globalCell()).begin(),  (data.back()-> globalCell()).end());
+    auto it_max = std::max_element((data.back() -> globalCell()).begin(),  (data.back() -> globalCell()).end());
+    auto it_min_level_zero = std::min_element((data.front() -> globalCell()).begin(),  (data.front() -> globalCell()).end());
+    auto it_max_level_zero = std::max_element((data.front() -> globalCell()).begin(),  (data.front() -> globalCell()).end());
     BOOST_CHECK_EQUAL( *it_min, *it_min_level_zero);
     BOOST_CHECK_EQUAL( *it_max, *it_max_level_zero);
 
