@@ -202,91 +202,88 @@ void refinePatch_and_check(Dune::CpGrid& grid,
 
     checkLevelZeroGridHierarchyInfo(grid, cells_per_dim_vec);
 
-    for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
-    {
+    for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) {
         BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
-
         if (!(data[level] -> globalCell().empty())) { // In some processes, LGR might be empty
             checkBoundsGlobalCell(data[level] -> globalCell(),
                                   data[level]->logicalCartesianSize());
         }
-
         checkLgrBasicHiearchyInfo(grid, cells_per_dim_vec, level);
+    } 
 
-        // LeafView faces
-        for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
-        {
-            const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
-            BOOST_CHECK(faceToPoint.size() == 4);
-            for (int i = 0; i < 4; ++i) {
-                BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
-            }
-
-            Dune::cpgrid::EntityRep<1> faceEntity(face, true);
-            BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
+    // LeafView faces
+    for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
+    {
+        const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
+        BOOST_CHECK(faceToPoint.size() == 4);
+        for (int i = 0; i < 4; ++i) {
+            BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
         }
 
-        checkBoundsGlobalCell(data.back()->globalCell(), data.back()->logicalCartesianSize());
+        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
+        BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
+    }
 
-        // LeafView
-        for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
+    checkBoundsGlobalCell(data.back()->globalCell(), data.back()->logicalCartesianSize());
+
+    // LeafView
+    for (int cell = 0; cell <  data[startIJK_vec.size()+1]-> size(0); ++cell)
+    {
+        BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell].size() == 8);
+        for (int i = 0; i < 8; ++i)
         {
-            BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell].size() == 8);
-            for (int i = 0; i < 8; ++i)
-            {
-                BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell][i] != -1);
-            }
-            Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[startIJK_vec.size()+1], cell, true);
-            for (int i = 0; i < data[startIJK_vec.size()+1] -> cell_to_face_[entity].size(); ++i)
-            {
-                BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_face_[entity][i].index() != -1);
-            }
-            const auto& child_to_parent = (*data[startIJK_vec.size()+1]).child_to_parent_cells_[cell];
-            const auto& level_cellIdx = (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()];
-            auto it = entity.hbegin(grid.maxLevel());
-            auto endIt = entity.hend(grid.maxLevel());
-            BOOST_CHECK(entity.isLeaf());
-            BOOST_CHECK(it == endIt);
-            if (entity.hasFather()){
-                BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
-                                  1./(cells_per_dim_vec[entity.level()-1][0]
-                                      *cells_per_dim_vec[entity.level()-1][1]
-                                      *cells_per_dim_vec[entity.level()-1][2]), 1e-6);
-                BOOST_CHECK(entity.father().level() == 0);
-                BOOST_CHECK(child_to_parent[0] != -1);
-                BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
-                BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
-                BOOST_CHECK( entity.father() == entity.getOrigin());
-                BOOST_CHECK( entity.getOrigin().level() == 0);
-                BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == entity.level());
-                BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
-                                             std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
-                                             level_cellIdx[1]) ==
-                                   std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
-                // Check amount of children cells of the parent cell
-                BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
-                                  cells_per_dim_vec[entity.level()-1][0]*
-                                  cells_per_dim_vec[entity.level()-1][1]*cells_per_dim_vec[entity.level()-1][2]);
-                BOOST_CHECK( entity.father().isLeaf() == false);
-                BOOST_CHECK( (entity.level() > 0) || (entity.level() < static_cast<int>(startIJK_vec.size()) +1));
-                BOOST_CHECK( level_cellIdx[0] == entity.level());
-            }
-            else{
-                BOOST_CHECK_THROW(entity.father(), std::logic_error);
-                BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
-                BOOST_CHECK_EQUAL(child_to_parent[0], -1);
-                BOOST_CHECK_EQUAL(child_to_parent[1], -1);
-                BOOST_CHECK( level_cellIdx[0] == 0);
-                BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])) == -1);
-                BOOST_CHECK( std::get<1>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])).empty());
-                BOOST_CHECK( entity.level() == 0);
-                // Get index of the cell in level 0
-                const auto& entityOldIdx =  (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()][1];
-                BOOST_CHECK( entity.getOrigin().index() == entityOldIdx);
-                BOOST_CHECK( entity.getOrigin().level() == 0);
-            } // end else
+            BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_point_[cell][i] != -1);
         }
-    } // end-level-for-loop
+        Dune::cpgrid::Entity<0> entity = Dune::cpgrid::Entity<0>(*data[startIJK_vec.size()+1], cell, true);
+        for (int i = 0; i < data[startIJK_vec.size()+1] -> cell_to_face_[entity].size(); ++i)
+        {
+            BOOST_CHECK( data[startIJK_vec.size()+1] -> cell_to_face_[entity][i].index() != -1);
+        }
+        const auto& child_to_parent = (*data[startIJK_vec.size()+1]).child_to_parent_cells_[cell];
+        const auto& level_cellIdx = (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()];
+        auto it = entity.hbegin(grid.maxLevel());
+        auto endIt = entity.hend(grid.maxLevel());
+        BOOST_CHECK(entity.isLeaf());
+        BOOST_CHECK(it == endIt);
+        if (entity.hasFather()){
+            BOOST_CHECK_CLOSE(entity.geometryInFather().volume(),
+                              1./(cells_per_dim_vec[entity.level()-1][0]
+                                  *cells_per_dim_vec[entity.level()-1][1]
+                                  *cells_per_dim_vec[entity.level()-1][2]), 1e-6);
+            BOOST_CHECK(entity.father().level() == 0);
+            BOOST_CHECK(child_to_parent[0] != -1);
+            BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
+            BOOST_CHECK_EQUAL( child_to_parent[1], entity.father().index());
+            BOOST_CHECK( entity.father() == entity.getOrigin());
+            BOOST_CHECK( entity.getOrigin().level() == 0);
+            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == entity.level());
+            BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
+                                         std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
+                                         level_cellIdx[1]) ==
+                               std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
+            // Check amount of children cells of the parent cell
+            BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
+                              cells_per_dim_vec[entity.level()-1][0]*
+                              cells_per_dim_vec[entity.level()-1][1]*cells_per_dim_vec[entity.level()-1][2]);
+            BOOST_CHECK( entity.father().isLeaf() == false);
+            BOOST_CHECK( (entity.level() > 0) || (entity.level() < static_cast<int>(startIJK_vec.size()) +1));
+            BOOST_CHECK( level_cellIdx[0] == entity.level());
+        }
+        else{
+            BOOST_CHECK_THROW(entity.father(), std::logic_error);
+            BOOST_CHECK_THROW(entity.geometryInFather(), std::logic_error);
+            BOOST_CHECK_EQUAL(child_to_parent[0], -1);
+            BOOST_CHECK_EQUAL(child_to_parent[1], -1);
+            BOOST_CHECK( level_cellIdx[0] == 0);
+            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])) == -1);
+            BOOST_CHECK( std::get<1>((*data[0]).getChildrenLevelAndIndexList(level_cellIdx[1])).empty());
+            BOOST_CHECK( entity.level() == 0);
+            // Get index of the cell in level 0
+            const auto& entityOldIdx =  (*data[startIJK_vec.size()+1]).leaf_to_level_cells_[entity.index()][1];
+            BOOST_CHECK( entity.getOrigin().index() == entityOldIdx);
+            BOOST_CHECK( entity.getOrigin().level() == 0);
+        } // end else
+    }
 
     BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == grid.maxLevel());
 
