@@ -115,24 +115,8 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         else{
             BOOST_CHECK(lgr != -1);
             BOOST_CHECK(childrenList.size() > 1);
-            // Auxiliary int to check amount of children
-            double referenceElemOneParent_volume = 0.;
-            std::array<double,3> referenceElem_entity_center = {0.,0.,0.}; // Expected {.5,.5,.5}
-            for (const auto& child : childrenList) {
-                BOOST_CHECK( child != -1);
-                BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][0] == 0);
-                BOOST_CHECK( data[lgr]-> child_to_parent_cells_[child][1] == element.index());
-
-                const auto& childElem =  Dune::cpgrid::Entity<0>(*data[lgr], child, true);
-                BOOST_CHECK(childElem.hasFather() == true);
-                BOOST_CHECK(childElem.level() == lgr);
-                referenceElemOneParent_volume += childElem.geometryInFather().volume();
-                BOOST_CHECK( childElem.geometryInFather().volume() > 0 );
-                for (int c = 0; c < 3; ++c)  {
-                    referenceElem_entity_center[c] += (childElem.geometryInFather().center())[c];
-                }
-            }
             BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
+            
             // Auxiliary int to check hierarchic iterator functionality
             double referenceElemOneParent_volume_it = 0.;
             std::array<double,3> referenceElem_entity_center_it = {0.,0.,0.}; // Expected {.5,.5,.5}
@@ -151,15 +135,9 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             }
             for (int c = 0; c < 3; ++c)
             {
-                referenceElem_entity_center[c]
-                    /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
                 referenceElem_entity_center_it[c]
                     /= cells_per_dim_vec[lgr-1][0]*cells_per_dim_vec[lgr-1][1]*cells_per_dim_vec[lgr-1][2];
             }
-            BOOST_CHECK_CLOSE(referenceElemOneParent_volume, 1, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center[0], .5, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center[1], .5, 1e-13);
-            BOOST_CHECK_CLOSE(referenceElem_entity_center[2], .5, 1e-13);
             BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
             BOOST_CHECK_CLOSE(referenceElem_entity_center_it[0], .5, 1e-13);
             BOOST_CHECK_CLOSE(referenceElem_entity_center_it[1], .5, 1e-13);
