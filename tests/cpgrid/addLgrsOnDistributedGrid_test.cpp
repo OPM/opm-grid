@@ -104,21 +104,10 @@ void checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
     }
 }
 
-void refinePatch_and_check(Dune::CpGrid& grid,
-                           const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                           const std::vector<std::array<int,3>>& startIJK_vec,
-                           [[maybe_unused]] const std::vector<std::array<int,3>>& endIJK_vec,
-                           const std::vector<std::string>& lgr_name_vec)
+void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
+                                     const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    auto& data = grid.currentData(); // what data current_view_data_ is pointing at (data_ or distributed_data_)
-
-    BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
-    BOOST_CHECK( data[0]->child_to_parent_cells_.empty());
-    BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
-
-    // GLOBAL grid
-    for (const auto& element : elements(grid.levelGridView(0)))
-    {
+    for (const auto& element : elements(grid.levelGridView(0))) {
 
         BOOST_CHECK( element.hasFather() == false);
         BOOST_CHECK_THROW(element.father(), std::logic_error);
@@ -129,7 +118,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         
         auto it = element.hbegin(grid.maxLevel());
         auto endIt = element.hend(grid.maxLevel());
-        const auto& [lgr, childrenList] = (*data[0]).getChildrenLevelAndIndexList(element.index());
+        const auto& [lgr, childrenList] = (*grid.currentData().front()).getChildrenLevelAndIndexList(element.index());
         
         if (element.isLeaf()){ // In particular, cell has no children/is not a father.
             BOOST_CHECK_EQUAL(lgr, -1);
@@ -148,7 +137,23 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             checkAverageCenterAndVolume(it, endIt, total_children);
         }
     }
+}
 
+
+void refinePatch_and_check(Dune::CpGrid& grid,
+                           const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                           const std::vector<std::array<int,3>>& startIJK_vec,
+                           [[maybe_unused]] const std::vector<std::array<int,3>>& endIJK_vec,
+                           const std::vector<std::string>& lgr_name_vec)
+{
+    const auto& data = grid.currentData(); // what data current_view_data_ is pointing at (data_ or distributed_data_)
+
+    BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
+    BOOST_CHECK( data[0]->child_to_parent_cells_.empty());
+    BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
+
+    checkLevelZeroGridHierarchyInfo(grid, cells_per_dim_vec);
+   
 
     for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
     {
