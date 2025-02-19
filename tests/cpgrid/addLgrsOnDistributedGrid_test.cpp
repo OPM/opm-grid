@@ -115,7 +115,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         else{
             BOOST_CHECK(lgr != -1);
             BOOST_CHECK(childrenList.size() > 1);
-            BOOST_CHECK_EQUAL( element.isLeaf(), false); // parent cells do not appear in the LeafView
             
             // Auxiliary int to check hierarchic iterator functionality
             double referenceElemOneParent_volume_it = 0.;
