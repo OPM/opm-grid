@@ -150,6 +150,15 @@ void checkBoundsGlobalCell(const std::vector<int>& globalCell,
     BOOST_CHECK( *itMax < maxCartesianIdxLevel);
 }
 
+void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
+                                             const std::vector<int>& globalCell_leaf)
+{
+    auto [itMinL0, itMaxL0] = std::minmax_element(globalCell_l0.begin(), globalCell_l0.end());
+    auto [itMinLeaf, itMaxLeaf] = std::minmax_element(globalCell_leaf.begin(), globalCell_leaf.end());
+    BOOST_CHECK_EQUAL( *itMinL0, *itMinLeaf);
+    BOOST_CHECK_EQUAL( *itMaxL0, *itMaxLeaf);
+}
+
 
 
 void refinePatch_and_check(Dune::CpGrid& grid,
@@ -281,12 +290,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
 
     BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == grid.maxLevel());
 
-    auto it_min = std::min_element((data.back() -> globalCell()).begin(),  (data.back()-> globalCell()).end());
-    auto it_max = std::max_element((data.back() -> globalCell()).begin(),  (data.back() -> globalCell()).end());
-    auto it_min_level_zero = std::min_element((data.front() -> globalCell()).begin(),  (data.front() -> globalCell()).end());
-    auto it_max_level_zero = std::max_element((data.front() -> globalCell()).begin(),  (data.front() -> globalCell()).end());
-    BOOST_CHECK_EQUAL( *it_min, *it_min_level_zero);
-    BOOST_CHECK_EQUAL( *it_max, *it_max_level_zero);
+    checkEqMinMaxGlobalCellLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
 
     for (long unsigned int l = 0; l < startIJK_vec.size() +1; ++l) // level 0,1,2,... , last patch
     {
