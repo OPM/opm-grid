@@ -313,6 +313,11 @@ public:
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
     }
 
+    int faceToCellSize(int face) const {
+        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
+        return face_to_cell_[faceEntity].size();
+    }
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -541,6 +546,16 @@ public:
         return *level_data_ptr_;
     }
 
+    /// @brief Retrieves the level and child indices of a given parent cell.
+    ///
+    /// @param elemIdx The index of the parent cell.
+    /// @return A tuple of (- could be a  pair -)
+    ///         - An integer representing the refinement level (LGR) of the parent cell.
+    ///         - A vector of integers representing the indices of the child cells.
+    ///         - If the parent cell has no children, the entry is {-1, {}}.
+    std::tuple<int,std::vector<int>> getChildrenLevelAndIndexList(int elemIdx) const {
+        return parent_to_children_cells_[elemIdx];
+    }
 
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
