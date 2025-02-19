@@ -271,9 +271,7 @@ void refinePatch_and_check(Dune::CpGrid& grid,
         for (int i = 0; i < 4; ++i) {
             BOOST_CHECK( grid.faceVertex(face, i) >= 0); // valid index
         }
-
-        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
-        BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_cell_[faceEntity].size() < 3);
+        BOOST_CHECK( data.back()->faceToCellSize(face) < 3);
     }
 
     checkBoundsGlobalCell(data.back()->globalCell(), data.back()->logicalCartesianSize());
