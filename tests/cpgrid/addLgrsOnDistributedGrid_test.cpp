@@ -115,11 +115,11 @@ void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
         BOOST_CHECK( element.getOrigin() ==  element);
         BOOST_CHECK( element.level() == 0);
         BOOST_CHECK( element.getOrigin().level() == 0);
-        
+
         auto it = element.hbegin(grid.maxLevel());
         const auto endIt = element.hend(grid.maxLevel());
         const auto& [lgr, childrenList] = grid.currentData().front()->getChildrenLevelAndIndexList(element.index());
-        
+
         if (element.isLeaf()){ // In particular, cell has no children/is not a father.
             BOOST_CHECK_EQUAL(lgr, -1);
             BOOST_CHECK(childrenList.empty());
@@ -673,13 +673,10 @@ BOOST_AUTO_TEST_CASE(globalRefine1)
     if(grid.comm().size()>1)
     {
         grid.loadBalance();
-
         grid.globalRefine(1);
-        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
-        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}};
-        const std::vector<std::array<int,3>> endIJK_vec = {{4,2,1}};
-        const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
 
+        const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
+        const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
         check(grid, cells_per_dim_vec, lgr_name_vec);
     }
 }
@@ -696,11 +693,9 @@ BOOST_AUTO_TEST_CASE(globalRefine2)
     if(grid.comm().size()>1)
     {
         grid.loadBalance();
-
         grid.globalRefine(1);
+
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
-        const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}};
-        const std::vector<std::array<int,3>> endIJK_vec = {{4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"GR1"}; // GR stands for GLOBAL REFINEMENT
         check(grid, cells_per_dim_vec, lgr_name_vec);
     }
@@ -758,7 +753,7 @@ BOOST_AUTO_TEST_CASE(distributed_lgr)
         std::vector<int> localPointIds_vec;
         localPointIds_vec.reserve(grid.currentData().back()->size(3));
         const auto& verts = vertices(grid.leafGridView());
-         // Notice that all partition type points are pushed back.
+        // Notice that all partition type points are pushed back.
         // Selecting only interior points does not bring us to the expected value.
         std::transform(verts.begin(), verts.end(), std::back_inserter(localPointIds_vec),
                        [&is = grid.currentData().back()->globalIdSet()](const auto& point)
@@ -1048,9 +1043,9 @@ BOOST_AUTO_TEST_CASE(call_adapt_on_full_distributed_grid)
     grid.createCartesian(grid_dim, cell_sizes);
     std::vector<int> parts(36);
     std::vector<std::vector<int>> cells_per_rank = { {0,1,4,5,8,9,16,20,21},
-        {12,13,17,24,25,28,29,32,33},
-        {2,3,6,7,10,11,18,22,23},
-        {14,15,19,26,27,30,31,34,35} };
+                                                     {12,13,17,24,25,28,29,32,33},
+                                                     {2,3,6,7,10,11,18,22,23},
+                                                     {14,15,19,26,27,30,31,34,35} };
     for (int rank = 0; rank < 4; ++rank) {
         for (const auto& elemIdx : cells_per_rank[rank]) {
             parts[elemIdx] = rank;
@@ -1068,10 +1063,7 @@ BOOST_AUTO_TEST_CASE(call_adapt_on_full_distributed_grid)
         grid.postAdapt();
 
         const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}};
-        const std::vector<std::array<int,3>> startIJK_vec = {{1,0,0}};
-        const std::vector<std::array<int,3>> endIJK_vec = {{4,3,3}};
         const std::vector<std::string> lgr_name_vec = {"GR1"};
-
         check(grid, cells_per_dim_vec, lgr_name_vec);
     }
 }
