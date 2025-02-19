@@ -262,15 +262,14 @@ void refinePatch_and_check(Dune::CpGrid& grid,
                                   data[level]->logicalCartesianSize());
         }
         checkLgrBasicHiearchyInfo(grid, cells_per_dim_vec, level);
-    } 
+    }
 
     // LeafView faces
-    for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
+    for (int face = 0; face < grid.numFaces(); ++face)
     {
-        const auto& faceToPoint =  (*data[startIJK_vec.size() +1]).face_to_point_[face];
-        BOOST_CHECK(faceToPoint.size() == 4);
+        BOOST_CHECK( grid.numFaceVertices(face) == 4);
         for (int i = 0; i < 4; ++i) {
-            BOOST_CHECK((*data[startIJK_vec.size() +1]).face_to_point_[face][i] != -1);
+            BOOST_CHECK( grid.faceVertex(face, i) >= 0); // valid index
         }
 
         Dune::cpgrid::EntityRep<1> faceEntity(face, true);
