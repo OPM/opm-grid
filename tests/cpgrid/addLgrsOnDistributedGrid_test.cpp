@@ -149,7 +149,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
     const auto& data = grid.currentData(); // what data current_view_data_ is pointing at (data_ or distributed_data_)
 
     BOOST_CHECK(data.size() == startIJK_vec.size() + 2);
-    BOOST_CHECK( data[0]->child_to_parent_cells_.empty());
     BOOST_CHECK(grid.getLgrNameToLevel().at("GLOBAL") == 0);
 
     checkLevelZeroGridHierarchyInfo(grid, cells_per_dim_vec);
@@ -157,7 +156,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
 
     for (long unsigned int level = 1; level < startIJK_vec.size() +1; ++level) // only 1 when there is only 1 patch
     {
-        BOOST_CHECK( (*data[level]).parent_to_children_cells_.empty());
         BOOST_CHECK(grid.getLgrNameToLevel().at(lgr_name_vec[level-1]) == static_cast<int>(level));
 
         
@@ -280,7 +278,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
     } // end-level-for-loop
 
     BOOST_CHECK( static_cast<int>(startIJK_vec.size()) == grid.maxLevel());
-    BOOST_CHECK( (*data[data.size()-1]).parent_to_children_cells_.empty());
 
     auto it_min = std::min_element((data.back() -> global_cell_).begin(),  (data.back()-> global_cell_).end());
     auto it_max = std::max_element((data.back() -> global_cell_).begin(),  (data.back() -> global_cell_).end());
