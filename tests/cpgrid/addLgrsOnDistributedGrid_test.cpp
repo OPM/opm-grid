@@ -118,7 +118,7 @@ void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
         
         auto it = element.hbegin(grid.maxLevel());
         const auto endIt = element.hend(grid.maxLevel());
-        const auto& [lgr, childrenList] = (*grid.currentData().front()).getChildrenLevelAndIndexList(element.index());
+        const auto& [lgr, childrenList] = grid.currentData().front()->getChildrenLevelAndIndexList(element.index());
         
         if (element.isLeaf()){ // In particular, cell has no children/is not a father.
             BOOST_CHECK_EQUAL(lgr, -1);
@@ -159,7 +159,35 @@ void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_
     BOOST_CHECK_EQUAL( *itMaxL0, *itMaxLeaf);
 }
 
+void checkLgrBasicHiearchyInfo(const Dune::CpGrid& grid,
+                               const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                               int level)
+{
+    for (const auto& element : elements(grid.levelGridView(level)))
+    {
+        BOOST_CHECK( element.hasFather() == true);
+        BOOST_CHECK( element.getOrigin() ==  element.father());
+        BOOST_CHECK( element.getOrigin().level() == 0);
 
+        BOOST_CHECK_CLOSE(element.geometryInFather().volume(),
+                          1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
+
+        const auto [child_level, siblings_list] =
+            grid.currentData()[element.father().level()]->getChildrenLevelAndIndexList(element.father().index());
+
+        BOOST_CHECK_EQUAL( child_level, level);
+        BOOST_CHECK( element.level() == static_cast<int>(level));
+
+        BOOST_CHECK_EQUAL( (std::find(siblings_list.begin(), siblings_list.end(), element.index()) == siblings_list.end()) , false);
+        BOOST_CHECK_EQUAL( siblings_list.size(), cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]);
+
+        BOOST_CHECK( element.isLeaf() == true);
+        auto it = element.hbegin(grid.maxLevel());
+        auto endIt = element.hend(grid.maxLevel());
+        // If entity.isLeaf(), then it == endIt (when dristibuted_data_ is empty)
+        BOOST_CHECK( it == endIt);
+    }
+}
 
 void refinePatch_and_check(Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
@@ -182,36 +210,8 @@ void refinePatch_and_check(Dune::CpGrid& grid,
             checkBoundsGlobalCell(data[level] -> globalCell(),
                                   data[level]->logicalCartesianSize());
         }
-        
-        for (const auto& element : elements(grid.levelGridView(level)))
-        {
-            BOOST_CHECK( element.hasFather() == true);
-            BOOST_CHECK( element.getOrigin() ==  element.father());
-            BOOST_CHECK( element.getOrigin().level() == 0);
-            
-            BOOST_CHECK_CLOSE(element.geometryInFather().volume(),
-                              1./(cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]), 1e-6);
-            
-            BOOST_CHECK(element.father().level() == 0);
-            const auto& child_to_parent = (*data[level]).child_to_parent_cells_[element.index()];
-            BOOST_CHECK_EQUAL( child_to_parent[0] == -1, false);
-            BOOST_CHECK_EQUAL( child_to_parent[0] == 0, true);
-            BOOST_CHECK_EQUAL( child_to_parent[1], element.father().index());
-            BOOST_CHECK( std::get<0>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])) == element.level());
-            BOOST_CHECK_EQUAL((std::find(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).begin(),
-                                         std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end(),
-                                         element.index()) ==
-                               std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).end()) , false);
-            // Check amount of children cells of the parent cell
-            BOOST_CHECK_EQUAL(std::get<1>((*data[0]).getChildrenLevelAndIndexList(child_to_parent[1])).size(),
-                              cells_per_dim_vec[level-1][0]*cells_per_dim_vec[level-1][1]*cells_per_dim_vec[level-1][2]);
-            BOOST_CHECK( element.level() == static_cast<int>(level));
-            BOOST_CHECK( element.isLeaf() == true);
-            auto it = element.hbegin(grid.maxLevel());
-            auto endIt = element.hend(grid.maxLevel());
-            // If entity.isLeaf(), then it == endIt (when dristibuted_data_ is empty)
-            BOOST_CHECK( it == endIt);
-        }
+
+        checkLgrBasicHiearchyInfo(grid, cells_per_dim_vec, level);
 
         // LeafView faces
         for (int face = 0; face <  data[startIJK_vec.size()+1]-> face_to_cell_.size(); ++face)
