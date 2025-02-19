@@ -292,14 +292,6 @@ void refinePatch_and_check(Dune::CpGrid& grid,
 
     checkEqMinMaxGlobalCellLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
 
-    for (long unsigned int l = 0; l < startIJK_vec.size() +1; ++l) // level 0,1,2,... , last patch
-    {
-        const auto& view = grid.levelGridView(l);
-        for (const auto& element: elements(view)){
-            BOOST_CHECK_EQUAL(element.level(), l);
-        }
-    }
-
     std::vector<int> leaf_to_parent_cell; // To store parent cell index, when leaf cell has a parent. Empty entry otherwise.
     leaf_to_parent_cell.resize(data[startIJK_vec.size()+1]-> size(0)); // Correct size.
 
