@@ -1268,7 +1268,7 @@ namespace Dune
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltan)
+                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltanGoG)
         {
             return scatterGrid(defaultTransEdgeWgt, false, wells, possibleFutureConnections, false, transmissibilities, false, overlapLayers, partitionMethod);
         }
@@ -1309,7 +1309,7 @@ namespace Dune
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
-                    int partitionMethod = Dune::PartitionMethod::zoltan,
+                    int partitionMethod = Dune::PartitionMethod::zoltanGoG,
                     double imbalanceTol = 1.1)
         {
             return scatterGrid(method, ownersFirst, wells, possibleFutureConnections, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
@@ -1398,7 +1398,7 @@ namespace Dune
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                     bool serialPartitioning,
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
-                    bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan,
+                    bool addCornerCells=false, int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltanGoG,
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = false)
         {
@@ -1888,7 +1888,7 @@ namespace Dune
                     const double* transmissibilities,
                     bool addCornerCells,
                     int overlapLayers,
-                    int partitionMethod = Dune::PartitionMethod::zoltan,
+                    int partitionMethod = Dune::PartitionMethod::zoltanGoG,
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = true,
                     const std::vector<int>& input_cell_part = {});
