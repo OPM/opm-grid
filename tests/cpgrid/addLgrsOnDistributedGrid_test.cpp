@@ -117,7 +117,7 @@ void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
         BOOST_CHECK( element.getOrigin().level() == 0);
         
         auto it = element.hbegin(grid.maxLevel());
-        auto endIt = element.hend(grid.maxLevel());
+        const auto endIt = element.hend(grid.maxLevel());
         const auto& [lgr, childrenList] = (*grid.currentData().front()).getChildrenLevelAndIndexList(element.index());
         
         if (element.isLeaf()){ // In particular, cell has no children/is not a father.
@@ -142,19 +142,19 @@ void checkLevelZeroGridHierarchyInfo(const Dune::CpGrid& grid,
 void checkBoundsGlobalCell(const std::vector<int>& globalCell,
                            const std::array<int, 3>& logicalCartesianSize)
 {
-    auto [itMin, itMax] = std::minmax_element(globalCell.begin(), globalCell.end());
+    const auto [itMin, itMax] = std::minmax_element(globalCell.begin(), globalCell.end());
     BOOST_CHECK( *itMin >= 0);
     //Note:  An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in all processes.
 
-    const auto& maxCartesianIdxLevel = logicalCartesianSize[0]*logicalCartesianSize[1]*logicalCartesianSize[2];
+    const auto maxCartesianIdxLevel = logicalCartesianSize[0]*logicalCartesianSize[1]*logicalCartesianSize[2];
     BOOST_CHECK( *itMax < maxCartesianIdxLevel);
 }
 
 void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
                                              const std::vector<int>& globalCell_leaf)
 {
-    auto [itMinL0, itMaxL0] = std::minmax_element(globalCell_l0.begin(), globalCell_l0.end());
-    auto [itMinLeaf, itMaxLeaf] = std::minmax_element(globalCell_leaf.begin(), globalCell_leaf.end());
+    const auto [itMinL0, itMaxL0] = std::minmax_element(globalCell_l0.begin(), globalCell_l0.end());
+    const auto [itMinLeaf, itMaxLeaf] = std::minmax_element(globalCell_leaf.begin(), globalCell_leaf.end());
     BOOST_CHECK_EQUAL( *itMinL0, *itMinLeaf);
     BOOST_CHECK_EQUAL( *itMaxL0, *itMaxLeaf);
 }
