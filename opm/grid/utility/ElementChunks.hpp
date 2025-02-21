@@ -22,6 +22,7 @@
 #include <opm/grid/utility/createThreadIterators.hpp>
 
 #include <cstddef>
+#include <iterator>
 #include <utility>
 #include <vector>
 
@@ -71,18 +72,21 @@ namespace Opm
 ///         // Do something else with elem
 ///     }
 /// }
-template <class GridView>
+template <class GridView, class PartitionSet>
 class ElementChunks
 {
 private:
-    using Iter = typename GridView::template Codim<0>::Iterator;
+    using Iter = decltype(std::begin(elements(std::declval<const GridView&>(), PartitionSet())));
     using Storage = std::vector<Iter>;
     using StorageIter = decltype(Storage().cbegin());
 
 public:
-    ElementChunks(const GridView& gv, const std::size_t num_chunks)
+    ElementChunks(const GridView& gv,
+                  const PartitionSet included_partition,
+                  const std::size_t num_chunks)
     {
-        grid_chunk_iterators_ = Opm::createChunkIterators(elements(gv), gv.size(0), num_chunks);
+        grid_chunk_iterators_
+            = Opm::createChunkIterators(elements(gv, included_partition), gv.size(0), num_chunks);
     }
 
     struct Chunk
