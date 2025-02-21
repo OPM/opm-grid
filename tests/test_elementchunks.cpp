@@ -32,6 +32,8 @@
 
 #include <opm/grid/CpGrid.hpp>
 
+#include <dune/grid/common/partitionset.hh>
+
 struct Fixture
 {
     Fixture()
@@ -43,9 +45,7 @@ struct Fixture
     }
 };
 
-using GV = Dune::CpGrid::LeafGridView;
-using EC = Opm::ElementChunks<GV>;
-
+template <class EC>
 std::vector<int> countChunks(const EC& chunks)
 {
     std::vector<int> counts(chunks.size(), 0);
@@ -60,9 +60,16 @@ std::vector<int> countChunks(const EC& chunks)
     return counts;
 }
 
-void testCase(const GV& gv, const std::size_t num_chunks, const std::vector<int>& expected)
+using GV = Dune::CpGrid::LeafGridView;
+
+template <class PartitionSet>
+void
+testCase(const GV& gv,
+         const PartitionSet part,
+         const std::size_t num_chunks,
+         const std::vector<int>& expected)
 {
-    EC chunks(gv, num_chunks);
+    Opm::ElementChunks chunks(gv, part, num_chunks);
     auto counts = countChunks(chunks);
     BOOST_CHECK_EQUAL_COLLECTIONS(counts.begin(), counts.end(), expected.begin(), expected.end());
 }
@@ -75,15 +82,21 @@ BOOST_FIXTURE_TEST_CASE(ElementChunksTests, Fixture)
     grid.createCartesian(dims, cellsz);
     const auto& gv = grid.leafGridView();
     // num_chunks == 0
-    BOOST_CHECK_THROW(EC(gv, 0), std::logic_error);
+    BOOST_CHECK_THROW(Opm::ElementChunks(gv, Dune::Partitions::all, 0), std::logic_error);
+    using namespace Dune::Partitions;
     // num_chunks == 1
-    testCase(gv, 1, { 8 });
+    testCase(gv, all, 1, { 8 });
+    testCase(gv, interior, 1, { 8 });
     // num_chunks < num_elements, num_elements = K * num_chunks
-    testCase(gv, 2, { 4, 4 });
+    testCase(gv, all, 2, { 4, 4 });
+    testCase(gv, interior, 2, { 4, 4 });
     // num_chunks < num_elements, general case
-    testCase(gv, 3, { 2, 2, 4 });
+    testCase(gv, all, 3, { 2, 2, 4 });
+    testCase(gv, interior, 3, { 2, 2, 4 });
     // num_chunks == num_elements
-    testCase(gv, 8, { 1, 1, 1, 1, 1, 1, 1, 1 });
+    testCase(gv, all, 8, { 1, 1, 1, 1, 1, 1, 1, 1 });
+    testCase(gv, interior, 8, { 1, 1, 1, 1, 1, 1, 1, 1 });
     // num_chunks > num_elements
-    testCase(gv, 11, { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 });
+    testCase(gv, all, 11, { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 });
+    testCase(gv, interior, 11, { 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0 });
 }

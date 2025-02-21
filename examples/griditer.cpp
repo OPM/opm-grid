@@ -88,7 +88,7 @@ int main(int argc, char** argv)
         omp_set_num_threads(num_threads);
         Opm::time::StopWatch clock;
         clock.start();
-        Opm::ElementChunks chunks(gv, num_threads);
+        Opm::ElementChunks chunks(gv, Dune::Partitions::all, num_threads);
 #pragma omp parallel for
         for (const auto& chunk : chunks) {
             for (const auto& elem : chunk) {
