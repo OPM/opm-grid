@@ -39,7 +39,7 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
     WeightType logMinTransm = std::numeric_limits<WeightType>::max();
     if (transmissibilities && edgeWeightMethod==Dune::EdgeWeightMethod::logTransEdgeWgt)
     {
-        for (int face = 0; face < getGrid().numFaces(); ++face)
+        for (int face = 0; face < grid.numFaces(); ++face)
         {
             WeightType transm = transmissibilities[face];
             if (transm > 0 && transm < logMinTransm)

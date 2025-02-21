@@ -475,6 +475,11 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
     }
+    else
+    {
+        std::sort(myExportList.begin(), myExportList.end());
+        std::sort(myImportList.begin(), myImportList.end());
+    }
     return std::make_tuple( std::move(gIDtoRank),
                             std::move(parallel_wells),
                             std::move(myExportList),
@@ -550,8 +555,8 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     // non-root processes have empty grid and no wells
     GraphOfGrid gog(grid, transmissibilities, edgeWeightMethod);
     assert(gog.size()==0 || !partitionIsEmpty);
-    auto wellConnections=partitionIsEmpty ? Dune::cpgrid::WellConnections()
-                                          : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
+    auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
+                                                      : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
     addWellConnections(gog, wellConnections);
     gog.addNeighboringCellsToWells(layers);
 
@@ -723,7 +728,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     std::vector<std::tuple<int, int, char, int>> myImportList;
     std::vector<std::vector<int>> exportedCells;
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
-                                            : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
+                                                      : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
 
     if (cc.rank() == root) {
         std::tie(rc, gIDtoRank) = applySerialZoltan(grid,
