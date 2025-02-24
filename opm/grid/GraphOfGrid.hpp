@@ -183,9 +183,8 @@ public:
 private:
     /// \brief Create a graph representation of the grid
     ///
-    /// 'level' represents the level grid used to build the GoG. Default equal to -1 for the leaf grid view.
     /// If transmissibilities are not supplied, edge weight=1
-    void createGraph (int level = -1,
+    void createGraph (int level,
                       const double* transmissibilities = nullptr,
                       const Dune::EdgeWeightMethod edgeWeightMethod=Dune::EdgeWeightMethod::defaultTransEdgeWgt);
 

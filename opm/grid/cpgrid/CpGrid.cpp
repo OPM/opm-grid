@@ -240,7 +240,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     }
 
 #if HAVE_MPI
-    auto& cc = (level==-1)? data_.back()->ccobj_ : data_[level]->ccobj_;
+    auto& cc = data_[0]->ccobj_; // (level==-1)? data_.back()->ccobj_ : data_[level]->ccobj_;
 
     if (cc.size() > 1)
     {
@@ -509,7 +509,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
         // distributed_data should be empty at this point.
         distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
-        distributed_data_[0]->setUniqueBoundaryIds((level==-1)? data_.back()->uniqueBoundaryIds() : data_[0]->uniqueBoundaryIds());
+        distributed_data_[0]->setUniqueBoundaryIds( /*(level==-1)? data_.back()->uniqueBoundaryIds() : */ data_[0]->uniqueBoundaryIds());
 
         // Just to be sure we assume that only master knows
         cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
