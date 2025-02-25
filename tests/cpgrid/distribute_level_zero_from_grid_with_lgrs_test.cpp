@@ -133,14 +133,26 @@ SCHEDULE
     return grid;
 }
 
-BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgr)
+BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgrAndAddSameLgrOnDistributedView)
 {
     auto grid = createGridAndAddTestLgr();
 
-    grid.loadBalance(/*overlapLayers*/ 1,
-                     /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
-                     /*imbalanceTol*/ 1.1,
-                     /*level*/ 0);
+    if (grid.comm().size()>1) {
+        
+        grid.loadBalance(/*overlapLayers*/ 1,
+                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
+                         /*imbalanceTol*/ 1.1,
+                         /*level*/ 0);
+
+        // Add 'the same LGR' in distributed_data_
+        grid.switchToDistributedView();
+    
+
+        grid.addLgrsUpdateLeafView(/*cells_per_dim_vec*/ {{3, 3, 3}},
+                                   /*startIJK_vec*/ {{1, 1, 0}},
+                                   /*endIJK_vec*/ {{3, 3, 1}},
+                                   /*lgr_name_vec*/ {"LGR1"});
+    }
 }
 
 BOOST_AUTO_TEST_CASE(distributeRefinedLevelFromGridWithOneLgrThrows)
