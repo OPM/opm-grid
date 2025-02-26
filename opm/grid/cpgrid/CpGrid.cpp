@@ -264,6 +264,15 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         }
     }
 
+    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG)) {
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
+        }
+    }
+
     auto& cc = data_[selectedLevel]->ccobj_;
 
     if (cc.size() > 1)

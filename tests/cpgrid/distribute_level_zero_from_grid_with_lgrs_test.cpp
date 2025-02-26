@@ -133,7 +133,7 @@ SCHEDULE
     return grid;
 }
 
-BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgrAndAddSameLgrOnDistributedView)
+BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgrAndAddSameLgrOnDistributedView_zoltanGoG)
 {
     auto grid = createGridAndAddTestLgr();
 
@@ -155,12 +155,39 @@ BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgrAndAddSameLgrOnDistrib
     }
 }
 
+BOOST_AUTO_TEST_CASE(distributeLevelZeroFromGridWithOneLgrWithZoltanOrMetisThrows)
+{
+    auto grid = createGridAndAddTestLgr();
+        
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::zoltan,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ 0), std::logic_error);
+   
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::metis,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ 0), std::logic_error);
+}
+    
+
 BOOST_AUTO_TEST_CASE(distributeRefinedLevelFromGridWithOneLgrThrows)
 {
     auto grid = createGridAndAddTestLgr();
 
+    // Throw for any partition method
     BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
                                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ 1), std::logic_error);
+    
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::zoltan,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ 1), std::logic_error);
+
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::metis,
                                         /*imbalanceTol*/ 1.1,
                                         /*level*/ 1), std::logic_error);
 }
@@ -169,5 +196,22 @@ BOOST_AUTO_TEST_CASE(distributeLeafGridViewFromGridWithOneLgrThrows)
 {
     auto grid = createGridAndAddTestLgr();
 
+    // Throw with default load balance
     BOOST_CHECK_THROW(grid.loadBalance(), std::logic_error);
+
+    // Throw for any partition method. Level equal to -1 represents the leaf grid view.
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ -1), std::logic_error);
+    
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::zoltan,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ -1), std::logic_error);
+
+    BOOST_CHECK_THROW( grid.loadBalance(/*overlapLayers*/ 1,
+                                        /*partitionMethod*/ Dune::PartitionMethod::metis,
+                                        /*imbalanceTol*/ 1.1,
+                                        /*level*/ -1), std::logic_error);
 }
