@@ -42,6 +42,7 @@
 
 
 #include <opm/grid/cpgrid/CpGridUtilities.hpp>
+#include <tests/cpgrid/LgrChecks.hpp>
 
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>
@@ -71,27 +72,11 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 Dune::CpGrid
 createGridAndAddTestLgr(const std::string& deck_string)
 {
-    Dune::CpGrid grid;
-    // Create the starting grid (before adding LGRs)
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deck_string);
-    Opm::EclipseState ecl_state(deck);
-    Opm::EclipseGrid eclipse_grid = ecl_state.getInputGrid();
-
-    grid.processEclipseFormat(&eclipse_grid, &ecl_state, false, false, false);
-
-
-    // Add LGR1 and update grid view
-    const std::vector<std::array<int, 3>> cells_per_dim_vec
-        = {{3, 3, 3}}; // 3x3x3 child cells in x-,y-, and z-direction per ACTIVE parent cell
-    const std::vector<std::array<int, 3>> startIJK_vec
-        = {{1, 1, 0}}; // starts at (1,1,0) in coarse grid - equivalent to (I1-1, J1-1, K1-1) from its CARFIN block
-    const std::vector<std::array<int, 3>> endIJK_vec
-        = {{3, 3, 1}}; // ends at (3,3,1) in coarse grid - equivalent to (I2, J2, K2) from its CARFIN block
-    const std::vector<std::string> lgr_name_vec = {"LGR1"};
-
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    return grid;
+    return Opm::createGridAndAddLgrs(deck_string,
+                                     {{3, 3, 3}}, // 3x3x3 child cells in x-,y-, and z-direction per ACTIVE parent cell
+                                     {{1, 1, 0}}, // starts at (1,1,0) in coarse grid - equivalent to (I1-1, J1-1, K1-1) from its CARFIN block
+                                     {{3, 3, 1}}, // ends at (3,3,1) in coarse grid - equivalent to (I2, J2, K2) from its CARFIN block
+                                     {"LGR1"});
 }
 
 void

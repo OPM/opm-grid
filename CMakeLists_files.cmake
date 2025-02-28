@@ -32,12 +32,12 @@ list (APPEND MAIN_SOURCE_FILES
   opm/grid/cpgrid/Intersection.cpp
   opm/grid/cpgrid/CpGridData.cpp
   opm/grid/cpgrid/CpGrid.cpp
+  opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/DataHandleWrappers.cpp
   opm/grid/cpgrid/GridHelpers.cpp
   opm/grid/cpgrid/Iterators.cpp
   opm/grid/cpgrid/Indexsets.cpp
   opm/grid/cpgrid/PartitionTypeIndicator.cpp
-  opm/grid/cpgrid/CpGridUtilities.cpp
   opm/grid/cpgrid/processEclipseFormat.cpp
   opm/grid/common/GeometryHelpers.cpp
   opm/grid/common/GridPartitioning.cpp
