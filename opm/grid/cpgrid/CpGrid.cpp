@@ -246,7 +246,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     // - without LGRs: leaf grid view coincides with level zero grid. Supported.
     // - with LGRs: not supported yet. Throw in that case.
     int selectedLevel = validLevel? level : 0;
-    if (selectedLevel) {
+    if (validLevel && (level>0)) {
         if (comm().rank() == 0) {
             OPM_THROW(std::logic_error, "Loadbalancing a refined level grid is not supported, yet.");
         }
@@ -350,7 +350,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
                 cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, /* transmissibilities = */ nullptr, input_cell_part,
-                                              /* allowDistributedWells = */ true,r /* gridAndWells = */ nullpt, level);
+                                              /* allowDistributedWells = */ true, /* gridAndWells = */ nullptr, level);
         }
         else
         {
