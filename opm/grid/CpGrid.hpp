@@ -1218,10 +1218,25 @@ namespace Dune
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \warning May only be called once.
-        bool loadBalance(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, double imbalanceTol = 1.1)
+        bool loadBalance(int overlapLayers=1,
+                         int partitionMethod = Dune::PartitionMethod::zoltan,
+                         double imbalanceTol = 1.1,
+                         int level =-1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt, false, nullptr, {}, false, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(defaultTransEdgeWgt /*method*/,
+                                      false /*ownersFirst*/,
+                                      nullptr /*wells*/,
+                                      {} /*possibleFutureConnections*/,
+                                      false /*serialPartitioning*/,
+                                      nullptr /*transmissibilities*/,
+                                      true /*addCornerCells*/,
+                                      overlapLayers,
+                                      partitionMethod,
+                                      imbalanceTol,
+                                      false /*allowDistributedWells*/,
+                                      {} /*input_cell_part*/,
+                                      level));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1231,7 +1246,10 @@ namespace Dune
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \param edgeWeightMethod The edge-weighting method to be used on the graph partitioner.
         /// \warning May only be called once.
-        bool loadBalanceSerial(int overlapLayers=1, int partitionMethod = Dune::PartitionMethod::zoltan, int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt, double imbalanceTol = 1.1)
+        bool loadBalanceSerial(int overlapLayers=1,
+                               int partitionMethod = Dune::PartitionMethod::zoltan,
+                               int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt,
+                               double imbalanceTol = 1.1)
         {
             using std::get;
             return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
@@ -1585,10 +1603,16 @@ namespace Dune
 
         // Topology
         /// \brief Get the number of cells.
-        int numCells() const;
+        ///
+        /// \param level Integer representing the level grid to be considered.
+        ///        Default leaf grid view (current_view_data_) set to -1.
+        int numCells(int level = -1) const;
 
         /// \brief Get the number of faces.
-        int numFaces() const;
+        ///
+        /// \param level Integer representing the level grid to be considered.
+        ///        Default leaf grid view (current_view_data_) set to -1.
+        int numFaces(int level = -1) const;
 
         /// \brief Get The number of vertices.
         int numVertices() const;
@@ -1599,14 +1623,18 @@ namespace Dune
         /// Due to faults, and collapsing vertices (along pillars) this
         /// number is quite arbitrary. Its lower bound is 4, but there is
         /// no upper bound.
-        /// \parame cell the index identifying the cell.
-        int numCellFaces(int cell) const;
+        /// \param cell the index identifying the cell.
+        /// \param level Integer representing the level grid to be considered.
+        ///        Default leaf grid view (current_view_data_) set to -1.
+        int numCellFaces(int cell, int level = -1) const;
 
         /// \brief Get a specific face of a cell.
         /// \param cell The index identifying the cell.
         /// \param local_index The local index (in [0,numFaces(cell))) of the face in this cell.
+        /// \param level Integer representing the level grid to be considered.
+        ///        Default leaf grid view (current_view_data_) set to -1.
         /// \return The index identifying the face.
-        int cellFace(int cell, int local_index) const;
+        int cellFace(int cell, int local_index, int level = -1) const;
 
         /// \brief Get a list of indices identifying all faces of a cell.
         /// \param cell The index identifying the cell.
@@ -1619,10 +1647,12 @@ namespace Dune
         /// to local_index 1
         /// \param face The index identifying the face.
         /// \param local_index The local_index of the cell.
+        /// \param level Integer representing the level grid to be considered.
+        ///        Default leaf grid view (current_view_data_) set to -1.
         /// \return The index identifying a cell or -1 if there is no such
         /// cell due the face being part of the grid boundary or the
         /// cell being stored on another process.
-        int faceCell(int face, int local_index) const;
+        int faceCell(int face, int local_index, int level = -1) const;
       
         /// \brief Get the sum of all faces attached to all cells.
         ///
@@ -1891,7 +1921,8 @@ namespace Dune
                     int partitionMethod = Dune::PartitionMethod::zoltanGoG,
                     double imbalanceTol = 1.1,
                     bool allowDistributedWells = true,
-                    const std::vector<int>& input_cell_part = {});
+                    const std::vector<int>& input_cell_part = {},
+                    int level = -1);
 
         /** @brief The data stored in the grid.
          *

@@ -15,10 +15,10 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
-  Copyright 2013, 2015 Dr. Markus Blatt - HPC-Simulation-Software & Services
+  Copyright 2009, 2010, 2013, 2022, 2025 Equinor ASA.
+  Copyright 2013, 2015, 2025 Dr. Markus Blatt - HPC-Simulation-Software & Services
   Copyright 2015       NTNU
-  Copyright 2020, 2021 OPM-OP AS
+  Copyright 2020, 2021, 2024, 2025 OPM-OP AS
   This file is part of The Open Porous Media project  (OPM).
 
   OPM is free software: you can redistribute it and/or modify
@@ -43,7 +43,10 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridDataTraits.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
+
+#include <memory>
 #include <stack>
+#include <variant>
 
 #ifdef HAVE_MPI
 #include "mpi.h"
@@ -249,13 +252,16 @@ namespace Dune
     }
 
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
-void addOverlapCornerCell(const CpGrid& grid, int owner,
+void addOverlapCornerCell(const CpGrid& grid,
+                          int owner,
                           const CpGrid::Codim<0>::Entity& from,
                           const CpGrid::Codim<0>::Entity& neighbor,
                           const std::vector<int>& cell_part,
-                          std::vector<std::set<int> >& cell_overlap)
+                          std::vector<std::set<int> >& cell_overlap,
+                          int level)
 {
-    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
     int my_index = ix.index(from);
     int nb_index = ix.index(neighbor);
     const int num_from_subs = from.subEntities(CpGrid::dimension);
@@ -277,15 +283,17 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
 }
 
 /// \brief Adds cells to the overlap that just share a point with an owner cell.
-void addOverlapCornerCell(const CpGrid& grid, int owner,
+void addOverlapCornerCell(const CpGrid& grid,
+                          int owner,
                           const CpGrid::Codim<0>::Entity& from,
                           const CpGrid::Codim<0>::Entity& neighbor,
                           const std::vector<int>& cell_part,
-                          std::vector<std::tuple<int,int,char>>& exportList)
+                          std::vector<std::tuple<int,int,char>>& exportList,
+                          int level)
 {
     // Add corner cells to the overlap layer. Example of a subdomain of a 4x4 grid
     // with and without corner cells in the overlap is given below. Note that the
-    // corner cell is not needed for cell centered finite volume schemes. 
+    // corner cell is not needed for cell centered finite volume schemes.
     // I = interior cells, O = overlap cells and E = exterior cells.
     //
     //  With corner     Without corner
@@ -294,7 +302,8 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     //  O O O E         O O E E
     //  E E E E         E E E E
     using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
-    const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
     int my_index = ix.index(from);
     int nb_index = ix.index(neighbor);
     const int num_from_subs = from.subEntities(CpGrid::dimension);
@@ -316,76 +325,184 @@ void addOverlapCornerCell(const CpGrid& grid, int owner,
     }
 }
 
-void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
-                     const int owner, const std::vector<int>& cell_part,
-                     std::vector<std::set<int> >& cell_overlap, int recursion_deps)
-    {
-        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-        for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
-            if ( iit->neighbor() ) {
-                int nb_index = ix.index(iit->outside());
-                if ( cell_part[nb_index]!=owner )
-                {
-                    cell_overlap[nb_index].insert(owner);
-                    cell_overlap[index].insert(cell_part[nb_index]);
-                    if ( recursion_deps>0 )
-                    {
-                        // Add another layer
-                        addOverlapLayer(grid, nb_index, iit->outside(), owner,
-                                        cell_part, cell_overlap, recursion_deps-1);
-                    }
-                    else
-                    {
-                        // Add cells to the overlap that just share a corner with e.
-                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
-                             iit2 != iit->outside().ileafend(); ++iit2)
+void addOverlapLayer(const CpGrid& grid,
+                     int index,
+                     const CpGrid::Codim<0>::Entity& e,
+                     const int owner,
+                     const std::vector<int>& cell_part,
+                     std::vector<std::set<int> >& cell_overlap,
+                     int recursion_deps,
+                     int level)
+{
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
+
+    auto iit = validLevel? e.ilevelbegin() : e.ileafbegin();
+    const auto& endIit = validLevel? e.ilevelend() :  e.ileafend();
+
+    for (; iit != endIit; ++iit) {
+        if ( iit->neighbor() ) {
+            int nb_index = ix.index(iit->outside());
+            if ( cell_part[nb_index]!=owner )
+            {
+                cell_overlap[nb_index].insert(owner);
+                cell_overlap[index].insert(cell_part[nb_index]);
+                if ( recursion_deps>0 ) {
+                    // Add another layer
+                    addOverlapLayer(grid,
+                                    nb_index,
+                                    iit->outside(),
+                                    owner,
+                                    cell_part,
+                                    cell_overlap,
+                                    recursion_deps-1,
+                                    level);
+                }
+                else { // Add cells to the overlap that just share a corner with e.
+                    auto iit2 = validLevel? iit->outside().ilevelbegin() : iit->outside().ileafbegin();
+                    const auto& endIit2 = validLevel?  iit->outside().ilevelend() :  iit->outside().ileafend();
+
+                    for (; iit2 != endIit2; ++iit2) {
+                        if ( iit2->neighbor() )
                         {
-                           if ( iit2->neighbor() )
-                           {
-                               int nb_index2 = ix.index(iit2->outside( ));
-                               if( cell_part[nb_index2]==owner ) continue;
-                               addOverlapCornerCell(grid, owner, e, iit2->outside(),
-                                                    cell_part, cell_overlap);
-                           }
-                       }
+                            int nb_index2 = ix.index(iit2->outside( ));
+                            if( cell_part[nb_index2]==owner ) continue;
+                            addOverlapCornerCell(grid,
+                                                 owner,
+                                                 e,
+                                                 iit2->outside(),
+                                                 cell_part,
+                                                 cell_overlap,
+                                                 level);
+                        }
                     }
                 }
             }
         }
     }
+}
 
-    void addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
-                         std::vector<std::set<int> >& cell_overlap, int mypart,
-                         int layers, bool all)
-    {
-        cell_overlap.resize(cell_part.size());
-        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-        for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
-             it != grid.leafend<0>(); ++it) {
-            int index = ix.index(*it);
-            int owner = -1;
-            if(cell_part[index]==mypart)
-                owner = mypart;
+void addOverlapLayer(const CpGrid& grid,
+                     const std::vector<int>& cell_part,
+                     std::vector<std::set<int> >& cell_overlap,
+                     int mypart,
+                     int layers,
+                     bool all,
+                     int level)
+{
+    cell_overlap.resize(cell_part.size());
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel?  grid.levelIndexSet(level) :  grid.leafIndexSet();
+
+    auto it = validLevel?  grid.template lbegin<0>(level) : grid.template leafbegin<0>();
+    const auto& endIt = validLevel?  grid.template lend<0>(level) : grid.template leafend<0>();
+
+    for (; it != endIt; ++it) {
+        int index = ix.index(*it);
+        int owner = -1;
+        if(cell_part[index]==mypart)
+            owner = mypart;
+        else
+        {
+            if(all)
+                owner=cell_part[index];
             else
-            {
-                if(all)
-                    owner=cell_part[index];
-                else
-                    continue;
+                continue;
+        }
+        addOverlapLayer(grid, index, *it, owner, cell_part, cell_overlap, layers-1, level);
+    }
+}
+
+void addOverlapLayer(const CpGrid& grid,
+                     int index,
+                     const CpGrid::Codim<0>::Entity& e,
+                     const int owner,
+                     const std::vector<int>& cell_part,
+                     std::vector<std::tuple<int,int,char>>& exportList,
+                     bool addCornerCells,
+                     int recursion_deps,
+                     int level)
+{
+    using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
+
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
+
+    auto iit = validLevel? e.ilevelbegin() : e.ileafbegin();
+    const auto& endIit = validLevel? e.ilevelend() :  e.ileafend();
+
+    for (; iit != endIit; ++iit) {
+        if ( iit->neighbor() ) {
+            int nb_index = ix.index(iit->outside());
+            if ( cell_part[nb_index]!=owner ) {
+                // Note: multiple adds for same process are possible
+                exportList.emplace_back(nb_index, owner, AttributeSet::copy);
+                exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::copy);
+                if ( recursion_deps>0 ) {
+                    // Add another layer
+                    addOverlapLayer(grid,
+                                    nb_index,
+                                    iit->outside(),
+                                    owner,
+                                    cell_part,
+                                    exportList,
+                                    addCornerCells,
+                                    recursion_deps-1,
+                                    level);
+                }
+                else if (addCornerCells) {
+                    // Add cells to the overlap that just share a corner with e.
+                    auto iit2 = validLevel? iit->outside().ilevelbegin() : iit->outside().ileafbegin();
+                    const auto& endIit2 = validLevel?  iit->outside().ilevelend() :  iit->outside().ileafend();
+                
+                    for (; iit2 != endIit2; ++iit2) {
+                        if ( iit2->neighbor() )
+                        {
+                            int nb_index2 = ix.index(iit2->outside());
+                            if( cell_part[nb_index2]!=owner ) {
+                                addOverlapCornerCell(grid,
+                                                     owner,
+                                                     e,
+                                                     iit2->outside(),
+                                                     cell_part,
+                                                     exportList,
+                                                     level);
+                            }
+                        }
+                    }
+                }
             }
-            addOverlapLayer(grid, index, *it, owner, cell_part, cell_overlap, layers-1);
         }
     }
+}
 
-    void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
-                         const int owner, const std::vector<int>& cell_part,
-                         std::vector<std::tuple<int,int,char>>& exportList,
-                         bool addCornerCells, int recursion_deps)
-    {
-        using AttributeSet = Dune::cpgrid::CpGridDataTraits::AttributeSet;
-        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-        for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
-            if ( iit->neighbor() ) {
+void addOverlapLayerNoZeroTrans(const CpGrid& grid,
+                                int index,
+                                const CpGrid::Codim<0>::Entity& e,
+                                const int owner,
+                                const std::vector<int>& cell_part,
+                                std::vector<std::tuple<int,int,char>>& exportList,
+                                bool addCornerCells,
+                                int recursion_deps,
+                                const double* trans,
+                                int level)
+{
+    using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
+
+    auto iit = validLevel? e.ilevelbegin() : e.ileafbegin();
+    const auto& endIit = validLevel? e.ilevelend() :  e.ileafend();
+
+    for (; iit != endIit; ++iit) {
+        if ( iit->neighbor() ) {
+            int faceId = iit->id();
+
+            // If the transmissibility on a cell interface is zero we do not add the neighbor cell
+            // to the overlap layer. The reason for this is that
+            // zero transmissibility -> no flux over the face -> zero offdiagonal.
+            // This is a reservoir simulation spesific thing that reduce parallel overhead.
+            if ( trans[faceId] != 0.0 ) {
                 int nb_index = ix.index(iit->outside());
                 if ( cell_part[nb_index]!=owner )
                 {
@@ -395,21 +512,35 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
                     if ( recursion_deps>0 )
                     {
                         // Add another layer
-                        addOverlapLayer(grid, nb_index, iit->outside(), owner,
-                                        cell_part, exportList, addCornerCells, recursion_deps-1);
+                        addOverlapLayerNoZeroTrans(grid,
+                                                   nb_index,
+                                                   e,
+                                                   owner,
+                                                   cell_part,
+                                                   exportList,
+                                                   addCornerCells,
+                                                   recursion_deps-1,
+                                                   trans,
+                                                   level);
                     }
                     else if (addCornerCells)
                     {
                         // Add cells to the overlap that just share a corner with e.
-                        for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
-                             iit2 != iit->outside().ileafend(); ++iit2)
-                        {
+                        auto iit2 = validLevel? iit->outside().ilevelbegin() : iit->outside().ileafbegin();
+                        const auto& endIit2 = validLevel?  iit->outside().ilevelend() :  iit->outside().ileafend();
+
+                        for (; iit2 != endIit2; ++iit2) {
                             if ( iit2->neighbor() )
                             {
                                 int nb_index2 = ix.index(iit2->outside());
                                 if( cell_part[nb_index2]!=owner ) {
-                                    addOverlapCornerCell(grid, owner, e, iit2->outside(),
-                                                         cell_part, exportList);
+                                    addOverlapCornerCell(grid,
+                                                         owner,
+                                                         e,
+                                                         iit2->outside(),
+                                                         cell_part,
+                                                         exportList,
+                                                         level);
                                 }
                             }
                         }
@@ -418,173 +549,132 @@ void addOverlapLayer(const CpGrid& grid, int index, const CpGrid::Codim<0>::Enti
             }
         }
     }
+}
 
-    void addOverlapLayerNoZeroTrans(const CpGrid& grid, int index, const CpGrid::Codim<0>::Entity& e,
-                                    const int owner, const std::vector<int>& cell_part,
-                                    std::vector<std::tuple<int,int,char>>& exportList,
-                                    bool addCornerCells, int recursion_deps, const double* trans)
-    {
-        using AttributeSet = Dune::OwnerOverlapCopyAttributeSet::AttributeSet;
-        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-        for (CpGrid::LeafIntersectionIterator iit = e.ileafbegin(); iit != e.ileafend(); ++iit) {
-            if ( iit->neighbor() ) {
-                int faceId = iit->id();
-
-                // If the transmissibility on a cell interface is zero we do not add the neighbor cell 
-                // to the overlap layer. The reason for this is that
-                // zero transmissibility -> no flux over the face -> zero offdiagonal.
-                // This is a reservoir simulation spesific thing that reduce parallel overhead.
-                if ( trans[faceId] != 0.0 ) {
-                    int nb_index = ix.index(iit->outside());
-                    if ( cell_part[nb_index]!=owner )
-                    {
-                        // Note: multiple adds for same process are possible
-                        exportList.emplace_back(nb_index, owner, AttributeSet::copy);
-                        exportList.emplace_back(index, cell_part[nb_index],  AttributeSet::copy);
-                        if ( recursion_deps>0 )
-                        {
-                            // Add another layer
-                            addOverlapLayerNoZeroTrans(grid, nb_index, e, owner, cell_part,
-                                                       exportList, addCornerCells, recursion_deps-1, trans);
-                        }
-                        else if (addCornerCells)
-                        {
-                            // Add cells to the overlap that just share a corner with e.
-                            for (CpGrid::LeafIntersectionIterator iit2 = iit->outside().ileafbegin();
-                                 iit2 != iit->outside().ileafend(); ++iit2)
-                            {
-                                if ( iit2->neighbor() )
-                                {
-                                    int nb_index2 = ix.index(iit2->outside());
-                                    if( cell_part[nb_index2]!=owner ) {
-                                        addOverlapCornerCell(grid, owner, e, iit2->outside(),
-                                                             cell_part, exportList);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    int addOverlapLayer(const CpGrid& grid, const std::vector<int>& cell_part,
-                        std::vector<std::tuple<int,int,char>>& exportList,
-                        std::vector<std::tuple<int,int,char,int>>& importList,
-                        const Communication<Dune::MPIHelper::MPICommunicator>& cc,
-                        [[maybe_unused]] bool addCornerCells,
-                        [[maybe_unused]] const double* trans, int layers)
-    {
+int addOverlapLayer(const CpGrid& grid,
+                    const std::vector<int>& cell_part,
+                    std::vector<std::tuple<int,int,char>>& exportList,
+                    std::vector<std::tuple<int,int,char,int>>& importList,
+                    const Communication<Dune::MPIHelper::MPICommunicator>& cc,
+                    [[maybe_unused]] bool addCornerCells,
+                    [[maybe_unused]] const double* trans,
+                    int layers,
+                    int level)
+{
 #ifdef HAVE_MPI
-        using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
-        auto ownerSize = exportList.size();
-        const CpGrid::LeafIndexSet& ix = grid.leafIndexSet();
-        std::map<int,int> exportProcs, importProcs;
+    using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
+    auto ownerSize = exportList.size();
 
-        for (CpGrid::Codim<0>::LeafIterator it = grid.leafbegin<0>();
-             it != grid.leafend<0>(); ++it) {
-            int index = ix.index(*it);
-            auto owner = cell_part[index];
-            exportProcs.insert(std::make_pair(owner, 0));
-            if ( trans ) {
-                addOverlapLayerNoZeroTrans(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, trans);
-            }
-            else {
-                addOverlapLayer(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1);
-            }
+    bool validLevel = (level>-1) && (level <= grid.maxLevel());
+    const auto& ix = validLevel? grid.levelIndexSet(level) : grid.leafIndexSet();
+    std::map<int,int> exportProcs, importProcs;
+
+    auto it = validLevel?  grid.template lbegin<0>(level) : grid.template leafbegin<0>();
+    const auto& endIt = validLevel?  grid.template lend<0>(level) : grid.template leafend<0>();
+
+    for (; it != endIt; ++it) {
+        int index = ix.index(*it);
+        auto owner = cell_part[index];
+        exportProcs.insert(std::make_pair(owner, 0));
+        if ( trans ) {
+            addOverlapLayerNoZeroTrans(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, trans, level);
         }
-        // remove multiple entries
-        auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
-                       {
-                           return (std::get<0>(t1) < std::get<0>(t2)) ||
-                                                    ( ! (std::get<0>(t2) < std::get<0>(t1))
-                                                      && (std::get<1>(t1) < std::get<1>(t2)) );
-                       };
-
-        auto ownerEnd = exportList.begin() + ownerSize;
-        std::sort(ownerEnd, exportList.end(), compare);
-
-        auto newEnd = std::unique(ownerEnd, exportList.end());
-        exportList.resize(newEnd - exportList.begin());
-
-        for(const auto& entry: importList)
-            importProcs.insert(std::make_pair(std::get<1>(entry), 0));
-        //count entries to send
-        std::for_each(ownerEnd, exportList.end(),
-                      [&exportProcs](const std::tuple<int,int,char>& t){ ++exportProcs[std::get<1>(t)];});
-
-        // communicate number of entries
-        std::vector<MPI_Request> requests(importProcs.size());
-        auto req = requests.begin();
-        int tag = 2387;
-        for(auto&& proc : importProcs)
-        {
-            MPI_Irecv(&(proc.second), 1, MPI_INT, proc.first, tag, cc, &(*req));
-            ++req;
+        else {
+            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, level);
         }
-
-        for(const auto& proc: exportProcs)
-        {
-            MPI_Send(&(proc.second), 1, MPI_INT, proc.first, tag, cc);
-        }
-        std::vector<MPI_Status> statuses(requests.size());
-        MPI_Waitall(requests.size(), requests.data(), statuses.data());
-
-        // Communicate overlap entries
-        ++tag;
-        std::vector<std::vector<int> > receiveBuffers(importProcs.size());
-        auto buffer = receiveBuffers.begin();
-        req = requests.begin();
-
-        for(auto&& proc: importProcs)
-        {
-            buffer->resize(proc.second);
-            MPI_Irecv(buffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
-            ++req; ++buffer;
-        }
-
-        for(const auto& proc: exportProcs)
-        {
-            std::vector<int> sendBuffer;
-            sendBuffer.reserve(proc.second);
-            std::for_each(ownerEnd, exportList.end(),
-                          [&sendBuffer, &proc](const std::tuple<int,int,char>& t)
-                          {
-                              if ( std::get<1>(t) == proc.first )
-                                  sendBuffer.push_back(std::get<0>(t));
-                          });
-            MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
-        }
-
-        std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
-
-        MPI_Waitall(requests.size(), requests.data(), statuses.data());
-        buffer = receiveBuffers.begin();
-        auto importOwnerSize = importList.size();
-
-        for(const auto& proc: importProcs)
-        {
-            for(const auto& index: *buffer)
-                importList.emplace_back(index, proc.first, AttributeSet::copy, -1);
-            ++buffer;
-        }
-        std::sort(importList.begin() + importOwnerSize, importList.end(),
-                  [](const std::tuple<int,int,char,int>& t1, const std::tuple<int,int,char,int>& t2)
-                  { return std::get<0>(t1) < std::get<0>(t2);});
-        return importOwnerSize;
-#else
-        (void) grid;
-        (void) cell_part;
-        (void) exportList;
-        (void) importList;
-        (void) cc;
-        (void) layers;
-        DUNE_THROW(InvalidStateException, "MPI is missing from the system");
-
-        return 0;
-#endif
     }
+    // remove multiple entries
+    auto compare = [](const std::tuple<int,int,char>& t1, const std::tuple<int,int,char>& t2)
+    {
+        return (std::get<0>(t1) < std::get<0>(t2)) ||
+            ( ! (std::get<0>(t2) < std::get<0>(t1))
+              && (std::get<1>(t1) < std::get<1>(t2)) );
+    };
+
+    auto ownerEnd = exportList.begin() + ownerSize;
+    std::sort(ownerEnd, exportList.end(), compare);
+
+    auto newEnd = std::unique(ownerEnd, exportList.end());
+    exportList.resize(newEnd - exportList.begin());
+
+    for(const auto& entry: importList)
+        importProcs.insert(std::make_pair(std::get<1>(entry), 0));
+    //count entries to send
+    std::for_each(ownerEnd, exportList.end(),
+                  [&exportProcs](const std::tuple<int,int,char>& t){ ++exportProcs[std::get<1>(t)];});
+
+    // communicate number of entries
+    std::vector<MPI_Request> requests(importProcs.size());
+    auto req = requests.begin();
+    int tag = 2387;
+    for(auto&& proc : importProcs)
+    {
+        MPI_Irecv(&(proc.second), 1, MPI_INT, proc.first, tag, cc, &(*req));
+        ++req;
+    }
+
+    for(const auto& proc: exportProcs)
+    {
+        MPI_Send(&(proc.second), 1, MPI_INT, proc.first, tag, cc);
+    }
+    std::vector<MPI_Status> statuses(requests.size());
+    MPI_Waitall(requests.size(), requests.data(), statuses.data());
+
+    // Communicate overlap entries
+    ++tag;
+    std::vector<std::vector<int> > receiveBuffers(importProcs.size());
+    auto buffer = receiveBuffers.begin();
+    req = requests.begin();
+
+    for(auto&& proc: importProcs)
+    {
+        buffer->resize(proc.second);
+        MPI_Irecv(buffer->data(), proc.second, MPI_INT, proc.first, tag, cc, &(*req));
+        ++req; ++buffer;
+    }
+
+    for(const auto& proc: exportProcs)
+    {
+        std::vector<int> sendBuffer;
+        sendBuffer.reserve(proc.second);
+        std::for_each(ownerEnd, exportList.end(),
+                      [&sendBuffer, &proc](const std::tuple<int,int,char>& t)
+                      {
+                          if ( std::get<1>(t) == proc.first )
+                              sendBuffer.push_back(std::get<0>(t));
+                      });
+        MPI_Send(sendBuffer.data(), proc.second, MPI_INT, proc.first, tag, cc);
+    }
+
+    std::inplace_merge(exportList.begin(), ownerEnd, exportList.end());
+
+    MPI_Waitall(requests.size(), requests.data(), statuses.data());
+    buffer = receiveBuffers.begin();
+    auto importOwnerSize = importList.size();
+
+    for(const auto& proc: importProcs)
+    {
+        for(const auto& index: *buffer)
+            importList.emplace_back(index, proc.first, AttributeSet::copy, -1);
+        ++buffer;
+    }
+    std::sort(importList.begin() + importOwnerSize, importList.end(),
+              [](const std::tuple<int,int,char,int>& t1, const std::tuple<int,int,char,int>& t2)
+              { return std::get<0>(t1) < std::get<0>(t2);});
+    return importOwnerSize;
+#else
+    static_cast<void> grid;
+    static_cast<void> cell_part;
+    static_cast<void> exportList;
+    static_cast<void> importList;
+    static_cast<void> cc;
+    static_cast<void> layers;
+    static_cast<void> level;
+    DUNE_THROW(InvalidStateException, "MPI is missing from the system");
+
+    return 0;
+#endif
+}
 
 namespace cpgrid
 {
@@ -594,11 +684,13 @@ namespace cpgrid
               std::vector<std::tuple<int,int,char> >,
               std::vector<std::tuple<int,int,char,int> >,
               WellConnections>
-    createListsFromParts(const CpGrid& grid, const std::vector<cpgrid::OpmWellType> * wells,
-                               const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
-                               const double* transmissibilities, const std::vector<int>& parts,
-                               bool allowDistributedWells,
-                               std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells)
+    createListsFromParts(const CpGrid& grid,
+                         const std::vector<cpgrid::OpmWellType> * wells,
+                         const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
+                         const double* transmissibilities, const std::vector<int>& parts,
+                         bool allowDistributedWells,
+                         std::shared_ptr<cpgrid::CombinedGridWellGraph> gridAndWells,
+                         int level)
     {
         std::vector<int> exportGlobalIds;
         std::vector<int> exportLocalIds;
@@ -610,16 +702,34 @@ namespace cpgrid
         if (grid.comm().rank() == 0)
         {
             // Create export lists as from Zoltan output, do not include part 0!
-            auto numCells = grid.size(0);
+            auto numCells = grid.numCells(level);
             exportGlobalIds.reserve(numCells);
             exportLocalIds.reserve(numCells);
             exportToPart.reserve(numCells);
-            for (auto cell = grid.leafbegin<0>(), cellEnd = grid.leafend<0>();
-                 cell != cellEnd; ++cell)
+
+             // Select data according to level/leaf grid to be distributed
+            bool validLevel =  (level>-1) && (level <= grid.maxLevel());
+            auto cell = validLevel? grid.template lbegin<0>(level) : grid.template leafbegin<0>();
+            const auto& cellEnd = validLevel? grid.template lend<0>(level) : grid.template leafend<0>();
+
+            std::variant<std::shared_ptr<const Dune::cpgrid::GlobalIdSet>, std::shared_ptr<const Dune::cpgrid::LevelGlobalIdSet>> globalIdSet;
+            std::variant<std::shared_ptr<const Dune::cpgrid::GlobalIdSet>, std::shared_ptr<const Dune::cpgrid::IdSet>> localIdSet;
+
+            if (level == -1) {
+                globalIdSet = std::make_shared<const Dune::cpgrid::GlobalIdSet>(grid.globalIdSet());
+                localIdSet =  std::make_shared<const Dune::cpgrid::GlobalIdSet>(grid.localIdSet());
+
+            } else {
+                globalIdSet = std::make_shared<const Dune::cpgrid::LevelGlobalIdSet>(grid.currentData()[level]->globalIdSet());
+                localIdSet =  std::make_shared<const Dune::cpgrid::IdSet>(grid.currentData()[level]->localIdSet());
+            }
+            const auto& indexSet = (level==-1)? grid.leafIndexSet() : grid.levelIndexSet(level);
+
+            for (; cell != cellEnd; ++cell)
             {
-                const auto& gid = grid.globalIdSet().id(*cell);
-                const auto& lid = grid.localIdSet().id(*cell);
-                const auto& index = grid.leafIndexSet().index(cell);
+                const auto& gid = std::visit([&](const auto& globalIdPtr) { return globalIdPtr->id(*cell);}, globalIdSet);
+                const auto& lid = std::visit( [&](const auto& localIdPtr) { return localIdPtr->id(*cell);}, localIdSet);
+                const auto& index = indexSet.index(cell);
                 const auto& part = parts[index];
                 if (part != 0 )
                 {
@@ -638,7 +748,7 @@ namespace cpgrid
                                      grid.comm());
         if (wells and !gridAndWells)
         {
-            bool partitionIsEmpty = (grid.size(0) == 0);
+            bool partitionIsEmpty = (grid.numCells(level) == 0);
             EdgeWeightMethod method{}; // We don't care which method is used, we only need the graph.
             gridAndWells.reset(new cpgrid::CombinedGridWellGraph(grid,
                                                                  wells,
@@ -647,7 +757,8 @@ namespace cpgrid
                                                                  partitionIsEmpty,
                                                                  method));
         }
-        return makeImportAndExportLists(grid, grid.comm(),
+        return makeImportAndExportLists(grid,
+                                        grid.comm(),
                                         wells,
                                         possibleFutureConnections,
                                         gridAndWells.get(),
@@ -658,7 +769,8 @@ namespace cpgrid
                                         exportGlobalIds.data(),
                                         exportToPart.data(),
                                         importGlobalIds.data(),
-                                        allowDistributedWells);
+                                        allowDistributedWells
+                                        /*level*/);
     }
 
     std::tuple<std::vector<int>, std::vector<std::pair<std::string,bool>>,
