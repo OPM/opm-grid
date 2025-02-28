@@ -15,10 +15,10 @@
 
 /*
   Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-  Copyright 2009, 2010, 2013, 2022 Equinor ASA.
+  Copyright 2009, 2010, 2013, 2022, 2025 Equinor ASA.
   Copyright 2013, 2015, 2025 Dr. Markus Blatt - HPC-Simulation-Software & Services
   Copyright 2015       NTNU
-  Copyright 2020, 2021 OPM-OP AS
+  Copyright 2020, 2021, 2024, 2025 OPM-OP AS
   This file is part of The Open Porous Media project  (OPM).
 
   OPM is free software: you can redistribute it and/or modify
