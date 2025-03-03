@@ -33,6 +33,8 @@
 #include <opm/grid/common/CommunicationUtils.hpp>
 
 
+#include <array>
+#include <memory>
 #include <string>
 #include <unordered_set>
 #include <vector>
@@ -46,10 +48,10 @@ void checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
                                  const Dune::cpgrid::HierarchicIterator& endIt,
                                  double total_children);
 
-void checkBoundsGlobalCell(const Dune::CpGrid& grid,
+void checkGlobalCellBounds(const Dune::CpGrid& grid,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
-void checkBoundsGlobalCell(const std::vector<int>& globalCell,
+void checkGlobalCellBounds(const std::vector<int>& globalCell,
                            const std::array<int, 3>& logicalCartesianSize);
 
 void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
@@ -105,8 +107,8 @@ void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int
 
 
 void Opm::checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
-                                 const Dune::cpgrid::HierarchicIterator& endIt,
-                                 double total_children)
+                                      const Dune::cpgrid::HierarchicIterator& endIt,
+                                      double total_children)
 {
     double referenceElemOneParent_volume_it;
     std::array<double,3> referenceElem_entity_center_it; // Expected {.5,.5,.5}
@@ -128,21 +130,21 @@ void Opm::checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
     }
 }
 
-void Opm::checkBoundsGlobalCell(const Dune::CpGrid& grid,
-                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
+void Opm::checkGlobalCellBounds(const Dune::CpGrid& grid,
+                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
 {
     const int maxLevel = grid.maxLevel();
     for (int level = 0; level <= maxLevel; ++level) {
         if (!(data[level] -> globalCell().empty())) { // If level>0, in some processes, LGR might be empty.
-            Opm::checkBoundsGlobalCell(data[level]->globalCell(), data[level]->logicalCartesianSize());
+            Opm::checkGlobalCellBounds(data[level]->globalCell(), data[level]->logicalCartesianSize());
         }
     }
-    Opm::checkBoundsGlobalCell(data.back()->globalCell(), data.back()->logicalCartesianSize());
+    Opm::checkGlobalCellBounds(data.back()->globalCell(), data.back()->logicalCartesianSize());
     Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
 }
 
-void Opm::checkBoundsGlobalCell(const std::vector<int>& globalCell,
-                           const std::array<int, 3>& logicalCartesianSize)
+void Opm::checkGlobalCellBounds(const std::vector<int>& globalCell,
+                                const std::array<int, 3>& logicalCartesianSize)
 {
     const auto [itMin, itMax] = std::minmax_element(globalCell.begin(), globalCell.end());
     BOOST_CHECK( *itMin >= 0);
@@ -153,7 +155,7 @@ void Opm::checkBoundsGlobalCell(const std::vector<int>& globalCell,
 }
 
 void Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
-                                             const std::vector<int>& globalCell_leaf)
+                                                  const std::vector<int>& globalCell_leaf)
 {
     const auto [itMinL0, itMaxL0] = std::minmax_element(globalCell_l0.begin(), globalCell_l0.end());
     const auto [itMinLeaf, itMaxLeaf] = std::minmax_element(globalCell_leaf.begin(), globalCell_leaf.end());
@@ -162,9 +164,9 @@ void Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& global
 }
 
 void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                            int level,
-                            double expected_total_children,
-                            const Dune::CpGrid& grid)
+                                 int level,
+                                 double expected_total_children,
+                                 const Dune::CpGrid& grid)
 {
     BOOST_CHECK( element.father().level() == 0); // If there is no nested refinement
     BOOST_CHECK( element.father().isLeaf() == false); // Father vanished during refinement.
@@ -186,7 +188,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
 }
 
 void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
-                                const std::vector<std::array<int,3>>& cells_per_dim_vec)
+                                     const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
     const int maxLevel = grid.maxLevel(); // Leaf Grid View has index maxLevel +1
     for (int level = 0; level <= maxLevel+1; ++level) {
@@ -240,7 +242,7 @@ void Opm::checkLocalIndicesMatchMapper(const Dune::CpGrid& grid)
 }
 
 void Opm::checkCellGlobalIdUniquenessForInteriorCells(const Dune::CpGrid& grid,
-                                                 const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
+                                                      const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
 {
     const auto& leafGridView = grid.leafGridView();
     const int maxLevel = grid.maxLevel();
@@ -275,7 +277,7 @@ void Opm::checkCellGlobalIdUniquenessForInteriorCells(const Dune::CpGrid& grid,
 }
 
 void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
-                                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
+                                               const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
 {
     const auto& leafGridView = grid.leafGridView();
     const auto& leafLocalIdSet = data.back()->localIdSet();
@@ -353,7 +355,7 @@ void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
 }
 
 void Opm::checkLgrNameToLevel(const Dune::CpGrid& grid,
-                         const std::vector<std::string>& lgr_name_vec)
+                              const std::vector<std::string>& lgr_name_vec)
 {
     BOOST_CHECK_EQUAL( grid.maxLevel(), static_cast<int>(lgr_name_vec.size())); // If there is no nested refinement
 
@@ -383,10 +385,10 @@ void Opm::checkVertexAndFaceIndexAreNonNegative(const Dune::CpGrid& grid)
 }
 
 void Opm::checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
-                                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
+                                                       const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
 {
     /** Add level grid check */
-    
+
     const int numFaces = grid.numFaces();
     for (int face = 0; face < numFaces; ++face){
         BOOST_CHECK_EQUAL( grid.numFaceVertices(face), 4);
@@ -398,10 +400,10 @@ void Opm::checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
 }
 
 Dune::CpGrid Opm::createGridAndAddLgrs(const std::string& deck_string,
-                                  const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                  const std::vector<std::array<int, 3>>& startIJK_vec,
-                                  const std::vector<std::array<int, 3>>& endIJK_vec,
-                                  const std::vector<std::string>& lgr_name_vec)
+                                       const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                                       const std::vector<std::array<int, 3>>& startIJK_vec,
+                                       const std::vector<std::array<int, 3>>& endIJK_vec,
+                                       const std::vector<std::string>& lgr_name_vec)
 {
     Dune::CpGrid grid;
     Opm::Parser parser;
@@ -416,11 +418,11 @@ Dune::CpGrid Opm::createGridAndAddLgrs(const std::string& deck_string,
 }
 
 Dune::CpGrid Opm::createGridAndAddLgrs(const std::array<double, 3>& cell_sizes,
-                                  const std::array<int, 3>& grid_dim,
-                                  const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                  const std::vector<std::array<int, 3>>& startIJK_vec,
-                                  const std::vector<std::array<int, 3>>& endIJK_vec,
-                                  const std::vector<std::string>& lgr_name_vec)
+                                       const std::array<int, 3>& grid_dim,
+                                       const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                                       const std::vector<std::array<int, 3>>& startIJK_vec,
+                                       const std::vector<std::array<int, 3>>& endIJK_vec,
+                                       const std::vector<std::string>& lgr_name_vec)
 {
     Dune::CpGrid grid;
     grid.createCartesian(grid_dim, cell_sizes);
@@ -429,11 +431,11 @@ Dune::CpGrid Opm::createGridAndAddLgrs(const std::array<double, 3>& cell_sizes,
 }
 
 void Opm::checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
-                                       const std::vector<int>& expected_vertex_ids_per_lgr,
-                                       int leaf_expected_vertex_ids)
+                                            const std::vector<int>& expected_vertex_ids_per_lgr,
+                                            int leaf_expected_vertex_ids)
 {
     for (std::size_t lgr = 1; lgr < expected_vertex_ids_per_lgr.size(); ++lgr) {
-         checkVertexGlobalIds(grid, expected_vertex_ids_per_lgr[lgr-1], lgr);
+        checkVertexGlobalIds(grid, expected_vertex_ids_per_lgr[lgr-1], lgr);
     }
     checkVertexGlobalIds(grid, leaf_expected_vertex_ids, grid.maxLevel()+1);
 }

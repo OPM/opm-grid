@@ -209,7 +209,9 @@ public:
         /// communicating. Uses the define MAX_DATA_COMMUNICATED_PER_ENTITY.
         MAX_DATA_PER_CELL = MAX_DATA_COMMUNICATED_PER_ENTITY
 #endif
-    };     
+    };
+
+    CpGridData() = delete;
 
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
@@ -541,8 +543,11 @@ public:
         return level_;
     }
     /// Add doc/or remove method and replace it with better approach
-    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> levelData() const
+    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelData() const
     {
+        if (level_data_ptr_->empty()) {
+            OPM_THROW(std::runtime_error, "Level data has not been initialized\n");
+        }
         return *level_data_ptr_;
     }
 

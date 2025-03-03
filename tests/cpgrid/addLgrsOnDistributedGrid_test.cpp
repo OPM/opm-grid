@@ -75,9 +75,7 @@ void check(const Dune::CpGrid& grid,
     Opm::checkFaceHas4VerticesAndMax2NeighboringCells(grid, data);
     Opm::checkLocalIndicesMatchMapper(grid); // Decide if it's worth to keep it
     Opm::checkGridBasicHiearchyInfo(grid, cells_per_dim_vec);
-    // Global cell checks
-    Opm::checkBoundsGlobalCell(grid, data);
-    // Local/global ids checks
+    Opm::checkGlobalCellBounds(grid, data);
     Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
     Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
 
