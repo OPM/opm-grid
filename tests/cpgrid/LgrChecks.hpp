@@ -20,9 +20,6 @@
 #ifndef OPM_LGRCHECKS_HEADER_INCLUDED
 #define OPM_LGRCHECKS_HEADER_INCLUDED
 
-
-#include "config.h"
-
 #include <boost/test/unit_test.hpp>
 
 #include <dune/grid/common/mcmgmapper.hh>
