@@ -222,7 +222,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                     [[maybe_unused]] int partitionMethod,
                     double imbalanceTol,
                     [[maybe_unused]] bool allowDistributedWells,
-                    [[maybe_unused]] const std::vector<int>& input_cell_part)
+                    [[maybe_unused]] const std::vector<int>& input_cell_part,
+                    int level)
 {
     // Silence any unused argument warnings that could occur with various configurations.
     static_cast<void>(wells);
@@ -230,6 +231,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
     static_cast<void>(overlapLayers);
     static_cast<void>(method);
     static_cast<void>(imbalanceTol);
+    static_cast<void>(level);
 
     if(!distributed_data_.empty())
     {
@@ -238,20 +240,40 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         return std::make_pair(false, std::vector<std::pair<std::string,bool> >());
     }
 
-    if (data_.size() > 1)
-    {
-        if (comm().rank() == 0)
-        {
-            OPM_THROW(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
+#if HAVE_MPI
+    bool validLevel = (level>-1) && (level <= maxLevel());
+    // If level == -1, leaf grid view should be distributed (with/without LGRs).
+    // - without LGRs: leaf grid view coincides with level zero grid. Supported.
+    // - with LGRs: not supported yet. Throw in that case.
+    int selectedLevel = validLevel? level : 0;
+    if (validLevel && (level>0)) {
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "Loadbalancing a refined level grid is not supported, yet.");
         }
-        else
-        {
-            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a grid with local grid refinement is not supported, yet.");
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a refined level grid is not supported, yet.");
         }
     }
 
-#if HAVE_MPI
-    auto& cc = data_[0]->ccobj_;
+    if ( (maxLevel()>0) && (level==-1) ) {
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "Loadbalancing a leaf grid view with local refinement is not supported, yet.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing a leaf grid view with local refinement is not supported, yet.");
+        }
+    }
+
+    if ((maxLevel()>0) && (partitionMethod!= Dune::PartitionMethod::zoltanGoG)) {
+        if (comm().rank() == 0) {
+            OPM_THROW(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
+        }
+        else {
+            OPM_THROW_NOLOG(std::logic_error, "Loadbalancing level zero grid of a grid with local refinement is supported for ZOLTANGOG.");
+        }
+    }
+
+    auto& cc = data_[selectedLevel]->ccobj_;
 
     if (cc.size() > 1)
     {
@@ -327,8 +349,8 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
             // Partitioning given externally
             std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections) =
-                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, nullptr, input_cell_part,
-                                                   true);
+                cpgrid::createListsFromParts(*this, wells, possibleFutureConnections, /* transmissibilities = */ nullptr, input_cell_part,
+                                              /* allowDistributedWells = */ true, /* gridAndWells = */ nullptr, level);
         }
         else
         {
@@ -360,7 +382,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                 std::tie(computedCellPart, wells_on_proc, exportList, importList, wellConnections)
                     = serialPartitioning
                     ? Opm::zoltanSerialPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams)
-                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams);
+                    : Opm::zoltanPartitioningWithGraphOfGrid(*this, wells, possibleFutureConnections, transmissibilities, cc, method, 0, imbalanceTol, partitioningParams, level);
 #else
                 OPM_THROW(std::runtime_error, "Parallel runs depend on ZOLTAN if useZoltan is true. Please install!");
 #endif // HAVE_ZOLTAN
@@ -374,8 +396,15 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         comm().barrier();
 
         // first create the overlap
-        auto noImportedOwner = addOverlapLayer(*this, computedCellPart, exportList, importList, cc, addCornerCells,
-                                               transmissibilities);
+        auto noImportedOwner = addOverlapLayer(*this,
+                                               computedCellPart,
+                                               exportList,
+                                               importList,
+                                               cc,
+                                               addCornerCells,
+                                               transmissibilities,
+                                               1 /*layers*/,
+                                               level);
         // importList contains all the indices that will be here.
         auto compareImport = [](const std::tuple<int,int,char,int>& t1,
                                 const std::tuple<int,int,char,int>&t2)
@@ -425,7 +454,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
                                     [](const auto acc, const auto cellsOnProc)
                                     { return acc + (cellsOnProc == 0); });
             std::ostringstream ostr;
-            ostr << "\nLoad balancing distributes " << data_[0]->size(0)
+            ostr << "\nLoad balancing distributes level " << selectedLevel << " with " << data_[selectedLevel]->size(0)
                  << " active cells on " << cc.size() << " processes as follows:\n";
             ostr << "  rank   owned cells   overlap cells   total cells\n";
             ostr << "--------------------------------------------------\n";
@@ -514,7 +543,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
 
         // distributed_data should be empty at this point.
         distributed_data_.push_back(std::make_shared<cpgrid::CpGridData>(cc, distributed_data_));
-        distributed_data_[0]->setUniqueBoundaryIds(data_[0]->uniqueBoundaryIds());
+        distributed_data_[0]->setUniqueBoundaryIds(data_[selectedLevel]->uniqueBoundaryIds());
 
         // Just to be sure we assume that only master knows
         cc.broadcast(&distributed_data_[0]->use_unique_boundary_ids_, 1, 0);
@@ -534,7 +563,7 @@ CpGrid::scatterGrid(EdgeWeightMethod method,
         setupSendInterface(exportList, *cell_scatter_gather_interfaces_);
         setupRecvInterface(importList, *cell_scatter_gather_interfaces_);
 
-        distributed_data_[0]->distributeGlobalGrid(*this,*this->current_view_data_, computedCellPart);
+        distributed_data_[0]->distributeGlobalGrid(*this,*this->data_[selectedLevel], computedCellPart);
         (*global_id_set_ptr_).insertIdSet(*distributed_data_[0]);
         distributed_data_[0]-> index_set_.reset(new cpgrid::IndexSet(distributed_data_[0]->cell_to_face_.size(),
                                                                      distributed_data_[0]-> geomVector<3>().size()));
@@ -1119,14 +1148,16 @@ const std::vector<double>& CpGrid::zcornData() const {
     return current_view_data_->zcornData();
 }
 
-int CpGrid::numCells() const
+int CpGrid::numCells(int level) const
 {
-    return current_view_data_->cell_to_face_.size();
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->cell_to_face_.size() : current_view_data_->cell_to_face_.size();
 }
 /// \brief Get the number of faces.
-int CpGrid::numFaces() const
+int CpGrid::numFaces(int level) const
 {
-    return current_view_data_->face_to_cell_.size();
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->face_to_cell_.size() : current_view_data_->face_to_cell_.size();
 }
 /// \brief Get The number of vertices.
 int CpGrid::numVertices() const
@@ -1134,14 +1165,18 @@ int CpGrid::numVertices() const
     return current_view_data_->geomVector<3>().size();
 }
 
-int CpGrid::numCellFaces(int cell) const
+int CpGrid::numCellFaces(int cell, int level) const
 {
-    return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size()
+        : current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)].size();
 }
 
-int CpGrid::cellFace(int cell, int local_index) const
+int CpGrid::cellFace(int cell, int local_index, int level) const
 {
-    return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
+    bool validLevel = (level>-1) && (level<= maxLevel());
+    return validLevel? data_[level]-> cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index()
+        : current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
 }
 
 const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) const
@@ -1149,13 +1184,15 @@ const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) c
     return current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
 }
 
-int CpGrid::faceCell(int face, int local_index) const
+int CpGrid::faceCell(int face, int local_index, int level) const
 {
     // In the parallel case we store non-existent cells for faces along
     // the front region. Theses marked with index std::numeric_limits<int>::max(),
     // orientation might be arbitrary, though.
+    bool validLevel = (level>-1) && (level<= maxLevel());
     cpgrid::OrientedEntityTable<1,0>::row_type r
-        = current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
+        = validLevel? data_[level]->face_to_cell_[cpgrid::EntityRep<1>(face, true)]
+        : current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
     bool a = (local_index == 0);
     bool b = r[0].orientation();
     bool use_first = a ? b : !b;
