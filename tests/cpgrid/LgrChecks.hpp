@@ -321,6 +321,8 @@ void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
 
             if (!isLeaf) {
                 if (auto it = leafElementLocalId.find(localId); it != leafElementLocalId.end()) {
+                    BOOST_CHECK(it->second.geometry().center() == element.geometry().center());
+                    BOOST_CHECK(it->second.geometry().volume() == element.geometry().volume());
                     BOOST_CHECK(it->second.getLevelElem() == element);
                 }
                 const int idx = indexSet.index(element);
