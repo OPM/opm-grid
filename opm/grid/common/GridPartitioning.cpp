@@ -707,28 +707,19 @@ namespace cpgrid
             exportLocalIds.reserve(numCells);
             exportToPart.reserve(numCells);
 
-             // Select data according to level/leaf grid to be distributed
+            // Select data according to level/leaf grid to be distributed
             bool validLevel =  (level>-1) && (level <= grid.maxLevel());
             auto cell = validLevel? grid.template lbegin<0>(level) : grid.template leafbegin<0>();
             const auto& cellEnd = validLevel? grid.template lend<0>(level) : grid.template leafend<0>();
 
-            std::variant<std::shared_ptr<const Dune::cpgrid::GlobalIdSet>, std::shared_ptr<const Dune::cpgrid::LevelGlobalIdSet>> globalIdSet;
-            std::variant<std::shared_ptr<const Dune::cpgrid::GlobalIdSet>, std::shared_ptr<const Dune::cpgrid::IdSet>> localIdSet;
-
-            if (level == -1) {
-                globalIdSet = std::make_shared<const Dune::cpgrid::GlobalIdSet>(grid.globalIdSet());
-                localIdSet =  std::make_shared<const Dune::cpgrid::GlobalIdSet>(grid.localIdSet());
-
-            } else {
-                globalIdSet = std::make_shared<const Dune::cpgrid::LevelGlobalIdSet>(grid.currentData()[level]->globalIdSet());
-                localIdSet =  std::make_shared<const Dune::cpgrid::IdSet>(grid.currentData()[level]->localIdSet());
-            }
+            const auto& globalIdSet = grid.globalIdSet();
+            const auto& localIdSet = grid.localIdSet();
             const auto& indexSet = (level==-1)? grid.leafIndexSet() : grid.levelIndexSet(level);
 
             for (; cell != cellEnd; ++cell)
             {
-                const auto& gid = std::visit([&](const auto& globalIdPtr) { return globalIdPtr->id(*cell);}, globalIdSet);
-                const auto& lid = std::visit( [&](const auto& localIdPtr) { return localIdPtr->id(*cell);}, localIdSet);
+                const auto& gid = globalIdSet.id(*cell);
+                const auto& lid = localIdSet.id(*cell);
                 const auto& index = indexSet.index(cell);
                 const auto& part = parts[index];
                 if (part != 0 )
