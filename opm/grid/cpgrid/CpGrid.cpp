@@ -2006,6 +2006,14 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
     auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
 
+    if (!global_id_set_ptr_) {
+        global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*data.back());
+
+        for (int preAdaptLevel = 0; preAdaptLevel <= preAdaptMaxLevel; ++preAdaptLevel) {
+            global_id_set_ptr_->insertIdSet(*data[preAdaptLevel]);
+        }
+    }
+
     // To determine if an LGR is not empty in a given process, we set
     // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
     // at least one active cell, and to 0 otherwise.
@@ -2428,11 +2436,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                               preAdaptMaxLevel,
                               levels);
 
-    this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*current_view_data_);
+    // Insert the new id sets into the grid global_id_set_ptr_
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
         this->global_id_set_ptr_->insertIdSet(*data[refinedLevelGridIdx]);
     }
+    this->global_id_set_ptr_->insertIdSet(*data.back());
 
     // Only for parallel runs
     // - Define global ids for refined level grids (level 1, 2, ..., maxLevel)
@@ -2541,13 +2550,15 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
 
         populateLeafGlobalIdSet();
 
-        this->global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*(current_data_->back()));
+        // Insert the new id sets into the grid global_id_set_ptr_
         for (std::size_t level = 0; level < cells_per_dim_vec.size()+1; ++level) {
             this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
         }
+        this->global_id_set_ptr_->insertIdSet(*currentData().back());
+
 
         populateCellIndexSetLeafGridView();
-        
+
         // Compute the partition type for cell
         (*current_data_).back()->computeCellPartitionType();
 
