@@ -209,7 +209,9 @@ public:
         /// communicating. Uses the define MAX_DATA_COMMUNICATED_PER_ENTITY.
         MAX_DATA_PER_CELL = MAX_DATA_COMMUNICATED_PER_ENTITY
 #endif
-    };     
+    };
+
+    CpGridData() = delete;
 
     /// Constructor for parallel grid data.
     /// \param comm The MPI communicator
@@ -311,6 +313,11 @@ public:
     int cellFace(int cell, int local_index) const
     {
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
+    }
+
+    int faceToCellSize(int face) const {
+        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
+        return face_to_cell_[faceEntity].size();
     }
 
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
@@ -536,11 +543,24 @@ public:
         return level_;
     }
     /// Add doc/or remove method and replace it with better approach
-    std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>> levelData() const
+    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelData() const
     {
+        if (level_data_ptr_->empty()) {
+            OPM_THROW(std::logic_error, "Level data has not been initialized\n");
+        }
         return *level_data_ptr_;
     }
 
+    /// @brief Retrieves the level and child indices of a given parent cell.
+    ///
+    /// @param elemIdx The index of the parent cell.
+    /// @return A tuple of (- could be a  pair -)
+    ///         - An integer representing the refinement level (LGR) of the parent cell.
+    ///         - A vector of integers representing the indices of the child cells.
+    ///         - If the parent cell has no children, the entry is {-1, {}}.
+    const std::tuple<int,std::vector<int>>& getChildrenLevelAndIndexList(int elemIdx) const {
+        return parent_to_children_cells_[elemIdx];
+    }
 
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
