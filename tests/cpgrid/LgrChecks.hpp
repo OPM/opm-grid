@@ -178,7 +178,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     BOOST_CHECK( itFather != endItFather );
     Opm::checkAverageCenterAndVolume(itFather, endItFather, expected_total_children);
 
-    const auto [child_level, siblings_list] =
+    const auto& [child_level, siblings_list] =
         grid.currentData()[element.father().level()]->getChildrenLevelAndIndexList(element.father().index());
 
     BOOST_CHECK_EQUAL( child_level, level);

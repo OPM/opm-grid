@@ -546,7 +546,7 @@ public:
     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& levelData() const
     {
         if (level_data_ptr_->empty()) {
-            OPM_THROW(std::runtime_error, "Level data has not been initialized\n");
+            OPM_THROW(std::logic_error, "Level data has not been initialized\n");
         }
         return *level_data_ptr_;
     }
@@ -558,7 +558,7 @@ public:
     ///         - An integer representing the refinement level (LGR) of the parent cell.
     ///         - A vector of integers representing the indices of the child cells.
     ///         - If the parent cell has no children, the entry is {-1, {}}.
-    std::tuple<int,std::vector<int>> getChildrenLevelAndIndexList(int elemIdx) const {
+    const std::tuple<int,std::vector<int>>& getChildrenLevelAndIndexList(int elemIdx) const {
         return parent_to_children_cells_[elemIdx];
     }
 
