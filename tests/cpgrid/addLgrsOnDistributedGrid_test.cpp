@@ -88,9 +88,8 @@ void check(const Dune::CpGrid& grid,
     */
 }
 
-std::pair<Dune::CpGrid, std::vector<int>> createTestCartesianGridAndParts()
+std::vector<int> createTestCartesianGridAndParts(Dune::CpGrid& grid)
 {
-    Dune::CpGrid grid;
     grid.createCartesian({4,3,3} /*grid_dim*/, {1.0, 1.0, 1.0} /*cell_sizes*/);
 
     std::vector<int> parts(36);
@@ -103,12 +102,13 @@ std::pair<Dune::CpGrid, std::vector<int>> createTestCartesianGridAndParts()
             parts[elemIdx] = rank;
         }
     }
-    return std::make_pair(grid, parts);
+    return parts;
 }
 
 BOOST_AUTO_TEST_CASE(fullyInteriorLgrsHaveUniqueVertexGlobalIds)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts  = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
@@ -136,7 +136,8 @@ BOOST_AUTO_TEST_CASE(fullyInteriorLgrsHaveUniqueVertexGlobalIds)
 
 BOOST_AUTO_TEST_CASE(interiorLgrWithOverlapNeighborHasUniqueVertexGlobalIdsIfAddCornerCellsIsTrue)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts  = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
@@ -165,7 +166,8 @@ BOOST_AUTO_TEST_CASE(interiorLgrWithOverlapNeighborHasUniqueVertexGlobalIdsIfAdd
 
 BOOST_AUTO_TEST_CASE(distributedLgrHasUniqueVertexGlobalIdsIfAddCornerCellsTrue)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts  = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
@@ -190,7 +192,8 @@ BOOST_AUTO_TEST_CASE(distributedLgrHasUniqueVertexGlobalIdsIfAddCornerCellsTrue)
 
 BOOST_AUTO_TEST_CASE(distributedLgrFailsVertexGlobalIdsUniquenessWithAddCornerCellsTrue)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts   = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
@@ -225,7 +228,8 @@ BOOST_AUTO_TEST_CASE(distributedLgrFailsVertexGlobalIdsUniquenessWithAddCornerCe
 
 BOOST_AUTO_TEST_CASE(callAdaptWithArgsIsEquivalentToCallAddLgrsUpdateLeafGridViewOnDistributedCoarseGrid)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
@@ -255,7 +259,8 @@ BOOST_AUTO_TEST_CASE(callAdaptWithArgsIsEquivalentToCallAddLgrsUpdateLeafGridVie
 
 BOOST_AUTO_TEST_CASE(callAdaptWithoutArgsOnDistributedCoarseGrid)
 {
-    auto [grid, parts]  = createTestCartesianGridAndParts();
+    Dune::CpGrid grid;
+    auto parts = createTestCartesianGridAndParts(grid);
 
     if(grid.comm().size()>1)
     {
