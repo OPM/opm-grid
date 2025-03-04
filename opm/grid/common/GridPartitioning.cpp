@@ -551,15 +551,15 @@ void addOverlapLayerNoZeroTrans(const CpGrid& grid,
     }
 }
 
-int addOverlapLayer(const CpGrid& grid,
-                    const std::vector<int>& cell_part,
-                    std::vector<std::tuple<int,int,char>>& exportList,
-                    std::vector<std::tuple<int,int,char,int>>& importList,
-                    const Communication<Dune::MPIHelper::MPICommunicator>& cc,
+int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
+                    [[maybe_unused]] const std::vector<int>& cell_part,
+                    [[maybe_unused]] std::vector<std::tuple<int,int,char>>& exportList,
+                    [[maybe_unused]] std::vector<std::tuple<int,int,char,int>>& importList,
+                    [[maybe_unused]] const Communication<Dune::MPIHelper::MPICommunicator>& cc,
                     [[maybe_unused]] bool addCornerCells,
                     [[maybe_unused]] const double* trans,
-                    int layers,
-                    int level)
+                    [[maybe_unused]] int layers,
+                    [[maybe_unused]] int level)
 {
 #ifdef HAVE_MPI
     using AttributeSet = Dune::cpgrid::CpGridData::AttributeSet;
@@ -663,13 +663,6 @@ int addOverlapLayer(const CpGrid& grid,
               { return std::get<0>(t1) < std::get<0>(t2);});
     return importOwnerSize;
 #else
-    static_cast<void> grid;
-    static_cast<void> cell_part;
-    static_cast<void> exportList;
-    static_cast<void> importList;
-    static_cast<void> cc;
-    static_cast<void> layers;
-    static_cast<void> level;
     DUNE_THROW(InvalidStateException, "MPI is missing from the system");
 
     return 0;
