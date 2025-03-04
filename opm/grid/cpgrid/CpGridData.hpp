@@ -697,7 +697,7 @@ public:
     /// \param iftype The interface to use for the communication.
     /// \param dir The direction of the communication along the interface (forward or backward).
     template<class DataHandle>
-    void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir);
+    void communicate(DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const;
 
     void computeCellPartitionType();
 
@@ -831,7 +831,7 @@ private:
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
-                          const Interface& interface);
+                          const Interface& interface) const;
 
     /// \brief Communicates data of a given codimension
     /// \tparam codim The codimension
@@ -843,7 +843,7 @@ private:
     /// \param interface The information about the communication interface
     template<int codim, class DataHandle>
     void communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
-                          const InterfaceMap& interface);
+                          const InterfaceMap& interface) const;
 
 #endif
 
@@ -991,8 +991,8 @@ namespace
 /// \param iftype The interface type.
 /// \param interfaces A tuple with the values order by interface type.
 template<class T>
-T& getInterface(InterfaceType iftype,
-                std::tuple<T,T,T,T,T>& interfaces)
+const T& getInterface(InterfaceType iftype,
+                      const std::tuple<T,T,T,T,T>& interfaces)
 {
     switch(iftype)
     {
@@ -1014,14 +1014,14 @@ T& getInterface(InterfaceType iftype,
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data, CommunicationDirection dir,
-                                  const Interface& interface)
+                                  const Interface& interface) const
 {
     this->template communicateCodim<codim>(data, dir, interface.interfaces());
 }
 
 template<int codim, class DataHandle>
 void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& data_wrapper, CommunicationDirection dir,
-                                  const InterfaceMap& interface)
+                                  const InterfaceMap& interface) const
 {
     Communicator comm(ccobj_, interface);
 
@@ -1034,7 +1034,7 @@ void CpGridData::communicateCodim(Entity2IndexDataHandle<DataHandle, codim>& dat
 
 template<class DataHandle>
 void CpGridData::communicate(DataHandle& data, InterfaceType iftype,
-                             CommunicationDirection dir)
+                             CommunicationDirection dir) const
 {
 #if HAVE_MPI
     if(data.contains(3,0))
