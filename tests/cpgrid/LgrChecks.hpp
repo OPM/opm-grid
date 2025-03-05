@@ -102,6 +102,8 @@ void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
 
 void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf);
 
+void checkConsecutiveChildGlobalIdsPerParent(const Dune::CpGrid& grid);
+
 
 } // namespace Opm
 
@@ -463,6 +465,33 @@ void Opm::checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids
     BOOST_CHECK_EQUAL( allGlobalIds_verts_set.size(), expected_vertex_ids);
 }
 
+void Opm::checkConsecutiveChildGlobalIdsPerParent(const Dune::CpGrid& grid)
+{
+    const auto& data = grid.currentData(); // data_ or distributed_data_
+    const auto& globalIdSetBeforeLoadBalance = grid.globalIdSet();
+    const auto& elements = Dune::elements(grid.levelGridView(0));
+    const auto& parentToChildrenBeforeLoadBalance = data[0]->getParentToChildren();
+
+    for (const auto& element : elements) {
+        const auto& [level, children] = parentToChildrenBeforeLoadBalance[element.index()];
+
+        if (!children.empty()) {
+            const auto& levelData = *data[level];
+            const std::size_t numChildren = children.size();
+
+            const auto& child0_elem = Dune::cpgrid::Entity<0>(levelData, children[0], true);
+            const auto child0_globalId = globalIdSetBeforeLoadBalance.id(child0_elem);
+
+            for (std::size_t idx = 1; idx < numChildren; ++idx) {
+                const auto& child_elem = Dune::cpgrid::Entity<0>(levelData, children[idx], true);
+                const auto child_globalId = globalIdSetBeforeLoadBalance.id(child_elem);
+
+                BOOST_REQUIRE(numChildren > 1);
+                BOOST_CHECK_EQUAL(child0_globalId + idx, child_globalId);
+            }
+        }
+    }
+}
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
 

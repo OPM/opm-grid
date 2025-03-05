@@ -291,6 +291,8 @@ public:
     /// \brief Get Cartesian Index in the level grid view where the Entity was born.
     int getLevelCartesianIdx() const;
 
+    int getIdxInParentCell() const;
+
 protected:
     const CpGridData* pgrid_;
 };
@@ -506,6 +508,13 @@ Entity<0> Entity<codim>::father() const
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
 }
+
+template<int codim>
+int Dune::cpgrid::Entity<codim>::getIdxInParentCell() const
+{
+    return pgrid_ -> cell_to_idxInParentCell_[this->index()];
+}
+
 
 template<int codim>
 Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() const
