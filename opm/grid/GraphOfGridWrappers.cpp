@@ -564,8 +564,11 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                                       : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
-    addWellConnections(gog, wellConnections);
-    gog.addNeighboringCellsToWells(layers);
+    if (!allowDistributedWells){
+        // skip cell contraction if wells can be distributed over multiple processes
+        addWellConnections(gog, wellConnections);
+        gog.addNeighboringCellsToWells(layers);
+    }
 
     // call partitioner
     setGraphOfGridZoltanGraphFunctions(zz, gog, partitionIsEmpty);
