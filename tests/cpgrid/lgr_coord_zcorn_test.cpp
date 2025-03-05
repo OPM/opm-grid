@@ -69,14 +69,15 @@ struct Fixture {
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 // Create a grid and add one test LGR with dimension 6x6x3.
-Dune::CpGrid
-createGridAndAddTestLgr(const std::string& deck_string)
+void createGridAndAddTestLgr(Dune::CpGrid& grid,
+                             const std::string& deck_string)
 {
-    return Opm::createGridAndAddLgrs(deck_string,
-                                     {{3, 3, 3}}, // 3x3x3 child cells in x-,y-, and z-direction per ACTIVE parent cell
-                                     {{1, 1, 0}}, // starts at (1,1,0) in coarse grid - equivalent to (I1-1, J1-1, K1-1) from its CARFIN block
-                                     {{3, 3, 1}}, // ends at (3,3,1) in coarse grid - equivalent to (I2, J2, K2) from its CARFIN block
-                                     {"LGR1"});
+    Opm::createGridAndAddLgrs(grid,
+                              deck_string,
+                              {{3, 3, 3}}, // 3x3x3 child cells in x-,y-, and z-direction per ACTIVE parent cell
+                              {{1, 1, 0}}, // starts at (1,1,0) in coarse grid - equivalent to (I1-1, J1-1, K1-1) from its CARFIN block
+                              {{3, 3, 1}}, // ends at (3,3,1) in coarse grid - equivalent to (I2, J2, K2) from its CARFIN block
+                              {"LGR1"});
 }
 
 BOOST_AUTO_TEST_CASE(fullActiveParentCellsBlock)
@@ -124,7 +125,8 @@ SOLUTION
 SCHEDULE
 )";
 
-    const auto grid = createGridAndAddTestLgr(deck_string);
+    Dune::CpGrid grid;
+    createGridAndAddTestLgr(grid, deck_string);
 
     const auto [lgrCartesianIdxToCellIdx, lgr1IJK] = Opm::lgrIJK(grid, "LGR1");
 
@@ -318,7 +320,8 @@ SOLUTION
 SCHEDULE
 )";
 
-    const auto grid = createGridAndAddTestLgr(deck_string);
+    Dune::CpGrid grid;
+    createGridAndAddTestLgr(grid, deck_string);
 
     // Note: k = 0, indicating a single-layer grid with dimensions 3x3x1.
     // ACTNUM represents the active cell indicator for the parent grid of the LGR (Local Grid Refinement).
@@ -391,7 +394,8 @@ REGIONS
 SOLUTION
 SCHEDULE
 )";
-    const auto grid = createGridAndAddTestLgr(deck_string);
+    Dune::CpGrid grid;
+    createGridAndAddTestLgr(grid, deck_string);
 
     // Note: k = 0, indicating a single-layer grid with dimensions 3x3x1.
     // ACTNUM represents the active cell indicator for the parent grid of the LGR (Local Grid Refinement).

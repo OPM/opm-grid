@@ -81,18 +81,20 @@ void checkVertexAndFaceIndexAreNonNegative(const Dune::CpGrid& grid);
 void checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
                                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
 
-Dune::CpGrid createGridAndAddLgrs(const std::string& deck_string,
-                                  const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                  const std::vector<std::array<int, 3>>& startIJK_vec,
-                                  const std::vector<std::array<int, 3>>& endIJK_vec,
-                                  const std::vector<std::string>& lgr_name_vec);
+void createGridAndAddLgrs(Dune::CpGrid& grid,
+                          const std::string& deck_string,
+                          const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                          const std::vector<std::array<int, 3>>& startIJK_vec,
+                          const std::vector<std::array<int, 3>>& endIJK_vec,
+                          const std::vector<std::string>& lgr_name_vec);
 
-Dune::CpGrid createGridAndAddLgrs(const std::array<double, 3>& cell_sizes,
-                                  const std::array<int, 3>& grid_dim,
-                                  const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                  const std::vector<std::array<int, 3>>& startIJK_vec,
-                                  const std::vector<std::array<int, 3>>& endIJK_vec,
-                                  const std::vector<std::string>& lgr_name_vec);
+void createGridAndAddLgrs(Dune::CpGrid& grid,
+                          const std::array<double, 3>& cell_sizes,
+                          const std::array<int, 3>& grid_dim,
+                          const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                          const std::vector<std::array<int, 3>>& startIJK_vec,
+                          const std::vector<std::array<int, 3>>& endIJK_vec,
+                          const std::vector<std::string>& lgr_name_vec);
 
 void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
                                        const std::vector<int>& expected_vertex_ids_per_lgr,
@@ -401,13 +403,13 @@ void Opm::checkFaceHas4VerticesAndMax2NeighboringCells(const Dune::CpGrid& grid,
     }
 }
 
-Dune::CpGrid Opm::createGridAndAddLgrs(const std::string& deck_string,
-                                       const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                       const std::vector<std::array<int, 3>>& startIJK_vec,
-                                       const std::vector<std::array<int, 3>>& endIJK_vec,
-                                       const std::vector<std::string>& lgr_name_vec)
+void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
+                               const std::string& deck_string,
+                               const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                               const std::vector<std::array<int, 3>>& startIJK_vec,
+                               const std::vector<std::array<int, 3>>& endIJK_vec,
+                               const std::vector<std::string>& lgr_name_vec)
 {
-    Dune::CpGrid grid;
     Opm::Parser parser;
     const auto deck = parser.parseString(deck_string);
     Opm::EclipseState ecl_state(deck);
@@ -416,20 +418,18 @@ Dune::CpGrid Opm::createGridAndAddLgrs(const std::string& deck_string,
     grid.processEclipseFormat(&eclipse_grid, &ecl_state, false, false, false);
 
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    return grid;
 }
 
-Dune::CpGrid Opm::createGridAndAddLgrs(const std::array<double, 3>& cell_sizes,
-                                       const std::array<int, 3>& grid_dim,
-                                       const std::vector<std::array<int, 3>>& cells_per_dim_vec,
-                                       const std::vector<std::array<int, 3>>& startIJK_vec,
-                                       const std::vector<std::array<int, 3>>& endIJK_vec,
-                                       const std::vector<std::string>& lgr_name_vec)
+void Opm::createGridAndAddLgrs(Dune::CpGrid& grid,
+                               const std::array<double, 3>& cell_sizes,
+                               const std::array<int, 3>& grid_dim,
+                               const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                               const std::vector<std::array<int, 3>>& startIJK_vec,
+                               const std::vector<std::array<int, 3>>& endIJK_vec,
+                               const std::vector<std::string>& lgr_name_vec)
 {
-    Dune::CpGrid grid;
     grid.createCartesian(grid_dim, cell_sizes);
     grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    return grid;
 }
 
 void Opm::checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
