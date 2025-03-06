@@ -316,6 +316,11 @@ namespace Dune
         /// @brief Returns either data_ or distributed_data_(if non empty).
         std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& currentData();
 
+        /// @brief Returns either data_ or distributed_data_(if non empty).
+        const Dune::cpgrid::CpGridData& currentLeafData() const;
+
+        /// @brief Returns either data_ or distributed_data_(if non empty).
+        Dune::cpgrid::CpGridData& currentLeafData();
         /// @brief
         ///    Extract Cartesian index triplet (i,j,k) of an active cell.
         ///
@@ -1929,12 +1934,10 @@ namespace Dune
          * All the data of all grids are stored there and
          * calls are forwarded to relevant grid.*/
         std::vector<std::shared_ptr<cpgrid::CpGridData>> data_;
-        /** @brief A pointer to data of the current View. */
-        cpgrid::CpGridData* current_view_data_;
         /** @brief The data stored for the distributed grid. */
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
-        /** @brief A pointer to the current data used. */
-        std::vector<std::shared_ptr<cpgrid::CpGridData>>* current_data_;
+        /** @brief Whether the current view is the distributed version. */
+        bool view_is_distributed_;
         /** @brief To get the level given the lgr-name. Default, {"GLOBAL", 0}. */
         std::map<std::string,int> lgr_names_ = {{"GLOBAL", 0}};
         /**
@@ -2012,7 +2015,7 @@ namespace Dune
     template<class DataHandle>
     void CpGrid::communicate (DataHandle& data, InterfaceType iftype, CommunicationDirection dir) const
     {
-        current_view_data_->communicate(data, iftype, dir);
+        currentLeafData().communicate(data, iftype, dir);
     }
 
 
@@ -2065,8 +2068,8 @@ namespace Dune
         typedef cpgrid::OrientedEntityTable<1,0>::row_type F2C;
 
         const cpgrid::EntityRep<1> f(face, true);
-        const F2C&     f2c = current_view_data_->face_to_cell_[f];
-        const face_tag tag = current_view_data_->face_tag_[f];
+        const F2C&     f2c = currentLeafData().face_to_cell_[f];
+        const face_tag tag = currentLeafData().face_tag_[f];
 
         assert ((f2c.size() == 1) || (f2c.size() == 2));
 
