@@ -96,7 +96,7 @@ public:
     template <int cd>
     struct Codim
     {
-        typedef cpgrid::Entity<cd> Entity;
+        using Entity = ::Dune::cpgrid::Entity<cd>;
     };
 
 
