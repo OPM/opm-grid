@@ -742,6 +742,16 @@ std::vector<std::array<int,2>> CpGrid::mapLeafIndexSetToLocalCartesianIndexSets(
     return leafIdx_to_localCartesianIdxSets;
 }
 
+int CpGrid::getLeafIndex(const std::array<int,3>& lgr_ijk,
+                         const std::string& lgr_name) const
+{
+    const auto& lgr_level = getLgrNameToLevel().at(lgr_name);
+    const auto& lgr_dim = currentData()[lgr_level]->logicalCartesianSize();
+    const auto& lgr_cartesian_index = (lgr_ijk[2]*lgr_dim[0]*lgr_dim[1]) + (lgr_ijk[1]*lgr_dim[0]) + (lgr_ijk[0]);
+    return mapLocalCartesianIndexSetsToLeafIndexSet()[lgr_level][lgr_cartesian_index];
+}
+
+
 void CpGrid::getIJK(const int c, std::array<int,3>& ijk) const
 {
     current_view_data_->getIJK(c, ijk);

@@ -1194,8 +1194,12 @@ namespace Dune
         /// @brief Reverse map: from leaf index cell to { level, local/level Cartesian index of the cell }
         std::vector<std::array<int,2>> mapLeafIndexSetToLocalCartesianIndexSets() const;
 
+        /// @brief Given the lgr ijk of a refined cell and the lgr name, retrieve the leaf cell index. 
+        int getLeafIndex(const std::array<int,3>& lgr_ijk,
+                         const std::string& lgr_name) const;
+
         /// \brief Size of the overlap on the leaf level
-        unsigned int overlapSize(int) const;
+            unsigned int overlapSize(int) const;
 
 
         /// \brief Size of the ghost cell layer on the leaf level
