@@ -112,7 +112,7 @@ void Opm::checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
                                       const Dune::cpgrid::HierarchicIterator& endIt,
                                       double total_children)
 {
-    double referenceElemOneParent_volume_it;
+    double referenceElemOneParent_volume_it{};
     std::array<double,3> referenceElem_entity_center_it; // Expected {.5,.5,.5}
 
     for (; it != endIt; ++it)
