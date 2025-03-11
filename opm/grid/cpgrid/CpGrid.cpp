@@ -706,8 +706,7 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
 
 void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf)
 {
-    for (const auto& element: elements(leafGridView()))
-    {
+    for (const auto& element: elements(leafGridView())) {
         // When refine via CpGrid::addLgrsUpdateGridView(/*...*/), level-grid to lookup global_cell_ is equal to level-zero-grid
         // In the context of allowed nested refinement, we lookup for the oldest ancestor, also belonging to level-zero-grid.
         auto ancestor = element.getOrigin();
@@ -1040,9 +1039,9 @@ void CpGrid::globalRefine (int refCount)
     // This is the case when a coarse cell has not been marked for refinement, but at least one of its neighboring cells
     // got refined. Therefore, the coarse face that they share got replaced by refined-faces. In this case, we do not
     // support yet global refinement.
-    if(currentData().size() >1) {
+    if(this->maxLevel()) {
         bool isOnlyGlobalRefined = true;
-        for (std::size_t level = 0; level < currentData().size(); ++level) {
+        for (int level = 0; level < this->maxLevel(); ++level) {
             // When the grid has been refined only via global refinement, i.e., each cell has been refined into 2x2x2 children cells,
             // then the quotient between the total amount of two consecutive refined level grids is equal to 8 = 2x2x2.
             isOnlyGlobalRefined = isOnlyGlobalRefined && ( (currentData()[level+1]->size(0)) / (currentData()[level]->size(0)) == 8 );
@@ -1052,13 +1051,11 @@ void CpGrid::globalRefine (int refCount)
         }
     }
     if (refCount>0) {
-        const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
         for (int refinedLevel = 0; refinedLevel < refCount; ++refinedLevel) {
 
             std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
             const auto& preAdaptMaxLevel = this ->maxLevel();
             std::vector<std::string> lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-            bool isCARFIN = true;
             const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
 
             for(const auto& element: elements(this-> leafGridView())) {
@@ -1068,7 +1065,7 @@ void CpGrid::globalRefine (int refCount)
             }
 
             preAdapt();
-            adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, isCARFIN, {{0,0,0}}, {endIJK});
+            adapt(/* cells_per_dim_vec = */ {{2,2,2}}, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
             postAdapt();
         }
     }
@@ -1505,8 +1502,7 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
     //
     // For refined level grids, we check if the parent cell is fully interior. Then, its children won't be seen
     // by any other process. Therefore, the boolean is set to false.
-    const auto& elements =  Dune::elements(levelGridView(level));
-    for(const auto& element : elements) {
+    for(const auto& element : elements(levelGridView(level))) {
         if ( element.partitionType() == InteriorEntity) {
 
             // Check if it has an overlap neighbor
@@ -1959,6 +1955,15 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
+    // Throw if element has a neighboring cell from a different level.
+    // E.g., a coarse cell touching the boundary of an LGR, or
+    // a refined cell with a coarser/finner neighboring cell. 
+    const auto& intersections = Dune::intersections(leafGridView(), element);
+    for (const auto& intersection : intersections){
+        if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0))
+             OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
+    }
+    
     // For serial run, mark elements also in the level they were born.
     if(currentData().size()>1) {
         // Mark element in its level
@@ -1989,6 +1994,10 @@ bool CpGrid::preAdapt()
 
 bool CpGrid::adapt()
 {
+    if(!preAdapt()) { // marked cells set can be empty
+        return false; // the grid does not change at all.
+    }
+
     const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
     std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
     const auto& preAdaptMaxLevel = this ->maxLevel();
@@ -2022,7 +2031,7 @@ bool CpGrid::adapt()
     }
     if (is_global_refine) { // parallel or sequential
         const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
-        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, is_global_refine, {{0,0,0}}, {endIJK});
+        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
     }
     return this-> adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
@@ -2030,7 +2039,6 @@ bool CpGrid::adapt()
 bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<int>& assignRefinedLevel,
                    const std::vector<std::string>& lgr_name_vec,
-                   bool isCARFIN,
                    const std::vector<std::array<int,3>>& startIJK_vec,
                    const std::vector<std::array<int,3>>& endIJK_vec)
 {
@@ -2038,14 +2046,24 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     assert( static_cast<int>(assignRefinedLevel.size()) == current_view_data_->size(0));
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
+    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
+    // Logical Cartesian Size before adapting the grid - to be used in case the entire grid will be refined.
+    const auto& lcs =  data.back()->logical_cartesian_size_;
+
+    bool isCARFIN = !startIJK_vec.empty();
+    bool isGlobalRefine = isCARFIN; // One way of global-refine the grid is via startIJK and endIJK.
+    for (int c = 0; c<3; ++c) {
+        isGlobalRefine = isGlobalRefine && (startIJK_vec[0][c] == 0 ) && (endIJK_vec[0][c] == lcs[c]);
+        if (!isGlobalRefine)
+            break;
+    }
+
     // Each marked element has its assigned level where its refined entities belong.
     const int& levels = cells_per_dim_vec.size();
     // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
     const int& preAdaptMaxLevel = this->maxLevel();
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
-
-    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
 
     if (!global_id_set_ptr_) {
         global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*data.back());
@@ -2197,6 +2215,17 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             preAdapt_level_to_leaf_cells_vec,
                                             /* Additional parameters */
                                             cells_per_dim_vec);
+
+#if HAVE_MPI
+    auto global_markedElem_count = comm().sum(markedElem_count);
+    if ( global_markedElem_count == 0 ) {
+        return false;
+    }
+#else
+    if ( markedElem_count == 0 ) {
+        return false;
+    }
+#endif
 
     // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt.
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {
@@ -2446,7 +2475,15 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
-    (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
+    if (isGlobalRefine) {
+        assert(cells_per_dim_vec.size() == 1);
+        (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  { lcs[0]*cells_per_dim_vec[0][0],
+                                                                           lcs[1]*cells_per_dim_vec[0][1],
+                                                                           lcs[2]*cells_per_dim_vec[0][2] };
+    }
+    else {
+        (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
+    }
 
     // Update the leaf grid view
     current_view_data_ = data.back().get();
@@ -2799,7 +2836,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     }
 
     preAdapt();
-    adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, true, startIJK_vec, endIJK_vec);
+    adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, startIJK_vec, endIJK_vec);
     postAdapt();
 
     // Print total refined level grids and total cells on the leaf grid view

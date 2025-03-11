@@ -96,15 +96,6 @@ template<int> class EntityRep;
 }
 }
 
-
-void markAndAdapt_check(Dune::CpGrid&,
-                        const std::array<int,3>&,
-                        const std::vector<int>&,
-                        Dune::CpGrid&,
-                        bool,
-                        bool,
-                        bool);
-
 void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
@@ -151,15 +142,6 @@ class CpGridData
     friend class Dune::cpgrid::IndexSet;
     friend class Dune::cpgrid::IdSet;
     friend class Dune::cpgrid::LevelGlobalIdSet;
-
-    friend
-    void ::markAndAdapt_check(Dune::CpGrid&,
-                              const std::array<int,3>&,
-                              const std::vector<int>&,
-                              Dune::CpGrid&,
-                              bool,
-                              bool,
-                              bool);
 
     friend
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
