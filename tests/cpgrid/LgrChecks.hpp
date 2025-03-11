@@ -22,6 +22,7 @@
 
 #include <boost/test/unit_test.hpp>
 
+
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/common/version.hh>
 
@@ -35,10 +36,10 @@
 
 #include <array>
 #include <memory>
+#include <set>
 #include <string>
 #include <unordered_set>
 #include <vector>
-
 
 
 namespace Opm
@@ -102,6 +103,12 @@ void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
 
 void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf);
 
+void checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
+
+void checkCellBlockRefinements(const Dune::CpGrid& coarse_grid,
+                               const Dune::CpGrid& other_grid);
+template<typename T>
+bool areClose(const T& cont1, const T& cont2);
 
 } // namespace Opm
 
@@ -199,6 +206,11 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
         for (const auto& element : elements) {
             BOOST_CHECK_EQUAL( element.hasFather(), static_cast<bool>(element.level())); // level>0 -> 1 (true); level=0 (false)
             BOOST_CHECK( element.getOrigin().level() == 0);
+            if (isLeaf) {
+                BOOST_CHECK( !element.mightVanish() );
+                 // postAdapt() has been called, therefore every element gets marked with 0
+                BOOST_CHECK( grid.getMark(element) == 0);
+            } // marks get rewrtitten and set to 0 via postAdapt call
 
             auto it = element.hbegin(maxLevel);
             const auto endIt = element.hend(maxLevel);
@@ -207,17 +219,50 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                 // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
                 BOOST_CHECK( it == endIt);
                 BOOST_CHECK( element.isLeaf() );
+                
+                BOOST_CHECK( element.isNew() );
+                BOOST_CHECK( !element.mightVanish() ); // if no nested refinement
 
                 const auto expected_total_children = cells_per_dim_vec[element.level()-1][0]*cells_per_dim_vec[element.level()-1][1]*cells_per_dim_vec[element.level()-1][2];
                 BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
 
                 checkFatherAndSiblings(element.getLevelElem(), element.level(), expected_total_children, grid);
+
+                // For nested refinement
+                /*if (hasBeenRefinedAtLeastOnce){
+                    BOOST_CHECK(element.father().level() <= startingGridIdx);
+                    BOOST_CHECK( element.getOrigin().level() <= startingGridIdx);
+                    BOOST_CHECK( data[element.father().level()] ->mark_[element.father().index()] == 1);
+                }
+                else {
+                 BOOST_CHECK( element.father().isLeaf() == false);
+                    BOOST_CHECK(element.father().level() == 0);
+                    BOOST_CHECK( element.getOrigin().level() == 0);
+                    BOOST_CHECK_EQUAL( (std::find(markedCells.begin(), markedCells.end(), element.father().index()) == markedCells.end()), false);
+                    }*/
             }
             else {
                 BOOST_CHECK( element.getOrigin() == element.getLevelElem() );
                 BOOST_CHECK_THROW(element.father(), std::logic_error);
                 BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
                 BOOST_CHECK_EQUAL( element.level(), 0); // If there is no nested refinement.
+                
+                if (level == 0){
+                    //                    BOOST_CHECK( element.mightVanish() );
+                BOOST_CHECK( !element.isNew() );
+                }
+
+// For nested refinement
+                /*if (hasBeenRefinedAtLeastOnce){
+                    BOOST_CHECK( level_cellIdx[0] == element.level());
+                    BOOST_CHECK( element.level() <= startingGridIdx);
+                    BOOST_CHECK( element.getOrigin().level() <= startingGridIdx);
+                }
+                else  {
+                    BOOST_CHECK( level_cellIdx[0] == 0);
+                    BOOST_CHECK( element.level() == 0);
+                    BOOST_CHECK( element.getOrigin().level() == 0);
+                    }*/
             }
         }
     }
@@ -461,6 +506,134 @@ void Opm::checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids
     const std::set<int> allGlobalIds_verts_set(allGlobalIds_verts.begin(), allGlobalIds_verts.end());
 
     BOOST_CHECK_EQUAL( allGlobalIds_verts_set.size(), expected_vertex_ids);
+}
+
+template<typename T>
+bool Opm::areClose(const T& cont1, const T& cont2) 
+{
+    return (std::abs(cont1[0] - cont2[0]) < 1e-12) && (std::abs(cont1[1] - cont2[1]) < 1e-12) && (std::abs(cont1[2] - cont2[2])< 1e-12);
+}
+
+void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
+{
+
+    const auto& grid_view = grid.leafGridView();
+    const auto& equiv_grid_view = other_grid.leafGridView();
+
+    for(const auto& element: elements(grid_view)) {
+        BOOST_CHECK( element.getOrigin().level() == 0);
+        auto equiv_element_iter = equiv_grid_view.begin<0>();
+        bool closeCenter = Opm::areClose(element.geometry().center(), equiv_element_iter->geometry().center());
+        while ((equiv_element_iter != equiv_grid_view.end<0>()) && (!closeCenter)) {
+            ++equiv_element_iter;
+            closeCenter = Opm::areClose(element.geometry().center(), equiv_element_iter->geometry().center());
+        }
+        for(const auto& intersection: intersections(grid_view, element)) {
+            // find matching intersection (needed as ordering is allowed to be different
+            bool matching_intersection_found = false;
+            for(auto& intersection_match: intersections(equiv_grid_view, *equiv_element_iter)) {
+                if(intersection_match.indexInInside() == intersection.indexInInside()) {
+                    BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                    if(intersection.neighbor()) {
+                        BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                    }
+
+                    BOOST_CHECK( Opm::areClose(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal()) );
+                  
+                    const auto& geom_match = intersection_match.geometry();
+                    BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                    const auto& geom =  intersection.geometry();
+                    bool closeGeomCenter = Opm::areClose(geom_match.center(), geom.center());
+                    if (!closeGeomCenter) {
+                        break; // Check next intersection_match
+                    }
+                    BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                    BOOST_CHECK( Opm::areClose(geom_match.center(), geom.center()) );
+                    BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                    decltype(geom.corner(0)) sum_match{}, sum{};
+
+                    for(int cor = 0; cor < geom.corners(); ++cor) {
+                        sum += geom.corner(cor);
+                        sum_match += geom_match.corner(1);
+                    }
+                    BOOST_CHECK( Opm::areClose(sum, sum_match));
+                    matching_intersection_found = true;
+                    break;
+                }
+            } // end-for-loop-intersection_match
+            BOOST_CHECK(matching_intersection_found);
+        }
+    }
+}
+
+void Opm::checkCellBlockRefinements(const Dune::CpGrid& grid,
+                                    const Dune::CpGrid& other_grid)
+{
+    const auto& leafGrid = grid.currentData().back();
+    // For a mixed grid that gets refined a second time, isBlockShape == false, even though the marked elements form a block.
+    const auto& leafOtherGrid = other_grid.currentData().back();
+
+    // Check sizes
+    BOOST_CHECK_EQUAL(leafGrid->size(3), leafOtherGrid->size(3));
+    BOOST_CHECK_EQUAL(leafGrid->size(0), leafOtherGrid->size(0));
+
+
+    BOOST_CHECK_EQUAL(grid.numFaces(), other_grid.numFaces());
+    BOOST_CHECK_EQUAL(grid.numCells(), other_grid.numCells());
+    BOOST_CHECK_EQUAL(grid.size(3), other_grid.size(3));
+    BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
+
+    BOOST_CHECK_EQUAL(grid.size(1,0), other_grid.size(1,0)); // equal amount of cells in level 1
+    BOOST_CHECK_EQUAL(grid.numCells(1), other_grid.numCells(1));
+    BOOST_CHECK_EQUAL(grid.size(1,3), other_grid.size(1,3)); // equal amount of corners in level 1
+    BOOST_CHECK_EQUAL(grid.numFaces(1), other_grid.numFaces(1));  // equal amount of faces in level 1
+
+
+    //   BOOST_CHECK_EQUAL(adapted_leaf.face_to_cell_.size(), blockRefinement_leaf.face_to_cell_.size());
+    //  BOOST_CHECK_EQUAL(adapted_leaf.face_to_point_.size(), blockRefinement_leaf.face_to_point_.size());
+    //  BOOST_CHECK_EQUAL(adapted_leaf.face_normals_.size(), blockRefinement_leaf.face_normals_.size());
+    //  BOOST_CHECK_EQUAL(adapted_leaf.face_tag_.size(), blockRefinement_leaf.face_tag_.size());
+    //   BOOST_CHECK_EQUAL(adapted_leaf.cell_to_point_.size(), blockRefinement_leaf.cell_to_point_.size());
+    //   BOOST_CHECK_EQUAL(adapted_leaf.cell_to_face_.size(), blockRefinement_leaf.cell_to_face_.size());
+
+
+    const auto& grid_vertices =  Dune::vertices(grid.leafGridView());
+    const auto& other_grid_vertices =  Dune::vertices(other_grid.leafGridView());
+
+    for(const auto& grid_vertex : grid_vertices) {
+        // find matching vertex (needed as ordering is allowed to be different
+        bool matching_vertex_found = false;
+        for (const auto& other_grid_vertex : other_grid_vertices) {
+            if (!Opm::areClose(grid_vertex.geometry().center(), other_grid_vertex.geometry().center() ))
+                continue;
+            for(const auto& coord: grid_vertex.geometry().center()) {
+                BOOST_TEST(std::isfinite(coord));
+            }
+            matching_vertex_found = true;
+        }
+        BOOST_CHECK(matching_vertex_found);
+    }
+
+
+    const auto& grid_elements =  Dune::elements(grid.leafGridView());
+    const auto& other_grid_elements =  Dune::elements(other_grid.leafGridView());
+
+    for(const auto& grid_elem : grid_elements) {
+        // find matching element (needed as ordering is allowed to be different
+        bool matching_elem_found = false;
+        for (const auto& other_grid_elem : other_grid_elements) {
+            if (!Opm::areClose(grid_elem.geometry().center(), other_grid_elem.geometry().center() ))
+                continue;
+            for(const auto& coord: grid_elem.geometry().center()) {
+                BOOST_TEST(std::isfinite(coord));
+            }
+            BOOST_CHECK_CLOSE(grid_elem.geometry().volume(), other_grid_elem.geometry().volume(), 1e-24);
+            matching_elem_found = true;
+        }
+        BOOST_CHECK(matching_elem_found);
+    }
 }
 
 
