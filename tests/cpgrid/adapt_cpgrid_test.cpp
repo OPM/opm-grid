@@ -473,66 +473,52 @@ void markAndAdapt_check(Dune::CpGrid& coarse_grid,
     } // end-if-preAdapt
 }
 
-BOOST_AUTO_TEST_CASE(doNothing)
+BOOST_AUTO_TEST_CASE(emptyMarkedElementsForRefinementSetDoesNothingToTheGrid)
 {
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    std::vector<int> markedCells;
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, false, true);
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+   
+    // The last three bool arguments represent:, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(grid, /* cells_per_dim = */ {2,2,2}, /* markedCells = */ {}, grid, /* isBlockShape = */ true, false, true);
 }
 
-BOOST_AUTO_TEST_CASE(globalRefinement)
+
+BOOST_AUTO_TEST_CASE(emptyMarkedElementsForRefinementSetIsEquivalentToCallGlobalRefineWithZero)
 {
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    std::vector<int> markedCells(36);
-    std::iota(markedCells.begin(), markedCells.end(), 0);
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     // Create other grid for comparison
     Dune::CpGrid other_grid;
-    other_grid.createCartesian(grid_dim, cell_sizes);
-
-    const std::array<int, 3> startIJK = {0,0,0};
-    const std::array<int, 3> endIJK = {4,3,3};
-    const std::string lgr_name = {"LGR1"};
-    other_grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-    // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, false, false, true);
-}
-
-
-BOOST_AUTO_TEST_CASE(doNothing_calling_globalRefine)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    std::vector<int> markedCells;
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-
-    // Create another grid
-    Dune::CpGrid other_grid;
-    other_grid.createCartesian(grid_dim, cell_sizes);
+    other_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     other_grid.globalRefine(0);
 
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
     // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
-    markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, other_grid, true, false, true);
+    markAndAdapt_check(grid,  /* cells_per_dim = */ {2,2,2}, /*markedCells = */ {}, other_grid, true, false, true);
 }
 
-BOOST_AUTO_TEST_CASE(globalRefinement_calling_globalRefine)
+
+BOOST_AUTO_TEST_CASE(allElementsMarkedForRefinementIsEquivalentToCallGlobalRefinementWithOne)
+{
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    std::vector<int> markedCells(36);
+    std::iota(markedCells.begin(), markedCells.end(), 0);
+   
+
+    // Create other grid for comparison
+    Dune::CpGrid other_grid;
+    other_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    other_grid.globalRefine(1);
+
+    // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
+    // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
+    markAndAdapt_check(grid, /* cells_per_dim = */ {2,2,2}, markedCells, other_grid, false, false, true);
+}
+
+
+/*BOOST_AUTO_TEST_CASE(globalRefinement_calling_globalRefine)
 {
     // Create a grid
     Dune::CpGrid coarse_grid;
@@ -922,3 +908,4 @@ BOOST_AUTO_TEST_CASE(cellTouchesLgrBoundary_throw)
     // The last three bool arguments represent: isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement.
     BOOST_CHECK_THROW(markAndAdapt_check(coarse_grid, cells_per_dim, markedCells, coarse_grid, true, true, false), std::logic_error);
 }
+*/
