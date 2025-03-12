@@ -2496,7 +2496,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     Opm::OpmLog::info(std::to_string(levels)  + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
     Opm::OpmLog::info(std::to_string(cell_count)  + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 
-    return preAdapt();
+    return (preAdaptMaxLevel < this->maxLevel()); // true if at least one entity was refined
 }
 
 void CpGrid::postAdapt()
