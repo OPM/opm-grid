@@ -2687,7 +2687,7 @@ void CpGrid::syncCellIds()
 
     // Populate for interior cells
     for (int level = 1; level <= maxLevel; ++level) {
-        const auto& elements = Dune::elements(levelGridView(level), Dune::Partitions::interior);
+        const auto& elements = Dune::elements(levelGridView(level));
         for (const auto& element : elements) {
             const int parent_globalId = globalIdSet.id(element.father());
             const int idx_in_parent = element.getIdxInParentCell();
@@ -2697,14 +2697,6 @@ void CpGrid::syncCellIds()
             syncCellIds[element.level()-1][element.index()] = new_elem_globalId;
         }
     }
-
-    // Syncronize ids via data Handle
-    const auto& parent_to_children = currentData().front()->getParentToChildren();
-    ParentToChildrenCellGlobalIdHandle parentToChildrenCellGlobalId_handle(parent_to_children,
-                                                                           syncCellIds);
-    currentData().front()->communicate(parentToChildrenCellGlobalId_handle,
-                                       Dune::InteriorBorder_All_Interface,
-                                       Dune::ForwardCommunication );
 
     // Re-assign new cell global ids for all refined level grids
     std::vector<int> faceIds; // empty for all
