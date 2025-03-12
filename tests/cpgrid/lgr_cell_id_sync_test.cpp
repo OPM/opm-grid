@@ -176,7 +176,7 @@ BOOST_AUTO_TEST_CASE(cellIdSyncWhenLgrsAddedFirstInUndistributedViewThenInDistri
 
         Opm::checkConsecutiveChildGlobalIdsPerParent(grid);
 
-        grid.syncCellIds();
+        grid.syncDistributedGlobalCellIds();
         const auto& data = grid.currentData();
         Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
 
@@ -216,7 +216,7 @@ BOOST_AUTO_TEST_CASE(cellIdSyncWhenLgrsAddedFirstInDistributedViewThenInUndistri
 
         Opm::checkConsecutiveChildGlobalIdsPerParent(grid);
 
-        grid.syncCellIds();
+        grid.syncDistributedGlobalCellIds();
         const auto& data = grid.currentData();
         Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
 

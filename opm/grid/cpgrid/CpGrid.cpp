@@ -2485,11 +2485,10 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // - Define GlobalIdMapping (cellMapping, faceMapping, pointMapping required per level)
     // - Define ParallelIndex for overlap cells and their neighbors
     if(comm().size()>1) {
-        lgrCommunication(assignRefinedLevel,
-                         cells_per_dim_vec,
-                         lgr_with_at_least_one_active_cell);
+        globalIdsPartitionTypesLgrAndLeafGrids(assignRefinedLevel,
+                                               cells_per_dim_vec,
+                                               lgr_with_at_least_one_active_cell);
     }
-
 
     // Print total amount of cells on the adapted grid
     Opm::OpmLog::info(std::to_string(markedElem_count) + " elements have been marked (in " + std::to_string(comm().rank()) + " rank).\n");
@@ -2506,9 +2505,9 @@ void CpGrid::postAdapt()
     current_view_data_ -> postAdapt();
 }
 
-void CpGrid::lgrCommunication([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
-                              [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                              [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell)
+void CpGrid::globalIdsPartitionTypesLgrAndLeafGrids([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
+                                                    [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                    [[maybe_unused]] const std::vector<int>& lgr_with_at_least_one_active_cell)
 {
 #if HAVE_MPI
     // Prediction min cell and point global ids per process
@@ -2659,7 +2658,7 @@ void CpGrid::getFirstChildGlobalIds([[maybe_unused]] std::vector<int>& parentToF
 #endif
 }
 
-void CpGrid::syncCellIds()
+void CpGrid::syncDistributedGlobalCellIds()
 {
 #if HAVE_MPI
     std::vector<int> parentToFirstChildGlobalIds;

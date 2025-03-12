@@ -931,9 +931,9 @@ namespace Dune
                                        const int& preAdaptMaxLevel,
                                        const int& newLevels);
 
-        void lgrCommunication(const std::vector<int>& assignRefinedLevel,
-                              const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                              const std::vector<int>& lgr_with_at_least_one_active_cell);
+        void globalIdsPartitionTypesLgrAndLeafGrids(const std::vector<int>& assignRefinedLevel,
+                                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                    const std::vector<int>& lgr_with_at_least_one_active_cell);
 
         /// @brief Retrieves the global ids of the first child for each parent cell in the grid.
         ///
@@ -948,7 +948,7 @@ namespace Dune
         /// LGRs (Local Grid Refinements) can be added either in the undistributed view first and then in the distributed view,
         /// or vice versa. This method ensures consistency by rewriting the global cell ids in the distributed view
         /// using the corresponding ids from the undistributed view.
-        void syncCellIds();
+        void syncDistributedGlobalCellIds();
     private:
 
         /// @brief For refined level grids created based on startIJK and endIJK values, compute the "local ijk/Cartesian index" within the LGR.
