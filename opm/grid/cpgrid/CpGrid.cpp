@@ -2719,10 +2719,6 @@ void CpGrid::syncCellIds()
 
     for (int level = 1; level <=maxLevel; ++level) {
         populateCellIndexSetRefinedGrid(level);
-        currentData()[level]->computeCellPartitionType();
-
-        currentData()[level]->computePointPartitionType();
-        // currentData()[level]->computeCommunicationInterfaces(currentData()[level]->size(3));
     }
 
     // Insert the new id sets into the grid global_id_set_ptr_
@@ -2731,10 +2727,7 @@ void CpGrid::syncCellIds()
     }
     populateLeafGlobalIdSet();
     this->global_id_set_ptr_->insertIdSet(*currentData().back());
-
-    currentData().back()->computeCellPartitionType();
-    currentData().back()->computePointPartitionType();
-    // current_data_->back()->computeCommunicationInterfaces(current_data_->back()->size(3));
+    
     assert(static_cast<std::size_t>(current_data_->back()->cellIndexSet().size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
 #endif
 }
