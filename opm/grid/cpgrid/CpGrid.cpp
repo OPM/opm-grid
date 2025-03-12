@@ -2669,11 +2669,8 @@ void CpGrid::syncCellIds()
 
     switchToDistributedView();
 
-    std::vector<int> firstChildGlobalIds(size);
-    if (comm().rank() == 0) {
-        firstChildGlobalIds = parentToFirstChildGlobalIds;
-    }
-    comm().broadcast(firstChildGlobalIds.data(), firstChildGlobalIds.size(), 0);
+    parentToFirstChildGlobalIds.resize(size);
+    comm().broadcast(parentToFirstChildGlobalIds.data(), parentToFirstChildGlobalIds.size(), 0);
 
     const int maxLevel = this->maxLevel();
 
@@ -2691,7 +2688,7 @@ void CpGrid::syncCellIds()
         for (const auto& element : elements) {
             const int parent_globalId = globalIdSet.id(element.father());
             const int idx_in_parent = element.getIdxInParentCell();
-            const int first_child_id = firstChildGlobalIds[parent_globalId];
+            const int first_child_id = parentToFirstChildGlobalIds[parent_globalId];
             const int new_elem_globalId = first_child_id + idx_in_parent;
 
             syncCellIds[element.level()-1][element.index()] = new_elem_globalId;
