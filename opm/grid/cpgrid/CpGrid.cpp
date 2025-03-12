@@ -2706,7 +2706,7 @@ void CpGrid::syncCellIds()
                                        Dune::InteriorBorder_All_Interface,
                                        Dune::ForwardCommunication );
 
-    // Re-assign new cell global ids for all refined level grids.
+    // Re-assign new cell global ids for all refined level grids
     std::vector<int> faceIds; // empty for all
     for (int level = 1; level <= maxLevel; ++level) {
         if(currentData()[level]->size(0)) { // Check if LGR is active in currect process.
@@ -2714,20 +2714,16 @@ void CpGrid::syncCellIds()
             currentData()[level]->global_id_set_->swap(syncCellIds[level-1],
                                                        faceIds,
                                                        vertexIds);
+
+            populateCellIndexSetRefinedGrid(level);
+            // Insert the new id sets into the grid global_id_set_ptr_
+            this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
         }
     }
 
-    for (int level = 1; level <=maxLevel; ++level) {
-        populateCellIndexSetRefinedGrid(level);
-    }
-
-    // Insert the new id sets into the grid global_id_set_ptr_
-    for (int level = 1; level <=maxLevel; ++level) {
-        this->global_id_set_ptr_->insertIdSet(*(*current_data_)[level]);
-    }
     populateLeafGlobalIdSet();
     this->global_id_set_ptr_->insertIdSet(*currentData().back());
-    
+
     assert(static_cast<std::size_t>(current_data_->back()->cellIndexSet().size()) == static_cast<std::size_t>(current_data_->back()->size(0)) );
 #endif
 }
