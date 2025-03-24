@@ -1985,6 +1985,10 @@ bool CpGrid::preAdapt()
 
 bool CpGrid::adapt()
 {
+    if(!preAdapt()) { // marked cells set can be empty
+        return false; // the grid does not change at all.
+    }
+
     const std::vector<std::array<int,3>>& cells_per_dim_vec = {{2,2,2}}; // Arbitrary chosen values.
     std::vector<int> assignRefinedLevel(current_view_data_-> size(0));
     const auto& preAdaptMaxLevel = this ->maxLevel();
@@ -2193,6 +2197,17 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                             preAdapt_level_to_leaf_cells_vec,
                                             /* Additional parameters */
                                             cells_per_dim_vec);
+
+#if HAVE_MPI
+    auto global_markedElem_count = comm().sum(markedElem_count);
+    if ( global_markedElem_count == 0 ) {
+        return false;
+    }
+#else
+    if ( markedElem_count == 0 ) {
+        return false;
+    }
+#endif
 
     // Update/define parent_to_children_cells_ and level_to_leaf_cells_ for all the existing level grids (level 0, 1, ..., preAdaptMaxLevel), before this call of adapt.
     for (int preAdaptLevel = 0; preAdaptLevel < preAdaptMaxLevel +1; ++preAdaptLevel) {

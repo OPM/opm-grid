@@ -294,32 +294,34 @@ void Opm::checkCellGlobalIdUniquenessForInteriorCells(const Dune::CpGrid& grid,
     const auto& leafGridView = grid.leafGridView();
     const int maxLevel = grid.maxLevel();
 
-    for (int level = 1; level <= maxLevel +1; ++level) {
-        bool isLeaf = (level == maxLevel+1);
-        const auto& levelOrLeafData = data[level];
-        const auto& levelOrLeafGlobalIdSet = levelOrLeafData->globalIdSet();
-        const auto& elements = isLeaf?
-            Dune::elements(leafGridView, Dune::Partitions::interior) :
-            Dune::elements(grid.levelGridView(level), Dune::Partitions::interior);
+    if (maxLevel>=1) { // maxLevel == 0 -> level zero and leaf grids are equal
+        for (int level = 1; level <= maxLevel +1; ++level) {
+            bool isLeaf = (level == maxLevel+1);
+            const auto& levelOrLeafData = data[level];
+            const auto& levelOrLeafGlobalIdSet = levelOrLeafData->globalIdSet();
+            const auto& elements = isLeaf?
+                Dune::elements(leafGridView, Dune::Partitions::interior) :
+                Dune::elements(grid.levelGridView(level), Dune::Partitions::interior);
 
-        std::vector<int> levelOrLeaf_interior_cell_global_ids;
-        levelOrLeaf_interior_cell_global_ids.reserve(levelOrLeafData->size(0));
+            std::vector<int> levelOrLeaf_interior_cell_global_ids;
+            levelOrLeaf_interior_cell_global_ids.reserve(levelOrLeafData->size(0));
 
-        for (const auto& element : elements) {
-            levelOrLeaf_interior_cell_global_ids.push_back(levelOrLeafGlobalIdSet.id(element));
+            for (const auto& element : elements) {
+                levelOrLeaf_interior_cell_global_ids.push_back(levelOrLeafGlobalIdSet.id(element));
+            }
+
+            const int levelOrLeaf_local_interior_cell_count = levelOrLeaf_interior_cell_global_ids.size();
+            const int levelOrLeaf_global_cell_count = grid.comm().sum(levelOrLeaf_local_interior_cell_count);
+
+            // Gather all global IDs across MPI ranks.
+            const auto [all_levelOrLeaf_cell_ids, displLevelOrLeaf] = Opm::allGatherv(levelOrLeaf_interior_cell_global_ids, grid.comm());
+
+            const std::unordered_set<int> all_levelOrLeaf_cell_ids_set(all_levelOrLeaf_cell_ids.begin(), all_levelOrLeaf_cell_ids.end());
+
+            // Assert the expected size and uniqueness.
+            BOOST_CHECK_EQUAL(static_cast<int>(all_levelOrLeaf_cell_ids.size()), levelOrLeaf_global_cell_count);
+            BOOST_CHECK_EQUAL(all_levelOrLeaf_cell_ids.size(), all_levelOrLeaf_cell_ids_set.size());
         }
-
-        const int levelOrLeaf_local_interior_cell_count = levelOrLeaf_interior_cell_global_ids.size();
-        const int levelOrLeaf_global_cell_count = grid.comm().sum(levelOrLeaf_local_interior_cell_count);
-
-        // Gather all global IDs across MPI ranks.
-        const auto [all_levelOrLeaf_cell_ids, displLevelOrLeaf] = Opm::allGatherv(levelOrLeaf_interior_cell_global_ids, grid.comm());
-
-        const std::unordered_set<int> all_levelOrLeaf_cell_ids_set(all_levelOrLeaf_cell_ids.begin(), all_levelOrLeaf_cell_ids.end());
-
-        // Assert the expected size and uniqueness.
-        BOOST_CHECK_EQUAL(static_cast<int>(all_levelOrLeaf_cell_ids.size()), levelOrLeaf_global_cell_count);
-        BOOST_CHECK_EQUAL(all_levelOrLeaf_cell_ids.size(), all_levelOrLeaf_cell_ids_set.size());
     }
 }
 
@@ -345,76 +347,79 @@ void Opm::checkGridLocalAndGlobalIdConsistency(const Dune::CpGrid& grid,
     }
 
     const int maxLevel = grid.maxLevel(); // Leaf grid view in level = maxLevel+1
-    for (int level = 0; level <= maxLevel+1; ++level) {
-        bool isLeaf = (level == maxLevel+1);
-        const auto& elements = isLeaf? leafElements : Dune::elements(grid.levelGridView(level));
-        const auto& vertices = isLeaf? Dune::vertices(leafGridView) : Dune::vertices(grid.levelGridView(level));
-        const auto& localIdSet = data[level]->localIdSet();
-        const auto& globalIdSet = data[level]->globalIdSet();
-        const auto& indexSet = data[level]->indexSet();
 
-        std::unordered_set<int> levelOrLeafIds_set;
-        levelOrLeafIds_set.reserve(data[level]->size(0) + data[level]->size(3));
+    if (maxLevel>=1) { // maxLevel == 0 -> level zero and leaf grids are equal
+        for (int level = 0; level <= maxLevel+1; ++level) {
+            bool isLeaf = (level == maxLevel+1);
+            const auto& elements = isLeaf? leafElements : Dune::elements(grid.levelGridView(level));
+            const auto& vertices = isLeaf? Dune::vertices(leafGridView) : Dune::vertices(grid.levelGridView(level));
+            const auto& localIdSet = data[level]->localIdSet();
+            const auto& globalIdSet = data[level]->globalIdSet();
+            const auto& indexSet = data[level]->indexSet();
 
-        for (const auto& element : elements) {
-            const int localId = localIdSet.id(element);
-            const int globalId = globalIdSet.id(element);
+            std::unordered_set<int> levelOrLeafIds_set;
+            levelOrLeafIds_set.reserve(data[level]->size(0) + data[level]->size(3));
 
-            if (isSerialRun) {
-                BOOST_CHECK_EQUAL(localId, globalId);
-            }
+            for (const auto& element : elements) {
+                const int localId = localIdSet.id(element);
+                const int globalId = globalIdSet.id(element);
 
-            levelOrLeafIds_set.insert(localId);
-
-            if (!isLeaf) {
-                if (auto it = leafElementLocalId.find(localId); it != leafElementLocalId.end()) {
-                    BOOST_CHECK(it->second.geometry().center() == element.geometry().center());
-                    BOOST_CHECK(it->second.geometry().volume() == element.geometry().volume());
-                    BOOST_CHECK(it->second.getLevelElem() == element);
+                if (isSerialRun) {
+                    BOOST_CHECK_EQUAL(localId, globalId);
                 }
-                const int idx = indexSet.index(element);
-                BOOST_CHECK_EQUAL(idx, element.index());
+
+                levelOrLeafIds_set.insert(localId);
+
+                if (!isLeaf) {
+                    if (auto it = leafElementLocalId.find(localId); it != leafElementLocalId.end()) {
+                        BOOST_CHECK(it->second.geometry().center() == element.geometry().center());
+                        BOOST_CHECK(it->second.geometry().volume() == element.geometry().volume());
+                        BOOST_CHECK(it->second.getLevelElem() == element);
+                    }
+                    const int idx = indexSet.index(element);
+                    BOOST_CHECK_EQUAL(idx, element.index());
+                }
+
+                BOOST_CHECK_EQUAL(grid.globalIdSet().id(element),
+                                  data[element.level()]->globalIdSet().id(element.getLevelElem()));
             }
 
-            BOOST_CHECK_EQUAL(grid.globalIdSet().id(element),
-                              data[element.level()]->globalIdSet().id(element.getLevelElem()));
-        }
+            BOOST_CHECK_EQUAL(static_cast<int>(levelOrLeafIds_set.size()), data[level]->size(0));
 
-        BOOST_CHECK_EQUAL(static_cast<int>(levelOrLeafIds_set.size()), data[level]->size(0));
+            for (const auto& vertex : vertices) {
+                const int localId = localIdSet.id(vertex);
+                const int globalId = globalIdSet.id(vertex);
 
-        for (const auto& vertex : vertices) {
-            const int localId = localIdSet.id(vertex);
-            const int globalId = globalIdSet.id(vertex);
+                if (isSerialRun) {
+                    BOOST_CHECK_EQUAL(localId, globalId);
+                }
 
-            if (isSerialRun) {
-                BOOST_CHECK_EQUAL(localId, globalId);
-            }
+                levelOrLeafIds_set.insert(localId);
 
-            levelOrLeafIds_set.insert(localId);
-
-            if (!isLeaf) {
-                if (auto it = leafVertexLocalId.find(localId); it != leafVertexLocalId.end()) {
-                    BOOST_CHECK(it->second.geometry().center() == vertex.geometry().center());
+                if (!isLeaf) {
+                    if (auto it = leafVertexLocalId.find(localId); it != leafVertexLocalId.end()) {
+                        BOOST_CHECK(it->second.geometry().center() == vertex.geometry().center());
+                    }
                 }
             }
-        }
 
-        BOOST_CHECK_EQUAL(static_cast<int>(levelOrLeafIds_set.size()), data[level]->size(0) + data[level]->size(3));
+            BOOST_CHECK_EQUAL(static_cast<int>(levelOrLeafIds_set.size()), data[level]->size(0) + data[level]->size(3));
+        }
     }
 }
 
 void Opm::checkLgrNameToLevel(const Dune::CpGrid& grid,
                               const std::vector<std::string>& lgr_name_vec)
 {
-    BOOST_CHECK_EQUAL( grid.maxLevel(), static_cast<int>(lgr_name_vec.size())); // If there is no nested refinement
-
-    const auto& lgrNameToLevel =  grid.getLgrNameToLevel();
-    for (const auto& [lgrName, level] : lgrNameToLevel) {
-        if (level){
-            BOOST_CHECK_EQUAL( lgrName, lgr_name_vec[level-1]);
-        }
-        else {
-            BOOST_CHECK_EQUAL( lgrName, "GLOBAL");
+    if (grid.maxLevel()) {
+        const auto& lgrNameToLevel =  grid.getLgrNameToLevel();
+        for (const auto& [lgrName, level] : lgrNameToLevel) {
+            if (level){ // If the grid has been refined only once.
+                BOOST_CHECK_EQUAL( lgrName, lgr_name_vec[level-1]);
+            }
+            else {
+                BOOST_CHECK_EQUAL( lgrName, "GLOBAL");
+            }
         }
     }
 }

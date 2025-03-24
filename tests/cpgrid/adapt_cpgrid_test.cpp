@@ -69,28 +69,22 @@ void adaptGridWithParams(Dune::CpGrid& grid,
         BOOST_CHECK( elem.mightVanish() == true);
     }
     grid.preAdapt();
-    if( grid.preAdapt() ) { // markedCells can be empty
-        grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
-        grid.postAdapt();
-    }
+    grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
+    grid.postAdapt();
 }
 
 void adaptGrid(Dune::CpGrid& grid,
                const std::vector<int>& markedCells)
 {
     const auto& leafGridView = grid.currentData().back();
-    std::cout<< "empty: " << markedCells.empty()<< std::endl;
     for (const auto& elemIdx : markedCells)
     {
-        std::cout<< "hola: " << markedCells.empty()<< std::endl;
         const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
         grid.mark(1, elem);
     }
     grid.preAdapt();
-    if( grid.preAdapt() ) { // markedCells can be empty
-        grid.adapt();
-        grid.postAdapt();
-    }
+    grid.adapt();
+    grid.postAdapt();
 }
 
 void compareGrids(const Dune::CpGrid& grid,
@@ -151,10 +145,10 @@ BOOST_AUTO_TEST_CASE(emptyMarkedElemForRefinementSetDoesNothingToTheGrid)
     adaptGrid(grid, /* markedCells = */ {});
 
     BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
-    BOOST_CHECK_EQUAL( grid.numCells(), grid.levelGridView(0).size(0));
+    BOOST_CHECK_EQUAL( grid.preAdapt(), false);
+    BOOST_CHECK_EQUAL( grid.adapt(), false);
+    BOOST_CHECK_EQUAL( grid.leafGridView().size(0), grid.levelGridView(0).size(0));
 }
-
-
 
 BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinementWithOne)
 {

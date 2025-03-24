@@ -484,7 +484,8 @@ namespace Dune
         ///        Need to be called after elements have been marked for refinement.
         bool preAdapt();
 
-        /// @brief Triggers the grid refinement process
+        /// @brief Triggers the grid refinement process.
+        ///        Returns true if the grid has changed, false otherwise.
         bool adapt();
 
         /// @brief Triggers the grid refinement process, allowing to select diffrent refined level grids.
