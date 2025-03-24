@@ -79,14 +79,18 @@ void adaptGrid(Dune::CpGrid& grid,
                const std::vector<int>& markedCells)
 {
     const auto& leafGridView = grid.currentData().back();
+    std::cout<< "empty: " << markedCells.empty()<< std::endl;
     for (const auto& elemIdx : markedCells)
     {
+        std::cout<< "hola: " << markedCells.empty()<< std::endl;
         const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
         grid.mark(1, elem);
     }
     grid.preAdapt();
-    grid.adapt();
-    grid.postAdapt();
+    if( grid.preAdapt() ) { // markedCells can be empty
+        grid.adapt();
+        grid.postAdapt();
+    }
 }
 
 void compareGrids(const Dune::CpGrid& grid,
@@ -140,31 +144,16 @@ BOOST_AUTO_TEST_CASE(emptyMarkedElemForRefinementSetDoesNothingToTheGrid)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+
+    // If no elements are marked for refinement, calling adapt(/*args*/) or adapt()
+    // will not modify the grid.
     adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, /* markedCells = */ {});
+    adaptGrid(grid, /* markedCells = */ {});
 
-    // Create other grid for comparison
-    Dune::CpGrid other_grid;
-    other_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    // isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement
-    //compareGrids(grid, other_grid, true, false, false);
+    BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
+    BOOST_CHECK_EQUAL( grid.numCells(), grid.levelGridView(0).size(0));
 }
 
-
-BOOST_AUTO_TEST_CASE(markNoElemForRefinementIsEquivalentToCallGlobalRefineWithZero)
-{
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-    adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, /* markedCells = */ {});
-
-    // Create other grid for comparison
-    Dune::CpGrid other_grid;
-    other_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-    other_grid.globalRefine(0);
-
-    // isBlockShape, hasBeenRefinedAtLeastOnce, isGlobalRefinement
-    // compareGrids(grid, other_grid, true, false, true);
-}
 
 
 BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinementWithOne)
