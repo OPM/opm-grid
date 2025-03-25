@@ -91,7 +91,6 @@ void compareGrids(const Dune::CpGrid& grid,
                   const Dune::CpGrid& equivalent_grid,
                   bool gridLgrsHaveBlockShape,
                   bool gridHasBeenGlobalRefined,
-                  bool gridHadBeenRefinedAtLeastOnce = false,
                   int gridPreAdaptMaxLevel = 0)
 {
     if(gridLgrsHaveBlockShape) { // For a mixed grid that gets refined a second time, isBlockShape == false, even though the marked elements form a block.
@@ -107,14 +106,13 @@ void checkAdaptedGrid(Dune::CpGrid& grid,
                       const std::array<int,3>& cells_per_dim,
                       bool lgrsHaveBlockShape,
                       bool gridHasBeenGlobalRefined,
-                      bool gridHadBeenRefinedAtLeastOnce = false,
                       int preAdaptMaxLevel = 0)
 {
     const auto& data = grid.currentData();
     BOOST_CHECK(static_cast<int>(data.size()) == grid.maxLevel() +2);
 
     Opm::checkVertexAndFaceIndexAreNonNegative(grid);
-    Opm::checkGridBasicHiearchyInfo(grid, {cells_per_dim}, gridHadBeenRefinedAtLeastOnce, preAdaptMaxLevel);
+    Opm::checkGridBasicHiearchyInfo(grid, {cells_per_dim}, preAdaptMaxLevel);
     Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
 
     if (lgrsHaveBlockShape) {
@@ -280,7 +278,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseCellsNotTouchingLgrBoundaryInAGridWithLgrsIsSup
     adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, markedCells);
     
     checkAdaptedGrid(grid, /* cells_per_dim = */ {2,3,4}, /* lgrsHaveBlockShape = */ false, /* gridHasBeenGlobalRefined = */ false,
-                     /* hadBeenRefinedAtLeastOnce = */ true, /* preAdaptMaxLevel = */ 1);
+                     /* preAdaptMaxLevel = */ 1);
 }
 
 /*BOOST_AUTO_TEST_CASE(refineInteriorRefinedCells_in_mixedGrid) {

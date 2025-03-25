@@ -65,8 +65,7 @@ void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
 
 void checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                                 const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                bool gridHadBeenRefinedAtLeastOnce,
-                                int preAdaptMaxLevel);
+                                int preAdaptMaxLevel = 0);
 
 void checkLocalIndicesMatchMapper(const Dune::CpGrid& grid);
 
@@ -200,8 +199,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
 
 void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
                                      const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                     bool gridHadBeenRefinedAtLeastOnce = false,
-                                     int preAdaptMaxLevel = 0)
+                                     int preAdaptMaxLevel)
 {
     const int maxLevel = grid.maxLevel(); // Leaf Grid View has index maxLevel +1
     for (int level = preAdaptMaxLevel+1; level <= maxLevel+1; ++level) {
