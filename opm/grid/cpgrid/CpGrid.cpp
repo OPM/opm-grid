@@ -1955,6 +1955,15 @@ template cpgrid::Entity<1> createEntity(const CpGrid&, int, bool); // needed in 
 
 bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
+    // Throw if element has a neighboring cell from a different level.
+    // E.g., a coarse cell touching the boundary of an LGR, or
+    // a refined cell with a coarser/finner neighboring cell. 
+    const auto& intersections = Dune::intersections(leafGridView(), element);
+    for (const auto& intersection : intersections){
+        if (intersection.neighbor() && (intersection.outside().level() != element.level()))
+             OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
+    }
+    
     // For serial run, mark elements also in the level they were born.
     if(currentData().size()>1) {
         // Mark element in its level
