@@ -59,7 +59,7 @@ void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_
                                              const std::vector<int>& globalCell_leaf);
 
 void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                            int level,
+                            int preAdaptMaxLevel,
                             double expected_total_children,
                             const Dune::CpGrid& grid);
 
@@ -174,13 +174,23 @@ void Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& global
 }
 
 void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
-                                 int level,
+                                 int preAdaptMaxLevel,
                                  double expected_total_children,
                                  const Dune::CpGrid& grid)
 {
-    BOOST_CHECK( element.father().level() == 0); // If there is no nested refinement
-    BOOST_CHECK( element.father().isLeaf() == false); // Father vanished during refinement.
+    if (preAdaptMaxLevel) {
+        BOOST_CHECK( element.father().level() <= preAdaptMaxLevel );
+    }
+    else {
+        BOOST_CHECK_EQUAL( element.father().level(), 0 ); // If there is no nested refinement
+    }
+
+    BOOST_CHECK_EQUAL( grid.currentData()[element.father().level()] ->getMark(element.father()), 1);
+    BOOST_CHECK( !element.father().isLeaf()); // Father vanished during refinement.
+    BOOST_CHECK( element.father().mightVanish() );
     BOOST_CHECK( element.father() == element.getOrigin() );
+    /** TODO: Refactor getOrigin() to always return the level-zero ancestor,
+        even when the grid has undergone multiple refinements. */
 
     auto itFather = element.father().hbegin(grid.maxLevel());
     const auto endItFather = element.father().hend(grid.maxLevel());
@@ -191,7 +201,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto& [child_level, siblings_list] =
         grid.currentData()[element.father().level()]->getChildrenLevelAndIndexList(element.father().index());
 
-    BOOST_CHECK_EQUAL( child_level, level);
+    BOOST_CHECK_EQUAL( child_level, element.level());
 
     BOOST_CHECK( (std::find(siblings_list.begin(), siblings_list.end(), element.index() ) != siblings_list.end()));
     BOOST_CHECK_EQUAL( siblings_list.size(), expected_total_children);
@@ -207,7 +217,10 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
         const auto& elements = isLeaf? Dune::elements(grid.leafGridView()) : Dune::elements(grid.levelGridView(level));
         for (const auto& element : elements) {
             BOOST_CHECK_EQUAL( element.hasFather(), static_cast<bool>(element.level())); // level>0 -> 1 (true); level=0 (false)
-            BOOST_CHECK_EQUAL( element.getOrigin().level(), 0);
+
+            BOOST_CHECK( element.getOrigin().level() <= preAdaptMaxLevel);
+            /** TODO: Refactor getOrigin() to always return the level-zero ancestor,
+                even when the grid has undergone multiple refinements. */
 
             if (isLeaf) {
                 BOOST_CHECK( !element.mightVanish() );
@@ -218,50 +231,39 @@ void Opm::checkGridBasicHiearchyInfo(const Dune::CpGrid& grid,
             auto it = element.hbegin(maxLevel);
             const auto endIt = element.hend(maxLevel);
 
-            if (element.hasFather()) {
-                /*  int subdivisionsIdx = element.level()-1-preAdaptMaxLevel;
-                    const auto expected_total_children = cells_per_dim_vec[subdivisionsIdx][0]*cells_per_dim_vec[subdivisionsIdx][1]*cells_per_dim_vec[subdivisionsIdx][2];
-                    BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
+            if (element.hasFather() && (element.level()>preAdaptMaxLevel)) {
+                // second bool discards leaf element born in refined level grids that had not been marked for refinement in the last adapt call. 
+                
+                int subdivisionsIdx = element.level()-1-preAdaptMaxLevel;
+                const auto expected_total_children = cells_per_dim_vec[subdivisionsIdx][0]*cells_per_dim_vec[subdivisionsIdx][1]*cells_per_dim_vec[subdivisionsIdx][2];
+                BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
+                    
+                checkFatherAndSiblings(element.getLevelElem(), preAdaptMaxLevel, expected_total_children, grid);
 
-                    checkFatherAndSiblings(element.getLevelElem(), element.level(), expected_total_children, grid);*/
-
-                BOOST_CHECK( !element.father().isLeaf() );
-                BOOST_CHECK( element.father().mightVanish() );
-
-
-                if (preAdaptMaxLevel) {
-
-                    // For refinement of a grid that had been refined at least once, e.g., nested refinement.
-                    BOOST_CHECK(element.father().level() <= preAdaptMaxLevel);
-                    BOOST_CHECK( element.getOrigin().level() <= preAdaptMaxLevel);
-                    BOOST_CHECK_EQUAL( grid.currentData()[element.father().level()] ->getMark(element.father()), 1);
-
-                }
-                else {
+                if (!preAdaptMaxLevel) {
                     // If there is no nested refinement, entity.isLeaf() and it == endIt (if dristibuted_data_ is empty).
                     BOOST_CHECK( it == endIt);
                     BOOST_CHECK( element.isLeaf() );
 
                     BOOST_CHECK( element.isNew() );
                     BOOST_CHECK( !element.mightVanish() ); // if no nested refinement
-
-                    int subdivisionsIdx = element.level()-1-preAdaptMaxLevel;
-                    const auto expected_total_children = cells_per_dim_vec[subdivisionsIdx][0]*cells_per_dim_vec[subdivisionsIdx][1]*cells_per_dim_vec[subdivisionsIdx][2];
-                    BOOST_CHECK_CLOSE(element.geometryInFather().volume(), 1./expected_total_children, 1e-6);
-
-                    checkFatherAndSiblings(element.getLevelElem(), element.level(), expected_total_children, grid);
-
-                    BOOST_CHECK_EQUAL( element.father().level(), 0);
                 }
             }
             else {
-                BOOST_CHECK( element.getOrigin() == element.getLevelElem() );
-                BOOST_CHECK_THROW(element.father(), std::logic_error);
-                BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
-                BOOST_CHECK_EQUAL( element.level(), 0); // If there is no nested refinement.
+                if (preAdaptMaxLevel) {
+                    BOOST_CHECK( element.level() <= preAdaptMaxLevel); 
+                }
+                else {   
+                    BOOST_CHECK_EQUAL( element.level(), 0); // If there is no nested refinement.
+                    
+                    BOOST_CHECK( element.getOrigin() == element.getLevelElem() );
+                    /** TODO: Refactor getOrigin() to always return the level-zero ancestor,
+                        even when the grid has undergone multiple refinements. */
+                    
+                    BOOST_CHECK_THROW(element.father(), std::logic_error);
+                    BOOST_CHECK_THROW(element.geometryInFather(), std::logic_error);
 
-                if (level <= preAdaptMaxLevel){
-                    BOOST_CHECK( !element.isNew() );
+                    BOOST_CHECK( !element.isNew() ); /** TODO: Update isNew tag when refine. */
                 }
             }
         }
