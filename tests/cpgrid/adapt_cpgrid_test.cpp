@@ -112,11 +112,8 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
     equivalent_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
     equivalent_grid.globalRefine(1);
 
-    // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    Opm::compareGrids(grid,
-                      equivalent_grid,
-                      /* lgrsHaveBlockShape = */ false,
-                      /* gridHasBeenGlobalRefined = */ true);
+    Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
+     Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLeafView)
@@ -140,7 +137,8 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
                                            /* endIJK = */  {{3,2,2}}, // block cell indices = {17, 18}
                                            /* lgr_name = */  {"LGR1"});
 
-    Opm::compareGrids(grid, equivalent_grid, /* lgrsHaveBlockShape = */ true, /* gridHasBeenGlobalRefined = */ false);
+    Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
+    Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(refinementOfCellsNotFormingABlockIsSupported)
@@ -188,7 +186,8 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
     Opm::adaptGrid(equivalent_grid, markedCells2);
     Opm::adaptGrid(equivalent_grid, markedCells3);
 
-    Opm::compareGrids(grid, equivalent_grid, /* lgrsHaveBlockShape = */ false, /* gridHasBeenGlobalRefined = */ false);
+    Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
+     Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryThrows)

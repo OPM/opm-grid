@@ -91,10 +91,7 @@ BOOST_AUTO_TEST_CASE(adaptAGridThatHadBeenGlobalRefinedIsSupported)
     // LGR2 parent cells = {10,11}
     // -> Equivalent to grid after calling globalRefine(1) AND adapt() with marked cells {0,4,10,11}.
 
-    Opm::compareGrids(grid,
-                      equivalent_grid,
-                      /* lgrsHaveBlockShape = */ false,
-                      /* gridHasBeenGlobalRefined = */ true);
+    Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
@@ -113,9 +110,5 @@ BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
     std::iota(markedCells.begin(), markedCells.end(), 0);
     Opm::adaptGrid(equivalent_grid, markedCells);
 
-    // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells.
-    Opm::compareGrids(grid,
-                      equivalent_grid,
-                      /* lgrsHaveBlockShape = */ false,
-                      /* gridHasBeenGlobalRefined = */ true);
+    Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
 }
