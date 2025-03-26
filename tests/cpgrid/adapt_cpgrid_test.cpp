@@ -123,7 +123,7 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-    std::vector<int> markedCells = {17,18};
+    std::vector<int> markedCells = {17,18}; // block-shape with dimensions 2x1x1
     Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,2,2}, markedCells);
 
     checkAdaptedGrid(grid,
@@ -191,7 +191,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
     Opm::compareGrids(grid, equivalent_grid, /* lgrsHaveBlockShape = */ false, /* gridHasBeenGlobalRefined = */ false);
 }
 
-BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryInAGridWithLgrsThrows)
+BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryThrows)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -246,80 +246,6 @@ BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryInAGridWithLgrsThrow
     });
 }
 
-BOOST_AUTO_TEST_CASE(refineCoarseCellsNotTouchingLgrBoundaryInAGridWithLgrsIsSupported)
-{
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    // level zero grid - cells marked for refinement are denoted with (/*index*/).
-    // k = 0  8   9  10  11 | k = 1  20  21   22  23 | k = 2  32 33 34 35 |
-    //        4   5   6   7 |        16  17   18  19 |        28 29 30 31 |
-    //        0   1   2  (3)|        12  13   14  15 |        24 25 26 27 |
-    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ { {2,2,2}},
-                               /* startIJK_vec = */ {{3,0,0}},
-                               /* endIJK_vec = */ {{4,1,1}},
-                               /* lgr_name_vec = */ {"LGR1"});
-
-    // leaf grid view (after adding LGR1 and before calling adapt with parameters).
-    // k = 0 [15]  16  17  18 | k = 1  27  28   29  30 | k = 2  39 40 41 42 |
-    //       [11]  12  13  14 |        23  24   25  26 |        35 36 37 38 |
-    //        [0]  [1]  2  ()*|        19  20   21  22 |        31 32 33 34 |
-    //* indices 3-10 of refined cells (children of parent cell with index 3 in level zero grid).
-    // [/*index*/] coarse marked cells for refinement, (not forming a block) not touching the lgr boundary.
-
-    std::vector<int> markedCells = {0,1,11,15};
-    Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,3,4}, markedCells);
-
-    checkAdaptedGrid(grid,
-                     /* cells_per_dim = */ {2,3,4},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ false,
-                     /* preAdaptMaxLevel = */ 1);
-}
-
-BOOST_AUTO_TEST_CASE(refineRefinedCellsInTheInteriorOfAnLgrIsSupported)
-{
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    // level zero grid view - cells marked for refinement are denoted with (/*index*/).
-    // k = 0  8   9  10  11 | k = 1  20  21   22  23 | k = 2  32 33 34 35 |
-    //        4   5   6   7 |        16 (17) (18) 19 |        28 29 30 31 |
-    //        0   1   2   3 |        12  13   14  15 |        24 25 26 27 |
-
-    // LGR1 marked elements with elemIdx = 17 and 18, refined into 27 children cells each,
-    // with leaf indices 17+0,...,17+26 = 43 (children {level 0, cell index 17}),44,...,70 (children {level 0, cell index 18}).
-    grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{3,3,3}},
-                                /* startIJK_vec = */ {{1,1,1}},
-                                /* endIJK_vec = */ {{3,2,2}},
-                                /* lgr_name_vec = */ {"LGR1"});
-
-
-    // level 1 grid view, dimension 6x6x3 (leaf cell indices).
-    // k = 2  41  42  43  | 68  69  70 |
-    //        38  39  40  | 65  66  67 |
-    //        35  36  37  | 62  63  64 |
-    // ---------------------------------
-    // k = 1  32  33  34  | 59  60  61 |
-    //        29 [30][31] |[56][57] 58 |
-    //        26  27  28  | 53  54  55 |
-    // ---------------------------------
-    // k = 0  23  24  25  | 50  51  52 |
-    //        20  21  22  | 47  48  49 |
-    //        17  18  19  | 44  45  46 |
-
-    // Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
-    // Therefore, cell_to_face_ for all of them has size 6. (Their faces have all 2 refined neigboring cells - (not one coarse cell, and one refined)).
-    std::vector<int> markedCells = {30,31, 56,57};
-    Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,3,4}, markedCells);
-
-    checkAdaptedGrid(grid,
-                     /* cells_per_dim = */ {2,3,4},
-                     /* lgrsHaveBlockShape = */ false,
-                     /* gridHasBeenGlobalRefined = */ false,
-                     /* preAdaptMaxLevel = */ 1);
-}
-
 BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondaryIsSupported) {
 
     Dune::CpGrid grid;
@@ -351,7 +277,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondaryIsSupported) {
     //        17  18  19  | 44  45  46 |
     //
     // Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
-    // Therefore, cell_to_face_ for all of them has size 6. (Their faces have all 2 refined neigboring cells - (not one coarse cell, and one refined)).
+    // Therefore, cell_to_face_ for all of them has size 6.
 
 
     // leaf grid view
@@ -363,9 +289,9 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondaryIsSupported) {
     // ** indices 44, 45, ..., 70 (children of parent cell with index 18 in level zero grid)
 
     // - Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
-    // Therefore, cell_to_face_ for all of them has size 6. (Their faces have all 2 refined neigboring cells - (not one coarse cell, and one refined)).
-    // - Cells 0,1,2,86, and 87 are coarse cells, not touching the boundary of the LGR1 (cell 86 shares corners with LGR1 but do not share
-    // any face. Therefore, the faces of cells 0,1,2,86, and 87 have all 1 or 2 neighboring coarse cells).
+    // Therefore, cell_to_face_ for all of them has size 6.
+    // - Cells 0,1,2,86, and 87 are coarse cells, not touching the boundary of the LGR1. The faces of cells 0,1,2,86, and 87
+    // have all 1 or 2 neighboring coarse cells).
     std::vector<int> markedCells = {0,1,2,86,87,30,31,56,57};
     Opm::adaptGridWithParams(grid, /* cells_per_dim = */ {2,3,4}, markedCells);
 
@@ -377,7 +303,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondaryIsSupported) {
 }
 
 
-BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromMultipleLgrBondaryIsSupported) {
+BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromLgrBondariesIsSupported) {
 
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -410,8 +336,7 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromMultipleLgrBondaryIsSupp
     //        17  18  19  | 44  45  46 |                                     86   87   88  | 113 ...       |
     //
     // Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
-    // Therefore, cell_to_face_ for all of them has size 6. (Their faces have all 2 refined neigboring cells - (not one coarse cell, and one refined)).
-
+    // Therefore, cell_to_face_ for all of them has size 6.
 
     // leaf grid view
     // k = 0  8  9 10 11 | k = 1  72  73   74  75 | k = 2  84 85  []* []**|
@@ -420,8 +345,8 @@ BOOST_AUTO_TEST_CASE(refineCoarseAndRefinedCellsAwayFromMultipleLgrBondaryIsSupp
     //
     // ()*  indices 17, 18, ..., 43 (children of parent cell with index 17 in level zero grid)
     // ()** indices 44, 45, ..., 70 (children of parent cell with index 18 in level zero grid)
-    // ()*  indices 86, 87, ..., 112 (children of parent cell with index 34 in level zero grid)
-    // ()** indices 113, 114, ..., 139 (children of parent cell with index 35 in level zero grid)
+    // []*  indices 86, 87, ..., 112 (children of parent cell with index 34 in level zero grid)
+    // []** indices 113, 114, ..., 139 (children of parent cell with index 35 in level zero grid)
 
     // - Cells 30, 31, 56, and 57 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
     // - Cells 99, 100, 125, and 126 are refined cells, located in the interior of the refined-level-grid-1 (lgr 1 / level 1).
