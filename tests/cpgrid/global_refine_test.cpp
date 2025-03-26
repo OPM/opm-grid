@@ -25,8 +25,7 @@
 #include <opm/grid/CpGrid.hpp>
 #include <tests/cpgrid/LgrChecks.hpp>
 
-#include <algorithm>
-#include <array>
+#include <numeric>
 #include <vector>
 
 struct Fixture

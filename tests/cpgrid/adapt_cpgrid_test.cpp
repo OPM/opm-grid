@@ -39,6 +39,7 @@
 
 #include <algorithm>
 #include <array>
+#include <numeric>
 #include <vector>
 
 struct Fixture
@@ -73,7 +74,7 @@ void checkAdaptedGrid(Dune::CpGrid& grid,
     }
 }
 
-BOOST_AUTO_TEST_CASE(emptyMarkedElemForRefinementSetDoesNothingToTheGrid)
+BOOST_AUTO_TEST_CASE(markNoElemForRefinementDoesNothingToTheGrid)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -190,7 +191,7 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
     Opm::compareGrids(grid, equivalent_grid, /* lgrsHaveBlockShape = */ false, /* gridHasBeenGlobalRefined = */ false);
 }
 
-BOOST_AUTO_TEST_CASE(refinedCoarseOrRefinedCellsOnLgrBoundaryInAGridWithLgrsThrows)
+BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryInAGridWithLgrsThrows)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
