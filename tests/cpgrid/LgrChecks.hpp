@@ -116,6 +116,13 @@ void compareGrids(const Dune::CpGrid& grid,
                   bool gridLgrsHaveBlockShape,
                   bool gridHasBeenGlobalRefined);
 
+void adaptGridWithParams(Dune::CpGrid& grid,
+                         const std::array<int,3>& cells_per_dim,
+                         const std::vector<int>& markedCells);
+
+void adaptGrid(Dune::CpGrid& grid,
+               const std::vector<int>& markedCells);
+
 } // namespace Opm
 
 
@@ -661,6 +668,40 @@ void Opm::compareGrids(const Dune::CpGrid& grid,
             Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
         }
     }
+}
+
+void Opm::adaptGridWithParams(Dune::CpGrid& grid,
+                              const std::array<int,3>& cells_per_dim,
+                              const std::vector<int>& markedCells)
+{
+    const int startingGridIdx = grid.currentData().size() -1; // size before calling adapt
+    std::vector<int> assignRefinedLevel(grid.currentData()[startingGridIdx]->size(0));
+
+    for (const auto& elemIdx : markedCells)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*(grid.currentData()[startingGridIdx]), elemIdx, true);
+        grid.mark(1, elem);
+        assignRefinedLevel[elemIdx] = grid.maxLevel() + 1;
+        BOOST_CHECK( grid.getMark(elem) == 1);
+        BOOST_CHECK( elem.mightVanish() == true);
+    }
+    grid.preAdapt();
+    grid.adapt({cells_per_dim}, assignRefinedLevel, {"LGR"+std::to_string(grid.maxLevel() +1)});
+    grid.postAdapt();
+}
+
+void Opm::adaptGrid(Dune::CpGrid& grid,
+                    const std::vector<int>& markedCells)
+{
+    const auto& leafGridView = grid.currentData().back();
+    for (const auto& elemIdx : markedCells)
+    {
+        const auto& elem =  Dune::cpgrid::Entity<0>(*leafGridView, elemIdx, true);
+        grid.mark(1, elem);
+    }
+    grid.preAdapt();
+    grid.adapt();
+    grid.postAdapt();
 }
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
