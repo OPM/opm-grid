@@ -70,6 +70,33 @@ BOOST_AUTO_TEST_CASE(globalRefineAgridWithCoarseAndRefinedCellsThrows)
     BOOST_CHECK_THROW(grid.globalRefine(1), std::logic_error);
 }
 
+BOOST_AUTO_TEST_CASE(adaptAGridThatHadBeenGlobalRefinedIsSupported)
+{
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {2,2,1}, /* cell_sizes = */ {2.0, 2.0, 2.0});
+    grid.globalRefine(1);
+
+    Opm::adaptGrid(grid, /* markedCells = */ {0,4,10,11});
+
+    // Create equivalent grid for comparison.
+    Dune::CpGrid equivalent_grid;
+    equivalent_grid.createCartesian(/* grid_dim = */ {4,4,2}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    // -> Equivalent to grid after calling globalRefine(1) and before calling adapt() with marked
+    // cells {0,4,10,11}
+    equivalent_grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                                          /* startIJK_vec = */ {{0,0,0}, {2,1,0}},
+                                          /* endIJK_vec = */ {{1,1,2}, {4,2,1}},
+                                          /* lgr_name_vec = */ {"LGR1", "LGR2"});
+    // LGR1 parent cells = {0,4}
+    // LGR2 parent cells = {10,11}
+    // -> Equivalent to grid after calling globalRefine(1) AND adapt() with marked cells {0,4,10,11}.
+
+    Opm::compareGrids(grid,
+                      equivalent_grid,
+                      /* lgrsHaveBlockShape = */ false,
+                      /* gridHasBeenGlobalRefined = */ true);
+}
+
 BOOST_AUTO_TEST_CASE(globalRefineWithPositiveParamIsSupported)
 {
     Dune::CpGrid grid;
