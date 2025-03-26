@@ -102,14 +102,31 @@ void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
                                        const std::vector<int>& expected_vertex_ids_per_lgr,
                                        int leaf_expected_vertex_ids);
 
-void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf);
+void checkVertexGlobalIds(const Dune::CpGrid& grid,
+                          int expected_vertex_ids,
+                          int levelOrLeaf);
 
-void checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
+void checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid,
+                                   const Dune::CpGrid& other_grid);
 
-void checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
+void checkEqualVertexGeometrySet(const Dune::CpGrid& grid,
+                                 const Dune::CpGrid& other_grid);
+
+void checkEqualCellGeometrySet(const Dune::CpGrid& grid,
+                               const Dune::CpGrid& other_grid);
+
+template<typename GridView>
+void checkEqualIntersectionsGeometry(const GridView& grid_view,
+                                     const Dune::cpgrid::Entity<0>& element,
+                                     const GridView& equiv_grid_view,
+                                     const Dune::cpgrid::Entity<0>& other_grid_elem);
+
+void checkLeafGridGeometryEquality(const Dune::CpGrid& grid,
+                                   const Dune::CpGrid& other_grid);
 
 template<typename T>
-bool areClose(const T& cont1, const T& cont2);
+bool areClose(const T& cont1,
+              const T& cont2);
 
 void adaptGridWithParams(Dune::CpGrid& grid,
                          const std::array<int,3>& cells_per_dim,
@@ -535,14 +552,8 @@ void Opm::checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid, const Dune::Cp
     BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
 }
 
-void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
+void Opm::checkEqualVertexGeometrySet(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
 {
-    Opm::checkEqualVertexFaceCellSizes(grid, other_grid);
-    
-    const auto& grid_view = grid.leafGridView();
-    const auto& equiv_grid_view = other_grid.leafGridView();
-
-    
     const auto& grid_vertices =  Dune::vertices(grid.leafGridView());
     const auto& other_grid_vertices =  Dune::vertices(other_grid.leafGridView());
 
@@ -559,9 +570,15 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
         }
         BOOST_CHECK(matching_vertex_found);
     }
+}
 
-    const auto& grid_elements =  Dune::elements(grid.leafGridView());
-    const auto& other_grid_elements =  Dune::elements(other_grid.leafGridView());
+void Opm::checkEqualCellGeometrySet(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
+{
+    const auto& grid_view = grid.leafGridView();
+    const auto& equiv_grid_view = other_grid.leafGridView();
+
+    const auto& grid_elements =  Dune::elements(grid_view);
+    const auto& other_grid_elements =  Dune::elements(equiv_grid_view);
 
     for(const auto& element : grid_elements) {
         // find matching element (needed as ordering is allowed to be different
@@ -569,12 +586,13 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
         for (const auto& other_grid_elem : other_grid_elements) {
             if (!Opm::areClose(element.geometry().center(), other_grid_elem.geometry().center() ))
                 continue;
-
             matching_elem_found = true;
+            
             const auto& elem_geo = element.geometry();
             for(const auto& coord : elem_geo.center()) {
                 BOOST_TEST(std::isfinite(coord));
             }
+            
             BOOST_CHECK_CLOSE(elem_geo.volume(), other_grid_elem.geometry().volume(), 1e-8);
 
             const int elemNumFaces = grid.numCellFaces(element.index());
@@ -586,50 +604,65 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
             if (elemNumFaces>6) {
                 continue;
             }
-
-            const auto& elemIntersections = Dune::intersections(grid_view, element);
-            for(const auto& intersection: elemIntersections) {
-                // find matching intersection (needed as ordering is allowed to be different
-                bool matching_intersection_found = false;
-                const auto& equivElemIntersections = intersections(equiv_grid_view, other_grid_elem); 
-                for(const auto& intersection_match : equivElemIntersections) {
-                    if(intersection_match.indexInInside() == intersection.indexInInside()) {
-                        BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
-
-                        if(intersection.neighbor()) {
-                            BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
-                        }
-
-                        BOOST_CHECK( Opm::areClose(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal()) );
-
-                        const auto& geom_match = intersection_match.geometry();
-                        BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
-                        const auto& geom =  intersection.geometry();
-                        bool closeGeomCenter = Opm::areClose(geom_match.center(), geom.center());
-                        if (!closeGeomCenter) {
-                            break; // Check next intersection_match
-                        }
-
-                        BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
-                        BOOST_CHECK( Opm::areClose(geom_match.center(), geom.center()) );
-                        BOOST_CHECK(geom_match.corners() == geom.corners());
-
-                        decltype(geom.corner(0)) sum_match{}, sum{};
-
-                        for(int cor = 0; cor < geom.corners(); ++cor) {
-                            sum += geom.corner(cor);
-                            sum_match += geom_match.corner(1);
-                        }
-                        BOOST_CHECK( Opm::areClose(sum, sum_match));
-                        matching_intersection_found = true;
-                        break;
-                    }
-                } // end-for-loop-intersection_match
-                BOOST_CHECK(matching_intersection_found);
-            }
+            Opm::checkEqualIntersectionsGeometry(grid_view, element, equiv_grid_view, other_grid_elem);
             BOOST_CHECK(matching_elem_found);
         }
     }
+}
+
+template<typename GridView>
+void Opm::checkEqualIntersectionsGeometry(const GridView& grid_view,
+                                          const Dune::cpgrid::Entity<0>& element,
+                                          const GridView& equiv_grid_view,
+                                          const Dune::cpgrid::Entity<0>& other_grid_elem)
+{
+    const auto& elemIntersections = Dune::intersections(grid_view, element);
+    for(const auto& intersection: elemIntersections) {
+        // find matching intersection (needed as ordering is allowed to be different
+        bool matching_intersection_found = false;
+        const auto& equivElemIntersections = Dune::intersections(equiv_grid_view, other_grid_elem);
+        for(const auto& intersection_match : equivElemIntersections) {
+            if(intersection_match.indexInInside() == intersection.indexInInside()) {
+                BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                if(intersection.neighbor()) {
+                    BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                }
+
+                BOOST_CHECK( Opm::areClose(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal()) );
+
+                const auto& geom_match = intersection_match.geometry();
+                BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                const auto& geom =  intersection.geometry();
+                bool closeGeomCenter = Opm::areClose(geom_match.center(), geom.center());
+                if (!closeGeomCenter) {
+                    break; // Check next intersection_match
+                }
+
+                BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                BOOST_CHECK( Opm::areClose(geom_match.center(), geom.center()) );
+                BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                decltype(geom.corner(0)) sum_match{}, sum{};
+
+                for(int cor = 0; cor < geom.corners(); ++cor) {
+                    sum += geom.corner(cor);
+                    sum_match += geom_match.corner(1);
+                }
+                BOOST_CHECK( Opm::areClose(sum, sum_match));
+                matching_intersection_found = true;
+                break;
+            }
+        }     
+        BOOST_CHECK(matching_intersection_found);
+    }
+}
+
+void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
+{
+    Opm::checkEqualVertexFaceCellSizes(grid, other_grid);
+    Opm::checkEqualVertexGeometrySet(grid, other_grid);
+    Opm::checkEqualCellGeometrySet(grid, other_grid);
 }
 
 void Opm::adaptGridWithParams(Dune::CpGrid& grid,
