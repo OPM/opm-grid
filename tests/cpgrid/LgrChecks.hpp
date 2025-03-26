@@ -111,6 +111,11 @@ void checkCellBlockRefinements(const Dune::CpGrid& coarse_grid,
 template<typename T>
 bool areClose(const T& cont1, const T& cont2);
 
+void compareGrids(const Dune::CpGrid& grid,
+                  const Dune::CpGrid& equivalent_grid,
+                  bool gridLgrsHaveBlockShape,
+                  bool gridHasBeenGlobalRefined);
+
 } // namespace Opm
 
 
@@ -643,6 +648,20 @@ void Opm::checkCellBlockRefinements(const Dune::CpGrid& grid,
     }
 }
 
+void Opm::compareGrids(const Dune::CpGrid& grid,
+                       const Dune::CpGrid& equivalent_grid,
+                       bool gridLgrsHaveBlockShape,
+                       bool gridHasBeenGlobalRefined)
+{
+    if(gridLgrsHaveBlockShape) { // For a mixed grid that gets refined more than once,
+        // gridLgrsHaveBlockShape == false, even though the marked elements form a block.
+        Opm::checkCellBlockRefinements(grid, equivalent_grid);
+
+        if (gridHasBeenGlobalRefined) {
+            Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
+        }
+    }
+}
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
 
