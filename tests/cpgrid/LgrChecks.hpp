@@ -104,6 +104,8 @@ void checkExpectedVertexGlobalIdsCount(const Dune::CpGrid& grid,
 
 void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int levelOrLeaf);
 
+void checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
+
 void checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
 
 template<typename T>
@@ -526,21 +528,21 @@ bool Opm::areClose(const T& cont1, const T& cont2)
     return (std::abs(cont1[0] - cont2[0]) < 1e-12) && (std::abs(cont1[1] - cont2[1]) < 1e-12) && (std::abs(cont1[2] - cont2[2])< 1e-12);
 }
 
+void Opm::checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
+{
+    BOOST_CHECK_EQUAL(grid.size(3), other_grid.size(3));
+    BOOST_CHECK_EQUAL(grid.numFaces(), other_grid.numFaces());
+    BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
+}
+
 void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
 {
-
+    Opm::checkEqualVertexFaceCellSizes(grid, other_grid);
+    
     const auto& grid_view = grid.leafGridView();
     const auto& equiv_grid_view = other_grid.leafGridView();
 
-    // Check sizes
-    BOOST_CHECK_EQUAL(grid_view.size(3), equiv_grid_view.size(3));
-    BOOST_CHECK_EQUAL(grid_view.size(0),  equiv_grid_view.size(0));
-
-    BOOST_CHECK_EQUAL(grid.numFaces(), other_grid.numFaces());
-    BOOST_CHECK_EQUAL(grid.numCells(), other_grid.numCells());
-    BOOST_CHECK_EQUAL(grid.size(3), other_grid.size(3));
-    BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
-
+    
     const auto& grid_vertices =  Dune::vertices(grid.leafGridView());
     const auto& other_grid_vertices =  Dune::vertices(other_grid.leafGridView());
 
@@ -589,7 +591,7 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
             for(const auto& intersection: elemIntersections) {
                 // find matching intersection (needed as ordering is allowed to be different
                 bool matching_intersection_found = false;
-                const auto& equivElemIntersections = intersections(equiv_grid_view, other_grid_elem); //*equiv_element_iter);
+                const auto& equivElemIntersections = intersections(equiv_grid_view, other_grid_elem); 
                 for(const auto& intersection_match : equivElemIntersections) {
                     if(intersection_match.indexInInside() == intersection.indexInInside()) {
                         BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
