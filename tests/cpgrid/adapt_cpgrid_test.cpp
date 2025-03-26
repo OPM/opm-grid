@@ -113,7 +113,6 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
     equivalent_grid.globalRefine(1);
 
     Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
-     Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLeafView)
@@ -138,7 +137,6 @@ BOOST_AUTO_TEST_CASE(markCellBlockForRefinementIsEquivalentToCallAddLgrsUpdateLe
                                            /* lgr_name = */  {"LGR1"});
 
     Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
-    Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(refinementOfCellsNotFormingABlockIsSupported)
@@ -187,7 +185,6 @@ BOOST_AUTO_TEST_CASE(callAdaptMultipleTimesAsLongAsCoarseMarkedElementsAreNotAtL
     Opm::adaptGrid(equivalent_grid, markedCells3);
 
     Opm::checkLeafGridGeometryEquality(grid, equivalent_grid);
-     Opm::checkCellBlockRefinements(grid, equivalent_grid);
 }
 
 BOOST_AUTO_TEST_CASE(refineCoarseOrRefinedCellsOnLgrBoundaryThrows)

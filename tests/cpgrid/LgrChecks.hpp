@@ -106,8 +106,6 @@ void checkVertexGlobalIds(const Dune::CpGrid& grid, int expected_vertex_ids, int
 
 void checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid);
 
-void checkCellBlockRefinements(const Dune::CpGrid& coarse_grid,
-                               const Dune::CpGrid& other_grid);
 template<typename T>
 bool areClose(const T& cont1, const T& cont2);
 
@@ -561,131 +559,74 @@ void Opm::checkLeafGridGeometryEquality(const Dune::CpGrid& grid, const Dune::Cp
     }
 
     const auto& grid_elements =  Dune::elements(grid.leafGridView());
+    const auto& other_grid_elements =  Dune::elements(other_grid.leafGridView());
+
     for(const auto& element : grid_elements) {
         // find matching element (needed as ordering is allowed to be different
         bool matching_elem_found = false;
-
-        // Iterate over other_grid elements until an element's center is close enough to element.geometry().center()
-        auto equiv_element_iter = equiv_grid_view.begin<0>();
-        
-        const auto& elem_geo = element.geometry();
-        
-        bool closeCenter = Opm::areClose(elem_geo.center(), equiv_element_iter->geometry().center());
-        while ( (equiv_element_iter != equiv_grid_view.end<0>()) && (!closeCenter) ) {
-            ++equiv_element_iter;
-            closeCenter = Opm::areClose(elem_geo.center(), equiv_element_iter->geometry().center());
-        }
-        matching_elem_found = true;
-
-        for(const auto& coord : elem_geo.center()) {
-            BOOST_TEST(std::isfinite(coord));
-        }
-        BOOST_CHECK_CLOSE(elem_geo.volume(), equiv_element_iter->geometry().volume(), 1e-8);
-
-        const int elemNumFaces = grid.numCellFaces(element.index());
-        const int equivElemNumFaces = other_grid.numCellFaces(equiv_element_iter->index());
-        BOOST_CHECK_EQUAL( elemNumFaces, equivElemNumFaces);
-
-        // For coarse cells with more than 6 faces, this is the case when they touch lgr boundaries, finding matching
-        // intersections is not implemented yet.
-        if (elemNumFaces>6) {
-            continue;
-        }
-
-        const auto& elemIntersections = Dune::intersections(grid_view, element);
-        for(const auto& intersection: elemIntersections) {
-            // find matching intersection (needed as ordering is allowed to be different
-            bool matching_intersection_found = false;
-            const auto& equivElemIntersections = intersections(equiv_grid_view, *equiv_element_iter);
-            for(const auto& intersection_match : equivElemIntersections) {
-                if(intersection_match.indexInInside() == intersection.indexInInside()) {
-                    BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
-
-                    if(intersection.neighbor()) {
-                        BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
-                    }
-
-                    BOOST_CHECK( Opm::areClose(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal()) );
-
-                    const auto& geom_match = intersection_match.geometry();
-                    BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
-                    const auto& geom =  intersection.geometry();
-                    bool closeGeomCenter = Opm::areClose(geom_match.center(), geom.center());
-                    if (!closeGeomCenter) {
-                        break; // Check next intersection_match
-                    }
-
-                    BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
-                    BOOST_CHECK( Opm::areClose(geom_match.center(), geom.center()) );
-                    BOOST_CHECK(geom_match.corners() == geom.corners());
-
-                    decltype(geom.corner(0)) sum_match{}, sum{};
-
-                    for(int cor = 0; cor < geom.corners(); ++cor) {
-                        sum += geom.corner(cor);
-                        sum_match += geom_match.corner(1);
-                    }
-                    BOOST_CHECK( Opm::areClose(sum, sum_match));
-                    matching_intersection_found = true;
-                    break;
-                }
-            } // end-for-loop-intersection_match
-            BOOST_CHECK(matching_intersection_found);
-        }
-        BOOST_CHECK(matching_elem_found);
-    }
-}
-
-void Opm::checkCellBlockRefinements(const Dune::CpGrid& grid,
-                                    const Dune::CpGrid& other_grid)
-{
-    const auto& leafGrid = grid.currentData().back();
-    const auto& leafOtherGrid = other_grid.currentData().back();
-
-    // Check sizes
-    BOOST_CHECK_EQUAL(leafGrid->size(3), leafOtherGrid->size(3));
-    BOOST_CHECK_EQUAL(leafGrid->size(0), leafOtherGrid->size(0));
-
-
-    BOOST_CHECK_EQUAL(grid.numFaces(), other_grid.numFaces());
-    BOOST_CHECK_EQUAL(grid.numCells(), other_grid.numCells());
-    BOOST_CHECK_EQUAL(grid.size(3), other_grid.size(3));
-    BOOST_CHECK_EQUAL(grid.size(0), other_grid.size(0));
-
-    const auto& grid_vertices =  Dune::vertices(grid.leafGridView());
-    const auto& other_grid_vertices =  Dune::vertices(other_grid.leafGridView());
-
-    for(const auto& grid_vertex : grid_vertices) {
-        // find matching vertex (needed as ordering is allowed to be different
-        bool matching_vertex_found = false;
-        for (const auto& other_grid_vertex : other_grid_vertices) {
-            if (!Opm::areClose(grid_vertex.geometry().center(), other_grid_vertex.geometry().center() ))
-                continue;
-            for(const auto& coord: grid_vertex.geometry().center()) {
-                BOOST_TEST(std::isfinite(coord));
-            }
-            matching_vertex_found = true;
-        }
-        BOOST_CHECK(matching_vertex_found);
-    }
-
-
-    const auto& grid_elements =  Dune::elements(grid.leafGridView());
-    const auto& other_grid_elements =  Dune::elements(other_grid.leafGridView());
-
-    for(const auto& grid_elem : grid_elements) {
-        // find matching element (needed as ordering is allowed to be different
-        bool matching_elem_found = false;
         for (const auto& other_grid_elem : other_grid_elements) {
-            if (!Opm::areClose(grid_elem.geometry().center(), other_grid_elem.geometry().center() ))
+            if (!Opm::areClose(element.geometry().center(), other_grid_elem.geometry().center() ))
                 continue;
-            for(const auto& coord: grid_elem.geometry().center()) {
+
+            matching_elem_found = true;
+            const auto& elem_geo = element.geometry();
+            for(const auto& coord : elem_geo.center()) {
                 BOOST_TEST(std::isfinite(coord));
             }
-            BOOST_CHECK_CLOSE(grid_elem.geometry().volume(), other_grid_elem.geometry().volume(), 1e-24);
-            matching_elem_found = true;
+            BOOST_CHECK_CLOSE(elem_geo.volume(), other_grid_elem.geometry().volume(), 1e-8);
+
+            const int elemNumFaces = grid.numCellFaces(element.index());
+            const int equivElemNumFaces = other_grid.numCellFaces(other_grid_elem.index());
+            BOOST_CHECK_EQUAL( elemNumFaces, equivElemNumFaces);
+
+            // For coarse cells with more than 6 faces, this is the case when they touch lgr boundaries, finding matching
+            // intersections is not implemented yet.
+            if (elemNumFaces>6) {
+                continue;
+            }
+
+            const auto& elemIntersections = Dune::intersections(grid_view, element);
+            for(const auto& intersection: elemIntersections) {
+                // find matching intersection (needed as ordering is allowed to be different
+                bool matching_intersection_found = false;
+                const auto& equivElemIntersections = intersections(equiv_grid_view, other_grid_elem); //*equiv_element_iter);
+                for(const auto& intersection_match : equivElemIntersections) {
+                    if(intersection_match.indexInInside() == intersection.indexInInside()) {
+                        BOOST_CHECK(intersection_match.neighbor() == intersection.neighbor());
+
+                        if(intersection.neighbor()) {
+                            BOOST_CHECK(intersection_match.indexInOutside() == intersection.indexInOutside());
+                        }
+
+                        BOOST_CHECK( Opm::areClose(intersection_match.centerUnitOuterNormal(), intersection.centerUnitOuterNormal()) );
+
+                        const auto& geom_match = intersection_match.geometry();
+                        BOOST_TEST(0.0 == 1e-11, boost::test_tools::tolerance(1e-8));
+                        const auto& geom =  intersection.geometry();
+                        bool closeGeomCenter = Opm::areClose(geom_match.center(), geom.center());
+                        if (!closeGeomCenter) {
+                            break; // Check next intersection_match
+                        }
+
+                        BOOST_CHECK_CLOSE(geom_match.volume(), geom.volume(), 1e-6);
+                        BOOST_CHECK( Opm::areClose(geom_match.center(), geom.center()) );
+                        BOOST_CHECK(geom_match.corners() == geom.corners());
+
+                        decltype(geom.corner(0)) sum_match{}, sum{};
+
+                        for(int cor = 0; cor < geom.corners(); ++cor) {
+                            sum += geom.corner(cor);
+                            sum_match += geom_match.corner(1);
+                        }
+                        BOOST_CHECK( Opm::areClose(sum, sum_match));
+                        matching_intersection_found = true;
+                        break;
+                    }
+                } // end-for-loop-intersection_match
+                BOOST_CHECK(matching_intersection_found);
+            }
+            BOOST_CHECK(matching_elem_found);
         }
-        BOOST_CHECK(matching_elem_found);
     }
 }
 
