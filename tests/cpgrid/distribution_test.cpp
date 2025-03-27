@@ -122,11 +122,7 @@ public:
 
     typedef int DataType;
 
-#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 8)
     bool fixedSize()
-#else
-    bool fixedsize()
-#endif
     {
         return true;
     }
@@ -219,11 +215,7 @@ public:
     {}
 
     typedef int DataType;
-#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 8)
     bool fixedSize()
-#else
-    bool fixedsize()
-#endif
     {
         // We used fixedsize for the message as there is a bug in DUNE
         // up to 2.6.0
