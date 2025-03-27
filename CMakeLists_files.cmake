@@ -89,6 +89,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
   tests/cpgrid/grid_global_id_set_test.cpp
+  tests/cpgrid/lgr_cell_id_sync_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
