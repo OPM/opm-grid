@@ -107,11 +107,8 @@ namespace Dune
         for (int i = 0; i < Dim; ++i) {
             tmp[i] = a[i+1] - a[i];
         }
-#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 9)
+
         return determinantOf(tmp) / double(factorial(Dim));
-#else
-        return determinantOf(tmp) / double(Factorial<Dim>::factorial);
-#endif
         // determinant / factorial
     }
 

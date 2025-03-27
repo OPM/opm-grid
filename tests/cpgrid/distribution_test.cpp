@@ -122,7 +122,7 @@ public:
 
     typedef int DataType;
 
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 8)
+#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 8)
     bool fixedSize()
 #else
     bool fixedsize()
@@ -219,7 +219,7 @@ public:
     {}
 
     typedef int DataType;
-#if DUNE_VERSION_NEWER(DUNE_COMMON, 2, 8)
+#if DUNE_VERSION_GTE(DUNE_COMMON, 2, 8)
     bool fixedSize()
 #else
     bool fixedsize()
