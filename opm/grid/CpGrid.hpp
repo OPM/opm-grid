@@ -498,7 +498,7 @@ namespace Dune
         ///                                  refined entities of the (parent) marked element should belong is stored.
         /// @param [in] lgr_name_vector      Each refined level grid name, e.g. {"LGR1", "LGR2"}.
         /// @param [in] isCARFIN             Default false. The keyword CARFIN implies that the selected cells to be refined form a block,
-        ///                                  which can be edscribed via startIJK and endIJK Cartesian indices. This bool
+        ///                                  which can be described via startIJK and endIJK Cartesian indices. This bool
         ///                                  is used to define logical_cartesian_size_ of the refined level grids according
         ///                                  to this block shape.
         /// @param [in] startIJK_vec         Default empty vector. When isCARFIN, the starting ijk Cartesian index of each
@@ -519,7 +519,7 @@ namespace Dune
     private:
 
         /// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
-        
+
         /// @brief Refine each marked element and establish relationships between corners, faces, and cells marked for refinement,
         ///        with the refined corners, refined faces, and refined cells.
         ///

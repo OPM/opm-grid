@@ -706,8 +706,8 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
 
 void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf)
 {
-    for (const auto& element: elements(leafGridView()))
-    {
+    const auto& elements = Dune::elements(leafGridView());
+    for (const auto& element: elements) {
         // When refine via CpGrid::addLgrsUpdateGridView(/*...*/), level-grid to lookup global_cell_ is equal to level-zero-grid
         // In the context of allowed nested refinement, we lookup for the oldest ancestor, also belonging to level-zero-grid.
         auto ancestor = element.getOrigin();
@@ -2031,7 +2031,7 @@ bool CpGrid::adapt()
     }
     if (is_global_refine) { // parallel or sequential
         const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
-        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, is_global_refine, {{0,0,0}}, {endIJK});
+        return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, /*isCARFIN =*/ true, {{0,0,0}}, {endIJK});
     }
     return this-> adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec);
 }
@@ -2047,14 +2047,30 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     assert( static_cast<int>(assignRefinedLevel.size()) == current_view_data_->size(0));
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
+    bool all_elements_marked = std::all_of(assignRefinedLevel.begin(), assignRefinedLevel.end(),
+                                  [&](const auto& other_level) {
+                                      return other_level == assignRefinedLevel.front();
+                                  });
+    auto all_elements_marked_global = comm().min(all_elements_marked);
+
+    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
+    // Logical Cartesian Size before adapting the grid - to be used in case all_marked_global 
+    const auto& lcs =  data.back()->logical_cartesian_size_;
+
+    bool isGlobalRefine_local = !startIJK_vec.empty();
+    for (int c = 0; c<3; ++c) {
+        isGlobalRefine_local = isGlobalRefine_local && (startIJK_vec[0][c] == 0 ) && (endIJK_vec[0][c] == lcs[c]);
+        if (!isGlobalRefine_local)
+            break;
+    }
+    auto isGlobalRefine  = comm().min(isGlobalRefine_local);
+
     // Each marked element has its assigned level where its refined entities belong.
     const int& levels = cells_per_dim_vec.size();
     // Notice that "levels" represents also the total amount of new (after calling adapt) refined level grids.
     const int& preAdaptMaxLevel = this->maxLevel();
     // Copy corner history - needed to compute later ids, empty vector if the grid to be adapted is level 0 grid, or the grid has been distributed.
     const auto& preAdaptGrid_corner_history = (preAdaptMaxLevel>0) ? current_view_data_->corner_history_ : std::vector<std::array<int,2>>();
-
-    auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
 
     if (!global_id_set_ptr_) {
         global_id_set_ptr_ = std::make_shared<cpgrid::GlobalIdSet>(*data.back());
@@ -2466,7 +2482,15 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     (*data[levels + preAdaptMaxLevel +1]).leaf_to_level_cells_ =  leaf_to_level_cells;
     (*data[levels + preAdaptMaxLevel +1]).index_set_ = std::make_unique<cpgrid::IndexSet>(data[levels + preAdaptMaxLevel +1]->size(0),
                                                                                           data[levels + preAdaptMaxLevel +1]->size(3));
-    (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
+    if (all_elements_marked_global || isGlobalRefine) {
+        assert(cells_per_dim_vec.size() == 1);
+        (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  { lcs[0]*cells_per_dim_vec[0][0],
+                                                                           lcs[1]*cells_per_dim_vec[0][1],
+                                                                           lcs[2]*cells_per_dim_vec[0][2] };
+    }
+    else {
+        (*data[levels + preAdaptMaxLevel +1]).logical_cartesian_size_ =  (*data[0]).logical_cartesian_size_;
+    }
 
     // Update the leaf grid view
     current_view_data_ = data.back().get();
@@ -2486,7 +2510,12 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     }
 
     std::vector<int> global_cell_leaf( data[levels + preAdaptMaxLevel +1]->size(0));
-    computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
+    /*   if (all_elements_marked_global || isGlobalRefine) {
+        global_cell_leaf = data[levels+preAdaptMaxLevel]->global_cell_;
+    }
+    else {*/
+        computeGlobalCellLeafGridViewWithLgrs(global_cell_leaf);
+        // }  
     (*data[levels + preAdaptMaxLevel +1]).global_cell_.swap(global_cell_leaf);
 
     updateCornerHistoryLevels(cornerInMarkedElemWithEquivRefinedCorner,

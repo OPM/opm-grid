@@ -55,13 +55,15 @@ void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                         double total_children);
 
 void checkGlobalCellBounds(const Dune::CpGrid& grid,
-                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
+                           const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
+                           bool lgrsHaveBlockShape,
+                           bool isGlobalRefined);
 
 void checkGlobalCellBounds(const std::vector<int>& globalCell,
                            const std::array<int, 3>& logicalCartesianSize);
 
-void checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
-                                             const std::vector<int>& globalCell_leaf);
+void checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
+                                                      const std::vector<int>& globalCell_leaf);
 
 void checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
                             int preAdaptMaxLevel,
@@ -170,16 +172,25 @@ void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it
 }
 
 void Opm::checkGlobalCellBounds(const Dune::CpGrid& grid,
-                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data)
+                                const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data,
+                                bool lgrsHaveBlockShape,
+                                bool isGlobalRefined)
 {
     const int maxLevel = grid.maxLevel();
-    for (int level = 0; level <= maxLevel; ++level) {
-        if (!(data[level] -> globalCell().empty())) { // If level>0, in some processes, LGR might be empty.
-            Opm::checkGlobalCellBounds(data[level]->globalCell(), data[level]->logicalCartesianSize());
-        }
+    for (int level = 0; level < maxLevel; ++level) { // level == maxLevel -> leaf grid view
+        const auto& level_data = data[level];
+
+        if (level_data->globalCell().empty()) // If level>0, in some processes, LGR might be empty.
+            continue;
+        Opm::checkGlobalCellBounds(level_data->globalCell(), level_data->logicalCartesianSize());
     }
-    Opm::checkGlobalCellBounds(data.back()->globalCell(), data.back()->logicalCartesianSize());
-    Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
+
+    if(lgrsHaveBlockShape && !isGlobalRefined) {   // Only for local (not global) refinement via addLgrsUpdateLeafView or adapt(/*args*/).
+        Opm::checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(data.front()->globalCell(), data.back()->globalCell());
+    }
+    else {
+        Opm::checkGlobalCellBounds(data.back()->globalCell(), data.back()->logicalCartesianSize());
+    }
 }
 
 void Opm::checkGlobalCellBounds(const std::vector<int>& globalCell,
@@ -187,14 +198,19 @@ void Opm::checkGlobalCellBounds(const std::vector<int>& globalCell,
 {
     const auto [itMin, itMax] = std::minmax_element(globalCell.begin(), globalCell.end());
     BOOST_CHECK( *itMin >= 0);
-    //Note:  An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in all processes.
+    // An LGR can have cells distributed across different processes, so the minimum cell global id may not be zero in each process.
 
     const auto maxCartesianIdxLevel = logicalCartesianSize[0]*logicalCartesianSize[1]*logicalCartesianSize[2];
+    if ( *itMax >= maxCartesianIdxLevel)
+    {
+    std::cout<< *itMax << " vs " << maxCartesianIdxLevel << std::endl;
+    }
+    
     BOOST_CHECK( *itMax < maxCartesianIdxLevel);
 }
 
-void Opm::checkEqMinMaxGlobalCellLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
-                                                  const std::vector<int>& globalCell_leaf)
+void Opm::checkGlobalCellBoundsConsistencyLevelZeroAndLeaf(const std::vector<int>& globalCell_l0,
+                                                           const std::vector<int>& globalCell_leaf)
 {
     const auto [itMinL0, itMaxL0] = std::minmax_element(globalCell_l0.begin(), globalCell_l0.end());
     const auto [itMinLeaf, itMaxLeaf] = std::minmax_element(globalCell_leaf.begin(), globalCell_leaf.end());

@@ -59,7 +59,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 void checkAdaptedGrid(Dune::CpGrid& grid,
                       const std::array<int,3>& cells_per_dim,
                       bool lgrsHaveBlockShape,
-                      [[maybe_unused]] bool gridHasBeenGlobalRefined,
+                      bool gridHasBeenGlobalRefined,
                       int preAdaptMaxLevel)
 {
     const auto& data = grid.currentData();
@@ -68,10 +68,7 @@ void checkAdaptedGrid(Dune::CpGrid& grid,
     Opm::checkVertexAndFaceIndexAreNonNegative(grid);
     Opm::checkGridBasicHiearchyInfo(grid, {cells_per_dim}, preAdaptMaxLevel);
     Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
-
-    if (lgrsHaveBlockShape) {
-        Opm::checkGlobalCellBounds(grid, data);
-    }
+    Opm::checkGlobalCellBounds(grid, data, lgrsHaveBlockShape, gridHasBeenGlobalRefined);
 }
 
 BOOST_AUTO_TEST_CASE(markNoElemForRefinementDoesNothingToTheGrid)
@@ -102,7 +99,7 @@ BOOST_AUTO_TEST_CASE(markAllElementsForRefinementIsEquivalentToCallGlobalRefinem
     // We set isBlockShape as false, even though global-refinement implies refinement of a block of cells..
     checkAdaptedGrid(grid,
                      /* cells_per_dim = */ {2,2,2},
-                     /* lgrsHaveBlockShape = */ false,
+                     /* lgrsHaveBlockShape = */ true,
                      /* gridHasBeenGlobalRefined = */ true,
                      /* preAdaptMaxLevel = */ 0);
 
