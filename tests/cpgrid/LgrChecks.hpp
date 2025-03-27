@@ -34,8 +34,10 @@
 #include <opm/grid/common/CommunicationUtils.hpp>
 
 
+#include <algorithm>
 #include <array>
 #include <memory>
+#include <numeric>
 #include <set>
 #include <string>
 #include <unordered_set>
@@ -45,9 +47,12 @@
 namespace Opm
 {
 
-void checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
-                                 const Dune::cpgrid::HierarchicIterator& endIt,
-                                 double total_children);
+void checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
+                                        const Dune::cpgrid::HierarchicIterator& endIt);
+
+void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
+                                        const Dune::cpgrid::HierarchicIterator& endIt,
+                                        double total_children);
 
 void checkGlobalCellBounds(const Dune::CpGrid& grid,
                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& data);
@@ -137,30 +142,30 @@ void adaptGrid(Dune::CpGrid& grid,
 
 } // namespace Opm
 
-
-
-
-void Opm::checkAverageCenterAndVolume(Dune::cpgrid::HierarchicIterator it,
-                                      const Dune::cpgrid::HierarchicIterator& endIt,
-                                      double total_children)
+void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
+                                             const Dune::cpgrid::HierarchicIterator& endIt)
 {
-    double referenceElemOneParent_volume_it{};
-    std::array<double,3> referenceElem_entity_center_it; // Expected {.5,.5,.5}
+    double reference_elem_parent_cell_volume = std::accumulate(it, endIt, 0.0,
+                                                               [](double sum, const Dune::cpgrid::Entity<0>& child) {
+                                                                   return sum + child.geometryInFather().volume();
+                                                               });
+    BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-13);
+}
 
-    for (; it != endIt; ++it)
-    {
-        referenceElemOneParent_volume_it += it-> geometryInFather().volume();
-        for (int c = 0; c < 3; ++c)
-        {
-            referenceElem_entity_center_it[c] += (it-> geometryInFather().center())[c];
+void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
+                                             const Dune::cpgrid::HierarchicIterator& endIt,
+                                             double total_children)
+{
+    std::array<double,3> reference_elem_parent_cell_center{}; // Expected {.5,.5,.5}
+    for (; it != endIt; ++it) {
+        const auto& child_center = it-> geometryInFather().center();
+        for (int c = 0; c < 3; ++c) {
+            reference_elem_parent_cell_center[c] += child_center[c];
         }
     }
-    BOOST_CHECK_CLOSE(referenceElemOneParent_volume_it, 1, 1e-13);
-
-    for (int c = 0; c < 3; ++c)
-    {
-        referenceElem_entity_center_it[c]/= total_children;
-        BOOST_CHECK_CLOSE(referenceElem_entity_center_it[c], .5, 1e-13);
+    for (int c = 0; c < 3; ++c) {
+        reference_elem_parent_cell_center[c]/= total_children;
+        BOOST_CHECK_CLOSE(reference_elem_parent_cell_center[c], .5, 1e-13);
     }
 }
 
@@ -220,7 +225,8 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto endItFather = element.father().hend(grid.maxLevel());
     // If itFather != endItFather and !element.father().isLeaf() (if dristibuted_data_ is empty).
     BOOST_CHECK( itFather != endItFather );
-    Opm::checkAverageCenterAndVolume(itFather, endItFather, expected_total_children);
+    Opm::checkReferenceElemParentCellVolume( itFather, endItFather);
+    Opm::checkReferenceElemParentCellCenter(itFather, endItFather, expected_total_children);
 
     const auto& [child_level, siblings_list] =
         grid.currentData()[element.father().level()]->getChildrenLevelAndIndexList(element.father().index());
