@@ -42,6 +42,7 @@
 
 #include <dune/common/parallel/communication.hh>
 #include <dune/common/parallel/variablesizecommunicator.hh>
+#include <dune/istl/owneroverlapcopy.hh>
 
 #include <list>
 #include <map>
