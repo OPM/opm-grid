@@ -150,6 +150,10 @@ public:
     /// If either gID is in a well, well's ID can be returned if it is smaller.
     int contractVertices (int gID1, int gID2);
 
+    
+    void mergeWellIndices(const std::set<int>& well, int& wellIdx);
+    void contractWellAndAdd(const std::set<int>& well, int wellIdx);
+
     /// \brief Register the well to the list of wells
     ///
     /// If checkIntersection==true, it checks if any of well's cells is

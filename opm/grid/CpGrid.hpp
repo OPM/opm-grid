@@ -1239,18 +1239,18 @@ namespace Dune
                          int level =-1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt /*method*/,
-                                      false /*ownersFirst*/,
-                                      nullptr /*wells*/,
-                                      {} /*possibleFutureConnections*/,
-                                      false /*serialPartitioning*/,
-                                      nullptr /*transmissibilities*/,
-                                      true /*addCornerCells*/,
+            return get<0>(scatterGrid(/* edgeWeightMethod = */ defaultTransEdgeWgt,
+                                      /* ownersFirst = */ false,
+                                      /* wells = */ nullptr,
+                                      /* possibleFutureConnections = */ {},
+                                      /* serialPartitioning = */ false,
+                                      /* transmissibilities = */ nullptr,
+                                      /* addCornerCells = */ true,
                                       overlapLayers,
                                       partitionMethod,
                                       imbalanceTol,
-                                      false /*allowDistributedWells*/,
-                                      {} /*input_cell_part*/,
+                                      /* allowDistributedWells = */ false,
+                                      /* input_cell_part = */ {},
                                       level));
         }
 
@@ -1264,10 +1264,24 @@ namespace Dune
         bool loadBalanceSerial(int overlapLayers=1,
                                int partitionMethod = Dune::PartitionMethod::zoltan,
                                int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt,
-                               double imbalanceTol = 1.1)
+                               double imbalanceTol = 1.1,
+                               int level = -1)
         {
             using std::get;
-            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(//scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+                          scatterGrid(EdgeWeightMethod(edgeWeightMethod),
+                                      /* ownersFirst = */ false,
+                                      /* wells = */ nullptr,
+                                      /* possibleFutureConnections = */ {},
+                                      /* serialPartitioning = */ true,
+                                      /* transmissibilities = */ nullptr,
+                                      /* addCornerCells = */ true,
+                                      overlapLayers,
+                                      partitionMethod,
+                                      imbalanceTol,
+                                      /* allowDistributedWells = */ false,
+                                      /* input_cell_part = */ {},
+                                      level));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1301,9 +1315,13 @@ namespace Dune
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltanGoG)
+                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltanGoG,
+                    int level = -1)
         {
-            return scatterGrid(defaultTransEdgeWgt, false, wells, possibleFutureConnections, false, transmissibilities, false, overlapLayers, partitionMethod);
+            return scatterGrid(defaultTransEdgeWgt, /* ownersFirst = */ false, wells, possibleFutureConnections,
+                               /* serialPartitioning = */ false, transmissibilities, /* addCornerCells = */ false,
+                               overlapLayers, partitionMethod, /* imbalanceTol = */ 1.1, /* allowDistributeWells = */ false,
+                               /* input_cell_part = */ {}, level);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1343,9 +1361,12 @@ namespace Dune
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
                     int partitionMethod = Dune::PartitionMethod::zoltanGoG,
-                    double imbalanceTol = 1.1)
+                    double imbalanceTol = 1.1,
+                    int level = -1)
         {
-            return scatterGrid(method, ownersFirst, wells, possibleFutureConnections, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
+            return scatterGrid(method, ownersFirst, wells, possibleFutureConnections,  /* serialPartitioning = */ false,
+                               transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol,
+                               /* allowDistributeWells = */ false, /* input_cell_part = */ {}, level);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -1379,9 +1400,9 @@ namespace Dune
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1, int partitionMethod = 1)
+                    int overlapLayers=1, int partitionMethod = 1, int level =-1)
         {
-            auto ret = loadBalance(wells, possibleFutureConnections, transmissibilities, overlapLayers, partitionMethod);
+            auto ret = loadBalance(wells, possibleFutureConnections, transmissibilities, overlapLayers, partitionMethod, level);
             using std::get;
             if (get<0>(ret))
             {
@@ -1436,7 +1457,8 @@ namespace Dune
                     bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells);
+                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
+                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {
@@ -1476,7 +1498,7 @@ namespace Dune
                                    /* transmissibilities = */ {},
                                    addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
                                    /* imbalanceTol (ignored) = */ 0.0,
-                                   /* allowDistributedWells = */ true, parts);
+                                   /* allowDistributedWells = */ true, parts, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {
