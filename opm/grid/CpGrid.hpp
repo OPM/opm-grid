@@ -1436,7 +1436,8 @@ namespace Dune
                     bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells);
+                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells, /* parts = */
+                                   std::vector<int>{}, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {
@@ -1476,7 +1477,7 @@ namespace Dune
                                    /* transmissibilities = */ {},
                                    addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
                                    /* imbalanceTol (ignored) = */ 0.0,
-                                   /* allowDistributedWells = */ true, parts);
+                                   /* allowDistributedWells = */ true, parts, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {
