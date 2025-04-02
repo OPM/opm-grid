@@ -484,7 +484,8 @@ namespace Dune
         ///        Need to be called after elements have been marked for refinement.
         bool preAdapt();
 
-        /// @brief Triggers the grid refinement process
+        /// @brief Triggers the grid refinement process.
+        ///        Returns true if the grid has changed, false otherwise.
         bool adapt();
 
         /// @brief Triggers the grid refinement process, allowing to select diffrent refined level grids.
@@ -496,10 +497,6 @@ namespace Dune
         ///                                  the marked elements belong. In each entry, the refined level grid where the
         ///                                  refined entities of the (parent) marked element should belong is stored.
         /// @param [in] lgr_name_vector      Each refined level grid name, e.g. {"LGR1", "LGR2"}.
-        /// @param [in] isCARFIN             Default false. The keyword CARFIN implies that the selected cells to be refined form a block,
-        ///                                  which can be edscribed via startIJK and endIJK Cartesian indices. This bool
-        ///                                  is used to define logical_cartesian_size_ of the refined level grids according
-        ///                                  to this block shape.
         /// @param [in] startIJK_vec         Default empty vector. When isCARFIN, the starting ijk Cartesian index of each
         ///                                  block of cells to be refined.
         /// @param [in] endIJK_vec           Default empty vector. When isCARFIN, the final ijk Cartesian index of each
@@ -507,7 +504,6 @@ namespace Dune
         bool adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                    const std::vector<int>& assignRefinedLevel,
                    const std::vector<std::string>& lgr_name_vec,
-                   bool isCARFIN = false,
                    const std::vector<std::array<int,3>>& startIJK_vec = std::vector<std::array<int,3>>{},
                    const std::vector<std::array<int,3>>& endIJK_vec = std::vector<std::array<int,3>>{});
 
@@ -518,7 +514,7 @@ namespace Dune
     private:
 
         /// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
-        
+
         /// @brief Refine each marked element and establish relationships between corners, faces, and cells marked for refinement,
         ///        with the refined corners, refined faces, and refined cells.
         ///
