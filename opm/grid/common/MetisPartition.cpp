@@ -148,8 +148,8 @@ metisSerialGraphPartitionGridOnRoot(const CpGrid& cpgrid,
                                     bool allowDistributedWells,
                                     [[maybe_unused]] const std::map<std::string,std::string>& params)
 {
-#if defined(IDXTYPEWIDTH) && IDXTYPEWIDTH != 64
-    if (edgeWeightsMethod == Dune::EdgeWeightMethod::defaultTransEdgeWgt )
+#if defined(IDXTYPEWIDTH) // IDXTYPEWIDTH might be an expression, e.g. sizeof(::idx_t) * 8
+    if ( IDXTYPEWIDTH != 64 && edgeWeightsMethod == Dune::EdgeWeightMethod::defaultTransEdgeWgt )
         OPM_THROW(std::runtime_error, "The selected partition method is METIS with default edge weights (i.e. transmissibilities).\
             This combination works only for METIS with 64-bit integers, but the installed version of METIS does not use 64-bit integers.\
             Either reinstall METIS with 64-bit integers or choose another edge weight method!");
