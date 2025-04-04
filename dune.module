@@ -5,8 +5,8 @@
 
 Module: opm-grid
 Description: DUNE module supporting grids in a corner-point format
-Version: 2025.04-pre
-Label: 2025.04-pre
+Version: 2025.04-rc1
+Label: 2025.04-rc1
 Maintainer: atgeirr@sintef.no
 MaintainerName: Atgeirr F. Rasmussen
 Url: http://opm-project.org
