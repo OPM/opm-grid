@@ -468,7 +468,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 
 
     std::vector<std::pair<std::string, bool>> parallel_wells;
-    if( wells )
+    if(false /* wells */)
     {
         // complete root's export and other's import list by adding remaining well cells
         extendAndSortExportAndImportLists(gog, cc, root, myExportList, myImportList, gIDtoRank);
@@ -784,7 +784,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
 
     // get the distribution of wells
     std::vector<std::pair<std::string, bool>> parallel_wells;
-    if (wells) {
+    if (false /*wells*/) {
         auto wellRanks = getWellRanks(gIDtoRank, wellConnections);
         parallel_wells = wellsOnThisRank(*wells, wellRanks, cc, root);
     }
