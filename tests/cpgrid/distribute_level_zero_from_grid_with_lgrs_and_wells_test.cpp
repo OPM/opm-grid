@@ -1,7 +1,7 @@
 // -*- mode: C++; tab-width: 4; indent-tabs-mode: nil; c-basic-offset: 4 -*-
 // vi: set et ts=4 sw=4 sts=4:
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -173,8 +173,6 @@ BOOST_AUTO_TEST_CASE(loadBalance_grid_with_lgrs_and_refinedCellWells)
     }
 }
 
-
-
 BOOST_AUTO_TEST_CASE(loadBalance_grid_with_lgrs_and_coarseAndRefinedCellWells)
 {
     // create a grid with lgrs and wells
@@ -268,9 +266,6 @@ BOOST_AUTO_TEST_CASE(loadBalance_grid_with_lgrs_and_oneCellWells)
     }
 }
 
-
-
-
 BOOST_AUTO_TEST_CASE(futureConnection_in_grid_with_lgrs, *boost::unit_test::disabled())
 {
     // create a grid with lgrs and wells
@@ -297,22 +292,10 @@ BOOST_AUTO_TEST_CASE(futureConnection_in_grid_with_lgrs, *boost::unit_test::disa
     wells[1].updateConnections(wellCon,true);
 
     wells.push_back(createWell("third"));
-
-  
-    std::unordered_map<std::string, std::set<int>> futureConnections;
-    futureConnections.emplace("third",std::set<int>{6,7});
-    Dune::cpgrid::WellConnections wellConnections(wells,futureConnections,grid);
-
-    for (const auto& [key, value] : futureConnections)
-    {
-        std::cout << key << std::endl;
-        for (const auto& el : value)
-        {
-            std::cout<< el << std::endl;
-        }
-    }
     
- 
+    std::unordered_map<std::string, std::set<int>> futureConnections;
+    futureConnections.emplace("third",std::set<int>{6,7,8,9});
+    Dune::cpgrid::WellConnections wellConnections(wells,futureConnections,grid);
 
      if (grid.comm().size()>1) {
 

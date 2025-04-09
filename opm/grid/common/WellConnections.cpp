@@ -86,9 +86,12 @@ WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
     // create compressed lookup from cartesian.
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
 
-    for( int i=0; i < cpGrid.numCells(); ++i )
+    // global cell from level zero
+    
+    const auto& globalCell = cpGrid.maxLevel()? cpGrid.currentData().front()->globalCell() : cpGrid.globalCell();
+    for( int i=0; i < cpGrid.numCells(0); ++i ) // To do: param level as default.
     {
-        cartesian_to_compressed[cpGrid.globalCell()[i]] = i;
+        cartesian_to_compressed[globalCell[i]] = i;
     }
     init(wells, possibleFutureConnections, cpgdim, cartesian_to_compressed);
 }

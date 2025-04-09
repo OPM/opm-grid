@@ -322,47 +322,6 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
     }
 }
 
-// CpGrid Specialization
-template<>
-void GraphOfGrid<Dune::CpGrid>::addWell(const std::set<int>& well, bool checkIntersection)
-{
-    if (well.size()<2)
-        return;
-    int wID = *(well.begin());
-
-    bool gridHasLgrs = (grid.maxLevel()>0);
-
-    std::set<int> origin_well{};
-    if (gridHasLgrs) {
-        for (const auto& w :well) {
-            const auto& leaf_elem = Dune::cpgrid::Entity<0>(*(grid.currentData().back()), w, true);
-            origin_well.insert( leaf_elem.getOrigin().index() );
-            // leaf_elem.getOrigin() returns father cell in level zero, if leaf_elem.level()>0,
-            // geometrically equivalent cell in level zero otherwise.
-        }
-    }
-    int origin_well_idx = *(origin_well.begin());
-
-    if (!gridHasLgrs) {
-        
-        if (checkIntersection) {
-            mergeWellIndices(well, wID);
-        }
-        else {
-             contractWellAndAdd(well, wID);
-        }
-    }
-    else {
-        
-        if (checkIntersection) {
-            mergeWellIndices(origin_well, origin_well_idx);
-        }
-        else {
-           contractWellAndAdd(origin_well, origin_well_idx);
-        }
-    }
-}
-
 template<typename Grid>
 void GraphOfGrid<Grid>::addNeighboringCellsToWells ()
 {
