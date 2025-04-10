@@ -269,8 +269,9 @@ int GraphOfGrid<Grid>::wellID (int gID) const
 }
 
 template<typename Grid>
-void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well, int& wellIdx)
+void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
 {
+    int wellIdx = *(well.begin());
     std::set<int> newWell;
     for (int idx : well)
     {
@@ -287,23 +288,24 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well, int& wellIdx
                 idx = *(w->begin());
                 newWell.insert(w->begin(), w->end());
                 wells.erase(w);
-                break; // GraphOfGrid::wells are constructed to be disjoint, each gID/idx? has max 1 match
+                break; // GraphOfGrid::wells are constructed to be disjoint, each idx has max 1 match
             }
         }
         wellIdx = contractVertices(wellIdx, idx);
         assert( wellIdx!=-1 && "Added well vertex was not found in the grid (or its wells).");
     }
-     newWell.insert(well.begin(), well.end());
-     wells.push_front(newWell);
+    newWell.insert(well.begin(), well.end());
+    wells.push_front(newWell);
 }
 
 template<typename Grid>
-void GraphOfGrid<Grid>::contractWellAndAdd(const std::set<int>& well, int wellIdx)
+void GraphOfGrid<Grid>::contractWellAndAdd(const std::set<int>& well)
 {
-     std::accumulate(well.begin(), well.end(), wellIdx,
-                        [this](const auto wId, const auto gID)
-                        { return contractVertices(wId, gID); });
-     wells.emplace_front(well);
+    int wID = *(well.begin());
+    std::accumulate(well.begin(), well.end(), wID,
+                    [this](const auto wId, const auto gID)
+                    { return contractVertices(wId, gID); });
+    wells.emplace_front(well);
 }
 
 
@@ -312,13 +314,12 @@ void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersecti
 {
     if (well.size()<2)
         return;
-    int wID = *(well.begin());
 
     if (checkIntersection) {
-        mergeWellIndices(well, wID);
+        mergeWellIndices(well);
     }
     else {
-        contractWellAndAdd(well, wID);
+        contractWellAndAdd(well);
     }
 }
 
