@@ -468,7 +468,7 @@ makeImportAndExportLists(const GraphOfGrid<Dune::CpGrid>& gog,
 
 
     std::vector<std::pair<std::string, bool>> parallel_wells;
-    if(wells)
+    if( wells )
     {
         // complete root's export and other's import list by adding remaining well cells
         extendAndSortExportAndImportLists(gog, cc, root, myExportList, myImportList, gIDtoRank);
@@ -559,7 +559,6 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
     assert(gog.size()==0 || !partitionIsEmpty);
     auto wellConnections = partitionIsEmpty || !wells ? Dune::cpgrid::WellConnections()
                                                       : Dune::cpgrid::WellConnections(*wells, possibleFutureConnections, grid);
-   
     addWellConnections(gog, wellConnections);
     gog.addNeighboringCellsToWells(layers);
 

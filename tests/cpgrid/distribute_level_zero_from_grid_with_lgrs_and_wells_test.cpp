@@ -32,6 +32,8 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/GraphOfGrid.hpp>
+#include <opm/grid/GraphOfGridWrappers.hpp>
 #include <tests/cpgrid/LgrChecks.hpp>
 #include <opm/grid/common/WellConnections.hpp>
 
@@ -40,6 +42,7 @@
 #include <opm/input/eclipse/Schedule/Well/WellConnections.hpp>
 #include <opm/input/eclipse/Schedule/Well/Well.hpp>
 
+#include <array>
 #include <memory>
 #include <set>
 #include <string>
@@ -95,6 +98,12 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_cartesian_cpgrid_wi
     wells.push_back(createWell("well2"));
     wells[1].updateConnections(wellCon,true);
 
+    wells.push_back(createWell("well3"));
+
+    std::unordered_map<std::string, std::set<int>> futureConnections;
+    futureConnections.emplace("well3",std::set<int>{0,2});
+    Dune::cpgrid::WellConnections wellConnections(wells, futureConnections, grid);
+
     if (grid.comm().size()>1) {
 
         grid.loadBalance(&wells,
@@ -103,6 +112,17 @@ BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_cartesian_cpgrid_wi
                          /* overlapLayers = */ 1,
                          /* partitionMethod = */ Dune::PartitionMethod::zoltanGoG,
                          /* level = */ 0);
+
+        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,1}},
+                                    /* startIJK_vec = */ {{0,0,1}},
+                                    /* endIJK_vec = */ {{1,2,3}},
+                                    /* lgr_name_vec = */ {"LGR1"});
+
+        grid.syncDistributedGlobalCellIds();
+
+        const auto& data = grid.currentData();
+        Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
+        Opm::checkConsecutiveChildGlobalIdsPerParent(grid);
 
     }
 }
@@ -188,6 +208,12 @@ SCHEDULE
     wells.push_back(createWell("second"));
     wells[1].updateConnections(wellCon,true);
 
+    wells.push_back(createWell("third"));
+
+    std::unordered_map<std::string, std::set<int>> futureConnections;
+    futureConnections.emplace("third",std::set<int>{6,7});
+    Dune::cpgrid::WellConnections wellConnections(wells, futureConnections, grid);
+
 
     if (grid.comm().size()>1) {
 
@@ -197,40 +223,54 @@ SCHEDULE
                          /* partitionMethod = */ Dune::PartitionMethod::zoltanGoG,
                          /* level = */ 0);
 
+        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,2}},
+                                    /* startIJK_vec = */ {{1,1,0}},
+                                    /* endIJK_vec = */ {{3,3,2}},
+                                    /* lgr_name_vec = */ {"LGR1"});
+
+
+        grid.syncDistributedGlobalCellIds();
+
+        const auto& data = grid.currentData();
+        Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
+        Opm::checkConsecutiveChildGlobalIdsPerParent(grid);
+
     }
 
 }
 
-BOOST_AUTO_TEST_CASE(futureConnection_in_grid_with_lgrs, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(add_wells_and_loadBalance_level_zero_of_global_refined_cpgrid)
 {
-    // create a grid with lgrs and wells
     Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dims = */ {1,2,4}, /* size = */ {1.,1.,1.});
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {2.0, 2.0, 2.0});
+    grid.globalRefine(1);
 
-    grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,1}},
-                                /* startIJK_vec = */ {{0,0,1}},
-                                /* endIJK_vec = */ {{1,2,3}},
-                                /* lgr_name_vec = */ {"LGR1"});
+    const std::array<int,3> expected_nxnynz = {8, 6, 6};
+    const auto& actual_nxnynz = grid.logicalCartesianSize(); // For GR, logicalCartesianSize is well defined!
+    BOOST_CHECK_EQUAL( expected_nxnynz[0], actual_nxnynz[0]);
+    BOOST_CHECK_EQUAL( expected_nxnynz[1], actual_nxnynz[1]);
+    BOOST_CHECK_EQUAL( expected_nxnynz[2], actual_nxnynz[2]);
 
     auto wellCon = std::make_shared<Opm::WellConnections>();
-    wellCon->add(createConnection(0,0,0));
-    wellCon->add(createConnection(0,1,0));
-    wellCon->add(createConnection(0,1,1));
+    wellCon->add(createConnection(0,0,0)); // {level 0, cell idx 0}
+    wellCon->add(createConnection(0,1,0)); // {level 0, cell idx 1}
+    wellCon->add(createConnection(0,1,1)); // {level 0, cell idx 3}
+
     std::vector<Dune::cpgrid::OpmWellType> wells;
     wells.push_back(createWell("first"));
     wells[0].updateConnections(wellCon,true);
 
     wellCon = std::make_shared<Opm::WellConnections>(); // reset
-    wellCon->add(createConnection(0,0,2));
-    wellCon->add(createConnection(0,1,2));
+    wellCon->add(createConnection(0,0,2)); // {level 0, cell idx 4}
+    wellCon->add(createConnection(0,1,2)); // {level 0, cell idx 5}
     wells.push_back(createWell("second"));
     wells[1].updateConnections(wellCon,true);
 
     wells.push_back(createWell("third"));
 
     std::unordered_map<std::string, std::set<int>> futureConnections;
-    futureConnections.emplace("third",std::set<int>{6,7,8,9});
-    Dune::cpgrid::WellConnections wellConnections(wells,futureConnections,grid);
+    futureConnections.emplace("third",std::set<int>{6,7});
+    Dune::cpgrid::WellConnections wellConnections(wells, futureConnections, grid);
 
     if (grid.comm().size()>1) {
 
@@ -240,8 +280,17 @@ BOOST_AUTO_TEST_CASE(futureConnection_in_grid_with_lgrs, *boost::unit_test::disa
                          /* partitionMethod = */ Dune::PartitionMethod::zoltanGoG,
                          /* level = */ 0);
 
+        grid.globalRefine(1);
+
+        grid.syncDistributedGlobalCellIds();
+
+        const auto& data = grid.currentData();
+        Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
+        Opm::checkConsecutiveChildGlobalIdsPerParent(grid);
+
     }
 }
+
 
 bool
 init_unit_test_func()
