@@ -1230,8 +1230,13 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        ///
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, only distributing level zero grid is supported.
         /// \warning May only be called once.
         bool loadBalance(int overlapLayers=1,
                          int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1257,9 +1262,14 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        ///
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \param edgeWeightMethod The edge-weighting method to be used on the graph partitioner.
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, only distributing level zero grid is supported.
         /// \warning May only be called once.
         bool loadBalanceSerial(int overlapLayers=1,
                                int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1268,8 +1278,7 @@ namespace Dune
                                int level = -1)
         {
             using std::get;
-            return get<0>(//scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
-                          scatterGrid(EdgeWeightMethod(edgeWeightMethod),
+            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod),
                                       /* ownersFirst = */ false,
                                       /* wells = */ nullptr,
                                       /* possibleFutureConnections = */ {},
@@ -1307,6 +1316,9 @@ namespace Dune
         /// \param transmissibilities The transmissibilities used as the edge weights.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, only distributing level zero grid is supported.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
@@ -1351,6 +1363,10 @@ namespace Dune
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, only distributing level zero grid is supported.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
@@ -1389,6 +1405,9 @@ namespace Dune
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, only distributing level zero grid is supported.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
