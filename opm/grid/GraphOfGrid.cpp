@@ -107,7 +107,7 @@ void GraphOfGrid<Grid>::createGraph (const double* transmissibilities,
 
 }
 
-// CpGrid Spetialization
+// CpGrid Specialization
 template<>
 void GraphOfGrid<Dune::CpGrid>::createGraph (const double* transmissibilities,
                                              const Dune::EdgeWeightMethod edgeWeightMethod,
@@ -269,49 +269,57 @@ int GraphOfGrid<Grid>::wellID (int gID) const
 }
 
 template<typename Grid>
+void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
+{
+    int wellIdx = *(well.begin());
+    std::set<int> newWell;
+    for (int idx : well)
+    {
+        // check if the cell is already in some well
+        if (newWell.find(idx) != newWell.end()) {
+            continue;
+        }
+        for (auto w = wells.begin(); w != wells.end(); ++w) {
+            if (w->find(idx) != w->end()) {
+                // idx is in another well => remap it and join wells
+                if ( wellIdx == idx ) {
+                    wellIdx = *(w->begin());
+                }
+                idx = *(w->begin());
+                newWell.insert(w->begin(), w->end());
+                wells.erase(w);
+                break; // GraphOfGrid::wells are constructed to be disjoint, each idx has max 1 match
+            }
+        }
+        wellIdx = contractVertices(wellIdx, idx);
+        assert( wellIdx!=-1 && "Added well vertex was not found in the grid (or its wells).");
+    }
+    newWell.insert(well.begin(), well.end());
+    wells.push_front(newWell);
+}
+
+template<typename Grid>
+void GraphOfGrid<Grid>::contractWellAndAdd(const std::set<int>& well)
+{
+    int wID = *(well.begin());
+    std::accumulate(well.begin(), well.end(), wID,
+                    [this](const auto wId, const auto gID)
+                    { return contractVertices(wId, gID); });
+    wells.emplace_front(well);
+}
+
+
+template<typename Grid>
 void GraphOfGrid<Grid>::addWell (const std::set<int>& well, bool checkIntersection)
 {
     if (well.size()<2)
         return;
-    int wID = *(well.begin());
 
-    if (checkIntersection)
-    {
-        std::set<int> newWell;
-        for (int gID : well)
-        {
-            // check if the cell is already in some well
-            if (newWell.find(gID)!=newWell.end())
-            {
-                continue;
-            }
-            for (auto w=wells.begin(); w!=wells.end(); ++w)
-            {
-                if (w->find(gID)!=w->end())
-                {
-                    // gID is in another well => remap it and join wells
-                    if (wID==gID)
-                    {
-                        wID = *(w->begin());
-                    }
-                    gID = *(w->begin());
-                    newWell.insert(w->begin(), w->end());
-                    wells.erase(w);
-                    break; // GraphOfGrid::wells are constructed to be disjoint, each gID has max 1 match
-                }
-            }
-            wID = contractVertices(wID, gID);
-            assert(wID!=-1 && "Added well vertex was not found in the grid (or its wells).");
-        }
-        newWell.insert(well.begin(), well.end());
-        wells.push_front(newWell);
+    if (checkIntersection) {
+        mergeWellIndices(well);
     }
-    else
-    {
-        std::accumulate(well.begin(), well.end(), wID,
-                        [this](const auto wId, const auto gID)
-                        { return contractVertices(wId, gID); });
-        wells.emplace_front(well);
+    else {
+        contractWellAndAdd(well);
     }
 }
 

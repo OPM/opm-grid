@@ -195,6 +195,21 @@ private:
     /// returns -1 if no well contains given gID
     int wellID (int gID) const;
 
+    /// \brief Merge the given well with any overlapping existing wells and contract all vertices.
+    ///
+    /// This method takes a set of cell indices representing a well and checks if any of them already belong to
+    /// a previously registered well in 'wells'. If overlaps are found, the overlapping wells are merged,
+    /// and the corresponding vertices are contracted.
+    /// The final merged set of vertices is added to the front of 'wells'.
+    ///
+    /// \param well A set of cell indices representing a well to be contracted and added into 'wells'.
+    void mergeWellIndices(const std::set<int>& well);
+
+    /// \brief Contract all vertices in the given well into a single vertex and register the well.
+    ///
+    /// \param well A set of cell indices representing a well to be contracted and added into 'wells'.
+    void contractWellAndAdd(const std::set<int>& well);
+
     const Grid& grid;
     std::unordered_map<int, VertexProperties> graph; // <gID, VertexProperties>
     std::list<std::set<int>> wells;
