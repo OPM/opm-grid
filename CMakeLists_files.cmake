@@ -103,6 +103,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_lookupdata_polyhedral.cpp
   tests/test_minpvprocessor.cpp
   tests/test_polyhedralgrid.cpp
+  tests/test_process_grdecl.cpp
   tests/test_quadratures.cpp
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
