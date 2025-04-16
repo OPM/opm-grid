@@ -83,6 +83,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_communication_utils.cpp
   tests/test_column_extract.cpp
   tests/cpgrid/addLgrsOnDistributedGrid_test.cpp
+  tests/cpgrid/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
   tests/cpgrid/distribute_level_zero_from_grid_with_lgrs_test.cpp
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp

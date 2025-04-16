@@ -1230,8 +1230,13 @@ namespace Dune
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        ///
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, for CpGrid with LGRs, only distributing level zero grid is supported.
         /// \warning May only be called once.
         bool loadBalance(int overlapLayers=1,
                          int partitionMethod = Dune::PartitionMethod::zoltan,
@@ -1239,35 +1244,53 @@ namespace Dune
                          int level =-1)
         {
             using std::get;
-            return get<0>(scatterGrid(defaultTransEdgeWgt /*method*/,
-                                      false /*ownersFirst*/,
-                                      nullptr /*wells*/,
-                                      {} /*possibleFutureConnections*/,
-                                      false /*serialPartitioning*/,
-                                      nullptr /*transmissibilities*/,
-                                      true /*addCornerCells*/,
+            return get<0>(scatterGrid(/* edgeWeightMethod = */ defaultTransEdgeWgt,
+                                      /* ownersFirst = */ false,
+                                      /* wells = */ nullptr,
+                                      /* possibleFutureConnections = */ {},
+                                      /* serialPartitioning = */ false,
+                                      /* transmissibilities = */ nullptr,
+                                      /* addCornerCells = */ true,
                                       overlapLayers,
                                       partitionMethod,
                                       imbalanceTol,
-                                      false /*allowDistributedWells*/,
-                                      {} /*input_cell_part*/,
+                                      /* allowDistributedWells = */ false,
+                                      /* input_cell_part = */ {},
                                       level));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
 
         /// \brief Distributes this grid over the available nodes in a distributed machine
+        ///
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
         /// \param edgeWeightMethod The edge-weighting method to be used on the graph partitioner.
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, for CpGrid with LGRs, only distributing level zero grid is supported.
         /// \warning May only be called once.
         bool loadBalanceSerial(int overlapLayers=1,
                                int partitionMethod = Dune::PartitionMethod::zoltan,
                                int edgeWeightMethod = Dune::EdgeWeightMethod::defaultTransEdgeWgt,
-                               double imbalanceTol = 1.1)
+                               double imbalanceTol = 1.1,
+                               int level = -1)
         {
             using std::get;
-            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod), false, nullptr, {}, true /*serial partitioning*/, nullptr, true, overlapLayers, partitionMethod, imbalanceTol));
+            return get<0>(scatterGrid(EdgeWeightMethod(edgeWeightMethod),
+                                      /* ownersFirst = */ false,
+                                      /* wells = */ nullptr,
+                                      /* possibleFutureConnections = */ {},
+                                      /* serialPartitioning = */ true,
+                                      /* transmissibilities = */ nullptr,
+                                      /* addCornerCells = */ true,
+                                      overlapLayers,
+                                      partitionMethod,
+                                      imbalanceTol,
+                                      /* allowDistributedWells = */ false,
+                                      /* input_cell_part = */ {},
+                                      level));
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1293,6 +1316,9 @@ namespace Dune
         /// \param transmissibilities The transmissibilities used as the edge weights.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, for CpGrid with LGRs, only distributing level zero grid is supported.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
@@ -1301,9 +1327,13 @@ namespace Dune
         loadBalance(const std::vector<cpgrid::OpmWellType> * wells,
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltanGoG)
+                    int overlapLayers=1, int partitionMethod=Dune::PartitionMethod::zoltanGoG,
+                    int level = -1)
         {
-            return scatterGrid(defaultTransEdgeWgt, false, wells, possibleFutureConnections, false, transmissibilities, false, overlapLayers, partitionMethod);
+            return scatterGrid(defaultTransEdgeWgt, /* ownersFirst = */ false, wells, possibleFutureConnections,
+                               /* serialPartitioning = */ false, transmissibilities, /* addCornerCells = */ false,
+                               overlapLayers, partitionMethod, /* imbalanceTol = */ 1.1, /* allowDistributeWells = */ false,
+                               /* input_cell_part = */ {}, level);
         }
 
         // loadbalance is not part of the grid interface therefore we skip it.
@@ -1333,6 +1363,10 @@ namespace Dune
         /// \param addCornerCells Add corner cells to the overlap layer.
         /// \param overlapLayers The number of layers of cells of the overlap region (default: 1).
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param imbalanceTol
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, for CpGrid with LGRs, only distributing level zero grid is supported.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
         ///         a vector containing a pair of name and a boolean, indicating whether this well has
@@ -1343,9 +1377,12 @@ namespace Dune
                     const double* transmissibilities = nullptr, bool ownersFirst=false,
                     bool addCornerCells=false, int overlapLayers=1,
                     int partitionMethod = Dune::PartitionMethod::zoltanGoG,
-                    double imbalanceTol = 1.1)
+                    double imbalanceTol = 1.1,
+                    int level = -1)
         {
-            return scatterGrid(method, ownersFirst, wells, possibleFutureConnections, false, transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol);
+            return scatterGrid(method, ownersFirst, wells, possibleFutureConnections,  /* serialPartitioning = */ false,
+                               transmissibilities, addCornerCells, overlapLayers, partitionMethod, imbalanceTol,
+                               /* allowDistributeWells = */ false, /* input_cell_part = */ {}, level);
         }
 
         /// \brief Distributes this grid and data over the available nodes in a distributed machine.
@@ -1368,6 +1405,9 @@ namespace Dune
         /// \param overlapLayers The number of layers of overlap cells to be added
         ///        (default: 1)
         /// \param partitionMethod The method used to partition the grid, one of Dune::PartitionMethod
+        /// \param level Level grid to be distributed. Integer between 0,..., maxLevel().
+        ///              Defualt value set to -1, representing the leaf grid view.
+        /// \warning Throw if level>0. Currently, for CpGrid with LGRs, only distributing level zero grid is supported.
         /// \tparam DataHandle The type implementing DUNE's DataHandle interface.
         /// \warning May only be called once.
         /// \return A pair consisting of a boolean indicating whether loadbalancing actually happened and
@@ -1379,9 +1419,9 @@ namespace Dune
                     const std::vector<cpgrid::OpmWellType> * wells,
                     const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections = {},
                     const double* transmissibilities = nullptr,
-                    int overlapLayers=1, int partitionMethod = 1)
+                    int overlapLayers=1, int partitionMethod = 1, int level =-1)
         {
-            auto ret = loadBalance(wells, possibleFutureConnections, transmissibilities, overlapLayers, partitionMethod);
+            auto ret = loadBalance(wells, possibleFutureConnections, transmissibilities, overlapLayers, partitionMethod, level);
             using std::get;
             if (get<0>(ret))
             {
@@ -1436,7 +1476,8 @@ namespace Dune
                     bool allowDistributedWells = false)
         {
             auto ret = scatterGrid(method, ownersFirst, wells, possibleFutureConnections, serialPartitioning, transmissibilities,
-                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells);
+                                   addCornerCells, overlapLayers, partitionMethod, imbalanceTol, allowDistributedWells,
+                                   /* input_cell_parts = */ std::vector<int>{}, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {
@@ -1476,7 +1517,7 @@ namespace Dune
                                    /* transmissibilities = */ {},
                                    addCornerCells, overlapLayers, /* partitionMethod =*/ Dune::PartitionMethod::simple,
                                    /* imbalanceTol (ignored) = */ 0.0,
-                                   /* allowDistributedWells = */ true, parts);
+                                   /* allowDistributedWells = */ true, parts, /* level = */ 0);
             using std::get;
             if (get<0>(ret))
             {

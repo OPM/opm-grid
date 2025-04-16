@@ -82,13 +82,25 @@ WellConnections::WellConnections(const std::vector<OpmWellType>& wells,
                                  const std::unordered_map<std::string, std::set<int>>& possibleFutureConnections,
                                  const Dune::CpGrid& cpGrid)
 {
-    const auto& cpgdim = cpGrid.logicalCartesianSize();
+    // - If the grid with dimensions {NX, NY, NZ} has been globally refined 'count' times,
+    //   then cpgrid.logicalCartesianSize() returns {2^count * NX, 2^count * NY, 2^count * NZ}.
+    //   By default, global refinement subdivides each cell into 2 in each direction (x, y, and z).
+    //
+    // - If the grid has undergone local (not global) refinement, cpgrid.logicalCartesianSize()
+    //   returns the logical Cartesian size of the original (level-zero) grid.
+    //
+    // Take the logical Cartesian size of level zero grid (from grid without or with local/global refinement).
+    const auto& cpgdim = cpGrid.currentData().front()->logicalCartesianSize();
+
     // create compressed lookup from cartesian.
     std::vector<int> cartesian_to_compressed(cpgdim[0]*cpgdim[1]*cpgdim[2], -1);
 
-    for( int i=0; i < cpGrid.numCells(); ++i )
+    // Use globalCell from level zero grid (from grid without or with local/global refinement).
+    const auto& globalCell = cpGrid.currentData().front()->globalCell();
+    const int numCells =  globalCell.size();
+    for( int i=0; i < numCells; ++i )
     {
-        cartesian_to_compressed[cpGrid.globalCell()[i]] = i;
+        cartesian_to_compressed[globalCell[i]] = i;
     }
     init(wells, possibleFutureConnections, cpgdim, cartesian_to_compressed);
 }
