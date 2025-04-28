@@ -379,8 +379,11 @@ std::vector<int> getWellRanks(const std::vector<int>& gIDtoRank,
     std::vector<int> wellIndices(wellConnections.size());
     for (std::size_t wellIndex = 0; wellIndex < wellConnections.size(); ++wellIndex)
     {
-        int wellID = *(wellConnections[wellIndex].begin());
-        wellIndices[wellIndex] = gIDtoRank[wellID];
+        auto it = wellConnections[wellIndex].begin();
+        if (it != wellConnections[wellIndex].end()) {
+            int wellID = *it;
+            wellIndices[wellIndex] = gIDtoRank[wellID];
+        }
     }
     return wellIndices;
 }
