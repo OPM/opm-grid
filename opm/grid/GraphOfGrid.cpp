@@ -282,7 +282,7 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
         if (newWell.find(idx) != newWell.end()) {
             continue;
         }
-        for (auto w = wells.begin(); w != wells.end(); ++w) {
+        for (auto w = wells.begin(); w != wells.end();) {
             if (w->find(idx) != w->end()) {
                 // idx is in another well => remap it and join wells
                 if ( wellIdx == idx ) {
@@ -290,8 +290,11 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
                 }
                 idx = *(w->begin());
                 newWell.insert(w->begin(), w->end());
-                wells.erase(w);
+                w = wells.erase(w);
                 break; // GraphOfGrid::wells are constructed to be disjoint, each idx has max 1 match
+            }
+            else {
+                ++w;
             }
         }
         wellIdx = contractVertices(wellIdx, idx);
