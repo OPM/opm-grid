@@ -271,6 +271,9 @@ int GraphOfGrid<Grid>::wellID (int gID) const
 template<typename Grid>
 void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
 {
+    if (well.empty())
+        return;
+    
     int wellIdx = *(well.begin());
     std::set<int> newWell;
     for (int idx : well)
@@ -301,6 +304,9 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
 template<typename Grid>
 void GraphOfGrid<Grid>::contractWellAndAdd(const std::set<int>& well)
 {
+    if (well.empty())
+        return;
+    
     int wID = *(well.begin());
     std::accumulate(well.begin(), well.end(), wID,
                     [this](const auto wId, const auto gID)
