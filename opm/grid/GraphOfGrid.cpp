@@ -290,7 +290,7 @@ void GraphOfGrid<Grid>::mergeWellIndices(const std::set<int>& well)
                 }
                 idx = *(w->begin());
                 newWell.insert(w->begin(), w->end());
-                w = wells.erase(w);
+                wells.erase(w);
                 break; // GraphOfGrid::wells are constructed to be disjoint, each idx has max 1 match
             }
             else {
