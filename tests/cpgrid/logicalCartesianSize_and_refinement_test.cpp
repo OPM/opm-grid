@@ -141,7 +141,7 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterStrictLocalRefinementWi
              grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterHiddenGlobalRefinementWith_adapt_makeSense)
+BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterHiddenGlobalRefinementWith_adapt_differs_in_serial_and_parallel)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -153,11 +153,21 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterHiddenGlobalRefinementW
     areEqual(/* grid dimensions before refinement = */ {4,3,3},
              /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
+    if ( grid.comm().size() == 1) { 
+        areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
+                 /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             grid.logicalCartesianSize());
+        areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
+                 grid.logicalCartesianSize());
+    }
+
+    if ( grid.comm().size() > 1) { 
+        areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+                 /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
+
+        areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+                 grid.logicalCartesianSize());
+    }
 }
 
 BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_after_globalRefine_makeSense)
