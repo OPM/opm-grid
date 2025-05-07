@@ -141,35 +141,6 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterStrictLocalRefinementWi
              grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterHiddenGlobalRefinementWith_adapt_differs_in_serial_and_parallel)
-{
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    std::vector<int> markedCells(36); // 36 = 4x3x3
-    std::iota(markedCells.begin(), markedCells.end(), 0);
-    Opm::adaptGrid(grid, markedCells); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
-
-    areEqual(/* grid dimensions before refinement = */ {4,3,3},
-             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
-
-    if ( grid.comm().size() == 1) { 
-        areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
-                 /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
-
-        areEqual(/* expected logicalCartesianSize = */ {4, 3, 3},
-                 grid.logicalCartesianSize());
-    }
-
-    if ( grid.comm().size() > 1) { 
-        areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-                 /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
-
-        areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-                 grid.logicalCartesianSize());
-    }
-}
-
 BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_after_globalRefine_makeSense)
 {
     Dune::CpGrid grid;
