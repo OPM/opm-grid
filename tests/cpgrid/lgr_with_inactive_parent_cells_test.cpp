@@ -64,30 +64,6 @@ struct Fixture
     }
 };
 
-void checkGridWithLgrs(const Dune::CpGrid& grid,
-                       const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                       const std::vector<std::string>& lgr_name_vec)
-{
-    const auto& data = grid.currentData();
-
-    Opm::checkLgrNameToLevel(grid, lgr_name_vec);
-    Opm::checkVertexAndFaceIndexAreNonNegative(grid);
-    Opm::checkFaceHas4VerticesAndMax2NeighboringCells(grid, data);
-    Opm::checkLocalIndicesMatchMapper(grid); // Decide if it's worth to keep it
-    Opm::checkGridBasicHiearchyInfo(grid, cells_per_dim_vec);
-    Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
-    Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
-    Opm::checkGlobalCellBounds(grid, data, /* lgrsHaveBlockShape */ true, /*gridHasBeenGlobalRefined*/ false);
-
-    /** Vertex global id uniqueness can't be guaranteed because the overlap layer size is set to 1.
-        This means cells sharing only corners or edges (not faces) with interior cells aren't visible to the process,
-        potentially causing "multiple ids" for the same vertices.
-        To achieve unique vertex ids in some cases, use loadBalance(parts, false, true),
-        where 'parts' sets cell ranks, 'false' means ownerFirst, and 'true' adds corner cells.
-        The overlapLayerSize defaults to 1.
-    */
-}
-
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
@@ -180,7 +156,7 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
         BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
         BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 
     if (grid.comm().size()>1)
@@ -203,7 +179,7 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
         BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
         BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 
 }
@@ -299,7 +275,7 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
         // 24 active cells in level zero - 1 parent cells + 1*(2*2*2) new refined cells = 31
         BOOST_CHECK_EQUAL( grid.size(0), 31);
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 
 
@@ -323,7 +299,7 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
         // BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
         // BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 }
 
@@ -419,7 +395,7 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
         // 30 active coarse cells - 7 active parent cells + new refined cells 5*(2*2*2) + 2*(3*3*3) = 30-7+40+54 = 117
         BOOST_CHECK_EQUAL( grid.size(0), 117);
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 
     if (grid.comm().size()>1)
@@ -438,6 +414,6 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
         //  BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
         BOOST_CHECK_EQUAL( grid.maxLevel(), 2);
 
-        checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
+        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
     }
 }
