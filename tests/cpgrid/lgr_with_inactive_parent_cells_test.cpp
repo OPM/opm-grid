@@ -66,6 +66,102 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+void createTestGridWithLgrs(Dune::CpGrid& grid,
+                            const std::string& deckString)
+{
+    Opm::createGridAndAddLgrs(grid,
+                              deckString,
+                              /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
+                              /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
+                              /* endIJK_vec = */{{3,3,1}, {4,5,2}},
+                              /* lgr_name_vec = */ {"LGR1", "LGR2"});
+}
+
+int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
+                                  int level = -1) // defualt -1 represents leaf grid view.
+{
+    int count = 0;
+    const auto& elements = (level == -1)? Dune::elements(grid.leafGridView(), Dune::Partitions::interior) :
+        Dune::elements(grid.levelGridView(level), Dune::Partitions::interior);
+    for ([[maybe_unused]] const auto& element : elements) {
+        ++count;
+    }
+    return count;
+}
+
+void checkActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
+                                         const std::vector<int>& expected_active_cells)
+{
+    const int maxLevel = grid.maxLevel();
+    // Check active cells count per level grid
+    for (int level = 0; level <= maxLevel; ++level) {
+        BOOST_CHECK_EQUAL(grid.levelGridView(level).size(0), expected_active_cells[level]);
+    }
+
+    // Check active cells count for the leaf grid view
+    BOOST_CHECK_EQUAL(grid.leafGridView().size(0), expected_active_cells.back());
+    BOOST_CHECK_EQUAL(grid.size(0), expected_active_cells.back());
+}
+
+void checkGlobalActiveCellsCountInDistributedGridWithLgrs(const Dune::CpGrid& grid,
+                                                          const std::vector<int>& expected_global_cells)
+{
+    const int maxLevel = grid.maxLevel();
+    // Check global active cells count per level grid
+    for (int level = 0; level <= maxLevel; ++level) {
+        int local_active_interior_cells = countLocalActiveInteriorCells(grid, level);
+        int global_active_cells = grid.comm().sum(local_active_interior_cells);
+        BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells[level]);
+    }
+
+    // Check global active cells for the leaf grid view
+    int local_active_interior_cells = countLocalActiveInteriorCells(grid);
+    int global_active_cells = grid.comm().sum(local_active_interior_cells);
+    BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells.back());
+}
+
+void checkGridInactiveCellsCountSerial(const Dune::CpGrid& grid,
+                                       int expected_maxLevel,
+                                       const std::vector<int>& expected_active_cells)
+{
+    if (grid.comm().size() == 1) {
+
+        BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
+        checkActiveCellsCountInGridWithLgrs(grid, expected_active_cells);
+
+        Opm::checkGridWithLgrs(grid,
+                               /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                               /* lgr_name_vec = */  {"LGR1", "LGR2"});
+    }
+}
+
+void checkGridInactiveCellsCountParallel(Dune::CpGrid& grid,
+                                         int expected_maxLevel,
+                                         const std::vector<int>& expected_global_cells)
+{
+    if (grid.comm().size()>1) {
+
+        grid.loadBalance(/*overlapLayers*/ 1,
+                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
+                         /*imbalanceTol*/ 1.1,
+                         /*level*/ 0);
+
+        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
+                                    /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
+                                    /* endIJK_vec = */{{3,3,1}, {4,5,2}},
+                                    /* lgr_name_vec = */ {"LGR1", "LGR2"});
+
+        BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
+        checkGlobalActiveCellsCountInDistributedGridWithLgrs(grid, expected_global_cells);
+
+        Opm::checkGridWithLgrs(grid,
+                               /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                               /* lgr_name_vec = */  {"LGR1", "LGR2"});
+    }
+}
+
+
+
 BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
 {
 
@@ -107,7 +203,8 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
   3 5 0   3 5 1
   4 5 0   4 5 1 -- bottom of the pillar 29 | top of the pillar 29
   /
-  ZCORN -- no pinch-outs: consistent ZCORN values for each cell corner to avoid collapsed cells (flat layers).
+  ZCORN
+-- to easily deduce total active cells, no pinch-outs (consistent values to avoid collapsed cells, flat layers)
   80*0  -- top layer    k = 0
   80*1  -- bottom layer k = 0
   80*1  -- top layer    k = 1
@@ -131,57 +228,20 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
   /)";
 
     Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckString,
-                              /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                              /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                              /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                              /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-    // LGR1: 9 inactive parent cells.
-    // i=0 i=1 i=2          layer k = 0
-    //  0   0   0    j = 0
-    //  0   0   0    j = 1
+    createTestGridWithLgrs(grid, deckString);
+    // LGR1: 9 inactive parent cells.      |   LGR2: 4 inactive parent cells.
+    // i=0 i=1 i=2          layer k = 0    |   i=2 i=3             layer k = 1
+    //  0   0   0    j = 0                 |    0   0     j = 3
+    //  0   0   0    j = 1                 |    0   0     j = 4
     //  0   0   0    j = 2
 
-    // LGR2: 4 inactive parent cells.
-    // i=2 i=3             layer k = 1
-    //  0   0     j = 3
-    //  0   0     j = 4
+    // Refinement does not occur (since all parent cells are inactive, for all LGRs).
+    BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
+    BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
 
-    if (grid.comm().size() == 1) {
-        // In serial, total active coarse cells (from level zero grid): 40 - 17(0's in ACTNUM block) = 23.
-        BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), 23);
-        // Refinement does not occur (since all parent cells are inactive, for all LGRs).
-        BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
-        BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
-
-    if (grid.comm().size()>1)
-    {
-        grid.loadBalance(/*overlapLayers*/ 1,
-                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
-                         /*imbalanceTol*/ 1.1,
-                         /*level*/ 0);
-
-        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                                    /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                                    /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                                    /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-        // In serial, total active coarse cells (from level zero grid): 40 - 17(0's in ACTNUM block) = 23.
-        // auto global_active_coarse_cells = grid.comm().sum(grid.levelGridView(0).size(0)); count only interior!
-        //  BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), 23);
-
-        // Refinement does not occur (since all parent cells are inactive, for all LGRs).
-        BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
-        BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
-
+    // In serial, total active coarse cells (from level zero grid): 40 - 17(0's in ACTNUM block) = 23.
+    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 0, /* expected_active_cells = */ {23});
+    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 0, /* expected_global_cells = */ {23});
 }
 
 BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCell)
@@ -224,7 +284,8 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
   3 5 0   3 5 1
   4 5 0   4 5 1 -- bottom of the pillar 29 | top of the pillar 29
   /
-  ZCORN -- no pinch-outs: consistent ZCORN values for each cell corner to avoid collapsed cells (flat layers).
+  ZCORN
+-- to easily deduce total active cells, no pinch-outs (consistent values to avoid collapsed cells, flat layers)
   80*0  -- top layer    k = 0
   80*1  -- bottom layer k = 0
   80*1  -- top layer    k = 1
@@ -248,59 +309,19 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
   /)";
 
     Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckString,
-                              /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                              /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                              /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                              /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-    // LGR1: 1 active, 8 inactive parent cells.
-    // i=0 i=1 i=2          layer k = 0
-    //  0   0   0    j = 0
-    //  0   0   0    j = 1
+    createTestGridWithLgrs(grid, deckString);
+    // LGR1: 1 active, 8 inactive parent cells    |   LGR2: 4 inactive parent cells.
+    // i=0 i=1 i=2          layer k = 0           |   i=2 i=3             layer k = 1
+    //  0   0   0    j = 0                        |    0   0     j = 3
+    //  0   0   0    j = 1                        |    0   0     j = 4
     //  0   0   1    j = 2
 
-    // LGR2: 4 inactive parent cells.
-    // i=2 i=3             layer k = 1
-    //  0   0     j = 3
-    //  0   0     j = 4
-
-    if (grid.comm().size() == 1) {
-        // In serial, total active coarse cells (from level zero grid): 40 - 14(0's in ACTNUM block) = 24.
-        BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), 24);
-        BOOST_CHECK_EQUAL( grid.levelGridView(1).size(0), 1*(2*2*2)); // LGR1 1 active parent cells, number subd 2x2x2
-        // 'Refined' level grid with all inactive parent cells is empty.
-        BOOST_CHECK_EQUAL( grid.levelGridView(2).size(0), 0*(3*3*3)); // LGR2 all inactive parent cells, number subd 3x3x3
-        // 24 active cells in level zero - 1 parent cells + 1*(2*2*2) new refined cells = 31
-        BOOST_CHECK_EQUAL( grid.size(0), 31);
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
-
-
-    if (grid.comm().size()>1)
-    {
-        grid.loadBalance(/*overlapLayers*/ 1,
-                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
-                         /*imbalanceTol*/ 1.1,
-                         /*level*/ 0);
-
-        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                                    /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                                    /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                                    /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-        // In serial, total active coarse cells (from level zero grid): 40 - 17(0's in ACTNUM block) = 23.
-        // auto global_active_coarse_cells = grid.comm().sum(grid.levelGridView(0).size(0)); count only interior!
-        //  BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), 23);
-
-        // Refinement does not occur (since all parent cells are inactive, for all LGRs).
-        // BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
-        // BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
+    // In serial, total active coarse cells (from level zero grid): 40 - 14(0's in ACTNUM block) = 24.
+    //            total active refined cells in LGR1: 1 active parent cells, number subd 2x2x2 -> 1*(2*2*2) = 8.
+    //            total active refined cells in LGR2: 0 active parent cells, number subd 3x3x3 -> 0*(3*3*3) = 0.
+    //            total active leaf cells: 24 in level zero - 1 parent cell + 8 new refined cells = 31.
+    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */ {24,8,0,31});
+    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {24,8,0,31});
 }
 
 BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
@@ -344,7 +365,8 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
   3 5 0   3 5 1
   4 5 0   4 5 1 -- bottom of the pillar 29 | top of the pillar 29
   /
-  ZCORN -- no pinch-outs: consistent ZCORN values for each cell corner to avoid collapsed cells (flat layers).
+  ZCORN
+-- to easily deduce total active cells, no pinch-outs (consistent values to avoid collapsed cells, flat layers)
   80*0  -- top layer    k = 0
   80*1  -- bottom layer k = 0
   80*1  -- top layer    k = 1
@@ -368,52 +390,17 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
   /)";
 
     Dune::CpGrid grid;
-    Opm::createGridAndAddLgrs(grid,
-                              deckString,
-                              /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                              /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                              /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                              /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-    // LGR1: 4 inactive, 5 inactive parent cells.
-    // i=0 i=1 i=2          layer k = 0
-    //  0   0   1    j = 0
-    //  0   0   1    j = 1
+    createTestGridWithLgrs(grid, deckString);
+    // LGR1: 5 active, 4 inactive parent cells    |   LGR2: 2 inactive, 2 active parent cells.
+    // i=0 i=1 i=2          layer k = 0           |   i=2 i=3             layer k = 1
+    //  0   0   1    j = 0                        |    1   1     j = 3
+    //  0   0   1    j = 1                        |    0   0     j = 4
     //  1   1   1    j = 2
 
-    // LGR2: 2 inactive, 2 active parent cells.
-    // i=2 i=3             layer k = 1
-    //  1   1     j = 3
-    //  0   0     j = 4
-
-    if (grid.comm().size() == 1) {
-        // In serial, total active coarse cells (from level zero grid): 40 - 10(0's in ACTNUM block) = 30.
-        BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), 30);
-        BOOST_CHECK_EQUAL( grid.maxLevel(), 2);
-        BOOST_CHECK_EQUAL( grid.levelGridView(1).size(0), 5*(2*2*2)); // 40. LGR1 5 active parent cells, number subd per cell 2x2x2
-        BOOST_CHECK_EQUAL( grid.levelGridView(2).size(0), 2*(3*3*3)); // 54. LGR2 2 active parent cells, number subd per cell 3x3x3
-        // 30 active coarse cells - 7 active parent cells + new refined cells 5*(2*2*2) + 2*(3*3*3) = 30-7+40+54 = 117
-        BOOST_CHECK_EQUAL( grid.size(0), 117);
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
-
-    if (grid.comm().size()>1)
-    {
-
-        grid.loadBalance(/*overlapLayers*/ 1,
-                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
-                         /*imbalanceTol*/ 1.1,
-                         /*level*/ 0);
-
-        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                                    /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                                    /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                                    /* lgr_name_vec = */ {"LGR1", "LGR2"});
-
-        //  BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
-        BOOST_CHECK_EQUAL( grid.maxLevel(), 2);
-
-        Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},   /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
+    // In serial, total active coarse cells (from level zero grid): 40 - 10(0's in ACTNUM block) = 30.
+    //            total active refined cells in LGR1: 5 active parent cells, number subd 2x2x2 -> 5*(2*2*2) = 40.
+    //            total active refined cells in LGR2: 2 active parent cells, number subd 3x3x3 -> 2*(3*3*3) = 54.
+    //            total active leaf cells: 30 in level zero - 7 parent cells + (40+54) new refined cells = 117.
+    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */  {30, 40, 54, 117});
+    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {30, 40, 54, 117});
 }
