@@ -144,6 +144,11 @@ void adaptGridWithParams(Dune::CpGrid& grid,
 void adaptGrid(Dune::CpGrid& grid,
                const std::vector<int>& markedCells);
 
+void checkGridWithLgrs(const Dune::CpGrid& grid,
+                       const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                       const std::vector<std::string>& lgr_name_vec,
+                       bool gridHasBeenGlobalRefined = false);
+
 } // namespace Opm
 
 void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
@@ -736,6 +741,32 @@ void Opm::adaptGrid(Dune::CpGrid& grid,
     grid.preAdapt();
     grid.adapt();
     grid.postAdapt();
+}
+
+void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
+                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                            const std::vector<std::string>& lgr_name_vec,
+                            bool gridHasBeenGlobalRefined)
+{
+    const auto& data = grid.currentData();
+
+    Opm::checkLgrNameToLevel(grid, lgr_name_vec);
+    Opm::checkVertexAndFaceIndexAreNonNegative(grid);
+    Opm::checkFaceHas4VerticesAndMax2NeighboringCells(grid, data);
+    Opm::checkLocalIndicesMatchMapper(grid); // Decide if it's worth to keep it
+    Opm::checkGridBasicHiearchyInfo(grid, cells_per_dim_vec);
+
+    Opm::checkCellGlobalIdUniquenessForInteriorCells(grid, data);
+    /** Vertex global id uniqueness can't be guaranteed because the overlap layer size is set to 1.
+        This means cells sharing only corners or edges (not faces) with interior cells aren't visible to the process,
+        potentially causing "multiple ids" for the same vertices.
+        To achieve unique vertex ids in some cases, use loadBalance(parts, false, true),
+        where 'parts' sets cell ranks, 'false' means ownerFirst, and 'true' adds corner cells.
+        The overlapLayerSize defaults to 1.
+    */
+    Opm::checkGridLocalAndGlobalIdConsistency(grid, data);
+
+    Opm::checkGlobalCellBounds(grid, data, /* lgrsHaveBlockShape */ true, gridHasBeenGlobalRefined);
 }
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
