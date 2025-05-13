@@ -167,6 +167,11 @@ void checkGridInactiveCellsCountParallel(Dune::CpGrid& grid,
     }
 }
 
+// This test reuses the same deck, grid, and LGRs across cases.
+// Only the ACTNUM block (active/inactive parent cells) differs.
+// We avoid repetition and test serial/parallel behavior by distributing
+// the level-zero grid and adding LGRs to its distributed view,
+// even when LGRs exist in the global CpGrid view.
 BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
 {
 
