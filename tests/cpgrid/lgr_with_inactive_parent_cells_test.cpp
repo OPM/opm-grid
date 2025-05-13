@@ -77,21 +77,19 @@ void createTestGridWithLgrsSerial(Dune::CpGrid& grid,
                               /* lgr_name_vec = */ {"LGR1", "LGR2"});
 }
 
-/// - Distribute level zero grid of the test CpGrid with LGRs created in each test case
-/// - Add the same LGRs to the distributed view of the grid. 
+// Distribute level-zero grid and add LGRs to its distributed view,
+// of the test CpGrid with existing LGRs in the global view.
 void createTestGridWithLgrsParallel(Dune::CpGrid& grid)
 {
-    if (grid.comm().size()>1) {
-        grid.loadBalance(/*overlapLayers*/ 1,
-                         /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
-                         /*imbalanceTol*/ 1.1,
-                         /*level*/ 0);
+    grid.loadBalance(/*overlapLayers*/ 1,
+                     /*partitionMethod*/ Dune::PartitionMethod::zoltanGoG,
+                     /*imbalanceTol*/ 1.1,
+                     /*level*/ 0);
 
-        grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
-                                    /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
-                                    /* endIJK_vec = */{{3,3,1}, {4,5,2}},
-                                    /* lgr_name_vec = */ {"LGR1", "LGR2"});
-    }
+    grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */  {{2,2,2}, {3,3,3}},
+                                /* startIJK_vec = */   {{0,0,0}, {2,3,1}},
+                                /* endIJK_vec = */{{3,3,1}, {4,5,2}},
+                                /* lgr_name_vec = */ {"LGR1", "LGR2"});
 }
 
 int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
@@ -106,28 +104,14 @@ int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
     return count;
 }
 
-void checkActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
-                                         const std::vector<int>& expected_active_cells)
-{
-    const int maxLevel = grid.maxLevel();
-    // Check active cells count per level grid
-    for (int level = 0; level <= maxLevel; ++level) {
-        BOOST_CHECK_EQUAL(grid.levelGridView(level).size(0), expected_active_cells[level]);
-    }
-
-    // Check active cells count for the leaf grid view
-    BOOST_CHECK_EQUAL(grid.leafGridView().size(0), expected_active_cells.back());
-    BOOST_CHECK_EQUAL(grid.size(0), expected_active_cells.back());
-}
-
-void checkGlobalActiveCellsCountInDistributedGridWithLgrs(const Dune::CpGrid& grid,
-                                                          const std::vector<int>& expected_global_cells)
+void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
+                                               const std::vector<int>& expected_global_cells)
 {
     const int maxLevel = grid.maxLevel();
     // Check global active cells count per level grid
     for (int level = 0; level <= maxLevel; ++level) {
         int local_active_interior_cells = countLocalActiveInteriorCells(grid, level);
-        int global_active_cells = grid.comm().sum(local_active_interior_cells);
+        int global_active_cells =grid.comm().sum(local_active_interior_cells);
         BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells[level]);
     }
 
@@ -137,34 +121,16 @@ void checkGlobalActiveCellsCountInDistributedGridWithLgrs(const Dune::CpGrid& gr
     BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells.back());
 }
 
-void checkGridInactiveCellsCountSerial(const Dune::CpGrid& grid,
-                                       int expected_maxLevel,
-                                       const std::vector<int>& expected_active_cells)
+void checkGridInactiveCellsCount(Dune::CpGrid& grid,
+                                 int expected_maxLevel,
+                                 const std::vector<int>& expected_global_cells)
 {
-    if (grid.comm().size() == 1) {
+    BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
+    checkGlobalActiveCellsCountInGridWithLgrs(grid, expected_global_cells);
 
-        BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
-        checkActiveCellsCountInGridWithLgrs(grid, expected_active_cells);
-
-        Opm::checkGridWithLgrs(grid,
-                               /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
-                               /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
-}
-
-void checkGridInactiveCellsCountParallel(Dune::CpGrid& grid,
-                                         int expected_maxLevel,
-                                         const std::vector<int>& expected_global_cells)
-{
-    if (grid.comm().size()>1) {
-
-        BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
-        checkGlobalActiveCellsCountInDistributedGridWithLgrs(grid, expected_global_cells);
-
-        Opm::checkGridWithLgrs(grid,
-                               /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
-                               /* lgr_name_vec = */  {"LGR1", "LGR2"});
-    }
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                           /* lgr_name_vec = */  {"LGR1", "LGR2"});
 }
 
 // This test reuses the same deck, grid, and LGRs across cases.
@@ -249,12 +215,15 @@ BOOST_AUTO_TEST_CASE(refinementDoesNotOccurIfAllParentCellsAreInactive)
     BOOST_CHECK_EQUAL( grid.maxLevel(), 0);
     BOOST_CHECK_EQUAL( grid.levelGridView(0).size(0), grid.size(0));
 
+    bool isSerial = grid.comm().size() == 1;
     // In serial, total active coarse cells (from level zero grid): 40 - 17(0's in ACTNUM block) = 23.
-    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 0, /* expected_active_cells = */ {23});
-
-    // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
-    createTestGridWithLgrsParallel(grid);
-    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 0, /* expected_global_cells = */ {23});
+    if(isSerial) {
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 0, /* expected_active_cells = */ {23});
+    }
+    else { // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
+        createTestGridWithLgrsParallel(grid);
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 0, /* expected_global_cells = */ {23});
+    }
 }
 
 BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCell)
@@ -329,15 +298,18 @@ BOOST_AUTO_TEST_CASE(refinementOccursIfAtLeastOneLgrHasAtLeastOneActiveParentCel
     //  0   0   0    j = 1                        |    0   0     j = 4
     //  0   0   1    j = 2
 
+    bool isSerial = grid.comm().size() == 1;
     // In serial, total active coarse cells (from level zero grid): 40 - 14(0's in ACTNUM block) = 24.
     //            total active refined cells in LGR1: 1 active parent cells, number subd 2x2x2 -> 1*(2*2*2) = 8.
     //            total active refined cells in LGR2: 0 active parent cells, number subd 3x3x3 -> 0*(3*3*3) = 0.
     //            total active leaf cells: 24 in level zero - 1 parent cell + 8 new refined cells = 31.
-    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */ {24,8,0,31});
-
-    // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
-    createTestGridWithLgrsParallel(grid);
-    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {24,8,0,31});
+    if (isSerial) {
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */ {24,8,0,31});
+    }
+    else { // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
+        createTestGridWithLgrsParallel(grid);
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {24,8,0,31});
+    }
 }
 
 BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
@@ -413,13 +385,16 @@ BOOST_AUTO_TEST_CASE(refineBlocksWithAtLeastOneActiveCell)
     //  0   0   1    j = 1                        |    0   0     j = 4
     //  1   1   1    j = 2
 
+    bool isSerial = grid.comm().size() == 1;
     // In serial, total active coarse cells (from level zero grid): 40 - 10(0's in ACTNUM block) = 30.
     //            total active refined cells in LGR1: 5 active parent cells, number subd 2x2x2 -> 5*(2*2*2) = 40.
     //            total active refined cells in LGR2: 2 active parent cells, number subd 3x3x3 -> 2*(3*3*3) = 54.
     //            total active leaf cells: 30 in level zero - 7 parent cells + (40+54) new refined cells = 117.
-    checkGridInactiveCellsCountSerial(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */  {30, 40, 54, 117});
-
-    // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
-    createTestGridWithLgrsParallel(grid);
-    checkGridInactiveCellsCountParallel(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {30, 40, 54, 117});
+    if (isSerial) {
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 2, /* expected_active_cells = */  {30, 40, 54, 117});
+    }
+    else { // Distribute level zero grid and add the same LGRs to the distributed view of the grid.
+        createTestGridWithLgrsParallel(grid);
+        checkGridInactiveCellsCount(grid, /* expected_maxLevel = */ 2, /* expected_global_cells = */ {30, 40, 54, 117});
+    }
 }
