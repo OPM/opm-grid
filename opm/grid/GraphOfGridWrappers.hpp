@@ -269,6 +269,7 @@ zoltanPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                   Dune::EdgeWeightMethod edgeWeightMethod,
                                   int root,
                                   const double zoltanImbalanceTol,
+                                  bool allowDistributedWells,
                                   const std::map<std::string,std::string>& params,
                                   int level);
 
@@ -298,6 +299,7 @@ zoltanSerialPartitioningWithGraphOfGrid(const Dune::CpGrid& grid,
                                         Dune::EdgeWeightMethod edgeWeightMethod,
                                         int root,
                                         const double zoltanImbalanceTol,
+                                        bool allowDistributedWells,
                                         const std::map<std::string,std::string>& params);
 #endif // HAVE_MPI
 
