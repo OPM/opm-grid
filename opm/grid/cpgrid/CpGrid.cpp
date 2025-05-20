@@ -2022,7 +2022,7 @@ bool CpGrid::adapt()
         is_global_refine = true; // parallel
     }
 #endif
-    if ( (comm().size() == 0) && (local_marked_elem_count == current_view_data_-> size(0)) ) {
+    if ( (comm().size() == 1) && (local_marked_elem_count == current_view_data_-> size(0)) ) {
         // GR stands for GLOBAL REFINEMET
         lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
         is_global_refine = true; // sequential
