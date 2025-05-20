@@ -204,8 +204,10 @@ namespace cpgrid
                     return transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZPlus) *
                         transMult.getMultiplier(cartindex, ::Opm::FaceDir::ZMinus);
                 };
+                bool mergeMinPVCells = edge_conformal;// try to make geometrically connected grids
+
                 minpv_result = mp.process(thickness, z_tolerance, ecl_grid.getPinchMaxEmptyGap(),
-                                          poreVolume, ecl_grid.getMinpvVector(), actnumData, false,
+                                          poreVolume, ecl_grid.getMinpvVector(), actnumData, edge_conformal,
                                           zcornData.data(), nogap, pinchOptionALL,
                                           permZ, multZ, tolerance_unique_points);
                 if (!minpv_result.nnc.empty()) {
@@ -223,6 +225,9 @@ namespace cpgrid
 
             // Add PINCH NNCs.
             std::vector<Opm::NNCdata> pinchedNNCs;
+            if(edge_conformal){
+                assert(minpv_result.nnc.size() == 0);
+            }
 
             for (const auto& [cell1, cell2] : minpv_result.nnc) {
                 nnc_cells[PinchNNC].insert({cell1, cell2});
@@ -415,12 +420,19 @@ namespace cpgrid
         }
         else {
             // Make the grid.
+            auto pinchActive_copy = pinchActive;
+            if(edge_conformal){
+                // In edge conformal grids we need to set the pinchActive flag to true
+                pinchActive_copy = true;
+                assert(nnc_cells[PinchNNC].empty());
+                assert(nnc_cells[ExplicitNNC].empty());
+            }
             this->processEclipseFormat(g,
                                        ecl_state,
                                        nnc_cells,
                                        false,
                                        turn_normals,
-                                       pinchActive,
+                                       pinchActive_copy,
                                        tolerance_unique_points,
                                        edge_conformal);
         }
