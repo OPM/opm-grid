@@ -2009,25 +2009,15 @@ bool CpGrid::adapt()
         }
     }
 
-    // Check if its a global refinement
-    bool is_global_refine = false;
     std::vector<std::string> lgr_name_vec = { "LGR" + std::to_string(preAdaptMaxLevel +1) };
-    // Rewrite if global refinement
-#if HAVE_MPI
+
     auto global_marked_elem_count = comm().sum(local_marked_elem_count);
     auto global_cell_count_before_adapt = comm().sum(current_view_data_-> size(0)); // Recall overlap cells are also marked
-    if (global_marked_elem_count == global_cell_count_before_adapt) {
-        // GR stands for GLOBAL REFINEMET
-        lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-        is_global_refine = true; // parallel
-    }
-#endif
-    if ( (comm().size() == 1) && (local_marked_elem_count == current_view_data_-> size(0)) ) {
-        // GR stands for GLOBAL REFINEMET
-        lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
-        is_global_refine = true; // sequential
-    }
+    // Check if its a global refinement
+    bool is_global_refine = (global_marked_elem_count == global_cell_count_before_adapt);
     if (is_global_refine) { // parallel or sequential
+        // Rewrite the lgr name (GR stands for GLOBAL REFINEMET)
+        lgr_name_vec = { "GR" + std::to_string(preAdaptMaxLevel +1) };
         const std::array<int,3>& endIJK = currentData().back()->logicalCartesianSize();
         return this->adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, {{0,0,0}}, {endIJK});
     }
