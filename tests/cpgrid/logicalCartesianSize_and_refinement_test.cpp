@@ -38,6 +38,7 @@
 
 
 #include <array>
+#include <unordered_set>
 #include <vector>
 
 struct Fixture {
@@ -61,11 +62,19 @@ void areEqual(const std::array<int,3>& expected_logicalCartesianSize,
     BOOST_CHECK_EQUAL(expected_logicalCartesianSize[2], actual_logicalCartesianSize[2]);
 }
 
-BOOST_AUTO_TEST_CASE(lgrLogicalCartesianSize_afterAddLgrsUpdateLeafView_makesSense)
+// This test reuses in each case the same grid and LGRs, to check
+// serial and parallel bahavior. The difference is how refinement
+// gets trigered, namemly, by calling addLgrsUpdateLeafView(...),
+// adapt(), or globalRefine(..).
+BOOST_AUTO_TEST_CASE(lgrLogCartSize_afterAddLgrsUpdateLeafView_makesSense)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel) {
+        grid.loadBalance();
+    }
     grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{3,3,3}, {3,3,3}},
                                 /* startIJK_vec = */ {{0,0,1}, {2,2,2}},
                                 /* endIJK_vec = */ {{3,2,2}, {4,3,3}},
@@ -78,15 +87,17 @@ BOOST_AUTO_TEST_CASE(lgrLogicalCartesianSize_afterAddLgrsUpdateLeafView_makesSen
     // Block shaped parent cells of LGR2 dimensions (4-2)x(3-2)x(3-2). Number of subdivisions per cell, per direction {3,3,3}.
     areEqual( /* expected_logicalCartisianSize = */ {6,3,3}, // LGR2 dimensions {(4-2)*3, (3-2)*3, (3-2)*3}.
               /* LGR2 logicalCartesianSize = */ grid.currentData()[2]->logicalCartesianSize());
-
 }
 
-
-BOOST_AUTO_TEST_CASE(gridLogicalCartesianSize_afterStrictLocalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogicalCartesianSize)
+BOOST_AUTO_TEST_CASE(gridLogCartSize_afterStrictLocalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogCartSize)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel) {
+        grid.loadBalance();
+    }
     grid.addLgrsUpdateLeafView(/* cells_per_dim = */ {{3,3,3}, {3,3,3}},
                                /* startIJK_vec = */ {{0,0,1}, {2,2,2}},
                                /* endIJK_vec = */ {{3,2,2}, {4,3,3}},
@@ -99,11 +110,15 @@ BOOST_AUTO_TEST_CASE(gridLogicalCartesianSize_afterStrictLocalRefinementWith_add
              grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(gridLogicalCartesianSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_makesSense)
+BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_makesSense)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel) {
+        grid.loadBalance();
+    }
     grid.addLgrsUpdateLeafView(/* cells_per_dim = */ {{3,3,3}},
                                /* startIJK_vec = */ {{0,0,0}},
                                /* endIJK_vec = */ {{4,3,3}},
@@ -121,14 +136,28 @@ BOOST_AUTO_TEST_CASE(gridLogicalCartesianSize_afterHiddenGlobalRefinementWith_ad
              grid.logicalCartesianSize());
 }
 
-
-BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterStrictLocalRefinementWith_adapt_areACopyOfLevelZeroLogicalCartesianSize)
+BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_areACopyOfLevelZeroLogCartSize)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
-    std::vector<int> markedCells = {17,18,21,22};
-    Opm::adaptGrid(grid, markedCells); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel){
+        grid.loadBalance();
+    }
+
+    std::unordered_set<int> markedCells = {17,18,21,22}; // parent cell global ids
+    // Mark selected elements for refinement
+    for (const auto& element : elements(grid.leafGridView())) {
+        const auto& id = grid.globalIdSet().id(element);
+        if (markedCells.count(id) > 0) {
+            grid.mark(1, element);
+        }
+    }
+
+    grid.preAdapt();
+    grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
+    grid.postAdapt();
 
     areEqual(/* grid dimensions before refinement = */ {4,3,3},
              /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
@@ -141,15 +170,48 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_afterStrictLocalRefinementWi
              grid.logicalCartesianSize());
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogicalCartesianSize_after_globalRefine_makeSense)
+BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt_makeSense)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
+    areEqual(/* grid dimensions before refinement = */ {4,3,3},
+             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
+
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel) {
+        grid.loadBalance();
+    }
+    // Mark all elements -> 'indirect' globalRefine
+    for (const auto& element : elements(grid.leafGridView())) {
+        grid.mark(1, element);
+    }
+    grid.preAdapt();
+    grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
+    grid.postAdapt();
+
+    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+             /* LGR1 logicalCartesianSize = */ grid.currentData()[1]->logicalCartesianSize());
+
+    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+             grid.logicalCartesianSize());
+}
+
+BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
+{
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+
+    bool isParallel = grid.comm().size() > 1;
+    if (isParallel) {
+        grid.loadBalance();
+    }
     grid.globalRefine(1); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2}, grid.logicalCartesianSize());
+    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+             grid.logicalCartesianSize());
     // The refined level grid is a "copy" of the leaf grid view, if globalRefine has been invoked.
     // TODO: remove the refined level grid in this case.
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2}, grid.currentData()[1]->logicalCartesianSize());
+    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
+             grid.currentData()[1]->logicalCartesianSize());
 }
