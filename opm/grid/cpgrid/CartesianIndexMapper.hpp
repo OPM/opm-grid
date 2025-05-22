@@ -37,7 +37,11 @@ namespace Dune
 
         const std::array<int, dimension>& cartesianDimensions() const
         {
-            return grid_.logicalCartesianSize();
+            // For now, return the level-zero logical Cartesian size.
+            // Note: grid_.logicalCartesianSize() can vary depending on how refinement was applied
+            // (e.g., via addLgrsUpdateLeafView(...), adapt(), or globalRefine()).
+            // This includes cases where all elements of the level-zero grid have been refined.
+            return grid_.currentData().front()->logicalCartesianSize();
         }
 
         int cartesianSize() const
