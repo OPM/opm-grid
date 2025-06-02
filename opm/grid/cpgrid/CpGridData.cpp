@@ -2694,9 +2694,9 @@ bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
     if (refCount == -1) {
         OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
     }
-    // Check the cell to be marked for refinement has no NNC (no neighbouring connections). Throw otherwise.
+    // Prevent refinement if the cell has a non-neighbor connection (NNC).
     if (hasNNCs({element.index()}) && (refCount == 1)) {
-        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported, yet.");
+        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
     }
     assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {

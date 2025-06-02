@@ -50,6 +50,7 @@
 #endif
 
 #include "../CpGrid.hpp"
+#include "ElementMarkHandle.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
 #include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
@@ -1955,13 +1956,11 @@ bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
     // Throw if element has a neighboring cell from a different level.
     // E.g., a coarse cell touching the boundary of an LGR, or
-    // a refined cell with a coarser/finner neighboring cell. 
-    const auto& intersections = Dune::intersections(leafGridView(), element);
-    for (const auto& intersection : intersections){
+    // a refined cell with a coarser/finner neighboring cell.
+    for (const auto& intersection : Dune::intersections(leafGridView(), element)){
         if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0))
-             OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
+            OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
     }
-    
     // For serial run, mark elements also in the level they were born.
     if(currentData().size()>1) {
         // Mark element in its level
@@ -1979,7 +1978,32 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGrid::preAdapt()
 {
-    // Set the flags mighVanish for elements that have been marked for refinement/coarsening.
+#if HAVE_MPI
+    // Communicate marked elements across all processes, in all level grids, including
+    // leaf grid view (i.e., currentData().back())
+    for (std::size_t level = 0; level < currentData().size(); ++level)
+    {
+        // The attribute mark_ can be empty in processes with no elements marked
+        // for refinement. In that case, resize before communication occurs.
+        if(this->currentData()[level]->mark_.empty()){
+            this->currentData()[level]->mark_.resize(this->currentData()[level]->size(0));
+        }
+
+        // Detect the maximum mark across processes, and rewrite
+        // the local entry in mark_, i.e.,
+        // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
+        ElementMarkHandle element_mark_handle(this->currentData()[level]->mark_);
+
+        // AllCommunication is not supported, so we communicate in both directions.
+        currentData()[level]->communicate(element_mark_handle,
+                                          Dune::All_All_Interface,
+                                          Dune::ForwardCommunication);
+
+        currentData()[level]->communicate(element_mark_handle,
+                                          Dune::All_All_Interface,
+                                          Dune::BackwardCommunication);
+    }
+#endif
 
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
@@ -1987,7 +2011,8 @@ bool CpGrid::preAdapt()
     for (const auto& preAdaptGrid : currentData()) {
         isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
     }
-    return isPreAdapted;
+    // If at least one process has marked elements, return true.
+    return this->comm().max(isPreAdapted);
 }
 
 bool CpGrid::adapt()
