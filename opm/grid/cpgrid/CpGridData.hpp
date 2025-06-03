@@ -397,6 +397,13 @@ public:
 
     /// @brief Set mightVanish flags for elements that will be refined in the next adapt() call
     ///        Need to be called after elements have been marked for refinement.
+    ///
+    ///        Communicate marks accross processes, in parallel runs.
+    ///        An element may be marked somewhere in opm-simulators because it does not fulfill a
+    ///        certain property, regardless of whether it belongs to the interior or overlap
+    ///        partition.
+    ///
+    /// @return True if at least one element has been marked for refinement, false otherwise.
     bool preAdapt();
 
     /// TO DO: Documentation. Triggers the grid refinement process - Currently, returns preAdapt()

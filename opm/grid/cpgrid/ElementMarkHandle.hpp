@@ -35,8 +35,6 @@
 
 namespace
 {
-#if HAVE_MPI
-
 /// \brief Handle for assignment of element marks (0: do nothing, 1: refine, -1: coarse - not supported yet).
 struct ElementMarkHandle {
 
@@ -83,6 +81,5 @@ struct ElementMarkHandle {
 private:
     std::vector<DataType>& winningMark_;
 };
-#endif // HAVE_MPI
 } // namespace
 #endif
