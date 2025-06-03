@@ -7,6 +7,7 @@
 #include <utility>
 #include"CpGridData.hpp"
 #include"DataHandleWrappers.hpp"
+#include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
 #include"OrientedEntityTable.hpp"
@@ -2713,7 +2714,28 @@ int CpGridData::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGridData::preAdapt()
 {
-    // [Indirectly] Set mightVanish flags for elements that have been marked for refinement
+    // Communicate marked elements across all processes.
+#if HAVE_MPI
+    // The attribute mark_ can be empty in processes with no elements marked
+    // for refinement. In that case, resize before communication occurs.
+    if(mark_.empty()){
+        mark_.resize(size(0));
+    }
+
+    // Detect the maximum mark across processes, and rewrite
+    // the local entry in mark_, i.e.,
+    // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
+    ElementMarkHandle element_mark_handle(mark_);
+
+    // AllCommunication is not supported, so we communicate in both directions.
+    communicate(element_mark_handle,
+                Dune::All_All_Interface,
+                Dune::ForwardCommunication);
+
+    communicate(element_mark_handle,
+                Dune::All_All_Interface,
+                Dune::BackwardCommunication);
+#endif
     if(mark_.empty()) {
         return false;
     }

@@ -50,7 +50,6 @@
 #endif
 
 #include "../CpGrid.hpp"
-#include "ElementMarkHandle.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
 #include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
@@ -1978,38 +1977,11 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGrid::preAdapt()
 {
-#if HAVE_MPI
-    // Communicate marked elements across all processes, in all level grids, including
-    // leaf grid view (i.e., currentData().back())
-    for (std::size_t level = 0; level < currentData().size(); ++level)
-    {
-        // The attribute mark_ can be empty in processes with no elements marked
-        // for refinement. In that case, resize before communication occurs.
-        if(this->currentData()[level]->mark_.empty()){
-            this->currentData()[level]->mark_.resize(this->currentData()[level]->size(0));
-        }
-
-        // Detect the maximum mark across processes, and rewrite
-        // the local entry in mark_, i.e.,
-        // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
-        ElementMarkHandle element_mark_handle(this->currentData()[level]->mark_);
-
-        // AllCommunication is not supported, so we communicate in both directions.
-        currentData()[level]->communicate(element_mark_handle,
-                                          Dune::All_All_Interface,
-                                          Dune::ForwardCommunication);
-
-        currentData()[level]->communicate(element_mark_handle,
-                                          Dune::All_All_Interface,
-                                          Dune::BackwardCommunication);
-    }
-#endif
-
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
-    bool isPreAdapted = false;
+    bool isPreAdapted = false; // 0
     for (const auto& preAdaptGrid : currentData()) {
-        isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+        isPreAdapted = std::max(isPreAdapted, preAdaptGrid -> preAdapt()); // could be 0 or 1
     }
     // If at least one process has marked elements, return true.
     return this->comm().max(isPreAdapted);
