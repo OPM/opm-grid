@@ -1955,13 +1955,11 @@ bool CpGrid::mark(int refCount, const cpgrid::Entity<0>& element)
 {
     // Throw if element has a neighboring cell from a different level.
     // E.g., a coarse cell touching the boundary of an LGR, or
-    // a refined cell with a coarser/finner neighboring cell. 
-    const auto& intersections = Dune::intersections(leafGridView(), element);
-    for (const auto& intersection : intersections){
+    // a refined cell with a coarser/finner neighboring cell.
+    for (const auto& intersection : Dune::intersections(leafGridView(), element)){
         if (intersection.neighbor() && (intersection.outside().level() != element.level()) && (element.level()==0))
-             OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
+            OPM_THROW(std::logic_error, "Refinement of cells at LGR boundaries is not supported, yet.");
     }
-    
     // For serial run, mark elements also in the level they were born.
     if(currentData().size()>1) {
         // Mark element in its level
@@ -1979,15 +1977,14 @@ int CpGrid::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGrid::preAdapt()
 {
-    // Set the flags mighVanish for elements that have been marked for refinement/coarsening.
-
     // Check if elements in pre-adapt existing grids have been marked for refinment.
     // Serial run: currentData() = data_. Parallel run: currentData() = distributed_data_.
-    bool isPreAdapted = false;
+    bool isPreAdapted = false; // 0
     for (const auto& preAdaptGrid : currentData()) {
-        isPreAdapted = isPreAdapted || (preAdaptGrid -> preAdapt());
+        isPreAdapted = std::max(isPreAdapted, preAdaptGrid -> preAdapt()); // could be 0 or 1
     }
-    return isPreAdapted;
+    // If at least one process has marked elements, return true.
+    return this->comm().max(isPreAdapted);
 }
 
 bool CpGrid::adapt()
@@ -2823,9 +2820,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         Opm::OpmLog::warning("All the LGRs contain only inactive cells.\n");
     }
 
-    preAdapt();
+    // Refine
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, startIJK_vec, endIJK_vec);
-    postAdapt();
 
     // Print total refined level grids and total cells on the leaf grid view
     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");

@@ -7,6 +7,7 @@
 #include <utility>
 #include"CpGridData.hpp"
 #include"DataHandleWrappers.hpp"
+#include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
 #include"OrientedEntityTable.hpp"
@@ -2694,9 +2695,9 @@ bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
     if (refCount == -1) {
         OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
     }
-    // Check the cell to be marked for refinement has no NNC (no neighbouring connections). Throw otherwise.
+    // Prevent refinement if the cell has a non-neighbor connection (NNC).
     if (hasNNCs({element.index()}) && (refCount == 1)) {
-        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported, yet.");
+        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
     }
     assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {
@@ -2713,7 +2714,30 @@ int CpGridData::getMark(const cpgrid::Entity<0>& element) const
 
 bool CpGridData::preAdapt()
 {
-    // [Indirectly] Set mightVanish flags for elements that have been marked for refinement
+    // Communicate marked elements across all processes.
+    if (ccobj_.size()>1) {
+
+        auto local_empty = mark_.empty();
+        // The attribute mark_ can be empty in processes with no elements marked
+        // for refinement. In that case, resize before communication occurs.
+        if (ccobj_.max(!local_empty)){
+            if (local_empty)
+                mark_.resize(size(0));
+        }
+       
+        // Detect the maximum mark across processes, and rewrite
+        // the local entry in mark_, i.e.,
+        // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
+        ElementMarkHandle element_mark_handle(mark_);
+
+        // An element may be marked somewhere in opm-simulators because it does not fulfill a
+        // certain property, regardless of whether it belongs to the interior or overlap
+        // partition. Therefore, we use the All_All_Interface.
+        communicate(element_mark_handle,
+                    Dune::All_All_Interface,
+                    Dune::ForwardCommunication);
+    }
+
     if(mark_.empty()) {
         return false;
     }

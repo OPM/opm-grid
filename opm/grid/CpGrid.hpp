@@ -465,6 +465,9 @@ namespace Dune
         /// equal to the GLOBAL Grid (level zero). Therefore, we mark elements (from the GLOBAL grid)
         /// for refinement.
         /// This only works for entities of codim 0.
+        /// In distributed grids, element markings are synchronized across processes.
+        /// If an element is marked by one process, all other processes that share that element
+        /// will also receive and apply the same mark.
         ///
         /// @param [in] refCount   To mark the element for
         ///                        - refinement, refCount == 1
