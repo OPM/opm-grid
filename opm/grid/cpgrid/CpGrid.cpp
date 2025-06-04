@@ -2820,9 +2820,8 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
         Opm::OpmLog::warning("All the LGRs contain only inactive cells.\n");
     }
 
-    preAdapt();
+    // Refine
     adapt(cells_per_dim_vec, assignRefinedLevel, lgr_name_vec, startIJK_vec, endIJK_vec);
-    postAdapt();
 
     // Print total refined level grids and total cells on the leaf grid view
     Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
