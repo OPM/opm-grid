@@ -1,0 +1,117 @@
+name: Build opm-grid/opm/grid Doxygen Docs and push to gh-pages
+
+on:
+  push:
+    branches:
+      - '**'
+    pull_request_target:
+        types: closed
+        branches: master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y doxygen graphviz
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+
+      - name: Install Python packages
+        run: |
+          python -m pip install --upgrade pip
+          pip install sphinx==7.1.2 breathe==4.35.0 furo
+
+      - name: Create minimal Doxyfile (to be improved)
+        run: |
+          rm -f Doxyfile
+          echo "PROJECT_NAME           = "OPM Grid"" >> Doxyfile
+          echo "OUTPUT_DIRECTORY       = docs/doxygen" >> Doxyfile
+          echo "GENERATE_XML           = YES" >> Doxyfile
+          echo "RECURSIVE              = YES" >> Doxyfile
+          echo "INPUT                  = opm/grid/" >> Doxyfile
+          echo "EXTRACT_ALL            = YES" >> Doxyfile
+          echo "GENERATE_LATEX         = NO" >> Doxyfile
+          echo "GENERATE_HTML          = NO" >> Doxyfile
+          echo "ENABLE_PREPROCESSING    = YES" >> Doxyfile
+          echo "MACRO_EXPANSION         = YES" >> Doxyfile
+          echo "SKIP_FUNCTION_MACROS    = YES" >> Doxyfile
+
+      - name: Set up project structure
+        run: |
+          mkdir -p docs/sphinx/source
+          mkdir -p docs/sphinx/build
+
+      - name: Quickstart Sphinx
+        run: |
+          sphinx-quickstart -q -p "OPM Grid" -a "opm-dev" --no-sep --ext-autodoc  --makefile docs/sphinx
+
+      - name: Create empty conf.py
+        run: |
+          touch docs/sphinx/source/conf.py
+
+      - name: Overwrite conf.py with custom config
+        run: |
+          echo "import os" >> docs/sphinx/source/conf.py
+          echo "import sys" >> docs/sphinx/source/conf.py
+          echo "from pathlib import Path" >> docs/sphinx/source/conf.py
+          echo "sys.path.insert(0, str(Path('.').resolve()))" >> docs/sphinx/source/conf.py
+          echo "" >> docs/sphinx/source/conf.py
+          echo "project = 'OPM hola Grid Documentation'" >> docs/sphinx/source/conf.py
+          echo "author = 'OPM-dev'" >> docs/sphinx/source/conf.py
+          echo "" >> docs/sphinx/source/conf.py
+          echo "extensions = ['breathe']" >> docs/sphinx/source/conf.py
+          echo "" >> docs/sphinx/source/conf.py
+          echo "html_theme = 'furo'" >> docs/sphinx/source/conf.py
+          echo "" >> docs/sphinx/source/conf.py
+          echo "breathe_projects = {" >> docs/sphinx/source/conf.py
+          echo "    'OPM Grid': '../../doxygen/xml'" >> docs/sphinx/source/conf.py
+          echo "}" >> docs/sphinx/source/conf.py
+          echo "breathe_default_project = 'OPM Grid'" >> docs/sphinx/source/conf.py
+
+      - name: Create index.rst with Breathe directives
+        run: |
+          rm -rf docs/sphinx/source/index.rst
+          echo "Opm Grid Documentation" >> docs/sphinx/source/index.rst
+          echo "============================" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo "Welcome to OPM Grid documentation!" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo "API Reference" >> docs/sphinx/source/index.rst
+          echo "-------------" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo ".. doxygenindex::" >> docs/sphinx/source/index.rst
+          echo "" >> docs/sphinx/source/index.rst
+          echo ".. toctree::" >> docs/sphinx/source/index.rst
+          echo "   :maxdepth: 2" >> docs/sphinx/source/index.rst
+          echo "   :caption: Contents:" >> docs/sphinx/source/index.rst
+
+      - name: Build Doxygen documentation
+        run: |
+          doxygen Doxyfile
+
+      - name: Build Sphinx documentation
+        run: |
+           sphinx-build -b html docs/sphinx/source docs/sphinx/build/html
+           make html
+
+      - name: Copy documentation to gh-pages
+        run: |
+            mkdir docs/sphinx/gh-pages
+            cp -r docs/sphinx/build/* docs/sphinx/gh-pages
+      - name: Deploy documentation
+        uses: OPM/github-pages-deploy-action@releases/v4
+        with:
+          branch: gh-pages
+          folder: docs/sphinx/gh-pages 
