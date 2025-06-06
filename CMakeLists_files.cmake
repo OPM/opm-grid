@@ -91,6 +91,7 @@ list (APPEND TEST_SOURCE_FILES
   tests/cpgrid/facetag_test.cpp
   tests/cpgrid/global_refine_test.cpp
   tests/cpgrid/grid_global_id_set_test.cpp
+  tests/cpgrid/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr_cell_id_sync_test.cpp
   tests/cpgrid/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
