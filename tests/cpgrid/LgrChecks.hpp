@@ -137,6 +137,9 @@ template<typename T>
 bool areClose(const T& cont1,
               const T& cont2);
 
+void areEqual(const std::array<int,3>& expected_array,
+              const std::array<int,3>& actual_array);
+
 void adaptGridWithParams(Dune::CpGrid& grid,
                          const std::array<int,3>& cells_per_dim,
                          const std::vector<int>& markedCells);
@@ -589,6 +592,14 @@ template<typename T>
 bool Opm::areClose(const T& cont1, const T& cont2)
 {
     return (std::abs(cont1[0] - cont2[0]) < 1e-12) && (std::abs(cont1[1] - cont2[1]) < 1e-12) && (std::abs(cont1[2] - cont2[2])< 1e-12);
+}
+
+void Opm::areEqual(const std::array<int,3>& expected_array,
+                   const std::array<int,3>& actual_array)
+{
+    BOOST_CHECK_EQUAL(expected_array[0], actual_array[0]);
+    BOOST_CHECK_EQUAL(expected_array[1], actual_array[1]);
+    BOOST_CHECK_EQUAL(expected_array[2], actual_array[2]);
 }
 
 void Opm::checkEqualVertexFaceCellSizes(const Dune::CpGrid& grid, const Dune::CpGrid& other_grid)
