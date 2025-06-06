@@ -43,20 +43,71 @@ struct Fixture {
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-
-void areEqual(const std::array<int,3>& expected_logicalCartesianSize,
-              const std::array<int,3>& actual_logicalCartesianSize)
+void cartesianDimensionsCoincideWithLevelZeroOnes(const Dune::CpGrid& grid,
+                                                  const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
+                                                  const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                                  const std::array<int,3>& levelZero_cartDims)
 {
-    BOOST_CHECK_EQUAL(expected_logicalCartesianSize[0], actual_logicalCartesianSize[0]);
-    BOOST_CHECK_EQUAL(expected_logicalCartesianSize[1], actual_logicalCartesianSize[1]);
-    BOOST_CHECK_EQUAL(expected_logicalCartesianSize[2], actual_logicalCartesianSize[2]);
+    Opm::areEqual(cartMapp.cartesianDimensions(), levelZero_cartDims);
+    Opm::areEqual(cartMapp.cartesianDimensions(), levelCartMapp.cartesianDimensions(0));
+    Opm::areEqual(cartMapp.cartesianDimensions(), grid.currentData().front()->logicalCartesianSize());
+}
+
+void cartesianSizeCoincidesWithLevelZeroOne(const Dune::CpGrid& grid,
+                                            const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
+                                            const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                            int levelZero_cartSize)
+{
+    BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), levelZero_cartSize);
+    BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), levelCartMapp.cartesianSize(0));
+    BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), grid.currentData().front()->size(0)); // only for ALL active & serial?
+}
+
+
+void compressedSizeCoincidesWithLeafGridCellCount(const Dune::CpGrid& grid,
+                                                  const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
+                                                  int leafGridCellCount)
+{
+    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), leafGridCellCount);
+    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.size(0));
+    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.currentData().back()->size(0)); // only for ALL active & serial?
+}
+
+void checkLevels(const Dune::CpGrid& grid,
+                 const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                 const std::vector<std::array<int,3>>& expected_level_cartDims,
+                 const std::vector<int>& expected_level_cartSizes,
+                 const std::vector<int>& expected_level_compressedSizes)
+{
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        Opm::areEqual( levelCartMapp.cartesianDimensions(level), expected_level_cartDims[level] );
+        BOOST_CHECK_EQUAL( levelCartMapp.cartesianSize(level), expected_level_cartSizes[level] );
+        BOOST_CHECK_EQUAL( levelCartMapp.compressedSize(level), expected_level_compressedSizes[level] );
+    }
+}
+
+void allThrow(const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+              int unexisting_level)
+{
+    BOOST_CHECK_THROW(levelCartMapp.cartesianDimensions(unexisting_level), std::logic_error);
+    BOOST_CHECK_THROW(levelCartMapp.cartesianSize(unexisting_level), std::logic_error);
+    BOOST_CHECK_THROW(levelCartMapp.compressedSize(unexisting_level), std::logic_error);
+
+    const int dummy_compressedElementIndex = 0;
+    BOOST_CHECK_THROW(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, unexisting_level), std::logic_error);
+
+    const int dummy_compressedElementIndexOnLevel = 0;
+    std::array<int,3> dummy_coordsOnLevel{};
+    BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel,
+                                                        dummy_coordsOnLevel,
+                                                        unexisting_level), std::logic_error);
 }
 
 // This test reuses in each case the same grid and LGRs, to check
 // serial and parallel bahavior. The difference is how refinement
 // gets trigered, namemly, by calling addLgrsUpdateLeafView(...),
 // adapt(), or globalRefine(..).
-BOOST_AUTO_TEST_CASE(levalAndGridCartesianIndexMappers_afterAddLgrsUpdateLeafView)
+BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinementWith_addLgrsUpdateLeafView)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -70,96 +121,75 @@ BOOST_AUTO_TEST_CASE(levalAndGridCartesianIndexMappers_afterAddLgrsUpdateLeafVie
                                 /* endIJK_vec = */ {{3,2,2}, {4,3,3}},
                                 /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
-    // Take all the level grids and the leaf grid view - Remove? Does it help readability?
-    const auto& level_0_grid_data = grid.currentData().front();
-    const auto& level_1_grid_data = grid.currentData()[1];
-    const auto& level_2_grid_data = grid.currentData()[2];
-    const auto& leaf_grid_data = grid.currentData().back();
-    const int unexisting_level = 3;
+    // Block shaped parent cells of LGR1 dimensions (3-0)x(2-0)x(2-1).
+    // Number of subdivisions per cell, per direction {3,3,3}.       -> LGR1 dims = {9,6,3}
+    //
+    // Block shaped parent cells of LGR2 dimensions (4-2)x(3-2)x(3-2).
+    // Number of subdivisions per cell, per direction {3,3,3}.       -> LGR2 dims = {6,3,3}
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // ---------------------------------------------------------- cartesianDimensions()
-    areEqual(/* levelZeroCartesianDimensions = */ {4,3,3}, level_0_grid_data->logicalCartesianSize());
-    areEqual(level_0_grid_data->logicalCartesianSize(), cartMapp.cartesianDimensions());
-    areEqual(level_0_grid_data->logicalCartesianSize(), levelCartMapp.cartesianDimensions(0));
-    areEqual(cartMapp.cartesianDimensions(), levelCartMapp.cartesianDimensions(0));
-    areEqual(grid.logicalCartesianSize(), cartMapp.cartesianDimensions());
-    
-    // Block shaped parent cells of LGR1 dimensions (3-0)x(2-0)x(2-1). Number of subdivisions per cell, per direction {3,3,3}.
-    areEqual(/* LGR1 dimensions {(3-0)*3, (2-0)*3, (2-1)*3} */ {9,6,3}, level_1_grid_data->logicalCartesianSize());
-    areEqual(level_1_grid_data->logicalCartesianSize(), levelCartMapp.cartesianDimensions(1));
+    // Check level Cartesian dimensions and size, and compressed size, for level grids.
+    checkLevels(grid,
+                levelCartMapp,
+                {{4,3,3}, {9,6,3}, {6,3,3}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 9*6*3, 6*3*3},       // expected Cartesian sizes per level grid
+                {4*3*3, 9*6*3, 6*3*3});      // expected compressed sizes per level grid
 
-    // Block shaped parent cells of LGR2 dimensions (4-2)x(3-2)x(3-2). Number of subdivisions per cell, per direction {3,3,3}.
-    areEqual(/* LGR2 dimensions {(4-2)*3, (3-2)*3, (3-2)*3} */ {6,3,3}, level_2_grid_data->logicalCartesianSize());
-    areEqual(level_2_grid_data->logicalCartesianSize(), levelCartMapp.cartesianDimensions(2));
-
-    BOOST_CHECK_THROW(levelCartMapp.cartesianDimensions(unexisting_level), std::logic_error);
-
-    // ---------------------------------------------------------- cartesianSize()
-    BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), /* level zero Cartesian size */ 4*3*3);
-    BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), level_0_grid_data->size(0)); // Unfortunately, not grid.size(0)
-    
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(0), /* level zero Cartesian size */ 4*3*3);
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(0), level_0_grid_data->size(0)); // BECAUSE ALL ACTIVE CELLS
-     
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(1), /* level 1 Cartesian size */ 9*6*3);
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(1), level_1_grid_data->size(0)); // BECAUSE ALL ACTIVE CELLS
-    
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(2), /* level 2 Cartesian size */ 6*3*3);
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(2), level_2_grid_data->size(0)); // BECAUSE ALL ACTIVE CELLS
-    
-    BOOST_CHECK_THROW(levelCartMapp.cartesianSize(unexisting_level), std::logic_error);
-
-    // ---------------------------------------------------------- compressedSize()
-    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), 244); // 244 = 4*3*3 - (parent-cells (3*2*1) + (2*1*1)) + (9*6*3) + (6*3*3)
-    BOOST_CHECK_EQUAL(levelCartMapp.compressedSize(0), 4*3*3);
-    BOOST_CHECK_EQUAL(levelCartMapp.compressedSize(1), 9*6*3);
-    BOOST_CHECK_EQUAL(levelCartMapp.compressedSize(2), 6*3*3);
-    BOOST_CHECK_THROW(levelCartMapp.compressedSize(unexisting_level), std::logic_error);
-
-    // ---------------------------------------------------------- cartesianIndex()
-    const int dummy_compressedElementIndex = 0;
-    BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(dummy_compressedElementIndex), 0); //To be improved
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 0), 0);
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 1), 0);
-    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 2), 0);
-    //BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 0), 35);
-    //BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 1), 161);
-    // BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 2), 53);
-    BOOST_CHECK_THROW(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, unexisting_level), std::logic_error);
-
-    const int dummy_compressedElementIndexOnLevel = 0;
-    std::array<int,3> dummy_coordsOnLevel{};
-    BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel,
-                                                        dummy_coordsOnLevel,
-                                                        unexisting_level), std::logic_error);
-}
-
-BOOST_AUTO_TEST_CASE(gridLogCartSize_afterStrictLocalRefinementWith_addLgrsUpdateLeafView_isACopyOfLevelZeroLogCartSize)
-{
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    bool isParallel = grid.comm().size() > 1;
-    if (isParallel) {
-        grid.loadBalance();
+    // In this case, all parent cells are active, therefore level Cartesian size
+    // and compressed size coincide.
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
     }
-    grid.addLgrsUpdateLeafView(/* cells_per_dim = */ {{3,3,3}, {3,3,3}},
-                               /* startIJK_vec = */ {{0,0,1}, {2,2,2}},
-                               /* endIJK_vec = */ {{3,2,2}, {4,3,3}},
-                               /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
-    areEqual(/* grid dimensions before refinement = */ {4,3,3},
-             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
+    /*// ---------------------------------------------------------- cartesianIndex() TO BE IMPROVED
+      const int dummy_compressedElementIndex = 0;
+      const int dummy_compressedElementIndexOnLevel = 0;
+      std::array<int,3> dummy_coordsOnLevel{};
 
-    areEqual(/* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize(),
-             grid.logicalCartesianSize());
+      BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 0), 0);
+      BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 1), 0);
+      BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 2), 0);
+      //BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 0), 35);
+      //BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 1), 161);
+      // BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(dummy_compressedElementIndex, 2), 53);
+      levelCartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel, dummy_coordsOnLevel, 0);
+      Opm::areEqual(dummy_coordsOnLevel, {0,0,0});
+      levelCartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel, dummy_coordsOnLevel, 1);
+      Opm::areEqual(dummy_coordsOnLevel, {0,0,0});
+      levelCartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel, dummy_coordsOnLevel, 2);
+      Opm::areEqual(dummy_coordsOnLevel, {0,0,0});*/
+
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+
+    // CartesianIndexMapper checks - how it relates to LevelCartesianIndexMapper
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
+                                                 cartMapp,
+                                                 levelCartMapp,
+                                                 /* level zero Cartesian dims = */ {4,3,3});
+    // For strict-locally-refined grid, CartesianIndexMapper::cartesianDimensions and
+    // grid.logicalCartesianSize() coincide (with level zero Cartesian dimensions/logical Cartesian size).
+    Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
+
+    cartesianSizeCoincidesWithLevelZeroOne(grid,
+                                           cartMapp,
+                                           levelCartMapp,
+                                           /* level zero Cartesian size = */ 4*3*3);
+
+    int leafGridCellCount = 244; // 4*3*3 levelZeroCells - [(3*2*1) + (2*1*1) parentCells] + (9*6*3 LGR1Cells) + (6*3*3 LGR2Cells)
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
+
+    // CartesianIndexMapper -cartesianIndex(...) TO BE IMPROVED
+    //BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(dummy_compressedElementIndex), 0); //To be improved
+    // CartesianIndexMapper - cartesianCoordinate(...)
+    //  cartMapp.cartesianCoordinate(dummy_compressedElementIndexOnLevel, dummy_coordsOnLevel);
+    //Opm::areEqual(dummy_coordsOnLevel, {0,0,0});
 }
 
-BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView_makesSense)
+BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -173,19 +203,48 @@ BOOST_AUTO_TEST_CASE(gridLogCartSize_afterHiddenGlobalRefinementWith_addLgrsUpda
                                /* endIJK_vec = */ {{4,3,3}},
                                /* lgr_name_vec = */ {"LGR1"});
 
-    areEqual(/* grid dimensions before refinement = */ {4,3,3},
-             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
-
     // Block shaped parent cells of LGR1 is the entire level zero grid, dimensions (4-0)x(3-0)x(3-1).
-    // Number of subdivisions per cell, per direction {3,3,3}.
-    areEqual(/* expected logicalCartesianSize = */ {12, 9, 9},  // LGR1 dimensions {4*3, 3*3, 3*3}.
-             /* LGR1 logicalCartesianSize = */ grid.currentData()[1]->logicalCartesianSize());
+    // Number of subdivisions per cell, per direction {3,3,3}.  -> LGR1 dims = {12,9,9}
 
-    areEqual(/* expected logicalCartesianSize = */ {12, 9, 9},  // LGR1 dimensions {4*3, 3*3, 3*3}.
-             grid.logicalCartesianSize());
+    const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
+
+    // Check level Cartesian dimensions and size, and compressed size, for level grids.
+    checkLevels(grid,
+                levelCartMapp,
+                {{4,3,3}, {12,9,9}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 12*9*9},     // expected Cartesian sizes per level grid
+                {4*3*3, 12*9*9});    // expected compressed sizes per level grid
+
+    // In this case, all parent cells are active, therefore level Cartesian size
+    // and compressed size coincide.
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
+    }
+
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
+                                                 cartMapp,
+                                                 levelCartMapp,
+                                                 /* level zero Cartesian dims = */ {4,3,3});
+    // For hidden-globally-refined grid via addLgrsUpdateLeafView, CartesianIndexMapper::cartesianDimensions
+    // and grid.logicalCartesianSize() DO NOT coincide
+    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {12,9,9} /* LEAF grid view Cartesian dimensions */);
+
+    cartesianSizeCoincidesWithLevelZeroOne(grid,
+                                           cartMapp,
+                                           levelCartMapp,
+                                           /* level zero Cartesian size = */ 4*3*3);
+
+    int leafGridCellCount = 972; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (12*9*9 LGR1Cells)
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_areACopyOfLevelZeroLogCartSize)
+BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinementWith_adapt)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -208,24 +267,51 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterStrictLocalRefinementWith_adapt_
     grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
     grid.postAdapt();
 
-    areEqual(/* grid dimensions before refinement = */ {4,3,3},
-             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
+    const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // Even though the marked cells form a 2x2x1 block, the logicalCartesianSize of LGR1 is NOT {4,4,2}.
-    areEqual(/* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize(), // {4,3,3}
-             /* LGR1 logicalCartesianSize = */  grid.currentData()[1]->logicalCartesianSize());
+    // Level Cartesian dimensions and size, and compressed size, for refined level grids
+    // take the values from level zero grid.
+    // Even though the marked cells form a 2x2x1 block, the Cartesian dimensions and
+    // Cartesian size of LGR1 is NOT {4,4,2} and 4*4*2 = 32, but {4,3,3} and 4*3*3 respectively.
+    checkLevels(grid,
+                levelCartMapp,
+                {{4,3,3}, {4,3,3}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 4*3*3},     // expected Cartesian sizes per level grid
+                {4*3*3, 32});    // expected compressed sizes per level grid
 
-    areEqual(/* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize(),
-             grid.logicalCartesianSize());
+    // In this case, all parent cells are active, however, level Cartesian size
+    // and compressed size do not coincide for the refined level grid.
+    BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(1), /* levelZeroGridCellCount = */ 4*3*3);
+    BOOST_CHECK_EQUAL(levelCartMapp.compressedSize(1), /* LGR1CellCount = */ grid.currentData()[1]->size(0));
+
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
+                                                 cartMapp,
+                                                 levelCartMapp,
+                                                 /* level zero Cartesian dims = */ {4,3,3});
+    // For strict-local-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
+    // and grid.logicalCartesianSize() coincide.
+    Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
+
+    cartesianSizeCoincidesWithLevelZeroOne(grid,
+                                           cartMapp,
+                                           levelCartMapp,
+                                           /* level zero Cartesian size = */ 4*3*3);
+
+    int leafGridCellCount = 64; // 4*3*3 levelZeroCells - [2*2*1 parentCells] + (4*4*2 LGR1Cells)
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt_makeSense)
+BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_adapt)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
-    areEqual(/* grid dimensions before refinement = */ {4,3,3},
-             /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
+    Opm::areEqual(/* grid dimensions before refinement = */ {4,3,3},
+                  /* level 0 logicalCartesianSize = */ grid.currentData().front()->logicalCartesianSize());
 
     bool isParallel = grid.comm().size() > 1;
     if (isParallel) {
@@ -239,14 +325,45 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_afterHiddenGlobalRefinementWith_adapt
     grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
     grid.postAdapt();
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             /* LGR1 logicalCartesianSize = */ grid.currentData()[1]->logicalCartesianSize());
+    const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             grid.logicalCartesianSize());
+    // Check level Cartesian dimensions and size, and compressed size, for level grids.
+    checkLevels(grid,
+                levelCartMapp,
+                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
+                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
+
+    // In this case, all parent cells are active, therefore level Cartesian size
+    // and compressed size coincide.
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
+    }
+
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
+                                                 cartMapp,
+                                                 levelCartMapp,
+                                                 /* level zero Cartesian dims = */ {4,3,3});
+    // For hidden-globally-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
+    // and grid.logicalCartesianSize() DO NOT coincide
+    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
+
+    cartesianSizeCoincidesWithLevelZeroOne(grid,
+                                           cartMapp,
+                                           levelCartMapp,
+                                           /* level zero Cartesian size = */ 4*3*3);
+
+    int leafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
 }
 
-BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
+BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -257,10 +374,43 @@ BOOST_AUTO_TEST_CASE(lgrAndGridLogCartSize_after_globalRefine_makeSense)
     }
     grid.globalRefine(1); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
 
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             grid.logicalCartesianSize());
     // The refined level grid is a "copy" of the leaf grid view, if globalRefine has been invoked.
     // TODO: remove the refined level grid in this case.
-    areEqual(/* expected logicalCartesianSize = */ {4*2, 3*2, 3*2},
-             grid.currentData()[1]->logicalCartesianSize());
+
+    const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
+    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
+
+    // Check level Cartesian dimensions and size, and compressed size, for level grids.
+    checkLevels(grid,
+                levelCartMapp,
+                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
+                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
+
+    // In this case, all parent cells are active, therefore level Cartesian size
+    // and compressed size coincide.
+    for (int level = 0; level <= grid.maxLevel(); ++level) {
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
+        BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
+    }
+
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
+                                                 cartMapp,
+                                                 levelCartMapp,
+                                                 /* level zero Cartesian dims = */ {4,3,3});
+    // For hidden-globally-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
+    // and grid.logicalCartesianSize() DO NOT coincide
+    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
+
+    cartesianSizeCoincidesWithLevelZeroOne(grid,
+                                           cartMapp,
+                                           levelCartMapp,
+                                           /* level zero Cartesian size = */ 4*3*3);
+
+    int leafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
 }
