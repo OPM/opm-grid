@@ -59,11 +59,13 @@ public:
 
     const std::array<int,3>& cartesianDimensions(int level) const
     {
+        validLevel(level);
         return grid_->currentData()[level]->logicalCartesianSize();
     }
 
     int cartesianSize(int level) const
     {
+        validLevel(level);
         return computeCartesianSize(level);
     }
 
