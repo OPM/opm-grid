@@ -19,7 +19,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y doxygen unzip wget
+          sudo apt-get install -y doxygen graphviz unzip wget
 
       - name: Set up Python
         uses: actions/setup-python@v4
