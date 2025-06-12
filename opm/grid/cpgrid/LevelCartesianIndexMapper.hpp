@@ -57,6 +57,8 @@ public:
     explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{ &grid }
     {}
 
+    LevelCartesianIndexMapper() = delete;
+
     const std::array<int,3>& cartesianDimensions(int level) const
     {
         return grid_->currentData()[level]->logicalCartesianSize();
