@@ -94,7 +94,9 @@ namespace Dune
             enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-            typedef double ctype;
+            using ctype = double;
+            /// Number type used for the geometry volume
+            using Volume = ctype;
 
             /// Domain type of \see global().
             typedef FieldVector<ctype, mydimension> LocalCoordinate;
@@ -138,7 +140,7 @@ namespace Dune
             }
 
             /// Returns 1 for the vertex geometry.
-            double integrationElement(const LocalCoordinate&) const
+            Volume integrationElement(const LocalCoordinate&) const
             {
                 return volume();
             }
@@ -164,7 +166,7 @@ namespace Dune
             }
 
             /// Volume of vertex is arbitrarily set to 1.
-            ctype volume() const
+            Volume volume() const
             {
                 return 1.0;
             }
@@ -236,7 +238,9 @@ namespace Dune
             enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-            typedef double ctype;
+            using ctype = double;
+            /// Number type used for the geometry volume
+            using Volume = ctype;
 
             /// Domain type of \see global().
             typedef FieldVector<ctype, mydimension> LocalCoordinate;
@@ -281,7 +285,7 @@ namespace Dune
 
             /// For the singular geometry, we return a constant
             /// integration element equal to the volume.
-            double integrationElement(const LocalCoordinate&) const
+            Volume integrationElement(const LocalCoordinate&) const
             {
                 return vol_;
             }
@@ -309,7 +313,7 @@ namespace Dune
             }
 
             /// Volume (area, actually) of intersection.
-            ctype volume() const
+            Volume volume() const
             {
                 return vol_;
             }
@@ -379,7 +383,9 @@ namespace Dune
             enum { dimensionworld = 3 };
 
             /// Coordinate element type.
-            typedef double ctype;
+            using ctype = double;
+            /// Number type used for the geometry volume
+            using Volume = ctype;
 
             /// Domain type of \see global().
             typedef FieldVector<ctype, mydimension> LocalCoordinate;
@@ -482,7 +488,7 @@ namespace Dune
             /// J_{ij} = (dg_i/du_j)
             /// where g is the mapping from the reference domain,
             /// and {u_j} are the reference coordinates.
-            double integrationElement(const LocalCoordinate& local_coord) const
+            Volume integrationElement(const LocalCoordinate& local_coord) const
             {
                 JacobianTransposed Jt = jacobianTransposed(local_coord);
                 return MatrixHelperType::template sqrtDetAAT<3, 3>(Jt);
@@ -510,7 +516,7 @@ namespace Dune
             }
 
             /// Cell volume.
-            ctype volume() const
+            Volume volume() const
             {
                 return vol_;
             }
