@@ -38,11 +38,13 @@
 #define OPM_GEOMETRY_HEADER
 
 #include <cmath>
+#include <variant>
 
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
+#include <dune/common/overloadset.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/grid/common/geometry.hh>
 
@@ -399,6 +401,10 @@ namespace Dune
 
             /// @brief Construct from center, volume (1- and 0-moments) and
             ///        corners.
+            /// @warning This constructor does not own the corners or indices,
+            ///         thus, the pointers must remain valid for the lifetime of
+            ///         the Geometry object.
+            ///
             /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
             /// @param allcorners pointer of all corner positions in the grid
@@ -407,17 +413,34 @@ namespace Dune
             ///                       by (kji), i.e. i running fastest.
             Geometry(const GlobalCoordinate& pos,
                      ctype vol,
-                     std::shared_ptr<const EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_ptr,
+                     EntityVariable<cpgrid::Geometry<0, 3>, 3> const * allcorners_view,
                      const int* corner_indices)
                 : pos_(pos), vol_(vol),
-                  allcorners_(allcorners_ptr), cor_idx_(corner_indices)
+                  allcorners_(allcorners_view), cor_idx_(corner_indices)
             {
-                assert(allcorners_ && corner_indices);
+                assert(allcorners_view && corner_indices);
             }
+
+            /// @brief Construct from center, volume (1- and 0-moments) and
+            ///        corners.
+            ///
+            /// @param pos the centroid of the entity
+            /// @param vol the volume(area) of the entity
+            /// @param allcorners pointer of all corner positions in the grid
+            /// @param corner_indices array of 8 indices into allcorners. The
+            ///                       indices must be given in lexicographical order
+            ///                       by (kji), i.e. i running fastest.
+            Geometry(const GlobalCoordinate& pos,
+                     ctype vol,
+                     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners_storage,
+                     const int* corner_indices)
+                : pos_(pos), vol_(vol),
+                  allcorners_(allcorners_storage), cor_idx_(corner_indices)
+            {}
 
             /// Default constructor, giving a non-valid geometry.
             Geometry()
-                : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
+                : pos_(0.0), vol_(0.0), allcorners_(nullptr), cor_idx_(nullptr)
             {
             }
 
@@ -505,8 +528,16 @@ namespace Dune
             /// @brief Get the cor-th of 8 corners of the hexahedral base cell.
             GlobalCoordinate corner(int cor) const
             {
-                assert(allcorners_ && cor_idx_);
-                return (allcorners_->data())[cor_idx_[cor]].center();
+                return std::visit(
+                    Dune::overload(
+                        [](const EntityVariable<cpgrid::Geometry<0, 3>, 3>& corners) {
+                            return corners;
+                        },
+                        [](EntityVariable<cpgrid::Geometry<0, 3>, 3> const * corners) {
+                            return *corners;
+                        }
+                    ), allcorners_
+                ).data()[cor_idx_[cor]].center();
             }
 
             /// Cell volume.
@@ -1016,7 +1047,7 @@ namespace Dune
                             refined_cells[refined_cell_idx] =
                                 Geometry<3,cdim>(refined_cell_center,
                                                  refined_cell_volume,
-                                                 all_geom.geomVector(std::integral_constant<int,3>()),
+                                                 all_geom.geomVector(std::integral_constant<int,3>()).get(),
                                                  indices_storage_ptr);
                         } // end i-for-loop
                     }  // end j-for-loop
@@ -1037,8 +1068,10 @@ namespace Dune
         private:
             GlobalCoordinate pos_;
             double vol_;
-            std::shared_ptr<const EntityVariable<Geometry<0, 3>,3>> allcorners_; // For dimension 3 only
-            const int* cor_idx_; // For dimension 3 only
+
+            // store either a (view) pointer or the variable itself. For dimension 3 only
+            std::variant<EntityVariable<Geometry<0, 3>,3> const *, EntityVariable<Geometry<0, 3>,3>> allcorners_;
+            int const * cor_idx_; // For dimension 3 only
 
             /// @brief
             ///   Auxiliary function to get refined_face information: tag, index, face_to_point_, face_to_cell, face centroid,
