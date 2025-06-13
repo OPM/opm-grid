@@ -334,7 +334,7 @@ namespace Dune
         /// Set whether we want to have unique boundary ids.
         /// \param uids if true, each boundary intersection will have a unique boundary id.
         void setUniqueBoundaryIds(bool uids);
-       
+
 
         // --- Dune interface below ---
 
@@ -345,7 +345,7 @@ namespace Dune
         /// It's the same as the class name.
         /// What did you expect, something funny?
         std::string name() const;
-        
+
         /// Return maximum level defined in this grid. Levels are 0 and 1,  maxlevel = 1 (not counting leafview), 0 = the coarsest level.
         int maxLevel() const;
 
@@ -355,7 +355,7 @@ namespace Dune
         /// one past the end on this level
         template<int codim>
         typename Traits::template Codim<codim>::LevelIterator lend (int level) const;
-        
+
         /// Iterator to first entity of given codim on level and PartitionIteratorType
         template<int codim, PartitionIteratorType PiType>
         typename Traits::template Codim<codim>::template Partition<PiType>::LevelIterator lbegin (int level) const;
@@ -394,7 +394,7 @@ namespace Dune
 
         /// \brief Access to the LocalIdSet
         const Traits::LocalIdSet& localIdSet() const;
-        
+
         /// \brief Access to the LevelIndexSets
         const Traits::LevelIndexSet& levelIndexSet(int level) const;
 
@@ -626,10 +626,10 @@ namespace Dune
                                                                              const int& cell_count) const;
 
         /// @brief Define refined level grid cells indices and leaf grid view (or adapted grid) cells indices relations. Namely, level_to_leaf_cells_ for each new
-        ///        refined level grid, and leaf_to_level_cells_ for the updated leaf grid view. 
+        ///        refined level grid, and leaf_to_level_cells_ for the updated leaf grid view.
         ///
         /// @param [in] elemLgrAndElemLgrCell_to_refinedLevelAdRefinedCell:  Each marked element has been refined in its "own elemLgr". Refined entities should be stored in
-        ///                                                                  the corresponding assigned refined level grid. To keep track of the cell index relation, we 
+        ///                                                                  the corresponding assigned refined level grid. To keep track of the cell index relation, we
         ///                                                                  associate each
         ///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement } with
         ///                                                                  { refined level grid assigned for the marked element, refined cell index in refined level grid }.
@@ -761,7 +761,7 @@ namespace Dune
         /// @param [out] adaptedFace_to_elemLgrAndElemLgrFace: Each marked element has been refined in its "own elemLgr". Refined corners should be stored in
         ///                                                    the corresponding assigned refined level grid. To keep track of the face index relation, we associate each
         ///                                                    face index in the leaf grid view (or adapted grid) with
-        ///                                                    { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement }. 
+        ///                                                    { marked element index ("elemLgr"), refined corner index in the auxiliary single-cell-refinement }.
         /// @param [out] face_count:                           Total amount of faces on the leaf grid view (or adapted grid).
         /// @param [in] markedElem_to_itsLgr
         /// @param [in] assignRefinedLevel
@@ -1087,7 +1087,7 @@ namespace Dune
         int getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
                                                    const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
                                                    int elemLgr)  const;
-        
+
         /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
 
         /// @brief Check if there are non neighboring connections on blocks of cells selected for refinement.
@@ -1712,7 +1712,7 @@ namespace Dune
         /// cell due the face being part of the grid boundary or the
         /// cell being stored on another process.
         int faceCell(int face, int local_index, int level = -1) const;
-      
+
         /// \brief Get the sum of all faces attached to all cells.
         ///
         /// Each face identified by a unique index is counted as often
@@ -1743,7 +1743,7 @@ namespace Dune
         /// \brief Get the Position of a vertex.
         /// \param cell The index identifying the cell.
         /// \return The coordinates of the vertex.
-        const Vector& vertexPosition(int vertex) const;
+        Vector vertexPosition(int vertex) const;
 
         /// \brief Get the area of a face.
         /// \param cell The index identifying the face.
@@ -1751,12 +1751,12 @@ namespace Dune
 
         /// \brief Get the coordinates of the center of a face.
         /// \param cell The index identifying the face.
-        const Vector& faceCentroid(int face) const;
+        Vector faceCentroid(int face) const;
 
         /// \brief Get the unit normal of a face.
         /// \param cell The index identifying the face.
         /// \see faceCell
-        const Vector& faceNormal(int face) const;
+        Vector faceNormal(int face) const;
 
         /// \brief Get the volume of the cell.
         /// \param cell The index identifying the cell.
@@ -1764,7 +1764,7 @@ namespace Dune
 
         /// \brief Get the coordinates of the center of a cell.
         /// \param cell The index identifying the face.
-        const Vector& cellCentroid(int cell) const;
+        Vector cellCentroid(int cell) const;
 
         /// \brief An iterator over the centroids of the geometry of the entities.
         /// \tparam codim The co-dimension of the entities.
