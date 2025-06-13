@@ -163,7 +163,7 @@ public:
     }
 
     /// @brief Return the geometry of the entity (does not depend on its orientation).
-    const Geometry& geometry() const;
+    Geometry geometry() const;
 
     /// @brief Return the level of the entity in the grid hierarchy. Level = 0 represents the coarsest grid.
     int level() const;
@@ -382,7 +382,7 @@ unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
 }
 
 template <int codim>
-const typename Entity<codim>::Geometry& Entity<codim>::geometry() const
+typename Entity<codim>::Geometry Entity<codim>::geometry() const
 {
     return pgrid_->geomVector<codim>()[*this];
 }
