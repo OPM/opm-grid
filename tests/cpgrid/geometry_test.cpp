@@ -153,7 +153,7 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     }
 
     int cor_idx[8] = { 0, 1, 2, 3, 4, 5, 6, 7 };
-    Geometry g(c, v, pg, cor_idx);
+    Geometry g(c, v, pg.get(), cor_idx);
 
     // Verification of properties.
     BOOST_CHECK(g.type().isCube());
@@ -207,7 +207,7 @@ BOOST_AUTO_TEST_CASE(cellgeom)
     {
         (*pg1).push_back(cpgrid::Geometry<0, 3>(crn));
     }
-    g = Geometry(c, v, pg1, cor_idx);
+    g = Geometry(c, v, pg1.get(), cor_idx);
 
     // Verification of properties.
     BOOST_CHECK(g.type().isCube());
@@ -524,7 +524,7 @@ BOOST_AUTO_TEST_CASE(refine_simple_cube)
     }
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-    Geometry g(c, v, pg, cor_idx);
+    Geometry g(c, v, pg.get(), cor_idx);
 
     refine_and_check(g, {1, 1, 1}, true);
     refine_and_check(g, {2, 3, 4}, true);
@@ -566,7 +566,7 @@ BOOST_AUTO_TEST_CASE(refine_distorted_cube)
     }
 
     int cor_idx[8] = {0, 1, 2, 3, 4, 5, 6, 7};
-    Geometry g(center, v, pg, cor_idx);
+    Geometry g(center, v, pg.get(), cor_idx);
     refine_and_check(g, {1, 1, 1});
     refine_and_check(g, {2, 3, 4});
 
