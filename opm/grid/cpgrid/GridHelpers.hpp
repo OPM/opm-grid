@@ -328,10 +328,10 @@ struct Cell2FacesTraits<Dune::CpGrid>
     typedef Dune::cpgrid::Cell2FacesContainer Type;
 };
 /// \brief An iterator over the cell volumes.
-template<const Dune::FieldVector<double, 3>& (Dune::CpGrid::*Method)(int)const>
+template<Dune::FieldVector<double, 3> (Dune::CpGrid::*Method)(int)const>
 class CpGridCentroidIterator
     : public Dune::RandomAccessIteratorFacade<CpGridCentroidIterator<Method>, Dune::FieldVector<double, 3>,
-                                              const Dune::FieldVector<double, 3>&, int>
+                                              Dune::FieldVector<double, 3>, int>
 {
 public:
     /// \brief Creates an iterator.
@@ -341,7 +341,7 @@ public:
         : grid_(&grid), cell_index_(cell_index)
     {}
 
-    const Dune::FieldVector<double, 3>& dereference() const
+    Dune::FieldVector<double, 3> dereference() const
     {
         return std::mem_fn(Method)(*grid_, cell_index_);
     }
@@ -349,7 +349,7 @@ public:
     {
         ++cell_index_;
     }
-    const Dune::FieldVector<double, 3>& elementAt(int n) const
+    Dune::FieldVector<double, 3> elementAt(int n) const
     {
         return  std::mem_fn(Method)(*grid_, n);
     }
@@ -430,7 +430,7 @@ double cellCentroidCoordinate(const Dune::CpGrid& grid, int cell_index,
 /// \brief Get the centroid of a cell.
 /// \param grid The grid whose cell centroid we query.
 /// \param cell_index The index of the corresponding cell.
-const double* cellCentroid(const Dune::CpGrid& grid, int cell_index);
+Vector cellCentroid(const Dune::CpGrid& grid, int cell_index);
 
 /// \brief Get vertical position of cell center ("zcorn" average).
 /// \brief grid The grid.
@@ -531,8 +531,7 @@ beginFaceCentroids(const Dune::CpGrid& grid);
 /// \param grid The grid.
 /// \param face_index The index of the specific face.
 /// \param coordinate The coordinate index.
-const FaceCentroidTraits<Dune::CpGrid>::ValueType&
-faceCentroid(const Dune::CpGrid& grid, int face_index);
+Vector faceCentroid(const Dune::CpGrid& grid, int face_index);
 
 template<>
 struct FaceCellTraits<Dune::CpGrid>
@@ -559,9 +558,9 @@ face2Vertices(const Dune::CpGrid& grid);
 /// \brief Get the coordinates of a vertex of the grid.
 /// \param grid The grid the vertex is part of.
 /// \param index The index identifying the vertex.
-const double* vertexCoordinates(const Dune::CpGrid& grid, int index);
+Vector vertexCoordinates(const Dune::CpGrid& grid, int index);
 
-const double* faceNormal(const Dune::CpGrid& grid, int face_index);
+Vector faceNormal(const Dune::CpGrid& grid, int face_index);
 
 double faceArea(const Dune::CpGrid& grid, int face_index);
 
