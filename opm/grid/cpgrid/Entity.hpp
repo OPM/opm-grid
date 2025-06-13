@@ -528,35 +528,24 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         OPM_THROW(std::logic_error, "Entity has no father.");
     }
 
-    // Indices of corners in entity's geometry in father reference element.
-    static constexpr std::array<int,8> in_father_reference_elem_corner_indices = {0,1,2,3,4,5,6,7};
-    // 'static': The returned object Geometry<3,3> stores a pointer to in_father_reference_elem_corner_indices. Therefore,
-    // this variable is declared static to prolongate its lifetime beyond this function (static storage duration).
-
     auto idx_in_parent_cell = pgrid_ -> cell_to_idxInParentCell_[this->index()];
     if (idx_in_parent_cell !=-1) {
         const auto& cells_per_dim =  (*(pgrid_ -> level_data_ptr_))[this->level()] -> cells_per_dim_;
-        const auto& auxArr = pgrid_ -> getReferenceRefinedCorners(idx_in_parent_cell, cells_per_dim);
-        FieldVector<double, 3> corners_in_father_reference_elem_temp[8] =
-            { auxArr[0], auxArr[1], auxArr[2], auxArr[3], auxArr[4], auxArr[5], auxArr[6], auxArr[7]};
-        auto in_father_reference_elem_corners = std::make_shared<EntityVariable<cpgrid::Geometry<0, 3>, 3>>();
-        EntityVariableBase<cpgrid::Geometry<0, 3>>& mutable_in_father_reference_elem_corners = *in_father_reference_elem_corners;
-        // Assign the corners. Make use of the fact that pointers behave like iterators.
-        mutable_in_father_reference_elem_corners.assign(corners_in_father_reference_elem_temp,
-                                                        corners_in_father_reference_elem_temp + 8);
+        std::array<FieldVector<double, 3>, 8> in_father_reference_elem_corners = pgrid_->getReferenceRefinedCorners(idx_in_parent_cell, cells_per_dim);
         // Compute the center of the 'local-entity'.
         Dune::FieldVector<double, 3> center_in_father_reference_elem = {0., 0.,0.};
         for (int corn = 0; corn < 8; ++corn) {
             for (int c = 0; c < 3; ++c)
             {
-                center_in_father_reference_elem[c] += corners_in_father_reference_elem_temp[corn][c]/8.;
+                center_in_father_reference_elem[c] += in_father_reference_elem_corners[corn][c]/8.;
             }
         }
         // Compute the volume of the 'local-entity'.
         double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
         // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
+        OPM_THROW(std::logic_error, "Entity has no father.");
         return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
-                                           in_father_reference_elem_corners, in_father_reference_elem_corner_indices.data());
+                                           in_father_reference_elem_corners);
     }
     else {
         OPM_THROW(std::logic_error, "Entity has no father.");
