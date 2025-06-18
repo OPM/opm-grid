@@ -11,8 +11,8 @@ void vtkout (const G& grid, const V& c, const char* name, int k, double time=0.0
   Dune::VTKWriter<typename G::LeafGridView> vtkwriter(grid.leafGridView());
   char fname[128];
   char sername[128];
-  sprintf(fname,"%s-%05d",name,k);
-  sprintf(sername,"%s.series",name);
+  snprintf(fname,128,"%s-%05d",name,k);
+  snprintf(sername,128,"%s.series",name);
   vtkwriter.addCellData(c,"celldata");
   vtkwriter.write(fname,Dune::VTK::ascii);
   if ( rank == 0)
