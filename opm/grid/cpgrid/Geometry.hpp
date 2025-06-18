@@ -1130,14 +1130,15 @@ namespace Dune
                 }
             }
         };
+
+        // Reference element for a given geometry
+        template< int mydim, int cdim >
+        auto referenceElement(const cpgrid::Geometry<mydim,cdim>& geo) -> decltype(referenceElement<double,mydim>(geo.type()))
+        {
+            return referenceElement<double,mydim>(geo.type());
+        }
+
     } // namespace cpgrid
-
-    template< int mydim, int cdim >
-    auto referenceElement(const cpgrid::Geometry<mydim,cdim>& geo) -> decltype(referenceElement<double,mydim>(geo.type()))
-    {
-        return referenceElement<double,mydim>(geo.type());
-    }
-
 } // namespace Dune
 
 #endif // OPM_GEOMETRY_HEADER
