@@ -1546,6 +1546,26 @@ void CpGrid::populateCellIndexSetLeafGridView()
 #if HAVE_MPI
     auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
 
+    auto isOriginFullyInterior = [this](const Dune::cpgrid::Entity<0>& element)
+    {
+        if (element.getOrigin().partitionType() != InteriorEntity) {
+            return false;
+        }
+        
+        bool isFullyInterior = true;
+        for (const auto& intersection : intersections(levelGridView(element.getOrigin().level()), element.getOrigin())) {
+               if ( intersection.neighbor() ) {
+                   const auto& neighborPartitionType = intersection.outside().partitionType();
+                    // To help detection of fully interior cells, i.e., without overlap neighbors
+                    if (neighborPartitionType == OverlapEntity )  {
+                        isFullyInterior = false;
+                        break;
+                    }
+               }
+        }
+        return isFullyInterior;
+    };
+
     leaf_index_set.beginResize();
 
     // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
@@ -1553,30 +1573,28 @@ void CpGrid::populateCellIndexSetLeafGridView()
     // RemoteIndices::rebuild has a Boolean as a template parameter telling the method whether to ignore this
     // Boolean on the indices or not when building.
     for(const auto& element : elements(leafGridView())) {
+        
         const auto& elemPartitionType = element.getLevelElem().partitionType();
-        if ( elemPartitionType == InteriorEntity) {
-            // Check if it has an overlap neighbor
-            bool isFullyInterior = true;
-            for (const auto& intersection : intersections(leafGridView(), element)) {
-                if ( intersection.neighbor() ) {
-                    const auto& neighborPartitionType = intersection.outside().getLevelElem().partitionType();
-                    // To help detection of fully interior cells, i.e., without overlap neighbors
-                    if (neighborPartitionType == OverlapEntity )  {
-                        isFullyInterior = false;
-                        // Interior cells with overlap neighbor may appear in other processess -> false
-                        leaf_index_set.add(globalIdSet().id(element),
-                                           ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
-                        // Store it only once
-                        break;
-                    }
-                }
-            }
-            if(isFullyInterior) { // Fully interior cells do not appear in any other process -> false
+        
+        if (elemPartitionType == InteriorEntity) {
+            
+            bool originIsFullyInterior = isOriginFullyInterior(element);
+        
+            if ( originIsFullyInterior ) {
+                // Fully interior cells do not appear in any other process -> false
+                /** Warning: there might be more fully interior refined cells, for now considered
+                    set to the flag false, in the case that the parent cell is not fully interior. */
                 leaf_index_set.add(globalIdSet().id(element),
                                    ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
             }
+            else { // Origin is interior with Overlap neighbor
+                assert(element.getOrigin().partitionType() == InteriorEntity);
+                // Interior cells with overlap neighbor may appear in other processess -> true
+                leaf_index_set.add(globalIdSet().id(element),
+                                   ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+            }
         }
-        else { // overlap cell
+        else { // overlap cells appear in other processess -> true
             assert(elemPartitionType == OverlapEntity);
             leaf_index_set.add(globalIdSet().id(element),
                                ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
