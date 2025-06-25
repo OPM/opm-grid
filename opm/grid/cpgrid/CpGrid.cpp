@@ -1545,6 +1545,8 @@ void CpGrid::populateCellIndexSetLeafGridView()
 {
 #if HAVE_MPI
     auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+    // Clean up leaf cell index set - needed e.g. for synchronization of cell ids.
+    leaf_index_set = ParallelIndexSet();
 
     auto isOriginFullyInterior = [this](const Dune::cpgrid::Entity<0>& element)
     {
@@ -1566,6 +1568,7 @@ void CpGrid::populateCellIndexSetLeafGridView()
         return isFullyInterior;
     };
 
+    
     leaf_index_set.beginResize();
 
     // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
