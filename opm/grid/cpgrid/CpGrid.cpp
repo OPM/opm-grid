@@ -1492,6 +1492,26 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
     // Clean up level cell index set - needed e.g. for synchronization of cell ids.
     level_index_set = ParallelIndexSet();
 
+    auto isOriginFullyInterior = [this](const Dune::cpgrid::Entity<0>& element)
+    {
+        if (element.getOrigin().partitionType() != InteriorEntity) {
+            return false;
+        }
+        
+        bool isFullyInterior = true;
+        for (const auto& intersection : intersections(levelGridView(element.getOrigin().level()), element.getOrigin())) {
+               if ( intersection.neighbor() ) {
+                   const auto& neighborPartitionType = intersection.outside().partitionType();
+                    // To help detection of fully interior cells, i.e., without overlap neighbors
+                    if (neighborPartitionType == OverlapEntity )  {
+                        isFullyInterior = false;
+                        break;
+                    }
+               }
+        }
+        return isFullyInterior;
+    };
+
     level_index_set.beginResize();
     // ParallelIndexSet::LocalIndex( elemIdx, attribute /* owner or copy */, true/false)
     // The bool indicates whether the global index might exist on other processes with other attributes.
@@ -1504,8 +1524,33 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
         if ( element.partitionType() == InteriorEntity) {
 
             // Check if it has an overlap neighbor
-            bool parentFullyInterior = true;
-            const auto& parent_cell = element.father();
+            bool parentFullyInterior = isOriginFullyInterior(element);
+        
+            if ( parentFullyInterior ) {
+                // Fully interior cells do not appear in any other process -> false
+                /** Warning: there might be more fully interior refined cells, for now considered
+                    set to the flag false, in the case that the parent cell is not fully interior. */
+                 level_index_set.add( level_global_id_set->id(element),
+                                     ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), false));
+            }
+            else { // Origin is interior with Overlap neighbor
+                assert(element.getOrigin().partitionType() == InteriorEntity);
+                // Interior cells with overlap neighbor may appear in other processess -> true
+                // Interior cells with overlap neighbor may appear in other processess -> true
+                level_index_set.add( level_global_id_set->id(element),
+                                     ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::owner), true));
+            }
+        }
+        else { // overlap cells appear in other processess -> true
+            assert(element.getOrigin().partitionType() == OverlapEntity);
+            level_index_set.add( level_global_id_set->id(element),
+                                 ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
+        }
+
+
+
+            
+        /*    const auto& parent_cell = element.father();
 
             const auto& intersections = Dune::intersections(levelGridView(parent_cell.level()), parent_cell);
             for (const auto& intersection : intersections) {
@@ -1531,7 +1576,7 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
             assert(element.partitionType() == OverlapEntity);
             level_index_set.add( level_global_id_set->id(element),
                                  ParallelIndexSet::LocalIndex(element.index(), AttributeSet(AttributeSet::copy), true));
-        }
+                                 }*/
     }
     level_index_set.endResize();
 
