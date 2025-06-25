@@ -1545,6 +1545,8 @@ void CpGrid::populateCellIndexSetLeafGridView()
 {
 #if HAVE_MPI
     auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+    // Clean up leaf cell index set - needed e.g. for synchronization of cell ids.
+    leaf_index_set = ParallelIndexSet();
 
     leaf_index_set.beginResize();
 
