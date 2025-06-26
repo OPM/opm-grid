@@ -128,7 +128,7 @@ public:
 
   /** \brief Point-2-Point communicator for exchange messages between processes */
   template < class MsgBuffer >
-  class Point2PointCommunicator : public CollectiveCommunication< MPIHelper::MPICommunicator >
+  class Point2PointCommunicator : public Dune::Communication< MPIHelper::MPICommunicator >
   {
   public:
     /** \brief type of MPI communicator, either MPI_Comm or NoComm as defined in MPIHelper */
