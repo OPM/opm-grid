@@ -196,12 +196,9 @@ void checkCommunicationWorks(const Dune::CpGrid& grid)
     const std::size_t numDof = gridView.size(0);
     dofTotalVolume.resize(numDof, 0.0);
 
-    for (const auto& element : Dune::elements(gridView)) {
+    for (const auto& element : Dune::elements(gridView, Dune::Partitions::interior)) {
         // ignore everything which is not in the interior if the
         // current process' piece of the grid
-        if (element.partitionType() != Dune::InteriorEntity) {
-            continue;
-        }
 
         // random computation - only for testing
         const double dofVolume = element.geometry().volume();
