@@ -90,9 +90,7 @@ public:
     // the official DUNE names
     typedef Entity    EntitySeed;
 
-    /// @brief
-    /// @todo Doc me!
-    /// @tparam
+    /** \brief Export supported entity types */
     template <int cd>
     struct Codim
     {
