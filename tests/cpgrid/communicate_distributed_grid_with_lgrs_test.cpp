@@ -194,7 +194,7 @@ void checkCommunicationWorks(const Dune::CpGrid& grid)
     const auto& gridView = grid.leafGridView();
     // initialize the volume of the finite volumes to zero
     const std::size_t numDof = gridView.size(0);
-    dofTotalVolume.resize(numDof, 0.0);
+    dofTotalVolume.resize(numDof);
 
     for (const auto& element : Dune::elements(gridView, Dune::Partitions::interior)) {
         // ignore everything which is not in the interior if the
