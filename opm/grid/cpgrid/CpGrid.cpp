@@ -1535,7 +1535,7 @@ void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
     }
     level_index_set.endResize();
 
-    currentData()[level]->cellRemoteIndices().template rebuild<false>(); // Do not ignore bool in ParallelIndexSet!
+    currentData()[level]->cellRemoteIndices().template rebuild<true>(); // true->ignore bool in ParallelIndexSet!
     // Check the size
     assert(static_cast<std::size_t>(level_data->cellIndexSet().size()) == static_cast<std::size_t>(level_data->size(0)) );
 #endif
@@ -1545,6 +1545,8 @@ void CpGrid::populateCellIndexSetLeafGridView()
 {
 #if HAVE_MPI
     auto& leaf_index_set =  (*current_data_).back()->cellIndexSet();
+    // Clean up leaf cell index set - needed e.g. for synchronization of cell ids.
+    leaf_index_set = ParallelIndexSet();
 
     leaf_index_set.beginResize();
 
@@ -1584,7 +1586,7 @@ void CpGrid::populateCellIndexSetLeafGridView()
     }
     leaf_index_set.endResize();
 
-    (*current_data_).back()->cellRemoteIndices().template rebuild<false>();
+    (*current_data_).back()->cellRemoteIndices().template rebuild<true>(); // true->ignore bool in ParallelIndex!
 
 #endif
 }
