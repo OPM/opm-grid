@@ -1223,7 +1223,7 @@ namespace cpgrid
                                                       double vol,
                                                       const std::array<int,8>& corner_indices)
             {
-                return cpgrid::Geometry<3, 3>(pos, vol, allcorners_, &corner_indices[0]);
+                return cpgrid::Geometry<3, 3>(pos, vol, allcorners_.get(), &corner_indices[0]);
             }
         };
 

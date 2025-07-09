@@ -87,7 +87,7 @@ tpfa_htrans_compute(const Grid* G, const double *perm, double *htrans)
             s = 2.0*(face_cells(*f, 0) == c) - 1.0;
             n = faceNormal(*G, *f);
             const double* nn=multiplyFaceNormalWithArea(*G, *f, n);
-            const double* fc = &(faceCentroid(*G, *f)[0]);
+            auto fc = faceCentroid(*G, *f);
             dgemv_("No Transpose", &nrows, &ncols,
                    &a1, K, &ldA, nn, &incx, &a2, &Kn[0], &incy);
             maybeFreeFaceNormal(*G, nn);
