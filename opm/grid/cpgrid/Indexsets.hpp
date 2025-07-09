@@ -59,7 +59,9 @@ namespace Dune
             /// @todo Doc me!
             typedef std::int64_t IndexType;
 
-            /** \brief Export the type of the entity used as parameter in the index(...) method */
+            static constexpr int dimension = 3;
+
+            /** \brief Export supported entity types */
             template <int cc>
             struct Codim
             {
@@ -74,13 +76,13 @@ namespace Dune
             /// @todo Doc me!
             /// @param
             IndexSet() : IndexSet(0,0){}
-            
+
             IndexSet(std::size_t numCells, std::size_t numPoints)
             {
                 geom_types_[0].emplace_back(Dune::GeometryTypes::cube(3));
                 geom_types_[3].emplace_back(Dune::GeometryTypes::cube(0));
-                size_codim_map_[0] =  numCells; 
-                size_codim_map_[3] = numPoints; 
+                size_codim_map_[0] =  numCells;
+                size_codim_map_[3] = numPoints;
             }
 
             /// \brief Destructor.
@@ -203,23 +205,42 @@ namespace Dune
         public:
             typedef std::int64_t IdType;
 
+            static constexpr int dimension = 3;
+
+            /** \brief Export supported entity types */
+            template <int cc>
+            struct Codim
+            {
+                using Entity = ::Dune::cpgrid::Entity<cc>;
+            };
+
             explicit IdSet(const CpGridData& grid)
                 : grid_(grid)
             {
             }
 
-            IdType id(const cpgrid::Entity<0>& e) const
+            template <int cd>
+            IdType id(const typename Codim<cd>::Entity& e) const
             {
-                return computeId_cell(e);
-            }
-
-            IdType id(const cpgrid::Entity<3>& e) const
-            {
-                return computeId_point(e);
+                if constexpr (cd == 0)
+                    return computeId_cell(e);
+                else if constexpr (cd == 1)
+                    return computeId(e);
+                else if constexpr (cd == 3)
+                    return computeId_point(e);
+                else
+                    static_assert(AlwaysFalse<index_constant<cd>>::value,
+                                  "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
             }
 
             template<class EntityType>
             IdType id(const EntityType& e) const
+            {
+                return id<EntityType::codimension>(e);
+            }
+
+            template<int codim>
+            IdType id(const cpgrid::EntityRep<codim>& e) const
             {
                 return computeId(e);
             }
@@ -353,6 +374,15 @@ namespace Dune
         public:
             typedef std::int64_t IdType;
 
+            static constexpr int dimension = 3;
+
+            /** \brief Export supported entity types */
+            template <int cc>
+            struct Codim
+            {
+                using Entity = ::Dune::cpgrid::Entity<cc>;
+            };
+
             void swap(std::vector<int>& cellMapping,
                       std::vector<int>& faceMapping,
                       std::vector<int>& pointMapping)
@@ -369,7 +399,7 @@ namespace Dune
                 : idSet_(), view_()
             {}
             template<int codim>
-            IdType id(const Entity<codim>& e) const
+            IdType id(const typename Codim<codim>::Entity& e) const
             {
                 assert(view_ == e.pgrid_);
                 // We need to ask the local id set with the full entity
@@ -382,6 +412,7 @@ namespace Dune
                     // build from the ids of the sequential grid
                     return this->template getMapping<codim>()[e.index()];
             }
+
             template<int codim>
             IdType id(const EntityRep<codim>& e) const
             {
@@ -389,6 +420,12 @@ namespace Dune
                     return idSet_->id(e);
                 else
                     return this->template getMapping<codim>()[e.index()];
+            }
+
+            template<class EntityType>
+            IdType id(const EntityType& e) const
+            {
+                return id<EntityType::codimension>(e);
             }
 
             template<int cc>
@@ -452,21 +489,36 @@ namespace Dune
         /// \brief The type of the id.
         using IdType = typename LevelGlobalIdSet::IdType;
 
+        static constexpr int dimension = 3;
+
+        /** \brief Export supported entity types */
+        template <int cd>
+        struct Codim
+        {
+            using Entity = ::Dune::cpgrid::Entity<cd>;
+        };
+
         explicit GlobalIdSet(const CpGridData& view);
 
         template<int codim>
-        IdType id(const Entity<codim>& e) const
+        IdType id(const typename Codim<codim>::Entity& e) const
         {
             return levelIdSet(e.pgrid_).id(e);
         }
 
-        template<int cc>
-        IdType subId(const cpgrid::Entity<0>& e, int i) const
+        template<class EntityType>
+        IdType id(const EntityType& e) const
+        {
+            return id<EntityType::codimension>(e);
+        }
+
+        template <int cc>
+        IdType subId(const typename Codim<0>::Entity& e, int i) const
         {
             return levelIdSet(e.pgrid_).template subId<cc>(e, i);
         }
 
-        IdType subId(const cpgrid::Entity<0>& e, int i, int cc) const;
+        IdType subId(const typename Codim<0>::Entity& e, int i, int cc) const;
 
         void insertIdSet(const CpGridData& view);
     private:

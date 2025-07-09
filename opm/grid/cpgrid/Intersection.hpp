@@ -69,6 +69,7 @@ namespace Dune
             /// @todo Doc me!
             enum { dimension = 3 };
             enum { dimensionworld = 3 };
+            enum { mydimension = 2 };
             /// @brief
             /// @todo Doc me!
             typedef cpgrid::Entity<0> Entity;
@@ -300,6 +301,13 @@ namespace Dune
                 return *this;
             }
 
+            IntersectionIterator operator++(int)
+            {
+                IntersectionIterator tmp(*this);
+                ++(*this);
+                return tmp;
+            }
+
             const Intersection* operator->() const
             {
                 assert(!Intersection::isAtEnd());
@@ -320,5 +328,20 @@ namespace Dune
 
     } // namespace cpgrid
 } // namespace Dune
+
+namespace std
+{
+    template<>
+    struct iterator_traits< Dune::cpgrid::IntersectionIterator >
+    {
+        typedef Dune::cpgrid::IntersectionIterator          Iterator;
+        typedef ptrdiff_t                                   difference_type;
+        typedef typename Iterator::Intersection             value_type;
+        typedef value_type*                                 pointer;
+        typedef value_type&                                 reference;
+        typedef forward_iterator_tag                        iterator_category;
+    };
+
+} // namespace std
 
 #endif // OPM_INTERSECTION_HEADER

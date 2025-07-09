@@ -65,6 +65,8 @@ namespace Dune
             /// @param
             Iterator(const CpGridData& grid, int index, bool orientation);
 
+            Iterator() = default;
+
             /// Increment operator.
             /// Implementation note: This class is a friend of
             /// \see EntityRep (which is a private base class of
@@ -80,6 +82,14 @@ namespace Dune
                     EntityRep<cd>::increment();
                 return *this;
             }
+
+            Iterator operator++(int)
+            {
+                Iterator tmp(*this);
+                ++(*this);
+                return tmp;
+            }
+
             /// Const member by pointer operator.
             const Entity<cd>* operator->() const
             {
@@ -116,6 +126,8 @@ namespace Dune
                 : virtualEntity_(grid, EntityRep<0>::InvalidIndex, true )
             {
             }
+
+            explicit HierarchicIterator() = default;
 
             // Constructor with Entity<0> target and maxLevel (begin iterator).
             HierarchicIterator(Entity<0> target, int maxLevel)
