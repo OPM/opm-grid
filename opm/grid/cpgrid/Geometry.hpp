@@ -127,7 +127,7 @@ namespace Dune
             }
 
             /// Returns the position of the vertex.
-            const GlobalCoordinate& global(const LocalCoordinate&) const
+            GlobalCoordinate global(const LocalCoordinate&) const
             {
                 return pos_;
             }
@@ -172,7 +172,7 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
@@ -272,7 +272,7 @@ namespace Dune
             }
 
             /// This method is meaningless for singular geometries.
-            const GlobalCoordinate& global(const LocalCoordinate&) const
+            GlobalCoordinate global(const LocalCoordinate&) const
             {
                 OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
             }
@@ -319,20 +319,20 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
 
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, mydimension, coorddimension>&
+            FieldMatrix<ctype, mydimension, coorddimension>
             jacobianTransposed(const LocalCoordinate& /* local */) const
             {
                 OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
             }
 
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, coorddimension, mydimension>&
+            FieldMatrix<ctype, coorddimension, mydimension>
             jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
             {
                 OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
@@ -526,7 +526,7 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
@@ -537,7 +537,7 @@ namespace Dune
             /// and {u_i} are the reference coordinates.
             /// g = g(u) = (g_1(u), g_2(u), g_3(u)), u=(u_1,u_2,u_3)
             /// g = map from (local) reference domain to global cell
-            const JacobianTransposed
+            JacobianTransposed
             jacobianTransposed(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
@@ -573,7 +573,7 @@ namespace Dune
             }
 
             /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-            const JacobianInverseTransposed
+            JacobianInverseTransposed
             jacobianInverseTransposed(const LocalCoordinate& local_coord) const
             {
                 JacobianInverseTransposed Jti = jacobianTransposed(local_coord);
