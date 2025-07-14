@@ -3876,7 +3876,8 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                                   const int& preAdaptMaxLevel,
                                   const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec) const
+                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec,
+                                  const std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec) const
 {
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
@@ -3885,7 +3886,9 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
         refined_cell_to_point_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
         refined_global_cell_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
 
-        const auto& allLevelCorners = refined_geometries_vec[shiftedLevel].geomVector(std::integral_constant<int,3>());
+        auto copyCorners = refined_corners_vec[shiftedLevel];
+        auto allLevelCorners = *refined_geometries_vec[shiftedLevel].geomVector(std::integral_constant<int,3>());
+        allLevelCorners.swap(copyCorners);
 
         for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
 
@@ -3972,7 +3975,7 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
 
             // Create a pointer to the first element of "refined_cell_to_point" (required as the fourth argement to construct a Geometry<3,3> type object).
             int* indices_storage_ptr = refined_cell_to_point_vec[shiftedLevel][cell].data();
-            refined_cells_vec[shiftedLevel][cell] = cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(), allLevelCorners.get(), indices_storage_ptr);
+            refined_cells_vec[shiftedLevel][cell] = cpgrid::Geometry<3,3>(elemLgrGeom.center(), elemLgrGeom.volume(), &allLevelCorners, indices_storage_ptr);
         } // refined_cells
         // Refined face to cell.
         refined_cell_to_face_vec[shiftedLevel].makeInverseRelation(refined_face_to_cell_vec[shiftedLevel]);
@@ -4048,7 +4051,8 @@ void CpGrid::setRefinedLevelGridsGeometries( /* Refined corner arguments */
                          preAdaptMaxLevel,
                          markedElemAndEquivRefinedCorn_to_corner,
                          cornerInMarkedElemWithEquivRefinedCorner,
-                         cells_per_dim_vec);
+                         cells_per_dim_vec,
+                         refined_corners_vec);
 
 }
 

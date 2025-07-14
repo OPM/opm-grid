@@ -538,7 +538,6 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
         // Compute the volume of the 'local-entity'.
         double volume_in_father_reference_elem = double(1)/(cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]);
         // Construct (and return) the Geometry<3,3> of 'child-cell in the reference element of its father (unit cube)'.
-        OPM_THROW(std::logic_error, "Entity has no father.");
         return Dune::cpgrid::Geometry<3,3>(center_in_father_reference_elem, volume_in_father_reference_elem,
                                            in_father_reference_elem_corners);
     }

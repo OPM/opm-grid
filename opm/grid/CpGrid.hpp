@@ -814,7 +814,8 @@ namespace Dune
                                   const int& preAdaptMaxLevel,
                                   const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec) const;
+                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec,
+                                  const std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec) const;
 
         /// @brief Set geometrical and topological attributes for each refined level grid.
         void setRefinedLevelGridsGeometries( /* Refined corner arguments */
