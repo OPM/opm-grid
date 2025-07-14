@@ -15,7 +15,7 @@
 
 /*
 Copyright 2009, 2010 SINTEF ICT, Applied Mathematics.
-Copyright 2009, 2010, 2022 Equinor ASA.
+Copyright 2009, 2010, 2022, 2025 Equinor ASA.
 
 This file is part of The Open Porous Media project  (OPM).
 
@@ -42,6 +42,7 @@ along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 #include "Intersection.hpp"
 
 #include <cstdint>
+#include <type_traits>
 #include <unordered_map>
 #include <utility>
 
@@ -114,7 +115,7 @@ namespace Dune
             int size(GeometryType type) const
             {
                 if (type.isCube()) {
-                    return size(3 - type.dim());  // return grid_.size(type);
+                    return size(3 - type.dim());
                 } else {
                     return 0;
                 }
@@ -127,7 +128,7 @@ namespace Dune
             /// @return
             int size(int codim) const
             {
-                return size_codim_map_[codim]; //grid_.size(codim)
+                return size_codim_map_[codim];
             }
 
 
@@ -186,12 +187,10 @@ namespace Dune
             template <class EntityType>
             bool contains(const EntityType& e) const
             {
-                // return index(e) >= 0 && index(e) < grid_.size(EntityType::codimension); //EntityType::codimension == 0;
                 return index(e) >= 0 && index(e) < this->size(EntityType::codimension);
             }
 
         private:
-            // const CpGridData& grid_;
             Types geom_types_[4];
             std::array<int,4> size_codim_map_{0,0,0,0};
         };
@@ -201,7 +200,6 @@ namespace Dune
         {
             friend class ReversePointGlobalIdSet;
             friend class Dune::cpgrid::CpGridData;
-            //friend class Dune::cpgrid::LevelGlobalIdSet; Not needed due to repeated code in LevelGlobalIdSet (computeId_cell and computeId_point)
         public:
             typedef std::int64_t IdType;
 
@@ -219,30 +217,23 @@ namespace Dune
             {
             }
 
-            template <int cd>
-            IdType id(const typename Codim<cd>::Entity& e) const
-            {
-                if constexpr (cd == 0)
-                    return computeId_cell(e);
-                else if constexpr (cd == 1)
-                    return computeId(e);
-                else if constexpr (cd == 3)
-                    return computeId_point(e);
-                else
-                    static_assert(AlwaysFalse<index_constant<cd>>::value,
-                                  "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
-            }
-
+            // Avoid implicit derived-to-base conversion: use Entity<codim> instead of EntityRep<codim>.
+            // Also, ensure the correct ids are used for Entity<0> and Entity<3> in CpGrid with LGRs.
             template<class EntityType>
             IdType id(const EntityType& e) const
             {
-                return id<EntityType::codimension>(e);
-            }
-
-            template<int codim>
-            IdType id(const cpgrid::EntityRep<codim>& e) const
-            {
-                return computeId(e);
+                if constexpr (std::is_same_v<EntityType, cpgrid::Entity<0>>){
+                    return  computeId_cell(e);
+                }
+                else if constexpr (std::is_same_v<EntityType, cpgrid::Entity<3>>) {
+                    return computeId_point(e);
+                }
+                else if (std::is_same_v<EntityType, cpgrid::Entity<2>>) {
+                    OPM_THROW(std::logic_error, "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
+                }
+                else { // Entity<1> and EntityRep<codim> fall in this case.
+                    return computeId(e);
+                }
             }
 
             /// return id of intersection (here face number)
@@ -398,8 +389,11 @@ namespace Dune
             LevelGlobalIdSet()
                 : idSet_(), view_()
             {}
-            template<int codim>
-            IdType id(const typename Codim<codim>::Entity& e) const
+
+            // Avoid implicit derived-to-base conversion (use Entity<codim> instead of EntityRep<codim>),
+            // by overloading id() with explicit types Entity<codim>, codim = 0,1, and 3. 
+            // Ensure the correct ids are used for Entity<0> and Entity<3> in CpGrid with LGRs.
+            IdType id(const cpgrid::Entity<0>& e) const
             {
                 assert(view_ == e.pgrid_);
                 // We need to ask the local id set with the full entity
@@ -410,22 +404,44 @@ namespace Dune
                 else
                     // This a parallel grid and we need to use the mapping
                     // build from the ids of the sequential grid
-                    return this->template getMapping<codim>()[e.index()];
+                    return this->template getMapping<0>()[e.index()];
             }
-
-            template<int codim>
-            IdType id(const EntityRep<codim>& e) const
+            
+            IdType id(const cpgrid::Entity<1>& e) const
             {
+                assert(view_ == e.pgrid_);
+                // Entity<1> is not supported for CpGrid, so it's impossible to determine the level  
+                // or other refinement-related information. As a result, implicit conversion to  
+                // EntityRep<1> will occur, and id(EntityRep<1>) will be used.
                 if(idSet_)
                     return idSet_->id(e);
                 else
-                    return this->template getMapping<codim>()[e.index()];
+                    // This a parallel grid and we need to use the mapping
+                    // build from the ids of the sequential grid
+                    return this->template getMapping<1>()[e.index()];
+            }
+            
+            IdType id(const cpgrid::Entity<3>& e) const
+            {
+                assert(view_ == e.pgrid_);
+                // We need to ask the local id set with the full entity
+                // as it needs to be able to determine the level and other
+                // things that are not available in EntityRep.
+                if(idSet_)
+                    return idSet_->id(e);
+                else
+                    // This a parallel grid and we need to use the mapping
+                    // build from the ids of the sequential grid
+                    return this->template getMapping<3>()[e.index()];
             }
 
-            template<class EntityType>
-            IdType id(const EntityType& e) const
+            template <int codim>
+            IdType id(const cpgrid::EntityRep<codim>& e) const
             {
-                return id<EntityType::codimension>(e);
+                if(idSet_)
+                   return idSet_->id(e);
+                else
+                    return computeId(e); 
             }
 
             template<int cc>
@@ -475,6 +491,15 @@ namespace Dune
         private:
             std::shared_ptr<const IdSet> idSet_;
             const CpGridData* view_;
+            
+            template<int codim>
+            IdType computeId(const cpgrid::EntityRep<codim>& e) const
+            {
+                IdType myId = 0;
+                for( int c=0; c<codim; ++c )
+                    myId += view_->indexSet().size( c );
+                return  myId + e.index();
+            }
     };
 
     /*!
@@ -500,16 +525,10 @@ namespace Dune
 
         explicit GlobalIdSet(const CpGridData& view);
 
-        template<int codim>
-        IdType id(const typename Codim<codim>::Entity& e) const
+        template <int codim>
+        IdType id(const cpgrid::Entity<codim>& e) const
         {
             return levelIdSet(e.pgrid_).id(e);
-        }
-
-        template<class EntityType>
-        IdType id(const EntityType& e) const
-        {
-            return id<EntityType::codimension>(e);
         }
 
         template <int cc>
