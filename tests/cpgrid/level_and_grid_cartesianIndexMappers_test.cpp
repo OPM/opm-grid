@@ -302,7 +302,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     // -----------------------------------------------------------------------
     // [] and () represent leaf local indices of refined cells born in LGR1 and LGR2 respectively.
     // -----------------------------------------------------------------------
-    // k = 0  8   9  10  11 |  k = 1    176       177       178     179 | k = 2 188 189 [190-216] [217-243] |
+    // k = 0  8   9  10  11 |  k = 1    176       177       178     179 | k = 2 188 189 (190-216) (217-243) |
     //        4   5   6   7 |        [ 94-120] [121-147] [148-174]  175 |       184 185    186      187     |
     //        0   1   2   3 |        [ 12-38 ] [ 39-65 ] [ 66-92 ]   93 |       180 181    182      183     |
     // ------------------------------------------------------------------------------------------------------
@@ -380,13 +380,13 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     if (isParallel) {
         grid.loadBalance();
     }
-    grid.addLgrsUpdateLeafView(/* cells_per_dim = */ {{3,3,3}},
+    grid.addLgrsUpdateLeafView(/* cells_per_dim = */ {{2,2,2}},
                                /* startIJK_vec = */ {{0,0,0}},
                                /* endIJK_vec = */ {{4,3,3}},
                                /* lgr_name_vec = */ {"LGR1"});
 
     // Block shaped parent cells of LGR1 is the entire level zero grid, dimensions (4-0)x(3-0)x(3-1).
-    // Number of subdivisions per cell, per direction {3,3,3}.  -> LGR1 dims = {12,9,9}
+    // Number of subdivisions per cell, per direction {2,2,2}.  -> LGR1 dims = {8,6,6}
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
@@ -395,9 +395,9 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     // Check level Cartesian dimensions and size, and compressed size, for level grids.
     checkLevels(grid,
                 levelCartMapp,
-                {{4,3,3}, {12,9,9}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 12*9*9},     // expected Cartesian sizes per level grid
-                {4*3*3, 12*9*9});    // expected compressed sizes per level grid
+                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
+                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
+                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
 
     // In this case, all parent cells are active, therefore level Cartesian size
     // and compressed size coincide.
@@ -415,15 +415,86 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     // For hidden-globally-refined grid via addLgrsUpdateLeafView, CartesianIndexMapper::cartesianDimensions
     // and grid.logicalCartesianSize() DO NOT coincide
     Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
-    Opm::areEqual(grid.logicalCartesianSize(), {12,9,9} /* LEAF grid view Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
 
     cartesianSizeCoincidesWithLevelZeroOne(grid,
                                            cartMapp,
                                            levelCartMapp,
                                            /* level zero Cartesian size = */ 4*3*3);
 
-    int leafGridCellCount = 972; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (12*9*9 LGR1Cells)
+    int leafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
     compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, leafGridCellCount);
+
+    // Level zero grid    
+    // --------------------
+    // k = 0  8   9  10  11 |  k = 1 20  21  22  23 | k = 2 32  33  34  35 |
+    //        4   5   6   7 |        16  17  18  19 |       28  29  30  31 |
+    //        0   1   2   3 |        12  13  14  15 |       24  25  26  27 |
+
+    
+    // Leaf grid local indices
+    // "k = 2"  [256-263] [264-271] [272-279] [280-287] |  
+    //          [224-231] [232-239] [240-247] [248-255] |        
+    //          [192-199] [200-207] [208-215] [216-223] |
+    // ------------------------------------------------
+    // "k = 1"  [160-167] [168-175] [176-183] [184-191] |  
+    //          [128-135] [136-143] [144-151] [152-159] |        
+    //          [ 96-103] [104-111] [112-119] [120-127] | 
+    // ------------------------------------------------
+    // "k = 0"  [ 64-71 ] [ 72-79 ] [ 80-87 ] [ 88-95 ] |  
+    //          [ 32-39 ] [ 40-47 ] [ 48-55 ] [ 56-63 ] |        
+    //          [  0-7  ] [  8-15 ] [ 16-23 ] [ 24-31 ] |
+    // --------------------------------------------------
+    // Leaf refined cell born in LGR1 with compressedIndex = 5 has parent cell in level zero
+    // with Cartesian index 0 and ijk = {0, 0, 0}.
+    BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ 5), 0);
+    std::array<int,3> coords5{};
+    cartMapp.cartesianCoordinate(/* compressedElementIndex = */ 5, coords5);
+    Opm::areEqual( coords5, {0, 0, 0});
+
+    // Leaf refined cell born in LGR1 with compressedIndex = 150 has parent cell in level zero
+    // with Cartesian index 18 and ijk = {2, 1, 1}.
+    BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ 150), 18);
+    std::array<int,3> coords150{};
+    cartMapp.cartesianCoordinate(/* compressedElementIndex = */ 150, coords150);
+    Opm::areEqual( coords150, {2, 1, 1});  /** Why?!?! */
+
+    // Leaf refined cell born in LGR1 with compressedIndex = 270 has parent cell in level zero
+    // with Cartesian index 33 and ijk = {1, 2, 2}.
+    BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ 270), 33);
+    std::array<int,3> coords270{};
+    cartMapp.cartesianCoordinate(/* compressedElementIndex = */ 270, coords270);
+    Opm::areEqual( coords270, {1, 2, 2}); /** Why?!?! */
+
+
+    // For simplicity, illustration only of layer k = 0 on the LGR1 grid
+    // LGR1 local indices                                 LGR1 (level) Cartesian indices
+    // k = 0   66  67 | 74  75 | 82  83 | 90  91 |        40  41 | 42  43 | 44  45 | 46  47 |
+    //         64  65 | 72  73 | 80  81 | 88  89 |        32  33 | 34  35 | 36  37 | 38  39 |
+    //         -----------------------------------        -----------------------------------
+    //         34  35 | 42  43 | 50  51 | 58  59 |        24  25 | 26  27 | 28  29 | 30  31 |
+    //         32  33 | 40  41 | 48  49 | 56  57 |        16  17 | 18  19 | 20  21 | 22  23 |
+    //         -----------------------------------        -----------------------------------
+    //          2   3 | 10  11 | 18  19 | 26  27 |         8   9 | 10  11 | 12  13 | 14  15 |
+    //          0   1 |  8   9 | 16  17 | 24  25 |         0   1 |  2   3 |  4   5 |  6   7 | 
+
+    // LGR1 refined cell with lgr1CompressedIndex = 3 has level Cartesian index 9 and ijk = {1, 1, 0}.
+    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex = */ 3,  /* level = */ 1), 9);
+    std::array<int,3> lgr1Coords3{};
+    levelCartMapp.cartesianCoordinate(/* lgr1CompressedElementIndex = */ 3, lgr1Coords3, /* level = */ 1);
+    Opm::areEqual( lgr1Coords3, {1, 1, 0});
+
+    // LGR1 refined cell with lgr1CompressedIndex = 50 has level Cartesian index 28 and ijk = {4, 3, 0}.
+    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* compressedElementIndex = */ 50,  /* level = */ 1), 28);
+    std::array<int,3> lgr1Coords50{};
+    levelCartMapp.cartesianCoordinate(/* compressedElementIndex = */ 50, lgr1Coords50, /* level = */ 1);
+    Opm::areEqual( lgr1Coords50, {4, 3, 0});
+
+    // LGR1 refined cell with lgr1CompressedIndex = 90 has level Cartesian index 46 and ijk = {6, 5, 0}.
+    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* compressedElementIndex = */ 90,  /* level = */ 1), 46);
+    std::array<int,3> lgr1Coords90{};
+    levelCartMapp.cartesianCoordinate(/* compressedElementIndex = */ 90, lgr1Coords90,  /* level = */ 1);
+    Opm::areEqual( lgr1Coords90, {6, 5, 0});
 }
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinementWith_adapt)
