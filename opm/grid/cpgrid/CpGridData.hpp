@@ -270,7 +270,15 @@ public:
     /// @param [out] ijk  Cartesian index triplet
     void getIJK(int c, std::array<int,3>& ijk) const
     {
-        ijk = getIJK(global_cell_[c], logical_cartesian_size_);
+        // For level zero and the leaf grids, use logicalCartesianSize from level zero grid.
+        // Note: when the entire grid gets refined, the leaf grid logical Cartesian size does
+        //       not coincide with the level zero grid one.
+        if (level_) {
+            ijk = getIJK(global_cell_[c], logical_cartesian_size_);
+        }
+        else {
+            ijk = getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
+        }
     }
 
     int cellFace(int cell, int local_index) const
