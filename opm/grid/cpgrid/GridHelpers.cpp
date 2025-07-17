@@ -141,9 +141,9 @@ beginFaceCentroids(const Dune::CpGrid& grid)
     return FaceCentroidTraits<Dune::CpGrid>::IteratorType(grid, 0);
 }
 
-const double* cellCentroid(const Dune::CpGrid& grid, int cell_index)
+Vector cellCentroid(const Dune::CpGrid& grid, int cell_index)
 {
-    return &(grid.cellCentroid(cell_index)[0]);
+    return grid.cellCentroid(cell_index);
 }
 
 double cellVolume(const  Dune::CpGrid& grid, int cell_index)
@@ -161,8 +161,7 @@ CellVolumeIterator endCellVolumes(const Dune::CpGrid& grid)
     return CellVolumeIterator(grid, numCells(grid));
 }
 
-const FaceCentroidTraits<Dune::CpGrid>::ValueType&
-faceCentroid(const Dune::CpGrid& grid, int face_index)
+Vector faceCentroid(const Dune::CpGrid& grid, int face_index)
 {
     return grid.faceCentroid(face_index);
 }
@@ -184,14 +183,14 @@ face2Vertices(const Dune::CpGrid& grid)
     return Dune::cpgrid::FaceVerticesContainerProxy(&grid);
 }
 
-const double* vertexCoordinates(const Dune::CpGrid& grid, int index)
+Vector vertexCoordinates(const Dune::CpGrid& grid, int index)
 {
-    return &(grid.vertexPosition(index)[0]);
+    return grid.vertexPosition(index);
 }
 
-const double* faceNormal(const Dune::CpGrid& grid, int face_index)
+Vector faceNormal(const Dune::CpGrid& grid, int face_index)
 {
-    return &(grid.faceNormal(face_index)[0]);
+    return grid.faceNormal(face_index);
 }
 
 double faceArea(const Dune::CpGrid& grid, int face_index)
