@@ -814,7 +814,8 @@ namespace Dune
                                   const int& preAdaptMaxLevel,
                                   const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec) const;
+                                  const std::vector<std::array<int,3>>&  cells_per_dim_vec,
+                                  const std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec) const;
 
         /// @brief Set geometrical and topological attributes for each refined level grid.
         void setRefinedLevelGridsGeometries( /* Refined corner arguments */
@@ -1743,7 +1744,7 @@ namespace Dune
         /// \brief Get the Position of a vertex.
         /// \param cell The index identifying the cell.
         /// \return The coordinates of the vertex.
-        const Vector& vertexPosition(int vertex) const;
+        Vector vertexPosition(int vertex) const;
 
         /// \brief Get the area of a face.
         /// \param cell The index identifying the face.
@@ -1751,12 +1752,12 @@ namespace Dune
 
         /// \brief Get the coordinates of the center of a face.
         /// \param cell The index identifying the face.
-        const Vector& faceCentroid(int face) const;
+        Vector faceCentroid(int face) const;
 
         /// \brief Get the unit normal of a face.
         /// \param cell The index identifying the face.
         /// \see faceCell
-        const Vector& faceNormal(int face) const;
+        Vector faceNormal(int face) const;
 
         /// \brief Get the volume of the cell.
         /// \param cell The index identifying the cell.
@@ -1764,7 +1765,7 @@ namespace Dune
 
         /// \brief Get the coordinates of the center of a cell.
         /// \param cell The index identifying the face.
-        const Vector& cellCentroid(int cell) const;
+        Vector cellCentroid(int cell) const;
 
         /// \brief An iterator over the centroids of the geometry of the entities.
         /// \tparam codim The co-dimension of the entities.
