@@ -109,10 +109,110 @@ void allThrow(const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
                                                         unexisting_level), std::logic_error);
 }
 
-void checkAFewCartIdxAndCoordsForGloballyRefinedGrid(const Dune::CpGrid& grid,
-                                                     const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
-                                                     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
-                                                     bool isParallel)
+void levelCartSizeEqualsCompressedSizeIfAllActiveAndSerial(const Dune::CpGrid& grid,
+                                                           const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                                           bool isParallel)
+{
+    if (!isParallel) {
+        for (int level = 0; level <= grid.maxLevel(); ++level) {
+            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
+            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
+        }
+    }
+}
+
+void checkDimsAndSizes(const Dune::CpGrid& grid,
+                       const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                       const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                       const std::vector<std::array<int,3>>& expectedLevelCartDims,
+                       const std::vector<int>& expectedLevelCartSizes,
+                       const std::vector<int>&  expectedSerialLevelCompressedSizes,
+                       int serialLeafGridCellCount)
+{
+    checkLevels(grid, levelCartMapp, expectedLevelCartDims, expectedLevelCartSizes, expectedSerialLevelCompressedSizes);
+    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
+    cartesianDimensionsCoincideWithLevelZeroOnes(grid, cartMapp, levelCartMapp, expectedLevelCartDims[0]);
+    cartesianSizeCoincidesWithLevelZeroOne(grid, cartMapp, levelCartMapp, expectedLevelCartSizes[0]);
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
+}
+
+void checkSerialMinMaxCompressedIdx(int compressedIndex,
+                                    int serialMinCompressedIndex,
+                                    int serialMaxCompressedIndex,
+                                    bool isParallel)
+{
+    if (!isParallel) {
+        BOOST_CHECK(compressedIndex >= serialMinCompressedIndex);
+        BOOST_CHECK(compressedIndex <= serialMaxCompressedIndex);
+    }
+}
+
+void computeAndCompareCartCoords(const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                                 int compressedIdx,
+                                 const std::array<int,3>& expectedCoords)
+{
+    std::array<int,3> coords{};
+    cartMapp.cartesianCoordinate(compressedIdx, coords);
+    Opm::areEqual(coords, expectedCoords);
+}
+
+void checkCartMappIdxAndCoords(const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                               int compressedIndex, 
+                               int expectedCartesianIndex,
+                               const std::array<int,3>& expectedCoords)
+{
+    BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(compressedIndex), expectedCartesianIndex);
+    computeAndCompareCartCoords(cartMapp, compressedIndex, expectedCoords);
+}
+
+void computeAndCompareLevelCartCoords(const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                      int level,
+                                      int levelCompressedIdx,
+                                      const std::array<int,3>& expectedLevelCoords)
+{
+    std::array<int,3> coords{};
+    levelCartMapp.cartesianCoordinate(levelCompressedIdx, coords, level);
+    Opm::areEqual(coords, expectedLevelCoords);
+}
+
+void checkLevelCartMappIdxAndCoords(const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                    int levelCompressedIndex,
+                                    int expectedLevelCartesianIndex,
+                                    const std::array<int,3>& expectedLevelCoords,
+                                    int level)
+{
+    BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(levelCompressedIndex, level), expectedLevelCartesianIndex);
+    computeAndCompareLevelCartCoords(levelCartMapp, level, levelCompressedIndex, expectedLevelCoords);
+}
+
+void checkLeafElement(const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                      const Dune::cpgrid::Entity<0>& element,
+                      int serialMinCompressedIndex,
+                      int serialMaxCompressedIndex,
+                      int expectedCartesianIndex,
+                      const std::array<int,3>& expectedCoords,
+                      bool isParallel)
+{
+    checkSerialMinMaxCompressedIdx(element.index(), serialMinCompressedIndex, serialMaxCompressedIndex, isParallel);
+    checkCartMappIdxAndCoords(cartMapp, element.index(), expectedCartesianIndex, expectedCoords);
+}
+
+void checkLevelElement(const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                       int levelCompressedIndex,
+                       int serialLevelCompressedIndex,
+                       int expectedCartesianIndex,
+                       const std::array<int,3>& expectedCoords,
+                       bool isParallel,
+                       int level)
+{
+    checkSerialMinMaxCompressedIdx(levelCompressedIndex, serialLevelCompressedIndex, serialLevelCompressedIndex, isParallel);
+    checkLevelCartMappIdxAndCoords(levelCartMapp, levelCompressedIndex, expectedCartesianIndex, expectedCoords, level);
+}
+
+void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& grid,
+                                                          const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                                          const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                                                          bool isParallel)
 {
     // Level zero grid for all test cases has dimension 4x3x3
     // --------------------------------------------------------------------
@@ -140,19 +240,16 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedGrid(const Dune::CpGrid& grid,
     bool foundId18 = false;
     bool foundId33 = false;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
-
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 0,1,...,7
         //           have parent cell in level zero with Cartesian index 0 and ijk = {0, 0, 0}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
         //           has global id equal to 0.
         bool originHasId0 = (grid.globalIdSet().id(element.getOrigin()) == 0);
-
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 144,145,....,151
         //           have parent cell in level zero with Cartesian index 18 and ijk = {2, 1, 1}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
         //           has global id equal to 18.
         bool originHasId18 = (grid.globalIdSet().id(element.getOrigin()) == 18);
-
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 264,265,...,271
         //           have parent cell with Cartesian index 33 and ijk = {1, 2, 2}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
@@ -160,84 +257,73 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedGrid(const Dune::CpGrid& grid,
         bool originHasId33 = (grid.globalIdSet().id(element.getOrigin()) == 33);
 
         if (originHasId0) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 0 = {0,1, ..., 7}
-                BOOST_CHECK( element.index() >= 0);
-                BOOST_CHECK( element.index() <= 7);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 0);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {0, 0, 0});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 0, /* serialMaxCompressedIndex = */ 7,
+                             /* expectedCartesianIndex = */ 0, /* expectedCoords = */ {0, 0, 0}, isParallel);
             foundId0 = true;
         }
         else if (originHasId18) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 18 = {144,145,...,151}
-                BOOST_CHECK( element.index() >= 144);
-                BOOST_CHECK( element.index() <= 151);
-            }
-
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 18);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {2, 1, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 144, /* serialMaxCompressedIndex = */ 151,
+                             /* expectedCartesianIndex = */ 18, /* expectedCoords = */ {2, 1, 1}, isParallel);
             foundId18 = true;
         }
         else if (originHasId33) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 33 = {264,265,...,271}
-                BOOST_CHECK( element.index() >= 264);
-                BOOST_CHECK( element.index() <= 271);
-            }
-
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 33);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 2, 2});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 264, /* serialMaxCompressedIndex = */ 271,
+                             /* expectedCartesianIndex = */ 33, /* expectedCoords = */ {1, 2, 2}, isParallel);
             foundId33 = true;
         }
     }
     BOOST_CHECK(grid.comm().max(foundId0));
     BOOST_CHECK(grid.comm().max(foundId18));
     BOOST_CHECK(grid.comm().max(foundId33));
-
-    // For simplicity, illustration only of layer k = 0 on the LGR1 grid
-    // LGR1 local indices                                 LGR1 (level) Cartesian indices
-    // k = 0   66  67 | 74  75 | 82  83 | 90  91 |        40  41 | 42  43 | 44  45 | 46  47 |
-    //         64  65 | 72  73 | 80  81 | 88  89 |        32  33 | 34  35 | 36  37 | 38  39 |
-    //         -----------------------------------        -----------------------------------
-    //         34  35 | 42  43 | 50  51 | 58  59 |        24  25 | 26  27 | 28  29 | 30  31 |
-    //         32  33 | 40  41 | 48  49 | 56  57 |        16  17 | 18  19 | 20  21 | 22  23 |
-    //         -----------------------------------        -----------------------------------
-    //          2   3 | 10  11 | 18  19 | 26  27 |         8   9 | 10  11 | 12  13 | 14  15 |
-    //          0   1 |  8   9 | 16  17 | 24  25 |         0   1 |  2   3 |  4   5 |  6   7 |
-
+    
     /** TODO: Test in parallel levelCartMapp cartesianIndex and cartesianCoordinate */
     if (!isParallel) {
+        // For simplicity, illustration only of layer k = 0 on the LGR1 grid
+        // LGR1 local indices                                 LGR1 (level) Cartesian indices
+        // k = 0   66  67 | 74  75 | 82  83 | 90  91 |        40  41 | 42  43 | 44  45 | 46  47 |
+        //         64  65 | 72  73 | 80  81 | 88  89 |        32  33 | 34  35 | 36  37 | 38  39 |
+        //         -----------------------------------        -----------------------------------
+        //         34  35 | 42  43 | 50  51 | 58  59 |        24  25 | 26  27 | 28  29 | 30  31 |
+        //         32  33 | 40  41 | 48  49 | 56  57 |        16  17 | 18  19 | 20  21 | 22  23 |
+        //         -----------------------------------        -----------------------------------
+        //          2   3 | 10  11 | 18  19 | 26  27 |         8   9 | 10  11 | 12  13 | 14  15 |
+        //          0   1 |  8   9 | 16  17 | 24  25 |         0   1 |  2   3 |  4   5 |  6   7 |
         // LGR1 refined cell with lgr1CompressedIndex = 3 has level Cartesian index 9 and ijk = {1, 1, 0}.
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex = */ 3,  /* level = */ 1), 9);
-        std::array<int,3> lgr1Coords3{};
-        levelCartMapp.cartesianCoordinate(/* lgr1CompressedElementIndex = */ 3, lgr1Coords3, /* level = */ 1);
-        Opm::areEqual( lgr1Coords3, {1, 1, 0});
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 3, /* serialLevelCompressedIndex = */ 3,
+                          /* expectedCartesianIndex = */ 9, /* expectedCoords = */ {1, 1, 0}, isParallel, /*level =*/ 1);
 
         // LGR1 refined cell with lgr1CompressedIndex = 50 has level Cartesian index 28 and ijk = {4, 3, 0}.
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* compressedElementIndex = */ 50,  /* level = */ 1), 28);
-        std::array<int,3> lgr1Coords50{};
-        levelCartMapp.cartesianCoordinate(/* compressedElementIndex = */ 50, lgr1Coords50, /* level = */ 1);
-        Opm::areEqual( lgr1Coords50, {4, 3, 0});
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 50, /* serialLevelCompressedIndex = */ 50,
+                          /* expectedCartesianIndex = */ 28, /* expectedCoords = */ {4, 3, 0}, isParallel, /*level =*/ 1);
 
         // LGR1 refined cell with lgr1CompressedIndex = 90 has level Cartesian index 46 and ijk = {6, 5, 0}.
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* compressedElementIndex = */ 90,  /* level = */ 1), 46);
-        std::array<int,3> lgr1Coords90{};
-        levelCartMapp.cartesianCoordinate(/* compressedElementIndex = */ 90, lgr1Coords90,  /* level = */ 1);
-        Opm::areEqual( lgr1Coords90, {6, 5, 0});
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 90, /* serialLevelCompressedIndex = */ 90,
+                          /* expectedCartesianIndex = */ 46, /* expectedCoords = */ {6, 5, 0}, isParallel, /*level =*/ 1);
     }
 }
 
+void checkGloballyRefinedTestGrids(const Dune::CpGrid& grid,
+                                   const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
+                                   const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
+                                   bool isParallel)
+{
+    int serialLeafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
+    checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
+                      {{4,3,3}, {8,6,6}},    // expected Cartesian dimensions per level grid
+                      {4*3*3, 8*6*6},        // expected Cartesian sizes per level grid
+                      {4*3*3, 8*6*6},        // expected compressed sizes per level grid
+                      serialLeafGridCellCount);
+
+    levelCartSizeEqualsCompressedSizeIfAllActiveAndSerial(grid, levelCartMapp, isParallel);
+
+    // For hidden-globally-refined grid via addLgrsUpdateLeafView(...), or adapt(), or explicit
+    // globalRefine(...),
+    // CartesianIndexMapper::cartesianDimensions and grid.logicalCartesianSize() DO NOT coincide
+    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
+    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
+
+    checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(grid, levelCartMapp, cartMapp, isParallel);
+}
 
 // This test reuses in each case the same grid and LGRs, to check
 // serial and parallel bahavior. The difference is how refinement
@@ -267,21 +353,18 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // Check level Cartesian dimensions and size, and compressed size, for level grids.
-    checkLevels(grid,
-                levelCartMapp,
-                {{4,3,3}, {9,6,3}, {6,3,3}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 9*6*3, 6*3*3},       // expected Cartesian sizes per level grid
-                {4*3*3, 9*6*3, 6*3*3});      // expected compressed sizes per level grid
+    int serialLeafGridCellCount = 244; // 4*3*3 levelZeroCells - [(3*2*1) + (2*1*1) parentCells] + (9*6*3 LGR1Cells) + (6*3*3 LGR2Cells)
+    checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
+                      {{4,3,3}, {9,6,3}, {6,3,3}},  // expected Cartesian dimensions per level grid
+                      {4*3*3, 9*6*3, 6*3*3},        // expected Cartesian sizes per level grid
+                      {4*3*3, 9*6*3, 6*3*3},        // expected compressed sizes per level grid
+                      serialLeafGridCellCount);
 
-    // In this case, all parent cells are active, therefore level Cartesian size
-    // and compressed size coincide.
-    if (!isParallel) {
-        for (int level = 0; level <= grid.maxLevel(); ++level) {
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
-        }
-    }
+    // For strict-locally-refined grid, CartesianIndexMapper::cartesianDimensions and
+    // grid.logicalCartesianSize() coincide (with level zero Cartesian dimensions/logical Cartesian size).
+    Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
+
+    levelCartSizeEqualsCompressedSizeIfAllActiveAndSerial(grid, levelCartMapp, isParallel);
 
     // Level zero grid
     // --------------------
@@ -309,42 +392,18 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
         bool hasId35 = (grid.globalIdSet().id(element) == 35);
 
         if (hasId0) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 0);
-            }
-
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* levelZeroCompressedElementIndex  = */ element.index(), /* level = */ 0), 0);
-
-            std::array<int,3> level0Coords0{};
-            levelCartMapp.cartesianCoordinate(/*levelZeroMinCompressedElementIndex = */ element.index(), level0Coords0, /* level = */ 0);
-            Opm::areEqual(level0Coords0, {0, 0, 0});
-
+            checkLevelElement(levelCartMapp, element.index(), /* serialLevelCompressedIndex = */ 0,
+                              /* expectedCartesianIndex = */ 0, /* expectedCoords = */ {0, 0, 0}, isParallel, /* level = */ 0);
             l0_foundId0 = true;
         }
         else if (hasId17) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 17);
-            }
-
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* levelZeroCompressedElementIndex  = */ element.index(), /* level = */ 0), 17);
-
-            std::array<int,3> level0Coords17{};
-            levelCartMapp.cartesianCoordinate(/*levelZeroCompressedElementIndex = */ element.index(), level0Coords17, /* level = */ 0);
-            Opm::areEqual(level0Coords17, {1, 1, 1});
-
+            checkLevelElement(levelCartMapp, element.index(), /* serialLevelCompressedIndex = */ 17,
+                              /* expectedCartesianIndex = */ 17, /* expectedCoords = */ {1, 1, 1}, isParallel, /* level = */ 0);
             l0_foundId17 = true;
         }
         else if (hasId35) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 35);
-            }
-
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* levelZeroCompressedElementIndex  = */ element.index(), /* level = */ 0), 35);
-
-            std::array<int,3> level0Coords35{};
-            levelCartMapp.cartesianCoordinate(/*levelZeroMaxCompressedElementIndex = */ element.index(), level0Coords35, /* level = */ 0);
-            Opm::areEqual(level0Coords35, {3, 2, 2});
-
+            checkLevelElement(levelCartMapp, element.index(), /* serialLevelCompressedIndex = */ 35,
+                              /* expectedCartesianIndex = */ 35, /* expectedCoords = */ {3, 2, 2}, isParallel, /* level = */ 0);
             l0_foundId35 = true;
         }
     }
@@ -352,64 +411,45 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     BOOST_CHECK(grid.comm().max(l0_foundId17));
     BOOST_CHECK(grid.comm().max(l0_foundId35));
 
-
-    // LGR1 local/compressed indices                |     LGR1 level Cartesian indices
-    // k = 2  105 106 107 |132 133 134 |159 160 161 |     153 154 155 |156 157 158 |159 160 161 |
-    //        102 103 104 |129 130 131 |156 157 158 |     144 145 146 |147 148 149 |150 151 152 |
-    //         99 100 101 |126 127 128 |153 154 155 |     135 136 137 |138 139 140 |141 142 143 |
-    //         --------------------------------------     ---------------------------------------
-    //         24  25  26 | 51  52  53 | 78  79  80 |     126 127 128 |129 130 131 |132 133 134 |
-    //         21  22  23 | 48  49  50 | 75  76  77 |     117 118 119 |120 121 122 |123 124 125 |
-    //         18  19  20 | 45  46  47 | 72  73  74 |     108 109 110 |111 112 113 |114 115 116 |
-    // ---------------------------------------------      ---------------------------------------
-    // k = 1   96  97  98 |123 124 125 |150 151 152 |      99 100 101 |102 103 104 |105 106 107 |
-    //         93  94  95 |120 121 122 |147 148 149 |      90  91  92 | 93  94  95 | 96  97  98 |
-    //         90  91  92 |117 118 119 |144 145 146 |      81  82  83 | 84  85  86 | 87  88  89 |
-    //         -------------------------------------      ---------------------------------------
-    //         15  16  17 | 42  43  44 | 69  70  71 |      72  73  74 | 75  76  77 | 78  79  80 |
-    //         12  13  14 | 39  40  41 | 66  67  68 |      63  64  65 | 66  67  68 | 69  70  71 |
-    //          9  10  11 | 36  37  38 | 63  64  65 |      54  55  56 | 57  58  59 | 60  61  62 |
-    // ----------------------------------------------     ---------------------------------------
-    // k = 0   87  88  89 |114 115 116 |141 142 143 |      45  46  47 | 48  49  50 | 51  52  53 |
-    //         84  85  86 |111 112 113 |138 139 140 |      36  37  38 | 39  40  41 | 42  43  44 |
-    //         81  82  83 |108 109 110 |135 136 137 |      27  28  29 | 30  31  32 | 33  34  35 |
-    //         --------------------------------------     ---------------------------------------
-    //          6   7   8 | 33  34  35 | 60  61  62 |      18  19  20 | 21  22  23 | 24  25  26 |
-    //          3   4   5 | 30  31  32 | 57  58  59 |       9  10  11 | 12  13  14 | 15  16  17 |
-    //          0   1   2 | 27  28  29 | 54  55  56 |       0   1   2 |  3   4   5 |  6   7   8 |
-    // ------------------------------------------------------------------------------------------
     /** TODO: Test in parallel levelCartMapp cartesianIndex and cartesianCoordinate */
     if (!isParallel) {
-        // Serial:   LGR1 compressedIdx = 0 -> LGR1 Cartesian index = 0, level ijk = {0, 0, 0}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1MinCompressedElementIndex  = */ 0,  /* level = */ 1), 0);
-        std::array<int,3> lgr1Coords0{};
-        levelCartMapp.cartesianCoordinate(/*lgr1MinCompressedElementIndex = */ 0, lgr1Coords0, /* level = */ 1);
-        Opm::areEqual(lgr1Coords0, {0, 0, 0});
-
+        // LGR1 local/compressed indices                |     LGR1 level Cartesian indices
+        // k = 2  105 106 107 |132 133 134 |159 160 161 |     153 154 155 |156 157 158 |159 160 161 |
+        //        102 103 104 |129 130 131 |156 157 158 |     144 145 146 |147 148 149 |150 151 152 |
+        //         99 100 101 |126 127 128 |153 154 155 |     135 136 137 |138 139 140 |141 142 143 |
+        //         --------------------------------------     ---------------------------------------
+        //         24  25  26 | 51  52  53 | 78  79  80 |     126 127 128 |129 130 131 |132 133 134 |
+        //         21  22  23 | 48  49  50 | 75  76  77 |     117 118 119 |120 121 122 |123 124 125 |
+        //         18  19  20 | 45  46  47 | 72  73  74 |     108 109 110 |111 112 113 |114 115 116 |
+        // ---------------------------------------------      ---------------------------------------
+        // k = 1   96  97  98 |123 124 125 |150 151 152 |      99 100 101 |102 103 104 |105 106 107 |
+        //         93  94  95 |120 121 122 |147 148 149 |      90  91  92 | 93  94  95 | 96  97  98 |
+        //         90  91  92 |117 118 119 |144 145 146 |      81  82  83 | 84  85  86 | 87  88  89 |
+        //         -------------------------------------      ---------------------------------------
+        //         15  16  17 | 42  43  44 | 69  70  71 |      72  73  74 | 75  76  77 | 78  79  80 |
+        //         12  13  14 | 39  40  41 | 66  67  68 |      63  64  65 | 66  67  68 | 69  70  71 |
+        //          9  10  11 | 36  37  38 | 63  64  65 |      54  55  56 | 57  58  59 | 60  61  62 |
+        // ----------------------------------------------     ---------------------------------------
+        // k = 0   87  88  89 |114 115 116 |141 142 143 |      45  46  47 | 48  49  50 | 51  52  53 |
+        //         84  85  86 |111 112 113 |138 139 140 |      36  37  38 | 39  40  41 | 42  43  44 |
+        //         81  82  83 |108 109 110 |135 136 137 |      27  28  29 | 30  31  32 | 33  34  35 |
+        //         --------------------------------------     ---------------------------------------
+        //          6   7   8 | 33  34  35 | 60  61  62 |      18  19  20 | 21  22  23 | 24  25  26 |
+        //          3   4   5 | 30  31  32 | 57  58  59 |       9  10  11 | 12  13  14 | 15  16  17 |
+        //          0   1   2 | 27  28  29 | 54  55  56 |       0   1   2 |  3   4   5 |  6   7   8 |
+        // ------------------------------------------------------------------------------------------
         // LGR1 compressedIdx = 161 -> LGR1 Cartesian index = 161, level ijk = {8, 5, 2}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1MaxCompressedElementIndex  = */ 161, /* level = */ 1), 161);
-        std::array<int,3> lgr1Coords161{};
-        levelCartMapp.cartesianCoordinate(/*lgr1MaxCompressedElementIndex = */ 161, lgr1Coords161, /* level = */ 1);
-        Opm::areEqual(lgr1Coords161, {8, 5, 2});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 161, /* serialLevelCompressedIndex = */ 161,
+                          /* expectedCartesianIndex = */ 161, /* expectedCoords = */ {8, 5, 2}, isParallel, /*level =*/ 1);
         // LGR1 compressedIdx = 121 -> LGR1 Cartesian index = 94, level ijk = {4, 4, 1}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex  = */ 121, /* level = */ 1), 94);
-        std::array<int,3> lgr1Coords121{};
-        levelCartMapp.cartesianCoordinate(/*lgr1CompressedElementIndex = */ 121, lgr1Coords121, /* level = */ 1);
-        Opm::areEqual(lgr1Coords121, {4, 4, 1});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 121, /* serialLevelCompressedIndex = */ 121,
+                          /* expectedCartesianIndex = */ 94, /* expectedCoords = */ {4, 4, 1}, isParallel, /*level =*/ 1);
         // LGR1 compressedIdx = 104 -> LGR1 Cartesian index = 146, level ijk = {2, 4, 2}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex  = */ 104, /* level = */ 1), 146);
-        std::array<int,3> lgr1Coords104{};
-        levelCartMapp.cartesianCoordinate(/*lgr1CompressedElementIndex = */ 104, lgr1Coords104, /* level = */ 1);
-        Opm::areEqual(lgr1Coords104, {2, 4, 2});
-
-        // LGR1 compressedIdx = 71 -> LGR1 Cartesian index = 80
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex  = */ 71, /* level = */ 1), 80);
-        std::array<int,3> lgr1Coords71{};
-        levelCartMapp.cartesianCoordinate(/*lgr1CompressedElementIndex = */ 71, lgr1Coords71, /* level = */ 1);
-        Opm::areEqual(lgr1Coords71, {8, 2, 1});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 104, /* serialLevelCompressedIndex = */ 104,
+                          /* expectedCartesianIndex = */ 146, /* expectedCoords = */ {2, 4, 2}, isParallel, /*level =*/ 1);
+        // LGR1 compressedIdx = 71 -> LGR1 Cartesian index = 80, level ijk = {8, 2, 1}
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 71, /* serialLevelCompressedIndex = */ 71,
+                          /* expectedCartesianIndex = */ 80, /* expectedCoords = */ {8, 2, 1}, isParallel, /*level =*/ 1);
 
         // LGR2 local/compressed indices   |     LGR2 level Cartesian indices
         // k = 2   24  25  26 | 51  52  53 |     48  49  50 | 51  52  53 |
@@ -424,56 +464,19 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
         //          3   4   5 | 30  31  32 |      6   7   8 |  9  10  11 |
         //          0   1   2 | 27  28  29 |      0   1   2 |  3   4   5 |
         // ---------------------------------     -------------------------
-        // LGR2 compressedIdx = 0 -> LGR2 Cartesian index = 0, level ijk = {0, 0, 0}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr2MinCompressedElementIndex  = */ 0, /* level = */ 2), 0);
-        std::array<int,3> lgr2Coords0{};
-        levelCartMapp.cartesianCoordinate(/*lgr2MinCompressedElementIndex = */ 0, lgr2Coords0, /* level = */ 2);
-        Opm::areEqual(lgr2Coords0, {0, 0, 0});
-
         // LGR2 compressedIdx = 53 -> LGR2 Cartesian index = 53, level ijk = {5, 2, 2}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr2MaxCompressedElementIndex  = */ 53, /* level = */ 2), 53);
-        std::array<int,3> lgr2Coords53{};
-        levelCartMapp.cartesianCoordinate(/*lgr2CompressedElementIndex = */ 53, lgr2Coords53, /* level = */ 2);
-        Opm::areEqual(lgr2Coords53, {5, 2, 2});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 53, /* serialLevelCompressedIndex = */ 53,
+                          /* expectedCartesianIndex = */ 53, /* expectedCoords = */ {5, 2, 2}, isParallel, /*level =*/ 2);
         // LGR2 compressedIdx = 27 -> LGR2 Cartesian index = 3,  level ijk = {3, 0, 0}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr2CompressedElementIndex  = */ 27, /* level = */ 2), 3);
-        std::array<int,3> lgr2Coords27{};
-        levelCartMapp.cartesianCoordinate(/*lgr2CompressedElementIndex = */ 27, lgr2Coords27, /* level = */ 2);
-        Opm::areEqual(lgr2Coords27, {3, 0, 0});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 27, /* serialLevelCompressedIndex = */ 27,
+                          /* expectedCartesianIndex = */ 3, /* expectedCoords = */ {3, 0, 0}, isParallel, /*level =*/ 2);
         // LGR2 compressedIdx = 13 -> LGR2 Cartesian index = 25, level ijk = {1, 1, 1}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr2CompressedElementIndex  = */ 13, /* level = */ 2), 25);
-        std::array<int,3> lgr2Coords13{};
-        levelCartMapp.cartesianCoordinate(/*lgr2CompressedElementIndex = */ 13, lgr2Coords13, /* level = */ 2);
-        Opm::areEqual(lgr2Coords13, {1, 1, 1});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 13, /* serialLevelCompressedIndex = */ 13,
+                          /* expectedCartesianIndex = */ 25, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level =*/ 2);
         // LGR2 compressedIdx = 48 -> LGR2 Cartesian index = 45,  level ijk = {3, 1, 2}
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr2CompressedElementIndex  = */ 48, /* level = */ 2), 45);
-        std::array<int,3> lgr2Coords48{};
-        levelCartMapp.cartesianCoordinate(/*lgr2CompressedElementIndex = */ 48, lgr2Coords48, /* level = */ 2);
-        Opm::areEqual(lgr2Coords48, {3, 1, 2});
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 48, /* serialLevelCompressedIndex = */ 48,
+                          /* expectedCartesianIndex = */ 45, /* expectedCoords = */ {3, 1, 2}, isParallel, /*level =*/ 2);
     }
-
-
-    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
-
-    // CartesianIndexMapper checks - how it relates to LevelCartesianIndexMapper
-    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
-                                                 cartMapp,
-                                                 levelCartMapp,
-                                                 /* level zero Cartesian dims = */ {4,3,3});
-    // For strict-locally-refined grid, CartesianIndexMapper::cartesianDimensions and
-    // grid.logicalCartesianSize() coincide (with level zero Cartesian dimensions/logical Cartesian size).
-    Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
-
-    cartesianSizeCoincidesWithLevelZeroOne(grid,
-                                           cartMapp,
-                                           levelCartMapp,
-                                           /* level zero Cartesian size = */ 4*3*3);
-
-    int serialLeafGridCellCount = 244; // 4*3*3 levelZeroCells - [(3*2*1) + (2*1*1) parentCells] + (9*6*3 LGR1Cells) + (6*3*3 LGR2Cells)
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
 
     // Level zero grid
     // --------------------
@@ -494,8 +497,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     //        4   5   6   7 |        [ 94-120] [121-147] [148-174]  175 |       184 185    186      187     |
     //        0   1   2   3 |        [ 12-38 ] [ 39-65 ] [ 66-92 ]   93 |       180 181    182      183     |
     // ------------------------------------------------------------------------------------------------------
-
-
     // In order to test serial and parallel reusing the same grid.
     bool foundId5 = false;
     bool foundId15 = false;
@@ -553,90 +554,38 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
         bool originHasId35 = (grid.globalIdSet().id(element.getOrigin()) == 35);
 
         if (originHasId5) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 5);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 5);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 1, 0});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 5, /* serialMaxCompressedIndex = */ 5,
+                             /* expectedCartesianIndex = */ 5, /* expectedCoords = */ {1, 1, 0}, isParallel);
             foundId5 = true;
         }
         else if (originHasId15) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 93);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 15);
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {3, 0, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 93, /* serialMaxCompressedIndex = */ 93,
+                             /* expectedCartesianIndex = */ 15, /* expectedCoords = */ {3, 0, 1}, isParallel);
             foundId15 = true;
         }
         else if (originHasId33) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 189);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 33);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 2, 2});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 189, /* serialMaxCompressedIndex = */ 189,
+                             /* expectedCartesianIndex = */ 33, /* expectedCoords = */ {1, 2, 2}, isParallel);
             foundId33 = true;
         }
         else if (originHasId13) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 13 = {39,40,..., 65}
-                BOOST_CHECK( element.index() >= 39);
-                BOOST_CHECK( element.index() <= 65);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 13);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 0, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 39, /* serialMaxCompressedIndex = */ 65,
+                             /* expectedCartesianIndex = */ 13, /* expectedCoords = */ {1, 0, 1}, isParallel);
             foundId13 = true;
         }
         else if (originHasId16) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 16 = {94,95,..., 120}
-                BOOST_CHECK( element.index() >= 94);
-                BOOST_CHECK( element.index() <= 120);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 16);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {0, 1, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 94, /* serialMaxCompressedIndex = */ 120,
+                             /* expectedCartesianIndex = */ 16, /* expectedCoords = */ {0, 1, 1}, isParallel);
             foundId16 = true;
         }
         else if (originHasId34) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 34 = {190,191,..., 216}
-                BOOST_CHECK( element.index() >= 190);
-                BOOST_CHECK( element.index() <= 216);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 34);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {2, 2, 2});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 190, /* serialMaxCompressedIndex = */ 216,
+                             /* expectedCartesianIndex = */ 34, /* expectedCoords = */ {2, 2, 2}, isParallel);
             foundId34 = true;
         }
         else if (originHasId35) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 35 = {217,218,..., 243}
-                BOOST_CHECK( element.index() >= 217);
-                BOOST_CHECK( element.index() <= 243);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 35);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {3, 2, 2});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 217, /* serialMaxCompressedIndex = */ 243,
+                             /* expectedCartesianIndex = */ 35, /* expectedCoords = */ {3, 2, 2}, isParallel);
             foundId35 = true;
         }
     }
@@ -676,38 +625,25 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
+    int serialLeafGridCellCount = 64; // 4*3*3 levelZeroCells - [2*2*1 parentCells] + (4*4*2 LGR1Cells)
     // Level Cartesian dimensions and size, and compressed size, for refined level grids
     // take the values from level zero grid.
     // Even though the marked cells form a 2x2x1 block, the Cartesian dimensions and
     // Cartesian size of LGR1 is NOT {4,4,2} and 4*4*2 = 32, but {4,3,3} and 4*3*3 respectively.
-    checkLevels(grid,
-                levelCartMapp,
-                {{4,3,3}, {4,3,3}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 4*3*3},     // expected Cartesian sizes per level grid
-                {4*3*3, 32});    // expected compressed sizes per level grid
+    checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
+                      {{4,3,3}, {4,3,3}},    // expected Cartesian dimensions per level grid
+                      {4*3*3, 4*3*3},        // expected Cartesian sizes per level grid
+                      {4*3*3, 4*4*2},        // expected compressed sizes per level grid
+                      serialLeafGridCellCount);
 
     // In this case, all parent cells are active, however, level Cartesian size
     // and compressed size do not coincide for the refined level grid.
     BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(1), /* levelZeroGridCellCount = */ 4*3*3);
     BOOST_CHECK_EQUAL(levelCartMapp.compressedSize(1), /* LGR1CellCount = */ grid.currentData()[1]->size(0));
 
-    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
-
-    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
-                                                 cartMapp,
-                                                 levelCartMapp,
-                                                 /* level zero Cartesian dims = */ {4,3,3});
     // For strict-local-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
     // and grid.logicalCartesianSize() coincide.
     Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
-
-    cartesianSizeCoincidesWithLevelZeroOne(grid,
-                                           cartMapp,
-                                           levelCartMapp,
-                                           /* level zero Cartesian size = */ 4*3*3);
-
-    int serialLeafGridCellCount = 64; // 4*3*3 levelZeroCells - [2*2*1 parentCells] + (4*4*2 LGR1Cells)
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
 
     // Level zero grid
     // --------------------
@@ -721,8 +657,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     //        4   5   6   7 |        16  [17-24] [25-32]  33 |       56  57  58  59 |
     //        0   1   2   3 |        12     13      14    15 |       52  53  54  55 |
     // ------------------------------------------------------------------------------
-
-
     // In order to test serial and parallel reusing the same grid.
     bool foundId5 = false;
     bool foundId19 = false;
@@ -756,58 +690,24 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
         //           has global id equal to 21.
         bool originHasId21 = (grid.globalIdSet().id(element.getOrigin()) == 21);
 
-
         if (originHasId5) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 5);
-            }
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 5);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 1, 0});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 5, /* serialMaxCompressedIndex = */ 5,
+                             /* expectedCartesianIndex = */ 5, /* expectedCoords = */ {1, 1, 0}, isParallel);
             foundId5 = true;
         }
         else if (originHasId19) {
-            if (!isParallel) {
-                BOOST_CHECK_EQUAL( element.index(), 33);
-            }
-
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 19);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {3, 1, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 33, /* serialMaxCompressedIndex = */ 33,
+                             /* expectedCartesianIndex = */ 19, /* expectedCoords = */ {3, 1, 1}, isParallel);
             foundId19 = true;
         }
         else if (originHasId18){
-            if (!isParallel) {  // ALL CHILDREN of globalId cell 18 = {25,26, ..., 32}
-                BOOST_CHECK( element.index() >= 25);
-                BOOST_CHECK( element.index() <= 32);
-            }
-
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 18);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {2, 1, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 25, /* serialMaxCompressedIndex = */ 32,
+                             /* expectedCartesianIndex = */ 18, /* expectedCoords = */ {2, 1, 1}, isParallel);
             foundId18 = true;
         }
         else if (originHasId21) {
-            if (!isParallel) { // ALL CHILDREN of globalId cell 21 = {35,36, ..., 42}
-                BOOST_CHECK( element.index() >= 35);
-                BOOST_CHECK( element.index() <= 42);
-            }
-
-            BOOST_CHECK_EQUAL(cartMapp.cartesianIndex(/* compressedElementIndex = */ element.index()), 21);
-
-            std::array<int,3> coords{};
-            cartMapp.cartesianCoordinate(/* compressedElementIndex = */ element.index(), coords);
-            Opm::areEqual( coords, {1, 2, 1});
-
+            checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 35, /* serialMaxCompressedIndex = */ 42,
+                             /* expectedCartesianIndex = */ 21, /* expectedCoords = */ {1, 2, 1}, isParallel);
             foundId21 = true;
         }
     }
@@ -816,30 +716,22 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     BOOST_CHECK(grid.comm().max(foundId18));
     BOOST_CHECK(grid.comm().max(foundId21));
 
-    // For simplicity, illustration only of layer k = 0 on the LGR1 grid
-    // LGR1 local indices                LGR1 PARENT CELLS level zero Cartesian indices
-    // k = 0   18  19 | 26  27 |           21  |  22  |
-    //         16  17 | 24  25 |               |      |
-    //         -----------------        ---------------
-    //          2   3 | 10  11 |           17  |  18  |
-    //          0   1 |  8   9 |               |      |
-
     if (!isParallel) {
-
+        // For simplicity, illustration only of layer k = 0 on the LGR1 grid
+        // LGR1 local indices                LGR1 PARENT CELLS level zero Cartesian indices
+        // k = 0   18  19 | 26  27 |           21  |  22  |
+        //         16  17 | 24  25 |               |      |
+        //         -----------------        ---------------
+        //          2   3 | 10  11 |           17  |  18  |
+        //          0   1 |  8   9 |               |      |
         // LGR1 refined cell with compressedIndex = 3 has parent cell in level zero
         // with Cartesian index 17 and ijk = {1, 1, 1}.
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* lgr1CompressedElementIndex = */ 3,  /* level = */ 1), 17);
-        std::array<int,3> lgr1Coords3{};
-        levelCartMapp.cartesianCoordinate(/* lgr1CompressedElementIndex = */ 3, lgr1Coords3, /* level = */ 1);
-        Opm::areEqual( lgr1Coords3, {1, 1, 1});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 3, /* serialLevelCompressedIndex = */ 3,
+                          /* expectedCartesianIndex = */ 17, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level = */ 1);
         // LGR1 refined cell with compressedIndex = 26 has parent cell in level zero
         // with Cartesian index 22 and ijk = {2, 2, 1}.
-        BOOST_CHECK_EQUAL(levelCartMapp.cartesianIndex(/* compressedElementIndex = */ 26,  /* level = */ 1), 22);
-        std::array<int,3> lgr1Coords26{};
-        levelCartMapp.cartesianCoordinate(/* compressedElementIndex = */ 26, lgr1Coords26, /* level = */ 1);
-        Opm::areEqual( lgr1Coords26, {2, 2, 1});
-
+        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 26, /* serialLevelCompressedIndex = */ 26,
+                          /* expectedCartesianIndex = */ 22, /* expectedCoords = */ {2, 2, 1}, isParallel, /*level =*/ 1);
     }
 }
 
@@ -864,42 +756,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // Check level Cartesian dimensions and size, and compressed size, for level grids.
-    checkLevels(grid,
-                levelCartMapp,
-                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
-                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
-
-    // In this case, all parent cells are active, therefore level Cartesian size
-    // and compressed size coincide.
-    if (!isParallel) {
-        for (int level = 0; level <= grid.maxLevel(); ++level) {
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
-        }
-    }
-
-    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
-
-    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
-                                                 cartMapp,
-                                                 levelCartMapp,
-                                                 /* level zero Cartesian dims = */ {4,3,3});
-    // For hidden-globally-refined grid via addLgrsUpdateLeafView, CartesianIndexMapper::cartesianDimensions
-    // and grid.logicalCartesianSize() DO NOT coincide
-    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
-    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
-
-    cartesianSizeCoincidesWithLevelZeroOne(grid,
-                                           cartMapp,
-                                           levelCartMapp,
-                                           /* level zero Cartesian size = */ 4*3*3);
-
-    int serialLeafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
-
-    checkAFewCartIdxAndCoordsForGloballyRefinedGrid(grid, levelCartMapp, cartMapp, isParallel);
+    checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_adapt)
@@ -926,42 +783,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // Check level Cartesian dimensions and size, and compressed size, for level grids.
-    checkLevels(grid,
-                levelCartMapp,
-                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
-                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
-
-    // In this case, all parent cells are active, therefore level Cartesian size
-    // and compressed size coincide.
-    if (!isParallel) {
-        for (int level = 0; level <= grid.maxLevel(); ++level) {
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
-        }
-    }
-
-    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
-
-    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
-                                                 cartMapp,
-                                                 levelCartMapp,
-                                                 /* level zero Cartesian dims = */ {4,3,3});
-    // For hidden-globally-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
-    // and grid.logicalCartesianSize() DO NOT coincide
-    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
-    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
-
-    cartesianSizeCoincidesWithLevelZeroOne(grid,
-                                           cartMapp,
-                                           levelCartMapp,
-                                           /* level zero Cartesian size = */ 4*3*3);
-
-    int serialLeafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
-
-    checkAFewCartIdxAndCoordsForGloballyRefinedGrid(grid, levelCartMapp, cartMapp, isParallel);
+    checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
@@ -982,40 +804,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
     // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
-    // Check level Cartesian dimensions and size, and compressed size, for level grids.
-    checkLevels(grid,
-                levelCartMapp,
-                {{4,3,3}, {8,6,6}}, // expected Cartesian dimensions per level grid
-                {4*3*3, 8*6*6},     // expected Cartesian sizes per level grid
-                {4*3*3, 8*6*6});    // expected compressed sizes per level grid
-
-    // In this case, all parent cells are active, therefore level Cartesian size
-    // and compressed size coincide.
-    if (!isParallel) {
-        for (int level = 0; level <= grid.maxLevel(); ++level) {
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), levelCartMapp.compressedSize(level));
-            BOOST_CHECK_EQUAL(levelCartMapp.cartesianSize(level), grid.currentData()[level]->size(0));
-        }
-    }
-
-    allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
-
-    cartesianDimensionsCoincideWithLevelZeroOnes(grid,
-                                                 cartMapp,
-                                                 levelCartMapp,
-                                                 /* level zero Cartesian dims = */ {4,3,3});
-    // For hidden-globally-refined grid via adapt(), CartesianIndexMapper::cartesianDimensions
-    // and grid.logicalCartesianSize() DO NOT coincide
-    Opm::areEqual(cartMapp.cartesianDimensions(), {4,3,3} /* level zero grid Cartesian dimensions */);
-    Opm::areEqual(grid.logicalCartesianSize(), {8,6,6} /* LEAF grid view Cartesian dimensions */);
-
-    cartesianSizeCoincidesWithLevelZeroOne(grid,
-                                           cartMapp,
-                                           levelCartMapp,
-                                           /* level zero Cartesian size = */ 4*3*3);
-
-    int serialLeafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
-
-    checkAFewCartIdxAndCoordsForGloballyRefinedGrid(grid, levelCartMapp, cartMapp, isParallel);
+    checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
+/** TODO: Add case with inactive cells */
+/** TODO: Define class LeafCartesianIndexMapper and include it in the test */
