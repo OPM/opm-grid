@@ -239,9 +239,10 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     BOOST_CHECK_EQUAL( fatherLevelData ->getMark(father), 1);
     BOOST_CHECK( !father.isLeaf()); // Father vanished during refinement.
     BOOST_CHECK( father.mightVanish() );
-    BOOST_CHECK( father == element.getOrigin() );
-    /** TODO: Refactor getOrigin() to always return the level-zero ancestor,
-        even when the grid has undergone multiple refinements. */
+
+    // getOrigin() returns the level-zero ancestor, even when the grid
+    // has undergone multiple refinements.
+    BOOST_CHECK_EQUAL( element.getOrigin().level(), 0);
 
     auto itFather = father.hbegin(grid.maxLevel());
     const auto& endItFather = father.hend(grid.maxLevel());

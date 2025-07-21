@@ -272,14 +272,12 @@ public:
     /// \return return true if seed is pointing to a valid entity
     bool isValid () const;
 
-    /// \brief Returns (1) parent entity in the level-grid the parent cell was born, if the entity was born in any LGR.
+    /// \brief Returns (1) oldest ancestor, i.e., oldest parent entity in the level-grid 0, if the entity was born in any refined level
+    ///                    grid with level>0.
     ///                (2) if the entity has no father, and is a leaf-grid-view entity, it returns the equivalent element on the level
     ///                    that it was born. Namely, for coarse cells on the leaf never involved in any refinement process, we get the
-    ///                    equivalent entity in the GLOBAL grid (level 0). Notice that if it's a refined cell on the leaf, it does have a
-    ///                    father, in that case, this method returns the father entity.
-    ///                (3) Otherwise, returns itself. Notice that if the element is a refined one, this method returns the father() entity.
-    ///                    For a coarse cell never involved in any refinement, if it's also a leaf-grid-cell, it returns the equivalent
-    ///                    cell from level 0. Otherwise, it returns itself, which means that its grid is level 0 and the entity itself is already
+    ///                    equivalent entity in the GLOBAL grid (level 0).
+    ///                (3) Otherwise, returns itself, which means that its grid is the level 0 and the entity itself is already
     ///                    its "origin".
     Entity<0> getOrigin() const;
 
@@ -559,18 +557,24 @@ Dune::cpgrid::Geometry<3,3> Dune::cpgrid::Entity<codim>::geometryInFather() cons
 template<int codim>
 Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
 {
-    if (hasFather())
-    {
-        return this->father();
+    if (hasFather()) { // Entit is a refined cell belonging to
+        // a refined level grid (level>0) or to the leaf grid.
+        auto ancestor = this->father();
+        while (ancestor.hasFather()){
+            ancestor = ancestor.father();
+        }
+        assert(ancestor.level() == 0);
+        return ancestor;
     }
-    if (!(pgrid_ -> leaf_to_level_cells_.empty())) // entity on the LeafGridView
-    {  // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
-        const int& levelElem = pgrid_->leaf_to_level_cells_[this->index()][0];
+    else if (!(pgrid_ -> leaf_to_level_cells_.empty())) {
+        // Entity (born in level zero grid) belonging to thethe LeafGridView.
+        // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
+        const int& level = pgrid_->leaf_to_level_cells_[this->index()][0];
+        assert(level == 0);
         const int& levelElemIdx = pgrid_->leaf_to_level_cells_[this->index()][1];
-        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_))[levelElem].get()), levelElemIdx, true);
+        return Dune::cpgrid::Entity<0>( *((*(pgrid_ -> level_data_ptr_))[level].get()), levelElemIdx, true);
     }
-    else
-    {
+    else { // Entity belongs to level zero grid.
         return *this;
     }
 }
