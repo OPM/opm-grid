@@ -705,15 +705,9 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
 void CpGrid::computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf)
 {
     for (const auto& element: elements(leafGridView())) {
-        // When refine via CpGrid::addLgrsUpdateGridView(/*...*/), level-grid to lookup global_cell_ is equal to level-zero-grid
-        // In the context of allowed nested refinement, we lookup for the oldest ancestor, also belonging to level-zero-grid.
+        // In the context of allowed nested refinement, we lookup for the oldest ancestor, belonging to level-zero-grid.
         auto ancestor = element.getOrigin();
         int origin_in_level_zero = ancestor.index();
-        while (ancestor.level()>0){
-            ancestor = ancestor.getOrigin();
-            origin_in_level_zero = ancestor.getOrigin().index();
-        }
-        assert(ancestor.level()==0);
         assert(origin_in_level_zero < currentData().front()->size(0));
         global_cell_leaf[element.index()] = currentData().front()-> global_cell_[origin_in_level_zero];
     }
