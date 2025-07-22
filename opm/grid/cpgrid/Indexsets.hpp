@@ -239,8 +239,30 @@ namespace Dune
                 return id<EntityType::codimension>(e);
             }
 
-            template<int codim>
-            IdType id(const cpgrid::EntityRep<codim>& e) const
+            // Explicit overloads for EntityRep<codim> for each codim 0,1,2, and 3.
+            // Then templated id(EntityType) will not get called if the argument type
+            // is exactly cpgrid::EntityRep<codim>.
+            //
+            // Explicit overload for EntityRep<0>
+            IdType id(const cpgrid::EntityRep<0>& e) const
+            {
+                return computeId(e);
+            }
+
+            // Explicit overloads for EntityRep<1>
+            IdType id(const cpgrid::EntityRep<1>& e) const
+            {
+                return computeId(e);
+            }
+
+            // Explicit overloads for EntityRep<2>
+            IdType id(const cpgrid::EntityRep<2>& e) const
+            {
+                return computeId(e);
+            }
+
+            // Explicit overloads for EntityRep<3>
+            IdType id(const cpgrid::EntityRep<3>& e) const
             {
                 return computeId(e);
             }
@@ -413,13 +435,35 @@ namespace Dune
                     return this->template getMapping<codim>()[e.index()];
             }
 
-            template<int codim>
-            IdType id(const EntityRep<codim>& e) const
+            // Explicit overloads for EntityRep<codim> with codim 0,1,2, and 3.
+            // Then templated id(EntityType) will not get called if
+            // the argument type is exactly cpgrid::EntityRep<codim>.
+            //
+            // Explicit overload for EntityRep<0>
+            IdType id(const EntityRep<0>& e) const
             {
                 if(idSet_)
                     return idSet_->id(e);
                 else
-                    return this->template getMapping<codim>()[e.index()];
+                    return this->template getMapping<0>()[e.index()];
+            }
+
+            // Explicit overload for EntityRep<1>
+            IdType id(const EntityRep<1>& e) const
+            {
+                if(idSet_)
+                    return idSet_->id(e);
+                else
+                    return this->template getMapping<1>()[e.index()];
+            }
+
+            // Explicit overload for EntityRep<3>
+            IdType id(const EntityRep<3>& e) const
+            {
+                if(idSet_)
+                    return idSet_->id(e);
+                else
+                    return this->template getMapping<3>()[e.index()];
             }
 
             template<class EntityType>
