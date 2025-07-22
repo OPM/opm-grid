@@ -566,8 +566,8 @@ Dune::cpgrid::Entity<0> Dune::cpgrid::Entity<codim>::getOrigin() const
         assert(ancestor.level() == 0);
         return ancestor;
     }
-    else if (!(pgrid_ -> leaf_to_level_cells_.empty())) {
-        // Entity (born in level zero grid) belonging to thethe LeafGridView.
+    else if (!(pgrid_ -> leaf_to_level_cells_.empty())) { // Entity is a coarse cell
+        // (born in level zero grid, never involved in refinement) belonging to the leaf grid.
         // leaf_to_level_cells_ [leaf idx] = { level where entity was born, cell idx in that level}
         const int& level = pgrid_->leaf_to_level_cells_[this->index()][0];
         assert(level == 0);
