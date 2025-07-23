@@ -13,8 +13,8 @@ PartitionType PartitionTypeIndicator::getPartitionType(const Entity<0>& cell_ent
 {
     if(cell_indicator_.size())
         return PartitionType(cell_indicator_[cell_entity.index()]);
-    // When level zero grid has been distributed and some LGRs have been added afterwards, refined cells
-    // inherit its parent cell attribute.
+    // If level zero grid has been distributed and some LGRs have been added, refined cells
+    // inherit its parent cell partition type.
     if (grid_data_->level_ >0) { // level_ > 0 only for refined level grids.
         return PartitionType(grid_data_->level_data_ptr_->front()->partition_type_indicator_->getPartitionType(cell_entity.getOrigin()));
     }
