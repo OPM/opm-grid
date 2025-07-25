@@ -55,7 +55,7 @@ bool checkEntityRepAndEntityIds(const EntityRange& entities, const IdSet& idSet)
         const auto entityRep = Dune::cpgrid::EntityRep<codim>(entity.index(), true);
         if (idSet.id(entityRep) != idSet.id(entity)){
             return false;
-        }    
+        }
     }
     return true;
 }
@@ -133,118 +133,118 @@ void globalIdsEntityRepAndEntityInLeafGrid(const Dune::CpGrid& grid, bool coinci
     }
 }
 
-BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids_viaAddLgrs)
+void serialBeforeRefinementChecks(const Dune::CpGrid& grid)
 {
-    Dune::CpGrid grid;
-    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
-
-    /**  BEFORE adding LGRs */
-    // All indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
+    /**  BEFORE refinement via addLgrsUpdateLeafView, adapt, or globalRefine(1) in serial */
+    // All indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.
     entityRepIndexAndEntityIndexCoincide(grid);
 
     localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
     localIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
     localIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
-    
+
     globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
     globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
     globalIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
+}
+
+void parallelBeforeRefinementChecks(const Dune::CpGrid& grid)
+{
+    /**  BEFORE refinement via addLgrsUpdateLeafView, adapt, or globalRefine(1) in parallel */
+    // All indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.
+    entityRepIndexAndEntityIndexCoincide(grid);
+
+    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
+    localIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
+
+    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
+    /** In constrast to serial, in level zero grid id(Entity) != id(EntityRep) */
+    globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */);
+    /** In contrast to the serial, in leaf grid (here, level zero) id(Entity) != id(EntityRep) */
+    globalIdsEntityRepAndEntityInLeafGrid(grid, false /* coincide */);
+}
+
+
+void serialAfterRefinementChecks(const Dune::CpGrid& grid)
+{
+    /**  After refinement via addLgrsUpdateLeafView, adapt, or globalRefine(1) in serial */
+    entityRepIndexAndEntityIndexCoincide(grid);
+
+    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
+    localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+
+    globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
+    globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+}
+
+void parallelAfterRefinementChecks(const Dune::CpGrid& grid)
+{
+    /**  After refinement via addLgrsUpdateLeafView, adapt, or globalRefine(1) in parallel */
+    entityRepIndexAndEntityIndexCoincide(grid);
+
+    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
+    localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+
+    globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* DO NOT coincide */);
+    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
+    globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+}
+
+BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids_viaAddLgrs)
+{
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    serialBeforeRefinementChecks(grid);
+
+    if (grid.comm().size()>1) {
+        grid.loadBalance();
+        parallelBeforeRefinementChecks(grid);
+    }
+
+    grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{2,2,2}},
+                                /* startIJK = */ {{1,1,1}},
+                                /* endIJK = */  {{3,2,2}}, // block cell indices = {17, 18}
+                                /* lgr_name = */  {"LGR1"});
 
     if (grid.comm().size() == 1) { // Serial
-        grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{2,2,2}},
-                                    /* startIJK = */ {{1,1,1}},
-                                    /* endIJK = */  {{3,2,2}}, // block cell indices = {17, 18}
-                                    /* lgr_name = */  {"LGR1"});
-        /**  After adding LGRs in serial */
-        // Indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.ww
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+        serialAfterRefinementChecks(grid);
     }
     else { // Parallel
-        grid.loadBalance();
-        grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{2,2,2}},
-                                    /* startIJK = */ {{1,1,1}},
-                                    /* endIJK = */  {{3,2,2}}, // block cell indices = {17, 18}
-                                    /* lgr_name = */  {"LGR1"});
+        // BEFORE applying the same refinement to the global view.
+        parallelAfterRefinementChecks(grid);
+
         grid.switchToGlobalView();
-        // Synchronization of cell ids required that both the global and the distributed view
-        // contained the same LGRs.
+        // Synchronizing cell ids requires that both the global
+        // and distributed views undergo the same refinement process.
         grid.addLgrsUpdateLeafView( /* cells_per_dim = */ {{2,2,2}},
                                     /* startIJK = */ {{1,1,1}},
                                     /* endIJK = */  {{3,2,2}}, // block cell global ids = {17, 18}
                                     /* lgr_name = */  {"LGR1"});
         grid.switchToDistributedView();
-        
-        /**  AFTER adding LGRs in parallel and BEFORE synchronozing cell ids */
-        // Indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
 
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-       
+        // BEFORE synchronizing cell ids
+        parallelAfterRefinementChecks(grid);
+
         grid.syncDistributedGlobalCellIds();
 
-        /**  AFTER adding LGRs in parallel and AFTER synchronozing cell ids */
-        // Indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.ww
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+        // AFTER synchronizing cell ids
+        parallelAfterRefinementChecks(grid);
     }
-    // Serial & Parallel, after adding LGRs in the global or distributed grid.
-    entityRepIndexAndEntityIndexCoincide(grid);
-    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
- 
-    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide! */);
-    localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide! */);
-
-    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-    globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
 }
-
 
 BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids_viaAdapt)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    serialBeforeRefinementChecks(grid);
 
-    /**  BEFORE calling adapt()  */
-    // All indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-    entityRepIndexAndEntityIndexCoincide(grid);
-
-    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
-    localIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
-    
-    globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
-    globalIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
-    
     if (grid.comm().size()>1) {
         grid.loadBalance();
+        parallelBeforeRefinementChecks(grid);
     }
 
     std::unordered_set<int> markedCells = {17,18}; // parent cell global ids
@@ -259,45 +259,16 @@ BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids
     grid.adapt(); // Default subdivisions per cell 2x2x2 in x-,y-, and z-direction.
     grid.postAdapt();
 
-    if (grid.comm().size() == 1) {
-        // Serial: Glocal ids in refined level and leaf grids for Entity<codim> and EntityRep<codim>
-        //          with codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide! */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide! */);
-
-        /**  After refinement via adapt() in serial */
-        // Indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.ww
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+    if (grid.comm().size() == 1) { // Serial
+        serialAfterRefinementChecks(grid);
     }
-    else {
-         /**  AFTER refinement via adapt() in parallel and BEFORE synchronozing cell ids */
-        // Indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+    else { // Parallel
+        // BEFORE applying the same refinement to the global view
+        parallelAfterRefinementChecks(grid);
 
         grid.switchToGlobalView();
-        // Note: Synchronization of cell ids required that both the global and the distributed view
-        // contained the same LGRs.
-        // Mark selected elements for refinement. From level zero grid.
+        // Synchronizing cell ids requires that both the global
+        // and distributed views undergo the same refinement process.
         for (const auto& element : elements(grid.levelGridView(0))) {
             const auto& id = grid.globalIdSet().id(element);
             if (markedCells.count(id) > 0) {
@@ -309,19 +280,13 @@ BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids
         grid.postAdapt();
         grid.switchToDistributedView();
 
-        /**  AFTER refinement via adapt() in parallel and BEFORE synchronozing cell ids */
-        // Indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+        // BEFORE synchronizing cell ids
+        parallelAfterRefinementChecks(grid);
 
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+        //grid.syncDistributedGlobalCellIds();
+
+        // AFTER synchronozing cell ids
+        parallelAfterRefinementChecks(grid);
     }
 }
 
@@ -329,74 +294,34 @@ BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+    serialBeforeRefinementChecks(grid);
 
-    /**  BEFORE calling globalRefine(1)  */
-    // Note: in distributed grid, globalRefine(n) with n>1 is not supported yet.
-    // All indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-    entityRepIndexAndEntityIndexCoincide(grid);
-
-    localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-    localIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
-    localIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
-    
-    globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-    globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, true /* coincide */);
-    globalIdsEntityRepAndEntityInLeafGrid(grid, true /* coincide */);
-    
     if (grid.comm().size()>1) {
         grid.loadBalance();
+        parallelBeforeRefinementChecks(grid);
     }
 
     grid.globalRefine(1);
 
-    if (grid.comm().size() == 1) {
-        /**  After global refinement in serial */
-        // Indices and local/global ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
-
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.ww
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+    if (grid.comm().size() == 1) { // Serial
+        serialAfterRefinementChecks(grid);
     }
-    else {
-        /**  AFTER global refinement in parallel and BEFORE synchronozing cell ids */
-        // Indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+    else { // Parallel
+        // BEFORE applying the same refinement to the global view.
+        parallelAfterRefinementChecks(grid);
 
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
         grid.switchToGlobalView();
-        // Note: Synchronization of cell ids required that both the global and the distributed view
-        // contained the same LGRs.
+        // Synchronizing cell ids requires that both the global
+        // and distributed views undergo the same refinement process.
         grid.globalRefine(1);
         grid.switchToDistributedView();
 
-        /**  AFTER global refinement in parallel and AFTER synchronozing cell ids */
-        // Indices and local ids for Entity<codim> and EntityRep<codim> codim = 0 and 3 coincide.  
-        entityRepIndexAndEntityIndexCoincide(grid);
-        localIdsEntityRepAndEntityInLevelZeroGrid(grid, true /* coincide */);
+        // BEFORE synchronizing cell ids
+        parallelAfterRefinementChecks(grid);
 
-        // Local ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        localIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        localIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
-        
-        // Global ids Entity<codim> and EntityRep<codim> codim = 0 and 3 DO NOT coincide.
-        globalIdsEntityRepAndEntityInLevelZeroGrid(grid, false /* coincide */); // IN SERIAL TRUE
-        globalIdsEntityRepAndEntityInRefinedLevelGrids(grid, false /* DO NOT coincide */);
-        globalIdsEntityRepAndEntityInLeafGrid(grid, false /* DO NOT coincide */);
+        grid.syncDistributedGlobalCellIds();
+
+        // AFTER synchronizing cell ids
+        parallelAfterRefinementChecks(grid);
     }
 }
