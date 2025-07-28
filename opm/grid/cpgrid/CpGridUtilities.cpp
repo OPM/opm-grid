@@ -46,7 +46,7 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
     const Opm::CartesianIndexMapperCollection<Dune::CpGrid> cartMappCollection(grid);
 
     const auto level = it->second;
-    const auto& levelCartMapp = cartMappCollection.getLevelMapper(level);
+    const auto& levelCartMapper = cartMappCollection.getLevelMapper(level);
     const auto& levelView = grid.levelGridView(level);
     const auto numCells = levelView.size(0);
 
