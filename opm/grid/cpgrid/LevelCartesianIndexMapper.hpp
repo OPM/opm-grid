@@ -1,20 +1,6 @@
 //===========================================================================
-//
-// File: LevelCartesianIndexMapper.hpp
-//
-// Created: Tue October 01  09:44:00 2024
-//
-// Author(s): Antonella Ritorto <antonella.ritorto@opm-op.com>
-//
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -31,8 +17,8 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
-#ifndef OPM_CPGRIDLEVELCARTESIANINDEXMAPPER_HH
-#define OPM_CPGRIDLEVELCARTESIANINDEXMAPPER_HH
+#ifndef OPM_GRID_CPGRID_LEVELCARTESIANINDEXMAPPER_HPP
+#define OPM_GRID_CPGRID_LEVELCARTESIANINDEXMAPPER_HPP
 
 #include <opm/grid/common/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/CpGrid.hpp>
@@ -54,57 +40,51 @@ class LevelCartesianIndexMapper<Dune::CpGrid>
 public:
     static constexpr int dimension = 3 ;
 
-    explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid) : grid_{ &grid }
-    {}
+    explicit LevelCartesianIndexMapper(const Dune::CpGrid& grid,
+                                       int level)
+        : grid_{ &grid }
+    {
+        if ((level < 0) || (level > grid_->maxLevel())) {
+            OPM_THROW(std::invalid_argument, "Invalid level.\n");
+        }
+        level_ = level;
+    }
 
     LevelCartesianIndexMapper() = delete;
 
-    const std::array<int,3>& cartesianDimensions(int level) const
+    const std::array<int,3>& cartesianDimensions() const
     {
-        return grid_->currentData()[level]->logicalCartesianSize();
+        return grid_->currentData()[level_]->logicalCartesianSize();
     }
 
-    int cartesianSize(int level) const
+    int cartesianSize() const
     {
-        return computeCartesianSize(level);
+        int size = cartesianDimensions()[ 0 ];
+        for( int d=1; d<dimension; ++d )
+            size *= cartesianDimensions()[ d ];
+        return size;
     }
 
-    int compressedSize(int level) const
+    int compressedSize() const
     {
-        validLevel(level);
-        return grid_->currentData()[level]->size(0);
+        return grid_->currentData()[level_]->size(0);
     }
 
-    int cartesianIndex( const int compressedElementIndex, const int level) const
+    int cartesianIndex( const int levelCompressedElementIndex) const
     {
-        validLevel(level);
-        assert(  compressedElementIndex >= 0 && compressedElementIndex <  grid_->currentData()[level]->size(0) );
-        return grid_->currentData()[level]->globalCell()[compressedElementIndex];
+        assert(  levelCompressedElementIndex >= 0 && levelCompressedElementIndex <  grid_->currentData()[level_]->size(0) );
+        return grid_->currentData()[level_]->globalCell()[levelCompressedElementIndex];
     }
 
-    void cartesianCoordinate(const int compressedElementIndexOnLevel, std::array<int,dimension>& coordsOnLevel, int level) const
+    void cartesianCoordinate(const int levelCompressedElementIndex,
+                             std::array<int,dimension>& levelCoords) const
     {
-        validLevel(level);
-        grid_->currentData()[level]->getIJK( compressedElementIndexOnLevel, coordsOnLevel);
+        grid_->currentData()[level_]->getIJK( levelCompressedElementIndex, levelCoords);
     }
 
 private:
     const Dune::CpGrid* grid_;
-
-    int computeCartesianSize(int level) const
-    {
-        int size = cartesianDimensions(level)[ 0 ];
-        for( int d=1; d<dimension; ++d )
-            size *= cartesianDimensions(level)[ d ];
-        return size;
-    }
-
-    void validLevel(int level) const
-    {
-        if ((level < 0) || (level > grid_->maxLevel())) {
-            throw std::invalid_argument("Invalid level.\n");
-        }
-    }
+    int level_;
 };
 
 }

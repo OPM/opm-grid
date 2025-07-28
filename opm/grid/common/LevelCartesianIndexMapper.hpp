@@ -1,20 +1,5 @@
-//===========================================================================
-//
-// File: LevelCartesianIndexMapper.hpp
-//
-// Created: Tue October 01  11:44:00 2024
-//
-// Author(s): Antonella Ritorto <antonella.ritorto@opm-op.com>
-//
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -32,56 +17,59 @@
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
 
-#ifndef OPM_LEVELCARTESIANINDEXMAPPER_HEADER
-#define OPM_LEVELCARTESIANINDEXMAPPER_HEADER
+#ifndef OPM_GRID_COMMON_LEVELCARTESIANINDEXMAPPER_HPP
+#define OPM_GRID_COMMON_LEVELCARTESIANINDEXMAPPER_HPP
 
 #include <array>
 
 namespace Opm
 {
-// Interface class to access the local Cartesian grid of each level grid (when refinement).
+// Interface class to access the local Cartesian grid of a level grid.
 template< class Grid >
 class LevelCartesianIndexMapper
 {
 public:
     // Dimension of the grid.
-    static constexpr int dimension = Grid :: dimension ;
+    static constexpr int dimension = Grid::dimension;
 
     // Constructor taking a grid.
-    explicit LevelCartesianIndexMapper( const Grid& )
+    explicit LevelCartesianIndexMapper( const Grid& grid,
+                                        int level)
     {}
 
-    // Return the number of cells in each direction (Cartesian dimensions) of a local Cartesian grid with level "level"
-    const std::array<int, dimension>& cartesianDimensions(int /*level*/) const
+    // Return the number of cells in each direction (Cartesian dimensions) of the level grid.
+    const std::array<int, dimension>& cartesianDimensions() const
     {
         static std::array<int, dimension> a;
         return a;
     }
 
-    // Return total number of cells in a local Cartesian grid with level "level".
-    int cartesianSize(int /*level*/) const
+    // Return total number of cells in the level grid.
+    int cartesianSize() const
     {
         return 0;
     }
 
-    // Return number of cells in the active local Cartesian grid with level "level".
-    int compressedSize(int /*level*/) const
+    // Return number of active cells in the level grid.
+    int compressedSize() const
     {
         return 0;
     }
 
-    // Return index of a cell in the local Cartesian grid with level "level".
-    int cartesianIndex( const int /* compressedElementIndex */ , const int /*level*/) const
+    // Return local/level Cartesian index of a cell in the level grid.
+    int cartesianIndex( const int /* levelCompressedElementIndex */) const
     {
         return 0;
     }
 
-    // Compute Cartesian coordinate, i.e. IJK, for a given cell, on a given local Cartesian grid with level "level".
-    void cartesianCoordinate(const int /* compressedElementIndexOnLevel */,
-                             std::array<int,dimension>& /* coordsOnLevel */,
-                             int /*level*/) const
+    // Compute local/level Cartesian coordinate, i.e. IJK, for a given cell, on the level grid.
+    void cartesianCoordinate(const int /* levelCompressedElementIndex*/,
+                             std::array<int,dimension>& /* levelCoords */) const
     {
     }
+private:
+    const Grid& grid_;
+    int level_;
 };
 
 } // end namespace Opm

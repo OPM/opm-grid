@@ -85,8 +85,6 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
 {
     const Dune::CartesianIndexMapper<Dune::CpGrid> mapper{grid};
 
-    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-
     for (const auto& element : elements(grid.leafGridView()))
     {
         // How to get the Cartesian Index of a cell on the leaf grid view.
@@ -103,15 +101,19 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
         std::array<int,3> global_ijk = {0,0,0};
         mapper.cartesianCoordinate( element.index(), global_ijk);
 
+        /** Coming soon: CartesianIndexMapperCollection class will contain all level and leaf CartesianIndexMapper's,
+            therefore next line will be removed and we won't create a level cartesian index mapper per element! */
+        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid, element.level());
+        
         // How to get the Level Cartesian Index of a cell on the leaf grid view.
         // Each LGR can be seen as a Cartesian Grid itself, with its own (local) logical_cartesian_size and its own (local) Cartesian indices.
         // Given a leaf cell, via the CartesianIndexMapper and its method cartesianIndexLevel(...), we get the local-Cartesian-index.
-        const auto& cartesian_idx_from_level_elem =  levelCartMapp.cartesianIndex( element.getLevelElem().index(), element.level() );
+        const auto& cartesian_idx_from_level_elem =  levelCartMapp.cartesianIndex( element.getLevelElem().index());
         const auto& global_cell_idx_level = grid.currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         BOOST_CHECK_EQUAL(cartesian_idx_from_level_elem, global_cell_idx_level);
         // local_ijk represents the ijk values of the equivalent cell on the level its was born.
         std::array<int,3> local_ijk = {0,0,0};
-        levelCartMapp.cartesianCoordinate( element.getLevelElem().index(), local_ijk, element.level() );
+        levelCartMapp.cartesianCoordinate( element.getLevelElem().index(), local_ijk);
 
         // For leaf cells that were not involved in any refinement, global_ijk and local_ijk must coincide.
         if(element.level()==0)
