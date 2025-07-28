@@ -48,8 +48,6 @@ IndexSet::IndexType IndexSet::subIndex(const cpgrid::Entity<0>& e, int i, unsign
 {
     switch(cc) {
     case 0: return index(e.subEntity<0>(i));
-    case 1: return index(e.subEntity<1>(i));
-    // case 2: return index(e.subEntity<2>(i)); // Not supported in this grid
     case 3: return index(e.subEntity<3>(i));
     default: OPM_THROW(std::runtime_error,
                        "Codimension " + std::to_string(cc) + " not supported.");
@@ -60,8 +58,6 @@ IdSet::IdType IdSet::subId(const cpgrid::Entity<0>& e, int i, int cc) const
 {
     switch (cc) {
     case 0: return id(e.subEntity<0>(i));
-    case 1: return id(e.subEntity<1>(i));
-    // case 2: return id(e.subEntity<2>(i)); // Not supported in this grid
     case 3: return id(e.subEntity<3>(i));
     default: OPM_THROW(std::runtime_error,
                        "Cannot get subId of codimension " + std::to_string(cc));
@@ -75,8 +71,6 @@ LevelGlobalIdSet::IdType LevelGlobalIdSet::subId(const cpgrid::Entity<0>& e, int
 
     switch (cc) {
     case 0: return id(e.subEntity<0>(i));
-        //case 1: return id(*e.subEntity<1>(i));
-        //case 2: return id(*e.subEntity<2>(i));
     case 3: return id(e.subEntity<3>(i));
     default: OPM_THROW(std::runtime_error,
                        "Cannot get subId of codimension " + std::to_string(cc));
