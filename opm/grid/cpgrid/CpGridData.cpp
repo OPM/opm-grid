@@ -178,31 +178,6 @@ struct AssignAndIncrement
     int i_;
 } assigner;
 
-/**
- * @brief Counts the number of global ids and sets them up.
- * @param indicator A vector indicating whether an entity exists.
- * @param ids A vector to the the global ids in.
- * @param idSet The idSet of the global grid.
- * @return the number of entities that exist.
- */
-template<int codim>
-int setupAndCountGlobalIds(const std::vector<int>& indicator, std::vector<int>& ids,
-                           const IdSet& idSet)
-{
-    int count = std::count_if(indicator.begin(),
-                              indicator.end(),
-                              [](int x) { return x < std::numeric_limits<int>::max(); });
-    ids.resize(count);
-    typedef typename std::vector<int>::const_iterator VIter;
-    for(VIter ibegin=indicator.begin(), i=ibegin, iend= indicator.end();
-        i!=iend; ++i)
-    {
-        if(*i<std::numeric_limits<int>::max())
-            ids[*i]=idSet.id(EntityRep<codim>(i-ibegin,true));
-    }
-    return count;
-}
-
 template<class T>
 struct GetRowType
 {};
