@@ -233,14 +233,18 @@ namespace Dune
                                   "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
             }
 
-            template<class EntityType>
-            IdType id(const EntityType& e) const
+            IdType id(const Entity<0>& e) const
             {
-                return id<EntityType::codimension>(e);
+                return id<0>(e);
+            }
+
+            IdType id(const Entity<3>& e) const
+            {
+                return id<3>(e);
             }
 
             template<int codim>
-            IdType id(const cpgrid::EntityRep<codim>& e) const
+            IdType idLevelZero(const cpgrid::EntityRep<codim>& e) const
             {
                 return computeId(e);
             }
@@ -414,10 +418,10 @@ namespace Dune
             }
 
             template<int codim>
-            IdType id(const EntityRep<codim>& e) const
+            IdType idLevelZero(const EntityRep<codim>& e) const
             {
                 if(idSet_)
-                    return idSet_->id(e);
+                    return idSet_->idLevelZero(e);
                 else
                     return this->template getMapping<codim>()[e.index()];
             }
