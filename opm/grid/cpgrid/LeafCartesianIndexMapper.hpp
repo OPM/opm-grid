@@ -42,7 +42,9 @@ public:
 
     explicit LeafCartesianIndexMapper(const Dune::CpGrid& grid)
         : grid_{ &grid }
-    {}
+    {
+        // TODO?: Throw if grid has not been globally refined
+    }
 
     LeafCartesianIndexMapper() = delete;
 
