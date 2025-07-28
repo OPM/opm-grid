@@ -45,7 +45,7 @@
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/Geometry.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapperCollection.hpp>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/common/version.hh>
@@ -84,6 +84,7 @@ BOOST_GLOBAL_FIXTURE(Fixture);
 void checkGlobalCellLgr(Dune::CpGrid& grid)
 {
     const Dune::CartesianIndexMapper<Dune::CpGrid> mapper{grid};
+    const Opm::CartesianIndexMapperCollection<Dune::CpGrid> cartMappCollection{grid};
 
     for (const auto& element : elements(grid.leafGridView()))
     {
@@ -101,13 +102,10 @@ void checkGlobalCellLgr(Dune::CpGrid& grid)
         std::array<int,3> global_ijk = {0,0,0};
         mapper.cartesianCoordinate( element.index(), global_ijk);
 
-        /** Coming soon: CartesianIndexMapperCollection class will contain all level and leaf CartesianIndexMapper's,
-            therefore next line will be removed and we won't create a level cartesian index mapper per element! */
-        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid, element.level());
-        
         // How to get the Level Cartesian Index of a cell on the leaf grid view.
         // Each LGR can be seen as a Cartesian Grid itself, with its own (local) logical_cartesian_size and its own (local) Cartesian indices.
         // Given a leaf cell, via the CartesianIndexMapper and its method cartesianIndexLevel(...), we get the local-Cartesian-index.
+        const auto& levelCartMapp = cartMappCollection.getLevelMapper(element.level());
         const auto& cartesian_idx_from_level_elem =  levelCartMapp.cartesianIndex( element.getLevelElem().index());
         const auto& global_cell_idx_level = grid.currentData()[element.level()]->globalCell()[element.getLevelElem().index()];
         BOOST_CHECK_EQUAL(cartesian_idx_from_level_elem, global_cell_idx_level);

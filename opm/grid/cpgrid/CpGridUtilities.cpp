@@ -18,7 +18,7 @@
 */
 
 #include <opm/grid/cpgrid/CpGridUtilities.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapperCollection.hpp>
 
 #include <algorithm>
 #include <array>
@@ -43,7 +43,10 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
         OPM_THROW(std::runtime_error, "LGR name not found: " + lgr_name);
     }
 
+    const Opm::CartesianIndexMapperCollection<Dune::CpGrid> cartMappCollection(grid);
+
     const auto level = it->second;
+    const auto& levelCartMapp = cartMappCollection.getLevelMapper(level);
     const auto& levelView = grid.levelGridView(level);
     const auto numCells = levelView.size(0);
 
@@ -53,8 +56,6 @@ lgrIJK(const Dune::CpGrid& grid, const std::string& lgr_name)
 
     // Iterate over (active) elements in the grid and populate the structures
     for (const auto& element : Dune::elements(grid.levelGridView(level))) {
-        const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapper(grid, level);
-
         std::array<int, 3> ijk;
         levelCartMapper.cartesianCoordinate(element.index(), ijk);
 
