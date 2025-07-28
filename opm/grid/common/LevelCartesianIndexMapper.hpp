@@ -33,8 +33,7 @@ public:
     static constexpr int dimension = Grid::dimension;
 
     // Constructor taking a grid.
-    explicit LevelCartesianIndexMapper( const Grid& grid,
-                                        int level)
+    explicit LevelCartesianIndexMapper(const Grid&, int)
     {}
 
     // Return the number of cells in each direction (Cartesian dimensions) of the level grid.
@@ -67,9 +66,6 @@ public:
                              std::array<int,dimension>& /* levelCoords */) const
     {
     }
-private:
-    const Grid& grid_;
-    int level_;
 };
 
 } // end namespace Opm

@@ -34,19 +34,19 @@ public:
     static constexpr int dimension = Grid :: dimension;
 
     // Constructor taking a grid.
-    explicit CartesianIndexMapperCollection(const Grid&)
+    explicit CartesianIndexMapperCollection(const Grid& grid) : grid_{grid}
     {}
 
     // Get level Cartesian index mapper
     LevelCartesianIndexMapper<Grid> getLevelMapper(int level) const
     {
-        return LevelCartesianIndexMapper<Grid>{};
+        return LevelCartesianIndexMapper<Grid>{grid_, level};
     }
 
     // Get leaf Cartesian index mapper
     LeafCartesianIndexMapper<Grid> getLeafMapper() const
     {
-        return LeafCartesianIndexMapper<Grid>{};
+        return LeafCartesianIndexMapper<Grid>{grid_};
     }
 private:
     const Grid& grid_;

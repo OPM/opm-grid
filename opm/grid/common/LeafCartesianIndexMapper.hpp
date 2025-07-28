@@ -32,9 +32,7 @@ public:
     static constexpr int dimension = Grid::dimension;
 
     explicit LeafCartesianIndexMapper(const Grid&)
-    {
-        // TODO?: throw if grid has not been globally refined
-    }
+    {}
 
     LeafCartesianIndexMapper() = delete;
 
@@ -68,9 +66,6 @@ public:
                              std::array<int,dimension>& /* leeafCoords */) const
     {
     }
-
-private:
-    const Grid& grid_;
 };
 
 }
