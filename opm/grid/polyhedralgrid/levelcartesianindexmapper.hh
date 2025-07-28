@@ -1,20 +1,5 @@
-//===========================================================================
-//
-// File: levelcartesianindexmapper.hh
-//
-// Created: Tue October 01  09:44:00 2024
-//
-// Author(s): Antonella Ritorto <antonella.ritorto@opm-op.com>
-//
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -63,49 +48,40 @@ class LevelCartesianIndexMapper<Dune::PolyhedralGrid< dim, dimworld, coord_t >>
 public:
     static constexpr int dimension = 3 ;
 
-    explicit LevelCartesianIndexMapper(const Dune::CartesianIndexMapper<Grid>& cartesian_index_mapper)
-        : cartesianIndexMapper_{std::make_unique<Dune::CartesianIndexMapper<Grid>>(cartesian_index_mapper)}
-    {}
-
-    const std::array<int,3>& cartesianDimensions(int level) const
+    explicit LevelCartesianIndexMapper(const Dune::CartesianIndexMapper<Grid>& cartMapp, int level)
+        : cartesianIndexMapper_{std::make_unique<Dune::CartesianIndexMapper<Grid>>(cartMapp)}
     {
-        throwIfLevelPositive(level);
+        if (level!=0)
+            OPM_THROW(std::invalid_argument, "Invalid level.\n");
+    }
+
+    const std::array<int,3>& cartesianDimensions() const
+    {
         return cartesianIndexMapper_->logicalCartesianSize();
     }
 
-    int cartesianSize(int level) const
+    int cartesianSize() const
     {
-        throwIfLevelPositive(level);
         return cartesianIndexMapper_->cartesianSize();
     }
 
-    int compressedSize(int level) const
+    int compressedSize() const
     {
-        throwIfLevelPositive(level);
         return cartesianIndexMapper_->compressedSize();
     }
 
-    int cartesianIndex( const int compressedElementIndex, const int level) const
+    int cartesianIndex( const int compressedElementIndex) const
     {
-        throwIfLevelPositive(level);
         return cartesianIndexMapper_->cartesianIndex(compressedElementIndex);
     }
 
-    void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords, int level) const
+    void cartesianCoordinate(const int compressedElementIndex, std::array<int,dimension>& coords) const
     {
-        throwIfLevelPositive(level);
         cartesianIndexMapper_->cartesianCoordinate(compressedElementIndex, coords);
     }
 
 private:
     std::unique_ptr<Dune::CartesianIndexMapper<Grid>> cartesianIndexMapper_;
-
-    void throwIfLevelPositive(int level) const
-    {
-        if (level) {
-            throw std::invalid_argument("Invalid level.\n");
-        }
-    }
 };
 
 }
