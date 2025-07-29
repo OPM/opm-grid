@@ -65,7 +65,6 @@ void cartesianSizeCoincidesWithLevelZeroOne(const Dune::CpGrid& grid,
     }
 }
 
-
 void compressedSizeCoincidesWithLeafGridCellCount(const Dune::CpGrid& grid,
                                                   const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
                                                   int serialLeafGridCellCount)
@@ -157,7 +156,7 @@ void computeAndCompareCartCoords(const Dune::CartesianIndexMapper<Dune::CpGrid> 
 }
 
 void checkCartMappIdxAndCoords(const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp,
-                               int compressedIndex, 
+                               int compressedIndex,
                                int expectedCartesianIndex,
                                const std::array<int,3>& expectedCoords)
 {
@@ -240,21 +239,26 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
     bool foundId18 = false;
     bool foundId33 = false;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
+
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
+
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 0,1,...,7
         //           have parent cell in level zero with Cartesian index 0 and ijk = {0, 0, 0}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
         //           has global id equal to 0.
-        bool originHasId0 = (grid.globalIdSet().id(element.getOrigin()) == 0);
+        bool originHasId0 = (originId == 0);
+
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 144,145,....,151
         //           have parent cell in level zero with Cartesian index 18 and ijk = {2, 1, 1}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
         //           has global id equal to 18.
-        bool originHasId18 = (grid.globalIdSet().id(element.getOrigin()) == 18);
+        bool originHasId18 = (originId == 18);
+
         // Serial:   Leaf refined cells (born in LGR1/GR) with compressedIndex = 264,265,...,271
         //           have parent cell with Cartesian index 33 and ijk = {1, 2, 2}.
         // Parallel: seach for the element whose origin cell (parent cell in level zero)
         //           has global id equal to 33.
-        bool originHasId33 = (grid.globalIdSet().id(element.getOrigin()) == 33);
+        bool originHasId33 = (originId == 33);
 
         if (originHasId0) {
             checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 0, /* serialMaxCompressedIndex = */ 7,
@@ -275,7 +279,7 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
     BOOST_CHECK(grid.comm().max(foundId0));
     BOOST_CHECK(grid.comm().max(foundId18));
     BOOST_CHECK(grid.comm().max(foundId33));
-    
+
     /** TODO: Test in parallel levelCartMapp cartesianIndex and cartesianCoordinate */
     if (!isParallel) {
         // For simplicity, illustration only of layer k = 0 on the LGR1 grid
@@ -379,17 +383,19 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     bool l0_foundId35 = false;
     for (const auto& element : Dune::elements(grid.levelGridView(0))) {
 
+        const auto& elemId = grid.globalIdSet().id(element);
+
         // Serial:   level zero element compressedIdx = 0 -> level zero Cartesian index = 0, level ijk = {0, 0, 0}
         // Parallel: seach for the element whose global id equal to 0.
-        bool hasId0 = (grid.globalIdSet().id(element) == 0);
+        bool hasId0 = (elemId == 0);
 
         // Serial:   level zero element compressedIdx = 17 -> level zero Cartesian index = 17, level ijk = {1, 1, 1}
         // Parallel: seach for the element whose global id equal to 17.
-        bool hasId17 = (grid.globalIdSet().id(element) == 17);
+        bool hasId17 = (elemId == 17);
 
         // Serial: level zero element compressedIdx = 35 -> level zero Cartesian index = 35, level ijk = {3, 2, 2}
         // Parallel: seach for the element whose global id equal to 35.
-        bool hasId35 = (grid.globalIdSet().id(element) == 35);
+        bool hasId35 = (elemId == 35);
 
         if (hasId0) {
             checkLevelElement(levelCartMapp, element.index(), /* serialLevelCompressedIndex = */ 0,
@@ -507,51 +513,52 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     bool foundId35 = false;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
 
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
         // Serial:   leaf coarse cells in the layer k = 0 have same compressedIndex and CartesianIndex
         //           Leaf coarse cell with compressedIndex = 5 is equivalent to its origin cell from
         //           level zero, with level zero Cartesian Index = 5 and level zero ijk = {1, 1, 0}.
         // Parallel: seach for the element whose origin cell (equivalent cell in level zero)
         //           has global id equal to 5.
-        bool originHasId5 = (grid.globalIdSet().id(element.getOrigin()) == 5);
+        bool originHasId5 = (originId == 5);
 
         // Serial:   Leaf coarse cells on the boundary of LGR1
         //           Leaf coarse cell with compressedIndex = 93 is equivalent to its origin cell from
         //           level zero, with level zero Cartesian Index = 15 and level zero ijk = {3, 0, 1}.
         // Parallel: seach for the element whose origin cell (equivalent cell in level zero)
         //           has global id equal to 15.
-        bool originHasId15 = (grid.globalIdSet().id(element.getOrigin()) == 15);
+        bool originHasId15 = (originId == 15);
 
         // Serial:  Leaf coarse cells on the boundary of LGR2
         //          Leaf coarse cell with compressedIndex = 189 is equivalent to its origin cell from
         //          level zero, with level zero Cartesian Index = 33 and level zero ijk = {1, 2, 2}.
         // Parallel: seach for the element whose origin cell (equivalent cell in level zero)
         //           has global id equal to 33.
-        bool originHasId33 = (grid.globalIdSet().id(element.getOrigin()) == 33);
+        bool originHasId33 = (originId == 33);
 
         // Serial:  Leaf refined cells inherit Cartesian index and coordinates of their parent cell.
         //          Leaf refined cell born in LGR1 with compressedIndex = 39,40,..., 65 have
         //          parent cell in level zero with Cartesian index 13 and ijk = {1, 0, 1}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 13.
-        bool originHasId13 = (grid.globalIdSet().id(element.getOrigin()) == 13);
+        bool originHasId13 = (originId == 13);
 
         // Serial:   Leaf refined cells born in LGR1 with compressedIndex = 94, ..., 120 have
         //           parent cell in level zero with Cartesian index 16 and ijk = {0, 1, 1}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 16.
-        bool originHasId16 = (grid.globalIdSet().id(element.getOrigin()) == 16);
+        bool originHasId16 = (originId == 16);
 
         // Serial:  Leaf refined cell born in LGR2 with compressedIndex = 190,191,..., 216 have
         //          parent cell in level zero with Cartesian index 34 and ijk = {2, 2, 2}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 34.
-        bool originHasId34 = (grid.globalIdSet().id(element.getOrigin()) == 34);
+        bool originHasId34 = (originId == 34);
 
         // Serial: Leaf refined cells born in LGR2 with compressedIndex = 217,218,..., 243 have
         //         parent cell in level zero with Cartesian index 35 and ijk = {3, 2, 2}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 35.
-        bool originHasId35 = (grid.globalIdSet().id(element.getOrigin()) == 35);
+        bool originHasId35 = (originId == 35);
 
         if (originHasId5) {
             checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 5, /* serialMaxCompressedIndex = */ 5,
@@ -663,32 +670,35 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     bool foundId18 = false;
     bool foundId21 = false;
     for (const auto& element : Dune::elements(grid.leafGridView())) {
+
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
+
         // Serial:   Leaf coarse cells in the layer k = 0 have same compressedIndex and CartesianIndex
         //           Leaf coarse cell with compressedIndex = 5 is equivalent to its origin cell from
         //           level zero, with level zero Cartesian Index = 5 and level zero ijk = {1, 1, 0}.
         // Parallel: seach for the element whose origin cell (equivalent cell in level zero)
         //           has global id equal to 5.
-        bool originHasId5 = (grid.globalIdSet().id(element.getOrigin()) == 5);
+        bool originHasId5 = (originId == 5);
 
         // Serial:   Leaf coarse cells on the boundary of LGR1
         //           Leaf coarse cell with compressedIndex = 33 is equivalent to its origin cell from
         //           level zero, with level zero Cartesian Index = 19 and level zero ijk = {3, 1, 1}.
         // Parallel: seach for the element whose origin cell (equivalent cell in level zero)
         //           has global id equal to 19.
-        bool originHasId19 = (grid.globalIdSet().id(element.getOrigin()) == 19);
+        bool originHasId19 = (originId == 19);
 
         // Serial:   Leaf refined cells inherit Cartesian index and coordinates of their parent cell.
         //           Leaf refined cells born in LGR1 with compressedIndex = 25, 26, ..., 32 have
         //           parent cell in level zero with Cartesian index 18 and ijk = {2, 1, 1}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 18.
-        bool originHasId18 = (grid.globalIdSet().id(element.getOrigin()) == 18);
+        bool originHasId18 = (originId == 18);
 
         // Serial:   Leaf refined cell born in LGR1 with compressedIndex = 35, 36, ..., 42 have
         //           parent cell in level zero with Cartesian index 21 and ijk = {1, 2, 1}.
         // Parallel: seach for the element whose origin cell (father cell in level zero)
         //           has global id equal to 21.
-        bool originHasId21 = (grid.globalIdSet().id(element.getOrigin()) == 21);
+        bool originHasId21 = (originId == 21);
 
         if (originHasId5) {
             checkLeafElement(cartMapp, element, /* serialMinCompressedIndex = */ 5, /* serialMaxCompressedIndex = */ 5,
