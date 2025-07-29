@@ -26,7 +26,7 @@
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <tests/cpgrid/LgrChecks.hpp>
 
-
+#include <algorithm>
 #include <array>
 #include <unordered_set>
 #include <vector>
@@ -279,31 +279,126 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
     BOOST_CHECK(grid.comm().max(foundId0));
     BOOST_CHECK(grid.comm().max(foundId18));
     BOOST_CHECK(grid.comm().max(foundId33));
+    
+    // For simplicity, illustration only of layers k = 0 and k = 1 on the LGR1 grid,
+    // which corresponds to refined cells with parent cells in coarse (level zero) grid
+    // parent cells k = 0   |  8 |  9 | 10 | 11 |   (level zero global ids layer k = 0)
+    //                      |  4 |  5 |  6 |  7 |
+    //                      |  0 |  1 |  2 |  3 |
+    // -------------------------------------------------------------------------------------
+    // LGR1 local indices                                 LGR1 (level) Cartesian indices
+    // k = 1   70  71 | 78  79 | 86  87 | 94  95 |        88  89 | 90  91 | 92  93 | 94  95 |
+    //         68  69 | 76  77 | 84  85 | 92  93 |        80  81 | 82  83 | 84  85 | 86  87 |
+    //         -----------------------------------        -----------------------------------
+    //         38  39 | 46  47 | 54  55 | 62  63 |        72  73 | 74  75 | 76  77 | 78  79 |
+    //         36  37 | 44  45 | 52  53 | 60  61 |        64  65 | 66  67 | 68  69 | 70  71 |
+    //         -----------------------------------        -----------------------------------
+    //          6   7 | 14  15 | 22  23 | 30  31 |        56  57 | 58  59 | 60  61 | 62  63 |
+    //          4   5 | 12  13 | 20  21 | 28  29 |        48  49 | 50  51 | 52  53 | 54  55 |
+    // -------------------------------------------------------------------------------------
+    // k = 0   66  67 | 74  75 | 82  83 | 90  91 |        40  41 | 42  43 | 44  45 | 46  47 |
+    //         64  65 | 72  73 | 80  81 | 88  89 |        32  33 | 34  35 | 36  37 | 38  39 |
+    //         -----------------------------------        -----------------------------------
+    //         34  35 | 42  43 | 50  51 | 58  59 |        24  25 | 26  27 | 28  29 | 30  31 |
+    //         32  33 | 40  41 | 48  49 | 56  57 |        16  17 | 18  19 | 20  21 | 22  23 |
+    //         -----------------------------------        -----------------------------------
+    //          2   3 | 10  11 | 18  19 | 26  27 |         8   9 | 10  11 | 12  13 | 14  15 |
+    //          0   1 |  8   9 | 16  17 | 24  25 |         0   1 |  2   3 |  4   5 |  6   7 |
 
-    /** TODO: Test in parallel levelCartMapp cartesianIndex and cartesianCoordinate */
-    if (!isParallel) {
-        // For simplicity, illustration only of layer k = 0 on the LGR1 grid
-        // LGR1 local indices                                 LGR1 (level) Cartesian indices
-        // k = 0   66  67 | 74  75 | 82  83 | 90  91 |        40  41 | 42  43 | 44  45 | 46  47 |
-        //         64  65 | 72  73 | 80  81 | 88  89 |        32  33 | 34  35 | 36  37 | 38  39 |
-        //         -----------------------------------        -----------------------------------
-        //         34  35 | 42  43 | 50  51 | 58  59 |        24  25 | 26  27 | 28  29 | 30  31 |
-        //         32  33 | 40  41 | 48  49 | 56  57 |        16  17 | 18  19 | 20  21 | 22  23 |
-        //         -----------------------------------        -----------------------------------
-        //          2   3 | 10  11 | 18  19 | 26  27 |         8   9 | 10  11 | 12  13 | 14  15 |
-        //          0   1 |  8   9 | 16  17 | 24  25 |         0   1 |  2   3 |  4   5 |  6   7 |
-        // LGR1 refined cell with lgr1CompressedIndex = 3 has level Cartesian index 9 and ijk = {1, 1, 0}.
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 3, /* serialLevelCompressedIndex = */ 3,
-                          /* expectedCartesianIndex = */ 9, /* expectedCoords = */ {1, 1, 0}, isParallel, /*level =*/ 1);
+    // In order to test serial and parallel reusing the same grid.
+    
+    // Serial: {0,1,2,3, 4,5,6,7} local indices -> {0,1,8,9, 48,49,56,57} level Cartesian indices
+    std::vector<int> levelCartIndicesOriginId0 = {0,1,8,9, 48,49,56,57};
+    bool found_9 = false; // serial local index 3 -> level Cartesian index 9 
+    bool found_57 = false; // serial local index 7 -> level Cartesian index 57
+    
+    // Serial: {48,49,50,51, 52,53,54,55} local indices -> {20,21,28,29, 68,69,76,77} level Cartesian indices
+    std::vector<int> levelCartIndicesOriginId6 = {20,21,28,29, 68,69,76,77};
+    bool found_28 = false; // serial local index 50 -> level Cartesian index 28 
+    bool found_69 = false; // serial local index 53 -> level Cartesian index 69 
+    
+    // serial: {88,89,90,91, 92,93,94,95} local indices -> {38,39,40,41, 86,87,94,95} level Cartesian indices
+    std::vector<int> levelCartIndicesOriginId11 = {38,39,46,47, 86,87,94,95};
+    bool found_39 = false; // serial local index 89 -> level Cartesian index 39 
+    bool found_86 = false; // serial local index 92 -> level Cartesian index 86 
+    
+    for (const auto& element : Dune::elements(grid.levelGridView(1))) {
 
-        // LGR1 refined cell with lgr1CompressedIndex = 50 has level Cartesian index 28 and ijk = {4, 3, 0}.
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 50, /* serialLevelCompressedIndex = */ 50,
-                          /* expectedCartesianIndex = */ 28, /* expectedCoords = */ {4, 3, 0}, isParallel, /*level =*/ 1);
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
 
-        // LGR1 refined cell with lgr1CompressedIndex = 90 has level Cartesian index 46 and ijk = {6, 5, 0}.
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 90, /* serialLevelCompressedIndex = */ 90,
-                          /* expectedCartesianIndex = */ 46, /* expectedCoords = */ {6, 5, 0}, isParallel, /*level =*/ 1);
+        if (originId == 0){ 
+            // Check level Cartesian index is contained in {0,1,8,9, 48,49,56,57}
+            const auto it = std::find(levelCartIndicesOriginId0.begin(), levelCartIndicesOriginId0.end(),
+                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            BOOST_CHECK( it !=  levelCartIndicesOriginId0.end() );
+
+            // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
+            // Note: take into account the "serial illustration".
+            // 
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 3 has level Cartesian index 9 and ijk = {1, 1, 0}.
+            if (*it == 9) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 3,
+                                  /* expectedCartesianIndex = */ 9, /* expectedCoords = */ {1, 1, 0}, isParallel, /*level =*/ 1);
+                found_9 = true;
+            }
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 7 has level Cartesian index 57 and ijk = {1, 1, 1}.
+            if (*it == 57) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 7,
+                                  /* expectedCartesianIndex = */ 57, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level =*/ 1);
+                found_57 = true;
+            }
+        }
+        else if (originId == 6) {
+            // Check level Cartesian index is contained in {20,21,28,29, 68,69,76,77}
+            const auto it = std::find(levelCartIndicesOriginId6.begin(), levelCartIndicesOriginId6.end(),
+                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            BOOST_CHECK( it !=  levelCartIndicesOriginId6.end() );
+
+            // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
+            // Note: take into account the "serial illustration".
+            //
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 50 has level Cartesian index 28 and ijk = {4, 3, 0}.
+            if (*it == 28) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 50,
+                                  /* expectedCartesianIndex = */ 28, /* expectedCoords = */ {4, 3, 0}, isParallel, /*level =*/ 1);
+                found_28 = true;
+            }
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 53 has level Cartesian index 69 and ijk = {5, 2, 1}.
+            if (*it == 69) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 53,
+                                  /* expectedCartesianIndex = */ 69, /* expectedCoords = */ {5, 2, 1}, isParallel, /*level =*/ 1);
+                found_69 = true;
+            }
+        }
+        else if (originId == 11) {
+            // Check level Cartesian index is contained in {38,39,46,47, 86,87,94,95}
+            const auto it = std::find(levelCartIndicesOriginId11.begin(), levelCartIndicesOriginId11.end(),
+                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            BOOST_CHECK( it !=  levelCartIndicesOriginId11.end() );
+
+            // Check a few level Cartesian coordinates (e.g., one in layer k =0, and one in layer k = 1).
+            // Note: take into account the "serial illustration".
+            //
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 89 has level Cartesian index 39 and ijk = {7, 4, 0}.
+            if (*it == 39) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 89,
+                                  /* expectedCartesianIndex = */ 39, /* expectedCoords = */ {7, 4, 0}, isParallel, /*level =*/ 1);
+                found_39 = true;
+            }
+            // Serial: LGR1 refined cell with lgr1CompressedIndex = 92 has level Cartesian index 69 and ijk = {6, 4, 1}.
+            if (*it == 86) {
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 92,
+                                  /* expectedCartesianIndex = */ 86, /* expectedCoords = */ {6, 4, 1}, isParallel, /*level =*/ 1);
+                found_86 = true;
+            }
+        }
     }
+    BOOST_CHECK(grid.comm().max(found_9));
+    BOOST_CHECK(grid.comm().max(found_57));
+    BOOST_CHECK(grid.comm().max(found_28));
+    BOOST_CHECK(grid.comm().max(found_69));
+    BOOST_CHECK(grid.comm().max(found_39));
+    BOOST_CHECK(grid.comm().max(found_86));
 }
 
 void checkGloballyRefinedTestGrids(const Dune::CpGrid& grid,
@@ -417,72 +512,148 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     BOOST_CHECK(grid.comm().max(l0_foundId17));
     BOOST_CHECK(grid.comm().max(l0_foundId35));
 
-    /** TODO: Test in parallel levelCartMapp cartesianIndex and cartesianCoordinate */
-    if (!isParallel) {
-        // LGR1 local/compressed indices                |     LGR1 level Cartesian indices
-        // k = 2  105 106 107 |132 133 134 |159 160 161 |     153 154 155 |156 157 158 |159 160 161 |
-        //        102 103 104 |129 130 131 |156 157 158 |     144 145 146 |147 148 149 |150 151 152 |
-        //         99 100 101 |126 127 128 |153 154 155 |     135 136 137 |138 139 140 |141 142 143 |
-        //         --------------------------------------     ---------------------------------------
-        //         24  25  26 | 51  52  53 | 78  79  80 |     126 127 128 |129 130 131 |132 133 134 |
-        //         21  22  23 | 48  49  50 | 75  76  77 |     117 118 119 |120 121 122 |123 124 125 |
-        //         18  19  20 | 45  46  47 | 72  73  74 |     108 109 110 |111 112 113 |114 115 116 |
-        // ---------------------------------------------      ---------------------------------------
-        // k = 1   96  97  98 |123 124 125 |150 151 152 |      99 100 101 |102 103 104 |105 106 107 |
-        //         93  94  95 |120 121 122 |147 148 149 |      90  91  92 | 93  94  95 | 96  97  98 |
-        //         90  91  92 |117 118 119 |144 145 146 |      81  82  83 | 84  85  86 | 87  88  89 |
-        //         -------------------------------------      ---------------------------------------
-        //         15  16  17 | 42  43  44 | 69  70  71 |      72  73  74 | 75  76  77 | 78  79  80 |
-        //         12  13  14 | 39  40  41 | 66  67  68 |      63  64  65 | 66  67  68 | 69  70  71 |
-        //          9  10  11 | 36  37  38 | 63  64  65 |      54  55  56 | 57  58  59 | 60  61  62 |
-        // ----------------------------------------------     ---------------------------------------
-        // k = 0   87  88  89 |114 115 116 |141 142 143 |      45  46  47 | 48  49  50 | 51  52  53 |
-        //         84  85  86 |111 112 113 |138 139 140 |      36  37  38 | 39  40  41 | 42  43  44 |
-        //         81  82  83 |108 109 110 |135 136 137 |      27  28  29 | 30  31  32 | 33  34  35 |
-        //         --------------------------------------     ---------------------------------------
-        //          6   7   8 | 33  34  35 | 60  61  62 |      18  19  20 | 21  22  23 | 24  25  26 |
-        //          3   4   5 | 30  31  32 | 57  58  59 |       9  10  11 | 12  13  14 | 15  16  17 |
-        //          0   1   2 | 27  28  29 | 54  55  56 |       0   1   2 |  3   4   5 |  6   7   8 |
-        // ------------------------------------------------------------------------------------------
-        // LGR1 compressedIdx = 161 -> LGR1 Cartesian index = 161, level ijk = {8, 5, 2}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 161, /* serialLevelCompressedIndex = */ 161,
-                          /* expectedCartesianIndex = */ 161, /* expectedCoords = */ {8, 5, 2}, isParallel, /*level =*/ 1);
-        // LGR1 compressedIdx = 121 -> LGR1 Cartesian index = 94, level ijk = {4, 4, 1}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 121, /* serialLevelCompressedIndex = */ 121,
-                          /* expectedCartesianIndex = */ 94, /* expectedCoords = */ {4, 4, 1}, isParallel, /*level =*/ 1);
-        // LGR1 compressedIdx = 104 -> LGR1 Cartesian index = 146, level ijk = {2, 4, 2}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 104, /* serialLevelCompressedIndex = */ 104,
-                          /* expectedCartesianIndex = */ 146, /* expectedCoords = */ {2, 4, 2}, isParallel, /*level =*/ 1);
-        // LGR1 compressedIdx = 71 -> LGR1 Cartesian index = 80, level ijk = {8, 2, 1}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 71, /* serialLevelCompressedIndex = */ 71,
-                          /* expectedCartesianIndex = */ 80, /* expectedCoords = */ {8, 2, 1}, isParallel, /*level =*/ 1);
+    // LGR1 parent cell global ids   | 16 17 18 |
+    //                               | 12 13 14 |
+    // LGR1 local/compressed indices                |     LGR1 level Cartesian indices
+    // k = 2  105 106 107 |132 133 134 |159 160 161 |     153 154 155 |156 157 158 |159 160 161 |
+    //        102 103 104 |129 130 131 |156 157 158 |     144 145 146 |147 148 149 |150 151 152 |
+    //         99 100 101 |126 127 128 |153 154 155 |     135 136 137 |138 139 140 |141 142 143 |
+    //         --------------------------------------     ---------------------------------------
+    //         24  25  26 | 51  52  53 | 78  79  80 |     126 127 128 |129 130 131 |132 133 134 |
+    //         21  22  23 | 48  49  50 | 75  76  77 |     117 118 119 |120 121 122 |123 124 125 |
+    //         18  19  20 | 45  46  47 | 72  73  74 |     108 109 110 |111 112 113 |114 115 116 |
+    // ---------------------------------------------      ---------------------------------------
+    // k = 1   96  97  98 |123 124 125 |150 151 152 |      99 100 101 |102 103 104 |105 106 107 |
+    //         93  94  95 |120 121 122 |147 148 149 |      90  91  92 | 93  94  95 | 96  97  98 |
+    //         90  91  92 |117 118 119 |144 145 146 |      81  82  83 | 84  85  86 | 87  88  89 |
+    //         -------------------------------------      ---------------------------------------
+    //         15  16  17 | 42  43  44 | 69  70  71 |      72  73  74 | 75  76  77 | 78  79  80 |
+    //         12  13  14 | 39  40  41 | 66  67  68 |      63  64  65 | 66  67  68 | 69  70  71 |
+    //          9  10  11 | 36  37  38 | 63  64  65 |      54  55  56 | 57  58  59 | 60  61  62 |
+    // ----------------------------------------------     ---------------------------------------
+    // k = 0   87  88  89 |114 115 116 |141 142 143 |      45  46  47 | 48  49  50 | 51  52  53 |
+    //         84  85  86 |111 112 113 |138 139 140 |      36  37  38 | 39  40  41 | 42  43  44 |
+    //         81  82  83 |108 109 110 |135 136 137 |      27  28  29 | 30  31  32 | 33  34  35 |
+    //         --------------------------------------     ---------------------------------------
+    //          6   7   8 | 33  34  35 | 60  61  62 |      18  19  20 | 21  22  23 | 24  25  26 |
+    //          3   4   5 | 30  31  32 | 57  58  59 |       9  10  11 | 12  13  14 | 15  16  17 |
+    //          0   1   2 | 27  28  29 | 54  55  56 |       0   1   2 |  3   4   5 |  6   7   8 |
+    // ------------------------------------------------------------------------------------------
 
-        // LGR2 local/compressed indices   |     LGR2 level Cartesian indices
-        // k = 2   24  25  26 | 51  52  53 |     48  49  50 | 51  52  53 |
-        //         21  22  23 | 48  49  50 |     42  43  44 | 45  46  47 |
-        //         18  19  20 | 45  46  47 |     36  37  38 | 39  40  41 |
-        // ---------------------------------     -------------------------
-        // k = 1   15  16  17 | 42  43  44 |     30  31  32 | 33  34  35 |
-        //         12  13  14 | 39  40  41 |     24  25  26 | 27  28  29 |
-        //          9  10  11 | 36  37  38 |     18  19  20 | 21  22  23 |
-        // ---------------------------------     -------------------------
-        // k = 0    6   7   8 | 33  34  35 |     12  13  14 | 15  16  17 |
-        //          3   4   5 | 30  31  32 |      6   7   8 |  9  10  11 |
-        //          0   1   2 | 27  28  29 |      0   1   2 |  3   4   5 |
-        // ---------------------------------     -------------------------
-        // LGR2 compressedIdx = 53 -> LGR2 Cartesian index = 53, level ijk = {5, 2, 2}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 53, /* serialLevelCompressedIndex = */ 53,
-                          /* expectedCartesianIndex = */ 53, /* expectedCoords = */ {5, 2, 2}, isParallel, /*level =*/ 2);
-        // LGR2 compressedIdx = 27 -> LGR2 Cartesian index = 3,  level ijk = {3, 0, 0}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 27, /* serialLevelCompressedIndex = */ 27,
-                          /* expectedCartesianIndex = */ 3, /* expectedCoords = */ {3, 0, 0}, isParallel, /*level =*/ 2);
-        // LGR2 compressedIdx = 13 -> LGR2 Cartesian index = 25, level ijk = {1, 1, 1}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 13, /* serialLevelCompressedIndex = */ 13,
-                          /* expectedCartesianIndex = */ 25, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level =*/ 2);
-        // LGR2 compressedIdx = 48 -> LGR2 Cartesian index = 45,  level ijk = {3, 1, 2}
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 48, /* serialLevelCompressedIndex = */ 48,
-                          /* expectedCartesianIndex = */ 45, /* expectedCoords = */ {3, 1, 2}, isParallel, /*level =*/ 2);
+    // Serial Local indices of refined    |   Level Cartesian indices of refined
+    // cells children from parent cell    |   cells children from parent cell 
+    // with global id 17                  |   with global id 17
+    // k = 2   ...|132 133 134 |...       |    ...|156 157 158 |...
+    //         ...|129 130 131 |...       |    ...|147 148 149 |...
+    //         ...|126 127 128 |...       |    ...|138 139 140 |...
+    // ------------------------------------------------------------
+    // k = 1   ...|123 124 125 |...       |    ...|102 103 104 |...
+    //         ...|120 121 122 |...       |    ...| 93  94  95 |...
+    //         ...|117 118 119 |...       |    ...| 84  85  86 |...
+    // ------------------------------------------------------------
+    // k = 0   ...|114 115 116 |...       |    ...| 48  49  50 |... 
+    //         ...|111 112 113 |...       |    ...| 39  40  41 |... 
+    //         ...|108 109 110 |...       |    ...| 30  31  32 |...
+    std::vector<int> levelCartIndicesOriginId17 = {30,31,32,39,40,41,48,49,50,           // k = 0
+                                                   84,85,86,93,94,95,102,103,104,        // k = 1
+                                                   138,139,140,147,148,149,156,157,158}; // k = 2
+    bool found_39 = false; // serial local index 111 -> level Cartesian index 39, level ijk = {3,4,0}
+    bool found_94 = false; // serial local index 121 -> level Cartesian index 94, level ijk = {4,4,1}
+    bool found_158 = false; // serial local index 134 -> level Cartesian index 158, level ijk = {5,5,2}
+    
+    for (const auto& element : Dune::elements(grid.levelGridView(1))) {
+
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
+
+        if (originId == 17){ 
+            // Check level Cartesian index is contained in levelCartIndicesOriginId17
+            const auto it = std::find(levelCartIndicesOriginId17.begin(), levelCartIndicesOriginId17.end(),
+                                      levelCartMapp.cartesianIndex(element.index(), 1) );
+            BOOST_CHECK( it !=  levelCartIndicesOriginId17.end() );
+
+            // Check a few level Cartesian coordinates (e.g., one per k-layer).
+            // Note: take into account the "serial illustration".
+            if (*it == 39) {
+                // Serial: LGR1 compressedIdx = 111 -> LGR1 Cartesian index = 39, level ijk = {3,4,0}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 111,
+                                  /* expectedCartesianIndex = */ 39, /* expectedCoords = */ {3,4,0}, isParallel, /*level =*/ 1);
+                found_39 = true;
+            }
+             if (*it == 94) {
+                // Serial: LGR1 compressedIdx = 121 -> LGR1 Cartesian index = 94, level ijk = {4,4,1}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 121,
+                                  /* expectedCartesianIndex = */ 94, /* expectedCoords = */ {4,4,1}, isParallel, /*level =*/ 1);
+                found_94 = true;
+            }
+              if (*it == 158) {
+                // Serial: LGR1 compressedIdx = 134 -> LGR1 Cartesian index = 158, level ijk = {5,5,2}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 134,
+                                  /* expectedCartesianIndex = */ 158, /* expectedCoords = */ {5,5,2}, isParallel, /*level =*/ 1);
+                found_158 = true;
+              }
+        }
     }
+    BOOST_CHECK(grid.comm().max(found_39));
+    BOOST_CHECK(grid.comm().max(found_94));
+    BOOST_CHECK(grid.comm().max(found_158));
+
+    // LGR2 parent cell global ids   | 34 35 |
+    
+    // LGR2 local/compressed indices   |     LGR2 level Cartesian indices
+    // k = 2   24  25  26 | 51  52  53 |     48  49  50 | 51  52  53 |
+    //         21  22  23 | 48  49  50 |     42  43  44 | 45  46  47 |
+    //         18  19  20 | 45  46  47 |     36  37  38 | 39  40  41 |
+    // ---------------------------------     -------------------------
+    // k = 1   15  16  17 | 42  43  44 |     30  31  32 | 33  34  35 |
+    //         12  13  14 | 39  40  41 |     24  25  26 | 27  28  29 |
+    //          9  10  11 | 36  37  38 |     18  19  20 | 21  22  23 |
+    // ---------------------------------     -------------------------
+    // k = 0    6   7   8 | 33  34  35 |     12  13  14 | 15  16  17 |
+    //          3   4   5 | 30  31  32 |      6   7   8 |  9  10  11 |
+    //          0   1   2 | 27  28  29 |      0   1   2 |  3   4   5 |
+    // ---------------------------------     -------------------------
+    std::vector<int> levelCartIndicesOriginId35 = {3,4,5,9,10,11,15,16,17,      // k = 0
+                                                   21,22,23,27,28,29,33,34,35,  // k = 1
+                                                   39,40,41,45,46,47,51,52,53}; // k = 2
+    bool found_3 = false; // serial local index 27 -> level Cartesian index 3, level ijk = {3,0,0}
+    bool found_28 = false; // serial local index 40 -> level Cartesian index 28, level ijk = {4,1,1}
+    bool found_45 = false; // serial local index 48 -> level Cartesian index 45, level ijk = {3,1,2}
+
+    for (const auto& element : Dune::elements(grid.levelGridView(2))) {
+
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
+
+        if (originId == 35){
+            // Check level Cartesian index is contained in levelCartIndicesOriginId17
+            const auto it = std::find(levelCartIndicesOriginId35.begin(), levelCartIndicesOriginId35.end(),
+                                      levelCartMapp.cartesianIndex(element.index(), 2) );
+            BOOST_CHECK( it !=  levelCartIndicesOriginId35.end() );
+
+            // Check a few level Cartesian coordinates (e.g., one per k-layer).
+            // Note: take into account the "serial illustration".
+            if (*it == 3) {
+                // LGR2 compressedIdx = 27 -> LGR2 Cartesian index = 3,  level ijk = {3, 0, 0}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 27,
+                                  /* expectedCartesianIndex = */ 3, /* expectedCoords = */ {3, 0, 0}, isParallel, /*level =*/ 2);
+                found_3 = true;
+            }
+            else if (*it == 28) {
+                // LGR2 compressedIdx = 40 -> LGR2 Cartesian index = 28,  level ijk = {4,1,1}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 40,
+                                  /* expectedCartesianIndex = */ 28, /* expectedCoords = */ {4, 1, 1}, isParallel, /*level =*/ 2);
+                found_28 = true;
+            }
+            else if (*it == 45) {
+                // LGR2 compressedIdx = 48 -> LGR2 Cartesian index = 45,  level ijk = {3, 1, 2}
+                checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 48,
+                                  /* expectedCartesianIndex = */ 45, /* expectedCoords = */ {3, 1, 2}, isParallel, /*level =*/ 2);
+                found_45 = true;
+            }
+        }
+    }
+    BOOST_CHECK(grid.comm().max(found_3));
+    BOOST_CHECK(grid.comm().max(found_28));
+    BOOST_CHECK(grid.comm().max(found_45));
 
     // Level zero grid
     // --------------------
