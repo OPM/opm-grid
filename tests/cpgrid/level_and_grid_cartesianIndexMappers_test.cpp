@@ -52,25 +52,18 @@ void cartesianDimensionsCoincideWithLevelZeroOnes(const Dune::CpGrid& grid,
     Opm::areEqual(cartMapp.cartesianDimensions(), grid.currentData().front()->logicalCartesianSize());
 }
 
-void cartesianSizeCoincidesWithLevelZeroOne(const Dune::CpGrid& grid,
-                                            const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
+void cartesianSizeCoincidesWithLevelZeroOne(const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
                                             const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
                                             int levelZero_cartSize)
 {
     BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), levelZero_cartSize);
     BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), levelCartMapp.cartesianSize(0));
-    if (grid.comm().size() == 1) { // only for grid with ALL active cells and serial runs
-        BOOST_CHECK_EQUAL(cartMapp.cartesianSize(), grid.currentData().front()->size(0));
-    }
 }
 
 void compressedSizeCoincidesWithLeafGridCellCount(const Dune::CpGrid& grid,
-                                                  const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp,
-                                                  int serialLeafGridCellCount)
+                                                  const Dune::CartesianIndexMapper<Dune::CpGrid>& cartMapp)
 {
-    if (grid.comm().size() == 1) { // only for grid with ALL active cells and serial runs
-        BOOST_CHECK_EQUAL(cartMapp.compressedSize(), serialLeafGridCellCount);
-    }
+    BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.leafGridView().size(0));
     BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.size(0));
     BOOST_CHECK_EQUAL(cartMapp.compressedSize(), grid.currentData().back()->size(0));
 }
@@ -79,13 +72,16 @@ void checkLevels(const Dune::CpGrid& grid,
                  const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
                  const std::vector<std::array<int,3>>& expected_level_cartDims,
                  const std::vector<int>& expected_level_cartSizes,
-                 const std::vector<int>& expected_level_compressedSizes)
+                 const std::vector<int>& expected_serial_level_compressedSizes)
 {
     for (int level = 0; level <= grid.maxLevel(); ++level) {
         Opm::areEqual( levelCartMapp.cartesianDimensions(level), expected_level_cartDims[level] );
         BOOST_CHECK_EQUAL( levelCartMapp.cartesianSize(level), expected_level_cartSizes[level] );
         if (grid.comm().size() == 1) { // serial run
-            BOOST_CHECK_EQUAL( levelCartMapp.compressedSize(level), expected_level_compressedSizes[level] );
+            BOOST_CHECK_EQUAL( levelCartMapp.compressedSize(level), expected_serial_level_compressedSizes[level] );
+        }
+        else { // parallel
+            BOOST_CHECK_EQUAL( levelCartMapp.compressedSize(level), grid.levelGridView(level).size(0));
         }
     }
 }
@@ -124,14 +120,13 @@ void checkDimsAndSizes(const Dune::CpGrid& grid,
                        const Opm::LevelCartesianIndexMapper<Dune::CpGrid>& levelCartMapp,
                        const std::vector<std::array<int,3>>& expectedLevelCartDims,
                        const std::vector<int>& expectedLevelCartSizes,
-                       const std::vector<int>&  expectedSerialLevelCompressedSizes,
-                       int serialLeafGridCellCount)
+                       const std::vector<int>&  expectedSerialLevelCompressedSizes)
 {
     checkLevels(grid, levelCartMapp, expectedLevelCartDims, expectedLevelCartSizes, expectedSerialLevelCompressedSizes);
     allThrow(levelCartMapp, /* unexisting_level = */ grid.maxLevel()+1);
     cartesianDimensionsCoincideWithLevelZeroOnes(grid, cartMapp, levelCartMapp, expectedLevelCartDims[0]);
-    cartesianSizeCoincidesWithLevelZeroOne(grid, cartMapp, levelCartMapp, expectedLevelCartSizes[0]);
-    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp, serialLeafGridCellCount);
+    cartesianSizeCoincidesWithLevelZeroOne(cartMapp, levelCartMapp, expectedLevelCartSizes[0]);
+    compressedSizeCoincidesWithLeafGridCellCount(grid, cartMapp);
 }
 
 void checkSerialMinMaxCompressedIdx(int compressedIndex,
@@ -341,7 +336,7 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
                 found_9 = true;
             }
             // Serial: LGR1 refined cell with lgr1CompressedIndex = 7 has level Cartesian index 57 and ijk = {1, 1, 1}.
-            if (*it == 57) {
+            else if (*it == 57) {
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 7,
                                   /* expectedCartesianIndex = */ 57, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level =*/ 1);
                 found_57 = true;
@@ -363,7 +358,7 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
                 found_28 = true;
             }
             // Serial: LGR1 refined cell with lgr1CompressedIndex = 53 has level Cartesian index 69 and ijk = {5, 2, 1}.
-            if (*it == 69) {
+            else if (*it == 69) {
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 53,
                                   /* expectedCartesianIndex = */ 69, /* expectedCoords = */ {5, 2, 1}, isParallel, /*level =*/ 1);
                 found_69 = true;
@@ -385,7 +380,7 @@ void checkAFewCartIdxAndCoordsForGloballyRefinedTestGrids(const Dune::CpGrid& gr
                 found_39 = true;
             }
             // Serial: LGR1 refined cell with lgr1CompressedIndex = 92 has level Cartesian index 69 and ijk = {6, 4, 1}.
-            if (*it == 86) {
+            else if (*it == 86) {
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 92,
                                   /* expectedCartesianIndex = */ 86, /* expectedCoords = */ {6, 4, 1}, isParallel, /*level =*/ 1);
                 found_86 = true;
@@ -406,11 +401,13 @@ void checkGloballyRefinedTestGrids(const Dune::CpGrid& grid,
                                    bool isParallel)
 {
     int serialLeafGridCellCount = 288; // 4*3*3 levelZeroCells - [4*3*3 parentCells] + (8*6*6 LGR1Cells)
+    if (!isParallel) {
+        BOOST_CHECK_EQUAL(cartMapp.compressedSize(), serialLeafGridCellCount);
+    }
     checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
                       {{4,3,3}, {8,6,6}},    // expected Cartesian dimensions per level grid
                       {4*3*3, 8*6*6},        // expected Cartesian sizes per level grid
-                      {4*3*3, 8*6*6},        // expected compressed sizes per level grid
-                      serialLeafGridCellCount);
+                      {4*3*3, 8*6*6});        // expected compressed sizes per level grid
 
     levelCartSizeEqualsCompressedSizeIfAllActiveAndSerial(grid, levelCartMapp, isParallel);
 
@@ -449,14 +446,16 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
     int serialLeafGridCellCount = 244; // 4*3*3 levelZeroCells - [(3*2*1) + (2*1*1) parentCells] + (9*6*3 LGR1Cells) + (6*3*3 LGR2Cells)
+    if (!isParallel) {
+        BOOST_CHECK_EQUAL(cartMapp.compressedSize(), serialLeafGridCellCount);
+    }
     checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
                       {{4,3,3}, {9,6,3}, {6,3,3}},  // expected Cartesian dimensions per level grid
                       {4*3*3, 9*6*3, 6*3*3},        // expected Cartesian sizes per level grid
-                      {4*3*3, 9*6*3, 6*3*3},        // expected compressed sizes per level grid
-                      serialLeafGridCellCount);
+                      {4*3*3, 9*6*3, 6*3*3});       // expected compressed sizes per level grid
+
 
     // For strict-locally-refined grid, CartesianIndexMapper::cartesianDimensions and
     // grid.logicalCartesianSize() coincide (with level zero Cartesian dimensions/logical Cartesian size).
@@ -578,13 +577,13 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
                                   /* expectedCartesianIndex = */ 39, /* expectedCoords = */ {3,4,0}, isParallel, /*level =*/ 1);
                 found_39 = true;
             }
-            if (*it == 94) {
+            else if (*it == 94) {
                 // Serial: LGR1 compressedIdx = 121 -> LGR1 Cartesian index = 94, level ijk = {4,4,1}
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 121,
                                   /* expectedCartesianIndex = */ 94, /* expectedCoords = */ {4,4,1}, isParallel, /*level =*/ 1);
                 found_94 = true;
             }
-            if (*it == 158) {
+            else if (*it == 158) {
                 // Serial: LGR1 compressedIdx = 134 -> LGR1 Cartesian index = 158, level ijk = {5,5,2}
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 134,
                                   /* expectedCartesianIndex = */ 158, /* expectedCoords = */ {5,5,2}, isParallel, /*level =*/ 1);
@@ -800,9 +799,11 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
     int serialLeafGridCellCount = 64; // 4*3*3 levelZeroCells - [2*2*1 parentCells] + (4*4*2 LGR1Cells)
+    if (!isParallel) {
+        BOOST_CHECK_EQUAL(cartMapp.compressedSize(), serialLeafGridCellCount);
+    }
     // Level Cartesian dimensions and size, and compressed size, for refined level grids
     // take the values from level zero grid.
     // Even though the marked cells form a 2x2x1 block, the Cartesian dimensions and
@@ -810,8 +811,7 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
                       {{4,3,3}, {4,3,3}},    // expected Cartesian dimensions per level grid
                       {4*3*3, 4*3*3},        // expected Cartesian sizes per level grid
-                      {4*3*3, 4*4*2},        // expected compressed sizes per level grid
-                      serialLeafGridCellCount);
+                      {4*3*3, 4*4*2});       // expected compressed sizes per level grid
 
     // In this case, all parent cells are active, however, level Cartesian size
     // and compressed size do not coincide for the refined level grid.
@@ -896,7 +896,15 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
     BOOST_CHECK(grid.comm().max(foundId18));
     BOOST_CHECK(grid.comm().max(foundId21));
 
-    if (!isParallel) {
+    bool found_17 = false;
+    bool found_22 = false;
+    for (const auto& element : Dune::elements(grid.levelGridView(1))) {
+
+        const auto& originId = grid.globalIdSet().id(element.getOrigin());
+
+        bool hasOriginId17 = (originId == 17);
+        bool hasOriginId22 = (originId == 22);
+
         // For simplicity, illustration only of layer k = 0 on the LGR1 grid
         // LGR1 local indices                LGR1 PARENT CELLS level zero Cartesian indices
         // k = 0   18  19 | 26  27 |           21  |  22  |
@@ -904,15 +912,23 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterStrictLocalRefinem
         //         -----------------        ---------------
         //          2   3 | 10  11 |           17  |  18  |
         //          0   1 |  8   9 |               |      |
-        // LGR1 refined cell with compressedIndex = 3 has parent cell in level zero
-        // with Cartesian index 17 and ijk = {1, 1, 1}.
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 3, /* serialLevelCompressedIndex = */ 3,
-                          /* expectedCartesianIndex = */ 17, /* expectedCoords = */ {1, 1, 1}, isParallel, /*level = */ 1);
-        // LGR1 refined cell with compressedIndex = 26 has parent cell in level zero
-        // with Cartesian index 22 and ijk = {2, 2, 1}.
-        checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ 26, /* serialLevelCompressedIndex = */ 26,
-                          /* expectedCartesianIndex = */ 22, /* expectedCoords = */ {2, 2, 1}, isParallel, /*level =*/ 1);
+        if (hasOriginId17) {
+            // Serial:   LGR1 refined cells with compressedIndex = 0,1,...,7 have parent cell in level zero
+            //           with Cartesian index 17 and ijk = {1, 1, 1}.
+            checkLevelCartMappIdxAndCoords(levelCartMapp, /* levelCompressedIndex = */ element.index(),
+                                           /* expectedCartesianIndex = */ 17, /* expectedCoords = */ {1, 1, 1}, /*level = */ 1);
+            found_17 = true;
+        }
+        else if (hasOriginId22) {
+            // Serial: LGR1 refined cells with compressedIndex = 24,25,..,31 have parent cell in level zero
+            //         with Cartesian index 22 and ijk = {2, 2, 1}.
+            checkLevelCartMappIdxAndCoords(levelCartMapp, /* levelCompressedIndex = */ element.index(),
+                                           /* expectedCartesianIndex = */ 22, /* expectedCoords = */ {2, 2, 1}, /*level = */ 1);
+            found_22 = true;
+        }
     }
+    BOOST_CHECK(grid.comm().max(found_17));
+    BOOST_CHECK(grid.comm().max(found_22));
 }
 
 BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefinementWith_addLgrsUpdateLeafView)
@@ -934,7 +950,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
     checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
@@ -961,7 +976,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_afterHiddenGlobalRefine
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
     checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
@@ -982,7 +996,6 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_globalRefine)
 
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
-    // I would like to create Opm::LeafCartesianIndexMapper<Dune::CpGrid> leafCartMapp(grid);
 
     checkGloballyRefinedTestGrids(grid, cartMapp, levelCartMapp, isParallel);
 }
@@ -1074,6 +1087,19 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
     const Dune::CartesianIndexMapper<Dune::CpGrid> cartMapp(grid);
     const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
 
+    int serialLeafGridCellCount = 131; // 27 levelZeroACTIVECells - [3 LGR1 + 1 LGR2 parentCells] + (3*(3*3*3) LGR1RefCells) + (3*3*3 LGR2RefCells)
+    if (!isParallel) {
+        BOOST_CHECK_EQUAL(cartMapp.compressedSize(), serialLeafGridCellCount);
+    }
+    checkDimsAndSizes(grid, cartMapp,  levelCartMapp,
+                      {{4,3,3}, {9,6,3}, {6,3,3}},  // expected Cartesian dimensions per level grid
+                      {4*3*3, 9*6*3, 6*3*3},        // expected Cartesian sizes per level grid
+                      {27, 3*(3*3*3), 3*3*3});      // expected compressed sizes per level grid
+
+    // For strict-locally-refined grid, CartesianIndexMapper::cartesianDimensions and
+    // grid.logicalCartesianSize() coincide (with level zero Cartesian dimensions/logical Cartesian size).
+    Opm::areEqual(cartMapp.cartesianDimensions(), grid.logicalCartesianSize());
+
     // LGR1 parent cell global ids   |  - 13  - |
     //                               |  - 10 11 |
     // LGR1 local/compressed indices                |     LGR1 level Cartesian indices
@@ -1127,13 +1153,13 @@ BOOST_AUTO_TEST_CASE(level_and_grid_cartesianIndexMapper_after_addLgrsUpdateLeaf
                                   /* expectedCartesianIndex = */ 39, /* expectedCoords = */ {3,4,0}, isParallel, /*level =*/ 1);
                 found_39 = true;
             }
-            if (*it == 94) {
+            else if (*it == 94) {
                 // Serial: LGR1 compressedIdx = 67 -> LGR1 Cartesian index = 94, level ijk = {4,4,1}
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 67,
                                   /* expectedCartesianIndex = */ 94, /* expectedCoords = */ {4,4,1}, isParallel, /*level =*/ 1);
                 found_94 = true;
             }
-            if (*it == 158) {
+            else if (*it == 158) {
                 // Serial: LGR1 compressedIdx = 80 -> LGR1 Cartesian index = 158, level ijk = {5,5,2}
                 checkLevelElement(levelCartMapp, /* levelCompressedIndex = */ element.index(), /* serialLevelCompressedIndex = */ 80,
                                   /* expectedCartesianIndex = */ 158, /* expectedCoords = */ {5,5,2}, isParallel, /*level =*/ 1);
