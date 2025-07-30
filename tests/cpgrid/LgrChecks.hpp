@@ -152,6 +152,12 @@ void checkGridWithLgrs(const Dune::CpGrid& grid,
                        const std::vector<std::string>& lgr_name_vec,
                        bool gridHasBeenGlobalRefined = false);
 
+int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
+                                  int level = -1); // defualt -1 represents leaf grid view.
+
+void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
+                                               const std::vector<int>& expected_global_cells);
+
 } // namespace Opm
 
 void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
@@ -780,6 +786,36 @@ void Opm::checkGridWithLgrs(const Dune::CpGrid& grid,
 
     checkGlobalCellBounds(grid, data, /* lgrsHaveBlockShape */ true, gridHasBeenGlobalRefined);
 }
+
+int Opm::countLocalActiveInteriorCells(const Dune::CpGrid& grid,
+                                       int level) // defualt level = -1 represents leaf grid view.
+{
+    int count = 0;
+    const auto& elements = (level == -1)? Dune::elements(grid.leafGridView(), Dune::Partitions::interior) :
+        Dune::elements(grid.levelGridView(level), Dune::Partitions::interior);
+    for ([[maybe_unused]] const auto& element : elements) {
+        ++count;
+    }
+    return count;
+}
+
+void Opm::checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
+                                                    const std::vector<int>& expected_global_cells)
+{
+    const int maxLevel = grid.maxLevel();
+    // Check global active cells count per level grid
+    for (int level = 0; level <= maxLevel; ++level) {
+        int local_active_interior_cells = countLocalActiveInteriorCells(grid, level);
+        int global_active_cells =grid.comm().sum(local_active_interior_cells);
+        BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells[level]);
+    }
+
+    // Check global active cells for the leaf grid view
+    int local_active_interior_cells = countLocalActiveInteriorCells(grid);
+    int global_active_cells = grid.comm().sum(local_active_interior_cells);
+    BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells.back());
+}
+
 
 #endif // OPM_LGRCHECKS_HEADER_INCLUDED
 
