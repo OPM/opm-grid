@@ -23,7 +23,7 @@
 
 #include <opm/grid/cpgrid/CartesianIndexMapper.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <algorithm>
 #include <array>
