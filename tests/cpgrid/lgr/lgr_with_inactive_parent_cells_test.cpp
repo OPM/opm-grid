@@ -1,19 +1,5 @@
-//===========================================================================
-//
-// File: lgr_with_inactive_parent_cells_test.cpp
-//
-// Created:  July 04 2024 11:06:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
-  Copyright 2024 Equinor ASA.
+  Copyright 2024, 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -92,41 +78,12 @@ void createTestGridWithLgrsParallel(Dune::CpGrid& grid)
                                 /* lgr_name_vec = */ {"LGR1", "LGR2"});
 }
 
-int countLocalActiveInteriorCells(const Dune::CpGrid& grid,
-                                  int level = -1) // defualt -1 represents leaf grid view.
-{
-    int count = 0;
-    const auto& elements = (level == -1)? Dune::elements(grid.leafGridView(), Dune::Partitions::interior) :
-        Dune::elements(grid.levelGridView(level), Dune::Partitions::interior);
-    for ([[maybe_unused]] const auto& element : elements) {
-        ++count;
-    }
-    return count;
-}
-
-void checkGlobalActiveCellsCountInGridWithLgrs(const Dune::CpGrid& grid,
-                                               const std::vector<int>& expected_global_cells)
-{
-    const int maxLevel = grid.maxLevel();
-    // Check global active cells count per level grid
-    for (int level = 0; level <= maxLevel; ++level) {
-        int local_active_interior_cells = countLocalActiveInteriorCells(grid, level);
-        int global_active_cells =grid.comm().sum(local_active_interior_cells);
-        BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells[level]);
-    }
-
-    // Check global active cells for the leaf grid view
-    int local_active_interior_cells = countLocalActiveInteriorCells(grid);
-    int global_active_cells = grid.comm().sum(local_active_interior_cells);
-    BOOST_CHECK_EQUAL(global_active_cells, expected_global_cells.back());
-}
-
 void checkGridInactiveCellsCount(Dune::CpGrid& grid,
                                  int expected_maxLevel,
                                  const std::vector<int>& expected_global_cells)
 {
     BOOST_CHECK_EQUAL( grid.maxLevel(), expected_maxLevel);
-    checkGlobalActiveCellsCountInGridWithLgrs(grid, expected_global_cells);
+    Opm::checkGlobalActiveCellsCountInGridWithLgrs(grid, expected_global_cells);
 
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
