@@ -39,6 +39,7 @@
 
 #include <dune/common/version.hh>
 #include <dune/geometry/type.hh>
+#include <dune/geometry/referenceelements.hh>
 #include <dune/grid/common/gridenums.hh>
 
 #include "PartitionTypeIndicator.hpp"
@@ -292,6 +293,14 @@ public:
 protected:
     const CpGridData* pgrid_;
 };
+
+// Reference element for a given entity
+template <int codim>
+auto referenceElement(const Entity<codim>&)
+{
+    return Dune::referenceElement<double,3-codim>(Dune::GeometryTypes::cube(3-codim));
+}
+
 
 } // namespace cpgrid
 } // namespace Dune

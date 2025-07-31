@@ -70,12 +70,22 @@ BOOST_AUTO_TEST_CASE(entity)
     BOOST_CHECK(e2 != e3);
     BOOST_CHECK(e2 != e4);
     BOOST_CHECK(e3 != e4);
+
+
     BOOST_CHECK_EQUAL(e1.level(), 0);
     // BOOST_CHECK(e1.type().isSingular()); // Our new type
     BOOST_CHECK(e1.type().isCube());
+    BOOST_CHECK(e1.type().dim() == 3);
+    using Dune::referenceElement;
+    BOOST_CHECK_EQUAL(referenceElement(e4).type(), e4.type());
+    BOOST_CHECK_EQUAL(referenceElement(e4.geometry()).type(), e4.type());
     BOOST_CHECK_EQUAL(e1.partitionType(), InteriorEntity);
+
     cpgrid::Entity<3> e5(g, 0, true);
+    BOOST_CHECK_EQUAL(e5.level(), 0);
     BOOST_CHECK(e5.type().isCube());
+    BOOST_CHECK_EQUAL(referenceElement(e5).type(), e5.type());
+    BOOST_CHECK_EQUAL(referenceElement(e5.geometry()).type(), e5.type());
 
     // Cannot check other members without a real grid.
     // Put in more checks when it is possible to construct
