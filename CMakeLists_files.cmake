@@ -189,6 +189,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/common/p2pcommunicator_impl.hh
   opm/grid/common/WellConnections.hpp
   opm/grid/cpgrid/CartesianIndexMapper.hpp
+  opm/grid/cpgrid/CartesianIndexMapperCollection.hpp
   opm/grid/cpgrid/CpGridData.hpp
   opm/grid/cpgrid/CpGridDataTraits.hpp
   opm/grid/cpgrid/CpGridUtilities.hpp
@@ -201,6 +202,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/Geometry.hpp
   opm/grid/cpgrid/GlobalIdMapping.hpp
   opm/grid/cpgrid/GridHelpers.hpp
+  opm/grid/cpgrid/LeafCartesianIndexMapper.hpp
   opm/grid/cpgrid/LevelCartesianIndexMapper.hpp
   opm/grid/CpGrid.hpp
   opm/grid/cpgrid/Indexsets.hpp
@@ -216,7 +218,9 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp
   opm/grid/common/CartesianIndexMapper.hpp
+  opm/grid/common/CartesianIndexMapperCollection.hpp
   opm/grid/common/GridEnums.hpp
+  opm/grid/common/LeafCartesianIndexMapper.hpp
   opm/grid/common/LevelCartesianIndexMapper.hpp
   opm/grid/common/MetisPartition.hpp
   opm/grid/common/SubGridPart.hpp

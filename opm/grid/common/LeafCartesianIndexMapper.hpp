@@ -1,5 +1,5 @@
 /*
-  Copyright 2024, 2025 Equinor ASA.
+  Copyright 2025 Equinor ASA.
 
   This file is part of The Open Porous Media project  (OPM).
 
@@ -16,57 +16,58 @@
   You should have received a copy of the GNU General Public License
   along with OPM.  If not, see <http://www.gnu.org/licenses/>.
 */
-
-#ifndef OPM_GRID_COMMON_LEVELCARTESIANINDEXMAPPER_HPP
-#define OPM_GRID_COMMON_LEVELCARTESIANINDEXMAPPER_HPP
+#ifndef OPM_GRID_COMMON_LEAFCARTESIANINDEXMAPPER_HPP
+#define OPM_GRID_COMMON_LEAFCARTESIANINDEXMAPPER_HPP
 
 #include <array>
 
 namespace Opm
 {
-// Interface class to access the local Cartesian grid of a level grid.
-template< class Grid >
-class LevelCartesianIndexMapper
+// Interface class to access the leaf Cartesian grid.
+// Relevant for globally refined (corner-point) grids.
+template<class Grid>
+class LeafCartesianIndexMapper
 {
 public:
-    // Dimension of the grid.
     static constexpr int dimension = Grid::dimension;
 
-    // Constructor taking a grid.
-    explicit LevelCartesianIndexMapper(const Grid&, int)
+    explicit LeafCartesianIndexMapper(const Grid&)
     {}
 
-    // Return the number of cells in each direction (Cartesian dimensions) of the level grid.
+    LeafCartesianIndexMapper() = delete;
+
+    // Return the number of cells in each direction (Cartesian dimensions) of the leaf grid.
     const std::array<int, dimension>& cartesianDimensions() const
     {
         static std::array<int, dimension> a;
         return a;
     }
 
-    // Return total number of cells in the level grid.
+    // Return total number of (inactive/active) cells in the leaf grid.
     int cartesianSize() const
     {
         return 0;
     }
 
-    // Return number of active cells in the level grid.
+    // Return number of active cells in the leaf grid.
     int compressedSize() const
     {
         return 0;
     }
 
-    // Return local/level Cartesian index of a cell in the level grid.
-    int cartesianIndex( const int /* levelCompressedElementIndex */) const
+    // Return leaf Cartesian index of a cell in the leaf grid.
+    int cartesianIndex( const int /* leafCompressedElementIndex */) const
     {
         return 0;
     }
 
-    // Compute local/level Cartesian coordinate, i.e. IJK, for a given cell, on the level grid.
-    void cartesianCoordinate(const int /* levelCompressedElementIndex*/,
-                             std::array<int,dimension>& /* levelCoords */) const
+    // Compute leaf Cartesian coordinate, i.e. IJK, for a given cell, in the leaf grid.
+    void cartesianCoordinate(const int /* leafCompressedElementIndex*/,
+                             std::array<int,dimension>& /* leeafCoords */) const
     {
     }
 };
 
-} // end namespace Opm
+}
+
 #endif

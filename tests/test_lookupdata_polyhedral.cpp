@@ -1,18 +1,5 @@
-//===========================================================================
-//
-// File: test_lookupdata_polyhedral.cpp
-//
-// Created: Monday 24.07.2023 14:30:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
-  Copyright 2023 Equinor ASA.
+  Copyright 2023, 2025 Equinor ASA.
 
   This file is part of the Open Porous Media project (OPM).
 
@@ -49,6 +36,7 @@
 #include <opm/grid/polyhedralgrid/dgfparser.hh>
 #include <opm/grid/polyhedralgrid/levelcartesianindexmapper.hh>
 #include <dune/grid/common/mcmgmapper.hh>
+#include <opm/common/ErrorMacros.hpp>
 
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 
@@ -91,14 +79,17 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
 
     std::vector<double> fake_feature_double(grid.size(0), 0.);
     std::iota(fake_feature_double.begin(), fake_feature_double.end(), .5);
-    
+
     const auto leaf_view = grid.leafGridView();
     using GridView = std::remove_cv_t< typename std::remove_reference<decltype(grid.leafGridView())>::type>;
     // LookUpData
     const Opm::LookUpData<Dune::PolyhedralGrid<3,3>, GridView> lookUpData(leaf_view, false);
     // LookUpCartesianData
     const Dune::CartesianIndexMapper<Dune::PolyhedralGrid<3,3>> cartMapper(grid);
-    const Opm::LevelCartesianIndexMapper< Dune::PolyhedralGrid<3,3> > levelCartMapp(cartMapper);
+    const Opm::LevelCartesianIndexMapper<Dune::PolyhedralGrid<3,3>> levelCartMapp(cartMapper, /* level = */ 0);
+    BOOST_CHECK_THROW((Opm::LevelCartesianIndexMapper<Dune::PolyhedralGrid<3,3>>(cartMapper, /* invalid level */ 4)), std::invalid_argument);
+    BOOST_CHECK_THROW((Opm::LevelCartesianIndexMapper<Dune::PolyhedralGrid<3,3>>(cartMapper, /* invalid level */ -3)), std::invalid_argument);
+
     const Opm::LookUpCartesianData<Dune::PolyhedralGrid<3,3>, GridView> lookUpCartesianData(leaf_view, cartMapper, false);
     // Mapper
     const Dune::MultipleCodimMultipleGeomTypeMapper<GridView> mapper(grid.leafGridView(), Dune::mcmgElementLayout());
@@ -136,12 +127,8 @@ void lookup_check(const Dune::PolyhedralGrid<3,3>& grid)
         std::array<int,3> ijk;
         cartMapper.cartesianCoordinate(idx, ijk);
         std::array<int,3> ijkLevel;
-        levelCartMapp.cartesianCoordinate(idx, ijkLevel, 0);
+        levelCartMapp.cartesianCoordinate(idx, ijkLevel);
         BOOST_CHECK(ijk == ijkLevel);
-        // Throw for level > 0 (Local grid refinement not supported for Polyhedral Grid)
-        std::array<int,3> ijkThrow;
-        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(idx, ijkThrow, 4), std::invalid_argument);
-        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(idx, ijkThrow, -3), std::invalid_argument);
     }
 }
 

@@ -40,7 +40,7 @@
 #include <boost/test/tools/floating_point_comparison.hpp>
 #endif
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
+#include <opm/grid/cpgrid/CartesianIndexMapperCollection.hpp>
 #include <opm/grid/LookUpData.hh>
 
 #include <dune/grid/common/mcmgmapper.hh>
@@ -94,8 +94,12 @@ void lookup_check(const Dune::CpGrid& grid)
             fakeLgrFeatures[lgr-1] = fake_feature_lgr;
         }
     }
+    const Opm::CartesianIndexMapperCollection<Dune::CpGrid> cartMappCollection{grid};
+    const auto& levelZeroCartMapp = cartMappCollection.getLevelMapper(0);
 
-    const Opm::LevelCartesianIndexMapper<Dune::CpGrid> levelCartMapp(grid);
+    // Throw for level < 0 or level > maxLevel()
+    BOOST_CHECK_THROW(cartMappCollection.getLevelMapper(-3), std::invalid_argument);
+    BOOST_CHECK_THROW(cartMappCollection.getLevelMapper(grid.maxLevel() +1), std::invalid_argument);
 
     // LookUpData
     const auto& leaf_view = grid.leafGridView();
@@ -146,14 +150,12 @@ void lookup_check(const Dune::CpGrid& grid)
         BOOST_CHECK(cartIdx == lookUpCartesianData.getFieldPropCartesianIdx(elem.index()));
         // Extra checks related to Cartesian Coordinate
         std::array<int,3> ijk;
-        cartMapper.cartesianCoordinate(elem.index(), ijk); // this ijk corresponds to the parent/equivalent cell in level 0.
+        cartMapper.cartesianCoordinate(elem.index(), ijk); // this ijk corresponds to the parent/equivalent cell in level 0. 
+        
         std::array<int,3> ijkLevel0;
-        levelCartMapp.cartesianCoordinate(elem.getOrigin().index(), ijkLevel0, 0);
+        levelZeroCartMapp.cartesianCoordinate(elem.getOrigin().index(), ijkLevel0);
         BOOST_CHECK(ijk == ijkLevel0);
-        // Throw for level < 0 or level > maxLevel()
-        std::array<int,3> ijkThrow;
-        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(elem.index(), ijkThrow, -3), std::invalid_argument);
-        BOOST_CHECK_THROW(levelCartMapp.cartesianCoordinate(elem.index(), ijkThrow, grid.maxLevel() + 1), std::invalid_argument);
+        
         // Checks related to LGR field properties
         if (elem.level())
         {
@@ -165,12 +167,15 @@ void lookup_check(const Dune::CpGrid& grid)
             BOOST_CHECK(featureInLGR == featureInLGR_Cartesian);
             BOOST_CHECK(featureInLGR == featureInLGR_FromIdx);
             BOOST_CHECK(featureInLGR == featureInLGR_Cartesian_FromIdx);
+            
             // Checks for CartesianCoordinateLevel
             const auto idxOnLevel = elem.getLevelElem().index(); // getLevelElemt throws when entity does not belong to the leafGridView
             std::array<int,3> ijkLevelGrid;
             (*data[elem.level()]).getIJK(idxOnLevel, ijkLevelGrid);
+            
             std::array<int,3> ijkLevel;
-            levelCartMapp.cartesianCoordinate(idxOnLevel, ijkLevel, elem.level());
+            const auto& levelCartMapp = cartMappCollection.getLevelMapper(elem.level());
+            levelCartMapp.cartesianCoordinate(idxOnLevel, ijkLevel);
             BOOST_CHECK( ijkLevelGrid == ijkLevel);
         }
         // Extra checks related to ElemMapper
