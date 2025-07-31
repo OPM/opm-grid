@@ -382,6 +382,12 @@ unsigned int Entity<codim>::subEntities ( const unsigned int cc ) const
         if ( cc == 3 ) { // Get number of corners of the element.
             return 8;
         }
+        if ( cc == 2 ) { // Get number of lines of the element.
+            return 12;
+        }
+        if ( cc == 1 ) { // Get number of faces of the element.
+            return 6;
+        }
     }
     return 0;
 }
