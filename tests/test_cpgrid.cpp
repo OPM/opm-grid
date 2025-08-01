@@ -24,6 +24,8 @@ using Dune::referenceElement; //grid check assume usage of Dune::Geometry
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 
+#include <dune/common/version.hh>
+
 #include <iostream>
 
 template <class GridView>
@@ -91,8 +93,8 @@ template <class Grid>
 void testGrid(Grid& grid, const std::string& name, const size_t nElem, const size_t nVertices)
 {
     typedef typename Grid::LeafGridView GridView;
-    /*
 
+#if DUNE_VERSION_GTE(DUNE_GRID, 2, 10)
     try {
       gridcheck( grid );
     }
@@ -100,7 +102,8 @@ void testGrid(Grid& grid, const std::string& name, const size_t nElem, const siz
     {
       std::cerr << "Warning: " << e.what() << std::endl;
     }
-*/
+#endif
+
     std::cout << name << std::endl;
 
     testGridIteration( grid.leafGridView(), nElem );
@@ -166,7 +169,7 @@ int main(int argc, char** argv )
 
     grid.processEclipseFormat(&ecl_grid, nullptr, false, false, false);
     testGrid( grid, "CpGrid_ecl", 8, 27 );
-    
+
     const auto& grid_leafView = grid.leafGridView();
     Dune::CartesianIndexMapper<Grid> grid_cartMapper =  Dune::CartesianIndexMapper<Grid>(grid);
     for (const auto& element: Dune::elements(grid_leafView)){
@@ -183,8 +186,8 @@ int main(int argc, char** argv )
         }
         std::cout << " " << '\n';
     }
-    
-    
+
+
 #endif
 
     std::stringstream dgfFile;
