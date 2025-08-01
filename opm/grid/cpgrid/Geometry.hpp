@@ -38,11 +38,13 @@
 #define OPM_GEOMETRY_HEADER
 
 #include <cmath>
+#include <variant>
 
 // Warning suppression for Dune includes.
 #include <opm/grid/utility/platform_dependent/disable_warnings.h>
 
 #include <dune/common/version.hh>
+#include <dune/common/overloadset.hh>
 #include <dune/geometry/referenceelements.hh>
 #include <dune/grid/common/geometry.hh>
 
@@ -127,7 +129,7 @@ namespace Dune
             }
 
             /// Returns the position of the vertex.
-            const GlobalCoordinate& global(const LocalCoordinate&) const
+            GlobalCoordinate global(const LocalCoordinate&) const
             {
                 return pos_;
             }
@@ -172,7 +174,7 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
@@ -272,7 +274,7 @@ namespace Dune
             }
 
             /// This method is meaningless for singular geometries.
-            const GlobalCoordinate& global(const LocalCoordinate&) const
+            GlobalCoordinate global(const LocalCoordinate&) const
             {
                 OPM_THROW(std::runtime_error, "Geometry::global() meaningless on singular geometry.");
             }
@@ -319,20 +321,20 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
 
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, mydimension, coorddimension>&
+            FieldMatrix<ctype, mydimension, coorddimension>
             jacobianTransposed(const LocalCoordinate& /* local */) const
             {
                 OPM_THROW(std::runtime_error, "Meaningless to call jacobianTransposed() on singular geometries.");
             }
 
             /// This method is meaningless for singular geometries.
-            const FieldMatrix<ctype, coorddimension, mydimension>&
+            FieldMatrix<ctype, coorddimension, mydimension>
             jacobianInverseTransposed(const LocalCoordinate& /*local*/) const
             {
                 OPM_THROW(std::runtime_error, "Meaningless to call jacobianInverseTransposed() on singular geometries.");
@@ -405,6 +407,10 @@ namespace Dune
 
             /// @brief Construct from center, volume (1- and 0-moments) and
             ///        corners.
+            /// @warning This constructor does not own the corners or indices,
+            ///         thus, the pointers must remain valid for the lifetime of
+            ///         the Geometry object.
+            ///
             /// @param pos the centroid of the entity
             /// @param vol the volume(area) of the entity
             /// @param allcorners pointer of all corner positions in the grid
@@ -413,17 +419,34 @@ namespace Dune
             ///                       by (kji), i.e. i running fastest.
             Geometry(const GlobalCoordinate& pos,
                      ctype vol,
-                     std::shared_ptr<const EntityVariable<cpgrid::Geometry<0, 3>, 3>> allcorners_ptr,
+                     EntityVariable<cpgrid::Geometry<0, 3>, 3> const * allcorners_view,
                      const int* corner_indices)
                 : pos_(pos), vol_(vol),
-                  allcorners_(allcorners_ptr), cor_idx_(corner_indices)
+                  allcorners_(allcorners_view), cor_idx_(corner_indices)
             {
-                assert(allcorners_ && corner_indices);
+                assert(allcorners_view && corner_indices);
             }
+
+            /// @brief Construct from center, volume (1- and 0-moments) and
+            ///        corners.
+            ///
+            /// @param pos the centroid of the entity
+            /// @param vol the volume(area) of the entity
+            /// @param allcorners pointer of all corner positions in the grid
+            /// @param corner_indices array of 8 indices into allcorners. The
+            ///                       indices must be given in lexicographical order
+            ///                       by (kji), i.e. i running fastest.
+            Geometry(const GlobalCoordinate& pos,
+                     ctype vol,
+                     const EntityVariable<cpgrid::Geometry<0, 3>, 3>& allcorners_storage,
+                     const int* corner_indices)
+                : pos_(pos), vol_(vol),
+                  allcorners_(allcorners_storage), cor_idx_(corner_indices)
+            {}
 
             /// Default constructor, giving a non-valid geometry.
             Geometry()
-                : pos_(0.0), vol_(0.0), allcorners_(0), cor_idx_(0)
+                : pos_(0.0), vol_(0.0), allcorners_(nullptr), cor_idx_(nullptr)
             {
             }
 
@@ -511,8 +534,16 @@ namespace Dune
             /// @brief Get the cor-th of 8 corners of the hexahedral base cell.
             GlobalCoordinate corner(int cor) const
             {
-                assert(allcorners_ && cor_idx_);
-                return (allcorners_->data())[cor_idx_[cor]].center();
+                return std::visit(
+                    Dune::overload(
+                        [](const EntityVariable<Geometry<0, 3>, 3>& corners) -> const EntityVariable<Geometry<0, 3>, 3>& {
+                            return corners;
+                        },
+                        [](EntityVariable<Geometry<0, 3>, 3> const * corners) -> const EntityVariable<Geometry<0, 3>, 3>& {
+                            return *corners;
+                        }
+                    ), allcorners_
+                ).data()[cor_idx_[cor]].center();
             }
 
             /// Cell volume.
@@ -526,7 +557,7 @@ namespace Dune
             }
 
             /// Returns the centroid of the geometry.
-            const GlobalCoordinate& center() const
+            GlobalCoordinate center() const
             {
                 return pos_;
             }
@@ -537,7 +568,7 @@ namespace Dune
             /// and {u_i} are the reference coordinates.
             /// g = g(u) = (g_1(u), g_2(u), g_3(u)), u=(u_1,u_2,u_3)
             /// g = map from (local) reference domain to global cell
-            const JacobianTransposed
+            JacobianTransposed
             jacobianTransposed(const LocalCoordinate& local_coord) const
             {
                 static_assert(mydimension == 3, "");
@@ -573,7 +604,7 @@ namespace Dune
             }
 
             /// @brief Inverse of Jacobian transposed. \see jacobianTransposed().
-            const JacobianInverseTransposed
+            JacobianInverseTransposed
             jacobianInverseTransposed(const LocalCoordinate& local_coord) const
             {
                 JacobianInverseTransposed Jti = jacobianTransposed(local_coord);
@@ -1022,7 +1053,7 @@ namespace Dune
                             refined_cells[refined_cell_idx] =
                                 Geometry<3,cdim>(refined_cell_center,
                                                  refined_cell_volume,
-                                                 all_geom.geomVector(std::integral_constant<int,3>()),
+                                                 all_geom.geomVector(std::integral_constant<int,3>()).get(),
                                                  indices_storage_ptr);
                         } // end i-for-loop
                     }  // end j-for-loop
@@ -1043,8 +1074,10 @@ namespace Dune
         private:
             GlobalCoordinate pos_;
             double vol_;
-            std::shared_ptr<const EntityVariable<Geometry<0, 3>,3>> allcorners_; // For dimension 3 only
-            const int* cor_idx_; // For dimension 3 only
+
+            // store either a (view) pointer or the variable itself. For dimension 3 only
+            std::variant<EntityVariable<Geometry<0, 3>,3> const *, EntityVariable<Geometry<0, 3>,3>> allcorners_;
+            int const * cor_idx_; // For dimension 3 only
 
             /// @brief
             ///   Auxiliary function to get refined_face information: tag, index, face_to_point_, face_to_cell, face centroid,

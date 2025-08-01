@@ -535,7 +535,7 @@ struct CellGeometryHandle
             buffer.read(pos[i]);
 
         buffer.read(vol);
-        scatterCont_[t] = Geom(pos, vol, pointGeom_, cell2Points_[t.index()].data());
+        scatterCont_[t] = Geom(pos, vol, pointGeom_.get(), cell2Points_[t.index()].data());
         double isAquifer;
         buffer.read(isAquifer);
         if (isAquifer == 1.0)
@@ -1577,8 +1577,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute partition type for points
     computePointPartitionType();
-   
-    computeCommunicationInterfaces(noExistingPoints);   
+
+    computeCommunicationInterfaces(noExistingPoints);
 #else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
@@ -2065,9 +2065,9 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
     assert(endIJK_2Patches.size() == 2);
 
     int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
-     
+
     if (patchesShareFace(startIJK_2Patches, endIJK_2Patches)) {
-        
+
         const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
             bool faceIsShared = false;
             for (const auto& face : faceIdxs) {
@@ -2080,7 +2080,7 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
             }
             return faceIsShared; // should be false here
         };
-     
+
         const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_2Patches[0], endIJK_2Patches[0]);
         const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
             this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
@@ -2306,7 +2306,7 @@ Geometry<3,3> CpGridData::cellifyPatch(const std::array<int,3>& startIJK, const 
         const int* cellifiedPatch_indices_storage_ptr = &allcorners_cellifiedPatch[0];
         // Construct (and return) the Geometry<3,3> of the 'cellified patch'.
         return Geometry<3,3>(cellifiedPatch_center, cellifiedPatch_volume,
-                             cellifiedPatch_geometry.geomVector(std::integral_constant<int,3>()),
+                             cellifiedPatch_geometry.geomVector(std::integral_constant<int,3>()).get(),
                              cellifiedPatch_indices_storage_ptr);
     }
 }
@@ -2699,7 +2699,7 @@ bool CpGridData::preAdapt()
             if (local_empty)
                 mark_.resize(size(0));
         }
-       
+
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
