@@ -2695,15 +2695,17 @@ void CpGrid::syncDistributedGlobalCellIds()
 
     const int maxLevel = this->maxLevel();
 
-    // Preallocate syncCellIds
+    // Preallocate syncCellIds (and vertexIds, which will NOT be synchrinized)
     std::vector<std::vector<int>> syncCellIds(maxLevel);
+    std::vector<std::vector<int>> vertexIds(maxLevel);
     for (int level = 1; level <= maxLevel; ++level) {
         syncCellIds[level-1].resize(currentData()[level]->size(0));
+        vertexIds[level-1].resize(currentData()[level]->size(3));
     }
 
     const auto& globalIdSet = this->globalIdSet();
 
-    // Populate for interior cells
+    // Populate syncCellIds and vertexIds
     for (int level = 1; level <= maxLevel; ++level) {
         const auto& elements = Dune::elements(levelGridView(level));
         for (const auto& element : elements) {
@@ -2714,16 +2716,19 @@ void CpGrid::syncDistributedGlobalCellIds()
 
             syncCellIds[element.level()-1][element.index()] = new_elem_globalId;
         }
+
+        for (const auto& vertex : Dune::vertices(levelGridView(level))){
+            vertexIds[level-1][vertex.index()] = globalIdSet.id(vertex);
+        }
     }
 
     // Re-assign new cell global ids for all refined level grids
     std::vector<int> faceIds; // empty for all
     for (int level = 1; level <= maxLevel; ++level) {
         if(currentData()[level]->size(0)) { // Check if LGR is active in currect process.
-            auto vertexIds = currentData()[level]->global_id_set_-> getMapping<3>();
             currentData()[level]->global_id_set_->swap(syncCellIds[level-1],
                                                        faceIds,
-                                                       vertexIds);
+                                                       vertexIds[level-1]);
 
             populateCellIndexSetRefinedGrid(level);
             // Insert the new id sets into the grid global_id_set_ptr_
