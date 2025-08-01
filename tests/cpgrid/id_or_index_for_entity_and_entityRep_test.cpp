@@ -283,7 +283,7 @@ BOOST_AUTO_TEST_CASE(idEntityRep_and_idEntity_differ_in_refinedLevelAndLeafGrids
         // BEFORE synchronizing cell ids
         parallelAfterRefinementChecks(grid);
 
-        //grid.syncDistributedGlobalCellIds();
+        grid.syncDistributedGlobalCellIds();
 
         // AFTER synchronozing cell ids
         parallelAfterRefinementChecks(grid);
