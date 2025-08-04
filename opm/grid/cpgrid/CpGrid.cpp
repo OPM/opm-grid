@@ -2270,12 +2270,13 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // refined_level_to_leaf_cells_vec:  Relation between the refined grid and leafview cell indices.
     // leaf_to_level_cells:              Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
     const auto& [refined_level_to_leaf_cells_vec,
-                 leaf_to_level_cells] = defineLevelToLeafAndLeafToLevelCells(elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
-                                                                             refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                                                             refined_cell_count_vec,
-                                                                             elemLgrAndElemLgrCell_to_adaptedCell,
-                                                                             adaptedCell_to_elemLgrAndElemLgrCell,
-                                                                             cell_count);
+                 leaf_to_level_cells] = Opm::defineLevelToLeafAndLeafToLevelCells(*this,
+                                                                                  elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
+                                                                                  refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                                                  refined_cell_count_vec,
+                                                                                  elemLgrAndElemLgrCell_to_adaptedCell,
+                                                                                  adaptedCell_to_elemLgrAndElemLgrCell,
+                                                                                  cell_count);
 
     // CORNERS
     // Stablish relationships between PreAdapt corners and refined or adapted ones ---
@@ -2946,49 +2947,6 @@ std::array<double,3> CpGrid::getEclCentroid(const cpgrid::Entity<0>& elem) const
     return this-> getEclCentroid(elem.index());
 }
 
-std::pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>
-CpGrid::defineLevelToLeafAndLeafToLevelCells(const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
-                                             const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                             const std::vector<int>& refined_cell_count_vec,
-                                             const std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
-                                             const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
-                                             const int& cell_count) const
-{
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
-    // -- Refined to Adapted cells and Adapted-cells to {level where the cell was born, cell index on that level} --
-    // Relation between the refined grid and leafview cell indices.
-    std::vector<std::vector<int>> refined_level_to_leaf_cells_vec(refined_cell_count_vec.size());
-    // Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
-    std::vector<std::array<int,2>> leaf_to_level_cells;
-    leaf_to_level_cells.resize(cell_count);
-
-    // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel();
-
-    // -- Adapted to {level, cell index in that level}  --
-    for (int cell = 0; cell < cell_count; ++cell) {
-        const auto& [elemLgr, elemLgrCell] = adaptedCell_to_elemLgrAndElemLgrCell.at(cell);
-        // elemLgr == -1 means that this adapted cell is equivalent to a cell from the starting grid. So we need to find out the level where that equivalent
-        // cell was born, as well as its cell index in that level.
-        if (elemLgr == -1) {
-            const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemLgrCell, true);
-            leaf_to_level_cells[cell] = { element.level(), element.getLevelElem().index()};
-        }
-        else {
-            leaf_to_level_cells[cell] = elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell.at({elemLgr, elemLgrCell});
-        }
-    }
-    // -- Refined to adapted cells --
-    for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel){
-        refined_level_to_leaf_cells_vec[shiftedLevel].resize(refined_cell_count_vec[shiftedLevel]);
-        for (int cell = 0; cell < refined_cell_count_vec[shiftedLevel]; ++cell) {
-            refined_level_to_leaf_cells_vec[shiftedLevel][cell] =
-                elemLgrAndElemLgrCell_to_adaptedCell.at(refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell.at({static_cast<int>(shiftedLevel) + preAdaptMaxLevel +1, cell}));
-        }
-    }
-    return std::make_pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>(std::move(refined_level_to_leaf_cells_vec), std::move(leaf_to_level_cells));
-}
 
 void CpGrid::identifyRefinedCornersPerLevel(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                             std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
