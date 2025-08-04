@@ -100,10 +100,6 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
-void refinePatch_and_check(const std::array<int,3>&,
-                           const std::array<int,3>&,
-                           const std::array<int,3>&);
-
 void refinePatch_and_check(Dune::CpGrid&,
                            const std::vector<std::array<int,3>>&,
                            const std::vector<std::array<int,3>>&,
@@ -114,12 +110,6 @@ void check_global_refine(const Dune::CpGrid&,
                          const Dune::CpGrid&);
 
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
-
-void testInactiveCellsLgrs(const std::string&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
 
 namespace Dune
 {
@@ -147,10 +137,6 @@ class CpGridData
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
                             bool);
-    friend
-    void ::refinePatch_and_check(const std::array<int,3>&,
-                                 const std::array<int,3>&,
-                                 const std::array<int,3>&);
 
     friend
     void ::refinePatch_and_check(Dune::CpGrid&,
@@ -162,14 +148,9 @@ class CpGridData
     friend
     void ::check_global_refine(const Dune::CpGrid&,
                                const Dune::CpGrid&);
+
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
-    friend
-    void ::testInactiveCellsLgrs(const std::string&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::string>&);
 
 private:
     CpGridData(const CpGridData& g);
