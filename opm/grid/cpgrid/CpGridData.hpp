@@ -362,6 +362,11 @@ public:
         return face_tag_[faceEntity];
     }
 
+    int numFaces() const
+    {
+        return face_to_cell_.size();
+    }
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///

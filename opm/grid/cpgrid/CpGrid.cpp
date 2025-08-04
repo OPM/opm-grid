@@ -2325,26 +2325,28 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from level0 (not involved in LGRs), and (new-born) refined faces).
     std::vector<int> refined_face_count_vec(levels, 0);
-    identifyRefinedFacesPerLevel( elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                  refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                  refined_face_count_vec,
-                                  markedElem_to_itsLgr,
-                                  assignRefinedLevel,
-                                  faceInMarkedElemAndRefinedFaces,
-                                  cells_per_dim_vec);
+    Opm::identifyRefinedFacesPerLevel(*this,
+                                      elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                      refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                      refined_face_count_vec,
+                                      markedElem_to_itsLgr,
+                                      assignRefinedLevel,
+                                      faceInMarkedElemAndRefinedFaces,
+                                      cells_per_dim_vec);
 
     // --- Adapted faces and PreAdapt faces relations ---
     std::map< std::array<int,2>, int >           elemLgrAndElemLgrFace_to_adaptedFace;
     std::unordered_map< int, std::array<int,2> > adaptedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from current_view_data_ (not involved in LGRs), and (new-born) refined faces).
     int face_count = 0;
-    identifyLeafGridFaces(elemLgrAndElemLgrFace_to_adaptedFace,
-                          adaptedFace_to_elemLgrAndElemLgrFace,
-                          face_count,
-                          markedElem_to_itsLgr,
-                          assignRefinedLevel,
-                          faceInMarkedElemAndRefinedFaces,
-                          cells_per_dim_vec);
+    Opm::identifyLeafGridFaces(*this,
+                               elemLgrAndElemLgrFace_to_adaptedFace,
+                               adaptedFace_to_elemLgrAndElemLgrFace,
+                               face_count,
+                               markedElem_to_itsLgr,
+                               assignRefinedLevel,
+                               faceInMarkedElemAndRefinedFaces,
+                               cells_per_dim_vec);
 
     setRefinedLevelGridsGeometries( /* Refined corner arguments */
                                     refined_corners_vec,
@@ -2949,148 +2951,6 @@ std::array<double,3> CpGrid::getEclCentroid(const cpgrid::Entity<0>& elem) const
     return this-> getEclCentroid(elem.index());
 }
 
-void CpGrid::identifyRefinedFacesPerLevel(std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                          std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                          std::vector<int>& refined_face_count_vec,
-                                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                          const std::vector<int>& assignRefinedLevel,
-                                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                          const std::vector<std::array<int,3>>& cells_per_dim_vec) const
-{
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
-    // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel();
-
-    // Step 1. Add the LGR faces, for each LGR
-    for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
-        if (markedElem_to_itsLgr[elem]!=nullptr)  {
-            const auto& level = assignRefinedLevel[elem];
-            assert(level>0);
-            // To access containers with refined level grid information
-            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
-            for (int face = 0; face < markedElem_to_itsLgr[elem] ->face_to_cell_.size(); ++face) {
-                // Discard marked faces. Store (new born) refined faces
-                bool isNewRefinedFaceOnLgrBoundary = isRefinedFaceOnLgrBoundary(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem]);
-                if (!isNewRefinedFaceOnLgrBoundary) { // It's a refined interior face, so we store it
-                    // In this case, the face is a new born refined face that does not
-                    // have any "parent face" from the GLOBAL grid (level 0).
-                    elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace[{elem, face}] = {level, refined_face_count_vec[shiftedLevel]};
-                    refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace.
-                            insert_or_assign(std::array{level, refined_face_count_vec[shiftedLevel]},
-                                             std::array{elem, face});
-                    refined_face_count_vec[shiftedLevel] +=1;
-                }
-                // If the refined face lays on the boundary of the LGR, e.i., it was born on one of the faces
-                // of the marked element that got refined, then, we have two cases:
-                // - the marked face appears only in one marked element -> then, we store this face now.
-                // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                else {
-                    // Get the index of the marked face where the refined corner was born.
-                    int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem], elem);
-                    assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
-                    // Get the last LGR (marked element) where the marked face appeared.
-                    int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                    if (lastLgrWhereMarkedFaceAppeared == elem) {
-                        // Store the refined face in its last appearence - to avoid repetition.
-                        elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.
-                                insert_or_assign(std::array{elem, face},
-                                                 std::array{level, refined_face_count_vec[shiftedLevel]});
-                        refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace.
-                            insert_or_assign(std::array{level, refined_face_count_vec[shiftedLevel]},
-                                             std::array{elem, face});
-                        refined_face_count_vec[shiftedLevel] +=1;
-                    }
-                    if(faceInMarkedElemAndRefinedFaces[markedFace].size()>1) { // maximum size is 2
-                        const auto& firstMarkedElem = faceInMarkedElemAndRefinedFaces[markedFace][0].first;
-                        const auto& firstMarkedElemLevel = assignRefinedLevel[firstMarkedElem];
-                        if (firstMarkedElemLevel != level) {
-                            const auto& shiftedFirstMarkedElemLevel = firstMarkedElemLevel - preAdaptMaxLevel -1;
-                            elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.
-                                    insert_or_assign(std::array{firstMarkedElem, face},
-                                                     std::array{firstMarkedElemLevel,
-                                                                refined_face_count_vec[shiftedFirstMarkedElemLevel]});
-                            refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace.
-                                    insert_or_assign(std::array{firstMarkedElemLevel,
-                                                                refined_face_count_vec[shiftedFirstMarkedElemLevel]},
-                                                     std::array{firstMarkedElem, face});
-                            refined_face_count_vec[shiftedFirstMarkedElemLevel] +=1;
-                        }
-                    }
-                }
-            } // end-face-for-loop
-        } // end-if-nullptr
-    } // end-elem-for-loop
-}
-
-
-void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
-                                   std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
-                                   int& face_count,
-                                   const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                   const std::vector<int>& assignRefinedLevel,
-                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                   const std::vector<std::array<int,3>>& cells_per_dim_vec) const
-{
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
-    // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel(); 
-    
-    // Step 1. Add the LGR faces, for each LGR
-    for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
-        if (markedElem_to_itsLgr[elem]!=nullptr)  {
-            const auto& level = assignRefinedLevel[elem];
-            assert(level>0);
-            // To access containers with refined level grid information
-            const auto& shiftedLevel = level - preAdaptMaxLevel -1;
-            for (int face = 0; face < markedElem_to_itsLgr[elem] ->face_to_cell_.size(); ++face) {
-                // Discard marked faces. Store (new born) refined faces
-                bool isNewRefinedFaceOnLgrBoundary = isRefinedFaceOnLgrBoundary(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem]);
-                if (!isNewRefinedFaceOnLgrBoundary) { // It's a refined interior face, so we store it
-                    //  if (isRefinedFaceInInteriorLgr(cells_per_dim, face, markedElem_to_itsLgr[elem])) {
-                    // In this case, the face is a new born refined face that does not
-                    // have any "parent face" from the GLOBAL grid (level 0).
-                    elemLgrAndElemLgrFace_to_adaptedFace[{elem, face}] = face_count;
-                    adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {elem, face};
-                    face_count += 1;
-                }
-                // If the refined face lays on the boundary of the LGR, e.i., it was born on one of the faces
-                // of the marked element that got refined, then, we have two cases:
-                // - the marked face appears only in one marked element -> then, we store this face now.
-                // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                else {
-                    // Get the index of the marked face where the refined corner was born.
-                    int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(cells_per_dim_vec[shiftedLevel], face, markedElem_to_itsLgr[elem], elem);
-                    assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
-                    // Get the last LGR (marked element) where the marked face appeared.
-                    int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
-                    if (lastLgrWhereMarkedFaceAppeared == elem) {
-                        // Store the refined face in its last appearence - to avoid repetition.
-                        elemLgrAndElemLgrFace_to_adaptedFace[{elem, face}] = face_count;
-                        adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {elem, face};
-                        face_count += 1;
-                    }
-                }
-            } // end-face-for-loop
-        } // end-if-nullptr
-    } // end-elem-for-loop
-    // Step 2. Select/store the faces from the starting grid (where cells got marked) not involved in any LGR.
-    //         Replace the faces from level zero involved in LGR by the equivalent ones, born in LGRs.
-    //         In this case, we avoid repetition considering the last appearance of the level zero corner
-    //         in the LGRs.
-    for (int face = 0; face < current_view_data_->face_to_cell_.size(); ++face) {
-        if (faceInMarkedElemAndRefinedFaces[face].empty()) { // save it
-            // Note: Since we are associating each LGR with its parent cell index, and this index can take
-            //       the value 0, we will represent the current_view_data_ with the value -1
-            elemLgrAndElemLgrFace_to_adaptedFace[{-1, face}] = face_count;
-            adaptedFace_to_elemLgrAndElemLgrFace[face_count] = {-1, face};
-            face_count +=1;
-        }
-    } // end face-forloop
-}
-
-
 void CpGrid::populateLeafGridCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>& adapted_corners,
                                      const int& corner_count,
                                      const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
@@ -3406,8 +3266,10 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                     // Get shifted level
                     const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(cells_per_dim_vec[shiftedLevel], preAdaptFace,
-                                                                                    markedElem_to_itsLgr[elemLgr], elemLgr);
+                    const auto& markedFace = Opm::getParentFaceWhereNewRefinedFaceLiesOn(*this,
+                                                                                         cells_per_dim_vec[shiftedLevel],
+                                                                                         preAdaptFace,
+                                                                                         markedElem_to_itsLgr[elemLgr], elemLgr);
                     // Get the last LGR (marked element) where the marked face appeared.
                     const auto& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
                     const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel], preAdaptFace, markedElem_to_itsLgr[elemLgr],
@@ -3517,8 +3379,10 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                 auto face_candidate = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.find({elemLgr, preAdaptFace});
                 if (face_candidate == elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.end()) {
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(cells_per_dim_vec[shiftedLevel], preAdaptFace,
-                                                                                    markedElem_to_itsLgr[elemLgr], elemLgr);
+                    const auto& markedFace = Opm::getParentFaceWhereNewRefinedFaceLiesOn(*this,
+                                                                                         cells_per_dim_vec[shiftedLevel],
+                                                                                         preAdaptFace,
+                                                                                         markedElem_to_itsLgr[elemLgr], elemLgr);
                     // Get the last LGR (marked element) where the marked face appeared.
                     const int& lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
                     const auto& lastAppearanceLgrEquivFace = replaceLgr1FaceIdxByLgr2FaceIdx(cells_per_dim_vec[shiftedLevel],
@@ -3727,176 +3591,12 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
     }
 }
 
-std::array<int,3> CpGrid::getRefinedFaceIJK(const std::array<int,3>& cells_per_dim,
-                                            int faceIdxInLgr,
-                                            const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const
-{
-    // Order defined in Geometry::refine
-    // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-    // I_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
-    //           + (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-    // J_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-    //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
-    //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-    const auto& i_faces =  (cells_per_dim[0] +1)*cells_per_dim[1]*cells_per_dim[2];
-    const auto& j_faces =  cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
-    const auto& k_faces =  cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
-
-    if (faceIdxInLgr >= i_faces + j_faces + k_faces) {
-        OPM_THROW(std::logic_error, "Invalid face index from single-cell-refinement.\n");
-    }
-
-    const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(faceIdxInLgr, true);
-    const auto& faceTag = elemLgr_ptr ->face_tag_[faceEntity];
-    std::array<int,3> ijk;
-    switch (faceTag) {
-    case I_FACE:
-        faceIdxInLgr -= (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1));
-        // faceIdxInLgr =  (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-        ijk[1] = faceIdxInLgr % cells_per_dim[1];
-        faceIdxInLgr -= ijk[1]; // (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1])
-        faceIdxInLgr /= cells_per_dim[1]; // (i*cells_per_dim[2]) + k
-        ijk[2] = faceIdxInLgr % cells_per_dim[2];
-        faceIdxInLgr -=ijk[2]; // i*cells_per_dim[2]
-        ijk[0] = faceIdxInLgr / cells_per_dim[2];
-        break;
-    case J_FACE:
-        faceIdxInLgr -=  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-            + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2]);
-        // faceIdxInLgr =  (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-        ijk[2] = faceIdxInLgr % cells_per_dim[2];
-        faceIdxInLgr -= ijk[2]; // (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2])
-        faceIdxInLgr /= cells_per_dim[2]; // (j*cells_per_dim[0]) + i
-        ijk[0] = faceIdxInLgr % cells_per_dim[0];
-        faceIdxInLgr -=ijk[0]; // j*cells_per_dim[0]
-        ijk[1] = faceIdxInLgr / cells_per_dim[0];
-        break;
-    case K_FACE:
-        //  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-        ijk[0] = faceIdxInLgr % cells_per_dim[0];
-        faceIdxInLgr -= ijk[0]; // (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0])
-        faceIdxInLgr /= cells_per_dim[0]; // (k*cells_per_dim[1]) + j
-        ijk[1] = faceIdxInLgr % cells_per_dim[1];
-        faceIdxInLgr -=ijk[1]; // k*cells_per_dim[1]
-        ijk[2] = faceIdxInLgr / cells_per_dim[1];
-        break;
-    default:
-        OPM_THROW(std::logic_error, "FaceTag is not I, J, or K!");
-    }
-    return ijk;
-}
-
-bool CpGrid::isRefinedFaceInInteriorLgr(const std::array<int,3>& cells_per_dim, int faceIdxInLgr, const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const
-{
-
-    int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
-    int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-
-    bool isKface = (faceIdxInLgr < refined_k_faces);
-    bool isIface = (faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces);
-    bool isJface = (faceIdxInLgr >= refined_k_faces + refined_i_faces);
-
-    const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-    return ((ijk[0]%cells_per_dim[0] > 0 && isIface) ||  (ijk[1]%cells_per_dim[1]>0 && isJface) || (ijk[2]%cells_per_dim[2]>0 && isKface));
-}
-
-
-bool CpGrid::isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
-                                        const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr) const
-{
-    const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-
-    int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
-    int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-
-    bool isKface = (faceIdxInLgr < refined_k_faces);
-    bool isIface = (faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces);
-    bool isJface = (faceIdxInLgr >= refined_k_faces + refined_i_faces);
-
-    bool isOnParentCell_I_FACE = isIface && (ijk[0] % cells_per_dim[0] == 0) && (ijk[1]<cells_per_dim[1]) && (ijk[2]<cells_per_dim[2]);
-    bool isOnParentCell_J_FACE = isJface && (ijk[1] % cells_per_dim[1] == 0) && (ijk[0]<cells_per_dim[0]) && (ijk[2]<cells_per_dim[2]);
-    bool isOnParentCell_K_FACE = isKface && (ijk[2] % cells_per_dim[2] == 0) && (ijk[0]<cells_per_dim[0]) && (ijk[1]<cells_per_dim[1]);
-
-    return (isOnParentCell_I_FACE || isOnParentCell_J_FACE || isOnParentCell_K_FACE);
-}
-
-int CpGrid::getParentFaceWhereNewRefinedFaceLiesOn(const std::array<int,3>& cells_per_dim,
-                                                   int faceIdxInLgr,
-                                                   const std::shared_ptr<cpgrid::CpGridData>& elemLgr_ptr,
-                                                   int elemLgr) const
-{
-    assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
-    const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-    const auto& parentCell_to_face = current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(elemLgr, true)];
-    // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current_view_data_ is level zero
-
-    if(parentCell_to_face.size()>6){
-        const auto& message = "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.";
-        if (comm().rank() == 0){
-            OPM_THROW(std::logic_error, message);
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, message);
-        }
-    }
-
-    // Order defined in Geometry::refine (to be used for distinguishing if faceIdxInLgr is K, I, or J face)
-    //
-    // K_FACES  (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
-    // I_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1))
-    //           + (i*cells_per_dim[1]*cells_per_dim[2]) + (k*cells_per_dim[1]) + j
-    // J_FACES  (cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2] +1))
-    //                    + ((cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2])
-    //                    + (j*cells_per_dim[0]*cells_per_dim[2]) + (i*cells_per_dim[2]) + k
-    int refined_k_faces = cells_per_dim[0]*cells_per_dim[1]*(cells_per_dim[2]+1);
-    int refined_i_faces = (cells_per_dim[0]+1)*cells_per_dim[1]*cells_per_dim[2];
-    int refined_j_faces = cells_per_dim[0]*(cells_per_dim[1]+1)*cells_per_dim[2];
-
-    assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
-
-    for (const auto& face : parentCell_to_face) {
-        const auto& faceEntity =  Dune::cpgrid::EntityRep<1>(face.index(), true);
-        const auto& faceTag = current_view_data_->face_tag_[faceEntity];
-        if (faceIdxInLgr <  refined_k_faces ) { // It's a K_FACE
-            if ((ijk[2] == 0) && (faceTag == 2) && !face.orientation()) { // {K_FACE, false}
-                return face.index();
-            }
-            if ((ijk[2] == cells_per_dim[2]) && (faceTag == 2) && face.orientation()) { // {K_FACE, true}
-                return face.index();
-            }
-        }
-        if ((faceIdxInLgr >= refined_k_faces) && (faceIdxInLgr < refined_k_faces + refined_i_faces)) { // It's I_FACE
-            if ((ijk[0] == 0) && (faceTag == 0) && !face.orientation()) { // {I_FACE, false}
-                return face.index();
-            }
-            if ((ijk[0] == cells_per_dim[0]) && (faceTag == 0) && face.orientation()) { // {I_FACE, true}
-                return face.index();
-            }
-        }
-        if (faceIdxInLgr >= refined_k_faces + refined_i_faces) {// It's J_FACE
-            if ((ijk[1] == 0) && (faceTag == 1) && !face.orientation()) { // {J_FACE, false}
-                return face.index();
-            }
-            if ((ijk[1] == cells_per_dim[1]) && (faceTag == 1) && face.orientation()) { // {J_FACE, true}
-                return face.index();
-            }
-        }
-    }
-    const auto& message = "Cannot find index of parent face where the new refined face lies on.";
-    if (comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
-}
-
 int CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
                                             int faceIdxInLgr1,
                                             const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
                                             const std::array<int,3>& cells_per_dim_lgr2) const
 {
-    const auto& ijkLgr1 = getRefinedFaceIJK(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr);
+    const auto& ijkLgr1 = Opm::getRefinedFaceIJK(cells_per_dim_lgr1, faceIdxInLgr1, elemLgr1_ptr);
     // lgr1 represents an element index < lgr2 (neighboring cells sharing a face with lgr1-element)
     // Order defined in Geometry::refine
     // K_FACES (k*cells_per_dim[0]*cells_per_dim[1]) + (j*cells_per_dim[0]) + i
