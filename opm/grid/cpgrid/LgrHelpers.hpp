@@ -123,6 +123,36 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid,/* Marked e
                                             /* Additional parameters */
                                             const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
+/// @brief  Define child-parent relations from the new refined cells of the new refined level grids to its parent cells (belonging to pre-existing grid,
+///         before adapting the grid/before updating the leaf grid view). Define the index in parent cell (-1 when cell has no parent).
+///
+/// @param [in] refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell: Each marked element has been assigned to certain refined level grid. To keep track of the "inverse"
+///                                                                  cell index relation, associate each
+///                                                                  { refined level grid assigned for the marked element, refined cell index in refined level grid }
+///                                                                  with { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+/// @param [in] refined_cell_count_vec:                              Total amount of refined cells, per level (i.e. in each refined level grid).
+/// @param [in] adaptedCell_to_elemLgrAndElemLgrCell:                Each marked element has been refined in its "own elemLgr". Refined entities should be also stored in
+///                                                                  the corresponding leaf grid view (or adapted grid). To keep track of the "inverse" cell index
+///                                                                  relation, associate the refined cell index inthe leaf grid view (or adapted grid) with
+///                                                                  { marked element index ("elemLgr"), refined cell index in the auxiliary single-cell-refinement }.
+/// @param [in] cell_count:                                          Total amount of cells on the leaf grid view (or adapted grid).
+///
+/// @return refined_child_to_parent_cells_vec:   Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise,
+///                                              {level parent cell, parent cell index}. Each vector entry represents a refined level grid.
+///         refined_cell_to_idxInParentCell_vec: Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather().
+///                                              Each vector entry represents a refined level grid.
+///         adapted_child_to_parent_cell:        Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise,
+///                                              {level parent cell, parent cell index}
+///         adapted_cell_to_idxInParentCell:     Each refined child cell has a unique index in its parent cell, to be used to build geometryInFather(). -1 when has no father.
+std::tuple< std::vector<std::vector<std::array<int,2>>>,
+            std::vector<std::vector<int>>,
+            std::vector<std::array<int,2>>,
+            std::vector<int>> defineChildToParentAndIdxInParentCell( const Dune::CpGrid& grid,
+                                                                     const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                                     const std::vector<int>& refined_cell_count_vec,
+                                                                     const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
+                                                                     const int& cell_count);
+
 }
 
 #endif // OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
