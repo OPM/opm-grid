@@ -356,6 +356,12 @@ public:
         return face_to_cell_[faceEntity].size();
     }
 
+    auto faceTag(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceEntity(faceIdx, true);
+        return face_tag_[faceEntity];
+    }
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///

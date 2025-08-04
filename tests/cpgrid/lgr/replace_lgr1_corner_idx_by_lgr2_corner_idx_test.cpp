@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
-//
-// Created: Friday 24.01.2025 11:55:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 
@@ -42,6 +29,7 @@
 
 
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 
 #include <array>
 #include <memory>
@@ -61,17 +49,6 @@ struct Fixture
 };
 
 BOOST_GLOBAL_FIXTURE(Fixture);
-
-class TestCpGrid : public Dune::CpGrid
-{
-public:
-    int testReplaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_lgr1,
-                                                int cornerIdxLgr1,
-                                                const std::array<int,3>& cells_per_dim_lgr2)
-    {
-        return replaceLgr1CornerIdxByLgr2CornerIdx(cells_per_dim_lgr1, cornerIdxLgr1, cells_per_dim_lgr2);
-    }
-};
 
 /* To add LGRs in a CpGrid, each marked element for refinement gets refined into a
    single-cell-refinement. To store new born refined entities [points or faces]
@@ -113,14 +90,13 @@ void checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingle
                                                                                                 const std::array<int,3>& lgrA_dim,
                                                                                                 const std::array<int,3>& lgrB_dim)
 {
-    TestCpGrid tcpg;
     for (const auto& [idx_in_cell_lgrA, idx_in_cell_lgrB] : lgrA_to_lgrB)
     {
         const auto& corn_lgrA = elemLgrA.subEntity<3>( idx_in_cell_lgrA ).index();
         const auto& corn_lgrB = elemLgrB.subEntity<3>( idx_in_cell_lgrB ).index();
 
-        BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
-        BOOST_CHECK_EQUAL( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
+        BOOST_CHECK_EQUAL( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
+        BOOST_CHECK_EQUAL( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
     }
 }
 
@@ -184,12 +160,11 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
                                                                                                lgrLeft_to_lgrRight,
                                                                                                lgr2_dim,
                                                                                                lgr1_dim);
-    TestCpGrid tcpg;
     // lgr1 has (3+1)x(3+1)x(3+1) = 64 corners (with indices 0, ..., 63).
     // lgr2 has (4+1)x(3+1)x(3+1) = 80 corners (with indices 0, ..., 79).
     const auto& non_existing_corner = 80; // non exisitng corner index for both lgrs.
-    BOOST_CHECK_THROW( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
-    BOOST_CHECK_THROW( tcpg.testReplaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
