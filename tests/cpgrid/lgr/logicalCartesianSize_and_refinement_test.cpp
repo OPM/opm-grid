@@ -34,7 +34,7 @@
 #define BOOST_TEST_MODULE LogicalCartesianSizeTests
 #include <boost/test/unit_test.hpp>
 
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 
 #include <array>

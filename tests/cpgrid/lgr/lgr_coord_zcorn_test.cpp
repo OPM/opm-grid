@@ -42,7 +42,7 @@
 
 
 #include <opm/grid/cpgrid/CpGridUtilities.hpp>
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>
