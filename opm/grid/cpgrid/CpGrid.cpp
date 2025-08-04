@@ -50,6 +50,7 @@
 #endif
 
 #include "../CpGrid.hpp"
+#include "LgrHelpers.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
 #include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
@@ -2211,25 +2212,26 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         preAdapt_level_to_leaf_cells_vec[preAdaptLevel].resize(data[preAdaptLevel]->size(0), -1);
     }
     //
-    refineAndProvideMarkedRefinedRelations( /* Marked elements parameters */
-                                            markedElem_to_itsLgr,
-                                            markedElem_count,
-                                            cornerInMarkedElemWithEquivRefinedCorner,
-                                            markedElemAndEquivRefinedCorn_to_corner,
-                                            faceInMarkedElemAndRefinedFaces,
-                                            /* Refined cells parameters */
-                                            elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
-                                            refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                            refined_cell_count_vec,
-                                            assignRefinedLevel,
-                                            preAdapt_parent_to_children_cells_vec,
-                                            /* Adapted cells parameters */
-                                            elemLgrAndElemLgrCell_to_adaptedCell,
-                                            adaptedCell_to_elemLgrAndElemLgrCell,
-                                            cell_count,
-                                            preAdapt_level_to_leaf_cells_vec,
-                                            /* Additional parameters */
-                                            cells_per_dim_vec);
+    Opm::refineAndProvideMarkedRefinedRelations( *this,
+                                                 /* Marked elements parameters */
+                                                 markedElem_to_itsLgr,
+                                                 markedElem_count,
+                                                 cornerInMarkedElemWithEquivRefinedCorner,
+                                                 markedElemAndEquivRefinedCorn_to_corner,
+                                                 faceInMarkedElemAndRefinedFaces,
+                                                 /* Refined cells parameters */
+                                                 elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
+                                                 refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                                 refined_cell_count_vec,
+                                                 assignRefinedLevel,
+                                                 preAdapt_parent_to_children_cells_vec,
+                                                 /* Adapted cells parameters */
+                                                 elemLgrAndElemLgrCell_to_adaptedCell,
+                                                 adaptedCell_to_elemLgrAndElemLgrCell,
+                                                 cell_count,
+                                                 preAdapt_level_to_leaf_cells_vec,
+                                                 /* Additional parameters */
+                                                 cells_per_dim_vec);
 
 #if HAVE_MPI
     auto global_markedElem_count = comm().sum(markedElem_count);
@@ -2943,94 +2945,6 @@ std::array<double,3> CpGrid::getEclCentroid(const cpgrid::Entity<0>& elem) const
     return this-> getEclCentroid(elem.index());
 }
 
-void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements parameters */
-                                                     std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                                     int& markedElem_count,
-                                                     std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                                     std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
-                                                     std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                                     /* Refined cells parameters */
-                                                     std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
-                                                     std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                                     std::vector<int>& refined_cell_count_vec,
-                                                     const std::vector<int>& assignRefinedLevel,
-                                                     std::vector<std::vector<std::tuple<int,std::vector<int>>>>& preAdapt_parent_to_children_cells_vec,
-                                                     /* Adapted cells parameters */
-                                                     std::map<std::array<int,2>,int>& elemLgrAndElemLgrCell_to_adaptedCell,
-                                                     std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
-                                                     int& cell_count,
-                                                     std::vector<std::vector<int>>& preAdapt_level_to_leaf_cells_vec,
-                                                     /* Additional parameters */
-                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const 
-{
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
-    // Each marked element for refinement (mark equal to 1), will be refined individuality, creating its own Lgr. The element index will
-    // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
-    // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
-    // as "coarse" cells in the leaf-grid-view (adapted-grid).
-
-    // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel();
-
-    for (int elemIdx = 0; elemIdx < current_view_data_->size(0); ++elemIdx) {
-        const auto& element = Dune::cpgrid::Entity<0>(*current_view_data_, elemIdx, true);
-        // When the element is marked with 0 ("doing nothing"), it will appear in the adapted grid with same geometrical features (center, volume).
-        if (getMark(element) ==  0) {
-            elemLgrAndElemLgrCell_to_adaptedCell[{-1, elemIdx}] = cell_count;
-            adaptedCell_to_elemLgrAndElemLgrCell[cell_count] = {-1, elemIdx};
-            cell_count +=1;
-            preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
-        }
-        
-        // When the element is marked for refinement, we also mark its corners and faces
-        // since they will get replaced by refined ones.
-        if (getMark(element) ==  1) {
-            markedElem_count +=1;
-            const auto& markedElemLevel = assignRefinedLevel[elemIdx];
-            assert(markedElemLevel > preAdaptMaxLevel);
-            // Shift the markedElemRefinedLevel to access data containers
-            const auto& shiftedLevel = markedElemLevel - preAdaptMaxLevel-1;
-            // Build auxiliary LGR for the refinement of this element
-            const auto& [elemLgr_ptr,
-                         parentCorners_to_equivalentRefinedCorners,
-                         parentFace_to_itsRefinedFaces,
-                         parentCell_to_itsRefinedCells,
-                         refinedFace_to_itsParentFace,
-                         refinedCell_to_itsParentCell]
-                = current_view_data_->refineSingleCell(cells_per_dim_vec[shiftedLevel], elemIdx);
-            markedElem_to_itsLgr[ elemIdx ] = elemLgr_ptr;
-
-            const auto& childrenCount = cells_per_dim_vec[shiftedLevel][0]*cells_per_dim_vec[shiftedLevel][1]*cells_per_dim_vec[shiftedLevel][2];
-            std::vector<int> refinedChildrenList(childrenCount);
-
-            for (int refinedCell = 0; refinedCell < childrenCount; ++refinedCell) {
-
-                elemLgrAndElemLgrCell_to_adaptedCell[{elemIdx, refinedCell}] = cell_count;
-                adaptedCell_to_elemLgrAndElemLgrCell[cell_count] = {elemIdx, refinedCell};
-                cell_count +=1;
-
-                elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell[{elemIdx, refinedCell}] = { markedElemLevel, refined_cell_count_vec[shiftedLevel]};
-                refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell.
-                        insert_or_assign(std::array{markedElemLevel, refined_cell_count_vec[shiftedLevel]},
-                                         std::array{elemIdx, refinedCell});
-                refinedChildrenList[refinedCell] = refined_cell_count_vec[shiftedLevel];
-                refined_cell_count_vec[shiftedLevel] +=1;
-
-            }
-            
-            preAdapt_parent_to_children_cells_vec[element.level()][element.getLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
-            for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
-                cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
-                markedElemAndEquivRefinedCorn_to_corner[ {elemIdx, lgrEquivCorner}] = markedCorner;
-            }
-            for (const auto& [markedFace, itsRefinedFaces] : parentFace_to_itsRefinedFaces) {
-                faceInMarkedElemAndRefinedFaces[markedFace].push_back({elemIdx, itsRefinedFaces});
-            }
-        } // end-if-elemMark==1
-    } // end-elem-for-loop
-}
-
 std::tuple<std::vector<std::vector<std::array<int,2>>>, std::vector<std::vector<int>>, std::vector<std::array<int,2>>, std::vector<int>>
 CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                               const std::vector<int>& refined_cell_count_vec,
@@ -3038,7 +2952,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
                                               const int& cell_count) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // ------------------------ Refined grid parameters
     // Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
     // Each entry represents a refined level.
