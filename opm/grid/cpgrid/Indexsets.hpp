@@ -228,10 +228,10 @@ namespace Dune
                 else if constexpr (std::is_same_v<EntityType, cpgrid::Entity<3>>) {
                     return computeId_point(e);
                 }
-                else if (std::is_same_v<EntityType, cpgrid::Entity<2>>) {
-                    OPM_THROW(std::logic_error, "IdSet::id not implemented for codims other thatn 0, 1, and 3.");
+                else if (std::is_same_v<EntityType, cpgrid::Entity<1>> || std::is_same_v<EntityType, cpgrid::Entity<2>>) {
+                    OPM_THROW(std::logic_error, "IdSet::id not implemented for codims other than 0 and 3.");
                 }
-                else { // Entity<1> and EntityRep<codim> fall in this case.
+                else { // EntityRep<codim> fall in this case.
                     return computeId(e);
                 }
             }
