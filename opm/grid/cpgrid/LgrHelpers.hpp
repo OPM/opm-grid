@@ -448,6 +448,41 @@ void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpg
                           const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                           const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner);
 
+
+/// @brief Define the cells, cell_to_point_, global_cell_, cell_to_face_, face_to_cell_, for each refined level grid.
+void populateRefinedCells(const Dune::CpGrid& grid,
+                          std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>>& refined_cells_vec,
+                          std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
+                          std::vector<std::vector<int>>& refined_global_cell_vec,
+                          const std::vector<int>& refined_cell_count_vec,
+                          std::vector<Dune::cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
+                          std::vector<Dune::cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
+                          const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                          const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                          const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                          const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
+                          const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                          const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                          const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                          const std::vector<int>& assignRefinedLevel,
+                          const int& preAdaptMaxLevel,
+                          const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
+                          const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                          const std::vector<std::array<int,3>>&  cells_per_dim_vec);
+
+
+/// @brief A new refined face lays on the boudndary of a single-cell-refinement appears in at most two single-cell-refinements. Given the face index in one
+///        single-cell-refinement, compute the face index in a neighboring single-cell-refinement.
+///
+/// @param [in] cells_per_dim_lgr1:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr1 single-cell-refinement.
+/// @param [in] faceIdxInLgr1:         Face index in the elemLgr1 single-cell-refinement.
+/// @param [in] elemLgr1_ptr:          Pointer to the elemLgr1 single-cell-refinement grid.
+/// @param [in] cells_per_dim_lgr2:    Total children cells in each direction (x-,y-, and z-direction) of the elemLgr2 single-cell-refinement.
+int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1, int faceIdxInLgr1,
+                                    const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
+                                    const std::array<int,3>& cells_per_dim_lgr2);
+
+
 }
 
 
