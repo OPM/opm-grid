@@ -388,6 +388,22 @@ public:
         return face_to_cell_.size();
     }
 
+    auto cornerHistorySize() const
+    {
+        return corner_history_.size();
+    }
+
+    auto getCornerHistory(int cornerIdx) const
+    {
+        if(cornerHistorySize()) {
+            return corner_history_[cornerIdx];
+        }
+        else {
+            OPM_THROW(std::logic_error, "Vertex has no history record.\n");
+        }
+    }
+
+
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
