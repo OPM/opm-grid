@@ -41,9 +41,7 @@
 
 namespace Opm
 {
-
-
-/// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
+/// --------------- Auxiliary methods to support refinement ---------------
 
 /// @brief Refine each marked element and establish relationships between corners, faces, and cells marked for refinement,
 ///        with the refined corners, refined faces, and refined cells.
@@ -426,8 +424,17 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
                                            const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
                                            int elemLgr);
-}
 
+
+
+/// @brief Define the corners (geometry) for each refined level grid.
+void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                            const std::vector<int>& refined_corner_count_vec,
+                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                            const int& preAdaptMaxLevel,
+                            const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
+
+}
 
 
 #endif // OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED

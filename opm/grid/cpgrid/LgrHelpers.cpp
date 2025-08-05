@@ -119,8 +119,6 @@ void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked 
     } // end-elem-for-loop
 }
 
-
-
 std::tuple<std::vector<std::vector<std::array<int,2>>>, std::vector<std::vector<int>>, std::vector<std::array<int,2>>, std::vector<int>>
 defineChildToParentAndIdxInParentCell(const Dune::CpGrid& grid,
                                       const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
@@ -1182,6 +1180,21 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
     }
     else{
         OPM_THROW_NOLOG(std::logic_error, message);
+    }
+}
+
+void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                            const std::vector<int>& refined_corner_count_vec,
+                            const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                            const int& preAdaptMaxLevel,
+                            const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner)
+{
+    for (std::size_t shiftedLevel = 0; shiftedLevel < refined_corner_count_vec.size(); ++shiftedLevel) {
+        refined_corners_vec[shiftedLevel].resize(refined_corner_count_vec[shiftedLevel]);
+        for (int corner = 0; corner < refined_corner_count_vec[shiftedLevel]; ++corner) {
+            const auto& [elemLgr, elemLgrCorner] = refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner.at({static_cast<int>(shiftedLevel) + preAdaptMaxLevel +1,corner});
+            refined_corners_vec[shiftedLevel][corner] =  markedElem_to_itsLgr[elemLgr] -> getGeometry().geomVector(std::integral_constant<int,3>()) -> get(elemLgrCorner);
+        }
     }
 }
 
