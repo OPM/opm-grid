@@ -703,6 +703,14 @@ void selectWinnerPointIds(const Dune::CpGrid& grid,
 void getFirstChildGlobalIds(const Dune::CpGrid& grid,
                             std::vector<int>& parentToFirstChildGlobalIds);
 
+/// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
+///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
+///
+/// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
+/// @param [in] cells_per_dim
+/// @return Cartesian index triplet.
+std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim);
+
 }
 
 
