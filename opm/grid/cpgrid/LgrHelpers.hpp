@@ -641,7 +641,27 @@ void detectActiveLgrs(const Dune::CpGrid& grid,
                       const std::vector<std::array<int,3>>& endIJK_vec,
                       std::vector<int>& lgr_with_at_least_one_active_cell);
 
+/// @brief Predict minimum cell and point global ids per process.
+///
+/// Predict how many new cells/points (born in refined level grids) need new globalIds, so we can assign unique
+/// new ids ( and anticipate the maximum). At this point, the grid is already refined according to the LGR specification.
+///
+/// @param [in] assignRefinedLevel   Assign level for the refinement of each marked cell. Example: refined element from
+///                                  LGR1 have level 1, refined element rfom LGR2 have level 2, etc.
+/// @param [in] cells_per_dim_vec    Total child cells in each direction (x-,y-, and z-direction) per block of cells.
+/// @param [in] lgr_with_at_least_one_active_cell  Determine if an LGR is not empty in a given process:
+///                                                lgr_with_at_least_one_active_cell[level] = 1 if it contains
+///                                                at least one active cell in the current process, and 0 otherwise.
+/// @param [out] min_globalId_cell_in_proc
+/// @param [out] min_globalId_point_in_proc
+void predictMinCellAndPointGlobalIdPerProcess(const Dune::CpGrid& grid,
+                                              const std::vector<int>& assignRefinedLevel,
+                                              const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                              const std::vector<int>& lgr_with_at_least_one_active_cell,
+                                              int& min_globalId_cell_in_proc,
+                                              int& min_globalId_point_in_proc);
 }
+
 
 
 #endif // OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
