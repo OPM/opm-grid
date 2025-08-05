@@ -1857,6 +1857,19 @@ void updateLeafGridViewGeometries( const Dune::CpGrid& grid,
                           preAdaptMaxLevel);
 }
 
+void detectActiveLgrs(const Dune::CpGrid& grid,
+                      const std::vector<std::array<int,3>>& startIJK_vec,
+                              const std::vector<std::array<int,3>>& endIJK_vec,
+                              std::vector<int>& lgr_with_at_least_one_active_cell)
+{
+    auto markLgr = [&lgr_with_at_least_one_active_cell]([[maybe_unused]] const Dune::cpgrid::Entity<0>& element, int level)
+    {
+        // shifted since starting grid is level 0, and refined grids levels are >= 1.
+        lgr_with_at_least_one_active_cell[level] = 1;
+    };
+    computeOnLgrParents(grid, startIJK_vec, endIJK_vec, markLgr);
+}
+
 
 
 }
