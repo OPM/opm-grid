@@ -268,10 +268,7 @@ public:
     ///    Active cell index.
     ///
     /// @param [out] ijk  Cartesian index triplet
-    void getIJK(int c, std::array<int,3>& ijk) const
-    {
-        ijk = getIJK(global_cell_[c], logical_cartesian_size_);
-    }
+    void getIJK(int c, std::array<int,3>& ijk) const;
 
     int cellFace(int cell, int local_index) const
     {
@@ -334,8 +331,7 @@ public:
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
         }
     }
-
-
+    
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -346,28 +342,7 @@ public:
     {
         return  global_cell_;
     }
-
-    /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
-    ///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
-    ///
-    /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
-    /// @param [in] cells_per_dim
-    /// @return Cartesian index triplet.
-    std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
-    {
-        // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
-        // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
-        assert(cells_per_dim[0]);
-        assert(cells_per_dim[1]);
-        assert(cells_per_dim[2]);
-
-        std::array<int,3> ijk = {0,0,0};
-        ijk[0] = idx_in_parent_cell % cells_per_dim[0]; idx_in_parent_cell /= cells_per_dim[0];
-        ijk[1] = idx_in_parent_cell % cells_per_dim[1];
-        ijk[2] = idx_in_parent_cell /cells_per_dim[1];
-        return ijk;
-    }
-
+    
     /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
