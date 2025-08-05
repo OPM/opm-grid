@@ -2348,37 +2348,38 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                faceInMarkedElemAndRefinedFaces,
                                cells_per_dim_vec);
 
-    setRefinedLevelGridsGeometries( /* Refined corner arguments */
-                                    refined_corners_vec,
-                                    refined_corner_count_vec,
-                                    /* Refined face arguments */
-                                    refined_faces_vec,
-                                    mutable_refined_face_tags_vec,
-                                    mutable_refined_face_normals_vec,
-                                    refined_face_to_point_vec,
-                                    refined_face_count_vec,
-                                    /* Refined cell argumets */
-                                    refined_cells_vec,
-                                    refined_cell_to_point_vec,
-                                    refined_global_cell_vec,
-                                    refined_cell_count_vec,
-                                    refined_cell_to_face_vec,
-                                    refined_face_to_cell_vec,
-                                    /* Auxiliary arguments */
-                                    refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                    refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                    refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                    elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                    elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                    faceInMarkedElemAndRefinedFaces,
-                                    refined_geometries_vec,
-                                    vanishedRefinedCorner_to_itsLastAppearance,
-                                    markedElem_to_itsLgr,
-                                    assignRefinedLevel,
-                                    preAdaptMaxLevel,
-                                    markedElemAndEquivRefinedCorn_to_corner,
-                                    cornerInMarkedElemWithEquivRefinedCorner,
-                                    cells_per_dim_vec);
+    Opm::setRefinedLevelGridsGeometries(*this,
+                                        /* Refined corner arguments */
+                                        refined_corners_vec,
+                                        refined_corner_count_vec,
+                                        /* Refined face arguments */
+                                        refined_faces_vec,
+                                        mutable_refined_face_tags_vec,
+                                        mutable_refined_face_normals_vec,
+                                        refined_face_to_point_vec,
+                                        refined_face_count_vec,
+                                        /* Refined cell argumets */
+                                        refined_cells_vec,
+                                        refined_cell_to_point_vec,
+                                        refined_global_cell_vec,
+                                        refined_cell_count_vec,
+                                        refined_cell_to_face_vec,
+                                        refined_face_to_cell_vec,
+                                        /* Auxiliary arguments */
+                                        refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                        refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                        refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                        elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                        elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                        faceInMarkedElemAndRefinedFaces,
+                                        refined_geometries_vec,
+                                        vanishedRefinedCorner_to_itsLastAppearance,
+                                        markedElem_to_itsLgr,
+                                        assignRefinedLevel,
+                                        preAdaptMaxLevel,
+                                        markedElemAndEquivRefinedCorn_to_corner,
+                                        cornerInMarkedElemWithEquivRefinedCorner,
+                                        cells_per_dim_vec);
 
     updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
                                   adapted_corners,
@@ -3189,80 +3190,6 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
 
     // Adapted/Leaf-grid-view face to cell.
     adapted_cell_to_face.makeInverseRelation(adapted_face_to_cell);
-}
-
-void CpGrid::setRefinedLevelGridsGeometries( /* Refined corner arguments */
-                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
-                                             const std::vector<int>& refined_corner_count_vec,
-                                             /* Refined face arguments */
-                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
-                                             std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
-                                             std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refined_face_normals_vec,
-                                             std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
-                                             const std::vector<int>& refined_face_count_vec,
-                                             /* Refined cell argumets */
-                                             std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<3,3>>>& refined_cells_vec,
-                                             std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
-                                             std::vector<std::vector<int>>& refined_global_cell_vec,
-                                             const std::vector<int>& refined_cell_count_vec,
-                                             std::vector<cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
-                                             std::vector<cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
-                                             /* Auxiliary arguments */
-                                             const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                             const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                             const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                             const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                             const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                             const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
-                                             const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                                             const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                             const std::vector<int>& assignRefinedLevel,
-                                             const int& preAdaptMaxLevel,
-                                             const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
-                                             const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                             const std::vector<std::array<int,3>>&  cells_per_dim_vec) const
-{
-    // --- Refined corners  ---
-    Opm::populateRefinedCorners(refined_corners_vec,
-                           refined_corner_count_vec,
-                           markedElem_to_itsLgr,
-                           preAdaptMaxLevel,
-                           refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
-    // --- Refined faces  ---
-    populateRefinedFaces(refined_faces_vec,
-                         mutable_refined_face_tags_vec,
-                         mutable_refined_face_normals_vec,
-                         refined_face_to_point_vec,
-                         refined_face_count_vec,
-                         refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                         vanishedRefinedCorner_to_itsLastAppearance,
-                         markedElem_to_itsLgr,
-                         preAdaptMaxLevel,
-                         cornerInMarkedElemWithEquivRefinedCorner,
-                         markedElemAndEquivRefinedCorn_to_corner);
-    // --- Refined cells  ---
-    populateRefinedCells(*this,
-                         refined_cells_vec,
-                         refined_cell_to_point_vec,
-                         refined_global_cell_vec,
-                         refined_cell_count_vec,
-                         refined_cell_to_face_vec,
-                         refined_face_to_cell_vec,
-                         refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                         elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                         faceInMarkedElemAndRefinedFaces,
-                         refined_geometries_vec,
-                         elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                         vanishedRefinedCorner_to_itsLastAppearance,
-                         markedElem_to_itsLgr,
-                         assignRefinedLevel,
-                         preAdaptMaxLevel,
-                         markedElemAndEquivRefinedCorn_to_corner,
-                         cornerInMarkedElemWithEquivRefinedCorner,
-                         cells_per_dim_vec);
-
 }
 
 void CpGrid::updateLeafGridViewGeometries( /* Leaf grid View Corners arguments */
