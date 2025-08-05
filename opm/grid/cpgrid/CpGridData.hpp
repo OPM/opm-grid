@@ -352,14 +352,25 @@ public:
     }
 
     int faceToCellSize(int face) const {
-        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
-        return face_to_cell_[faceEntity].size();
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep].size();
     }
 
     auto faceTag(int faceIdx) const
     {
-        Dune::cpgrid::EntityRep<1> faceEntity(faceIdx, true);
-        return face_tag_[faceEntity];
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_tag_[faceRep];
+    }
+
+    auto faceNormals(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_normals_[faceRep];
+    }
+
+    auto faceToPoint(int faceIdx) const
+    {
+        return face_to_point_[faceIdx];
     }
 
     int numFaces() const
