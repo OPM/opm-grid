@@ -655,8 +655,6 @@ namespace Dune
         void computeGlobalCellLeafGridViewWithLgrs(std::vector<int>& global_cell_leaf);
         
     private:
-        /// --------------- Auxiliary methods to support Adaptivity (end) ---------------
-
         /// @brief Check if there are non neighboring connections on blocks of cells selected for refinement.
         ///
         /// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.

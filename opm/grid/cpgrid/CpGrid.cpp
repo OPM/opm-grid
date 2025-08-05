@@ -2531,25 +2531,7 @@ void CpGrid::getFirstChildGlobalIds([[maybe_unused]] std::vector<int>& parentToF
 {
 #if HAVE_MPI
     switchToGlobalView();
-
-    const auto& data = currentData();
-    const auto& parentToChildrenBeforeLoadBalance = data[0]->getParentToChildren();
-    const auto& globalIdSet = this->globalIdSet();
-
-    parentToFirstChildGlobalIds.resize(data[0]->size(0), -1); // Initialize with -1 (invalid value, for non parent cells).
-
-    const auto& elements = Dune::elements(levelGridView(0));
-    for (const auto& element : elements) {
-        const auto& [level, children] = parentToChildrenBeforeLoadBalance[element.index()];
-
-        if (!children.empty()) {
-            const auto& levelData = *data[level];
-            const auto& first_child = Dune::cpgrid::Entity<0>(levelData, children[0], true);
-
-            // Rewrite parent global id entry with first child global id
-            parentToFirstChildGlobalIds[globalIdSet.id(element)] = globalIdSet.id(first_child);
-        }
-    }
+    Opm::getFirstChildGlobalIds(*this, parentToFirstChildGlobalIds);
 #endif
 }
 

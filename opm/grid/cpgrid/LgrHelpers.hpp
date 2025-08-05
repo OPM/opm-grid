@@ -694,6 +694,15 @@ void selectWinnerPointIds(const Dune::CpGrid& grid,
                           const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
                           const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
+/// @brief Retrieves the global ids of the first child for each parent cell in the grid.
+///
+/// If a cell has no children, its entry is set to -1, indicating an invalid id.
+///
+/// @param[out] parentToFirstChildGlobalIds A vector that will be filled with the first child global IDs.
+///                                         The vector is resized to match the number of parent cells.
+void getFirstChildGlobalIds(const Dune::CpGrid& grid,
+                            std::vector<int>& parentToFirstChildGlobalIds);
+
 }
 
 
