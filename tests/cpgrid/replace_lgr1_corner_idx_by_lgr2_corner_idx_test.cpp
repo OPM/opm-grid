@@ -59,10 +59,10 @@ BOOST_GLOBAL_FIXTURE(Fixture);
    create all possible escenarios (the two coarse cells sharing I_FACE, J_FACE or K_FACE).
 
    Why single-cell-refinements instead of adding LGRs in one grid?:
-   replaceLgr1CornerIdxByLgr2CornerIdx is a private method in CpGrid, meant to be
-   used between independent/un-related single-cell-refinements (stored in CpGridData objects).
-   Therefore, creating a grid, adding LGRs to it, and checking corner indices afterwards in
-   refined cells on bouandary of the LGRs is not the escenario where this method should be tested.
+   replaceLgr1CornerIdxByLgr2CornerIdx is used between two independent/un-related single-cell-refinements
+   (stored in CpGridData objects). Therefore, creating a grid, adding LGRs to it, and checking corner
+   indices afterwards in refined cells on bouandary of the LGRs is not the escenario where this method
+   should be tested.
 */
 
 const std::shared_ptr<Dune::cpgrid::CpGridData> createSingleCellGridAndRefine(const std::array<int,3>& lgr_dim)
