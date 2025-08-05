@@ -10,6 +10,7 @@
 #include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
+#include "LgrHelpers.hpp"
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
 #include"PartitionTypeIndicator.hpp"
@@ -1686,7 +1687,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = getIJK(idx_in_parent_cell, cells_per_dim);
+    std::array<int,3> ijk = Opm::getIJK(idx_in_parent_cell, cells_per_dim);
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
@@ -1707,6 +1708,11 @@ std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners
         }
     };
     return corners_in_parent_reference_elem;
+}
+
+void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
+{
+    ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
 }
 
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const

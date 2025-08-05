@@ -700,7 +700,7 @@ void CpGrid::computeGlobalCellLgr(const int& level, const std::array<int,3>& sta
         // and it's stored in  cell_to_idxInParentCell_.
         auto idx_in_parent_cell =  currentData()[level]-> cell_to_idxInParentCell_[element.index()];
         // Find ijk.
-        std::array<int,3> childIJK = currentData()[level]-> getIJK(idx_in_parent_cell, cells_per_dim);
+        std::array<int,3> childIJK = Opm::getIJK(idx_in_parent_cell, cells_per_dim);
         // The corresponding lgrIJK can be computed as follows:
         const std::array<int,3>& lgrIJK = { ( (parentIJK[0] - startIJK[0])*cells_per_dim[0] ) + childIJK[0],  // Shift parent index according to the startIJK of the LGR.
                                             ( (parentIJK[1] - startIJK[1])*cells_per_dim[1] ) + childIJK[1],
