@@ -711,6 +711,14 @@ void getFirstChildGlobalIds(const Dune::CpGrid& grid,
 /// @return Cartesian index triplet.
 std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim);
 
+/// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
+///
+/// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+/// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec);
+
+
 }
 
 
