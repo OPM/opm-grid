@@ -351,6 +351,16 @@ public:
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
     }
 
+    auto cellToFace(int cellIdx) const
+    {
+        return cell_to_face_[cpgrid::EntityRep<0>(cellIdx, true)];
+    }
+
+    auto cellToPoint(int cellIdx) const
+    {
+        return cell_to_point_[cellIdx];
+    }
+
     int faceToCellSize(int face) const {
         Dune::cpgrid::EntityRep<1> faceRep(face, true);
         return face_to_cell_[faceRep].size();
