@@ -557,6 +557,12 @@ public:
     const std::vector<std::tuple<int,std::vector<int>>>& getParentToChildren() const {
         return parent_to_children_cells_;
     }
+
+    const cpgrid::DefaultGeometryPolicy getGeometry() const
+    {
+        return geometry_;
+    }
+    
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the

@@ -2967,21 +2967,6 @@ void CpGrid::populateLeafGridCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Ge
     }
 }
 
-void CpGrid::populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
-                                    const std::vector<int>& refined_corner_count_vec,
-                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                    const int& preAdaptMaxLevel,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner) const
-{
-    for (std::size_t shiftedLevel = 0; shiftedLevel < refined_corner_count_vec.size(); ++shiftedLevel) {
-        refined_corners_vec[shiftedLevel].resize(refined_corner_count_vec[shiftedLevel]);
-        for (int corner = 0; corner < refined_corner_count_vec[shiftedLevel]; ++corner) {
-            const auto& [elemLgr, elemLgrCorner] = refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner.at({static_cast<int>(shiftedLevel) + preAdaptMaxLevel +1,corner});
-            refined_corners_vec[shiftedLevel][corner] =  markedElem_to_itsLgr[elemLgr] -> geometry_.geomVector(std::integral_constant<int,3>()) -> get(elemLgrCorner);
-        }
-    }
-}
-
 void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>& adapted_faces,
                                    Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
                                    Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
@@ -3445,7 +3430,7 @@ void CpGrid::setRefinedLevelGridsGeometries( /* Refined corner arguments */
                                              const std::vector<std::array<int,3>>&  cells_per_dim_vec) const
 {
     // --- Refined corners  ---
-    populateRefinedCorners(refined_corners_vec,
+    Opm::populateRefinedCorners(refined_corners_vec,
                            refined_corner_count_vec,
                            markedElem_to_itsLgr,
                            preAdaptMaxLevel,

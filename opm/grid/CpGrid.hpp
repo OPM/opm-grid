@@ -610,13 +610,6 @@ namespace Dune
 
         /// --------------- Auxiliary methods to support Adaptivity (begin) ---------------
 
-        /// @brief Define the corners (gemotry) for each refined level grid.
-        void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<0,3>>>& refined_corners_vec,
-                                    const std::vector<int>& refined_corner_count_vec,
-                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                    const int& preAdaptMaxLevel,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner) const;
-
         /// @brief Define the faces, face tags, face normarls, and face_to_point_, for each refined level grid.
         void populateRefinedFaces(std::vector<Dune::cpgrid::EntityVariableBase<cpgrid::Geometry<2,3>>>& refined_faces_vec,
                                   std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
