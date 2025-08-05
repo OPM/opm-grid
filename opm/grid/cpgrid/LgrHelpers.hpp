@@ -595,8 +595,51 @@ void updateLeafGridViewGeometries( const Dune::CpGrid& grid,
                                    const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const int& preAdaptMaxLevel);
 
+/// @brief Auxilliary function to compute one or more properties on selected block of parent cells.
+///
+/// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+/// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+/// @param [in] function        Lambda expression/function that computes the desired properties for each parent cell.
+/// The full definition needs to be in the header so that the compiler can instantiate it when needed.
+template<class T>
+void computeOnLgrParents(const Dune::CpGrid& grid,
+                         const std::vector<std::array<int,3>>& startIJK_vec,
+                         const std::vector<std::array<int,3>>& endIJK_vec,
+                         T func)
+{
+    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
+    for(const auto& element: Dune::elements(grid.leafGridView())) {
+        std::array<int,3> ijk;
+        grid.getIJK(element.index(), ijk);
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            bool belongsToLevel = true;
+            for (int c = 0; c < 3; ++c) {
+                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
+                if (!belongsToLevel)
+                    break;
+            }
+            if(belongsToLevel) {
+                func(element, level);
+            }
+        }
+    }
+}
 
 
+/// @brief Detect active LGRs in each process.
+///
+/// Given blocks of cells selected for refinement on a level zero distributed grid, detect which LGRs are active
+/// in each process.
+///
+/// @param [in] startIJK_vec    Vector of ijk values denoting the start of each block of cells selected for refinement.
+/// @param [in] endIJK_vec      Vector of ijk values denoting the end of each block of cells selected for refinement.
+/// @param [out] lgr_with_at_least_one_active_cell Determine if an LGR is not empty in a given process, we set
+///                                                lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
+///                                                at least one active cell, and to 0 otherwise.
+void detectActiveLgrs(const Dune::CpGrid& grid,
+                      const std::vector<std::array<int,3>>& startIJK_vec,
+                      const std::vector<std::array<int,3>>& endIJK_vec,
+                      std::vector<int>& lgr_with_at_least_one_active_cell);
 
 }
 

@@ -1304,41 +1304,6 @@ bool CpGrid::nonNNCsSelectedCellsLGR(const std::vector<std::array<int,3>>& start
                         });
 }
 
-template<class T>
-void CpGrid::computeOnLgrParents(const std::vector<std::array<int,3>>& startIJK_vec,
-                                 const std::vector<std::array<int,3>>& endIJK_vec,
-                                 T func)
-{
-    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
-    for(const auto& element: elements(this->leafGridView())) {
-        std::array<int,3> ijk;
-        getIJK(element.index(), ijk);
-        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-            bool belongsToLevel = true;
-            for (int c = 0; c < 3; ++c) {
-                belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec[level][c]) && (ijk[c] < endIJK_vec[level][c]) );
-                if (!belongsToLevel)
-                    break;
-            }
-            if(belongsToLevel) {
-                func(element, level);
-            }
-        }
-    }
-}
-
-void CpGrid::detectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
-                              const std::vector<std::array<int,3>>& endIJK_vec,
-                              std::vector<int>& lgr_with_at_least_one_active_cell)
-{
-    auto markLgr = [&lgr_with_at_least_one_active_cell]([[maybe_unused]] const cpgrid::Entity<0>& element, int level)
-    {
-        // shifted since starting grid is level 0, and refined grids levels are >= 1.
-        lgr_with_at_least_one_active_cell[level] = 1;
-    };
-    computeOnLgrParents(startIJK_vec, endIJK_vec, markLgr);
-}
-
 void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
                                                  const std::vector<std::array<int,3>>& endIJK_vec,
                                                  std::vector<int>& assignRefinedLevel,
@@ -1351,7 +1316,7 @@ void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<in
         // shifted since starting grid is level 0, and refined grids levels are >= 1.
         lgr_with_at_least_one_active_cell[level] = 1;
     };
-    computeOnLgrParents(startIJK_vec, endIJK_vec, assignAndDetect);
+    Opm::computeOnLgrParents(*this, startIJK_vec, endIJK_vec, assignAndDetect);
 }
 
 void CpGrid::predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const std::vector<int>& assignRefinedLevel,
@@ -2093,7 +2058,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
     // at least one active cell, and to 0 otherwise.
     std::vector<int> lgr_with_at_least_one_active_cell(levels);
-    detectActiveLgrs(startIJK_vec, endIJK_vec, lgr_with_at_least_one_active_cell);
+    Opm::detectActiveLgrs(*this, startIJK_vec, endIJK_vec, lgr_with_at_least_one_active_cell);
 
     // To store/build refined level grids.
     std::vector<std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>> refined_data_vec(levels, data);
