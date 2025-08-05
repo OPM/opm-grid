@@ -356,6 +356,11 @@ public:
         return cell_to_face_[cpgrid::EntityRep<0>(cellIdx, true)];
     }
 
+    auto cellToPoint() const
+    {
+        return cell_to_point_;
+    }
+    
     auto cellToPoint(int cellIdx) const
     {
         return cell_to_point_[cellIdx];

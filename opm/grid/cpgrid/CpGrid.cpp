@@ -52,7 +52,6 @@
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
-#include "ParentToChildCellToPointGlobalIdHandle.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
@@ -1318,85 +1317,6 @@ void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<in
     };
     Opm::computeOnLgrParents(*this, startIJK_vec, endIJK_vec, assignAndDetect);
 }
-void CpGrid::assignCellIdsAndCandidatePointIds( std::vector<std::vector<int>>& localToGlobal_cells_per_level,
-                                                 std::vector<std::vector<int>>& localToGlobal_points_per_level,
-                                                 int min_globalId_cell_in_proc,
-                                                 int min_globalId_point_in_proc,
-                                                 const std::vector<std::array<int,3>>& cells_per_dim_vec ) const
-{
-    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-        localToGlobal_cells_per_level[level-1].resize((*current_data_)[level]-> size(0));
-        localToGlobal_points_per_level[level-1].resize((*current_data_)[level]-> size(3));
-        // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
-
-        // Global ids for cells (for owned cells)
-        for (const auto& element : elements(levelGridView(level))) {
-            // At his point, partition_type_indicator_ of refined level grids is not set. However, for refined cells,
-            // element.partitionType() returns the partition type of the parent cell. Therefore, all child cells of
-            // an interior/overlap parent cell are also interior/overlap.
-            if (element.partitionType() == InteriorEntity) {
-                localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
-                ++min_globalId_cell_in_proc;
-            }
-        }
-        for (const auto& point : vertices(levelGridView(level))) {
-            // Check if it coincides with a corner from level zero. In that case, no global id is needed.
-            const auto& bornLevel_bornIdx =  (*current_data_)[level]->corner_history_[point.index()];
-            if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
-                // Therefore, search and assign the global id of the previous existing equivalent corner.
-                const auto& equivPoint = cpgrid::Entity<3>(*( (*current_data_)[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
-                localToGlobal_points_per_level[level-1][point.index()] = current_data_->front()->global_id_set_->id( equivPoint );
-            }
-            else {
-                // Assign CANDIDATE global id to (all partition type) points that do not coincide with
-                // any corners from level zero.
-                // TO DO after invoking this method: make a final decision on a unique id for points of refined level grids,
-                // via a communication step.
-                localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
-                ++min_globalId_point_in_proc;
-            }
-        }
-    }
-}
-
-void CpGrid::selectWinnerPointIds([[maybe_unused]] std::vector<std::vector<int>>&  localToGlobal_points_per_level,
-                                  [[maybe_unused]] const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
-                                  [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec) const
-{
-#if HAVE_MPI
-    // To store cell_to_point_ information of all refined level grids.
-    std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
-    // To decide which "candidate" point global id wins, the rank is stored. The smallest ranks wins,
-    // i.e., the other non-selected candidates get rewritten with the values from the smallest (winner) rank.
-    std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
-
-    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
-
-        level_cell_to_point[level -1] = currentData()[level]->cell_to_point_;
-        // Set std::numeric_limits<int>::max() to make sure that, during communication, the rank of the interior cell
-        // wins (int between 0 and comm().size()).
-        level_winning_ranks[level-1].resize(currentData()[level]->size(3), std::numeric_limits<int>::max());
-
-        for (const auto& element : elements(levelGridView(level))) {
-            // For interior cells, rewrite the rank value - later used in "point global id competition".
-            if (element.partitionType() == InteriorEntity) {
-                for (const auto& corner : currentData()[level]->cell_to_point_[element.index()]){
-                    int rank = comm().rank();
-                    level_winning_ranks[level -1][corner] = rank;
-                }
-            }
-        }
-    }
-    ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(comm(),
-                                                                                   parent_to_children,
-                                                                                   level_cell_to_point,
-                                                                                   level_winning_ranks,
-                                                                                   localToGlobal_points_per_level);
-    currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
-                                       Dune::InteriorBorder_All_Interface,
-                                       Dune::ForwardCommunication );
-#endif
-}
 
 void CpGrid::populateCellIndexSetRefinedGrid([[maybe_unused]] int level)
 {
@@ -2521,11 +2441,12 @@ void CpGrid::globalIdsPartitionTypesLgrAndLeafGrids([[maybe_unused]] const std::
     // Ignore faces - empty vectors.
     std::vector<std::vector<int>> localToGlobal_faces_per_level(cells_per_dim_vec.size());
 
-    assignCellIdsAndCandidatePointIds(localToGlobal_cells_per_level,
-                                      localToGlobal_points_per_level,
-                                      min_globalId_cell_in_proc,
-                                      min_globalId_point_in_proc,
-                                      cells_per_dim_vec);
+    Opm::assignCellIdsAndCandidatePointIds(*this,
+                                           localToGlobal_cells_per_level,
+                                           localToGlobal_points_per_level,
+                                           min_globalId_cell_in_proc,
+                                           min_globalId_point_in_proc,
+                                           cells_per_dim_vec);
 
 
     const auto& parent_to_children = current_data_->front()->parent_to_children_cells_;
@@ -2558,9 +2479,10 @@ void CpGrid::globalIdsPartitionTypesLgrAndLeafGrids([[maybe_unused]] const std::
      //
      // Reason: neighboring cells that only share corners (not faces) are NOT considered in the
      // overlap layer of the process.*/
-    selectWinnerPointIds(localToGlobal_points_per_level,
-                         parent_to_children,
-                         cells_per_dim_vec);
+    Opm::selectWinnerPointIds(*this,
+                              localToGlobal_points_per_level,
+                              parent_to_children,
+                              cells_per_dim_vec);
 
     for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
         // Global id set for each (refined) level grid.

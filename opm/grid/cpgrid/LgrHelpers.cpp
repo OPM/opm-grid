@@ -23,6 +23,7 @@
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
+#include <opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp>
 
 #include <algorithm>
 #include <array>
@@ -1931,8 +1932,87 @@ void predictMinCellAndPointGlobalIdPerProcess([[maybe_unused]] const Dune::CpGri
 #endif
 }
 
+void assignCellIdsAndCandidatePointIds( const Dune::CpGrid& grid,
+                                        std::vector<std::vector<int>>& localToGlobal_cells_per_level,
+                                        std::vector<std::vector<int>>& localToGlobal_points_per_level,
+                                        int min_globalId_cell_in_proc,
+                                        int min_globalId_point_in_proc,
+                                        const std::vector<std::array<int,3>>& cells_per_dim_vec )
+{
+    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+        localToGlobal_cells_per_level[level-1].resize(grid.currentData()[level]-> size(0));
+        localToGlobal_points_per_level[level-1].resize(grid.currentData()[level]-> size(3));
+        // Notice that in general, (*current_data_)[level]-> size(0) != local owned cells/points.
 
+        // Global ids for cells (for owned cells)
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            // At his point, partition_type_indicator_ of refined level grids is not set. However, for refined cells,
+            // element.partitionType() returns the partition type of the parent cell. Therefore, all child cells of
+            // an interior/overlap parent cell are also interior/overlap.
+            if (element.partitionType() == Dune::InteriorEntity) {
+                localToGlobal_cells_per_level[level - 1][element.index()] = min_globalId_cell_in_proc;
+                ++min_globalId_cell_in_proc;
+            }
+        }
+        for (const auto& point : Dune::vertices(grid.levelGridView(level))) {
+            // Check if it coincides with a corner from level zero. In that case, no global id is needed.
+            const auto& bornLevel_bornIdx =  grid.currentData()[level]->getCornerHistory(point.index());
+            if (bornLevel_bornIdx[0] != -1)  { // Corner in the refined grid coincides with a corner from level 0.
+                // Therefore, search and assign the global id of the previous existing equivalent corner.
+                const auto& equivPoint = Dune::cpgrid::Entity<3>(*(grid.currentData()[bornLevel_bornIdx[0]]), bornLevel_bornIdx[1], true);
+                localToGlobal_points_per_level[level-1][point.index()] = grid.currentData().front()->globalIdSet().id( equivPoint );
+            }
+            else {
+                // Assign CANDIDATE global id to (all partition type) points that do not coincide with
+                // any corners from level zero.
+                // TO DO after invoking this method: make a final decision on a unique id for points of refined level grids,
+                // via a communication step.
+                localToGlobal_points_per_level[level-1][point.index()] = min_globalId_point_in_proc;
+                ++min_globalId_point_in_proc;
+            }
+        }
+    }
+}
 
+void selectWinnerPointIds([[maybe_unused]] const Dune::CpGrid& grid,
+                          [[maybe_unused]] std::vector<std::vector<int>>&  localToGlobal_points_per_level,
+                          [[maybe_unused]] const std::vector<std::tuple<int,std::vector<int>>>& parent_to_children,
+                          [[maybe_unused]] const std::vector<std::array<int,3>>& cells_per_dim_vec)
+{
+#if HAVE_MPI
+    // To store cell_to_point_ information of all refined level grids.
+    std::vector<std::vector<std::array<int,8>>> level_cell_to_point(cells_per_dim_vec.size());
+    // To decide which "candidate" point global id wins, the rank is stored. The smallest ranks wins,
+    // i.e., the other non-selected candidates get rewritten with the values from the smallest (winner) rank.
+    std::vector<std::vector<int>> level_winning_ranks(cells_per_dim_vec.size());
+
+    for (std::size_t level = 1; level < cells_per_dim_vec.size()+1; ++level) {
+
+        level_cell_to_point[level -1] = grid.currentData()[level]->cellToPoint();
+        // Set std::numeric_limits<int>::max() to make sure that, during communication, the rank of the interior cell
+        // wins (int between 0 and comm().size()).
+        level_winning_ranks[level-1].resize(grid.currentData()[level]->size(3), std::numeric_limits<int>::max());
+
+        for (const auto& element : Dune::elements(grid.levelGridView(level))) {
+            // For interior cells, rewrite the rank value - later used in "point global id competition".
+            if (element.partitionType() == Dune::InteriorEntity) {
+                for (const auto& corner : grid.currentData()[level]->cellToPoint(element.index())) {
+                    int rank = grid.comm().rank();
+                    level_winning_ranks[level -1][corner] = rank;
+                }
+            }
+        }
+    }
+    ParentToChildCellToPointGlobalIdHandle parentToChildCellToPointGlobalId_handle(grid.comm(),
+                                                                                   parent_to_children,
+                                                                                   level_cell_to_point,
+                                                                                   level_winning_ranks,
+                                                                                   localToGlobal_points_per_level);
+    grid.currentData().front()->communicate(parentToChildCellToPointGlobalId_handle,
+                                            Dune::InteriorBorder_All_Interface,
+                                            Dune::ForwardCommunication );
+#endif
+}
 
 
 
