@@ -2014,6 +2014,27 @@ void selectWinnerPointIds([[maybe_unused]] const Dune::CpGrid& grid,
 #endif
 }
 
+void getFirstChildGlobalIds(const Dune::CpGrid& grid,
+                            std::vector<int>& parentToFirstChildGlobalIds)
+{
 
+    const auto& data = grid.currentData();
+    const auto& parentToChildrenBeforeLoadBalance = data[0]->getParentToChildren();
+    const auto& globalIdSet = grid.globalIdSet();
 
+    parentToFirstChildGlobalIds.resize(data[0]->size(0), -1); // Initialize with -1 (invalid value, for non parent cells).
+
+    const auto& elements = Dune::elements(grid.levelGridView(0));
+    for (const auto& element : elements) {
+        const auto& [level, children] = parentToChildrenBeforeLoadBalance[element.index()];
+
+        if (!children.empty()) {
+            const auto& levelData = *data[level];
+            const auto& first_child = Dune::cpgrid::Entity<0>(levelData, children[0], true);
+
+            // Rewrite parent global id entry with first child global id
+            parentToFirstChildGlobalIds[globalIdSet.id(element)] = globalIdSet.id(first_child);
+        }
+    }
+}
 }
