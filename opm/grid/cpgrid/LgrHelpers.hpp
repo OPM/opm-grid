@@ -483,6 +483,41 @@ int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
                                     const std::array<int,3>& cells_per_dim_lgr2);
 
 
+/// @brief Set geometrical and topological attributes for each refined level grid.
+void setRefinedLevelGridsGeometries( const Dune::CpGrid& grid,
+                                     /* Refined corner arguments */
+                                     std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
+                                     const std::vector<int>& refined_corner_count_vec,
+                                     /* Refined face arguments */
+                                     std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>>& refined_faces_vec,
+                                     std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
+                                     std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refine_face_normals_vec,
+                                     std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
+                                     const std::vector<int>& refined_face_count_vec,
+                                     /* Refined cell argumets */
+                                     std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>>& refined_cells_vec,
+                                     std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
+                                     std::vector<std::vector<int>>& refined_global_cell_vec,
+                                     const std::vector<int>& refined_cell_count_vec,
+                                     std::vector<Dune::cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
+                                     std::vector<Dune::cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
+                                     /* Auxiliary arguments */
+                                     const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                     const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                     const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
+                                     const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                     const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                     const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                                     const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
+                                     const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                                     const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
+                                     const std::vector<int>& assignRefinedLevel,
+                                     const int& preAdaptMaxLevel,
+                                     const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
+                                     const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
+                                     const std::vector<std::array<int,3>>&  cells_per_dim_vec);
+
+
 }
 
 
