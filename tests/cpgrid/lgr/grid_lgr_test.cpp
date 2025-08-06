@@ -63,38 +63,6 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
-#define CHECK_COORDINATES(c1, c2)                                       \
-    for (int c = 0; c < 3; c++) {                                       \
-        BOOST_TEST(c1[c] == c2[c], boost::test_tools::tolerance(1e-12)); \
-    }
-
-
-void check_refinedPatch_grid(const std::array<int,3> cells_per_dim,
-                             const std::array<int,3> start_ijk,
-                             const std::array<int,3> end_ijk,
-                             const Dune::cpgrid::EntityVariable<Dune::cpgrid::Geometry<3, 3>,0> refined_cells,
-                             const Dune::cpgrid::EntityVariable<Dune::cpgrid::Geometry<2,3>,1> refined_faces,
-                             const Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>> refined_corners)
-{
-    const std::array<int,3> patch_dim = {end_ijk[0]-start_ijk[0], end_ijk[1]-start_ijk[1], end_ijk[2]-start_ijk[2]};
-    if ((patch_dim[0] == 0) || (patch_dim[1] == 0) || (patch_dim[2] == 0)) {
-        OPM_THROW(std::logic_error, "Empty patch. Cannot convert patch into cell.");
-    }
-    // Check amount of refined faces.
-    int count_faces = (cells_per_dim[0]*patch_dim[0]*cells_per_dim[1]*patch_dim[1]*((cells_per_dim[2]*patch_dim[2])+1))// 'bottom/top faces'
-        +  (((cells_per_dim[0]*patch_dim[0])+1)*cells_per_dim[1]*patch_dim[1]*cells_per_dim[2]*patch_dim[2]) // 'front/back faces'
-        + (cells_per_dim[0]*patch_dim[0]*((cells_per_dim[1]*patch_dim[1]) +1)*cells_per_dim[2]*patch_dim[2]);  // 'left/right faces'
-    BOOST_CHECK_EQUAL(refined_faces.size(), count_faces);
-    // Check amount of refined corners.
-    int count_corners = ((cells_per_dim[0]*patch_dim[0])+1)*((cells_per_dim[1]*patch_dim[1])+1)*((cells_per_dim[2]*patch_dim[2])+1);
-    BOOST_CHECK_EQUAL(refined_corners.size(), count_corners);
-
-    int count_cells = cells_per_dim[0]*patch_dim[0]*cells_per_dim[1]*patch_dim[1]*cells_per_dim[2]*patch_dim[2];
-    BOOST_CHECK_EQUAL(refined_cells.size(), count_cells);
-
-
-}
-
 BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 {
     Dune::CpGrid grid;
