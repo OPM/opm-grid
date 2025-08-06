@@ -460,12 +460,6 @@ private:
     /// @return patch_boundary_faces
     std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    // @brief Compute the average of array<double,3>.
-    //
-    // @param [in] vector of array<double,3>
-    // @return     array<double,3> (average of the entries of the given vector).
-    std::array<double,3> getAverageArr(const std::vector<std::array<double,3>>& vec) const;
-
 public:
     /// Add doc/or remove method and replace it with better approach
     int getGridIdx() const {
