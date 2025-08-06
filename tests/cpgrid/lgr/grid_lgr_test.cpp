@@ -20,28 +20,11 @@
 
 #define BOOST_TEST_MODULE LGRTests
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
+
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
-#include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
-#include <opm/grid/cpgrid/Entity.hpp>
-#include <opm/grid/cpgrid/EntityRep.hpp>
-#include <opm/grid/cpgrid/Geometry.hpp>
-#include <opm/grid/LookUpData.hh>
 
 #include <tests/cpgrid/LgrChecks.hpp>
-
-#include <dune/grid/common/mcmgmapper.hh>
-
-#include <sstream>
-#include <iostream>
-#include <cstdlib>
-#include <cmath>
 
 struct Fixture
 {
