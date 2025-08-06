@@ -100,12 +100,6 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
-void refinePatch_and_check(Dune::CpGrid&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::array<int,3>>&,
-                           const std::vector<std::string>&);
-
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
 
 namespace Dune
@@ -134,13 +128,6 @@ class CpGridData
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
                             bool);
-
-    friend
-    void ::refinePatch_and_check(Dune::CpGrid&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::array<int,3>>&,
-                                 const std::vector<std::string>&);
 
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
