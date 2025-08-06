@@ -18,7 +18,7 @@
 */
 #include "config.h"
 
-#define BOOST_TEST_MODULE LGRTests
+#define BOOST_TEST_MODULE AddLgrsUpdateLeafViewInAllActiveCartesianGridTests
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
@@ -34,13 +34,6 @@ struct Fixture
         char** m_argv = boost::unit_test::framework::master_test_suite().argv;
         Dune::MPIHelper::instance(m_argc, m_argv);
         Opm::OpmLog::setupSimpleDefaultLogging();
-    }
-
-    static int rank()
-    {
-        int m_argc = boost::unit_test::framework::master_test_suite().argc;
-        char** m_argv = boost::unit_test::framework::master_test_suite().argv;
-        return Dune::MPIHelper::instance(m_argc, m_argv).rank();
     }
 };
 
@@ -58,6 +51,7 @@ BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 
     Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}}, /* lgr_name_vec = */ {"LGR1"}, /* isGlobalRefined = */ false);
 
+    /** To-do: move out patchesShareFace. */ 
     BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace({{1,0,1}}, {{3,2,3}}), false);
 }
 
@@ -118,7 +112,7 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBloackShareAFaceWithCompatibleSubdivisions)
-{
+{   /** To-do: add/modify LGRs to have all possible sharing faces: I, J, and K */
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
     // Refine 3 cell-blocks, 2x2x2 subdivisions per x-,y-,z- direction.
