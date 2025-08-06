@@ -315,13 +315,6 @@ public:
         return ijk;
     }
 
-    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
-    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
     /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.

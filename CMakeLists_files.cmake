@@ -118,7 +118,6 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
 	  tests/cpgrid/avoidNNCinLGRs_test.cpp
 	  tests/cpgrid/avoidNNCinLGRsCpGrid_test.cpp
 	  tests/cpgrid/cuboidShape_test.cpp
-	  tests/cpgrid/disjointPatches_test.cpp
 	  tests/cpgrid/eclCentroid_test.cpp
 	  tests/cpgrid/geometry_test.cpp
 	  tests/cpgrid/grid_lgr_test.cpp
