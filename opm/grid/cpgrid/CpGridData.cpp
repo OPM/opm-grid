@@ -1733,51 +1733,6 @@ std::vector<int> CpGridData::getPatchCorners(const std::array<int,3>& startIJK, 
     return patch_corners;
 }
 
-std::vector<int> CpGridData::getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
-{
-    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
-    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
-    // Get grid dimension (total cells in each direction).
-    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
-    /// PATCH FACES
-    std::vector<int> patch_faces;
-    patch_faces.reserve(((patch_dim[0]+1)*patch_dim[1]*patch_dim[2])     // i_patch_faces
-                        + (patch_dim[0]*(patch_dim[1]+1)*patch_dim[2])   // j_patch_faces
-                        + (patch_dim[0]*patch_dim[1]*(patch_dim[2]+1))); // k_patch_faces
-    int face_idx;
-    // I_FACES
-    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
-        for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
-            for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                face_idx = (j*(grid_dim[0]+1)*grid_dim[2]) +(i*grid_dim[2]) + k;
-                patch_faces.push_back(face_idx);
-            } // end k-for-loop
-        } // end i-for-loop
-    } // end j-for-loop
-    // J_FACES
-    for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
-        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-            for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-                face_idx = ((grid_dim[0]+1)*grid_dim[1]*grid_dim[2]) // i_grid_faces
-                    + (j*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2]) + k;
-                patch_faces.push_back(face_idx);
-            } // end k-for-loop
-        } // end i-for-loop
-    } // end j-for-loop
-    // K_FACES
-    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
-        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-            for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                face_idx = (grid_dim[0]*(grid_dim[1]+1)*grid_dim[2]) //j_grid_faces
-                    + ((grid_dim[0]+1)*grid_dim[1]*grid_dim[2])          // i_grid_faces
-                    + (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ k;
-                patch_faces.push_back(face_idx);
-            } // end k-for-loop
-        } // end i-for-loop
-    } // end j-for-loop
-    return patch_faces;
-}
-
 std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.

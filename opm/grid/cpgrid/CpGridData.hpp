@@ -433,15 +433,6 @@ private:
     /// @return patch_corners
     std::vector<int> getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief Compute face indices of a patch of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_faces
-    std::vector<int> getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
     /// @brief Compute cell indices of a patch of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
