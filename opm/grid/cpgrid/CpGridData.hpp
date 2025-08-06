@@ -460,25 +460,6 @@ private:
     /// @return patch_boundary_faces
     std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
-    ///
-    /// cellifyPatch() builds a Geometry<3,3> object, 'a celliFIED patch', from a connected patch formed
-    /// by the product of consecutive cells in each direction; selecting 8 corners of the patch boundary,
-    /// computing center and volume.
-    ///
-    /// @param [in] startIJK                   Cartesian triplet index where the patch starts.
-    /// @param [in] endIJK                     Cartesian triplet index where the patch ends.
-    /// @param [in] patch_cells                Cell indices from the block-shaped patch.
-    /// @param [out] cellifiedPatch_geometry   Required as an argument when creating a Geomtry<3,3> object.
-    /// @param [out] cellifiedPatch_to_point   To store the 8 corners of the created cellifiedPatch.
-    /// @param [out] allcorners_cellifiedPatch Required to build a Geometry<3,3> object.
-    ///
-    /// @return 'cellifiedPatchCell'         Geometry<3,3> object.
-    Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
-                               const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
-                               std::array<int,8>& cellifiedPatch_to_point,
-                               std::array<int,8>& allcorners_cellifiedPatch) const;
-
     // @brief Compute the average of array<double,3>.
     //
     // @param [in] vector of array<double,3>
