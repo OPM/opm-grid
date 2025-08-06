@@ -695,46 +695,34 @@ BOOST_AUTO_TEST_CASE(patches_share_faceB)
     refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
 }
 
-BOOST_AUTO_TEST_CASE(patches_share_Iface_with_diff_cells_per_dim)
+BOOST_AUTO_TEST_CASE(throwIfUncompatibleNumberOfSubdivisionsInSharedFaces)
 {
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+   
     const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {1,0,0}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {2,1,1}};
     const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-}
 
-BOOST_AUTO_TEST_CASE(patches_share_Jface_with_diff_cells_per_dim)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,1,0}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,2,1}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-}
+    // Parent cells LGR1 and LGR2 share I_FACE with uncompatible number of subdivisions.
+    // LGR1 (y,z)-subdivisions: (2,5) != (2,2) LGR2 (y,z)-subdivisions.
+    const std::vector<std::array<int,3>> startIJK_iFace = {{0,0,0}, {1,0,0}};
+    const std::vector<std::array<int,3>> endIJK_iFace = {{1,1,1}, {2,1,1}};
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_iFace, endIJK_iFace, lgr_name_vec),
+                      std::logic_error);
 
-BOOST_AUTO_TEST_CASE(patches_share_Kface_with_diff_cells_per_dim)
-{
-    // Create a grid
-    Dune::CpGrid coarse_grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    coarse_grid.createCartesian(grid_dim, cell_sizes);
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{4,2,5}, {3,2,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,1}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,2}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    refinePatch_and_check(coarse_grid, cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    // Parent cells LGR1 and LGR2 share J_FACE with uncompatible number of subdivisions.
+    // LGR1 (x,z)-subdivisions: (4,5) != (3,2) LGR2 (x,z)-subdivisions. 
+    const std::vector<std::array<int,3>> startIJK_jFace = {{0,0,0}, {0,1,0}};
+    const std::vector<std::array<int,3>> endIJK_jFace = {{1,1,1}, {1,2,1}};
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_jFace, endIJK_jFace, lgr_name_vec),
+                      std::logic_error);
+    
+    // Parent cells LGR1 and LGR2 share K_FACE with uncompatible number of subdivisions.
+    // LGR1 (x,y)-subdivisions: (4,2) != (3,2) LGR2 (x,y)-subdivisions. 
+    const std::vector<std::array<int,3>> startIJK_kFace = {{0,0,0}, {0,0,1}};
+    const std::vector<std::array<int,3>> endIJK_kFace = {{1,1,1}, {1,1,2}};
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_kFace, endIJK_kFace, lgr_name_vec),
+                      std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(refineEntireGrid)
@@ -764,7 +752,7 @@ BOOST_AUTO_TEST_CASE(doNothingIfSubdivisionsInAllDirectionsIsOne)
     // Refine each cell into 1 child does nothing to the grid. (1 subdivision per x-,y-,z- direction).
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}},
                                /* startIJK_vec = */ {{0,0,0}},
-                               /* endIJK_vec = */ { {4,3,3}},  
+                               /* endIJK_vec = */ { {4,3,3}},
                                /* lgr_name_vec = */ {"LGR1"});
 
     // Create a 4x3x3 grid with sizes 4x3x3
