@@ -1785,52 +1785,6 @@ void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
     }
 }
 
-std::array<std::vector<double>,3> CpGridData::getWidthsLengthsHeights(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
-{
-    std::vector<double> widthsX;
-    widthsX.reserve(endIJK[0] - startIJK[0]);
-    std::vector<double> lengthsY;
-    lengthsY.reserve(endIJK[1] - startIJK[1]);
-    std::vector<double> heightsZ;
-    heightsZ.reserve(endIJK[2] - startIJK[2]);
-
-    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
-
-    for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-        int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + i;
-        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
-        // x = |corn[1]-corn[0]|
-        // Compute difference and dot using DUNE functionality
-        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-        auto x = difference.two_norm();
-        widthsX.push_back(x);
-    }
-    for (int j = startIJK[1]; j < endIJK[1]; ++j)
-    {
-        int cellIdx = (startIJK[2]*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) + startIJK[0];
-        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
-        // y = |corn[3]-corn[1]|
-        // Compute difference and dot using DUNE functionality
-        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-        auto y = difference.two_norm();
-        lengthsY.push_back(y);
-    }
-    for (int k = startIJK[2]; k < endIJK[2]; ++k)
-    {
-        int cellIdx = (k*grid_dim[0]*grid_dim[1]) + (startIJK[1]*grid_dim[0]) + startIJK[0];
-        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
-        // z = |corn[4]-corn[0]|
-        // Compute difference and dot using DUNE functionality
-        auto difference = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[4]).center();
-        difference -= (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-        auto z = difference.two_norm();
-        heightsZ.push_back(z);
-    }
-    return {widthsX, lengthsY, heightsZ};
-}
-
 std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.

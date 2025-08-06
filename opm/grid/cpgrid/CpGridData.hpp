@@ -460,9 +460,6 @@ private:
     /// @return patch_boundary_faces
     std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief For selected cell indices, computes the variation in x-,y-, and z-direction, assuming each cell has cubiod shape.
-    std::array<std::vector<double>,3> getWidthsLengthsHeights(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
     /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
     ///
     /// cellifyPatch() builds a Geometry<3,3> object, 'a celliFIED patch', from a connected patch formed
