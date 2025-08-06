@@ -1785,30 +1785,6 @@ void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
     }
 }
 
-std::vector<int> CpGridData::getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
-{
-    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
-    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
-    // Get grid dimension (total cells in each direction).
-    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
-    /// PATCH BOUNDARY CORNERS
-    std::vector<int> patch_boundary_corners;
-    patch_boundary_corners.reserve(((patch_dim[0]+1)*(patch_dim[2]+1)*2) + ((patch_dim[1]-1)*(patch_dim[2]+1)*2)
-                                   + ((patch_dim[0]-1)*(patch_dim[1]-1)*2));
-    for (int j = startIJK[1]; j < endIJK[1]+1; ++j) {
-        for (int i = startIJK[0]; i < endIJK[0]+1; ++i) {
-            for (int k = startIJK[2]; k < endIJK[2]+1; ++k) {
-                if ( (j == startIJK[1]) || (j == endIJK[1])
-                     ||  (i == startIJK[0]) || (i == endIJK[0])
-                     ||  (k == startIJK[2]) || (k == endIJK[2])) {
-                    patch_boundary_corners.push_back((j*(grid_dim[0]+1)*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+k);
-                }
-            } // end i-for-loop
-        } // end j-for-loop
-    } // end k-for-loop
-    return patch_boundary_corners;
-}
-
 std::array<std::vector<int>,6> CpGridData::getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
