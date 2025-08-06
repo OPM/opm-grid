@@ -564,27 +564,6 @@ public:
                 const std::vector<std::array<int,2>>>                // child_to_parent_cells
     refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const;
 
-    /// @brief Refine a (connected block-shaped) patch of cells. Based on the patch, a Geometry<3,3> object is created and refined.
-    ///
-    /// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
-    /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
-    /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
-    ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return refined_grid_ptr                   Shared pointer of CpGridData type, pointing at the refined_grid
-    /// @return boundary_old_to_new_corners/faces  Corner/face indices on the patch-boundary associated with new-born-entity indices.
-    /// @return parent_to_children_faces/cell      For each parent face/cell, we store its child-face/cell indices.
-    ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
-    /// @return child_to_parent_faces/cells        {child index, parent index}
-    std::tuple< std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
-                const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
-                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
-                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
-                const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                const std::vector<std::array<int,2>>>                // child_to_parent_cells
-    refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
     // @breif Compute center of an entity/element/cell in the Eclipse way:
     //        - Average of the 4 corners of the bottom face.
     //        - Average of the 4 corners of the top face.
