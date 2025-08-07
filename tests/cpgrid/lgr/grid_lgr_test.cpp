@@ -42,6 +42,19 @@ BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {2.,1.,4.});
+    //                          LGR1 parent cells
+    // k = 2   32 33 34 35 |
+    //         28 29 30 31 |          29 30
+    //         24 25 26 27 |          25 26
+    // --------------------|    ------------------
+    // k = 1   20 21 22 23 |
+    //         16 17 18 19 |          17 18
+    //         12 13 14 15 |          13 14
+    // --------------------|    ------------------
+    // k = 0    8  9 10 11 |
+    //          4  5  6  7 |
+    //          0  1  2  3 |
+    //---------------------|
     // Refine a few cells, each into 2x2x2 children (2 subdivisions per x-,y-,z- direction).
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}},
                                /* startIJK_vec = */ {{1,0,1}},
@@ -58,6 +71,19 @@ BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirecti
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
+    //                          LGR1 parent cells       LGR2 parent cells       LGR3 parent cells
+    // k = 2   32 33 34 35 |                                                                 35
+    //         28 29 30 31 |
+    //         24 25 26 27 |                             24
+    // --------------------|    ------------------     ------------------     ------------------
+    // k = 1   20 21 22 23 |
+    //         16 17 18 19 |
+    //         12 13 14 15 |
+    // --------------------|    ------------------     ------------------     ------------------
+    // k = 0    8  9 10 11 |
+    //          4  5  6  7 |
+    //          0  1  2  3 |     0  1
+    //---------------------|    ------------------     ------------------     ------------------
     // Refine 3 cell-blocks, 2x2x2, 3x3x3, and 4x4x4 subdivisions per x-,y-,z- direction, respectively.
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
                                /* startIJK_vec = */{{0,0,0}, {0,0,2}, {3,2,2}},
@@ -74,8 +100,21 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
+    //                          LGR1 parent cells       LGR2 parent cells       LGR3 parent cells
+    // k = 2   32 33 34 35 |                                                                 35
+    //         28 29 30 31 |
+    //         24 25 26 27 |
+    // --------------------|    ------------------     ------------------     ------------------
+    // k = 1   20 21 22 23 |
+    //         16 17 18 19 |                               17
+    //         12 13 14 15 |
+    // --------------------|    ------------------     ------------------     ------------------
+    // k = 0    8  9 10 11 |
+    //          4  5  6  7 |
+    //          0  1  2  3 |     0
+    //---------------------|    ------------------     ------------------     ------------------
     // Refine 3 cell-blocks, 2x2x2, 3x3x3, and 4x4x4 subdivisions per x-,y-,z- direction, respectively.
-    // LGR1 parent cell and LGR2 parent cell share one corner.
+    // LGR1 parent cell (idx = 0) and LGR2 parent cell (idx = 17) share a corner.
     grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
                                /* startIJK_vec = */ {{0,0,0}, {1,1,1}, {3,2,2}},
                                /* endIJK_vec = */   {{1,1,1}, {2,2,2}, {4,3,3}},
@@ -104,21 +143,38 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
                            /* isGlobalRefined = */ false);
 }
 
-BOOST_AUTO_TEST_CASE(parentCellBloackShareAFaceWithCompatibleSubdivisions)
-{   /** To-do: add/modify LGRs to have all possible sharing faces: I, J, and K */
+BOOST_AUTO_TEST_CASE(parentCellBlocksShareFaceWithCompatibleSubdivisions)
+{
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
-    // Refine 3 cell-blocks, 2x2x2 subdivisions per x-,y-,z- direction.
+
+    // k = 2   32 33 34 35     LGR5 parent cells = {35}
+    //         28 29 30 31
+    //         24 25 26 27
+    // -------------------
+    // k = 1   20 21 22 23     LGR4 parent cells = {23}
+    //         16 17 18 19
+    //         12 13 14 15
+    // -------------------
+    // k = 0    8  9 10 11
+    //          4  5  6  7     LGR3 parent cells = {6}
+    //          0  1  2  3     LGR1 parent cells = {0,1}, LGR2 parent cells = {2}
+    //--------------------
     // LGR1 parent cell (idx = 1) and LGR2 parent cell (idx = 2) share an I_FACE.
-    // Refinement takes place since LGR1 and LGR2 (y,z)-subdivisions are both (3,2).
-    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {2,2,2}},
-                               /* startIJK_vec = */  {{0,0,0}, {2,0,0}, {3,2,2}},
-                               /* endIJK_vec = */   {{2,1,1}, {3,1,1}, {4,3,3}},
-                               /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
+    // LGR2 parent cell (idx = 2) and LGR3 parent cell (idx = 6) share an J_FACE.
+    // LGR4 parent cell (idx = 23) and LGR5 parent cell (idx = 35) share a K_FACE.
+    // Refinement takes place since all subdivions are compatible:
+    // - LGR1 and LGR2 (y,z)-subdivisions are both (3,2).
+    // - LGR2 and LGR3 (x,z)-subdivisions are both (4,2).
+    // - LGR4 and LGR5 (x,y)-subdivisions are both (1,2).
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {4,1,2}, {1,2,3}, {1,2,4}},
+                               /* startIJK_vec = */  {{0,0,0}, {2,0,0}, {2,1,0}, {3,2,1}, {3,2,2}},
+                               /* endIJK_vec = */   {{2,1,1}, {3,1,1}, {3,2,1}, {4,3,2}, {4,3,3}},
+                               /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3", "LGR4", "LGR5"});
 
     Opm::checkGridWithLgrs(grid,
-                           /* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {2,2,2}},
-                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
+                           /* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {4,1,2}, {1,2,3}, {1,2,4}},
+                           /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3", "LGR4", "LGR5"},
                            /* isGlobalRefined = */ false);
 }
 
