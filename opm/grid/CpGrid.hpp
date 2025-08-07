@@ -433,6 +433,13 @@ namespace Dune
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec);
 
+        /// To eliminate "do-nothing" refinements, i.e., when the number of subdivisions in each direction
+        /// is equal to 1.
+        auto filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                                const std::vector<std::array<int,3>>& startIJK_vec,
+                                                const std::vector<std::array<int,3>>& endIJK_vec,
+                                                const std::vector<std::string>& lgr_name_vec) const;
+
         // @brief TO BE DONE
         const std::map<std::string,int>& getLgrNameToLevel() const;
 
