@@ -37,7 +37,7 @@
 #include <opm/grid/common/WellConnections.hpp>
 #include <opm/grid/utility/OpmWellType.hpp>
 
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <opm/input/eclipse/EclipseState/Aquifer/NumericalAquifer/NumericalAquifers.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>

@@ -76,29 +76,29 @@ endif()
 
 # originally generated with the command:
 # find tests -name '*.cpp' -a ! -wholename '*/not-unit/*' -printf '\t%p\n' | sort
-list (APPEND TEST_SOURCE_FILES
-  tests/p2pcommunicator_test.cc
-  tests/test_cartgrid.cpp
-  tests/test_cpgrid.cpp
-  tests/test_communication_utils.cpp
-  tests/test_column_extract.cpp
-  tests/cpgrid/addLgrsOnDistributedGrid_test.cpp
-  tests/cpgrid/communicate_distributed_grid_with_lgrs_test.cpp
-  tests/cpgrid/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
-  tests/cpgrid/distribute_level_zero_from_grid_with_lgrs_test.cpp
+list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/distribution_test.cpp
   tests/cpgrid/entityrep_test.cpp
   tests/cpgrid/entity_test.cpp
   tests/cpgrid/facetag_test.cpp
-  tests/cpgrid/global_refine_test.cpp
-  tests/cpgrid/grid_global_id_set_test.cpp
-  tests/cpgrid/lgr_cell_id_sync_test.cpp
-  tests/cpgrid/logicalCartesianSize_and_refinement_test.cpp
+  tests/cpgrid/lgr/addLgrsOnDistributedGrid_test.cpp
+  tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
+  tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
+  tests/cpgrid/lgr/global_refine_test.cpp
+  tests/cpgrid/lgr/grid_global_id_set_test.cpp
+  tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
+  tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
   tests/cpgrid/partition_iterator_test.cpp
   tests/cpgrid/zoltan_test.cpp
+  tests/p2pcommunicator_test.cc
+  tests/test_cartgrid.cpp
   tests/test_cellCentroid_polyhedralGrid.cpp
+  tests/test_column_extract.cpp
+  tests/test_communication_utils.cpp
   tests/test_compressed_cartesian_mapping.cpp
+  tests/test_cpgrid.cpp
   tests/test_elementchunks.cpp
   tests/test_geom2d.cpp
   tests/test_gridutilities.cpp
@@ -110,30 +110,30 @@ list (APPEND TEST_SOURCE_FILES
   tests/test_repairzcorn.cpp
   tests/test_sparsetable.cpp
   tests/test_subgridpart.cpp
-	)
+  )
 
 if(Boost_VERSION_STRING VERSION_GREATER 1.53)
-	list(APPEND TEST_SOURCE_FILES
-	  tests/cpgrid/adapt_cpgrid_test.cpp
-	  tests/cpgrid/avoidNNCinLGRs_test.cpp
-	  tests/cpgrid/avoidNNCinLGRsCpGrid_test.cpp
-	  tests/cpgrid/cuboidShape_test.cpp
-	  tests/cpgrid/eclCentroid_test.cpp
-	  tests/cpgrid/geometry_test.cpp
-	  tests/cpgrid/grid_lgr_test.cpp
-	  tests/cpgrid/lgr_with_inactive_parent_cells_test.cpp
-	  tests/cpgrid/lgr_cartesian_idx_test.cpp
-	  tests/cpgrid/lgrIJK_test.cpp
-	  tests/cpgrid/lgr_coord_zcorn_test.cpp
-	  tests/cpgrid/lookUpCellCentroid_cpgrid_test.cpp
-	  tests/cpgrid/lookupdataCpGrid_test.cpp
-	  tests/cpgrid/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
-	  tests/cpgrid/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
-	  tests/cpgrid/save_lgr_coord_zcorn_test.cpp
-	  tests/cpgrid/shifted_cart_test.cpp
-	  tests/test_graphofgrid.cpp
-	  tests/test_graphofgrid_parallel.cpp
-  )
+  list(APPEND TEST_SOURCE_FILES
+    tests/cpgrid/eclCentroid_test.cpp
+    tests/cpgrid/geometry_test.cpp
+    tests/cpgrid/lgr/adapt_cpgrid_test.cpp
+    tests/cpgrid/lgr/avoidNNCinLGRsCpGrid_test.cpp
+    tests/cpgrid/lgr/avoidNNCinLGRs_test.cpp
+    tests/cpgrid/lgr/cuboidShape_test.cpp
+    tests/cpgrid/lgr/grid_lgr_test.cpp
+    tests/cpgrid/lgr/lgrIJK_test.cpp
+    tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
+    tests/cpgrid/lgr/lgr_coord_zcorn_test.cpp
+    tests/cpgrid/lgr/lgr_with_inactive_parent_cells_test.cpp
+    tests/cpgrid/lgr/lookUpCellCentroid_cpgrid_test.cpp
+    tests/cpgrid/lgr/lookupdataCpGrid_test.cpp
+    tests/cpgrid/lgr/replace_lgr1_corner_idx_by_lgr2_corner_idx_test.cpp
+    tests/cpgrid/lgr/replace_lgr1_face_idx_by_lgr2_face_idx_test.cpp
+    tests/cpgrid/lgr/save_lgr_coord_zcorn_test.cpp
+    tests/cpgrid/shifted_cart_test.cpp
+    tests/test_graphofgrid.cpp
+    tests/test_graphofgrid_parallel.cpp
+    )
 endif()
 
 if(HAVE_ECL_INPUT)
@@ -210,7 +210,7 @@ list (APPEND PUBLIC_HEADER_FILES
   opm/grid/cpgrid/ElementMarkHandle.hpp
   opm/grid/cpgrid/OrientedEntityTable.hpp
   opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp
-	opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp
+  opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp
   opm/grid/cpgrid/PartitionIteratorRule.hpp
   opm/grid/cpgrid/PartitionTypeIndicator.hpp
   opm/grid/cpgrid/PersistentContainer.hpp

@@ -37,7 +37,7 @@
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/ParentToChildrenCellGlobalIdHandle.hpp>
 #include <opm/grid/common/CommunicationUtils.hpp>
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <dune/common/version.hh>
 #include <dune/grid/common/mcmgmapper.hh>

@@ -36,7 +36,7 @@
 
 #include <opm/grid/common/CommunicationUtils.hpp>
 #include <opm/grid/CpGrid.hpp>
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 #include <array>
 #include <string>
