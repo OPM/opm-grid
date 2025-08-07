@@ -22,7 +22,6 @@
 #include <boost/test/unit_test.hpp>
 
 #include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/CpGridData.hpp>
 
 #include <tests/cpgrid/LgrChecks.hpp>
 
@@ -49,10 +48,10 @@ BOOST_AUTO_TEST_CASE(refineCellBlockWithDifferentCellSizes)
                                /* endIJK_vec = */ {{3,2,3}},
                                /* lgr_name_vec = */ {"LGR1"});
 
-    Opm::checkGridWithLgrs(grid, /* cells_per_dim_vec = */ {{2,2,2}}, /* lgr_name_vec = */ {"LGR1"}, /* isGlobalRefined = */ false);
-
-    /** To-do: move out patchesShareFace. */ 
-    BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace({{1,0,1}}, {{3,2,3}}), false);
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{2,2,2}},
+                           /* lgr_name_vec = */ {"LGR1"},
+                           /* isGlobalRefined = */ false);
 }
 
 BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirection)
@@ -69,8 +68,6 @@ BOOST_AUTO_TEST_CASE(refineDisjointCellBlocksWithDifferentSubdivisionsPerDirecti
                            /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
                            /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
                            /* isGlobalRefined = */ false);
-
-    BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace({{0,0,0}, {0,0,2}, {3,2,2}}, {{2,1,1}, {1,1,3}, {4,3,3}}), false);
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
@@ -88,8 +85,6 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAcorner)
                            /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
                            /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
                            /* isGlobalRefined = */ false);
-
-    BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace({{0,0,0}, {1,1,1}, {3,2,2}}, {{1,1,1}, {2,2,2}, {4,3,3}}), false);
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
@@ -107,8 +102,6 @@ BOOST_AUTO_TEST_CASE(parentCellBlocksShareAnEdge)
                            /* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}, {2,2,2}},
                            /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
                            /* isGlobalRefined = */ false);
-
-    BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace({{0,0,0}, {2,0,1}, {3,2,2}}, {{2,1,1}, {3,1,2}, {4,3,3}}), false);
 }
 
 BOOST_AUTO_TEST_CASE(parentCellBloackShareAFaceWithCompatibleSubdivisions)
@@ -127,10 +120,9 @@ BOOST_AUTO_TEST_CASE(parentCellBloackShareAFaceWithCompatibleSubdivisions)
                            /* cells_per_dim_vec = */ {{5,3,2}, {4,3,2}, {2,2,2}},
                            /* lgr_name_vec = */  {"LGR1", "LGR2", "LGR3"},
                            /* isGlobalRefined = */ false);
-    BOOST_CHECK_EQUAL(grid.currentData()[0]->patchesShareFace( {{0,0,0}, {2,0,0}, {3,2,2}},  {{2,1,1}, {3,1,1}, {4,3,3}}), true);
 }
 
-BOOST_AUTO_TEST_CASE(throwIfUncompatibleNumberOfSubdivisionsInSharedFaces)
+BOOST_AUTO_TEST_CASE(throwIfUncompatibleSubdivisionsInSharedFaces)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -160,7 +152,7 @@ BOOST_AUTO_TEST_CASE(throwIfUncompatibleNumberOfSubdivisionsInSharedFaces)
                       std::logic_error);
 }
 
-BOOST_AUTO_TEST_CASE(refineEntireGrid)
+BOOST_AUTO_TEST_CASE(parentCellBlockIsTheEntireGrid)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
     Dune::CpGrid grid;
@@ -178,8 +170,7 @@ BOOST_AUTO_TEST_CASE(refineEntireGrid)
     Opm::checkLeafGridGeometryEquality(grid, fine_grid);
 }
 
-
-BOOST_AUTO_TEST_CASE(doNothingIfSubdivisionsInAllDirectionsIsOne)
+BOOST_AUTO_TEST_CASE(subdivisionsInAllDirectionsEqualToOne)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
     Dune::CpGrid grid;
