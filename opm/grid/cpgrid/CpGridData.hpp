@@ -424,24 +424,6 @@ private:
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
     std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief Compute corner indices of a patch of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_corners
-    std::vector<int> getPatchCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Compute face indices of a patch of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_faces
-    std::vector<int> getPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
     /// @brief Compute cell indices of a patch of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
@@ -451,15 +433,6 @@ private:
     /// @return patch_cells
     std::vector<int> getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
-    /// @brief Compute patch boundary corner indices (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_boundary_corners
-    std::vector<int> getPatchBoundaryCorners(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
     /// @brief Compute patch boundary face indices (Cartesian grid required).
     ///
     /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
@@ -468,34 +441,6 @@ private:
     ///
     /// @return patch_boundary_faces
     std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief For selected cell indices, computes the variation in x-,y-, and z-direction, assuming each cell has cubiod shape.
-    std::array<std::vector<double>,3> getWidthsLengthsHeights(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Construct a 'fake cell (Geometry<3,3> object)' out of a patch of cells.(Cartesian grid required).
-    ///
-    /// cellifyPatch() builds a Geometry<3,3> object, 'a celliFIED patch', from a connected patch formed
-    /// by the product of consecutive cells in each direction; selecting 8 corners of the patch boundary,
-    /// computing center and volume.
-    ///
-    /// @param [in] startIJK                   Cartesian triplet index where the patch starts.
-    /// @param [in] endIJK                     Cartesian triplet index where the patch ends.
-    /// @param [in] patch_cells                Cell indices from the block-shaped patch.
-    /// @param [out] cellifiedPatch_geometry   Required as an argument when creating a Geomtry<3,3> object.
-    /// @param [out] cellifiedPatch_to_point   To store the 8 corners of the created cellifiedPatch.
-    /// @param [out] allcorners_cellifiedPatch Required to build a Geometry<3,3> object.
-    ///
-    /// @return 'cellifiedPatchCell'         Geometry<3,3> object.
-    Geometry<3,3> cellifyPatch(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK,
-                               const std::vector<int>& patch_cells, DefaultGeometryPolicy& cellifiedPatch_geometry,
-                               std::array<int,8>& cellifiedPatch_to_point,
-                               std::array<int,8>& allcorners_cellifiedPatch) const;
-
-    // @brief Compute the average of array<double,3>.
-    //
-    // @param [in] vector of array<double,3>
-    // @return     array<double,3> (average of the entries of the given vector).
-    std::array<double,3> getAverageArr(const std::vector<std::array<double,3>>& vec) const;
 
 public:
     /// Add doc/or remove method and replace it with better approach
@@ -563,27 +508,6 @@ public:
                 const std::vector<std::array<int,2>>,                // child_to_parent_faces
                 const std::vector<std::array<int,2>>>                // child_to_parent_cells
     refineSingleCell(const std::array<int,3>& cells_per_dim, const int& parent_idx) const;
-
-    /// @brief Refine a (connected block-shaped) patch of cells. Based on the patch, a Geometry<3,3> object is created and refined.
-    ///
-    /// @param [in] cells_per_dim            Number of (refined) cells in each direction that each parent cell should be refined to.
-    /// @param [in] startIJK                 Cartesian triplet index where the patch starts.
-    /// @param [in] endIJK                   Cartesian triplet index where the patch ends.
-    ///                                      Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return refined_grid_ptr                   Shared pointer of CpGridData type, pointing at the refined_grid
-    /// @return boundary_old_to_new_corners/faces  Corner/face indices on the patch-boundary associated with new-born-entity indices.
-    /// @return parent_to_children_faces/cell      For each parent face/cell, we store its child-face/cell indices.
-    ///                                            {parent face/cell index in coarse level, {indices of its children in refined level}}
-    /// @return child_to_parent_faces/cells        {child index, parent index}
-    std::tuple< std::shared_ptr<CpGridData>,
-                const std::vector<std::array<int,2>>,                // boundary_old_to_new_corners
-                const std::vector<std::tuple<int,std::vector<int>>>, // boundary_old_to_new_faces
-                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces
-                const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_cell
-                const std::vector<std::array<int,2>>,                // child_to_parent_faces
-                const std::vector<std::array<int,2>>>                // child_to_parent_cells
-    refinePatch(const std::array<int,3>& cells_per_dim, const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
     // @breif Compute center of an entity/element/cell in the Eclipse way:
     //        - Average of the 4 corners of the bottom face.
