@@ -23,7 +23,7 @@
 
 #include <opm/grid/CpGrid.hpp>
 
-#include <tests/cpgrid/LgrChecks.hpp>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
 
 struct Fixture
 {
