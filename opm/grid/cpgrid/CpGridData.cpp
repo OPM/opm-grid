@@ -10,6 +10,7 @@
 #include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
+#include "LgrHelpers.hpp"
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
 #include"PartitionTypeIndicator.hpp"
@@ -1686,7 +1687,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = getIJK(idx_in_parent_cell, cells_per_dim);
+    std::array<int,3> ijk = Opm::getIJK(idx_in_parent_cell, cells_per_dim);
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
@@ -1707,6 +1708,11 @@ std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners
         }
     };
     return corners_in_parent_reference_elem;
+}
+
+void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
+{
+    ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
 }
 
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
@@ -1810,54 +1816,6 @@ std::array<std::vector<int>,6> CpGridData::getBoundaryPatchFaces(const std::arra
     return boundary_patch_faces;
 }
 
-bool CpGridData::disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec,
-                                 const std::vector<std::array<int,3>>& endIJK_vec) const
-{
-    assert(!startIJK_vec.empty());
-    assert(!endIJK_vec.empty());
-    if ((startIJK_vec.size() == 1) && (endIJK_vec.size() == 1)){
-        return true;
-    }
-    if (startIJK_vec.size() != endIJK_vec.size() ){
-        OPM_THROW(std::logic_error, "Sizes of the arguments differ. Not enough information provided.");
-    }
-    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
-        bool valid_patch = true;
-        for (int c = 0; c < 3; ++c){
-            valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
-        }
-        if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
-        }
-    }
-    bool are_disjoint = true;
-    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
-        bool patch_disjoint_with_otherPatches = true;
-        for (long unsigned int other_patch = patch+1; other_patch < startIJK_vec.size(); ++other_patch) {
-            bool otherPatch_on_rightOrLeft_of_patch = (startIJK_vec[other_patch][0] > endIJK_vec[patch][0]) ||
-                (endIJK_vec[other_patch][0] < startIJK_vec[patch][0]);
-            if (!otherPatch_on_rightOrLeft_of_patch) {
-                bool otherPatch_on_frontOrBack_of_patch = (startIJK_vec[other_patch][1] > endIJK_vec[patch][1]) ||
-                    (endIJK_vec[other_patch][1] < startIJK_vec[patch][1]);
-                if (!otherPatch_on_frontOrBack_of_patch) {
-                    bool otherPatch_on_topOrBottom_of_patch = (startIJK_vec[other_patch][2] > endIJK_vec[patch][2]) ||
-                        (endIJK_vec[other_patch][2] < startIJK_vec[patch][2]);
-                    patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches && otherPatch_on_topOrBottom_of_patch;
-                    // true for disjoint patches, false for overlapping ones.
-                }
-            }
-            else{
-                patch_disjoint_with_otherPatches = patch_disjoint_with_otherPatches && otherPatch_on_rightOrLeft_of_patch;
-                // true for disjoint patches
-            }
-            if (!patch_disjoint_with_otherPatches){
-                return patch_disjoint_with_otherPatches; // should be false
-            }
-        }
-        are_disjoint = are_disjoint && patch_disjoint_with_otherPatches;
-    }
-    return are_disjoint; // should be true
-}
 
 bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
                                   const std::vector<std::array<int,3>>& endIJK_vec) const

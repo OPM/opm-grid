@@ -268,21 +268,70 @@ public:
     ///    Active cell index.
     ///
     /// @param [out] ijk  Cartesian index triplet
-    void getIJK(int c, std::array<int,3>& ijk) const
-    {
-        ijk = getIJK(global_cell_[c], logical_cartesian_size_);
-    }
+    void getIJK(int c, std::array<int,3>& ijk) const;
 
     int cellFace(int cell, int local_index) const
     {
         return cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
     }
 
-    int faceToCellSize(int face) const {
-        Dune::cpgrid::EntityRep<1> faceEntity(face, true);
-        return face_to_cell_[faceEntity].size();
+    auto cellToFace(int cellIdx) const
+    {
+        return cell_to_face_[cpgrid::EntityRep<0>(cellIdx, true)];
     }
 
+    auto cellToPoint() const
+    {
+        return cell_to_point_;
+    }
+    
+    auto cellToPoint(int cellIdx) const
+    {
+        return cell_to_point_[cellIdx];
+    }
+
+    int faceToCellSize(int face) const {
+        Dune::cpgrid::EntityRep<1> faceRep(face, true);
+        return face_to_cell_[faceRep].size();
+    }
+
+    auto faceTag(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_tag_[faceRep];
+    }
+
+    auto faceNormals(int faceIdx) const
+    {
+        Dune::cpgrid::EntityRep<1> faceRep(faceIdx, true);
+        return face_normals_[faceRep];
+    }
+
+    auto faceToPoint(int faceIdx) const
+    {
+        return face_to_point_[faceIdx];
+    }
+
+    int numFaces() const
+    {
+        return face_to_cell_.size();
+    }
+
+    auto cornerHistorySize() const
+    {
+        return corner_history_.size();
+    }
+
+    auto getCornerHistory(int cornerIdx) const
+    {
+        if(cornerHistorySize()) {
+            return corner_history_[cornerIdx];
+        }
+        else {
+            OPM_THROW(std::logic_error, "Vertex has no history record.\n");
+        }
+    }
+    
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -293,35 +342,7 @@ public:
     {
         return  global_cell_;
     }
-
-    /// @brief Extract Cartesian index triplet (i,j,k) given an index between 0 and NXxNYxNZ -1
-    ///    where NX, NY, and NZ is the total amoung of cells in each direction x-,y-,and z- respectively.
-    ///
-    /// @param [in] idx      Integer between 0 and cells_per_dim[0]*cells_per_dim[1]*cells_per_dim[2]-1
-    /// @param [in] cells_per_dim
-    /// @return Cartesian index triplet.
-    std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
-    {
-        // idx = k*cells_per_dim_[0]*cells_per_dim_[1] + j*cells_per_dim_[0] + i
-        // with 0<= i < cells_per_dim_[0], 0<= j < cells_per_dim_[1], 0<= k <cells_per_dim_[2].
-        assert(cells_per_dim[0]);
-        assert(cells_per_dim[1]);
-        assert(cells_per_dim[2]);
-
-        std::array<int,3> ijk = {0,0,0};
-        ijk[0] = idx_in_parent_cell % cells_per_dim[0]; idx_in_parent_cell /= cells_per_dim[0];
-        ijk[1] = idx_in_parent_cell % cells_per_dim[1];
-        ijk[2] = idx_in_parent_cell /cells_per_dim[1];
-        return ijk;
-    }
-
-    /// @brief Determine if a finite amount of patches (of cells) are disjoint, namely, they do not share any corner nor face.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
-    bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
+    
     /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
@@ -480,6 +501,12 @@ public:
     const std::vector<std::tuple<int,std::vector<int>>>& getParentToChildren() const {
         return parent_to_children_cells_;
     }
+
+    const cpgrid::DefaultGeometryPolicy getGeometry() const
+    {
+        return geometry_;
+    }
+    
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the
