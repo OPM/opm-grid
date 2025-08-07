@@ -226,20 +226,40 @@ BOOST_AUTO_TEST_CASE(parentCellBlockIsTheEntireGrid)
     Opm::checkLeafGridGeometryEquality(grid, fine_grid);
 }
 
-BOOST_AUTO_TEST_CASE(subdivisionsInAllDirectionsEqualToOne)
+BOOST_AUTO_TEST_CASE(doNothingIfDesiredChildrenInAllDirectionsEqualToOne)
 {
     // Create a 4x3x3 grid with sizes 4x3x3
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1., 1., 1.});
-    // Refine each cell into 1 child does nothing to the grid. (1 subdivision per x-,y-,z- direction).
-    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}},
+    // Refine each cell into 1 child does nothing to the grid. ( subdivision per x-,y-,z- direction).
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{1,1,1}}, 
                                /* startIJK_vec = */ {{0,0,0}},
                                /* endIJK_vec = */ { {4,3,3}},
                                /* lgr_name_vec = */ {"LGR1"});
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 0); // no refinement has been triggered
 
     // Create a 4x3x3 grid with sizes 4x3x3
     Dune::CpGrid fine_grid;
     fine_grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
 
     Opm::checkLeafGridGeometryEquality(grid, fine_grid);
+}
+
+BOOST_AUTO_TEST_CASE(filterLgrThatDoesNotTriggerActualRefinement)
+{
+    Dune::CpGrid grid;
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.,1.,1.});
+
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {1,1,1}, {2,2,2}},
+                               /* startIJK_vec = */  {{0,0,0}, {2,0,1}, {3,2,2}},
+                               /* endIJK_vec = */  {{2,1,1}, {3,1,2}, {4,3,3}},
+                               /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
+    // LGR2 provides cells_per_dim_ = {1,1,1}-> LGR2 will not be created.
+    BOOST_CHECK_EQUAL(grid.maxLevel(), 2); // Refined level grids are LGR1 and LGR3.
+
+    // Pass filtered cells_per_dim_vec and lgr_name_vec
+    Opm::checkGridWithLgrs(grid,
+                           /* filtered_cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                           /* lgr_name_vec = */  {"LGR1", "LGR3"},
+                           /* isGlobalRefined = */ false);
 }
