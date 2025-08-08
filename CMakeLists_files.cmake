@@ -85,10 +85,10 @@ list(APPEND TEST_SOURCE_FILES
   tests/cpgrid/lgr/autoRefine_test.cpp
   tests/cpgrid/lgr/communicate_distributed_grid_with_lgrs_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_and_wells_test.cpp
-  tests/cpgrid/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/distribute_level_zero_from_grid_with_lgrs_test.cpp
   tests/cpgrid/lgr/global_refine_test.cpp
   tests/cpgrid/lgr/grid_global_id_set_test.cpp
+  tests/cpgrid/lgr/level_and_grid_cartesianIndexMappers_test.cpp
   tests/cpgrid/lgr/lgr_cell_id_sync_test.cpp
   tests/cpgrid/lgr/logicalCartesianSize_and_refinement_test.cpp
   tests/cpgrid/orientedentitytable_test.cpp
