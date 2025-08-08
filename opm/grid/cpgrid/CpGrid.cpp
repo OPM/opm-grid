@@ -1175,35 +1175,40 @@ const cpgrid::OrientedEntityTable<0,1>::row_type CpGrid::cellFaceRow(int cell) c
 
 int CpGrid::faceCell(int face, int local_index, int level) const
 {
-    // In the parallel case we store non-existent cells for faces along
-    // the front region. Theses marked with index std::numeric_limits<int>::max(),
-    // orientation might be arbitrary, though.
-    bool validLevel = (level>-1) && (level<= maxLevel());
-    cpgrid::OrientedEntityTable<1,0>::row_type r
-        = validLevel? data_[level]->face_to_cell_[cpgrid::EntityRep<1>(face, true)]
+    // Get the correct neigbour relation (row from face->cell table).
+    const bool validLevel = (level > -1) && (level <= maxLevel());
+    const cpgrid::OrientedEntityTable<1,0>::row_type r = validLevel
+        ? data_[level]->face_to_cell_[cpgrid::EntityRep<1>(face, true)]
         : current_view_data_->face_to_cell_[cpgrid::EntityRep<1>(face, true)];
-    bool a = (local_index == 0);
-    bool b = r[0].orientation();
-    bool use_first = a ? b : !b;
-    // The number of valid cells.
-    int r_size = r.size();
-    // In the case of only one valid cell, this is the index of it.
-    int index = 0;
-    if(r[0].index()==std::numeric_limits<int>::max()){
-        assert(r_size==2);
-        --r_size;
-        index=1;
+
+    // Deal with special case of single element in row.
+    if (r.size() == 1) {
+        const bool use_first = (r[0].orientation() == (local_index == 0));
+        return use_first ? r[0].index() : -1;
     }
-    if(r.size()>1 && r[1].index()==std::numeric_limits<int>::max())
-    {
-        assert(r_size==2);
-        --r_size;
+
+    // In the parallel case we store non-existent cells for faces along the front region.
+    // These are marked with index std::numeric_limits<int>::max(), we will replace them
+    // with -1 for this interface's sake.
+    auto getIndexConvertMaxToNegOne = [](const cpgrid::EntityRep<0>& cell) {
+        return cell.index() == std::numeric_limits<int>::max() ? -1 : cell.index();
+    };
+
+    // We will use a helper array to store the ordered face->cell relation requested in
+    // this interface, i.e. the face (normal) is oriented from nb[0] to nb[1].
+    std::array<int, 2> nbs{ getIndexConvertMaxToNegOne(r[0]), getIndexConvertMaxToNegOne(r[1]) };
+
+    // The entities in r are in arbitrary order, and we must use the orientations to
+    // get the correct order. If the first entity has orientation true, we are fine,
+    // otherwise we must flip the order.
+    //
+    // Note that this requires that also the "other process" neighbours have proper
+    // orientations!
+    if (!r[0].orientation()) {
+        std::swap(nbs[0], nbs[1]);
     }
-    if (r_size == 2) {
-        return use_first ? r[0].index() : r[1].index();
-    } else {
-        return use_first ? r[index].index() : -1;
-    }
+
+    return nbs[local_index];
 }
 
 int CpGrid::numCellFaces() const
