@@ -1577,8 +1577,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute partition type for points
     computePointPartitionType();
-   
-    computeCommunicationInterfaces(noExistingPoints);   
+
+    computeCommunicationInterfaces(noExistingPoints);
 #else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
@@ -1882,9 +1882,9 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
     assert(endIJK_2Patches.size() == 2);
 
     int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
-     
+
     if (patchesShareFace(startIJK_2Patches, endIJK_2Patches)) {
-        
+
         const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
             bool faceIsShared = false;
             for (const auto& face : faceIdxs) {
@@ -1897,7 +1897,7 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
             }
             return faceIsShared; // should be false here
         };
-     
+
         const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = this->getBoundaryPatchFaces(startIJK_2Patches[0], endIJK_2Patches[0]);
         const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
             this->getBoundaryPatchFaces(startIJK_2Patches[1], endIJK_2Patches[1]);
@@ -2196,11 +2196,11 @@ CpGridData::refineSingleCell(const std::array<int,3>& cells_per_dim, const int& 
 bool CpGridData::mark(int refCount, const cpgrid::Entity<0>& element)
 {
     if (refCount == -1) {
-        OPM_THROW(std::logic_error, "Coarsening is not supported yet.");
+        return false; // Coarsening is not supported yet.
     }
     // Prevent refinement if the cell has a non-neighbor connection (NNC).
     if (hasNNCs({element.index()}) && (refCount == 1)) {
-        OPM_THROW(std::logic_error, "Refinement of cells with face representing an NNC is not supported yet.");
+        return false; // Refinement of cells with face representing an NNC is not supported yet
     }
     assert((refCount == 0) || (refCount == 1)); // Do nothing (0), Refine (1), Coarsen (-1) not supported yet.
     if (mark_.empty()) {
@@ -2227,7 +2227,7 @@ bool CpGridData::preAdapt()
             if (local_empty)
                 mark_.resize(size(0));
         }
-       
+
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.
