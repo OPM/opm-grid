@@ -420,6 +420,7 @@ void addOverlapLayer(const CpGrid& grid,
                      const std::vector<int>& cell_part,
                      std::vector<std::tuple<int,int,char>>& exportList,
                      bool addCornerCells,
+                     const std::array<std::vector< std::set<int> >,2>& vertex_cell_maps,
                      int recursion_deps,
                      int level)
 {
@@ -447,26 +448,20 @@ void addOverlapLayer(const CpGrid& grid,
                                     cell_part,
                                     exportList,
                                     addCornerCells,
+                                    vertex_cell_maps,
                                     recursion_deps-1,
                                     level);
                 }
                 else if (addCornerCells) {
-                    // Add cells to the overlap that just share a corner with e.
-                    auto iit2 = validLevel? iit->outside().ilevelbegin() : iit->outside().ileafbegin();
-                    const auto& endIit2 = validLevel?  iit->outside().ilevelend() :  iit->outside().ileafend();
-                
-                    for (; iit2 != endIit2; ++iit2) {
-                        if ( iit2->neighbor() )
-                        {
-                            int nb_index2 = ix.index(iit2->outside());
-                            if( cell_part[nb_index2]!=owner ) {
-                                addOverlapCornerCell(grid,
-                                                     owner,
-                                                     e,
-                                                     iit2->outside(),
-                                                     cell_part,
-                                                     exportList,
-                                                     level);
+                    auto vertices = vertex_cell_maps[1][index]; //could probably use the subindices but do not trust them here
+                    for(auto vertex: vertices){
+                        std::set<int> cells = vertex_cell_maps[0][vertex];
+                        for(auto& cell: cells){
+                            if(cell_part[cell] != owner){
+                                // cell is the neighbor to owner
+                                exportList.emplace_back(cell, owner, AttributeSet::copy);
+                                // do this since it is allways done probably an ERROR for
+                                exportList.emplace_back(index, cell_part[cell],  AttributeSet::copy);
                             }
                         }
                     }
@@ -571,16 +566,17 @@ int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
 
     auto it = validLevel?  grid.template lbegin<0>(level) : grid.template leafbegin<0>();
     const auto& endIt = validLevel?  grid.template lend<0>(level) : grid.template leafend<0>();
-
+    const std::array<std::vector<std::set<int>>,2> vertex_cell_maps = grid.vertexCell();
     for (; it != endIt; ++it) {
         int index = ix.index(*it);
         auto owner = cell_part[index];
         exportProcs.insert(std::make_pair(owner, 0));
-        if ( trans ) {
+        if ( trans && !addCornerCells) {
             addOverlapLayerNoZeroTrans(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, trans, level);
         }
         else {
-            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, level);
+          // correct branch to use in genneral case
+            addOverlapLayer(grid, index, *it, owner, cell_part, exportList, addCornerCells, vertex_cell_maps, layers-1, level);
         }
     }
     // remove multiple entries
