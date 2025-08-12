@@ -206,15 +206,35 @@ PartitionType getPartitionType(const PartitionTypeIndicator& p, int i,
     return p.getPartitionType(Entity<3>(grid, i, true));
 }
 
+// template<class T>
+// int getIndex(const T* i)
+// {
+//     return *i;
+// }
+
+
+int getIndex(std::vector<int>::const_iterator  i)
+{
+     return *i;
+}
+
+
 int getIndex(const int* i)
 {
-    return *i;
+     return *i;
 }
+
+// template<class codim>
+// int getIndex(const EntityRep<codim>* i)
+// {
+//     return i->index();
+// }
+
 
 template<class T>
 int getIndex(T i)
 {
-    return i->index();
+     return i->index();
 }
 
 template<class C>
@@ -933,7 +953,8 @@ struct AttributeDataHandle
 
     bool fixedSize()
     {
-        return true;
+        return false;
+        //return true;
     }
     std::size_t size(std::size_t i)
     {
@@ -942,8 +963,8 @@ struct AttributeDataHandle
     template<class B>
     void gather(B& buffer, std::size_t i)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+      //typedef typename GetRowType<T>::type::const_iterator RowIter;
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f)
         {
             char t=getPartitionType(indicator_, *f, grid_);
@@ -954,8 +975,8 @@ struct AttributeDataHandle
     template<class B>
     void scatter(B& buffer, std::size_t i, std::size_t s)
     {
-        typedef typename GetRowType<T>::type::const_iterator RowIter;
-        for(RowIter f=c2e_[i].begin(), fend=c2e_[i].end();
+      //typedef typename GetRowType<T>::type::const_iterator RowIter;
+        for(auto f=c2e_[i].begin(), fend=c2e_[i].end();
             f!=fend; ++f, --s)
         {
             std::pair<int,char> rank_attr;
@@ -1695,6 +1716,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     face_interfaces_);
     std::vector<std::map<int,char> >().swap(face_attributes);
     */
+    /*
     std::vector<std::map<int,char> > point_attributes(noExistingPoints);
     AttributeDataHandle<std::vector<std::array<int,8> > >
         point_handle(ccobj_.rank(), *partition_type_indicator_,
@@ -1706,6 +1728,51 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
     }
     createInterfaces(point_attributes, partition_type_indicator_->point_indicator_.begin(),
                      point_interfaces_);
+                     */
+    //point inter_face all
+    size_t nc = cell_to_point_.size();
+    std::vector<int> points;
+    for (size_t cell = 0; cell < nc; ++cell){
+        if (false) {
+            points.clear();
+            for (int i = 0; i < 8; ++i) {
+                points.push_back(cell_to_point_[cell][i]);
+            }
+            cell_to_allpoint_.appendRow(points.begin(), points.end());
+        } else {
+            const auto& faces = cell_to_face_[cpgrid::EntityRep<0>(cell, true)];
+            int nf = faces.size();
+            // new code
+            points.clear();
+            for (int f = 0; f < nf; ++f) {
+                auto face = faces[f].index();
+                const auto& fnodes = face_to_point_[face];
+                //auto faceSize = fnodes.size();
+                // std::set<int> nodes;
+                for(const auto& fv: fnodes){
+                  //for (int v = 0; v < faceSize; ++v) {
+                  //  int fv = fnodes[v];
+                    points.push_back(fv);
+                }
+            }
+            std::sort(points.begin(), points.end());
+            auto unique_end = std::unique(points.begin(), points.end()); 
+            points.erase(unique_end, points.end());
+            cell_to_allpoint_.appendRow(points.begin(), points.end());
+        }
+    }
+
+    std::vector<std::map<int,char> > allpoint_attributes(noExistingPoints);
+    AttributeDataHandle<Opm::SparseTable<int> >
+        allpoint_handle(ccobj_.rank(), *partition_type_indicator_,
+                     allpoint_attributes, cell_to_allpoint_, *this);
+    if( static_cast<const Dune::Interface&>(std::get<All_All_Interface>(cell_interfaces_))
+        .interfaces().size() )
+    {
+        comm.forward(allpoint_handle);
+    }
+    createInterfaces(allpoint_attributes, partition_type_indicator_->point_indicator_.begin(),
+                     point_interfaces_);                 
 #endif
 }
 
