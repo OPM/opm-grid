@@ -2190,6 +2190,14 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_
                            std::move(filtered_lgr_name_vec));
 }
 
+void containsEightDifferentCorners(const std::array<int,8>& cell_to_point)
+{
+    const std::set<int> nonRepeatedCorners(cell_to_point.begin(), cell_to_point.end());
+    if (nonRepeatedCorners.size() != 8) {
+      OPM_THROW(std::logic_error, "Cell has " + std::to_string(nonRepeatedCorners.size()) + " vertices, required: 8.");
+    }
+}
+
 } // namespace Lgr
 } // namespace Opm
 

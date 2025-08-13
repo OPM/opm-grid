@@ -731,6 +731,8 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int, 3>>& cells
                                     const std::vector<std::array<int, 3>>& endIJK_vec,
                                     const std::vector<std::string>& lgr_name_vec);
 
+void containsEightDifferentCorners(const std::array<int,8>& cell_to_point);
+
 } // namespace Lgr
 } // namespace Opm
 

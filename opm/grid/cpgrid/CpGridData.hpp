@@ -395,7 +395,7 @@ public:
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
     ///        Assumption: all grid cells are active.
     bool hasNNCs(const std::vector<int>& cellIndices) const;
-    
+
     /// @brief Mark entity for refinement or coarsening.
     ///
     /// Refinement on CpGrid is partially supported for Cartesian grids, with the keyword CARFIN.

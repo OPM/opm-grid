@@ -24,7 +24,9 @@
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
+
 #include <opm/grid/CpGrid.hpp>
+#include <opm/grid/cpgrid/LgrHelpers.hpp>
 
 struct Fixture
 {
@@ -35,94 +37,220 @@ struct Fixture
         Dune::MPIHelper::instance(m_argc, m_argv);
         Opm::OpmLog::setupSimpleDefaultLogging();
     }
-
-    static int rank()
-    {
-        int m_argc = boost::unit_test::framework::master_test_suite().argc;
-        char** m_argv = boost::unit_test::framework::master_test_suite().argv;
-        return Dune::MPIHelper::instance(m_argc, m_argv).rank();
-    }
 };
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
 bool checkCuboidShape(const Dune::cpgrid::Entity<0>& element, const Dune::CpGrid& grid)
 {
-    const auto& levelZeroGrid = grid.currentData().front();
+    const auto& leafGrid = grid.currentData().back();
+    const auto cellToPoint = leafGrid->cellToPoint(element.index());
 
-    const auto cellToPoint = levelZeroGrid->cellToPoint(element.index());
-    // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
-
-    // Compute 'cuboid' volume with corners: |corn[1]-corn[0]|x|corn[3]-corn[1]|x|corn[5]-corn[1]|
+    // Select four corners to approximate cuboid volume
+    //    2 ---- 3                          6 ---- 7
+    //   /      /   bottom face            /      /    top face
+    //  0 ---- 1                          4 ---- 5
     std::vector<Dune::cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
     aFewCorners.resize(4); // {'0', '1', '3', '5'}
-    aFewCorners[0] = (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-    aFewCorners[1] = (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-    aFewCorners[2] = (*(levelZeroGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-    aFewCorners[3] = (*(levelZeroGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
-    //  l = length. b = breadth. h = height.
-    double  length, breadth, height;
-    length = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
-                        ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
-                        ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
-    breadth = std::sqrt( ((aFewCorners[1][0] -aFewCorners[2][0])*(aFewCorners[1][0] -aFewCorners[2][0])) +
-                         ((aFewCorners[1][1] -aFewCorners[2][1])*(aFewCorners[1][1] -aFewCorners[2][1])) +
-                         ((aFewCorners[1][2] -aFewCorners[2][2])*(aFewCorners[1][2] -aFewCorners[2][2])));
-    height = std::sqrt( ((aFewCorners[1][0] -aFewCorners[3][0])*(aFewCorners[1][0] -aFewCorners[3][0])) +
-                        ((aFewCorners[1][1] -aFewCorners[3][1])*(aFewCorners[1][1] -aFewCorners[3][1])) +
-                        ((aFewCorners[1][2] -aFewCorners[3][2])*(aFewCorners[1][2] -aFewCorners[3][2])));
+    aFewCorners[0] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
+    aFewCorners[1] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
+    aFewCorners[2] = (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
+    aFewCorners[3] = (*(leafGrid -> getGeometry().geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
+
+    auto distance = [](const auto& p1, const auto& p2) {
+        double dx = p2[0] - p1[0];
+        double dy = p2[1] - p1[1];
+        double dz = p2[2] - p1[2];
+        return std::sqrt(dx*dx + dy*dy + dz*dz);
+    };
+
+    double length  = distance(aFewCorners[0], aFewCorners[1]);
+    double breadth = distance(aFewCorners[1], aFewCorners[2]);
+    double height  = distance(aFewCorners[1], aFewCorners[3]);
+
     const double cuboidVolume = length*breadth*height;
-    const auto cellVolume =  (*(levelZeroGrid-> getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
-    
-    return (std::abs(cuboidVolume - cellVolume) <  1e-6);
+    const auto actualVolume =  (*(leafGrid-> getGeometry().geomVector(std::integral_constant<int,0>())))[Dune::cpgrid::EntityRep<0>(element.index(), true)].volume();
+
+    return (std::abs(cuboidVolume - actualVolume) <  1e-6);
 }
 
-void createEclGridCpGrid_and_checkCuboidShape(const std::string& deckString)
+BOOST_AUTO_TEST_CASE(refineCellWithFewerThanEightCornersThrows)
 {
-    Opm::Parser parser;
-    const auto deck = parser.parseString(deckString);
-
-    Dune::CpGrid grid;
-    Opm::EclipseGrid eclGrid(deck);
-
-    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
-    
-    for (const auto& element : Dune::elements(grid.leafGridView()))
-    {
-        BOOST_CHECK(!checkCuboidShape(element, grid));
-    }
-}
-
-BOOST_AUTO_TEST_CASE(nonCuboidCell)
-{/*
-   Cell corners:                     COORD
-   0 {0, 0, 0}                       line 1: corners 0 and 4
-   1 {1, 0, 0}                       line 2: corners 1 and 5
-   2 {0, 1, 0}                       line 3: corners 2 and 6
-   3 {1, 1, 0}                       line 4: corners 3 and 7
-   4 {0, 0, 1}
-   5 {1, 0, 0}  coincides with 1
-   6 {0, 1, 1}
-   7 {1, 1, 0}  coincides with 3 */
     const std::string deckString =
         R"(RUNSPEC
         DIMENS
-        1  1  1 /
+        1  1  1/
         GRID
+        -- COORD: 4 pillars × 6 values (x1 y1 z1  x2 y2 z2)
         COORD
-        0 0 0  0 0 1
-        1 0 0  1 0 0
-        0 1 0  0 1 1
-        1 1 0  1 1 0
+        0 0 0  0 0 1   -- Pillar 1: bottom at (0,0,0), top at (0,0,1)
+        1 0 0  1 0 0   -- Pillar 2: bottom at (1,0,0) = same at top
+        0 1 0  0 1 1   -- Pillar 3: bottom at (0,1,0), top at (0,1,1)
+        1 1 0  1 1 0   -- Pillar 4: bottom at (1,1,0) = same at top
         /
+        -- ZCORN: eight Z values: bottom 4, then top 4
         ZCORN
         6*0
         2*1
         /
+
         ACTNUM
         1*1
         /
         )";
 
-    createEclGridCpGrid_and_checkCuboidShape(deckString);
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+    Opm::EclipseGrid eclGrid(deck);
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        // Check the single-cell from level zero is not a cuboid
+        BOOST_CHECK(!checkCuboidShape(element, grid));
+        // Check the single-cell from level zero has fewer than 8 corners
+        BOOST_CHECK_THROW(Opm::Lgr::containsEightDifferentCorners( grid.currentData().back()->cellToPoint(element.index())),
+                          std::logic_error);
+
+        // Mark element for refinment, to check (below) that calling adapt() throws.
+        grid.mark(1,element);
+    }
+    // Throw for all four refinement methods.
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView({{2,2,3}}, // cells_per_dim_vec
+                                                 {{0,0,0}}, // startIJK_vec
+                                                 {{1,1,1}}, // endIJK_vec
+                                                 {"LGR1"}), // lgr_name_vec
+                      std::logic_error);
+
+    BOOST_CHECK_THROW(grid.globalRefine(2), std::logic_error);
+
+    BOOST_CHECK_THROW(grid.autoRefine({3,5,7}), // refinement factors in (x,y,z) directions
+                      std::logic_error);
+
+    // Single-cell has been marked for refinement, even though refinement won't take place (<8 vertices)
+    grid.preAdapt();
+    BOOST_CHECK_THROW(grid.adapt(), std::logic_error);
+}
+
+// Create a test grid from a simple deckstring.
+// Refine it with one of:
+// 0-> addLgrsUpdateLeafView
+// 1-> globalRefine
+// 2-> autoRefine
+// 3-> adapt
+void createAndRefineTestGrid(const std::string& deckString,
+                             int selectMethod)
+{
+    // Create the grid from string
+    Opm::Parser parser;
+    const auto deck = parser.parseString(deckString);
+    Opm::EclipseGrid eclGrid(deck);
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        // Check the cell(s) from level zero is(are) not a cuboid
+        BOOST_CHECK(!checkCuboidShape(element, grid));
+
+        // Check the cell(s) from level zero has(have) 8 corners
+        Opm::Lgr::containsEightDifferentCorners(grid.currentData().back()->cellToPoint(element.index()));
+
+        // If selectMethod == 3-> adapt -> mark at least one element
+        if ((selectMethod == 3) && (element.index()==0)){
+            grid.mark(1,element);
+        }
+    }
+
+    if (selectMethod == 0) {
+        grid.addLgrsUpdateLeafView({{3,2,4}}, // cells_per_dim_vec
+                                   {{0,0,0}}, // startIJK_vec
+                                   {{1,1,1}}, // endIJK_vec
+                                   {"LGR1"}); // lgr_name_vec
+    }
+    else if (selectMethod == 1){
+        grid.globalRefine(2);
+    }
+    else if (selectMethod == 2) {
+        grid.autoRefine(std::array{3,5,7}); // refinement factors in (x,y,z) directions
+    }
+    else if (selectMethod == 3) {
+        grid.preAdapt();
+        grid.adapt();
+        grid.postAdapt();
+    }
+
+    for (const auto& element : Dune::elements(grid.leafGridView())) {
+        // Check all leaf cells are also not cuboids, after refinement of any kind
+        BOOST_CHECK(!checkCuboidShape(element, grid));
+
+        // Check the cell has 8 different corners
+        Opm::Lgr::containsEightDifferentCorners(grid.currentData().back()->cellToPoint(element.index()));
+    }
+}
+
+BOOST_AUTO_TEST_CASE(singleHexahedronNotCuboidCanBeRefined)
+{
+    const std::string singleHexa = R"(
+RUNSPEC
+DIMENS
+ 1 1 1 /
+GRID
+-- COORD: 4 pillars × 6 values (x1 y1 z1  x2 y2 z2)
+COORD
+ 0 0 0    0 0 2    -- Pillar 1: bottom at (0,0,0), top at (0,0,2)
+ 2 0 0    3 1 3    -- Pillar 2: bottom at (2,0,0), top at (3,1,3)
+ 0 2 0   -1 3 1    -- Pillar 3: bottom at (0,2,0), top at (-1,3,1)
+ 2 2 0    4 4 4    -- Pillar 4: bottom at (2,2,0), top at (4,4,4)
+/
+-- ZCORN: eight Z values: bottom 4, then top 4
+ZCORN
+ 0 0 0 0
+ 2 3 1 4
+/
+ACTNUM
+ 1
+/
+)";
+
+    createAndRefineTestGrid(singleHexa, 0); // 0-> refinement via addLgrsUpdateLeafView
+    createAndRefineTestGrid(singleHexa, 1); // 1-> refinement via globalRefine
+    createAndRefineTestGrid(singleHexa, 2); // 2-> refinement via autoRefine
+    createAndRefineTestGrid(singleHexa, 3); // 3-> refinement via adpat
+}
+
+BOOST_AUTO_TEST_CASE(twoHexahedronNotCuboidCanBeRefined)
+{
+
+    const std::string twoHexaZ = R"(
+RUNSPEC
+DIMENS
+ 1 1 2 /
+GRID
+-- COORD: 4 pillars × 6 values (x1 y1 z1  x2 y2 z2)
+COORD
+ 0 0 0    0 0 6     -- Pillar 1 bottom at (0,0,0), top at (0,0,6)
+ 2 0 0    3 1 7     -- Pillar 2 bottom at (2,0,0), top at (3,1,7)
+ 0 2 0   -1 3 5     -- Pillar 3 bottom at (0,2,0), top at (-1,3,5)
+ 2 2 0    4 4 8     -- Pillar 4 bottom at (2,2,0), top at (4,4,8)
+/
+ZCORN
+-- ZCORN: 2 cells stacked vertically -> 16 values
+-- Cell 1 (bottom)
+0 0 0 0    -- bottom pillars
+2 3 1 4    -- top pillars
+
+-- Cell 2 (above cell 1)
+2 3 1 4    -- bottom = same as cell 1 top
+5 7 4 8    -- top pillars
+/
+ACTNUM
+ 2*1
+/
+)";
+
+    createAndRefineTestGrid(twoHexaZ,0); // 0-> refinement via addLgrsUpdateLeafView
+    createAndRefineTestGrid(twoHexaZ,1); // 1-> refinement via globalRefine
+    createAndRefineTestGrid(twoHexaZ,2); // 2-> refinement via addLgrsUpdateLeafView
+    createAndRefineTestGrid(twoHexaZ,3); // 3-> refinement via adapt
 }
