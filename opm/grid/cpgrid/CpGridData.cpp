@@ -10,6 +10,7 @@
 #include"ElementMarkHandle.hpp"
 #include"Intersection.hpp"
 #include"Entity.hpp"
+#include "LgrHelpers.hpp"
 #include"OrientedEntityTable.hpp"
 #include"Indexsets.hpp"
 #include"PartitionTypeIndicator.hpp"
@@ -1686,7 +1687,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = getIJK(idx_in_parent_cell, cells_per_dim);
+    std::array<int,3> ijk = Opm::getIJK(idx_in_parent_cell, cells_per_dim);
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
@@ -1707,6 +1708,11 @@ std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners
         }
     };
     return corners_in_parent_reference_elem;
+}
+
+void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
+{
+    ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
 }
 
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
@@ -1731,39 +1737,6 @@ std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, co
         } // end j-for-loop
     } // end k-for-loop
     return patch_cells;
-}
-
-void CpGridData::checkCuboidShape(const std::vector<int>& cellIdx_vec) const
-{
-    bool cuboidShape = true;
-    for (const auto cellIdx : cellIdx_vec)
-    {
-        const auto cellToPoint = cell_to_point_[cellIdx]; // bottom face corners {0,1,2,3}, top face corners {4,5,6,7}
-        // Compute 'cuboid' volume with corners: |corn[1]-corn[0]|x|corn[3]-corn[1]|x|corn[5]-corn[1]|
-        std::vector<cpgrid::Geometry<0,3>::GlobalCoordinate> aFewCorners;
-        aFewCorners.resize(4); // {'0', '1', '3', '5'}
-        aFewCorners[0] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[0]).center();
-        aFewCorners[1] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[1]).center();
-        aFewCorners[2] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[3]).center();
-        aFewCorners[3] = (*(this -> geometry_.geomVector(std::integral_constant<int,3>()))).get(cellToPoint[5]).center();
-        //  l = length. b = breadth. h = height.
-        double  length, breadth, height;
-        length = std::sqrt( ((aFewCorners[1][0] -aFewCorners[0][0])*(aFewCorners[1][0] -aFewCorners[0][0])) +
-                            ((aFewCorners[1][1] -aFewCorners[0][1])*(aFewCorners[1][1] -aFewCorners[0][1])) +
-                            ((aFewCorners[1][2] -aFewCorners[0][2])*(aFewCorners[1][2] -aFewCorners[0][2])));
-        breadth = std::sqrt( ((aFewCorners[1][0] -aFewCorners[2][0])*(aFewCorners[1][0] -aFewCorners[2][0])) +
-                             ((aFewCorners[1][1] -aFewCorners[2][1])*(aFewCorners[1][1] -aFewCorners[2][1])) +
-                             ((aFewCorners[1][2] -aFewCorners[2][2])*(aFewCorners[1][2] -aFewCorners[2][2])));
-        height = std::sqrt( ((aFewCorners[1][0] -aFewCorners[3][0])*(aFewCorners[1][0] -aFewCorners[3][0])) +
-                            ((aFewCorners[1][1] -aFewCorners[3][1])*(aFewCorners[1][1] -aFewCorners[3][1])) +
-                            ((aFewCorners[1][2] -aFewCorners[3][2])*(aFewCorners[1][2] -aFewCorners[3][2])));
-        const double cuboidVolume = length*breadth*height;
-        const auto cellVolume =  (*(this -> geometry_.geomVector(std::integral_constant<int,0>())))[EntityRep<0>(cellIdx, true)].volume();
-        cuboidShape = cuboidShape && (std::abs(cuboidVolume - cellVolume) <  1e-6);
-        if (!cuboidShape){
-            OPM_THROW(std::logic_error, "At least one cell has no cuboid shape. Its refinement is not supported yet.\n");
-        }
-    }
 }
 
 std::array<std::vector<int>,6> CpGridData::getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
