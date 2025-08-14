@@ -2836,7 +2836,7 @@ void CpGrid::autoRefine(const std::array<int,3>& nxnynz)
     addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {nxnynz},
                           /* startIJK_vec = */ {{0,0,0}},
                           /* endIJK_vec = */ {endIJK},
-                          /* lgr_name_vec = */ {"GR"});
+                          /* lgr_name_vec = */ {"GLOBAL_REFINED"});
 }
 
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
