@@ -439,9 +439,6 @@ public:
     ///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
     void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
-    /// @brief Check that every cell to be refined has cuboid shape.
-    void checkCuboidShape(const std::vector<int>& cellIdx_vec) const;
-
     /// @brief Determine if a finite amount of patches (of cells) share a face.
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
