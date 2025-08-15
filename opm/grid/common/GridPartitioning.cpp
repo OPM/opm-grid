@@ -576,7 +576,7 @@ int addOverlapLayer([[maybe_unused]] const CpGrid& grid,
         int index = ix.index(*it);
         auto owner = cell_part[index];
         exportProcs.insert(std::make_pair(owner, 0));
-        if ( trans ) {
+        if ( trans && false) {
             addOverlapLayerNoZeroTrans(grid, index, *it, owner, cell_part, exportList, addCornerCells, layers-1, trans, level);
         }
         else {
