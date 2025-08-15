@@ -1703,7 +1703,14 @@ namespace Dune
         ///
         /// Note that a face here is always oriented. If there are two
         /// neighboring cells then the orientation will be from local_index 0
-        /// to local_index 1
+        /// to local_index 1.
+        /// If there is only one neighbouring cell, meaning that the face is on
+        /// the grid boundary, or a process boundary, then that cell's index will
+        /// be returned for local_index == 0 if the face normal is pointing outwards
+        /// from the cell and for local_index == 1 if the face normal is pointing in.
+        /// The other index will in that case yield -1. Effectively, we return
+        /// element local_index of (c, -1) or (-1, c) depending on face orientation
+        /// with respect to c.
         /// \param face The index identifying the face.
         /// \param local_index The local_index of the cell.
         /// \param level Integer representing the level grid to be considered.
