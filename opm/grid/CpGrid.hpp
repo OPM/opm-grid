@@ -433,6 +433,14 @@ namespace Dune
                                    const std::vector<std::array<int,3>>& endIJK_vec,
                                    const std::vector<std::string>& lgr_name_vec);
 
+        /// @brief Global refine the grid with different refinement factors in each direction.
+        ///
+        ///        Related to AUTOREF keyword. Each refinement factor must be odd and positive.
+        ///        The restriction on odd factors might be related to placing the wells in the central
+        ///        refined cell, or row of cells, depending on the well direction.
+        /// @param [in] nxnynz      Refinement factors in x-, y-, and z-direction.
+        void autoRefine(const std::array<int,3>& nxnynz);
+
         // @brief TO BE DONE
         const std::map<std::string,int>& getLgrNameToLevel() const;
 

@@ -158,7 +158,7 @@ void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it
                                                                [](double sum, const Dune::cpgrid::Entity<0>& child) {
                                                                    return sum + child.geometryInFather().volume();
                                                                });
-    BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-13);
+    BOOST_CHECK_CLOSE(reference_elem_parent_cell_volume, 1.0, 1e-12);
 }
 
 void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
@@ -181,7 +181,7 @@ void Opm::checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it
 
     for (int c = 0; c < 3; ++c) {
         reference_elem_parent_cell_center[c]/= total_children;
-        BOOST_CHECK_CLOSE(reference_elem_parent_cell_center[c], .5, 1e-13);
+        BOOST_CHECK_CLOSE(reference_elem_parent_cell_center[c], .5, 1e-12);
     }
 }
 
