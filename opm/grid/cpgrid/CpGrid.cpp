@@ -52,6 +52,7 @@
 #include "../CpGrid.hpp"
 #include "LgrHelpers.hpp"
 #include "ParentToChildrenCellGlobalIdHandle.hpp"
+#include "NestedRefinementUtilities.hpp"
 #include <opm/grid/common/MetisPartition.hpp>
 #include <opm/grid/common/ZoltanPartition.hpp>
 #include <opm/grid/GraphOfGridWrappers.hpp>
@@ -1267,39 +1268,6 @@ Dune::cpgrid::Intersection CpGrid::getParentIntersectionFromLgrBoundaryFace(cons
     OPM_THROW(std::invalid_argument, "Face is on the boundary of the grid");
 }
 
-bool CpGrid::nonNNCsSelectedCellsLGR(const std::vector<std::array<int,3>>& startIJK_vec,
-                                     const std::vector<std::array<int,3>>& endIJK_vec) const
-{
-    // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values
-    // and check if they have NNCs.
-    // Note: at this point, the (level zero) grid might be already distributed, before adding the LGRs. Therefore,
-    // we get the active index of each element and its corresponding ijk from the global grid, to be able to determine
-    // if the cell bolengs to certain block of cells selected for refinement (comparing element's ijk with start/endIJK values).
-    // It is not correct to make the comparasion with element.index() and minimum/maximum index of each block of cell, since
-    // element.index() is local and the block of cells are defined with global values.
-    return std::all_of(this->leafGridView().begin<0>(), this->leafGridView().end<0>(),
-                        [&startIJK_vec, this, &endIJK_vec](const auto& element)
-                        {
-                            std::array<int,3> ijk;
-                            getIJK(element.index(), ijk);
-                            for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
-                                const bool belongsToLevel =
-                                        ijk[0] >= startIJK_vec[level][0] && ijk[0] < endIJK_vec[level][0]
-                                     && ijk[1] >= startIJK_vec[level][1] && ijk[1] < endIJK_vec[level][1]
-                                     && ijk[2] >= startIJK_vec[level][2] && ijk[2] < endIJK_vec[level][2];
-                                if (belongsToLevel) {
-                                    // Check that the cell to be marked for refinement has
-                                    // no NNC (no neighbouring connections).
-                                    if (this->currentData().back()->hasNNCs({element.index()})) {
-                                        return false;
-                                    }
-                                }
-                            }
-                            return true;
-                        });
-}
-
 void CpGrid::markElemAssignLevelDetectActiveLgrs(const std::vector<std::array<int,3>>& startIJK_vec,
                                                  const std::vector<std::array<int,3>>& endIJK_vec,
                                                  std::vector<int>& assignRefinedLevel,
@@ -1882,7 +1850,7 @@ bool CpGrid::refineAndUpdateGrid(const std::vector<std::array<int,3>>& cells_per
                                  const std::vector<std::array<int,3>>& endIJK_vec)
 {
     // To do: support coarsening.
-    assert( static_cast<int>(assignRefinedLevel.size()) == current_view_data_->size(0));
+    assert( static_cast<int>(assignRefinedLevel.size()) == currentData().back()->size(0));
     assert(cells_per_dim_vec.size() == lgr_name_vec.size());
 
     auto& data = currentData(); // data pointed by current_view_data_ (data_ or distributed_data_[if loadBalance() has been invoked before adapt()]).
@@ -2625,19 +2593,27 @@ void CpGrid::syncDistributedGlobalCellIds()
 void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
                                    const std::vector<std::array<int,3>>& endIJK_vec,
-                                   const std::vector<std::string>& lgr_name_vec)
+                                   const std::vector<std::string>& lgr_name_vec,
+                                   const std::vector<std::string>& lgr_parent_grid_name_vec)
 {
     // For parallel run, level zero grid is stored in distributed_data_[0]. If CpGrid::scatterGrid has been invoked,
     // then current_view_data_ == distributed_data_[0].
     // For serial run, level zero grid is stored in data_[0]. In this case, current_view_data_ == data_[0].
     // Note: currentData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
 
-    // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
     Opm::Lgr::validStartEndIJKs(startIJK_vec, endIJK_vec);
+
+    // If no parent grid name vector has been provided, then default "GLOBAL" for all (new) level grids.
+    std::vector<std::string> parent_grid_names = lgr_parent_grid_name_vec;
+    if (parent_grid_names.size() == 0){ // No parent grid name given->default "GLOBAL" parent grid
+        parent_grid_names.resize(cells_per_dim_vec.size(), "GLOBAL");
+    }
 
     // Sizes of provided vectors (number of subivisions per cells and lgrs name) should coincide.
     bool matchingSizeHasFailed = false;
-    if ( (cells_per_dim_vec.size() != startIJK_vec.size())  || (lgr_name_vec.size() != startIJK_vec.size())) {
+    if ( (cells_per_dim_vec.size() != startIJK_vec.size()) ||
+         (lgr_name_vec.size() != startIJK_vec.size()) ||
+         (parent_grid_names.size() != startIJK_vec.size())) {
         matchingSizeHasFailed = true;
     }
     matchingSizeHasFailed = comm().max(matchingSizeHasFailed);
@@ -2650,75 +2626,111 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 filtered_cells_per_dim_vec,
                 filtered_startIJK_vec,
                 filtered_endIJK_vec,
-                filtered_lgr_name_vec] = Opm::Lgr::filterUndesiredNumberOfSubdivisions(cells_per_dim_vec,
-                                                                                       startIJK_vec,
-                                                                                       endIJK_vec,
-                                                                                       lgr_name_vec);
-    if (allUndesired) { // if all LGRs expect 1 child per direction, then no refinement will be done. 
+                filtered_lgr_name_vec,
+                filtered_lgr_parent_grid_name_vec] = Opm::Lgr::filterUndesiredNumberOfSubdivisions(cells_per_dim_vec,
+                                                                                                   startIJK_vec,
+                                                                                                   endIJK_vec,
+                                                                                                   lgr_name_vec,
+                                                                                                   parent_grid_names);
+    if (allUndesired) { // if all LGRs expect 1 child per direction, then no refinement will be done.
         return;
     }
 
-    // Compatibility of number of subdivisions of neighboring LGRs: Check shared faces on boundaries of LGRs.
-    //                                                              Not optimal since the code below does not take into account
-    //                                                              active/inactive cells, instead, relies on "ijk-computations".
-    //                                                              TO DO: improve/remove.
-    // To check "Compatibility of numbers of subdivisions of neighboring LGRs".
-    // The method compatibleSubdivision returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.
-    int compatibleSubdivisions = current_view_data_->compatibleSubdivisions(filtered_cells_per_dim_vec, filtered_startIJK_vec, filtered_endIJK_vec);
-    compatibleSubdivisions = comm().min(compatibleSubdivisions); // 0 when at least one process returns false (un-compatible subdivisions).
-    if(!compatibleSubdivisions) {
-        if (comm().rank()==0){
-            OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+    std::set<std::string> non_repeated_parent_grid_names(filtered_lgr_parent_grid_name_vec.begin(),
+                                                         filtered_lgr_parent_grid_name_vec.end());
+    int tmp_maxLevel = this->maxLevel();
+
+    for (const auto& parent_grid_name : non_repeated_parent_grid_names) {
+
+        auto [cells_per_dim_vec_parent_grid,
+              startIJK_vec_parent_grid,
+              endIJK_vec_parent_grid,
+              lgr_name_vec_parent_grid] =  Opm::filterLgrDataPerParentGridName(filtered_cells_per_dim_vec,
+                                                                               filtered_startIJK_vec,
+                                                                               filtered_endIJK_vec,
+                                                                               filtered_lgr_name_vec,
+                                                                               filtered_lgr_parent_grid_name_vec,
+                                                                               parent_grid_name);
+
+
+        int parent_grid_index = getLgrNameToLevel().at(parent_grid_name);
+        // Determine the assigned level for the refinement of each marked cell
+        std::vector<int> assignRefinedLevel(currentData().back()->size(0));
+
+        // Compatibility of numbers of subdivisions of neighboring LGRs".
+        // The method compatibleSubdivision returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.
+        int compatibleSubdivisions = Opm::Lgr::compatibleSubdivisions(filtered_cells_per_dim_vec,
+                                                                      filtered_startIJK_vec,
+                                                                      filtered_endIJK_vec,
+                                                                      currentData()[parent_grid_index]->logicalCartesianSize());
+        compatibleSubdivisions = comm().min(compatibleSubdivisions); // 0 when at least one process returns false (un-compatible subdivisions).
+        if(!compatibleSubdivisions) {
+            if (comm().rank()==0){
+                OPM_THROW(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+            }
+            else{
+                OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+            }
         }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, "Subdivisions of neighboring LGRs sharing at least one face do not coincide. Not suppported yet.");
+
+        // To determine if an LGR is not empty in a given process, we set
+        // at_least_one_active_parent[in that level] to 1 if it contains
+        // at least one active cell, and to 0 otherwise.
+        std::vector<int> at_least_one_active_parent(filtered_startIJK_vec.size());
+
+        // Find out which (ACTIVE) elements belong to the block cells defined by startIJK and endIJK values.
+        for(const auto& element: elements(this->leafGridView())) {
+            std::array<int,3> ijk;
+            // Skip the element if its level is not equal to parent_grid_index
+            // Note: Inconsistency with DUNE Grid interface. element.level()
+            //       returns the index to access the level grid where the entity was born.
+            //       This means that, in general,
+            //       elment.level() != element.father().level() + 1/
+            //       It can happen that | element.level() - element.father().level()| >1.
+            if (parent_grid_index != element.level())
+                continue;
+            currentData()[element.level()]->getIJK(element.getLevelElem().index(), ijk);
+
+            for (std::size_t level = 0; level < startIJK_vec_parent_grid.size(); ++level) {
+                bool belongsToLevel = true;
+                for (int c = 0; c < 3; ++c) {
+                    belongsToLevel = belongsToLevel && ( (ijk[c] >= startIJK_vec_parent_grid[level][c]) && (ijk[c] < endIJK_vec_parent_grid[level][c]) );
+                    if (!belongsToLevel)
+                        break;
+                }
+                if(belongsToLevel) {
+                    this->mark(1, element);
+                    at_least_one_active_parent[level] = 1;
+                    assignRefinedLevel[element.index()] = tmp_maxLevel + level +1;
+                }
+            }
+        }
+        tmp_maxLevel = tmp_maxLevel + startIJK_vec_parent_grid.size(); // Update the maxLevel
+        // Refine
+        adapt(cells_per_dim_vec_parent_grid,
+              assignRefinedLevel,
+              lgr_name_vec_parent_grid,
+              startIJK_vec_parent_grid,
+              endIJK_vec_parent_grid);
+
+        int non_empty_lgrs = 0;
+        for (std::size_t level = 0; level < filtered_startIJK_vec.size(); ++level) {
+            // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
+            if (at_least_one_active_parent[level] == 0) {
+                Opm::OpmLog::warning(filtered_lgr_name_vec[level]+ " contains only inactive cells (in " + std::to_string(comm().rank()) + " rank).\n");
+            }
+            else {
+                ++non_empty_lgrs;
+            }
+        }
+
+        // Notice that in a parallel run, non_empty_lgrs represents the local active lgrs, i.e. the lgrs containing active cells which also belong
+        // to the current process. Considered per parent grid.
+        auto globalActiveLgrs = comm().sum(non_empty_lgrs);
+        if(globalActiveLgrs == 0) {
+            Opm::OpmLog::warning("All the LGRs with parent grid " + parent_grid_name + " contain only inactive cells.\n");
         }
     }
-
-    // Non neighboring connections: Currently, adding LGRs whose cells have NNCs is not supported yet.
-    // The method nonNNCsSelectedCellsLGR returns a bool. We convert it into an int since MPI within DUNE does not support bool directly.
-    int nonNNCs = this->nonNNCsSelectedCellsLGR(filtered_startIJK_vec, filtered_endIJK_vec);
-    // To check "Non-NNCs (non non neighboring connections)" for all processes.
-    nonNNCs = comm().min(nonNNCs); // 0 when at least one process returns false (there are NNCs on a selected cell for refinement).
-    if(!nonNNCs) {
-        OPM_THROW(std::logic_error, "NNC face on a cell containing LGR is not supported yet.");
-    } 
-
-    // Determine the assigned level for the refinement of each marked cell
-    std::vector<int> assignRefinedLevel(current_view_data_->size(0));
-    // To determine if an LGR is not empty in a given process, we set
-    // lgr_with_at_least_one_active_cell[in that level] to 1 if it contains
-    // at least one active cell, and to 0 otherwise.
-    std::vector<int> lgr_with_at_least_one_active_cell(filtered_startIJK_vec.size());
-    markElemAssignLevelDetectActiveLgrs(filtered_startIJK_vec,
-                                        filtered_endIJK_vec,
-                                        assignRefinedLevel,
-                                        lgr_with_at_least_one_active_cell);
-
-    int non_empty_lgrs = 0;
-    for (std::size_t level = 0; level < filtered_startIJK_vec.size(); ++level) {
-        // Do not throw if all cells of an LGR are inactive in a parallel run (The process might not 'see' those cells.)
-        if (lgr_with_at_least_one_active_cell[level] == 0) {
-            Opm::OpmLog::warning(filtered_lgr_name_vec[level]+ " contains only inactive cells (in " + std::to_string(comm().rank()) + " rank).\n");
-        }
-        else {
-            ++non_empty_lgrs;
-        }
-    }
-
-    // Notice that in a parallel run, non_empty_lgrs represents the local active lgrs, i.e. the lgrs containing active cells which also belong
-    // to the current process.
-    auto globalActiveLgrs = comm().sum(non_empty_lgrs);
-    if(globalActiveLgrs == 0) {
-        Opm::OpmLog::warning("All the LGRs contain only inactive cells.\n");
-    }
-
-    // Refine
-    refineAndUpdateGrid(filtered_cells_per_dim_vec, assignRefinedLevel, filtered_lgr_name_vec, filtered_startIJK_vec, filtered_endIJK_vec);
-
-    // Print total refined level grids and total cells on the leaf grid view
-    Opm::OpmLog::info(std::to_string(non_empty_lgrs) + " (new) refined level grid(s) (in " + std::to_string(comm().rank()) + " rank).\n");
-    Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 }
 
 void CpGrid::autoRefine(const std::array<int,3>& nxnynz)

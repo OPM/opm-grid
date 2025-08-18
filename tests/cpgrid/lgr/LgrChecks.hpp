@@ -48,7 +48,8 @@ namespace Opm
 {
 
 void checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
-                                        const Dune::cpgrid::HierarchicIterator& endIt);
+                                        const Dune::cpgrid::HierarchicIterator& endIt,
+                                        bool isNested);
 
 void checkReferenceElemParentCellCenter(Dune::cpgrid::HierarchicIterator it,
                                         const Dune::cpgrid::HierarchicIterator& endIt,
@@ -173,7 +174,8 @@ void checkMarksAfterPostAdapt(const Dune::CpGrid& grid,
 } // namespace Opm
 
 void Opm::checkReferenceElemParentCellVolume(Dune::cpgrid::HierarchicIterator it,
-                                             const Dune::cpgrid::HierarchicIterator& endIt)
+                                             const Dune::cpgrid::HierarchicIterator& endIt,
+                                             bool isNested)
 {
     double reference_elem_parent_cell_volume = std::accumulate(it, endIt, 0.0,
                                                                [](double sum, const Dune::cpgrid::Entity<0>& child) {
@@ -270,7 +272,7 @@ void Opm::checkFatherAndSiblings(const Dune::cpgrid::Entity<0>& element,
     const auto& father = element.father();
     const auto& fatherLevelData =  grid.currentData()[father.level()];
     BOOST_CHECK( father.level() <= element.level() );
-
+    
     BOOST_CHECK_EQUAL( originLevelData->getMark(origin), 1);
     BOOST_CHECK_EQUAL( fatherLevelData->getMark(father), 1);
 
