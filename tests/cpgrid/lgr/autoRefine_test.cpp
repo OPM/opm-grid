@@ -32,6 +32,7 @@
 #include <opm/grid/CpGrid.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
+#include <array>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,26 @@ struct Fixture
 };
 
 BOOST_GLOBAL_FIXTURE(Fixture);
+
+void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
+                                  const std::array<int,3>& nxnynz)
+{
+    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
+    // Note: in this case there is only one refined level grid, storing the global
+    // refinement.
+    std::vector<std::string> lgrNames(grid.maxLevel());
+    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
+        if (level==0) { // skip level zero grid name for the checks
+            continue;
+        }
+        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
+    }
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {nxnynz},
+                           /* lgr_name_vec = */ lgrNames,
+                           /* gridHasBeenGlobalRefined = */ true);
+}
+
 
 BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
 {
@@ -82,20 +103,7 @@ BOOST_AUTO_TEST_CASE(autoRefine)
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
     grid.autoRefine(/* nxnynz = */ {3,5,7});
 
-    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
-    // Note: in this case there is only one refined level grid, storing the global
-    // refinement.
-    std::vector<std::string> lgrNames(grid.maxLevel());
-    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
-        if (level==0) { // skip level zero grid name for the checks
-            continue;
-        }
-        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
-    }
-    Opm::checkGridWithLgrs(grid,
-                           /* cells_per_dim_vec = */ {{3,5,7}},
-                           /* lgr_name_vec = */ lgrNames,
-                           /* gridHasBeenGlobalRefined = */ true);
+    checkGridAfterAutoRefinement(grid, {3,5,7});
 }
 
 BOOST_AUTO_TEST_CASE(readAutoref) {
@@ -147,18 +155,5 @@ PORO
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
     grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
 
-    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
-    // Note: in this case there is only one refined level grid, storing the global
-    // refinement.
-    std::vector<std::string> lgrNames(grid.maxLevel());
-    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
-        if (level==0) { // skip level zero grid name for the checks
-            continue;
-        }
-        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
-    }
-    Opm::checkGridWithLgrs(grid,
-                           /* cells_per_dim_vec = */ {{autoRef.NX(), autoRef.NY(), autoRef.NZ()}},
-                           /* lgr_name_vec = */ lgrNames,
-                           /* gridHasBeenGlobalRefined = */ true);
+    checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
 }
