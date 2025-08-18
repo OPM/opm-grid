@@ -2829,6 +2829,20 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     Opm::OpmLog::info(std::to_string(current_view_data_->size(0)) + " total cells on the leaf grid view (in " + std::to_string(comm().rank()) + " rank).\n");
 }
 
+void CpGrid::autoRefine(const std::array<int,3>& nxnynz)
+{
+    // Refinement factors must be odd and positive.
+    for (const auto& nd : nxnynz) {
+        if (nd<=0 || (nd%2==0)) {
+            OPM_THROW(std::invalid_argument, "Refinement factor must be odd and positive.\n");
+        }
+    }
+    const auto endIJK = this->logicalCartesianSize();
+    addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {nxnynz},
+                          /* startIJK_vec = */ {{0,0,0}},
+                          /* endIJK_vec = */ {endIJK},
+                          /* lgr_name_vec = */ {"GLOBAL_REFINED"});
+}
 
 const std::map<std::string,int>& CpGrid::getLgrNameToLevel() const{
     return lgr_names_;
