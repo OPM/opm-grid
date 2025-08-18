@@ -21,6 +21,14 @@
 #define BOOST_TEST_MODULE AutoRefineTests
 #include <boost/test/unit_test.hpp>
 
+#include <opm/input/eclipse/Deck/Deck.hpp>
+#include <opm/input/eclipse/Parser/Parser.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/AutoRefinement.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/AutoRefManager.hpp>
+#include <opm/input/eclipse/EclipseState/Grid/readKeywordAutoRef.hpp>
+#include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+
 #include <opm/grid/CpGrid.hpp>
 #include <tests/cpgrid/lgr/LgrChecks.hpp>
 
@@ -86,6 +94,71 @@ BOOST_AUTO_TEST_CASE(autoRefine)
     }
     Opm::checkGridWithLgrs(grid,
                            /* cells_per_dim_vec = */ {{3,5,7}},
+                           /* lgr_name_vec = */ lgrNames,
+                           /* gridHasBeenGlobalRefined = */ true);
+}
+
+BOOST_AUTO_TEST_CASE(readAutoref) {
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+ 10 10 3 /
+GRID
+DX
+300*1 /
+DY
+300*1 /
+DZ
+300*1 /
+TOPS
+100*1 /
+PORO
+300*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    const auto& autoref_keyword = deck["AUTOREF"][0];
+
+    Opm::AutoRefManager autoRefManager{};
+
+    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
+    const auto autoRef = autoRefManager.getAutoRef();
+
+    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
+    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size()>1) { // distribute level zero grid, in parallel
+        grid.loadBalance();
+    }
+
+    // nxnynz represents the refinement factors in x-,y-,and z-direction.
+    grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+
+    // Extract the refined level grids name, excluding level zero grid name ("GLOBAL").
+    // Note: in this case there is only one refined level grid, storing the global
+    // refinement.
+    std::vector<std::string> lgrNames(grid.maxLevel());
+    for (const auto& [name, level] : grid.getLgrNameToLevel()) {
+        if (level==0) { // skip level zero grid name for the checks
+            continue;
+        }
+        lgrNames[level-1] = name; // Shift the index since level zero has been removed.
+    }
+    Opm::checkGridWithLgrs(grid,
+                           /* cells_per_dim_vec = */ {{autoRef.NX(), autoRef.NY(), autoRef.NZ()}},
                            /* lgr_name_vec = */ lgrNames,
                            /* gridHasBeenGlobalRefined = */ true);
 }
