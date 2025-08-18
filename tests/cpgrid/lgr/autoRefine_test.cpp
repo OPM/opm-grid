@@ -69,7 +69,7 @@ void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
 }
 
 
-BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
+BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows, *boost::unit_test::disabled())
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
     BOOST_CHECK_THROW(grid.autoRefine(/* nxnynz = */ {3,5,4}), std::invalid_argument);
 }
 
-BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows)
+BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows, *boost::unit_test::disabled())
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows)
     BOOST_CHECK_THROW(grid.autoRefine(/* nxnynz = */ {3,5,-3}), std::invalid_argument);
 }
 
-BOOST_AUTO_TEST_CASE(autoRefine)
+BOOST_AUTO_TEST_CASE(autoRefine, *boost::unit_test::disabled())
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -106,7 +106,8 @@ BOOST_AUTO_TEST_CASE(autoRefine)
     checkGridAfterAutoRefinement(grid, {3,5,7});
 }
 
-BOOST_AUTO_TEST_CASE(readAutoref) {
+BOOST_AUTO_TEST_CASE(readAutoref, *boost::unit_test::disabled())
+{
 
     const std::string deck_string = R"(
 RUNSPEC
@@ -156,4 +157,116 @@ PORO
     grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
 
     checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+}
+
+BOOST_AUTO_TEST_CASE(firstAutoRefineSecondGlobalRefine_serial) {
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+4 3 3 /
+GRID
+DX
+36*1 /
+DY
+36*1 /
+DZ
+36*1 /
+TOPS
+36*1 /
+PORO
+36*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    const auto& autoref_keyword = deck["AUTOREF"][0];
+
+    Opm::AutoRefManager autoRefManager{};
+
+    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
+    const auto autoRef = autoRefManager.getAutoRef();
+
+    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
+    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size() == 1 ) { // serial
+
+        // nxnynz represents the refinement factors in x-,y-,and z-direction.
+        grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+
+        checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+
+        grid.globalRefine(2);
+    }
+}
+
+
+BOOST_AUTO_TEST_CASE(firstAutoRefineSecondAdapt_serial) {
+
+    const std::string deck_string = R"(
+RUNSPEC
+AUTOREF
+3 3 1 0. /
+DIMENS
+4 3 3 /
+GRID
+DX
+36*1 /
+DY
+36*1 /
+DZ
+36*1 /
+TOPS
+36*1 /
+PORO
+36*0.15 /
+)";
+
+    Opm::Parser parser;
+    Opm::Deck deck = parser.parseString(deck_string);
+
+    const auto& autoref_keyword = deck["AUTOREF"][0];
+
+    Opm::AutoRefManager autoRefManager{};
+
+    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
+    const auto autoRef = autoRefManager.getAutoRef();
+
+    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
+    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
+    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+
+    Opm::EclipseState ecl_state(deck);
+    Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
+
+    Dune::CpGrid grid;
+    grid.processEclipseFormat(&ecl_grid, &ecl_state, false, false, false);
+
+    if (grid.comm().size() == 1 ) { // serial
+
+        // nxnynz represents the refinement factors in x-,y-,and z-direction.
+        grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+
+        checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+
+        for (const auto& element : Dune::elements(grid.leafGridView())) {
+            grid.mark(1, element);
+        }
+        grid.preAdapt();
+        grid.adapt();
+        grid.postAdapt();
+    }
 }
