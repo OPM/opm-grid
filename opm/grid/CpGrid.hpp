@@ -1206,6 +1206,9 @@ namespace Dune
         ///  of the vertex.
         int faceVertex(int face, int local_index) const;
 
+
+        /// \brief Get maps from vertexToCell out[0] and cellToVertex out[1];
+        std::array< std::vector< std::set<int> >, 2 > vertexCell() const;
         /// \brief Get vertical position of cell center ("zcorn" average).
         /// \brief cell_index The index of the specific cell.
         double cellCenterDepth(int cell_index) const;
@@ -1466,7 +1469,9 @@ namespace Dune
          * calls are forwarded to relevant grid.*/
         std::vector<std::shared_ptr<cpgrid::CpGridData>> data_;
         /** @brief A pointer to data of the current View. */
+        public:
         cpgrid::CpGridData* current_view_data_;
+        private:
         /** @brief The data stored for the distributed grid. */
         std::vector<std::shared_ptr<cpgrid::CpGridData>> distributed_data_;
         /** @brief A pointer to the current data used. */
