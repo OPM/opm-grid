@@ -120,7 +120,8 @@ namespace Dune
                         const double* trans,
                         bool useTransToFilterOverlap = true,
                         int layers = 1,
-                        int level = -1);
+                        int level = -1
+                       );
 
 namespace cpgrid
 {
