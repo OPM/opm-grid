@@ -69,7 +69,8 @@ public:
     /// \return The partition type of the point.
     PartitionType getPartitionType(const EntityRep<3>& point_entity) const;
 
-private:
+//private:
+public:
     /// Get the partition type of a face by its index
     /// \param i The index of the face.
     /// \return The partition type of the face associated with this index.
