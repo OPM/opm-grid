@@ -1607,8 +1607,8 @@ void CpGridData::distributeGlobalGrid(CpGrid& grid,
 
     // Compute partition type for points
     computePointPartitionType();
-
-    computeCommunicationInterfaces(noExistingPoints);
+   
+    computeCommunicationInterfaces(noExistingPoints);   
 #else // #if HAVE_MPI
     static_cast<void>(grid);
     static_cast<void>(view_data);
@@ -1637,41 +1637,61 @@ void CpGridData::computePointPartitionType()
     // type border, then the type of the point is overwritten with border. In the other cases
     // we set the type of the point to the one of the face as long as the type of the point is
     // not border.
+    // ghost should never happen;
+    std::array<Dune::PartitionType,4> type_order({InteriorEntity,OverlapEntity,BorderEntity,FrontEntity});
     partition_type_indicator_->point_indicator_.resize(geometry_.geomVector<3>().size(),
                                                        InteriorEntity);
-    // marking border entities first
     for(int i=0; i<face_to_point_.size(); ++i)
     {
-        PartitionType face_type = partition_type_indicator_->getFacePartitionType(i);
-        if (face_type ==  BorderEntity)
+        for(auto p=face_to_point_[i].begin(),
+                pend=face_to_point_[i].end(); p!=pend; ++p)
         {
-            // all vertices are border
-            for(auto p=face_to_point_[i].begin(),
-                    pend=face_to_point_[i].end(); p!=pend; ++p)
-            {
-                partition_type_indicator_->point_indicator_[*p]=face_type;
-            }
-        }
-    }
-
-    for(int i=0; i<face_to_point_.size(); ++i)
-    {
-        PartitionType new_type = partition_type_indicator_->getFacePartitionType(i);
-
-        if (new_type != InteriorEntity && new_type != BorderEntity)
-        {
-            for(auto p=face_to_point_[i].begin(),
-                    pend=face_to_point_[i].end(); p!=pend; ++p)
-            {
-                PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
-
-                if ( old_type != BorderEntity && new_type == FrontEntity)
-                {
-                    partition_type_indicator_->point_indicator_[*p] = FrontEntity;
-                } else if(new_type == OverlapEntity && old_type != FrontEntity && old_type != BorderEntity) {
-                    partition_type_indicator_->point_indicator_[*p] = OverlapEntity;
+            PartitionType new_type=partition_type_indicator_->getFacePartitionType(i);
+            PartitionType old_type=PartitionType(partition_type_indicator_->point_indicator_[*p]);
+            int new_order=-1;
+            int old_order=-1;
+            for(int j=0; j < 4; ++j){
+                if(new_type == type_order[j]){
+                    new_order = j;
+                }
+                if(old_type == type_order[j]){
+                    old_order = j;
                 }
             }
+            assert(new_order>=0);
+            assert(old_order>=0);
+            if(old_order== 3){//font
+                // something which is in contact with overlap or front can not be in contact with interior face
+                //assert(new_order !=0 );
+                if(new_order == 0){
+                    std::cout << "Front and Interior face at same node" << std::endl;
+                }
+                if(new_order == 2){
+                    std::cout << "Front and Border face at same node" << std::endl;
+                }
+                
+            }
+            if(old_order == 2){// border
+                //assert(new_order != 3);// a border should not be should not be in contact with front.
+                if(new_order ==3){
+                    std::cout << "Border and Front face at same node" << std::endl;
+                }
+            }
+            
+
+            if(new_order> old_order){
+                partition_type_indicator_->point_indicator_[*p]= type_order[new_order];
+            }
+            
+            // if(old_type==InteriorEntity)
+            // {
+            //     if(new_type!=OverlapEntity)
+            //         partition_type_indicator_->point_indicator_[*p]=new_type;
+            // }
+            // if(old_type==OverlapEntity)
+            //     partition_type_indicator_->point_indicator_[*p]=new_type;
+            // if(old_type==FrontEntity && new_type==BorderEntity)
+            //     partition_type_indicator_->point_indicator_[*p]=new_type;
         }
     }
 #endif
@@ -1846,6 +1866,43 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
     return hasNNC;
 }
 
+bool CpGridData::compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                        const std::vector<std::array<int,3>>& startIJK_vec,
+                                        const std::vector<std::array<int,3>>& endIJK_vec) const
+{
+    bool compatibleSubdivisions = true;
+    if (startIJK_vec.size() > 1) {
+        bool notAllowedYet = false;
+        for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
+            for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
+                const auto& sharedFaceTag = Opm::Lgr::sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]},
+                                                                    {endIJK_vec[level],endIJK_vec[otherLevel]},
+                                                                    this->logicalCartesianSize());
+                if(sharedFaceTag == -1){
+                    break; // Go to the next "other patch"
+                }
+                if (sharedFaceTag == 0 ) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedFaceTag == 1) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][2] != cells_per_dim_vec[otherLevel][2]));
+                }
+                if (sharedFaceTag == 2) {
+                    notAllowedYet = notAllowedYet ||
+                        ((cells_per_dim_vec[level][0] != cells_per_dim_vec[otherLevel][0]) || (cells_per_dim_vec[level][1] != cells_per_dim_vec[otherLevel][1]));
+                }
+                if (notAllowedYet){
+                    compatibleSubdivisions = false;
+                    break;
+                }
+            } // end-otherLevel-for-loop
+        } // end-level-for-loop
+    }// end-if-patchesShareFace
+    return compatibleSubdivisions;
+}
+
 std::tuple< const std::shared_ptr<CpGridData>,
             const std::vector<std::array<int,2>>,                // parent_to_refined_corners(~boundary_old_to_new_corners)
             const std::vector<std::tuple<int,std::vector<int>>>, // parent_to_children_faces (~boundary_old_to_new_faces)
@@ -2011,7 +2068,7 @@ bool CpGridData::preAdapt()
             if (local_empty)
                 mark_.resize(size(0));
         }
-
+       
         // Detect the maximum mark across processes, and rewrite
         // the local entry in mark_, i.e.,
         // mark_[ element.index() ] = max{ local marks in processes where this element belongs to}.

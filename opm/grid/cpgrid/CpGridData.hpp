@@ -285,8 +285,6 @@ public:
     ///
     /// \param[in,out] nnc Non-neighboring connections.
     ///
-    /// \param[in] remove_ij_boundary True to remove outer cell layer
-    ///
     /// \param[in] turn_normals Whether or not to turn all normals.
     /// This is intended for handling inputs with wrong orientations.
     ///
@@ -336,7 +334,7 @@ public:
     {
         return cell_to_point_;
     }
-
+    
     const auto& cellToPoint(int cellIdx) const
     {
         return cell_to_point_[cellIdx];
@@ -383,7 +381,7 @@ public:
             OPM_THROW(std::logic_error, "Vertex has no history record.\n");
         }
     }
-
+    
     /// Return global_cell_ of any level grid, or the leaf grid view (in presence of refinement).
     /// global_cell_ has size number of cells present on a process and maps to the underlying Cartesian Grid.
     ///
@@ -437,6 +435,25 @@ public:
     void postAdapt();
 
 private:
+    /// @brief Check compatibility of number of subdivisions of neighboring LGRs.
+    ///
+    /// Check shared faces on boundaries of LGRs. Not optimal since the code below does not take into account
+    /// active/inactive cells, instead, relies on "ijk-computations".
+    ///
+    /// @param [in]  cells_per_dim_vec    Vector of expected subdivisions per cell, per direction, in each LGR.
+    /// @param [in]  startIJK_vec         Vector of Cartesian triplet indices where each patch starts.
+    /// @param [in]  endIJK_vec           Vector of Cartesian triplet indices where each patch ends.
+    ///                                   Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+    /// @return True if all block of cells either do not share faces on their boundaries, or they may share faces with compatible
+    ///         subdivisions. Example: block1 and block2 share an I_FACE, then number of subdivisions NY NZ should coincide, i.e.
+    ///         if block1, block2 cells_per_dim values are {NX1, NY1, NZ1}, {NX2, NY2, NZ2}, respectively, then NY1 == NY2 and
+    ///         NZ1 == NZ2.
+    ///         False if at least two blocks share a face and their subdivions are not compatible. In the example above,
+    ///         if NY1 != NY2 or NZ1 != NZ2.
+    bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
+                                const std::vector<std::array<int,3>>& startIJK_vec,
+                                const std::vector<std::array<int,3>>& endIJK_vec) const;
+
     std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
 public:
@@ -490,7 +507,7 @@ public:
         }
         return level_to_leaf_cells_[level_cell_idx];
     }
-
+    
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
     ///
     /// refineSingleCell() takes a cell and refines it in a chosen amount of cells (per direction); creating the
@@ -813,7 +830,9 @@ private:
     /** @brief The global id set (used also as local id set). */
     std::shared_ptr<LevelGlobalIdSet> global_id_set_;
     /** @brief The indicator of the partition type of the entities */
+    public:
     std::shared_ptr<PartitionTypeIndicator> partition_type_indicator_;
+    private:
     /** Mark elements to be refined **/
     std::vector<int> mark_;
     /** Level of the current CpGridData (0 when it's "GLOBAL", 1,2,.. for LGRs). */
@@ -840,6 +859,7 @@ private:
     std::vector<int> cell_to_idxInParentCell_;
     /** To keep track of refinement processes */
     int refinement_max_level_{0};
+
 
     /// \brief Object for collective communication operations.
     Communication ccobj_;
