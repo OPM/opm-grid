@@ -1712,7 +1712,22 @@ std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners
 
 void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
 {
-    ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
+    // For level zero and the leaf grids, use logicalCartesianSize from level zero grid.
+    // Note: when the entire grid gets refined, the leaf grid logical Cartesian size does
+    //       not coincide with the level zero grid one.
+
+    // By default, level_ is initialized to 0 and isn’t updated during refinement.
+    // As a result, after refinement, (the leaf grid) level_data_ptr_->back()->level_ remains 0,
+    // even though this no longer makes sense.
+    // The else branch is needed to ensure the leaf grid view uses the logical Cartesian size
+    // of the original level-zero grid.
+
+    if (level_) { // refined level grids with level > 0
+        ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
+    }
+    else { // level zero and leaf grids
+        ijk = Opm::getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
+    }
 }
 
 std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
