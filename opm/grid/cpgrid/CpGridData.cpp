@@ -1735,25 +1735,6 @@ std::array<int,3> CpGridData::getPatchDim(const std::array<int,3>& startIJK, con
     return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
 }
 
-std::vector<int> CpGridData::getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
-{
-    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
-    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
-    // Get grid dimension (total cells in each direction).
-    const std::array<int,3>& grid_dim = this -> logicalCartesianSize();
-    std::vector<int> patch_cells;
-    patch_cells.reserve(patch_dim[0]*patch_dim[1]*patch_dim[2]);
-    /// PATCH CELLS
-    for (int k = startIJK[2]; k < endIJK[2]; ++k) {
-        for (int j = startIJK[1]; j < endIJK[1]; ++j) {
-            for (int i = startIJK[0]; i < endIJK[0]; ++i) {
-                patch_cells.push_back((k*grid_dim[0]*grid_dim[1]) + (j*grid_dim[0]) +i);
-            } // end i-for-loop
-        } // end j-for-loop
-    } // end k-for-loop
-    return patch_cells;
-}
-
 std::array<std::vector<int>,6> CpGridData::getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const
 {
     // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
@@ -1957,19 +1938,6 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
         }
     }
     return faceTag; // -1 when no face is shared, otherwise: 0 (shared I_FACE), 1 (shared J_FACE), 2 (shared K_FACE)
-}
-
-
-std::vector<int>
-CpGridData::getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const
-{
-    std::vector<int> all_cells;
-    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
-        /// PATCH CELLS
-        const auto& patch_cells = CpGridData::getPatchCells(startIJK_vec[patch], endIJK_vec[patch]);
-        all_cells.insert(all_cells.end(), patch_cells.begin(), patch_cells.end());
-    }
-    return all_cells;
 }
 
 bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
