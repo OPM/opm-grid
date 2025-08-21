@@ -1,17 +1,3 @@
-//===========================================================================
-//
-// File: lookUpCellCentroid_cpgrid_test.cpp
-//
-// Created: Wed 26.07.2023 16:00:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
-
 /*
   Copyright 2023 Equinor ASA.
 

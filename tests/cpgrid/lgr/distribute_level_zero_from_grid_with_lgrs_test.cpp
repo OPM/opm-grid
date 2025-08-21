@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: distribute_level_zero_from_grid_with_lgrs_test.cpp
-//
-// Created: Thursday 17.02.2025 10:51:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 
