@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: avoidNNCinLGRs_test.cpp
-//
-// Created: Nov 07 2023 15:25:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2023 Equinor ASA.
 

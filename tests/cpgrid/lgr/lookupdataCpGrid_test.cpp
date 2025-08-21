@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: lookupdataCpGrid_test.cpp
-//
-// Created: Thurs 25.05.2023 16:05:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2023 Equinor ASA.
 

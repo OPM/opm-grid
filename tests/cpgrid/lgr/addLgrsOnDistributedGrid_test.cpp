@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: addLgrsOnDistributedGrid_test.cpp
-//
-// Created: Monday 5 August 2024 14:44
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2024 Equinor ASA.
 
