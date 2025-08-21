@@ -1323,11 +1323,10 @@ void populateRefinedCells(const Dune::CpGrid& grid,
             // Auxiliary cell_to_face
             std::vector<Dune::cpgrid::EntityRep<1>> aux_refined_cell_to_face;
 
-            // To supoort the simulation of a mixed grid (coarse and refined cells), global_cell_ values of refined-level-grids
-            // is a vector of consecutive indices from 0 to total cells on the level-grid. In case we want to modify this, take into
-            // account that LookUpData and LookUpCartesianData will be affected, therefore, code in opm-simulators related to
-            // searching for field features when the grid has LGRs will be affected as well.
-            refined_global_cell_vec[shiftedLevel][cell] = (preAdaptMaxLevel>0) ? grid.currentData().back()->globalCell()[elemLgr] : cell;
+            // global_cell_ values of refined cells from level grid created via adapt() (i.e., without parameters startIJK, endIJK
+            // delimiting a block of parent cells) inherit the global_cell_ value of its parent cell.
+            refined_global_cell_vec[shiftedLevel][cell] = grid.currentData().back()->globalCell()[elemLgr];
+            
             // Get pre-adapt corners of the cell that will be replaced with leaf view ones.
             const auto& preAdapt_cell_to_point = markedElem_to_itsLgr.at(elemLgr)->cellToPoint(elemLgrCell);
             // Get pre-adapt faces of the cell that will be replaced with leaf view ones.
