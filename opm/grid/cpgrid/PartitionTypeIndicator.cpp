@@ -58,23 +58,27 @@ PartitionType PartitionTypeIndicator::getFacePartitionType(int i) const
             int cell_index = cells_of_face[0].index();
             Entity<0> cell0(*grid_data_, cell_index, true);
             PartitionType cell_part = getPartitionType(cell0);
-            if(cell_part!=OverlapEntity)
+            if(cell_part!=OverlapEntity){
+                assert(cell_part == InteriorEntity);
                 return cell_part;
+            }
             else
             {
+                assert(cell_part == OverlapEntity);
                 // If the cell is in the overlap and the face is on the boundary,
                 // then the partition type has to Front! Here we check whether
                 // we are at the boundary.
                 OrientedEntityTable<0,1>::row_type cell_to_face=grid_data_->cell_to_face_[cell0];
                 Entity<0>::LeafIntersectionIterator intersection=cell0.ilevelbegin();
-                for(int subindex=0; subindex<cell_to_face.size(); ++subindex, ++intersection)
+                for(int subindex=0; subindex<cell_to_face.size(); ++subindex, ++intersection) // Correct ?
                     if(cell_to_face[subindex].index()==i)
                         break;
                 assert(intersection!=cell0.ilevelend());
-                if(intersection.boundary())
-                    return FrontEntity;
-                else
+                if(intersection.boundary()){
+                    return OverlapEntity;
+                }else{
                     return cell_part;
+                }
             }
         }
         else
