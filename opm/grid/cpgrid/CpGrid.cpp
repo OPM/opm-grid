@@ -2700,7 +2700,7 @@ void CpGrid::syncDistributedGlobalCellIds()
 
     const int maxLevel = this->maxLevel();
 
-    // Preallocate syncCellIds (and vertexIds, which will NOT be synchrinized)
+    // Preallocate syncCellIds (and vertexIds, which will NOT be synchronized)
     std::vector<std::vector<int>> syncCellIds(maxLevel);
     std::vector<std::vector<int>> vertexIds(maxLevel);
     for (int level = 1; level <= maxLevel; ++level) {
