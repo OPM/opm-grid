@@ -405,14 +405,6 @@ public:
     ///        Assumption: all grid cells are active.
     bool hasNNCs(const std::vector<int>& cellIndices) const;
 
-    /// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
-    ///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
-    ///
-    /// @param [in]  startIJK_vec       Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec         Vector of Cartesian triplet indices where each patch ends.
-    ///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
-    void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
     /// @brief Determine if a finite amount of patches (of cells) share a face.
     ///
     /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
@@ -472,7 +464,7 @@ private:
     /// @return True if all block of cells either do not share faces on their boundaries, or they may share faces with compatible
     ///         subdivisions. Example: block1 and block2 share an I_FACE, then number of subdivisions NY NZ should coincide, i.e.
     ///         if block1, block2 cells_per_dim values are {NX1, NY1, NZ1}, {NX2, NY2, NZ2}, respectively, then NY1 == NY2 and
-    ///         NZ1 == Nz2.
+    ///         NZ1 == NZ2.
     ///         False if at least two blocks share a face and their subdivions are not compatible. In the example above,
     ///         if NY1 != NY2 or NZ1 != NZ2.
     bool compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,

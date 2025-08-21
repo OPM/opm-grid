@@ -2650,7 +2650,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
     // Note: currentData() returns data_ (if grid is not distributed) or distributed_data_ otherwise.
 
     // Check startIJK_vec and endIJK_vec have same size, and "startIJK[patch][coordinate] < endIJK[patch][coordinate]"
-    current_view_data_->validStartEndIJKs(startIJK_vec, endIJK_vec);
+    Opm::validStartEndIJKs(startIJK_vec, endIJK_vec);
 
     // Sizes of provided vectors (number of subivisions per cells and lgrs name) should coincide.
     bool matchingSizeHasFailed = false;

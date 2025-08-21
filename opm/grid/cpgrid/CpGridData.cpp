@@ -1964,26 +1964,6 @@ bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
     return hasNNC;
 }
 
-void CpGridData::validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec,
-                                   const std::vector<std::array<int,3>>& endIJK_vec) const
-{
-    if (startIJK_vec.size() == endIJK_vec.size()) {
-        for (unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
-            bool validPatch = true;
-            for (int c = 0; c < 3; ++c) {
-                // valid startIJK and endIJK for each patch
-                validPatch = validPatch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
-                if (!validPatch) {
-                    OPM_THROW(std::invalid_argument, "Invalid IJK-indices in LGR"+std::to_string(patch +1)+", end I/J/K need to be larger than start I/J/K.\n");
-                }
-            }
-        }
-    }
-    else {
-        OPM_THROW(std::invalid_argument, "Sizes of provided vectors with start and end IJK need to match.\n");
-    }
-}
-
 bool CpGridData::compatibleSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                         const std::vector<std::array<int,3>>& startIJK_vec,
                                         const std::vector<std::array<int,3>>& endIJK_vec) const

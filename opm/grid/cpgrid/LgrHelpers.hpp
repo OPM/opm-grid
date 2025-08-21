@@ -718,6 +718,14 @@ std::array<int,3> getIJK(int idx_in_parent_cell, const std::array<int,3>& cells_
 ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
 bool disjointPatches(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec);
 
+/// @brief Check startIJK and endIJK of each patch of cells to be refined are valid, i.e.
+///        startIJK and endIJK vectors have the same size and, startIJK < endIJK coordenate by coordenate.
+///
+/// @param [in]  startIJK_vec       Vector of Cartesian triplet indices where each patch starts.
+/// @param [in]  endIJK_vec         Vector of Cartesian triplet indices where each patch ends.
+///                                 Last cell part of the lgr will be {endIJK_vec[patch][0]-1, ..., endIJK_vec[patch][2]-1}.
+void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec,
+                       const std::vector<std::array<int,3>>& endIJK_vec);
 
 }
 
