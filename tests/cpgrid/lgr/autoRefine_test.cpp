@@ -49,6 +49,23 @@ struct Fixture
 
 BOOST_GLOBAL_FIXTURE(Fixture);
 
+void checkReadFromDeckValues(const Opm::Deck& deck,
+                             const std::array<int,3>& expected_nxnynz,
+                             double expected_option)
+{
+    const auto& autoref_keyword = deck["AUTOREF"][0];
+
+    Opm::AutoRefManager autoRefManager{};
+
+    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
+    const auto autoRef = autoRefManager.getAutoRef();
+
+    BOOST_CHECK_EQUAL( autoRef.NX(), expected_nxnynz[0]);
+    BOOST_CHECK_EQUAL( autoRef.NY(), expected_nxnynz[1]);
+    BOOST_CHECK_EQUAL( autoRef.NZ(), expected_nxnynz[2]);
+    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), expected_option);
+}
+
 void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
                                   const std::array<int,3>& nxnynz)
 {
@@ -131,17 +148,9 @@ PORO
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(deck_string);
 
-    const auto& autoref_keyword = deck["AUTOREF"][0];
-
-    Opm::AutoRefManager autoRefManager{};
-
-    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
-    const auto autoRef = autoRefManager.getAutoRef();
-
-    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
-    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
 
     Opm::EclipseState ecl_state(deck);
     Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
@@ -154,9 +163,9 @@ PORO
     }
 
     // nxnynz represents the refinement factors in x-,y-,and z-direction.
-    grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+    grid.autoRefine(/* nxnynz = */ {3,3,1});
 
-    checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+    checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 }
 
 BOOST_AUTO_TEST_CASE(firstAutoRefineSecondGlobalRefine_serial) {
@@ -183,17 +192,9 @@ PORO
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(deck_string);
 
-    const auto& autoref_keyword = deck["AUTOREF"][0];
-
-    Opm::AutoRefManager autoRefManager{};
-
-    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
-    const auto autoRef = autoRefManager.getAutoRef();
-
-    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
-    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
 
     Opm::EclipseState ecl_state(deck);
     Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
@@ -204,9 +205,9 @@ PORO
     if (grid.comm().size() == 1 ) { // serial
 
         // nxnynz represents the refinement factors in x-,y-,and z-direction.
-        grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+        grid.autoRefine(/* nxnynz = */ {3,3,1});
 
-        checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+        checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
         grid.globalRefine(2);
     }
@@ -237,17 +238,9 @@ PORO
     Opm::Parser parser;
     Opm::Deck deck = parser.parseString(deck_string);
 
-    const auto& autoref_keyword = deck["AUTOREF"][0];
-
-    Opm::AutoRefManager autoRefManager{};
-
-    Opm::readKeywordAutoRef(autoref_keyword.getRecord(0), autoRefManager);
-    const auto autoRef = autoRefManager.getAutoRef();
-
-    BOOST_CHECK_EQUAL( autoRef.NX(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NY(), 3);
-    BOOST_CHECK_EQUAL( autoRef.NZ(), 1);
-    BOOST_CHECK_EQUAL( autoRef.OPTION_TRANS_MULT(), 0.);
+    checkReadFromDeckValues(deck,
+                            {3,3,1}, // expected_nxnynz
+                            0.);     // expected_option_trans_mult
 
     Opm::EclipseState ecl_state(deck);
     Opm::EclipseGrid ecl_grid = ecl_state.getInputGrid();
@@ -258,9 +251,9 @@ PORO
     if (grid.comm().size() == 1 ) { // serial
 
         // nxnynz represents the refinement factors in x-,y-,and z-direction.
-        grid.autoRefine(/* nxnynz = */ { autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+        grid.autoRefine(/* nxnynz = */ {3,3,1});
 
-        checkGridAfterAutoRefinement(grid, {autoRef.NX(), autoRef.NY(), autoRef.NZ()});
+        checkGridAfterAutoRefinement(grid, /* nxnynz = */ {3,3,1});
 
         for (const auto& element : Dune::elements(grid.leafGridView())) {
             grid.mark(1, element);
