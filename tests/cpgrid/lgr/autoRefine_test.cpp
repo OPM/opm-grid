@@ -69,7 +69,7 @@ void checkGridAfterAutoRefinement(const Dune::CpGrid& grid,
 }
 
 
-BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -80,7 +80,7 @@ BOOST_AUTO_TEST_CASE(evenRefinementFactorThrows, *boost::unit_test::disabled())
     BOOST_CHECK_THROW(grid.autoRefine(/* nxnynz = */ {3,5,4}), std::invalid_argument);
 }
 
-BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -91,7 +91,7 @@ BOOST_AUTO_TEST_CASE(nonPositiveRefinementFactorThrows, *boost::unit_test::disab
     BOOST_CHECK_THROW(grid.autoRefine(/* nxnynz = */ {3,5,-3}), std::invalid_argument);
 }
 
-BOOST_AUTO_TEST_CASE(autoRefine, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(autoRefine)
 {
     Dune::CpGrid grid;
     grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
@@ -106,7 +106,7 @@ BOOST_AUTO_TEST_CASE(autoRefine, *boost::unit_test::disabled())
     checkGridAfterAutoRefinement(grid, {3,5,7});
 }
 
-BOOST_AUTO_TEST_CASE(readAutoref, *boost::unit_test::disabled())
+BOOST_AUTO_TEST_CASE(readAutoref)
 {
 
     const std::string deck_string = R"(
