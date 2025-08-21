@@ -400,16 +400,6 @@ public:
     {
         return  global_cell_;
     }
-    
-    /// @brief Compute cell indices of selected patches of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... endIJK_vec[<patch>][2]-1}.
-    ///
-    /// @return allPatches_cells
-    std::vector<int>
-    getPatchesCells(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
 
     /// @brief Check all cells selected for refinement have no NNCs (no neighbor connections).
     ///        Assumption: all grid cells are active.
@@ -499,15 +489,6 @@ private:
     ///
     /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
     std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Compute cell indices of a patch of cells (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endIJK[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_cells
-    std::vector<int> getPatchCells(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
 
     /// @brief Compute patch boundary face indices (Cartesian grid required).
     ///
