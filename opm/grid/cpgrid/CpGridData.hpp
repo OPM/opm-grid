@@ -100,8 +100,6 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
-void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
-
 namespace Dune
 {
 namespace cpgrid
@@ -128,9 +126,6 @@ class CpGridData
     void ::refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                             const std::array<int, 3>&,
                             bool);
-
-    friend
-    void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
 
 private:
     CpGridData(const CpGridData& g);
@@ -427,6 +422,14 @@ public:
     const cpgrid::DefaultGeometryPolicy getGeometry() const
     {
         return geometry_;
+    }
+
+    int getLeafIdxFromLevelIdx(int level_cell_idx) const
+    {
+        if (level_to_leaf_cells_.empty()) {
+            OPM_THROW(std::logic_error, "Grid has no LGRs. No mapping to the leaf.\n");
+        }
+        return level_to_leaf_cells_[level_cell_idx];
     }
     
     /// @brief Refine a single cell and return a shared pointer of CpGridData type.
