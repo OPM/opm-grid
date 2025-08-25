@@ -405,13 +405,6 @@ public:
     ///        Assumption: all grid cells are active.
     bool hasNNCs(const std::vector<int>& cellIndices) const;
 
-    /// @brief Determine if a finite amount of patches (of cells) share a face.
-    ///
-    /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
-    /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-    ///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
-    bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec, const std::vector<std::array<int,3>>& endIJK_vec) const;
-
     int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches, const std::vector<std::array<int,3>>& endIJK_2Patches) const;
 
 
