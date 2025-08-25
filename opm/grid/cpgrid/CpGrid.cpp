@@ -1176,9 +1176,7 @@ int CpGrid::cellFace(int cell, int local_index, int level) const
         : current_view_data_->cell_to_face_[cpgrid::EntityRep<0>(cell, true)][local_index].index();
 }
 
-std::array<std::vector<std::set<int>>, 2>
-CpGrid::vertexCell() const
-{
+std::array<std::vector<std::set<int>>,2> CpGrid::vertexCell() const{
     //int level = -1;
     int nc = numCells();//(level)
     int nv = this->numVertices();
