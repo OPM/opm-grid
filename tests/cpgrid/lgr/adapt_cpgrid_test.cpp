@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: adapt_cpgrid_test.cpp
-//
-// Created: Apr 22 2024 16:45
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2024 Equinor ASA.
 

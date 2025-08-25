@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: lgr_cartesian_idx_test.cpp
-//
-// Created: Sep 26 2024 09:15
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2024 Equinor ASA.
 

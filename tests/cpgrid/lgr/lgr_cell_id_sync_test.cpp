@@ -1,16 +1,3 @@
-//===========================================================================
-//
-// File: lgr_cell_id_sync_test.cpp
-//
-// Created: Wednesday 05.03.2025 08:47:00
-//
-// Author(s): Antonella Ritorto   <antonella.ritorto@opm-op.com>
-//
-// $Date$
-//
-// $Revision$
-//
-//===========================================================================
 /*
   Copyright 2025 Equinor ASA.
 
