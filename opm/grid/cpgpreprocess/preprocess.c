@@ -37,6 +37,7 @@
 #include <assert.h>
 #include <float.h>
 #include <math.h>
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -53,20 +54,32 @@ static void
 compute_cell_index(const int dims[3], int i, int j, int *neighbors, int len);
 
 static int
-checkmemory(int nz, struct processed_grid *out, int **intersections);
+checkmemory(size_t nz,
+            struct processed_grid *out,
+            int **intersections);
 
+/*-----------------------------------------------------------------
+  For each vertical face (i.e. i or j constant),
+  -find point numbers for the corners and
+  -cell neighbours.
+  -new points on faults defined by two intersecting lines.
+
+  direction == 0 : constant-i faces (parallel to J-K plane).
+  direction == 1 : constant-j faces (parallel to I-K plane).
+*/
 static void
-process_vertical_faces(int direction,
+process_vertical_faces(bool edge_conformal,
+                       int direction,
                        int **intersections,
                        int *plist, int *work,
                        struct processed_grid *out);
 
 static void
-process_horizontal_faces(int **intersections,
+process_horizontal_faces(bool pinchActive,
+                         int **intersections,
                          int *plist,
-                         const int* is_aquifer_cell,
-                         struct processed_grid *out,
-                         int pinchActive);
+                         const int *is_aquifer_cell,
+                         struct processed_grid *out);
 
 static int
 linearindex(const int dims[3], int i, int j, int k)
@@ -88,11 +101,14 @@ linearindex(const int dims[3], int i, int j, int k)
   dims.
  */
 static int
-vertical_cart_neighbors(const int dims[3], int c1, int c2){
+vertical_cart_neighbors(const int dims[3], int c1, int c2)
+{
     int k1, k2;
-    k1 = c1 / dims[0] / dims[1];
-    k2 = c2 / dims[0] / dims[1];
-    return (k1 - k2) == 1 || (k2 - k1) == 1;
+    k1 = c1 / (dims[0] * dims[1]);
+    k2 = c2 / (dims[0] * dims[1]);
+
+    return (k1 - k2 == 1)
+        || (k2 - k1 == 1);
 }
 
 /*-----------------------------------------------------------------
@@ -113,10 +129,6 @@ igetvectors(int dims[3], int i, int j, int *field, int *v[])
     v[2] = field + dims[2]*(ip + dims[0]* jm);
     v[3] = field + dims[2]*(ip + dims[0]* jp);
 }
-
-
-
-
 
 
 /*-----------------------------------------------------------------
@@ -152,10 +164,12 @@ compute_cell_index(const int dims[3], int i, int j,
 /*-----------------------------------------------------------------
   Ensure there's sufficient memory */
 static int
-checkmemory(int nz, struct processed_grid *out, int **intersections)
+checkmemory(size_t nz,
+            struct processed_grid *out,
+            int **intersections)
 {
     size_t r, m, n;
-    int ok;
+    bool ok;
 
     /* Ensure there is enough space to manage the (pathological) case
      * of every single cell on one side of a fault connecting to all
@@ -168,7 +182,7 @@ checkmemory(int nz, struct processed_grid *out, int **intersections)
     if (out->number_of_faces +  r > m) {
         m += MAX(m / 2,  2 * r);
     }
-    if (out->face_ptr[out->number_of_faces] + 6*r > n) {
+    if (out->face_node_ptr[out->number_of_faces] + 6*r > n) {
         n += MAX(n / 2, 12 * r);
     }
 
@@ -178,12 +192,12 @@ checkmemory(int nz, struct processed_grid *out, int **intersections)
 
         p1 = realloc(*intersections     , 4*m   * sizeof **intersections);
         p2 = realloc(out->face_neighbors, 2*m   * sizeof *out->face_neighbors);
-        p3 = realloc(out->face_ptr      , (m+1) * sizeof *out->face_ptr);
+        p3 = realloc(out->face_node_ptr      , (m+1) * sizeof *out->face_node_ptr);
         p4 = realloc(out->face_tag      , 1*m   * sizeof *out->face_tag);
 
         if (p1 != NULL) { *intersections      = p1; }
         if (p2 != NULL) { out->face_neighbors = p2; }
-        if (p3 != NULL) { out->face_ptr       = p3; }
+        if (p3 != NULL) { out->face_node_ptr       = p3; }
         if (p4 != NULL) { out->face_tag       = p4; }
 
         ok = (p1 != NULL) && (p2 != NULL) && (p3 != NULL) && (p4 != NULL);
@@ -210,14 +224,15 @@ checkmemory(int nz, struct processed_grid *out, int **intersections)
 /*-----------------------------------------------------------------
   For each vertical face (i.e. i or j constant),
   -find point numbers for the corners and
-  -cell neighbors.
-  -new points on faults defined by two intgersecting lines.
+  -cell neighbours.
+  -new points on faults defined by two intersecting lines.
 
-  direction == 0 : constant-i faces.
-  direction == 1 : constant-j faces.
+  direction == 0 : constant-i faces (parallel to J-K plane).
+  direction == 1 : constant-j faces (parallel to I-K plane).
 */
 static void
-process_vertical_faces(int direction,
+process_vertical_faces(bool edge_conformal,
+                       int direction,
                        int **intersections,
                        int *plist, int *work,
                        struct processed_grid *out)
@@ -275,7 +290,7 @@ process_vertical_faces(int direction,
                 out->number_of_nodes_on_pillars;
 
             /* Establish new connections (faces) along pillar pair. */
-            findconnections(2*nz + 2, cornerpts,
+            findconnections(edge_conformal, 2*nz + 2, cornerpts,
                             *intersections + 4*num_intersections,
                             work, out);
 
@@ -314,11 +329,11 @@ process_vertical_faces(int direction,
 
 */
 static void
-process_horizontal_faces(int **intersections,
+process_horizontal_faces(bool pinchActive,
+                         int **intersections,
                          int *plist,
-                         const int* is_aquifer_cell,
-                         struct processed_grid *out,
-                         int pinchActive)
+                         const int *is_aquifer_cell,
+                         struct processed_grid *out)
 {
     int i,j,k;
 
@@ -339,9 +354,8 @@ process_horizontal_faces(int **intersections,
     d[2] = 2+2*nz;
 
 
-    for(j=0; j<ny; ++j) {
+    for (j=0; j<ny; ++j) {
         for (i=0; i<nx; ++i) {
-
 
             if (! checkmemory(nz, out, intersections)) {
                 fprintf(stderr,
@@ -350,8 +364,7 @@ process_horizontal_faces(int **intersections,
                 exit(1);
             }
 
-
-            f = out->face_nodes     + out->face_ptr[out->number_of_faces];
+            f = out->face_nodes     + out->face_node_ptr[out->number_of_faces];
             n = out->face_neighbors + 2*out->number_of_faces;
 
 
@@ -403,7 +416,7 @@ process_horizontal_faces(int **intersections,
                                 *f++ = c[1][k];
 
                                 out->face_tag[  out->number_of_faces] = K_FACE;
-                                out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
+                                out->face_node_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                                 *n++ = prevcell;
                                 *n++ = -1;
@@ -417,7 +430,7 @@ process_horizontal_faces(int **intersections,
                         *f++ = c[1][k];
 
                         out->face_tag[  out->number_of_faces] = K_FACE;
-                        out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
+                        out->face_node_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                         *n++ = (pinchActive || vertical_cart_neighbors(out->dimensions, thiscell, prevcell)) ? prevcell : -1;
                         *n++ = prevcell = thiscell;
@@ -434,7 +447,7 @@ process_horizontal_faces(int **intersections,
                             *f++ = c[1][k];
 
                             out->face_tag[  out->number_of_faces] = K_FACE;
-                            out->face_ptr[++out->number_of_faces] = f - out->face_nodes;
+                            out->face_node_ptr[++out->number_of_faces] = f - out->face_nodes;
 
                             *n++ = prevcell;
                             *n++ = prevcell = -1;
@@ -1069,8 +1082,8 @@ reverse_face_nodes(struct processed_grid *out)
     unsigned f;
 
     for (f = 0; f < out->number_of_faces; f++) {
-        i = out->face_nodes + (out->face_ptr[f + 0] + 0);
-        j = out->face_nodes + (out->face_ptr[f + 1] - 1);
+        i = out->face_nodes + (out->face_node_ptr[f + 0] + 0);
+        j = out->face_nodes + (out->face_node_ptr[f + 1] - 1);
 
         assert (i <= j);
 
@@ -1089,11 +1102,12 @@ reverse_face_nodes(struct processed_grid *out)
 /* ----------------------------------------------------------------------
  * Public interface
  * ---------------------------------------------------------------------- */
-int process_grdecl(const struct grdecl   *in,
+int process_grdecl(int                    pinchActive,
+                   int                    edge_conformal,
                    double                 tolerance,
+                   const struct grdecl   *in,
                    const int             *is_aquifer_cell,
-                   struct processed_grid *out,
-                   int                    pinchActive)
+                   struct processed_grid *out)
 {
     struct grdecl g = {0};
 
@@ -1127,20 +1141,23 @@ int process_grdecl(const struct grdecl   *in,
         return 0;
     }
 
-    /* -----------------------------------------------------------------*/
+    /* ---------------------------------------------------------------- */
     /* Initialize output structure:
-       1) allocate space for grid topology (which may need to be
-          increased)
-       2) set Cartesian imensions
-    */
+     *
+     * 1) Allocate space for grid topology (which may need to be increased)
+     * 2) Set Cartesian dimensions.
+     * ---------------------------------------------------------------- */
     out->m                = (int) (BIGNUM / 3);
     out->n                = (int) BIGNUM;
 
     out->face_neighbors   = malloc( BIGNUM      * sizeof *out->face_neighbors);
     out->face_nodes       = malloc( out->n      * sizeof *out->face_nodes);
-    out->face_ptr         = malloc((out->m + 1) * sizeof *out->face_ptr);
+    out->face_node_ptr    = malloc((out->m + 1) * sizeof *out->face_node_ptr);
     out->face_tag         = malloc( out->m      * sizeof *out->face_tag);
-    out->face_ptr[0]      = 0;
+    out->face_node_ptr[0] = 0;
+
+    out->cell_faces       = NULL;
+    out->cell_face_ptr    = NULL;
 
     out->dimensions[0]    = in->dims[0];
     out->dimensions[1]    = in->dims[1];
@@ -1154,7 +1171,7 @@ int process_grdecl(const struct grdecl   *in,
 
     if ((out->face_neighbors   == NULL) ||
         (out->face_nodes       == NULL) ||
-        (out->face_ptr         == NULL) ||
+        (out->face_node_ptr         == NULL) ||
         (out->face_tag         == NULL) ||
         (out->local_cell_index == NULL))
     {
@@ -1236,9 +1253,12 @@ int process_grdecl(const struct grdecl   *in,
         return 0;
     }
 
-    process_vertical_faces   (0, &intersections, plist, work, out);
-    process_vertical_faces   (1, &intersections, plist, work, out);
-    process_horizontal_faces (   &intersections, plist, is_aquifer_cell, out, pinchActive);
+    process_vertical_faces(edge_conformal != 0, 0, &intersections, plist, work, out);
+    process_vertical_faces(edge_conformal != 0, 1, &intersections, plist, work, out);
+
+    /* Memory allocation procedure depends on edge conformal flag */
+    process_horizontal_faces(pinchActive != 0, &intersections,
+                             plist, is_aquifer_cell, out);
 
     free(work);   work  = NULL;
     free(plist);  plist = NULL;
@@ -1313,14 +1333,92 @@ int process_grdecl(const struct grdecl   *in,
 void free_processed_grid(struct processed_grid *g)
 /* ---------------------------------------------------------------------- */
 {
-    if( g ){
+    if (g != NULL) {
         free ( g->face_nodes       );
-        free ( g->face_ptr         );
+        free ( g->face_node_ptr    );
         free ( g->face_tag         );
         free ( g->face_neighbors   );
         free ( g->node_coordinates );
         free ( g->local_cell_index );
+        free ( g->cell_face_ptr    );
+        free ( g->cell_faces       );
     }
+}
+
+/* ---------------------------------------------------------------------- */
+int add_cell_face_mapping(struct processed_grid *grid)
+/* ---------------------------------------------------------------------- */
+{
+    size_t c, nc, f, nf, i;
+
+    int c1, c2, cf_tag, nhf;
+
+    unsigned int *pi1;
+    int *pi2;
+
+    nc = grid->number_of_cells;
+    nf = grid->number_of_faces;
+
+    grid->cell_face_ptr = malloc((nc + 1) * sizeof *grid->cell_face_ptr);
+
+    if (grid->cell_face_ptr == NULL) {
+        return 0;
+    }
+
+    /* Simultaneously fill cells.facePos and cells.faces by transposing the
+     * neighbours mapping. */
+    pi1 = grid->cell_face_ptr;
+
+    for (i = 0; i < nc + 1; i++) { pi1[i] = 0; }
+
+    /* 1) Count connections (i.e., faces per cell). */
+    for (f = 0; f < nf; f++) {
+        c1 = grid->face_neighbors[2*f + 0];
+        c2 = grid->face_neighbors[2*f + 1];
+
+        if (c1 >= 0) { pi1[c1 + 1] += 1; }
+        if (c2 >= 0) { pi1[c2 + 1] += 1; }
+    }
+
+    /* 2) Define start pointers (really, position *end* pointers at start). */
+    for (c = 1; c <= nc; c++) {
+        pi1[0] += pi1[c];
+        pi1[c]  = pi1[0] - pi1[c];
+    }
+
+    /* 3) Fill connection structure whilst advancing end pointers. */
+    nhf    = pi1[0];
+    pi1[0] = 0;
+
+    grid->cell_faces = malloc(2 * nhf * sizeof *grid->cell_faces);
+    if (grid->cell_faces == NULL) {
+        free(grid->cell_face_ptr);
+        grid->cell_face_ptr = NULL;
+        return 0;
+    }
+
+    pi2 = grid->cell_faces;
+
+    for (f = 0; f < nf; f++) {
+        cf_tag = 2*grid->face_tag[f];             /* [0, 2, 4] */
+        c1     = grid->face_neighbors[2*f + 0];
+        c2     = grid->face_neighbors[2*f + 1];
+
+        if (c1 >= 0) {
+            pi2[ pi1[ c1 + 1 ] + 0*nhf ] = f;
+            pi2[ pi1[ c1 + 1 ] + 1*nhf ] = cf_tag + 1;  /* out */
+
+            pi1[ c1 + 1 ] += 1;
+        }
+        if (c2 >= 0) {
+            pi2[ pi1[ c2 + 1 ] + 0*nhf ] = f;
+            pi2[ pi1[ c2 + 1 ] + 1*nhf ] = cf_tag + 0;  /* in */
+
+            pi1[ c2 + 1 ] += 1;
+        }
+    }
+
+    return 1;
 }
 
 /* Local Variables:    */
