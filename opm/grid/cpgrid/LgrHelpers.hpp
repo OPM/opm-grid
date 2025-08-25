@@ -740,6 +740,15 @@ std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& st
 /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
 std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK);
 
+/// @brief Determine if a finite amount of patches (of cells) share a face.
+///
+/// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
+/// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
+///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
+                      const std::vector<std::array<int,3>>& endIJK_vec,
+                      const std::array<int,3>& grid_dim);
+
 }
 
 

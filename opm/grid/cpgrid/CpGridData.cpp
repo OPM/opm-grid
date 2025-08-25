@@ -1730,74 +1730,6 @@ void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
     }
 }
 
-bool CpGridData::patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
-                                  const std::vector<std::array<int,3>>& endIJK_vec) const
-{
-    assert(!startIJK_vec.empty());
-    assert(!endIJK_vec.empty());
-    if ((startIJK_vec.size() == 1) && (endIJK_vec.size() == 1)){
-        return false;
-    }
-    if (startIJK_vec.size() != endIJK_vec.size() ){
-        OPM_THROW(std::logic_error, "Sizes of the arguments differ. Not enough information provided.");
-    }
-    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch){
-        bool valid_patch = true;
-        for (int c = 0; c < 3; ++c){
-            valid_patch = valid_patch && (startIJK_vec[patch][c] < endIJK_vec[patch][c]);
-        }
-        if (!valid_patch){
-            OPM_THROW(std::logic_error, "There is at least one invalid block of cells.");
-        }
-    }
-
-    auto detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs) {
-        bool faceIsShared = false;
-        for (const auto& face : faceIdxs) {
-            for (const auto& otherFace : otherFaceIdxs) {
-                faceIsShared = faceIsShared || (face == otherFace);
-                if (faceIsShared) {
-                    return faceIsShared; // should be true here
-                }
-            }
-        }
-        return faceIsShared; // should be false here
-    };
-
-    for (long unsigned int patch = 0; patch < startIJK_vec.size(); ++patch) {
-        const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = Opm::getBoundaryPatchFaces(startIJK_vec[patch],
-                                                                                               endIJK_vec[patch],
-                                                                                               this->logicalCartesianSize());
-        for (long unsigned int other_patch = patch+1; other_patch < startIJK_vec.size(); ++other_patch) {
-            const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
-                Opm::getBoundaryPatchFaces(startIJK_vec[other_patch], endIJK_vec[other_patch], this->logicalCartesianSize());
-            bool isShared = false;
-            if (startIJK_vec[other_patch][0] == endIJK_vec[patch][0]) {
-                isShared = isShared || detectSharing(iTrue, iFalseOther);
-            }
-            if (endIJK_vec[other_patch][0] == startIJK_vec[patch][0]) {
-                isShared = isShared || detectSharing(iFalse, iTrueOther);
-            }
-            if (startIJK_vec[other_patch][1] == endIJK_vec[patch][1]) {
-                isShared = isShared || detectSharing(jTrue, jFalseOther);
-            }
-            if (endIJK_vec[other_patch][1] == startIJK_vec[patch][1]) {
-                isShared = isShared || detectSharing(jFalse, jTrueOther);
-            }
-            if (startIJK_vec[other_patch][2] == endIJK_vec[patch][2]) {
-                isShared = isShared || detectSharing(kTrue, kFalseOther);
-            }
-            if (endIJK_vec[other_patch][2] == startIJK_vec[patch][2]) {
-                isShared = isShared || detectSharing(kFalse, kTrueOther);
-            }
-            if (isShared) {
-                return isShared;
-            }
-        } // other patch for-loop
-    } // patch for-loop
-    return false;
-}
-
 int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
                               const std::vector<std::array<int,3>>& endIJK_2Patches) const
 {
@@ -1806,7 +1738,7 @@ int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Pa
 
     int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
      
-    if (patchesShareFace(startIJK_2Patches, endIJK_2Patches)) {
+    if (Opm::patchesShareFace(startIJK_2Patches, endIJK_2Patches, this->logicalCartesianSize())) {
         
         const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
             bool faceIsShared = false;
