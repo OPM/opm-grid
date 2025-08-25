@@ -20,12 +20,7 @@
 
 #define BOOST_TEST_MODULE LookUpDataCpGridTests
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
+
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LevelCartesianIndexMapper.hpp>
 #include <opm/grid/LookUpData.hh>
@@ -173,103 +168,38 @@ void lookup_check(const Dune::CpGrid& grid)
     }
 }
 
-BOOST_AUTO_TEST_CASE(one_lgr_grid)
+BOOST_AUTO_TEST_CASE(grid_without_lgrs)
 {
-    // Create a grid
     Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Add LGRs and update LeafGridView
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    const std::array<int, 3> startIJK = {1,0,1};
-    const std::array<int, 3> endIJK = {3,2,3};  // patch_dim = {3-1, 2-0, 3-1} ={2,2,2}
-    // Cells to be refined {13,14,17,18, 25,26,29,30}
-    const std::string lgr_name = {"LGR1"};
-    grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-    lookup_check(grid);
-}
-
-BOOST_AUTO_TEST_CASE(single_cell_lgr_grid)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Add LGRs and update LeafGridView
-    const std::array<int, 3> cells_per_dim = {2,2,2};
-    const std::array<int, 3> startIJK = {1,0,1};
-    const std::array<int, 3> endIJK = {2,1,2};  // patch_dim = {2-1, 1-0, 2-1} ={1,1,1} -> Single Cell!
-    const std::string lgr_name = {"LGR1"};
-    grid.addLgrsUpdateLeafView({cells_per_dim}, {startIJK}, {endIJK}, {lgr_name});
-
-    lookup_check(grid);
-}
-
-BOOST_AUTO_TEST_CASE(lgrs_grid_A)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {3,2,2}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,3}, {4,3,3}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-
-    lookup_check(grid);
-}
-
-BOOST_AUTO_TEST_CASE(lgrs_grid_B)
-{
-    // Create a grid
-    Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {3,2,0}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,2,1}, {4,3,3}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
     lookup_check(grid);
 }
 
 
-BOOST_AUTO_TEST_CASE(lgrs_grid_C)
+BOOST_AUTO_TEST_CASE(grid_with_one_lgr)
 {
-    // Create a grid
     Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {5,4,4};
-    grid.createCartesian(grid_dim, cell_sizes);
-    // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,3,4}, {3,2,4}, {4,3,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {4,0,0}, {4,3,3}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{3,2,2}, {5,2,1}, {5,4,4}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
 
+    grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,2}},
+                                /* startIJK_vec = */{{1,0,1}},
+                                /* endIJK_vec = */ {{3,2,3}},
+                                /* lgr_name_vec = */ {"LGR1"});
     lookup_check(grid);
 }
 
-BOOST_AUTO_TEST_CASE(no_lgrs_grid)
+BOOST_AUTO_TEST_CASE(grid_with_multiple_lgrs)
 {
-    // Create a grid
     Dune::CpGrid grid;
-    const std::array<double, 3> cell_sizes = {1.0, 1.0, 1.0};
-    const std::array<int, 3> grid_dim = {4,3,3};
-    grid.createCartesian(grid_dim, cell_sizes);
+    grid.createCartesian(/* grid_dim = */ {4,3,3}, /* cell_sizes = */ {1.0, 1.0, 1.0});
+
+    grid.addLgrsUpdateLeafView( /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
+                                /* startIJK_vec = */ {{0,0,0}, {0,0,2}, {3,2,2}},
+                                /* endIJK_vec = */ {{2,1,1}, {1,1,3}, {4,3,3}},
+                                /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
     lookup_check(grid);
 }
-
 
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string)
 {
@@ -438,12 +368,10 @@ EQLNUM
 
     grid.processEclipseFormat(&eclGrid, nullptr, false, false, false);
 
-    // Add LGRs and update LeafGridView
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {2,2,2}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,3}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,4}};
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {2,2,2}},
+                               /* startIJK_vec = */ {{0,0,0}, {0,0,3}},
+                               /* endIJK_vec = */ {{1,1,1}, {1,1,4}},
+                               /* lgr_name_vec = */ {"LGR1", "LGR2"});
 
     fieldProp_check(grid, eclGrid, deckString);
 }
