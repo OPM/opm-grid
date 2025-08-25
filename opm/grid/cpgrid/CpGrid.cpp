@@ -2598,47 +2598,6 @@ void CpGrid::syncDistributedGlobalCellIds()
 #endif
 }
 
-auto CpGrid::filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                                 const std::vector<std::array<int,3>>& startIJK_vec,
-                                                 const std::vector<std::array<int,3>>& endIJK_vec,
-                                                 const std::vector<std::string>& lgr_name_vec) const
-{
-    // Assume all vector sizes are equal
-    const std::size_t size = cells_per_dim_vec.size();
-    
-    std::vector<std::array<int,3>> filtered_cells_per_dim_vec{};
-    std::vector<std::array<int,3>> filtered_startIJK_vec{};
-    std::vector<std::array<int,3>> filtered_endIJK_vec{};
-    std::vector<std::string> filtered_lgr_name_vec{};
-    
-    filtered_cells_per_dim_vec.reserve(size);
-    filtered_startIJK_vec.reserve(size);
-    filtered_endIJK_vec.reserve(size);
-    filtered_lgr_name_vec.reserve(size);
-
-    bool allUndesired = true;
-    for (std::size_t i = 0; i < size; ++i)
-    {
-        const auto& cellsPerDim = cells_per_dim_vec[i];
-        bool undesiredSubdivisions = (cellsPerDim[0] == 1) && (cellsPerDim[1]==1) && (cellsPerDim[2]==1);
-        if (!undesiredSubdivisions){
-            filtered_cells_per_dim_vec.push_back(cellsPerDim);
-            filtered_startIJK_vec.push_back(startIJK_vec[i]);
-            filtered_endIJK_vec.push_back(endIJK_vec[i]);
-            filtered_lgr_name_vec.push_back(lgr_name_vec[i]);
-            allUndesired = false;
-        }
-        else {
-            Opm::OpmLog::warning(lgr_name_vec[i]+" not created. Desired refined cells should be >1 in at least one direction.\n");
-        }
-    }
-    return std::make_tuple(allUndesired,
-                           std::move(filtered_cells_per_dim_vec),
-                           std::move(filtered_startIJK_vec),
-                           std::move(filtered_endIJK_vec),
-                           std::move(filtered_lgr_name_vec));
-}
-
 void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                    const std::vector<std::array<int,3>>& startIJK_vec,
                                    const std::vector<std::array<int,3>>& endIJK_vec,
@@ -2667,7 +2626,7 @@ void CpGrid::addLgrsUpdateLeafView(const std::vector<std::array<int,3>>& cells_p
                 filtered_cells_per_dim_vec,
                 filtered_startIJK_vec,
                 filtered_endIJK_vec,
-                filtered_lgr_name_vec] = filterUndesiredNumberOfSubdivisions(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
+                filtered_lgr_name_vec] = Opm::filterUndesiredNumberOfSubdivisions(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
     if (allUndesired) { // if all LGRs expect 1 child per direction, then no refinement will be done. 
         return;
     }
