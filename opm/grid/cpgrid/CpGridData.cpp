@@ -1730,106 +1730,6 @@ void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
     }
 }
 
-int CpGridData::sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
-                              const std::vector<std::array<int,3>>& endIJK_2Patches) const
-{
-    assert(startIJK_2Patches.size() == 2);
-    assert(endIJK_2Patches.size() == 2);
-
-    int faceTag = -1; // 0 represents I_FACE, 1 J_FACE, and 2 K_FACE. Use -1 for no sharing face case.
-     
-    if (Opm::patchesShareFace(startIJK_2Patches, endIJK_2Patches, this->logicalCartesianSize())) {
-        
-        const auto& detectSharing = [](const std::vector<int>& faceIdxs, const std::vector<int>& otherFaceIdxs){
-            bool faceIsShared = false;
-            for (const auto& face : faceIdxs) {
-                for (const auto& otherFace : otherFaceIdxs) {
-                    faceIsShared = faceIsShared || (face == otherFace);
-                    if (faceIsShared) {
-                        return faceIsShared; // should be true here
-                    }
-                }
-            }
-            return faceIsShared; // should be false here
-        };
-     
-        const auto& [iFalse, iTrue, jFalse, jTrue, kFalse, kTrue] = Opm::getBoundaryPatchFaces(startIJK_2Patches[0],
-                                                                                               endIJK_2Patches[0],
-                                                                                               this->logicalCartesianSize());
-        const auto& [iFalseOther, iTrueOther, jFalseOther, jTrueOther, kFalseOther, kTrueOther] =
-            Opm::getBoundaryPatchFaces(startIJK_2Patches[1],
-                                       endIJK_2Patches[1],
-                                       this->logicalCartesianSize());
-
-
-        bool isShared = false;
-
-        // Check if patch1 lays on the left of patch2, so they might share an I_FACE that
-        // for patch1 is false-oriented (contained in iFalse) and for patch2 is true-oriented (contained in iTrueOther).
-        // patch2 | patch1
-        if (startIJK_2Patches[0][0] == endIJK_2Patches[1][0]) {
-            isShared = isShared || detectSharing(iFalse, iTrueOther);
-            if (isShared) {
-                faceTag = 0;
-            }
-        }
-        // Check if patch1 lays on the right of patch2, so they might share an I_FACE that
-        // for patch1 is true-oriented (contained in iTrue) and for patch2 is false-oriented (contained in iFalseOther).
-        // patch1 | patch2
-        if (endIJK_2Patches[0][0] == startIJK_2Patches[1][0]) {
-            isShared = isShared || detectSharing(iTrue, iFalseOther);
-            if (isShared) {
-                faceTag = 0;
-            }
-        }
-        // Check if patch1 lays in front of patch2, so they might share an J_FACE that
-        // for patch1 is true-oriented (contained in jTrue) and for patch2 is false-oriented (contained in jFalseOther).
-        //      patch2
-        //   -----
-        // patch1
-        if (endIJK_2Patches[0][1] == startIJK_2Patches[1][1]) {
-            isShared = isShared || detectSharing(jTrue, jFalseOther);
-            if (isShared) {
-                faceTag = 1;
-            }
-        }
-        // Check if patch1 lays in back of patch2, so they might share an J_FACE that
-        // for patch1 is false-oriented (contained in jFalse) and for patch2 is true-oriented (contained in jTrueOther).
-        //      patch1
-        //   -----
-        // patch2
-        if (startIJK_2Patches[0][1] == endIJK_2Patches[1][1]) {
-            isShared = isShared || detectSharing(jFalse, jTrueOther);
-            if (isShared) {
-                faceTag = 1;
-            }
-        }
-        // Check if patch1 lays on the bottom of patch2, so they might share an K_FACE that
-        // for patch1 is true-oriented (contained in kTrue) and for patch2 is false-oriented (contained in kFalseOther).
-        // patch2
-        // -----
-        // patch1
-        if (endIJK_2Patches[0][2] == startIJK_2Patches[1][2]) {
-            isShared = isShared || detectSharing(kTrue, kFalseOther);
-            if (isShared) {
-                faceTag = 2;
-            }
-        }
-        // Check if patch1 lays on the top of patch2, so they might share an K_FACE that
-        // for patch1 is false-oriented (contained in kFalse) and for patch2 is true-oriented (contained in kTrueOther).
-        // patch1
-        // -----
-        // patch2
-        if (startIJK_2Patches[0][2] == endIJK_2Patches[1][2]) {
-            isShared = isShared || detectSharing(kFalse, kTrueOther);
-            if (isShared) {
-                faceTag = 2;
-            }
-        }
-    }
-    return faceTag; // -1 when no face is shared, otherwise: 0 (shared I_FACE), 1 (shared J_FACE), 2 (shared K_FACE)
-}
-
 bool CpGridData::hasNNCs(const std::vector<int>& cellIndices) const
 {
     bool hasNNC = false;
@@ -1863,7 +1763,8 @@ bool CpGridData::compatibleSubdivisions(const std::vector<std::array<int,3>>& ce
         bool notAllowedYet = false;
         for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
             for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
-                const auto& sharedFaceTag = this-> sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]});
+                const auto& sharedFaceTag = Opm::sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]},
+                                                               this->logicalCartesianSize());
                 if(sharedFaceTag == -1){
                     break; // Go to the next "other patch"
                 }

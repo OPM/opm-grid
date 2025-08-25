@@ -749,7 +749,13 @@ bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
                       const std::vector<std::array<int,3>>& endIJK_vec,
                       const std::array<int,3>& grid_dim);
 
+int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
+                  const std::vector<std::array<int,3>>& endIJK_2Patches,
+                  const std::array<int,3>& grid_dim);
+
+
 }
+
 
 
 
