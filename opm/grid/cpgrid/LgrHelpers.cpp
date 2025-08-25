@@ -2078,4 +2078,55 @@ void validStartEndIJKs(const std::vector<std::array<int,3>>& startIJK_vec,
     }
 }
 
+std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK,
+                                                     const std::array<int,3>& endIJK,
+                                                     const std::array<int,3>& grid_dim)
+{
+    // Get the patch dimension (total cells in each direction). Used to 'reserve vectors'.
+    const std::array<int,3>& patch_dim = getPatchDim(startIJK, endIJK);
+    // Get grid dimension (total cells in each direction).
+    //const std::array<int,3>& grid_dim = logicalCartesianSize;
+    // Auxiliary integers to simplify notation.
+    const int& i_grid_faces =  (grid_dim[0]+1)*grid_dim[1]*grid_dim[2];
+    const int& j_grid_faces =  grid_dim[0]*(grid_dim[1]+1)*grid_dim[2];
+
+    std::array<std::vector<int>,6> boundary_patch_faces;
+    // { I_FACE false vector, I_FACE true vector, J_FACE false vector, J_FACE true vector, K_FACE false vector, K_FACE true vector}
+    boundary_patch_faces[0].reserve(2*patch_dim[1]*patch_dim[2]); // I_FACE false vector
+    boundary_patch_faces[1].reserve(2*patch_dim[1]*patch_dim[2]); // I_FACE true vector
+    boundary_patch_faces[2].reserve(2*patch_dim[0]*patch_dim[2]); // J_FACE false vector (front)
+    boundary_patch_faces[3].reserve(2*patch_dim[0]*patch_dim[2]); // J_FACE true vector  (back)
+    boundary_patch_faces[4].reserve(2*patch_dim[0]*patch_dim[1]); // K_FACE false vector (bottom)
+    boundary_patch_faces[5].reserve(2*patch_dim[0]*patch_dim[1]); // K_FACE true vector  (top)
+    // Boundary I_FACE faces
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+            boundary_patch_faces[0].push_back( (j*(grid_dim[0]+1)*grid_dim[2]) + (startIJK[0]*grid_dim[2])+ k); // I_FACE false
+            boundary_patch_faces[1].push_back( (j*(grid_dim[0]+1)*grid_dim[2]) + (endIJK[0]*grid_dim[2])+ k); // I_FACE true
+        }
+    }
+    // Boundary J_FACE faces
+    for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+        for (int k = startIJK[2]; k < endIJK[2]; ++k) {
+            boundary_patch_faces[2].push_back(i_grid_faces + (startIJK[1]*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k); // J_FACE false
+            boundary_patch_faces[3].push_back(i_grid_faces + (endIJK[1]*grid_dim[0]*grid_dim[2]) + (i*grid_dim[2])+ k); // J_FACE true
+        }
+    }
+    // Boundary K_FACE faces
+    for (int j = startIJK[1]; j < endIJK[1]; ++j) {
+        for (int i = startIJK[0]; i < endIJK[0]; ++i) {
+            boundary_patch_faces[4].push_back( i_grid_faces + j_grid_faces +
+                                               (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ startIJK[2] ); // K_FACE false
+            boundary_patch_faces[5].push_back( i_grid_faces + j_grid_faces +
+                                               (j*grid_dim[0]*(grid_dim[2]+1)) + (i*(grid_dim[2]+1))+ endIJK[2]); // K_FACE true
+        }
+    }
+    return boundary_patch_faces;
+}
+
+std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK)
+{
+    return {endIJK[0]-startIJK[0], endIJK[1]-startIJK[1], endIJK[2]-startIJK[2]};
+}
+
 }

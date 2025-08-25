@@ -473,24 +473,6 @@ private:
 
     std::array<Dune::FieldVector<double,3>,8> getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const;
 
-    /// @brief Compute amount of cells in each direction of a patch of cells. (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
-    std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
-    /// @brief Compute patch boundary face indices (Cartesian grid required).
-    ///
-    /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
-    /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-    ///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
-    ///
-    /// @return patch_boundary_faces
-    std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK) const;
-
 public:
     /// Add doc/or remove method and replace it with better approach
     int getGridIdx() const {

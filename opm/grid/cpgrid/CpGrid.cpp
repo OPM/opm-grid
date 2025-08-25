@@ -2301,7 +2301,7 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
         // corresponds to the inner product between cells_per_dim_vec[level] and the dimension of the block (amount of cells in each direction).
         // In the case of a block of cells, e.g., when CARFIN keyword is used, we need the following:
         if (isCARFIN) {
-            const auto& blockDim = (*data[0]).getPatchDim(startIJK_vec[level], endIJK_vec[level]);
+            const auto& blockDim = Opm::getPatchDim(startIJK_vec[level], endIJK_vec[level]);
             (*data[refinedLevelGridIdx]).logical_cartesian_size_ = { cells_per_dim_vec[level][0]*blockDim[0],
                                                                      cells_per_dim_vec[level][1]*blockDim[1],
                                                                      cells_per_dim_vec[level][2]*blockDim[2] };
