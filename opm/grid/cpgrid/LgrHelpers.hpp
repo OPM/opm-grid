@@ -753,10 +753,34 @@ int sharedFaceTag(const std::vector<std::array<int,3>>& startIJK_2Patches,
                   const std::vector<std::array<int,3>>& endIJK_2Patches,
                   const std::array<int,3>& grid_dim);
 
+/// @brief Filter out LGR entries that do not result in any actual refinement.
+///
+/// This function removes entries where the number of subdivisions in each direction is 0
+/// (i.e., cells_per_dim is equal to {1, 1, 1}) which would result in no grid refinement.
+///
+/// A warning is logged for each excluded LGR name.
+///
+/// @param [in] startIJK_vec          Vector of Cartesian triplet indices where each patch starts.
+/// @param [in] endIJK_vec            Vector of Cartesian triplet indices where each patch ends.
+/// @param [in] lgr_name_vec           Names (std::string) for the LGRs/levels.
+///
+/// @return A tuple containing a bool and the filtered vectors:
+///         - allUndesired         True if all LGRs have cells_per_dim_ = {1,1,1}
+///         - cells_per_dim_vec
+///         - startIJK_vec
+///         - endIJK_vec
+///         - lgr_name_vec
+std::tuple<bool,
+           std::vector<std::array<int,3>>,
+           std::vector<std::array<int,3>>,
+           std::vector<std::array<int,3>>,
+           std::vector<std::string>>
+filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int, 3>>& cells_per_dim_vec,
+                                    const std::vector<std::array<int, 3>>& startIJK_vec,
+                                    const std::vector<std::array<int, 3>>& endIJK_vec,
+                                    const std::vector<std::string>& lgr_name_vec);
 
 }
-
-
 
 
 #endif // OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
