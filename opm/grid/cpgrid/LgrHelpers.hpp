@@ -328,6 +328,40 @@ void identifyLeafGridCorners(const Dune::CpGrid& grid,
                              const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                              const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
+void markVanishedCorner(const std::array<int,2>& vanished,
+                               const std::array<int,2>& lastAppearance,
+                        std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance);
+
+void processInteriorCorners(int elemIdx, int shiftedLevel,
+                            const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
+                            int& corner_count,
+                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                            const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+
+void processEdgeCorners(int elemIdx, int shiftedLevel,
+                        const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
+                        int& corner_count,
+                        std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                        std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                        std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                        const Dune::CpGrid& grid,
+                        const std::vector<int>& assignRefinedLevel,
+                        const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                        const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+void processBoundaryCorners(int elemIdx, int shiftedLevel,
+                            const std::shared_ptr<Dune::cpgrid::CpGridData>& lgr,
+                            int& corner_count,
+                            std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
+                            std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
+                            std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
+                            const Dune::CpGrid& grid,
+                            const std::vector<int>& assignRefinedLevel,
+                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                            const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
 // Small helper: insert bidirectional mapping and increment counter
 void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
                          std::map<std::array<int,2>,std::array<int,2>>& b_to_a,
