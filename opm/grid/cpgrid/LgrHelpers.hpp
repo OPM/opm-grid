@@ -328,6 +328,13 @@ void identifyLeafGridCorners(const Dune::CpGrid& grid,
                              const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                              const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
+// Small helper: insert bidirectional mapping and increment counter
+void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
+                         std::map<std::array<int,2>,std::array<int,2>>& b_to_a,
+                         const std::array<int,2>& keyA,
+                         const std::array<int,2>& keyB,
+                         int& counter);
+
 /// @brief Define relations between single-cell-refinement faces and refined level faces.
 ///
 /// @param [out] elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace: Each marked element has been refined in its "own elemLgr". Refined faces should be stored in
@@ -353,6 +360,13 @@ void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
                                   const std::vector<int>& assignRefinedLevel,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec);
+
+
+// Generic helper: insert bidirectional mapping and increment counter
+void insertBidirectionalArrayToInt( std::map<std::array<int,2>,int>& a_to_b,
+                                    std::unordered_map<int,std::array<int,2>>& b_to_a,
+                                    const std::array<int,2>& keyA, const int& keyB,
+                                    int& counter);
 
 /// @brief Identify faces that appear on the leaf grid view.
 ///        Define various face relations. preAdapt or refined faces from auxiliary single marked element refinement to the leaf grid view (or adapted grid), and vice versa.
@@ -735,7 +749,7 @@ std::array<std::vector<int>,6> getBoundaryPatchFaces(const std::array<int,3>& st
 ///
 /// @param [in]  startIJK  Cartesian triplet index where the patch starts.
 /// @param [in]  endIJK    Cartesian triplet index where the patch ends.
-///                        Last cell part of the lgr will be {endijk[0]-1, ... endIJK[2]-1}.
+///                        Last patch cell Cartesian triplet is {endijk[0]-1, ... endIJK[2]-1}.
 ///
 /// @return patch_dim Patch dimension {#cells in x-direction, #cells in y-direction, #cells in z-direction}.
 std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::array<int,3>& endIJK);
@@ -744,7 +758,7 @@ std::array<int,3> getPatchDim(const std::array<int,3>& startIJK, const std::arra
 ///
 /// @param [in]  startIJK_vec  Vector of Cartesian triplet indices where each patch starts.
 /// @param [in]  endIJK_vec    Vector of Cartesian triplet indices where each patch ends.
-///                            Last cell part of the lgr will be {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
+///                            Last patch Cartesian triplet is {endIJK_vec[<patch>][0]-1, ... ,endIJK_vec[<patch>][2]-1}.
 bool patchesShareFace(const std::vector<std::array<int,3>>& startIJK_vec,
                       const std::vector<std::array<int,3>>& endIJK_vec,
                       const std::array<int,3>& grid_dim);
