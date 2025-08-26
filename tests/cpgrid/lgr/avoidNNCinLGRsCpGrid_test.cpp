@@ -19,22 +19,20 @@
 
 #include <config.h>
 
-#define NVERBOSE
-
 #define BOOST_TEST_MODULE CpGridWithNNC
 
 #include <boost/test/unit_test.hpp>
 
-#include <dune/common/version.hh>
-#include <dune/grid/common/mcmgmapper.hh>
 #include <opm/input/eclipse/Deck/Deck.hpp>
 #include <opm/input/eclipse/Parser/Parser.hpp>
 #include <opm/input/eclipse/EclipseState/EclipseState.hpp>
+
 #include <opm/grid/CpGrid.hpp>
 
-#include <iostream>
-#include <vector>
-#include <utility>
+#include <tests/cpgrid/lgr/LgrChecks.hpp>
+
+#include <stdexcept>
+#include <string>
 
 struct Fixture
 {
@@ -45,38 +43,18 @@ struct Fixture
         Dune::MPIHelper::instance(m_argc, m_argv);
         Opm::OpmLog::setupSimpleDefaultLogging();
     }
-
-    static int rank()
-    {
-        int m_argc = boost::unit_test::framework::master_test_suite().argc;
-        char** m_argv = boost::unit_test::framework::master_test_suite().argv;
-        return Dune::MPIHelper::instance(m_argc, m_argv).rank();
-    }
 };
 
-void testCase(const std::string& deckString,
-              const Opm::NNC& nnc,
-              const std::vector<std::array<int,3>>& cells_per_dim_vec,
-              const std::vector<std::array<int,3>>& startIJK_vec,
-              const std::vector<std::array<int,3>>& endIJK_vec,
-              const std::vector<std::string>& lgr_name_vec,
-              bool hasNNC)
+void testCase(Dune::CpGrid& grid,
+              const std::string& deckString,
+              const Opm::NNC& nnc)
 {
-
     Opm::Parser parser;
     const auto deck = parser.parseString(deckString);
     Opm::EclipseState es(deck);
     es.appendInputNNC(nnc.input());
 
-    Dune::CpGrid grid;
     grid.processEclipseFormat(&es.getInputGrid(), &es, false, false, false);
-    
-    if(hasNNC){
-        BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec), std::logic_error);
-    }
-    else{
-        grid.addLgrsUpdateLeafView(cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec);
-    }
 }
 
 BOOST_GLOBAL_FIXTURE(Fixture);
@@ -111,52 +89,68 @@ const std::string deckString =
         5*0.15
         /)";
 
-BOOST_AUTO_TEST_CASE(NNCatAnLgr)
+BOOST_AUTO_TEST_CASE(addLgrsWithNNCatAnLgrThrows)
 {
     Opm::NNC nnc;
     nnc.addNNC(2, 4, 1.0); // connect cell 2 (does not belong to any LGR) and cell 4 (belongs to LGR2)
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,4}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{2,1,1}, {1,1,5}};
-    // LGR1 cell indices = {0,1}, LGR2 cell indices = {4}.
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, true);
+    // LGR1 parent cell indices = {0,1}.
+    // LGR2 parent cell indices = {4}.
+    Dune::CpGrid grid;
+    testCase(grid, deckString, nnc);
+
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}},
+                                                 /* startIJK_vec = */ {{0,0,0}, {0,0,4}},
+                                                 /* endIJK_vec = */ {{2,1,1}, {1,1,5}},
+                                                 /* lgr_name_vec = */ {"LGR1", "LGR2"}), std::logic_error);
 }
 
-BOOST_AUTO_TEST_CASE(NNCAtSeveralLgrs)
+BOOST_AUTO_TEST_CASE(addLgrsWithNNCAtSeveralLgrsThrows)
 {
     Opm::NNC nnc;
     nnc.addNNC(0, 1, 1.0); // connect cell 0 and cell 1 (both belong to LGR1)
     nnc.addNNC(2, 4, 1.0); // connect cell 2 (belongs to LGR2) and cell 4 (belongs to LGR3)
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {0,0,4}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,3}, {1,1,5}};
-    // LGR1 cell indices = {0}, LGR2 cell indices = {2}, LGR3 cell indices = {4}.
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, true);
+    // LGR1 parent cell index = {0}.
+    // LGR2 parent cell index = {2}.
+    // LGR3 parent cell index = {4}.
+    Dune::CpGrid grid;
+    testCase(grid, deckString, nnc);
+
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
+                                                 /* startIJK_vec = */ {{0,0,0}, {0,0,2}, {0,0,4}},
+                                                 /* endIJK_vec = */  {{1,1,1}, {1,1,3}, {1,1,5}},
+                                                 /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"}), std::logic_error);
 }
 
-BOOST_AUTO_TEST_CASE(LgrWithNNC_and_lgrsWithoutNNC)
+BOOST_AUTO_TEST_CASE(LgrWithNNC_and_lgrsWithoutNNC_addLgrsThrows)
 {
     Opm::NNC nnc;
     nnc.addNNC(0, 2, 1.0); // connect cell 0 and cell 2 (both belong to LGR1). LGR2 does not have NNCs.
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0},{0,0,4}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,3}, {1,1,5}};
-    // LGR1 cell indices = {0,1,2}, LGR2 cell indices = {4}.
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2"};
-    testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, true);
+    // LGR1 parent cell indices = {0,1,2}.
+    // LGR2 parent cell index = {4}.
+    Dune::CpGrid grid;
+    testCase(grid, deckString, nnc);
+
+    BOOST_CHECK_THROW(grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {4,4,4}},
+                                                 /* startIJK_vec = */ {{0,0,0}, {0,0,4}},
+                                                 /* endIJK_vec = */  {{1,1,3}, {1,1,5}},
+                                                 /* lgr_name_vec = */ {"LGR1", "LGR2"}), std::logic_error);
 }
 
-BOOST_AUTO_TEST_CASE(NNCoutsideLgrs)
+BOOST_AUTO_TEST_CASE(addLgrsIfNNCoutsideAllLgrsIsSupported)
 {
     Opm::NNC nnc;
     nnc.addNNC(1, 3, 1.0); // connect cell 1 and cell 3 (both do NOT belong to any LGR)
-    const std::vector<std::array<int,3>> cells_per_dim_vec = {{2,2,2}, {3,3,3}, {4,4,4}};
-    const std::vector<std::array<int,3>> startIJK_vec = {{0,0,0}, {0,0,2}, {0,0,4}};
-    const std::vector<std::array<int,3>> endIJK_vec = {{1,1,1}, {1,1,3}, {1,1,5}};
-    // LGR1 cell indices = {0}, LGR2 cell indices = {2}, LGR3 cell indices = {4}.
-    const std::vector<std::string> lgr_name_vec = {"LGR1", "LGR2", "LGR3"};
-    testCase(deckString, nnc,  cells_per_dim_vec, startIJK_vec, endIJK_vec, lgr_name_vec, false);
+    // LGR1 parent cell index = {0}.
+    // LGR2 parent cell index = {2}.
+    // LGR3 parent cell index = {4}.
+    Dune::CpGrid grid;
+    testCase(grid, deckString, nnc);
+
+    grid.addLgrsUpdateLeafView(/* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}},
+                               /* startIJK_vec = */ {{0,0,0}, {0,0,2}, {0,0,4}},
+                               /* endIJK_vec = */  {{1,1,1}, {1,1,3}, {1,1,5}},
+                               /* lgr_name_vec = */ {"LGR1", "LGR2", "LGR3"});
+    
+    Opm::checkGridBasicHiearchyInfo(grid, /* cells_per_dim_vec = */ {{2,2,2}, {3,3,3}, {4,4,4}});        
 }
 
