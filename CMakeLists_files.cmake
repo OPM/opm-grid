@@ -121,8 +121,8 @@ if(Boost_VERSION_STRING VERSION_GREATER 1.53)
     tests/cpgrid/eclCentroid_test.cpp
     tests/cpgrid/geometry_test.cpp
     tests/cpgrid/lgr/adapt_cpgrid_test.cpp
+    tests/cpgrid/lgr/addLgrs_if_non_nnc_in_lgrs_test.cpp
     tests/cpgrid/lgr/addLgrs_in_allActiveCartesianGrid_test.cpp
-    tests/cpgrid/lgr/avoidNNCinLGRsCpGrid_test.cpp
     tests/cpgrid/lgr/cuboidShape_test.cpp
     tests/cpgrid/lgr/lgrIJK_test.cpp
     tests/cpgrid/lgr/lgr_cartesian_idx_test.cpp
