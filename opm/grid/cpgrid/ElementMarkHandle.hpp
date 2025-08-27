@@ -40,7 +40,7 @@ struct ElementMarkHandle {
 
     using DataType = int;
 
-    ElementMarkHandle(std::vector<DataType>& winningMark)
+    explicit ElementMarkHandle(std::vector<DataType>& winningMark)
         : winningMark_(winningMark)
     {}
 
