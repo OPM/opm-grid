@@ -20,23 +20,27 @@
 #ifndef OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
 #define OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
 
-
 #include <dune/grid/common/mcmgmapper.hh>
 #include <dune/common/version.hh>
 
+#include <opm/grid/CpGrid.hpp> 
 
-#include <opm/grid/CpGrid.hpp>
-#include <opm/grid/cpgrid/CpGridData.hpp>
-
-
-#include <algorithm>
 #include <array>
+#include <map>
 #include <memory>
-#include <numeric>
-#include <set>
 #include <string>
-#include <unordered_set>
+#include <tuple>
+#include <unordered_map>
+#include <utility> // for std::pair
 #include <vector>
+
+namespace Dune
+{
+namespace cpgrid
+{
+class CpGridData;
+}
+}
 
 namespace Opm
 {

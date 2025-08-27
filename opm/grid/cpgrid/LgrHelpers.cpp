@@ -18,17 +18,22 @@
 */
 #include "config.h"
 
-
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/CpGridData.hpp>
 #include <opm/grid/cpgrid/Entity.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
 #include <opm/grid/cpgrid/ParentToChildCellToPointGlobalIdHandle.hpp>
 
-#include <algorithm>
+#include <algorithm>    // for std::max
 #include <array>
+#include <map>
 #include <memory>
-#include <numeric>
+#include <stdexcept>
+#include <string>
+#include <tuple>
+#include <type_traits>  // for std::integral_constant
+#include <unordered_map>
+#include <utility> // for std::pair
 #include <vector>
 
 namespace Opm {
