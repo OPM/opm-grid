@@ -178,7 +178,8 @@ defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
 /// @param [in] cornerInMarkedElemWithEquivRefinedCorner
 /// @param [in] faceInMarkedElemAndRefinedFaces
 /// @param [in] cells_per_dim_vec
-void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
+void identifyRefinedCornersPerLevel(const Dune::cpgrid::CpGridData& current_data,
+                                    int preAdaptMaxLevel,
                                     std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                     std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
                                     std::vector<int>& refined_corner_count_vec,
@@ -273,7 +274,8 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_l
 /// @param [in] parentFaceLastAppearanceIdx  Parent face index where the corner appears last.
 /// @param [in] cells_per_dim_lgr2           Number of child cells in {x,y,z} directions for the second refinement.
 /// @return Corresponding corner index in the second single-cell refinement.
-int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::CpGrid& grid, const std::array<int,3>& cells_per_dim_lgr1,
+int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_data,
+                                        const std::array<int,3>& cells_per_dim_lgr1,
                                         int cornerIdxLgr1, int elemLgr1, int parentFaceLastAppearanceIdx,
                                         const std::array<int,3>& cells_per_dim_lgr2);
 

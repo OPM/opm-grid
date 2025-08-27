@@ -2113,7 +2113,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::map<std::array<int,2>,std::array<int,2>> vanishedRefinedCorner_to_itsLastAppearance;
     // Integer to count only refined corners.
     std::vector<int> refined_corner_count_vec(levels, 0);
-    Opm::Lgr::identifyRefinedCornersPerLevel(*this,
+    Opm::Lgr::identifyRefinedCornersPerLevel(*currentData().back(),
+                                             preAdaptMaxLevel,
                                              /* Refined grid parameters */
                                              elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                              refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,

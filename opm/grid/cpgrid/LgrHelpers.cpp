@@ -272,7 +272,8 @@ defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
     return std::make_pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>(std::move(refined_level_to_leaf_cells_vec), std::move(leaf_to_level_cells));
 }
 
-void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
+void identifyRefinedCornersPerLevel(const Dune::cpgrid::CpGridData& current_data,
+                                    int preAdaptMaxLevel,
                                     std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
                                     std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
                                     std::vector<int>& refined_corner_count_vec,
@@ -284,12 +285,12 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                                     const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
     // Max level before calling adapt.
-    const int& preAdaptMaxLevel = grid.maxLevel();
+    // const int& preAdaptMaxLevel = grid.maxLevel();
 
     // Step 1. Replace the corners from the preAdapt grid involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the preAdapt corner
     //         in the LGRs.
-    for (int corner = 0; corner < grid.currentData().back()->size(3); ++corner) {
+    for (int corner = 0; corner < current_data.size(3); ++corner) {
         if (!cornerInMarkedElemWithEquivRefinedCorner[corner].empty()) {
             // corner involved in refinement, so we search for it in one LGR (the last one where it appears)
             // Get the lgr corner that replaces the marked corner from level zero.
@@ -328,7 +329,7 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
         }
     } // end corner-forloop
 
-    for (int elemIdx = 0; elemIdx < grid.currentData().back()->size(0); ++elemIdx) {
+    for (int elemIdx = 0; elemIdx < current_data.size(0); ++elemIdx) {
         if (markedElem_to_itsLgr.at(elemIdx)!= nullptr) {
             const auto& level = assignRefinedLevel[elemIdx];
             assert(level>0);
@@ -363,7 +364,7 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                 // kFaceIdx appearing in current "elem" and elemLgr2
                 // Then, we take the max(elemLgr1, elemLgr2) and store the refined corner only if this maximum equals elem.
                 if (newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) {
-                    const auto& markedFacesTouchingEdge = getParentFacesAssocWithNewRefinedCornLyingOnEdge(*grid.currentData().back(),
+                    const auto& markedFacesTouchingEdge = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data,
                                                                                                            cells_per_dim_vec[shiftedLevel],
                                                                                                            corner,
                                                                                                            elemIdx);
@@ -382,7 +383,7 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                     bool atLeastOneFaceAppearsTwice = (faceInMarkedElemAndRefinedFaces[markedFace1].size()>1) ||
                         (faceInMarkedElemAndRefinedFaces[markedFace2].size()>1);
                     if (atLeastOneFaceAppearsTwice && (maxLastAppearance != elemIdx)) {
-                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(grid,
+                        const auto& neighboringLgrCornerIdx = replaceLgr1CornerIdxByLgr2CornerIdx(current_data,
                                                                                                   cells_per_dim_vec[shiftedLevel],
                                                                                                   corner, elemIdx, faceAtMaxLastAppearance,
                                                                                                   cells_per_dim_vec[maxLastAppearanceLevelShifted]);
@@ -421,7 +422,7 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                 if ( isRefinedNewBornCornerOnLgrBoundary(cells_per_dim_vec[shiftedLevel], corner) &&
                      !newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) {
                     // Get the index of the marked face where the refined corner was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedCornerLiesOn(*grid.currentData().back(),
+                    const auto& markedFace = getParentFaceWhereNewRefinedCornerLiesOn(current_data,
                                                                                       cells_per_dim_vec[shiftedLevel],
                                                                                       corner, elemIdx);
                     // check how many times marked face appearn
@@ -678,7 +679,7 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const std::array<int,3>& cells_per_dim_l
 }
 
 
-int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::CpGrid& grid,
+int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_data,
                                         const std::array<int,3>& cells_per_dim_lgr1,
                                         int cornerIdxLgr1,
                                         int elemLgr1,
@@ -686,27 +687,21 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::CpGrid& grid,
                                         const std::array<int,3>& cells_per_dim_lgr2)
 {
     assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
-    const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(*grid.currentData().back(), cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
+    const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(current_data, cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
     assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
 
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
-    const auto& parentCell_to_face = grid.cellFaceRow(elemLgr1);
+    const auto& parentCell_to_face = current_data.cellToFace(elemLgr1);
 
     if(parentCell_to_face.size()>6){
-        const auto& message = "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.";
-        if (grid.comm().rank() == 0){
-            OPM_THROW(std::logic_error, message);
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, message);
-        }
+        OPM_THROW(std::logic_error, "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.");
     }
 
     // Order defined in Geometry::refine
     //  (j*(cells_per_dim[0]+1)*(cells_per_dim[2]+1)) + (i*(cells_per_dim[2]+1)) + k
 
     for (const auto& face : parentCell_to_face) {
-        const auto& faceTag = grid.currentData().back()->faceTag(face.index());
+        const auto& faceTag = current_data.faceTag(face.index());
         if (parentFaceLastAppearanceIdx == face.index()) {
             if ( face.orientation() ){
                 if (faceTag == 0) { // I_FACE true. The same new born refined corner will have equal j and k, but i == 0.
@@ -735,13 +730,7 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::CpGrid& grid,
             }
         }
     }
-    const auto& message = "Cannot convert corner index from one LGR to its neighboring LGR.";
-    if (grid.comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
+    OPM_THROW(std::logic_error, "Cannot convert corner index from one LGR to its neighboring LGR.");
 }
 
 void markVanishedCorner(const std::array<int,2>& vanished,
@@ -804,7 +793,7 @@ void processEdgeCorners(int elemIdx, int shiftedLevel,
 
         if ((multipleAppearances && maxLast != elemIdx) || (maxLastLevel != assignRefinedLevel[elemIdx])) {
             int maxShifted = maxLastLevel - grid.maxLevel() - 1;
-            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(grid,
+            int neighborCorner = replaceLgr1CornerIdxByLgr2CornerIdx(*grid.currentData().back(),
                                                                      cells_per_dim_vec[shiftedLevel],
                                                                      corner, elemIdx, faceAtMax,
                                                                      cells_per_dim_vec[maxShifted]);
