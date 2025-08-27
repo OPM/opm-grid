@@ -399,7 +399,7 @@ void addOverlapLayer(const CpGrid& grid,
 
     for (; it != endIt; ++it) {
         int index = ix.index(*it);
-        int owner = -1;
+        int owner;
         if(cell_part[index]==mypart)
             owner = mypart;
         else
