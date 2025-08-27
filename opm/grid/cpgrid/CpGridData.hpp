@@ -101,8 +101,6 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
-#if HAVE_ECL_INPUT
-#endif
 namespace Dune
 {
 namespace cpgrid
@@ -130,8 +128,6 @@ class CpGridData
                             const std::array<int, 3>&,
                             bool);
 
-#if HAVE_ECL_INPUT
-#endif
 private:
     CpGridData(const CpGridData& g);
 
