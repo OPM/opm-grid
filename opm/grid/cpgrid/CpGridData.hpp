@@ -59,6 +59,7 @@
 #include <dune/grid/common/gridenums.hh>
 
 #if HAVE_ECL_INPUT
+#include <opm/input/eclipse/EclipseState/Grid/EclipseGrid.hpp>
 #include <opm/input/eclipse/EclipseState/Grid/NNC.hpp>
 #endif
 
@@ -100,7 +101,9 @@ void refine_and_check(const Dune::cpgrid::Geometry<3, 3>&,
                       const std::array<int, 3>&,
                       bool);
 
+#if HAVE_ECL_INPUT
 void fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
+#endif
 
 namespace Dune
 {
@@ -129,8 +132,10 @@ class CpGridData
                             const std::array<int, 3>&,
                             bool);
 
+#if HAVE_ECL_INPUT
     friend
     void ::fieldProp_check(const Dune::CpGrid& grid, Opm::EclipseGrid eclGrid, const std::string& deck_string);
+#endif
 
 private:
     CpGridData(const CpGridData& g);
