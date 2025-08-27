@@ -295,7 +295,8 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::cpgrid::CpGridData& current_
 /// @param [in] vanishedRefinedCorner_to_itsLastAppearance  
 /// @param [in] faceInMarkedElemAndRefinedFaces  
 /// @param [in] cells_per_dim_vec
-void identifyLeafGridCorners(const Dune::CpGrid& grid,
+void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
+                             int preAdaptMaxLevel,
                              std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
                              std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                              int& corner_count,
@@ -323,7 +324,8 @@ void processEdgeCorners(int elemIdx, int shiftedLevel,
                         std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
                         std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                         std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                        const Dune::CpGrid& grid,
+                        const Dune::cpgrid::CpGridData& current_data,
+                        int preAdaptMaxLevel,
                         const std::vector<int>& assignRefinedLevel,
                         const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                         const std::vector<std::array<int,3>>& cells_per_dim_vec);
@@ -334,9 +336,10 @@ void processBoundaryCorners(int elemIdx, int shiftedLevel,
                             std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
                             std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
                             std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                            const Dune::CpGrid& grid,
+                            const Dune::cpgrid::CpGridData& current_data,
+                            int preAdaptMaxLevel,
                             const std::vector<int>& assignRefinedLevel,
-                             const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
+                            const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                             const std::vector<std::array<int,3>>& cells_per_dim_vec);
 
 // To insert bidirectional mapping and increment counter

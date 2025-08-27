@@ -2132,7 +2132,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::unordered_map<int,std::array<int,2>> adaptedCorner_to_elemLgrAndElemLgrCorner;
     // Integer to count adapted corners (mixed between corners from current_view_data_ (not involved in LGRs), and (new-born) refined corners).
     int corner_count = 0;
-    Opm::Lgr::identifyLeafGridCorners(*this,
+    Opm::Lgr::identifyLeafGridCorners(*currentData().back(),
+                                      preAdaptMaxLevel,
                                       /* Adapted grid parameters */
                                       elemLgrAndElemLgrCorner_to_adaptedCorner,
                                       adaptedCorner_to_elemLgrAndElemLgrCorner,
