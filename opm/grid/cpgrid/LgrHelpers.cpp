@@ -283,8 +283,6 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                                     const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                     const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
     // Max level before calling adapt.
     const int& preAdaptMaxLevel = grid.maxLevel();
 
@@ -365,7 +363,7 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                 // kFaceIdx appearing in current "elem" and elemLgr2
                 // Then, we take the max(elemLgr1, elemLgr2) and store the refined corner only if this maximum equals elem.
                 if (newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) {
-                    const auto& markedFacesTouchingEdge = getParentFacesAssocWithNewRefinedCornLyingOnEdge(grid,
+                    const auto& markedFacesTouchingEdge = getParentFacesAssocWithNewRefinedCornLyingOnEdge(*grid.currentData().back(),
                                                                                                            cells_per_dim_vec[shiftedLevel],
                                                                                                            corner,
                                                                                                            elemIdx);
@@ -423,7 +421,9 @@ void identifyRefinedCornersPerLevel(const Dune::CpGrid& grid,
                 if ( isRefinedNewBornCornerOnLgrBoundary(cells_per_dim_vec[shiftedLevel], corner) &&
                      !newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) {
                     // Get the index of the marked face where the refined corner was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedCornerLiesOn(grid, cells_per_dim_vec[shiftedLevel], corner, elemIdx);
+                    const auto& markedFace = getParentFaceWhereNewRefinedCornerLiesOn(*grid.currentData().back(),
+                                                                                      cells_per_dim_vec[shiftedLevel],
+                                                                                      corner, elemIdx);
                     // check how many times marked face appearn
                     // Get the last LGR (marked element) where the marked face appeared.
                     int lastLgrWhereMarkedFaceAppeared = faceInMarkedElemAndRefinedFaces[markedFace].back().first;
@@ -511,14 +511,14 @@ bool newRefinedCornerLiesOnEdge(const std::array<int,3>& cells_per_dim, int corn
     return isOnEdge;
 }
 
-std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::CpGrid& grid,
+std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::cpgrid::CpGridData& current_data,
                                                                    const std::array<int,3>& cells_per_dim,
                                                                    int cornerIdxInLgr,
                                                                    int elemLgr)
 {
     assert(newRefinedCornerLiesOnEdge(cells_per_dim, cornerIdxInLgr));
 
-    const auto& parentCell_to_face = grid.cellFaceRow(elemLgr);
+    const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
     if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
     }
@@ -546,7 +546,7 @@ std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::C
     auxFaces.reserve(2);
 
     for (const auto& face : parentCell_to_face) {
-        const auto& faceTag = grid.currentData().back()->faceTag(face.index());
+        const auto& faceTag = current_data.faceTag(face.index());
         // Add I_FACE false
         bool addIfalse = isNewBornOnEdge02 || isNewBornOnEdge04 || isNewBornOnEdge26 || isNewBornOnEdge46;
         if( addIfalse && (faceTag == 0)  && (!face.orientation()))  {
@@ -596,13 +596,13 @@ bool isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_per_dim,
     return (isOnParentCell_I_FACE || isOnParentCell_J_FACE || isOnParentCell_K_FACE);
 }
 
-int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::CpGrid& grid,
+int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::cpgrid::CpGridData& current_data,
                                              const std::array<int,3>& cells_per_dim,
                                              int cornerIdxInLgr, int elemLgr)
 {
     assert(isRefinedNewBornCornerOnLgrBoundary(cells_per_dim, cornerIdxInLgr));
 
-    const auto& parentCell_to_face = grid.cellFaceRow(elemLgr);
+    const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
     if(parentCell_to_face.size()>6){
         OPM_THROW(std::logic_error, "The associted parent cell has more than six faces. Refinment/Adaptivity not supported yet.");
     }
@@ -616,7 +616,7 @@ int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::CpGrid& grid,
     bool isOnParentCell_K_FACEtrue_and_newBornCorn = ( (ijk[2] == cells_per_dim[2]) && ((ijk[1] % cells_per_dim[1] != 0) || (ijk[0] % cells_per_dim[0] !=0) ));
 
     for (const auto& face : parentCell_to_face) {
-        const auto& faceTag = grid.currentData().back()->faceTag(face.index());
+        const auto& faceTag = current_data.faceTag(face.index());
         if (isOnParentCell_I_FACEfalse_and_newBornCorn && (faceTag == 0) && !face.orientation()) { // I_FACE false
             return face.index();
         }
@@ -686,7 +686,7 @@ int replaceLgr1CornerIdxByLgr2CornerIdx(const Dune::CpGrid& grid,
                                         const std::array<int,3>& cells_per_dim_lgr2)
 {
     assert(newRefinedCornerLiesOnEdge(cells_per_dim_lgr1, cornerIdxLgr1));
-    const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(grid, cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
+    const auto& faces = getParentFacesAssocWithNewRefinedCornLyingOnEdge(*grid.currentData().back(), cells_per_dim_lgr1, cornerIdxLgr1, elemLgr1);
     assert( (faces[0] == parentFaceLastAppearanceIdx) || (faces[1] == parentFaceLastAppearanceIdx));
 
     const auto& ijkLgr1 = getRefinedCornerIJK(cells_per_dim_lgr1, cornerIdxLgr1);
@@ -789,7 +789,7 @@ void processEdgeCorners(int elemIdx, int shiftedLevel,
     for (int corner = 0; corner < lgr->size(3); ++corner) {
         if (!newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) continue;
 
-        const auto& [face1, face2] = getParentFacesAssocWithNewRefinedCornLyingOnEdge(grid,
+        const auto& [face1, face2] = getParentFacesAssocWithNewRefinedCornLyingOnEdge(*grid.currentData().back(),
                                                                                       cells_per_dim_vec[shiftedLevel],
                                                                                       corner, elemIdx);
 
@@ -840,7 +840,7 @@ void processBoundaryCorners(int elemIdx, int shiftedLevel,
         if (!isRefinedNewBornCornerOnLgrBoundary(cells_per_dim_vec[shiftedLevel], corner) ||
             newRefinedCornerLiesOnEdge(cells_per_dim_vec[shiftedLevel], corner)) continue;
 
-        const auto& face = getParentFaceWhereNewRefinedCornerLiesOn(grid,
+        const auto& face = getParentFaceWhereNewRefinedCornerLiesOn(*grid.currentData().back(),
                                                                     cells_per_dim_vec[shiftedLevel],
                                                                     corner, elemIdx);
         int lastLgr = faceInMarkedElemAndRefinedFaces[face].back().first;
@@ -956,7 +956,7 @@ void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
                 // of the marked element that got refined, then, we have two cases:
                 // - the marked face appears only in one marked element -> then, we store this face now.
                 // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(grid, cells_per_dim_vec[shiftedLevel],
+                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(), cells_per_dim_vec[shiftedLevel],
                                                                         face, markedElem_to_itsLgr[elem], elem);
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
@@ -1025,7 +1025,7 @@ void identifyLeafGridFaces(const Dune::CpGrid& grid,
                 // of the marked element that got refined, then, we have two cases:
                 // - the marked face appears only in one marked element -> then, we store this face now.
                 // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(grid, cells_per_dim_vec[shiftedLevel],
+                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(), cells_per_dim_vec[shiftedLevel],
                                                                         face, markedElem_to_itsLgr[elem], elem);
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());
@@ -1144,7 +1144,7 @@ bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int face
     return (isOnParentCell_I_FACE || isOnParentCell_J_FACE || isOnParentCell_K_FACE);
 }
 
-int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
+int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& current_data,
                                            const std::array<int,3>& cells_per_dim,
                                            int faceIdxInLgr,
                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
@@ -1152,17 +1152,11 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
 {
     assert(isRefinedFaceOnLgrBoundary(cells_per_dim, faceIdxInLgr, elemLgr_ptr));
     const auto& ijk = getRefinedFaceIJK(cells_per_dim, faceIdxInLgr, elemLgr_ptr);
-    const auto& parentCell_to_face = grid.cellFaceRow(elemLgr);
+    const auto& parentCell_to_face = current_data.cellToFace(elemLgr);
     // cell_to_face_ [ element ] = { I false, I true, J false, J true, K false, K true } if current_view_data_ is level zero
 
     if(parentCell_to_face.size()>6){
-        const auto& message = "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.";
-        if (grid.comm().rank() == 0){
-            OPM_THROW(std::logic_error, message);
-        }
-        else{
-            OPM_THROW_NOLOG(std::logic_error, message);
-        }
+        OPM_THROW(std::logic_error, "The associated parent cell has more than six faces. Refinement/Adaptivity not supported yet.");
     }
 
     // Order defined in Geometry::refine (to be used for distinguishing if faceIdxInLgr is K, I, or J face)
@@ -1180,7 +1174,7 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
     assert( faceIdxInLgr < refined_k_faces + refined_i_faces + refined_j_faces);
 
     for (const auto& face : parentCell_to_face) {
-        const auto& faceTag =  grid.currentData().back()->faceTag(face.index());
+        const auto& faceTag =  current_data.faceTag(face.index());
         if (faceIdxInLgr <  refined_k_faces ) { // It's a K_FACE
             if ((ijk[2] == 0) && (faceTag == 2) && !face.orientation()) { // {K_FACE, false}
                 return face.index();
@@ -1206,13 +1200,7 @@ int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
             }
         }
     }
-    const auto& message = "Cannot find index of parent face where the new refined face lies on.";
-    if (grid.comm().rank() == 0){
-        OPM_THROW(std::logic_error, message);
-    }
-    else{
-        OPM_THROW_NOLOG(std::logic_error, message);
-    }
+    OPM_THROW(std::logic_error, "Cannot find index of parent face where the new refined face lies on.");
 }
 
 void populateRefinedCorners(std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
@@ -1406,7 +1394,7 @@ void populateRefinedCells(const Dune::CpGrid& grid,
                 auto face_candidate = elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.find({elemLgr, preAdaptFace});
                 if (face_candidate == elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace.end()) {
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(grid,
+                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(),
                                                                                     cells_per_dim_vec[shiftedLevel],
                                                                                     preAdaptFace,
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);
@@ -1788,7 +1776,7 @@ void populateLeafGridCells(const Dune::CpGrid& grid,
                     // Get shifted level
                     const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(grid,
+                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(),
                                                                                     cells_per_dim_vec[shiftedLevel],
                                                                                     preAdaptFace,
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);

@@ -225,7 +225,7 @@ bool newRefinedCornerLiesOnEdge(const std::array<int,3>& cells_per_dim, int corn
 /// @param [in] cornerIdxInLgr Corner index in the single-cell refinement.
 /// @param [in] elemLgr        Parent cell index (from the original grid) refined into a single-cell refinement.
 /// @return Indices of the two parent faces sharing the edge.
-std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::CpGrid& grid,
+std::array<int,2> getParentFacesAssocWithNewRefinedCornLyingOnEdge(const Dune::cpgrid::CpGridData& current_data,
                                                                    const std::array<int,3>& cells_per_dim,
                                                                    int cornerIdxInLgr,
                                                                    int elemLgr);
@@ -244,7 +244,7 @@ bool isRefinedNewBornCornerOnLgrBoundary(const std::array<int,3>& cells_per_dim,
 /// @param [in] cornerIdxInLgr Corner index in the single-cell refinement.
 /// @param [in] elemLgr        Parent cell index (from the original grid) refined into a single-cell refinement.
 /// @return Index of the parent face containing the corner.
-int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::CpGrid& grid,
+int getParentFaceWhereNewRefinedCornerLiesOn(const Dune::cpgrid::CpGridData& current_data,
                                              const std::array<int,3>& cells_per_dim,
                                              int cornerIdxInLgr,
                                              int elemLgr);
@@ -433,7 +433,7 @@ bool isRefinedFaceOnLgrBoundary(const std::array<int,3>& cells_per_dim, int face
 /// @param [in] elemLgr_ptr    Pointer to the single-cell refinement grid.
 /// @param [in] elemLgr        Parent cell index from the original grid.
 /// @return Index of the parent face containing the refined face.
-int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::CpGrid& grid,
+int getParentFaceWhereNewRefinedFaceLiesOn(const Dune::cpgrid::CpGridData& current_data,
                                            const std::array<int,3>& cells_per_dim, int faceIdxInLgr,
                                            const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr_ptr,
                                            int elemLgr);
