@@ -121,7 +121,9 @@ sorted_outer_boundary(const processed_grid&   grid,
     // Remove internal edges.
     auto iter = edges.begin();
     auto iternext = iter;
-    ++iternext;
+    if (iternext != edges.end()) {
+        ++iternext;
+    }
 
     const opposite is_opposite{};
     for (; iternext != edges.end();) {
@@ -158,7 +160,7 @@ sorted_outer_boundary(const processed_grid&   grid,
     while (!edges.empty()) {
         auto cedges = sedges.back();
         auto nextelem = std::find_if(edges.begin(), edges.end(),
-                                     [cedges](std::array<int,2> &s)
+                                     [cedges](const std::array<int,2> &s)
                                      { return s[0] == cedges[1]; });
 
         sedges.push_back(*nextelem);

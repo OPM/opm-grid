@@ -73,7 +73,7 @@ Opm::EclipseGrid createAndSetUpGrid(const std::string& deck_string,
                                     const std::vector<std::array<int, 3>>& cells_per_dim_vec,
                                     const std::vector<std::array<int, 3>>& startIJK_vec,
                                     const std::vector<std::array<int, 3>>& endIJK_vec,
-                                    const std::vector<std::string> lgr_name_vec)
+                                    const std::vector<std::string>& lgr_name_vec)
 {
     Dune::CpGrid grid;
     // Create the starting grid (before adding LGRs)

@@ -188,7 +188,6 @@ void checkCommunicationWorks(const Dune::CpGrid& grid)
     // This pretends to do something on the lines
     // of fvbasadiscretization finishInit()
 
-    double gridTotalVolume = 0.0;
     std::vector<double> dofTotalVolume{};
 
     const auto& gridView = grid.leafGridView();
@@ -203,7 +202,6 @@ void checkCommunicationWorks(const Dune::CpGrid& grid)
         // random computation - only for testing
         const double dofVolume = element.geometry().volume();
         dofTotalVolume[element.index()] += dofVolume;
-        gridTotalVolume += dofVolume;
     }
 
     const Dune::MultipleCodimMultipleGeomTypeMapper<Dune::CpGrid::LeafGridView> leafMapper(gridView, Dune::mcmgElementLayout());

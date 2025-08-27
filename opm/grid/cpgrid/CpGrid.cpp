@@ -1873,10 +1873,12 @@ void CpGrid::switchToGlobalView()
 
 void CpGrid::switchToDistributedView()
 {
-    if (distributed_data_.empty())
+    if (distributed_data_.empty()) {
         OPM_THROW(std::logic_error, "No distributed view available in grid");
-    current_view_data_ = distributed_data_.back().get();
-    current_data_ = &distributed_data_;
+    } else {
+        current_view_data_ = distributed_data_.back().get();
+        current_data_ = &distributed_data_;
+    }
 }
 
 #if HAVE_MPI

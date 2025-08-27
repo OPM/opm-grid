@@ -2174,29 +2174,29 @@ namespace Dune
 
 
     template<class DataHandle>
-    void CpGrid::scatterData(DataHandle& handle) const
+    void CpGrid::scatterData([[maybe_unused]] DataHandle& handle) const
     {
 #if HAVE_MPI
-        if(distributed_data_.empty())
+        if (distributed_data_.empty()) {
             OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balanced grid!");
-        distributed_data_[0]->scatterData(handle, data_[0].get(), distributed_data_[0].get(), cellScatterGatherInterface(),
-                                          pointScatterGatherInterface());
-#else
-        // Suppress warnings for unused argument.
-        (void) handle;
+        } else {
+            distributed_data_[0]->scatterData(handle, data_[0].get(),
+                                              distributed_data_[0].get(),
+                                              cellScatterGatherInterface(),
+                                              pointScatterGatherInterface());
+        }
 #endif
     }
 
     template<class DataHandle>
-    void CpGrid::gatherData(DataHandle& handle) const
+    void CpGrid::gatherData([[maybe_unused]] DataHandle& handle) const
     {
 #if HAVE_MPI
-        if(distributed_data_.empty())
+        if (distributed_data_.empty()) {
             OPM_THROW(std::runtime_error, "Moving Data only allowed with a load balance grid!");
-        distributed_data_[0]->gatherData(handle, data_[0].get(), distributed_data_[0].get());
-#else
-        // Suppress warnings for unused argument.
-        (void) handle;
+        } else {
+            distributed_data_[0]->gatherData(handle, data_[0].get(), distributed_data_[0].get());
+        }
 #endif
     }
 
