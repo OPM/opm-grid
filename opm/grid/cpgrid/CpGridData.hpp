@@ -333,12 +333,12 @@ public:
         return cell_to_face_[cpgrid::EntityRep<0>(cellIdx, true)];
     }
 
-    auto cellToPoint() const
+    auto& cellToPoint() const
     {
         return cell_to_point_;
     }
     
-    auto cellToPoint(int cellIdx) const
+    auto& cellToPoint(int cellIdx) const
     {
         return cell_to_point_[cellIdx];
     }
@@ -375,7 +375,7 @@ public:
         return corner_history_.size();
     }
 
-    auto getCornerHistory(int cornerIdx) const
+    auto& getCornerHistory(int cornerIdx) const
     {
         if(cornerHistorySize()) {
             return corner_history_[cornerIdx];
