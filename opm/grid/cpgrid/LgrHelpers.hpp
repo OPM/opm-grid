@@ -342,7 +342,8 @@ void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
                          std::map<std::array<int,2>,std::array<int,2>>& b_to_a,
                          const std::array<int,2>& keyA,
                          const std::array<int,2>& keyB,
-                         int& counter);
+                         int& counter,
+                         bool useFullKeyB = false);
 
 /// @brief Define mappings between single-cell-refinement faces and refined level faces.
 ///
