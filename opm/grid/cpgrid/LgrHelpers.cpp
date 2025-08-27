@@ -36,7 +36,10 @@
 #include <utility> // for std::pair
 #include <vector>
 
-namespace Opm {
+namespace Opm
+{
+namespace Lgr 
+{
 
 void refineAndProvideMarkedRefinedRelations(const Dune::CpGrid& grid, /* Marked elements parameters */
                                             std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
@@ -2369,4 +2372,6 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int,3>>& cells_
                            std::move(filtered_lgr_name_vec));
 }
 
-}
+} // namespace Lgr
+} // namespace Opm
+

@@ -1687,7 +1687,7 @@ void CpGridData::computeCommunicationInterfaces([[maybe_unused]] int noExistingP
 std::array<Dune::FieldVector<double,3>,8> CpGridData::getReferenceRefinedCorners(int idx_in_parent_cell, const std::array<int,3>& cells_per_dim) const
 {
     // Refined cells in parent cell: k*cells_per_dim[0]*cells_per_dim[1] + j*cells_per_dim[0] + i
-    std::array<int,3> ijk = Opm::getIJK(idx_in_parent_cell, cells_per_dim);
+    std::array<int,3> ijk = Opm::Lgr::getIJK(idx_in_parent_cell, cells_per_dim);
 
     std::array<Dune::FieldVector<double,3>,8> corners_in_parent_reference_elem = { // corner '0'
         {{ double(ijk[0])/cells_per_dim[0], double(ijk[1])/cells_per_dim[1], double(ijk[2])/cells_per_dim[2] },
@@ -1723,10 +1723,10 @@ void CpGridData::getIJK(int c, std::array<int,3>& ijk) const
     // of the original level-zero grid.
 
     if (level_) { // refined level grids with level > 0
-        ijk = Opm::getIJK(global_cell_[c], logical_cartesian_size_);
+        ijk = Opm::Lgr::getIJK(global_cell_[c], logical_cartesian_size_);
     }
     else { // level zero and leaf grids
-        ijk = Opm::getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
+        ijk = Opm::Lgr::getIJK(global_cell_[c], level_data_ptr_->front()->logicalCartesianSize());
     }
 }
 
@@ -1763,8 +1763,9 @@ bool CpGridData::compatibleSubdivisions(const std::vector<std::array<int,3>>& ce
         bool notAllowedYet = false;
         for (std::size_t level = 0; level < startIJK_vec.size(); ++level) {
             for (std::size_t otherLevel = level+1; otherLevel < startIJK_vec.size(); ++otherLevel) {
-                const auto& sharedFaceTag = Opm::sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]}, {endIJK_vec[level],endIJK_vec[otherLevel]},
-                                                               this->logicalCartesianSize());
+                const auto& sharedFaceTag = Opm::Lgr::sharedFaceTag({startIJK_vec[level], startIJK_vec[otherLevel]},
+                                                                    {endIJK_vec[level],endIJK_vec[otherLevel]},
+                                                                    this->logicalCartesianSize());
                 if(sharedFaceTag == -1){
                     break; // Go to the next "other patch"
                 }

@@ -20,13 +20,6 @@
 
 #define BOOST_TEST_MODULE ReplaceLgr1FaceIdxByLgr2FaceIdxTests
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
-
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
@@ -112,8 +105,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 14, /*local face index*/ 3); // I true for elem14_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 16, /*local face index*/ 2); // I false for elem16_lgr2
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
     // if LGR2 refines cell 0 and LGR1 refines cell 1.
@@ -129,14 +122,14 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 19, /*local face index*/ 3);; // I true for elem19_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 12, /*local face index*/ 2); // I false for elem12_lgr1
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 
     // lgr1 has 108 faces (with indices 0, ..., 107).
     // lgr2 has 141 faces (with indices 0, ..., 140).
     const auto& non_existing_face = 141; // non exisitng face index for both lgrs.
-    BOOST_CHECK_THROW( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, non_existing_face, lgr1_ptr, lgr2_dim), std::logic_error);
-    BOOST_CHECK_THROW( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, non_existing_face, lgr2_ptr, lgr1_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, non_existing_face, lgr1_ptr, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, non_existing_face, lgr2_ptr, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
@@ -176,8 +169,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 16, /*local face index*/ 4); // J true for elem16_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 13, /*local face index*/ 1); // J false for elem13_lgr2
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
 
     // Illustration of cells on the boundary between LGR1 and LGR2, for k=1,
@@ -198,8 +191,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 22, /*local face index*/ 4); // J true for elem22_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 10, /*local face index*/ 1); // J false for elem10_lgr1
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 
 }
 
@@ -239,8 +232,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& faceTrue_lgr1 = lgr1_ptr-> cellFace( /*elemIdx*/ 22, /*local face index*/ 5); // J true for elem22_lgr1
     const auto& faceFalse_lgr2 = lgr2_ptr -> cellFace( /*elemIdx*/ 4, /*local face index*/ 0); // K false for elem4_lgr2
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceTrue_lgr1, lgr1_ptr, lgr2_dim), faceFalse_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceFalse_lgr2, lgr2_ptr, lgr1_dim), faceTrue_lgr1);
 
 
     // Illustration of cells on the boundary between LGR1 and LGR2,
@@ -261,7 +254,7 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_z)
     const auto& faceTrue_lgr2 = lgr2_ptr-> cellFace( /*elemIdx*/ 31, /*local face index*/ 5);; // K true for elem31_lgr2
     const auto& faceFalse_lgr1 = lgr1_ptr -> cellFace( /*elemIdx*/ 4, /*local face index*/ 0); // K false for elem4_lgr1
 
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
-    BOOST_CHECK_EQUAL( Opm::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr2_dim, faceTrue_lgr2, lgr2_ptr, lgr1_dim), faceFalse_lgr1);
+    BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1FaceIdxByLgr2FaceIdx(lgr1_dim, faceFalse_lgr1, lgr1_ptr, lgr2_dim), faceTrue_lgr2);
 }
 

@@ -20,13 +20,6 @@
 
 #define BOOST_TEST_MODULE ReplaceCornerIdxNeighCellsTests
 #include <boost/test/unit_test.hpp>
-#include <boost/version.hpp>
-#if BOOST_VERSION / 100000 == 1 && BOOST_VERSION / 100 % 1000 < 71
-#include <boost/test/floating_point_comparison.hpp>
-#else
-#include <boost/test/tools/floating_point_comparison.hpp>
-#endif
-
 
 #include <opm/grid/CpGrid.hpp>
 #include <opm/grid/cpgrid/LgrHelpers.hpp>
@@ -95,8 +88,8 @@ void checkOrderDoesNotMatterWhenReplaceCornerIdxOfSharedRefinedFaceBetweenSingle
         const auto& corn_lgrA = elemLgrA.subEntity<3>( idx_in_cell_lgrA ).index();
         const auto& corn_lgrB = elemLgrB.subEntity<3>( idx_in_cell_lgrB ).index();
 
-        BOOST_CHECK_EQUAL( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
-        BOOST_CHECK_EQUAL( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
+        BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1CornerIdxByLgr2CornerIdx(lgrA_dim, corn_lgrA, lgrB_dim), corn_lgrB);
+        BOOST_CHECK_EQUAL( Opm::Lgr::replaceLgr1CornerIdxByLgr2CornerIdx(lgrB_dim, corn_lgrB, lgrA_dim), corn_lgrA);
     }
 }
 
@@ -163,8 +156,8 @@ BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_x)
     // lgr1 has (3+1)x(3+1)x(3+1) = 64 corners (with indices 0, ..., 63).
     // lgr2 has (4+1)x(3+1)x(3+1) = 80 corners (with indices 0, ..., 79).
     const auto& non_existing_corner = 80; // non exisitng corner index for both lgrs.
-    BOOST_CHECK_THROW( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
-    BOOST_CHECK_THROW( Opm::replaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::Lgr::replaceLgr1CornerIdxByLgr2CornerIdx(lgr1_dim, non_existing_corner, lgr2_dim), std::logic_error);
+    BOOST_CHECK_THROW( Opm::Lgr::replaceLgr1CornerIdxByLgr2CornerIdx(lgr2_dim, non_existing_corner, lgr1_dim), std::logic_error);
 }
 
 BOOST_AUTO_TEST_CASE(neighboring_singleCellRefinements_y)

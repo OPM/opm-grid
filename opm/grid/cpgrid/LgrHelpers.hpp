@@ -44,6 +44,8 @@ class CpGridData;
 
 namespace Opm
 {
+namespace Lgr
+{
 /// --------------- Auxiliary methods to support refinement ---------------
 
 /// @brief Refines all marked elements and establishes mappings between
@@ -788,7 +790,8 @@ filterUndesiredNumberOfSubdivisions(const std::vector<std::array<int, 3>>& cells
                                     const std::vector<std::array<int, 3>>& endIJK_vec,
                                     const std::vector<std::string>& lgr_name_vec);
 
-}
+} // namespace Lgr
+} // namespace Opm
 
 
 #endif // OPM_GRID_CPGRID_LGRHELPERS_HEADER_INCLUDED
