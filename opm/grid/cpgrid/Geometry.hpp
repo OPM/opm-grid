@@ -51,6 +51,7 @@
 #include <opm/grid/cpgrid/EntityRep.hpp>
 #include <opm/grid/cpgrid/DefaultGeometryPolicy.hpp>
 #include <opm/grid/cpgrid/OrientedEntityTable.hpp>
+#include <opm/grid/cpgpreprocess/preprocess.h>
 #include <opm/grid/common/Volumes.hpp>
 #include <opm/grid/utility/platform_dependent/reenable_warnings.h>
 #include <opm/grid/utility/SparseTable.hpp>
