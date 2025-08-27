@@ -78,7 +78,7 @@ void createTestGridWithLgrsParallel(Dune::CpGrid& grid)
                                 /* lgr_name_vec = */ {"LGR1", "LGR2"});
 }
 
-void checkGridInactiveCellsCount(Dune::CpGrid& grid,
+void checkGridInactiveCellsCount(const Dune::CpGrid& grid,
                                  int expected_maxLevel,
                                  const std::vector<int>& expected_global_cells)
 {
