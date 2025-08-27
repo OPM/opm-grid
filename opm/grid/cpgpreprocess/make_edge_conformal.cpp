@@ -121,7 +121,9 @@ sorted_outer_boundary(const processed_grid&   grid,
     // Remove internal edges.
     auto iter = edges.begin();
     auto iternext = iter;
-    ++iternext;
+    if (iternext != edges.end()) {
+        ++iternext;
+    }
 
     const opposite is_opposite{};
     for (; iternext != edges.end();) {
