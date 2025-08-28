@@ -899,7 +899,8 @@ void identifyLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
     }
 }
 
-void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
+void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
+                                  int preAdaptMaxLevel,
                                   std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                   std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
                                   std::vector<int>& refined_face_count_vec,
@@ -908,10 +909,8 @@ void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
                                   const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
                                   const std::vector<std::array<int,3>>& cells_per_dim_vec)
 {
-    const int preAdaptMaxLevel = grid.maxLevel();
-
     // Loop over elements
-    for (int elem = 0; elem < grid.currentData().back()->size(0); ++elem) {
+    for (int elem = 0; elem < current_data.size(0); ++elem) {
         if (!markedElem_to_itsLgr[elem]) continue;
 
         const int level = assignRefinedLevel[elem];
@@ -937,7 +936,7 @@ void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
                 // of the marked element that got refined, then, we have two cases:
                 // - the marked face appears only in one marked element -> then, we store this face now.
                 // - the marked face appears twice (maximum times) in two marked elements -> we store it later.
-                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(), cells_per_dim_vec[shiftedLevel],
+                int markedFace = getParentFaceWhereNewRefinedFaceLiesOn(current_data, cells_per_dim_vec[shiftedLevel],
                                                                         face, markedElem_to_itsLgr[elem], elem);
 
                 assert(!faceInMarkedElemAndRefinedFaces[markedFace].empty());

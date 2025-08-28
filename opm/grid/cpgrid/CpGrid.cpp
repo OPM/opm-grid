@@ -2155,7 +2155,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     std::map<std::array<int,2>,std::array<int,2>> refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace;
     // Integer to count adapted faces (mixed between faces from level0 (not involved in LGRs), and (new-born) refined faces).
     std::vector<int> refined_face_count_vec(levels, 0);
-    Opm::Lgr::identifyRefinedFacesPerLevel(*this,
+    Opm::Lgr::identifyRefinedFacesPerLevel(*currentData().back(),
+                                           preAdaptMaxLevel,
                                            elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                            refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
                                            refined_face_count_vec,

@@ -366,7 +366,8 @@ void insertBidirectional(std::map<std::array<int,2>,std::array<int,2>>& a_to_b,
 /// @param [in] assignRefinedLevel  
 /// @param [in] faceInMarkedElemAndRefinedFaces  
 /// @param [in] cells_per_dim_vec
-void identifyRefinedFacesPerLevel(const Dune::CpGrid& grid,
+void identifyRefinedFacesPerLevel(const Dune::cpgrid::CpGridData& current_data,
+                                  int preAdaptMaxLevel,
                                   std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
                                   std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
                                   std::vector<int>& refined_face_count_vec,
