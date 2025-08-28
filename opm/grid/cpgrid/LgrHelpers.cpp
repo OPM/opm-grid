@@ -1536,7 +1536,7 @@ void setRefinedLevelGridsGeometries(const Dune::cpgrid::CpGridData& current_data
 
 }
 
-void populateLeafGridCorners(const Dune::CpGrid& grid,
+void populateLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& adapted_corners,
                              const int& corner_count,
                              const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
@@ -1549,12 +1549,12 @@ void populateLeafGridCorners(const Dune::CpGrid& grid,
         // Note: Since we are associating each LGR with its parent cell index, and this index can take
         //       the value 0, we represent the current_view_data_ with the value -1
         adapted_corners[corner] = ((elemLgr == -1) ?
-                                   *grid.currentData().back() :
+                                   current_data :
                                    *markedElem_to_itsLgr[elemLgr]).getGeometry().geomVector(std::integral_constant<int,3>())-> get(elemLgrCorner);
     }
 }
 
-void populateLeafGridFaces(const Dune::CpGrid& grid,
+void populateLeafGridFaces(const Dune::cpgrid::CpGridData& current_data,
                            Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& adapted_faces,
                            Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
                            Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
@@ -1570,8 +1570,6 @@ void populateLeafGridFaces(const Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
     mutable_face_normals.resize(face_count);
@@ -1587,7 +1585,7 @@ void populateLeafGridFaces(const Dune::CpGrid& grid,
         // Note: Since we are associating each LGR with its parent cell index, and this index can take
         //       the value 0, with the value -1 we refer to current_view_data_ (grid where the elements have been marked).
         const auto& elemLgrFaceEntity =  Dune::cpgrid::EntityRep<1>(elemLgrFace, true);
-        const auto& grid_or_elemLgr_data = (elemLgr == -1) ? *grid.currentData().back() : *markedElem_to_itsLgr[elemLgr];
+        const auto& grid_or_elemLgr_data = (elemLgr == -1) ? current_data : *markedElem_to_itsLgr[elemLgr];
 
         // Get the face geometry.
         adapted_faces[face] = (*(grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,1>())))[elemLgrFaceEntity];
@@ -1647,7 +1645,7 @@ void populateLeafGridFaces(const Dune::CpGrid& grid,
     }
 }
 
-void populateLeafGridCells(const Dune::CpGrid& grid,
+void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& adapted_cells,
                            std::vector<std::array<int,8>>& adapted_cell_to_point,
                            const int& cell_count,
@@ -1666,12 +1664,10 @@ void populateLeafGridCells(const Dune::CpGrid& grid,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
-    // --- Adapted cells ---
     // Store the adapted cells. Main difficulty: to lookup correctly the indices of the corners and faces of each cell.
     adapted_cells.resize(cell_count);
     adapted_cell_to_point.resize(cell_count);
+
     for (int cell = 0; cell < cell_count; ++cell) {
 
         const auto& [elemLgr, elemLgrCell] = adaptedCell_to_elemLgrAndElemLgrCell.at(cell);
@@ -1681,7 +1677,7 @@ void populateLeafGridCells(const Dune::CpGrid& grid,
         std::vector<Dune::cpgrid::EntityRep<1>> aux_cell_to_face;
 
         const auto& allCorners = adapted_geometries.geomVector(std::integral_constant<int,3>());
-        const auto& grid_or_elemLgr_data = (elemLgr == -1) ? *grid.currentData().back() : *markedElem_to_itsLgr.at(elemLgr);
+        const auto& grid_or_elemLgr_data = (elemLgr == -1) ? current_data : *markedElem_to_itsLgr.at(elemLgr);
 
         // Get the cell geometry.
         const auto& cellGeom = (*(grid_or_elemLgr_data.getGeometry().geomVector(std::integral_constant<int,0>()) ) )[elemLgrCellEntity];
@@ -1755,7 +1751,7 @@ void populateLeafGridCells(const Dune::CpGrid& grid,
                     // Get shifted level
                     const auto& shiftedLevel = assignRefinedLevel[elemLgr] - preAdaptMaxLevel -1; // Assigned level > preAdapt maxLevel
                     // Get the index of the marked face where the refined face was born.
-                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(*grid.currentData().back(),
+                    const auto& markedFace = getParentFaceWhereNewRefinedFaceLiesOn(current_data,
                                                                                     cells_per_dim_vec[shiftedLevel],
                                                                                     preAdaptFace,
                                                                                     markedElem_to_itsLgr[elemLgr], elemLgr);
@@ -1780,7 +1776,7 @@ void populateLeafGridCells(const Dune::CpGrid& grid,
     adapted_cell_to_face.makeInverseRelation(adapted_face_to_cell);
 }
 
-void updateLeafGridViewGeometries( const Dune::CpGrid& grid,
+void updateLeafGridViewGeometries( const Dune::cpgrid::CpGridData& current_data,
                                    /* Leaf grid View Corners arguments */
                                    Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& adapted_corners,
                                    const int& corner_count,
@@ -1813,13 +1809,13 @@ void updateLeafGridViewGeometries( const Dune::CpGrid& grid,
                                    const int& preAdaptMaxLevel)
 {
     // --- Adapted corners ---
-    populateLeafGridCorners(grid,
+    populateLeafGridCorners(current_data,
                             adapted_corners,
                             corner_count,
                             markedElem_to_itsLgr,
                             adaptedCorner_to_elemLgrAndElemLgrCorner);
     // --- Adapted faces ---
-    populateLeafGridFaces(grid,
+    populateLeafGridFaces(current_data,
                           adapted_faces,
                           mutable_face_tags,
                           mutable_face_normals,
@@ -1835,7 +1831,7 @@ void updateLeafGridViewGeometries( const Dune::CpGrid& grid,
                           cells_per_dim_vec,
                           preAdaptMaxLevel);
     // --- Adapted cells ---
-    populateLeafGridCells(grid,
+    populateLeafGridCells(current_data,
                           adapted_cells,
                           adapted_cell_to_point,
                           cell_count,
