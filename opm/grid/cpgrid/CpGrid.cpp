@@ -2097,7 +2097,8 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
     // refined_level_to_leaf_cells_vec:  Relation between the refined grid and leafview cell indices.
     // leaf_to_level_cells:              Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
     const auto& [refined_level_to_leaf_cells_vec,
-                 leaf_to_level_cells] = Opm::Lgr::defineLevelToLeafAndLeafToLevelCells(*this,
+                 leaf_to_level_cells] = Opm::Lgr::defineLevelToLeafAndLeafToLevelCells(*currentData().back(),
+                                                                                       preAdaptMaxLevel,
                                                                                        elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
                                                                                        refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                                                                        refined_cell_count_vec,

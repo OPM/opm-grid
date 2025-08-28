@@ -124,12 +124,12 @@ std::tuple< std::vector<std::vector<std::array<int,2>>>,
             std::vector<std::vector<int>>,
             std::vector<std::array<int,2>>,
             std::vector<int>>
-defineChildToParentAndIdxInParentCell( const Dune::cpgrid::CpGridData& current_data,
-                                       int preAdaptMaxLevel,
-                                       const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                       const std::vector<int>& refined_cell_count_vec,
-                                       const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
-                                       const int& cell_count);
+defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_data,
+                                      int preAdaptMaxLevel,
+                                      const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                      const std::vector<int>& refined_cell_count_vec,
+                                      const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
+                                      const int& cell_count);
 
 /// @brief Define index mappings between refined level grids and the leaf (adapted) grid:
 ///        - level_to_leaf_cells: maps each cell idx in a refined level grid to its leaf cell idx
@@ -152,7 +152,8 @@ defineChildToParentAndIdxInParentCell( const Dune::cpgrid::CpGridData& current_d
 /// - refined_level_to_leaf_cells_vec : For each refined level grid, maps cell idx -> leaf cell idx
 /// - leaf_to_level_cells             : For each leaf cell, {level grid idx, cell idx in that level}
 std::pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>
-defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
+defineLevelToLeafAndLeafToLevelCells(const Dune::cpgrid::CpGridData& current_data,
+                                     int preAdaptMaxLevel,
                                      const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
                                      const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                      const std::vector<int>& refined_cell_count_vec,

@@ -222,7 +222,8 @@ defineChildToParentAndIdxInParentCell(const Dune::cpgrid::CpGridData& current_da
 }
 
 std::pair<std::vector<std::vector<int>>, std::vector<std::array<int,2>>>
-defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
+defineLevelToLeafAndLeafToLevelCells(const Dune::cpgrid::CpGridData& current_data,
+                                     int preAdaptMaxLevel,
                                      const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCell_to_refinedLevelAndRefinedCell,
                                      const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
                                      const std::vector<int>& refined_cell_count_vec,
@@ -230,17 +231,11 @@ defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
                                      const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
                                      const int& cell_count)
 {
-    // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-
-    // -- Refined to Adapted cells and Adapted-cells to {level where the cell was born, cell index on that level} --
     // Relation between the refined grid and leafview cell indices.
     std::vector<std::vector<int>> refined_level_to_leaf_cells_vec(refined_cell_count_vec.size());
     // Relation between an adapted cell and its equivalent cell coming either from current_view_data_ or from the refined grid (level)
     std::vector<std::array<int,2>> leaf_to_level_cells;
     leaf_to_level_cells.resize(cell_count);
-
-    // Max level before calling adapt.
-    const int& preAdaptMaxLevel = grid.maxLevel();
 
     // -- Adapted to {level, cell index in that level}  --
     for (int cell = 0; cell < cell_count; ++cell) {
@@ -248,7 +243,7 @@ defineLevelToLeafAndLeafToLevelCells(const Dune::CpGrid& grid,
         // elemLgr == -1 means that this adapted cell is equivalent to a cell from the starting grid. So we need to find out the level where that equivalent
         // cell was born, as well as its cell index in that level.
         if (elemLgr == -1) {
-            const auto& element = Dune::cpgrid::Entity<0>(*grid.currentData().back(), elemLgrCell, true);
+            const auto& element = Dune::cpgrid::Entity<0>(current_data, elemLgrCell, true);
             leaf_to_level_cells[cell] = { element.level(), element.getLevelElem().index()};
         }
         else {
