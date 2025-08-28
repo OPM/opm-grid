@@ -1769,7 +1769,7 @@ const Dune::FieldVector<double,3> CpGrid::faceAreaNormalEcl(int face) const
     }
 }
 
-const Dune::FieldVector<double,3>& CpGrid::vertexPosition(int vertex) const
+Dune::FieldVector<double,3> CpGrid::vertexPosition(int vertex) const
 {
     return current_view_data_->geomVector<3>()[cpgrid::EntityRep<3>(vertex, true)].center();
 }
@@ -1779,12 +1779,12 @@ double CpGrid::faceArea(int face) const
     return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].volume();
 }
 
-const Dune::FieldVector<double,3>& CpGrid::faceCentroid(int face) const
+Dune::FieldVector<double,3> CpGrid::faceCentroid(int face) const
 {
     return current_view_data_->geomVector<1>()[cpgrid::EntityRep<1>(face, true)].center();
 }
 
-const Dune::FieldVector<double,3>& CpGrid::faceNormal(int face) const
+Dune::FieldVector<double,3> CpGrid::faceNormal(int face) const
 {
     return current_view_data_->face_normals_.get(face);
 }
@@ -1794,7 +1794,7 @@ double CpGrid::cellVolume(int cell) const
     return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].volume();
 }
 
-const Dune::FieldVector<double,3>& CpGrid::cellCentroid(int cell) const
+Dune::FieldVector<double,3> CpGrid::cellCentroid(int cell) const
 {
     return current_view_data_->geomVector<0>()[cpgrid::EntityRep<0>(cell, true)].center();
 }
@@ -2961,10 +2961,10 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                                                      int& cell_count,
                                                      std::vector<std::vector<int>>& preAdapt_level_to_leaf_cells_vec,
                                                      /* Additional parameters */
-                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const 
+                                                     const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // Each marked element for refinement (mark equal to 1), will be refined individuality, creating its own Lgr. The element index will
     // be also used to identify its lgr. Even though, in the end, all the refined entities will belong to a unique level grid.
     // For this reason, we associate "-1" with those elements that are not involved in any refinement and will appear
@@ -2982,7 +2982,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
             cell_count +=1;
             preAdapt_level_to_leaf_cells_vec[element.level()][element.getLevelElem().index()] = cell_count;
         }
-        
+
         // When the element is marked for refinement, we also mark its corners and faces
         // since they will get replaced by refined ones.
         if (getMark(element) ==  1) {
@@ -3018,7 +3018,7 @@ void CpGrid::refineAndProvideMarkedRefinedRelations( /* Marked elements paramete
                 refined_cell_count_vec[shiftedLevel] +=1;
 
             }
-            
+
             preAdapt_parent_to_children_cells_vec[element.level()][element.getLevelElem().index()] = std::make_pair( markedElemLevel, refinedChildrenList);
             for (const auto& [markedCorner, lgrEquivCorner] : parentCorners_to_equivalentRefinedCorners) {
                 cornerInMarkedElemWithEquivRefinedCorner[markedCorner].push_back({elemIdx, lgrEquivCorner});
@@ -3038,7 +3038,7 @@ CpGrid::defineChildToParentAndIdxInParentCell(const std::map<std::array<int,2>,s
                                               const int& cell_count) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // ------------------------ Refined grid parameters
     // Refined child cells and their parents. Entry is {-1,-1} when cell has no father. Otherwise, {level parent cell, parent cell index}
     // Each entry represents a refined level.
@@ -3408,7 +3408,7 @@ void CpGrid::identifyLeafGridCorners(std::map<std::array<int,2>,int>& elemLgrAnd
                                      const std::vector<std::array<int,3>>& cells_per_dim_vec) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // Step 1. Select/store the corners from the starting grid not involved in any (new) LGR.
     //         Replace the corners from level zero involved in LGR by the equivalent ones, born in LGRs.
     //         In this case, we avoid repetition considering the last appearance of the level zero corner
@@ -3562,8 +3562,8 @@ void CpGrid::identifyLeafGridFaces(std::map<std::array<int,2>,int>& elemLgrAndEl
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
 
     // Max level before calling adapt.
-    const int& preAdaptMaxLevel = this->maxLevel(); 
-    
+    const int& preAdaptMaxLevel = this->maxLevel();
+
     // Step 1. Add the LGR faces, for each LGR
     for (int elem = 0; elem < current_view_data_->size(0); ++elem) {
         if (markedElem_to_itsLgr[elem]!=nullptr)  {
@@ -3624,7 +3624,7 @@ void CpGrid::populateLeafGridCorners(Dune::cpgrid::EntityVariableBase<cpgrid::Ge
                                      const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     adapted_corners.resize(corner_count);
     for (int corner = 0; corner < corner_count; ++corner) {
         const auto& [elemLgr, elemLgrCorner] = adaptedCorner_to_elemLgrAndElemLgrCorner.at(corner);
@@ -3665,7 +3665,7 @@ void CpGrid::populateLeafGridFaces(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                                    const int& preAdaptMaxLevel) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     adapted_faces.resize(face_count);
     mutable_face_tags.resize(face_count);
     mutable_face_normals.resize(face_count);
@@ -3845,7 +3845,7 @@ void CpGrid::populateLeafGridCells(Dune::cpgrid::EntityVariableBase<cpgrid::Geom
                                    const int& preAdaptMaxLevel) const
 {
     // If the (level zero) grid has been distributed, then the preAdaptGrid is data_[0]. Otherwise, preApaptGrid is current_view_data_.
-    
+
     // --- Adapted cells ---
     // Store the adapted cells. Main difficulty: to lookup correctly the indices of the corners and faces of each cell.
     adapted_cells.resize(cell_count);
@@ -3975,7 +3975,7 @@ void CpGrid::populateRefinedCells(std::vector<Dune::cpgrid::EntityVariableBase<c
                                   const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
                                   const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                                   const std::vector<std::array<int,3>>&  cells_per_dim_vec) const
-{   
+{
     // --- Refined cells ---
     for (std::size_t shiftedLevel = 0; shiftedLevel < refined_cell_count_vec.size(); ++shiftedLevel) {
 
@@ -4239,7 +4239,7 @@ void CpGrid::updateCornerHistoryLevels(const std::vector<std::vector<std::array<
             currentData()[refinedLevel]->corner_history_[refinedCorner] = preAdaptGrid_corner_history.empty() ? std::array<int,2>{{0, static_cast<int>(corner)}} :  preAdaptGrid_corner_history[corner];
         }
     }
-   
+
     // corner_history_ leaf grid view
     for ( int leafCorner = 0; leafCorner < corner_count; ++leafCorner){
         currentData().back()->corner_history_.resize(corner_count);
@@ -4766,5 +4766,3 @@ int CpGrid::replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_d
 }
 
 } // namespace Dune
-
-
