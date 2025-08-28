@@ -504,40 +504,6 @@ int replaceLgr1FaceIdxByLgr2FaceIdx(const std::array<int,3>& cells_per_dim_lgr1,
                                     const std::shared_ptr<Dune::cpgrid::CpGridData>& elemLgr1_ptr,
                                     const std::array<int,3>& cells_per_dim_lgr2);
 
-/// @brief Set geometrical and topological attributes for each refined level grid.
-void setRefinedLevelGridsGeometries(const Dune::cpgrid::CpGridData& current_data,
-                                    /* Refined corner arguments */
-                                    std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>>& refined_corners_vec,
-                                    const std::vector<int>& refined_corner_count_vec,
-                                    /* Refined face arguments */
-                                    std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>>& refined_faces_vec,
-                                    std::vector<Dune::cpgrid::EntityVariableBase<enum face_tag>>& mutable_refined_face_tags_vec,
-                                    std::vector<Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>>& mutable_refine_face_normals_vec,
-                                    std::vector<Opm::SparseTable<int>>& refined_face_to_point_vec,
-                                    const std::vector<int>& refined_face_count_vec,
-                                    /* Refined cell argumets */
-                                    std::vector<Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>>& refined_cells_vec,
-                                    std::vector<std::vector<std::array<int,8>>>& refined_cell_to_point_vec,
-                                    std::vector<std::vector<int>>& refined_global_cell_vec,
-                                    const std::vector<int>& refined_cell_count_vec,
-                                    std::vector<Dune::cpgrid::OrientedEntityTable<0,1>>& refined_cell_to_face_vec,
-                                    std::vector<Dune::cpgrid::OrientedEntityTable<1,0>>& refined_face_to_cell_vec,
-                                    /* Auxiliary arguments */
-                                    const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                    const std::map<std::array<int,2>,std::array<int,2>>& elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                    const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                    const std::vector<Dune::cpgrid::DefaultGeometryPolicy>& refined_geometries_vec,
-                                    const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                                    const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                    const std::vector<int>& assignRefinedLevel,
-                                    const int& preAdaptMaxLevel,
-                                    const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
-                                    const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                    const std::vector<std::array<int,3>>&  cells_per_dim_vec);
-
 /// @brief Define the corners (gemotry) for the leaf grid view (or adapted grid).
 void populateLeafGridCorners(const Dune::cpgrid::CpGridData& current_data,
                              Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& adapted_corners,
@@ -581,39 +547,6 @@ void populateLeafGridCells(const Dune::cpgrid::CpGridData& current_data,
                            const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
                            const std::vector<std::array<int,3>>& cells_per_dim_vec,
                            const int& preAdaptMaxLevel);
-
-/// @brief Define geometrical and topological attributes for the leaf grid view (or adapted grid).
-void updateLeafGridViewGeometries(const Dune::cpgrid::CpGridData& current_data,
-                                  /* Leaf grid View Corners arguments */
-                                  Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<0,3>>& adapted_corners,
-                                  const int& corner_count,
-                                  /* Leaf grid View Faces arguments */
-                                  Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<2,3>>& adapted_faces,
-                                  Dune::cpgrid::EntityVariableBase<enum face_tag>& mutable_face_tags,
-                                  Dune::cpgrid::EntityVariableBase<Dune::FieldVector<double,3>>& mutable_face_normals,
-                                  Opm::SparseTable<int>& adapted_face_to_point,
-                                  const int& face_count,
-                                  /* Leaf grid View Cells argumemts  */
-                                  Dune::cpgrid::EntityVariableBase<Dune::cpgrid::Geometry<3,3>>& adapted_cells,
-                                  std::vector<std::array<int,8>>& adapted_cell_to_point,
-                                  const int& cell_count,
-                                  Dune::cpgrid::OrientedEntityTable<0,1>& adapted_cell_to_face,
-                                  Dune::cpgrid::OrientedEntityTable<1,0>& adapted_face_to_cell,
-                                  /* Auxiliary arguments */
-                                  const std::unordered_map<int,std::array<int,2>>& adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                  const std::unordered_map<int,std::array<int,2>>& adaptedFace_to_elemLgrAndElemLgrFace,
-                                  const std::unordered_map<int,std::array<int,2>>& adaptedCell_to_elemLgrAndElemLgrCell,
-                                  const std::map<std::array<int,2>,int>& elemLgrAndElemLgrFace_to_adaptedFace,
-                                  const std::vector<std::vector<std::pair<int, std::vector<int>>>>& faceInMarkedElemAndRefinedFaces,
-                                  const Dune::cpgrid::DefaultGeometryPolicy& adapted_geometries,
-                                  const std::map<std::array<int,2>,int>& elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                  const std::map<std::array<int,2>, std::array<int,2>>& vanishedRefinedCorner_to_itsLastAppearance,
-                                  const std::vector<std::shared_ptr<Dune::cpgrid::CpGridData>>& markedElem_to_itsLgr,
-                                  const std::vector<int>& assignRefinedLevel,
-                                  const std::map<std::array<int,2>,int>& markedElemAndEquivRefinedCorn_to_corner,
-                                  const std::vector<std::vector<std::array<int,2>>>& cornerInMarkedElemWithEquivRefinedCorner,
-                                  const std::vector<std::array<int,3>>& cells_per_dim_vec,
-                                  const int& preAdaptMaxLevel);
 
 /// @brief Auxilliary function to compute one or more properties on selected block of parent cells.
 ///

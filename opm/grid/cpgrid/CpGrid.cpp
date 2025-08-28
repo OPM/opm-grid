@@ -2180,71 +2180,89 @@ bool CpGrid::adapt(const std::vector<std::array<int,3>>& cells_per_dim_vec,
                                     faceInMarkedElemAndRefinedFaces,
                                     cells_per_dim_vec);
 
-    Opm::Lgr::setRefinedLevelGridsGeometries(*currentData().back(),
-                                             /* Refined corner arguments */
-                                             refined_corners_vec,
-                                             refined_corner_count_vec,
-                                             /* Refined face arguments */
-                                             refined_faces_vec,
-                                             mutable_refined_face_tags_vec,
-                                             mutable_refined_face_normals_vec,
-                                             refined_face_to_point_vec,
-                                             refined_face_count_vec,
-                                             /* Refined cell argumets */
-                                             refined_cells_vec,
-                                             refined_cell_to_point_vec,
-                                             refined_global_cell_vec,
-                                             refined_cell_count_vec,
-                                             refined_cell_to_face_vec,
-                                             refined_face_to_cell_vec,
-                                             /* Auxiliary arguments */
-                                             refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
-                                             refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
-                                             refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner,
-                                             elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
-                                             elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
-                                             faceInMarkedElemAndRefinedFaces,
-                                             refined_geometries_vec,
-                                             vanishedRefinedCorner_to_itsLastAppearance,
-                                             markedElem_to_itsLgr,
-                                             assignRefinedLevel,
-                                             preAdaptMaxLevel,
-                                             markedElemAndEquivRefinedCorn_to_corner,
-                                             cornerInMarkedElemWithEquivRefinedCorner,
-                                             cells_per_dim_vec);
+    // Set refined level grids geometries
+    // --- Refined corners  ---
+    Opm::Lgr::populateRefinedCorners(refined_corners_vec,
+                                     refined_corner_count_vec,
+                                     markedElem_to_itsLgr,
+                                     preAdaptMaxLevel,
+                                     refinedLevelAndRefinedCorner_to_elemLgrAndElemLgrCorner);
+    // --- Refined faces  ---
+    Opm::Lgr::populateRefinedFaces(refined_faces_vec,
+                                   mutable_refined_face_tags_vec,
+                                   mutable_refined_face_normals_vec,
+                                   refined_face_to_point_vec,
+                                   refined_face_count_vec,
+                                   refinedLevelAndRefinedFace_to_elemLgrAndElemLgrFace,
+                                   elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                   vanishedRefinedCorner_to_itsLastAppearance,
+                                   markedElem_to_itsLgr,
+                                   preAdaptMaxLevel,
+                                   cornerInMarkedElemWithEquivRefinedCorner,
+                                   markedElemAndEquivRefinedCorn_to_corner);
+    // --- Refined cells  ---
+    Opm::Lgr::populateRefinedCells(*currentData().back(),
+                                   refined_cells_vec,
+                                   refined_cell_to_point_vec,
+                                   refined_global_cell_vec,
+                                   refined_cell_count_vec,
+                                   refined_cell_to_face_vec,
+                                   refined_face_to_cell_vec,
+                                   refinedLevelAndRefinedCell_to_elemLgrAndElemLgrCell,
+                                   elemLgrAndElemLgrFace_to_refinedLevelAndRefinedFace,
+                                   faceInMarkedElemAndRefinedFaces,
+                                   refined_geometries_vec,
+                                   elemLgrAndElemLgrCorner_to_refinedLevelAndRefinedCorner,
+                                   vanishedRefinedCorner_to_itsLastAppearance,
+                                   markedElem_to_itsLgr,
+                                   assignRefinedLevel,
+                                   preAdaptMaxLevel,
+                                   markedElemAndEquivRefinedCorn_to_corner,
+                                   cornerInMarkedElemWithEquivRefinedCorner,
+                                   cells_per_dim_vec);
 
-    Opm::Lgr::updateLeafGridViewGeometries(*currentData().back(),
-                                           /* Leaf grid View Corners arguments */
-                                           adapted_corners,
-                                           corner_count,
-                                           /* Leaf grid View Faces arguments */
-                                           adapted_faces,
-                                           mutable_face_tags,
-                                           mutable_face_normals,
-                                           adapted_face_to_point,
-                                           face_count,
-                                           /* Leaf grid View Cells argumemts  */
-                                           adapted_cells,
-                                           adapted_cell_to_point,
-                                           cell_count,
-                                           adapted_cell_to_face,
-                                           adapted_face_to_cell,
-                                           /* Auxiliary arguments */
-                                           adaptedCorner_to_elemLgrAndElemLgrCorner,
-                                           adaptedFace_to_elemLgrAndElemLgrFace,
-                                           adaptedCell_to_elemLgrAndElemLgrCell,
-                                           elemLgrAndElemLgrFace_to_adaptedFace,
-                                           faceInMarkedElemAndRefinedFaces,
-                                           adapted_geometries,
-                                           elemLgrAndElemLgrCorner_to_adaptedCorner,
-                                           vanishedRefinedCorner_to_itsLastAppearance,
-                                           markedElem_to_itsLgr,
-                                           assignRefinedLevel,
-                                           markedElemAndEquivRefinedCorn_to_corner,
-                                           cornerInMarkedElemWithEquivRefinedCorner,
-                                           cells_per_dim_vec,
-                                           preAdaptMaxLevel);
-
+    // Update leaf grid geometries
+    // --- Adapted corners ---
+    Opm::Lgr::populateLeafGridCorners(*currentData().back(),
+                                      adapted_corners,
+                                      corner_count,
+                                      markedElem_to_itsLgr,
+                                      adaptedCorner_to_elemLgrAndElemLgrCorner);
+    // --- Adapted faces ---
+    Opm::Lgr::populateLeafGridFaces(*currentData().back(),
+                                    adapted_faces,
+                                    mutable_face_tags,
+                                    mutable_face_normals,
+                                    adapted_face_to_point,
+                                    face_count,
+                                    adaptedFace_to_elemLgrAndElemLgrFace,
+                                    elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                    vanishedRefinedCorner_to_itsLastAppearance,
+                                    markedElem_to_itsLgr,
+                                    assignRefinedLevel,
+                                    markedElemAndEquivRefinedCorn_to_corner,
+                                    cornerInMarkedElemWithEquivRefinedCorner,
+                                    cells_per_dim_vec,
+                                    preAdaptMaxLevel);
+    // --- Adapted cells ---
+    Opm::Lgr::populateLeafGridCells(*currentData().back(),
+                                    adapted_cells,
+                                    adapted_cell_to_point,
+                                    cell_count,
+                                    adapted_cell_to_face,
+                                    adapted_face_to_cell,
+                                    adaptedCell_to_elemLgrAndElemLgrCell,
+                                    elemLgrAndElemLgrFace_to_adaptedFace,
+                                    faceInMarkedElemAndRefinedFaces,
+                                    adapted_geometries,
+                                    elemLgrAndElemLgrCorner_to_adaptedCorner,
+                                    vanishedRefinedCorner_to_itsLastAppearance,
+                                    markedElem_to_itsLgr,
+                                    assignRefinedLevel,
+                                    markedElemAndEquivRefinedCorn_to_corner,
+                                    cornerInMarkedElemWithEquivRefinedCorner,
+                                    cells_per_dim_vec,
+                                    preAdaptMaxLevel);
 
     for (int level = 0; level < levels; ++level) {
         const int refinedLevelGridIdx = level + preAdaptMaxLevel +1;
